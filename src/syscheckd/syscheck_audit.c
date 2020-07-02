@@ -1250,6 +1250,7 @@ void audit_read_events(int *audit_sock, int mode) {
     struct timeval timeout;
     count_reload_retries = 0;
     int conn_retries;
+    char * eoe_found = false;
 
     char *buffer;
     os_malloc(BUF_SIZE * sizeof(char), buffer);
@@ -1326,6 +1327,7 @@ void audit_read_events(int *audit_sock, int mode) {
         line = buffer;
 
         char * id;
+        char *event_too_long_id = NULL;
 
         do {
             *endline = '\0';
@@ -1334,7 +1336,9 @@ void audit_read_events(int *audit_sock, int mode) {
                 // If there was cached data and the ID is different, parse cache first
 
                 if (cache_id && strcmp(cache_id, id) && cache_i) {
-                    audit_parse(cache);
+                    if (!event_too_long_id) {
+                        audit_parse(cache);
+                    }
                     cache_i = 0;
                 }
 
@@ -1345,21 +1349,28 @@ void audit_read_events(int *audit_sock, int mode) {
                     cache_i += len;
                     cache[cache_i++] = '\n';
                     cache[cache_i] = '\0';
-                } else {
-                    merror(FIM_ERROR_WHODATA_EVENT_TOOLONG);
+                } else if (!event_too_long_id){
+                    mwarn(FIM_WARN_WHODATA_EVENT_TOOLONG, id);
+                    os_strdup(id, event_too_long_id);
                 }
+                eoe_found = strstr(line, "type=EOE");
 
                 free(cache_id);
                 cache_id = id;
             } else {
-                merror(FIM_ERROR_WHODATA_GETID, line);
+                mwarn(FIM_WARN_WHODATA_GETID, line);
             }
 
             line = endline + 1;
         } while (*line && (endline = strchr(line, '\n'), endline));
 
-        // If some data remains in the buffer, move it to the beginning
+        // If some audit log remains in the cache and it is complet (line "end of event" is found), flush cache
+        if (eoe_found && !event_too_long_id){
+            audit_parse(cache);
+            cache_i = 0;
+        }
 
+        // If some data remains in the buffer, move it to the beginning
         if (*line) {
             buffer_i = strlen(line);
             memmove(buffer, line, buffer_i);
@@ -1367,6 +1378,7 @@ void audit_read_events(int *audit_sock, int mode) {
             buffer_i = 0;
         }
 
+        if (event_too_long_id) os_free(event_too_long_id);
     }
 
     free(cache_id);

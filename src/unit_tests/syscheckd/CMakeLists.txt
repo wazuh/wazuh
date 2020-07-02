@@ -94,7 +94,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                        -Wl,--wrap,audit_add_rule -Wl,--wrap,W_Vector_insert_unique -Wl,--wrap,SendMSG -Wl,--wrap,fim_whodata_event -Wl,--wrap,audit_delete_rule \
                        -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc -Wl,--wrap,closeproc -Wl,--wrap,_mdebug2 -Wl,--wrap,get_user -Wl,--wrap,get_group -Wl,--wrap,realpath \
                        -Wl,--wrap,pthread_cond_init -Wl,--wrap,pthread_cond_wait -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,CreateThread \
-                       -Wl,--wrap,sleep -Wl,--wrap,readlink")
+                       -Wl,--wrap,select -Wl,--wrap,recv -Wl,--wrap,sleep -Wl,--wrap,readlink")
 endif()
 
 set(SEECHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat -Wl,--wrap,abspath -Wl,--wrap,wfopen -Wl,--wrap,fread \
