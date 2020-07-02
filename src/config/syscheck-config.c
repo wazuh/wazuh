@@ -968,10 +968,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_restart_audit = "restart_audit";
     const char *xml_windows_audit_interval = "windows_audit_interval";
 #ifdef WIN32
-    const char *xml_arch = "arch";
-    const char *xml_32bit = "32bit";
-    const char *xml_64bit = "64bit";
-    const char *xml_both = "both";
     const char *xml_tag = "tags";
 #endif
     const char *xml_whodata_options = "whodata";
@@ -1052,8 +1048,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element, xml_registry) == 0) {
 #ifdef WIN32
             char * tag = NULL;
-            char arch[6] = "32bit";
-
             if (node[i]->attributes) {
                 int j = 0;
 
@@ -1061,17 +1055,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     if (strcmp(node[i]->attributes[j], xml_tag) == 0) {
                         os_free(tag);
                         os_strdup(node[i]->values[j], tag);
-                    } else if (strcmp(node[i]->attributes[j], xml_arch) == 0) {
-                        if (strcmp(node[i]->values[j], xml_32bit) == 0) {
-                        } else if (strcmp(node[i]->values[j], xml_64bit) == 0) {
-                            snprintf(arch, 6, "%s", "64bit");
-                        } else if (strcmp(node[i]->values[j], xml_both) == 0) {
-                            snprintf(arch, 6, "%s", "both");
-                        } else {
-                            merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
-                            os_free(tag);
-                            return OS_INVALID;
-                        }
                     } else {
                         merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
                         os_free(tag);
@@ -1080,26 +1063,17 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     j++;
                 }
             }
-
-            if (strcmp(arch, "both") == 0) {
+            if (strstr(w_tolower_str(node[i]->content), "hkey_local_machine\\software") != NULL) {
                 if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT, tag) &&
                 read_reg(syscheck, node[i]->content, ARCH_64BIT, tag))) {
                     free(tag);
                     return (OS_INVALID);
                 }
-
-            } else if (strcmp(arch, "64bit") == 0) {
-                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag)) {
-                    free(tag);
-                    return (OS_INVALID);
-                }
-
             } else {
                 if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag)) {
                     free(tag);
                     return (OS_INVALID);
                 }
-
             }
 
             if (tag)
@@ -1358,7 +1332,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element, xml_registry_ignore) == 0) {
 #ifdef WIN32
             int sregex = 0;
-            int arch = ARCH_32BIT;
+            int arch = strstr(w_tolower_str(node[i]->content), "hkey_local_machine\\software") == NULL ? ARCH_32BIT : ARCH_BOTH;
 
             /* Add if regex */
             if (node[i]->attributes && node[i]->values) {
@@ -1368,24 +1342,12 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     if (strcmp(node[i]->attributes[j], "type") == 0 &&
                     strcmp(node[i]->values[j], "sregex") == 0) {
                         sregex = 1;
-                    } else if (strcmp(node[i]->attributes[j], xml_arch) == 0) {
-                        if (strcmp(node[i]->values[j], xml_32bit) == 0)
-                            arch = ARCH_32BIT;
-                        else if  (strcmp(node[i]->values[j], xml_64bit) == 0)
-                            arch = ARCH_64BIT;
-                        else if (strcmp(node[i]->values[j], xml_both) == 0)
-                            arch = ARCH_BOTH;
-                        else {
-                            merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
-                            return OS_INVALID;
-                        }
                     } else {
                         merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
                         return OS_INVALID;
                     }
                 }
             }
-
 
             if (sregex) {
                 if (arch != ARCH_BOTH)
