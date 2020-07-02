@@ -38,14 +38,7 @@ static sqlite3* openSQLiteDb(const std::string& path)
     {
         sqlite3_open_v2(path.c_str(), &pDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr)
     };
-    if (SQLITE_OK != ret)
-    {
-        throw DbSync::dbsync_error
-        {
-            600,
-            "Unspecified type during initialization of SQLite."
-        };
-    }
+    checkSqliteResult(result, "Unspecified type during initialization of SQLite.");
     return pDb;
 }
 
@@ -102,14 +95,7 @@ Transaction::Transaction(std::shared_ptr<IConnection>& connection)
 , m_rolledBack{ false }
 , m_commited{ false }
 {
-    if (!m_connection->execute("BEGIN TRANSACTION"))
-    {
-        throw DbSync::dbsync_error
-        {
-            601,
-            "cannot begin SQLite Transaction."
-        };
-    }
+    m_connection->execute("BEGIN TRANSACTION");
 }
     
 void Transaction::commit()
@@ -154,13 +140,7 @@ static sqlite3_stmt* prepareSQLiteStatement(std::shared_ptr<IConnection>& connec
     {
         sqlite3_prepare_v2(connection->db().get(), query.c_str(), -1, &pStatement, nullptr)
     };
-    if(SQLITE_OK != ret)
-    {
-        throw DbSync::dbsync_error
-        {
-            602, "cannot instance SQLite stmt."
-        };
-    }
+    checkSqliteResult(result, sqlite3_errmsg(connection->db().get()));
     return pStatement;
 }
 
@@ -175,7 +155,7 @@ int32_t Statement::step()
     const auto ret { sqlite3_step(m_stmt.get()) };
     if (SQLITE_ROW != ret && SQLITE_DONE != ret)
     {
-        throw DbSync::dbsync_error
+        throw sqlite_error
         {
             ret, sqlite3_errmsg(m_connection->db().get())
         };

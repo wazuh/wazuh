@@ -193,8 +193,9 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
     return ret_val;
 }
 
-void dbsync_teardown(void) {
-  DBSyncImplementation::instance().release();
+void dbsync_teardown(void)
+{
+    DBSyncImplementation::instance().release();
 }
 
 void dbsync_free_result(cJSON** json_result)

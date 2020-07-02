@@ -14,11 +14,11 @@
 #include "typedef.h"
 #include <fstream>
 
-bool SQLiteDBEngine::execute(
+void SQLiteDBEngine::execute(
     const std::string& query) {
 }
 
-bool SQLiteDBEngine::select(
+void SQLiteDBEngine::select(
     const std::string& query, 
     nlohmann::json& result) {
 }
@@ -69,10 +69,9 @@ bool SQLiteDBEngine::cleanDB(const std::string& path) {
   return ret_val;
 }
 
-bool SQLiteDBEngine::bulkInsert(const std::string& table, const nlohmann::json& data) {
-  auto ret_val{ false };
-  if (0 != LoadTableData(table)) {
-    const auto sql { BuildInsertBulkDataSqlQuery(table) };
+void SQLiteDBEngine::bulkInsert(const std::string& table, const nlohmann::json& data) {
+  if (0 != loadTableData(table)) {
+    const auto sql { buildInsertBulkDataSqlQuery(table) };
 
     if(!sql.empty()) {
       
@@ -191,12 +190,12 @@ void SQLiteDBEngine::bindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt
   }
 }
 
-bool SQLiteDBEngine::refreshTableData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) {
-  auto ret_val {false};
+void SQLiteDBEngine::refreshTableData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) {
   const std::string table { data["table"].is_string() ? data["table"].get_ref<const std::string&>() : "" };
-  if (CreateCopyTempTable(table)) {
-    if (bulkInsert(table + kTempTableSubFix, data["data"])) {
-      if (0 != LoadTableData(table)) {
+  if (createCopyTempTable(table)) {
+    bulkInsert(table + kTempTableSubFix, data["data"]);
+    {
+      if (0 != loadTableData(table)) {
         std::vector<std::string> primary_key_list;
         if (getPrimaryKeysFromTable(table, primary_key_list)) {
           if (!removeNotExistsRows(table, primary_key_list, delta)) {
@@ -521,8 +520,9 @@ bool SQLiteDBEngine::insertNewRows(
 
   auto ret_val { true };
   std::vector<Row> row_values;
-  if (GetLeftOnly(table+kTempTableSubFix, table, primary_key_list, row_values)) {
-     if (bulkInsert(table, row_values)) {
+  if (getLeftOnly(table+kTempTableSubFix, table, primary_key_list, row_values)) {
+     bulkInsert(table, row_values);
+     {
        for (const auto& row : row_values){
         nlohmann::json object;
         for (const auto& value : row) {
@@ -545,7 +545,7 @@ bool SQLiteDBEngine::insertNewRows(
   return ret_val;
 }
 
-bool SQLiteDBEngine::bulkInsert(
+void SQLiteDBEngine::bulkInsert(
   const std::string& table, 
   const std::vector<Row>& data) {
   

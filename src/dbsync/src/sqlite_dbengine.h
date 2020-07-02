@@ -75,10 +75,10 @@ public:
   SQLiteDBEngine(std::shared_ptr<ISQLiteFactory> sqlite_factory,const std::string& path, const std::string& table_statement_creation);
   ~SQLiteDBEngine();
   
-  virtual bool execute(const std::string& query) override;
-  virtual bool select(const std::string& query, nlohmann::json& result) override;
-  virtual bool bulkInsert(const std::string& table, const nlohmann::json& data) override;
-  virtual bool refreshTableData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) override;
+  virtual void execute(const std::string& query) override;
+  virtual void select(const std::string& query, nlohmann::json& result) override;
+  virtual void bulkInsert(const std::string& table, const nlohmann::json& data) override;
+  virtual void refreshTableData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) override;
 
 private:
   void initialize(const std::string& path, const std::string& table_statement_creation);
@@ -102,11 +102,11 @@ private:
   int32_t getTableData(std::unique_ptr<SQLite::IStatement>const & stmt, const int32_t index, const ColumnType& type, const std::string& field_name, Row& row);
   int32_t bindFieldData(std::unique_ptr<SQLite::IStatement>const & stmt, const int32_t index, const TableField& field_data);
 
-  std::string BuildLeftOnlyQuery(const std::string& t1,const std::string& t2,const std::vector<std::string>& primary_key_list, const bool return_only_pk_fields = false);
-  bool GetLeftOnly(const std::string& t1,const std::string& t2, const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
-  bool GetPKListLeftOnly(const std::string& t1, const std::string& t2, const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
-  bool bulkInsert(const std::string& table, const std::vector<Row>& data);
-  void DeleteTempTable(const std::string& table);
+  std::string buildLeftOnlyQuery(const std::string& t1,const std::string& t2,const std::vector<std::string>& primary_key_list, const bool return_only_pk_fields = false);
+  bool getLeftOnly(const std::string& t1,const std::string& t2, const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
+  bool getPKListLeftOnly(const std::string& t1, const std::string& t2, const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
+  void bulkInsert(const std::string& table, const std::vector<Row>& data);
+  void deleteTempTable(const std::string& table);
 
   std::string buildModifiedRowsQuery(const std::string& t1,const std::string& t2, const std::vector<std::string>& primary_key_list);
   int changeModifiedRows(const std::string& table, const std::vector<std::string>& primary_key_list, const std::tuple<nlohmann::json&, void *> delta);
