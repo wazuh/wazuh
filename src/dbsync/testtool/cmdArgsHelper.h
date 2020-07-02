@@ -26,18 +26,17 @@ public:
         for (int i = 1; i < argc; ++i)
         {
             m_cmdLineArgs.push_back(argv[i]);
-        }        
+        }
     }
 
-    const std::string& configFile() const
+    const std::string configFile() const
     {
-        return m_cmdLineArgs[ConfigValue];
+        return std::move(paramValueOf("-c"));
     }
 
     void snapshotList(std::vector<std::string>& snapshots) const
     {
-        std::stringstream ss{ m_cmdLineArgs[SnapshotsValue] }; 
-        
+        std::stringstream ss{ std::move(paramValueOf("-s")) };
         while (ss.good()) 
         { 
             std::string substr; 
@@ -46,9 +45,9 @@ public:
         } 
     }
 
-    const std::string& outputFolder() const
+    const std::string outputFolder() const
     {
-        return m_cmdLineArgs[OutputValue];
+        return std::move(paramValueOf("-o"));
     }    
 
     void showHelp() const
@@ -60,7 +59,7 @@ public:
                   << "\t-s SNAPSHOT_LIST\tSpecifies the list of snapshots to exercise the dabase.\n"
                   << "\t-o OUTPUT_FOLDER\tSpecifies the output folder path where the results will be generated.\n"         
                   << "\n Example:"
-                  << "\n\t./dbsync_test_tool -c config.json -i input1.json,input2.json,input3.json -o ./output\n"
+                  << "\n\t./dbsync_test_tool -c config.json -s input1.json,input2.json,input3.json -o ./output\n"
                   << std::endl;
     }
 
@@ -72,17 +71,18 @@ public:
             bool configOK{ false };
             bool snapshotsOK{ false };
             bool outputOK{ false };
-            for(unsigned int i = 0; i < m_cmdLineArgs.size(); ++i)
+            const auto argsSize{ m_cmdLineArgs.size() };
+            for(size_t i = 0ull; i < argsSize; ++i)
             {
-                if(m_cmdLineArgs[i].compare("-c") == 0 && !m_cmdLineArgs[i+1].empty())
+                if(m_cmdLineArgs[i].compare("-c") == 0 && (i+1 < argsSize) && !m_cmdLineArgs[i+1].empty())
                 {
                     configOK = true;
                 }
-                else if(m_cmdLineArgs[i].compare("-s") == 0 && !m_cmdLineArgs[i+1].empty())
+                else if(m_cmdLineArgs[i].compare("-s") == 0 && (i+1 < argsSize) && !m_cmdLineArgs[i+1].empty())
                 {
                     snapshotsOK = true;
                 }
-                else if(m_cmdLineArgs[i].compare("-o") == 0 && !m_cmdLineArgs[i+1].empty())
+                else if(m_cmdLineArgs[i].compare("-o") == 0 && (i+1 < argsSize) && !m_cmdLineArgs[i+1].empty())
                 {
                     outputOK = true;
                 }
@@ -92,12 +92,21 @@ public:
         return res;
     }
 private:
-    enum CmdLineValues
+
+    const std::string paramValueOf(const std::string& input) const
     {
-        ConfigValue     = 1,    // -c value
-        SnapshotsValue  = 3,    // -s value
-        OutputValue     = 5     // -o value
-    };
+        std::string result;
+        const auto argsSize{ m_cmdLineArgs.size() };
+        for(unsigned int i = 0; i < argsSize; ++i)
+        {
+            if(m_cmdLineArgs[i].compare(input) == 0 && (i+1 < argsSize) && !m_cmdLineArgs[i+1].empty())
+            {
+                result = m_cmdLineArgs[i+1];
+                break;
+            }
+        }
+        return std::move(result);
+    }
 
     std::vector<std::string> m_cmdLineArgs;
 };
