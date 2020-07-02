@@ -585,6 +585,8 @@ stages:
       json:
         auth_token_exp_timeout: !anyint
         rbac_mode: !anystr
+        max_n_attempts: !anyint
+        block_time: !anyint
 
 ---
 test_name: UPDATE SECURITY CONFIG

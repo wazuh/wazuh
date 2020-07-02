@@ -512,7 +512,7 @@ stages:
         message: !anystr
 
 ---
-test_name: DELETE /security/config
+test_name: PUT /security/config
 
 stages:
 

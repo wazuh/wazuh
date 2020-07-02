@@ -134,7 +134,7 @@ def generate_token(user_id=None, rbac_policies=None):
                           logger=logging.getLogger('wazuh')
                           )
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).values()
-    token_exp, rbac_mode = list(result)
+    token_exp, rbac_mode = list(result)[0:2]
     timestamp = int(time())
     rbac_policies['rbac_mode'] = rbac_mode
     payload = {

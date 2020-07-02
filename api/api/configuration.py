@@ -21,7 +21,9 @@ from wazuh.core import common
 
 default_security_configuration = {
     "auth_token_exp_timeout": 36000,
-    "rbac_mode": "black"
+    "rbac_mode": "black",
+    "max_n_attempts": 5,
+    "block_time": 300
 }
 
 default_api_configuration = {

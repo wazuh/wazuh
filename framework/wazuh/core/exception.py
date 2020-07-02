@@ -527,7 +527,7 @@ class WazuhException(Exception):
 
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '
-                          'The current IP has been blocked due to a high number of failed session attempts'}
+                          'The current IP has been blocked due to a high number of failed login attempts'}
 
         # > 9000: Authd
     }

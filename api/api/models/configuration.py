@@ -291,19 +291,26 @@ class APIConfigurationModel(Body):
 class SecurityConfigurationModel(Body):
     """Security configuration model."""
 
-    def __init__(self, auth_token_exp_timeout: int = None, rbac_mode: str = None):
+    def __init__(self, auth_token_exp_timeout: int = None, rbac_mode: str = None,
+                 max_n_attempts: int = None, block_time: int = None):
         self.swagger_types = {
             'auth_token_exp_timeout': int,
             'rbac_mode': str,
+            'max_n_attempts': int,
+            'block_time': int
         }
 
         self.attribute_map = {
             'auth_token_exp_timeout': 'auth_token_exp_timeout',
-            'rbac_mode': 'rbac_mode'
+            'rbac_mode': 'rbac_mode',
+            'max_n_attempts': 'max_n_attempts',
+            'block_time': 'block_time'
         }
 
         self._auth_token_exp_timeout = auth_token_exp_timeout
         self._rbac_mode = rbac_mode
+        self._max_n_attempts = max_n_attempts
+        self._block_time = block_time
 
     @property
     def auth_token_exp_timeout(self):
@@ -320,3 +327,19 @@ class SecurityConfigurationModel(Body):
     @rbac_mode.setter
     def rbac_mode(self, rbac_mode):
         self._rbac_mode = rbac_mode
+
+    @property
+    def max_n_attempts(self):
+        return self._max_n_attempts
+
+    @max_n_attempts.setter
+    def max_n_attempts(self, max_n_attempts):
+        self._max_n_attempts = max_n_attempts
+
+    @property
+    def block_time(self):
+        return self._block_time
+
+    @block_time.setter
+    def block_time(self, block_time):
+        self._block_time = block_time

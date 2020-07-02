@@ -2356,6 +2356,18 @@ components:
           type: string
           enum: [white, black]
           example: white
+        max_n_attempts:
+          description: "Maximum number of login attempts"
+          type: integer
+          format: int32
+          minimum: 1
+          example: 5
+        block_time:
+          description: "Blocking time for IPs that have exceeded the maximum number of login attempts in this time"
+          type: integer
+          format: int32
+          minimum: 0
+          example: 300
 
     # SCA models
     SCAChecks:
