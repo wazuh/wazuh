@@ -1,7 +1,7 @@
 /*
  * Wazuh DBSYNC
  * Copyright (C) 2015-2020, Wazuh Inc.
- * June 11, 2020.
+ * July 02, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -20,7 +20,7 @@
 class CmdLineArgs
 {
 public:
-    CmdLineArgs(const int argc, char* argv[])
+    CmdLineArgs(const int argc, const char* argv[])
     {
         m_cmdLineArgs.reserve(argc);
         for (int i = 1; i < argc; ++i)
@@ -29,12 +29,12 @@ public:
         }        
     }
 
-    std::string configFile() const
+    const std::string& configFile() const
     {
         return m_cmdLineArgs[ConfigValue];
     }
 
-    void snapshotList(std::vector<std::string>& sList) const
+    void snapshotList(std::vector<std::string>& snapshots) const
     {
         std::stringstream ss{ m_cmdLineArgs[SnapshotsValue] }; 
         
@@ -42,18 +42,18 @@ public:
         { 
             std::string substr; 
             getline(ss, substr, ','); // Getting each string between ',' character 
-            sList.push_back(substr); 
+            snapshots.push_back(std::move(substr));
         } 
     }
 
-    std::string outputFolder() const
+    const std::string& outputFolder() const
     {
         return m_cmdLineArgs[OutputValue];
     }    
 
     void showHelp() const
     {
-        std::cerr << "\nUsage: dbsync_test_tool <option(s)> SOURCES \n"
+        std::cout << "\nUsage: dbsync_test_tool <option(s)> SOURCES \n"
                   << "Options:\n"
                   << "\t-h \t\t\tShow this help message\n"
                   << "\t-c JSON_CONFIG_FILE\tSpecifies the json config file to initialize the database.\n"
@@ -69,18 +69,24 @@ public:
         bool res{ false };
         if(m_cmdLineArgs.size() != 0)
         {
-            const bool configOK
-            { 
-                m_cmdLineArgs[ConfigArg] == "-c" && !m_cmdLineArgs[ConfigValue].empty() 
-            };
-            const bool snapshotsOK
-            { 
-                m_cmdLineArgs[SnapshotsArg] == "-i" && !m_cmdLineArgs[SnapshotsValue].empty() 
-            };
-            const bool outputOK
-            { 
-                m_cmdLineArgs[OutputArg] == "-o" && !m_cmdLineArgs[OutputValue].empty()
-            };
+            bool configOK{ false };
+            bool snapshotsOK{ false };
+            bool outputOK{ false };
+            for(unsigned int i = 0; i < m_cmdLineArgs.size(); ++i)
+            {
+                if(m_cmdLineArgs[i].compare("-c") == 0 && !m_cmdLineArgs[i+1].empty())
+                {
+                    configOK = true;
+                }
+                else if(m_cmdLineArgs[i].compare("-s") == 0 && !m_cmdLineArgs[i+1].empty())
+                {
+                    snapshotsOK = true;
+                }
+                else if(m_cmdLineArgs[i].compare("-o") == 0 && !m_cmdLineArgs[i+1].empty())
+                {
+                    outputOK = true;
+                }
+            }
             res = configOK && snapshotsOK && outputOK;
         }
         return res;
@@ -88,15 +94,11 @@ public:
 private:
     enum CmdLineValues
     {
-        ConfigArg       = 0,    // -c arg
         ConfigValue     = 1,    // -c value
-        SnapshotsArg    = 2,    // -i arg
-        SnapshotsValue  = 3,    // -i value
-        OutputArg       = 4,    // -o arg
+        SnapshotsValue  = 3,    // -s value
         OutputValue     = 5     // -o value
     };
 
-    CmdLineArgs() = delete;
     std::vector<std::string> m_cmdLineArgs;
 };
 
