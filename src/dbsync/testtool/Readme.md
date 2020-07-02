@@ -2,7 +2,7 @@
 ## Index
 1. [Purpose](#purpose)
 2. [Compile Wazuh](#compile-wazuh)
-3. [How to use the tool](#how-to-suse-the-tool)
+3. [How to use the tool](#how-to-use-the-tool)
 
 ## Purpose
 The DBSync Testing Tool was created to test and validate the correct 
