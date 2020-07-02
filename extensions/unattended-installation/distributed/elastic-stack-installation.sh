@@ -156,12 +156,23 @@ installKibana() {
     logger "Installing Open Distro for Kibana..."
 
     $sys_type install opendistroforelasticsearch-kibana -y -q > /dev/null 2>&1
-    curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/kibana/7.x/kibana_all_in_one.yml --max-time 300 > /dev/null 2>&1
-    cd /usr/share/kibana > /dev/null 2>&1
-    sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-3.13.0-tsc-opendistro.zip > /dev/null 2>&1
-    setcap 'cap_net_bind_service=+ep' /usr/share/kibana/node/bin/node > /dev/null 2>&1
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Kibana installation failed"
+        exit 1;
+    else   
+        curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/kibana/7.x/kibana_all_in_one.yml --max-time 300 > /dev/null 2>&1
+        cd /usr/share/kibana > /dev/null 2>&1
+        sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages.wazuh.com/wazuhapp/wazuhapp-3.13.0_7.7.0.zip > /dev/null 2>&1
+        if [  "$?" != 0  ]
+        then
+            echo "Error: Wazuh Kibana plugin could not be installed."
+            exit 1;
+        fi     
+        setcap 'cap_net_bind_service=+ep' /usr/share/kibana/node/bin/node > /dev/null 2>&1
 
-    logger "Done"
+        logger "Done"
+    fi
 }
 
 ## Health check
@@ -184,14 +195,14 @@ main() {
 
     if [ -n "$1" ] 
     then
+        healthCheck
+        installPrerequisites
+        addWazuhrepo 
         while [ -n "$1" ]
         do
             case "$1" in
             "-e"|"--install-elasticsearch")        
                 e=1
-                healthCheck
-                installPrerequisites
-                addWazuhrepo
                 installElasticsearch
                 shift 1
                 ;;
@@ -200,10 +211,7 @@ main() {
                 shift 1
                 ;;                   
             "-k"|"--install-kibana") 
-                k=1   
-                healthCheck
-                installPrerequisites
-                addWazuhrepo        
+                k=1          
                 installKibana
                 shift 1
                 ;;
