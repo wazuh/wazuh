@@ -21,6 +21,7 @@
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/posix/select_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/exec_op_wrappers.h"
 #include "../wrappers/common.h"
 #include "../headers/audit_op.h"
 #include "../headers/defs.h"
@@ -35,16 +36,6 @@ typedef struct __audit_replies {
     struct audit_reply *reply2;
     struct audit_reply *reply3;
 }audit_replies;
-
-/* redefinitons/wrapping */
-
-wfd_t *__wrap_wpopenv() {
-    return mock_type(wfd_t *);
-}
-
-int __wrap_wpclose() {
-    return mock();
-}
 
 /* setups/teardowns */
 
@@ -288,7 +279,7 @@ static void test_audit_restart_close_exec_error(void **state) {
 
     expect_value(__wrap_fgets, __stream, wfd->file);
     will_return(__wrap_fgets, NULL);
-    
+
     will_return(__wrap_wpclose, 0x7f00);
 
     expect_string(__wrap__merror, formatted_msg, "Could not launch command to restart Auditd.");
@@ -306,12 +297,12 @@ static void test_audit_restart_close_error(void **state) {
 
     expect_value(__wrap_fgets, __stream, wfd->file);
     will_return(__wrap_fgets, "test");
-    
+
     expect_string(__wrap__mdebug1, formatted_msg, "auditd: test");
 
     expect_value(__wrap_fgets, __stream, wfd->file);
     will_return(__wrap_fgets, NULL);
-    
+
     will_return(__wrap_wpclose, 0xff00);
 
     expect_string(__wrap__merror, formatted_msg, "Could not restart Auditd service.");

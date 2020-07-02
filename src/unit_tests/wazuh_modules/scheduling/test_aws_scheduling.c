@@ -1,12 +1,12 @@
 /**
  * Test corresponding to the scheduling capacities
- * for aws Module 
+ * for aws Module
  * */
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include <time.h> 
+#include <time.h>
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_aws.h"
@@ -33,7 +33,7 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
 }
 /****************************************************************/
 
-static void wmodule_cleanup(wmodule *module){
+static void wmodule_cleanup(wmodule *module) {
     free( ((wm_aws*) module->data)->buckets->bucket);
     free( ((wm_aws*) module->data)->buckets->aws_profile);
     free( ((wm_aws*) module->data)->buckets->trail_prefix);
@@ -48,7 +48,7 @@ static void wmodule_cleanup(wmodule *module){
 static int setup_module() {
     int ret;
     aws_module = calloc(1, sizeof(wmodule));
-    const char *string = 
+    const char *string =
         "<disabled>no</disabled>\n"
         "<interval>10m</interval>\n"
         "<run_on_start>no</run_on_start>\n"
@@ -67,7 +67,7 @@ static int setup_module() {
     return ret;
 }
 
-static int teardown_module(){
+static int teardown_module() {
     test_mode = 0;
     wmodule_cleanup(aws_module);
     OS_ClearXML(lxml);
@@ -80,7 +80,7 @@ static int setup_test_executions(void **state) {
     return 0;
 }
 
-static int teardown_test_executions(void **state){
+static int teardown_test_executions(void **state) {
     wm_aws* module_data = (wm_aws *) *state;
     sched_scan_free(&(module_data->scan_config));
     return 0;
@@ -89,7 +89,7 @@ static int teardown_test_executions(void **state){
 static int setup_test_read(void **state) {
     test_structure *test = calloc(1, sizeof(test_structure));
     test->module =  calloc(1, sizeof(wmodule));
-    *state = test;   
+    *state = test;
     return 0;
 }
 
@@ -143,7 +143,7 @@ void test_day_of_month(void **state) {
     expect_any_always(__wrap__mtinfo, formatted_msg);
 
     aws_module->context->start(module_data);
-    check_day_of_month( &module_data->scan_config, &test_aws_date_storage[0], TEST_MAX_DATES);  
+    check_day_of_month( &module_data->scan_config, &test_aws_date_storage[0], TEST_MAX_DATES);
 }
 
 void test_day_of_week(void **state) {
@@ -164,7 +164,7 @@ void test_day_of_week(void **state) {
     expect_any_always(__wrap__mtinfo, formatted_msg);
 
     aws_module->context->start(module_data);
-    check_day_of_week( &module_data->scan_config, &test_aws_date_storage[0], TEST_MAX_DATES);  
+    check_day_of_week( &module_data->scan_config, &test_aws_date_storage[0], TEST_MAX_DATES);
 }
 
 void test_time_of_day(void **state) {
@@ -190,7 +190,7 @@ void test_time_of_day(void **state) {
 
 
 void test_fake_tag(void **state) {
-    const char *string = 
+    const char *string =
         "<disabled>no</disabled>\n"
         "<time>15:05</time>\n"
         "<run_on_start>no</run_on_start>\n"
@@ -210,7 +210,7 @@ void test_fake_tag(void **state) {
 }
 
 void test_read_scheduling_monthday_configuration(void **state) {
-    const char *string = 
+    const char *string =
         "<disabled>no</disabled>\n"
         "<time>15:05</time>\n"
         "<day>6</day>\n"
@@ -235,7 +235,7 @@ void test_read_scheduling_monthday_configuration(void **state) {
 }
 
 void test_read_scheduling_weekday_configuration(void **state) {
-    const char *string = 
+    const char *string =
         "<disabled>no</disabled>\n"
         "<time>13:03</time>\n"
         "<wday>Monday</wday>\n"
@@ -260,7 +260,7 @@ void test_read_scheduling_weekday_configuration(void **state) {
 }
 
 void test_read_scheduling_daytime_configuration(void **state) {
-    const char *string = 
+    const char *string =
         "<disabled>no</disabled>\n"
         "<time>01:11</time>\n"
         "<run_on_start>no</run_on_start>\n"
@@ -284,7 +284,7 @@ void test_read_scheduling_daytime_configuration(void **state) {
 }
 
 void test_read_scheduling_interval_configuration(void **state) {
-    const char *string = 
+    const char *string =
         "<disabled>no</disabled>\n"
         "<interval>10m</interval>\n"
         "<run_on_start>no</run_on_start>\n"
