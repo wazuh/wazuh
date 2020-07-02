@@ -16,8 +16,8 @@ import aiohttp_cors
 import connexion
 import psutil
 import uvloop
-from aiohttp_swagger import setup_swagger
 from aiohttp_cache import setup_cache
+from aiohttp_swagger import setup_swagger
 
 from api import alogging, configuration, __path__ as api_path
 # noinspection PyUnresolvedReferences
@@ -25,7 +25,7 @@ from api import validator
 from api.api_exception import APIException
 from api.configuration import generate_self_signed_certificate, generate_private_key
 from api.constants import CONFIG_FILE_PATH, API_LOG_FILE_PATH
-from api.middlewares import set_user_name, check_experimental
+from api.middlewares import set_user_name, check_experimental, prevent_denial_of_service
 from api.util import to_relative_path
 from wazuh.core import pyDaemonModule, common
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
@@ -119,7 +119,7 @@ def start(foreground, root, config_file):
                 strict_validation=True,
                 validate_responses=True,
                 pass_context_arg_name='request',
-                options={"middlewares": [set_user_name, check_experimental]})
+                options={"middlewares": [set_user_name, check_experimental, prevent_denial_of_service]})
 
     # Enable CORS
     if cors['enabled']:
@@ -165,11 +165,12 @@ def start(foreground, root, config_file):
                     ssl_context.load_verify_locations(api_conf['https']['ca'])
                 ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
                                             keyfile=api_conf['https']['key'])
-            except ssl.SSLError as e:
+            except ssl.SSLError:
                 raise APIException(2003, details='Private key does not match with the certificate')
-            except IOError as e:
-                raise APIException(2003, details='Please, ensure if path to certificates is correct in the configuration '
-                                                 f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
+            except IOError:
+                raise APIException(2003,
+                                   details='Please, ensure if path to certificates is correct in the configuration '
+                                           f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
 
     app.run(port=api_conf['port'],
             host=api_conf['host'],
@@ -185,6 +186,7 @@ def stop():
 
     This function applies when the API is running in daemon mode.
     """
+
     def on_terminate(p):
         print(f"Wazuh API process {p.pid} terminated.")
 
