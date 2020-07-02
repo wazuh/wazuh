@@ -23,19 +23,19 @@ struct CJsonDeleter
     }
 };
 
-struct ResultDeleter
-{
-    void operator()(cJSON* json)
-    {
-        dbsync_free_result(&json);
-    }
-};
-
 struct CharDeleter
 {
     void operator()(char* json)
     {
         cJSON_free(json);
+    }
+};
+
+struct ResultDeleter
+{
+    void operator()(cJSON* json)
+    {
+        dbsync_free_result(&json);
     }
 };
 
@@ -83,12 +83,12 @@ int main(int argc, const char* argv[])
             for (size_t idx = 0; idx < snapshots.size(); ++idx) 
             {
                 const std::string snapshotsIdxFile{ snapshots[idx] };
-                const std::unique_ptr<cJSON, CJsonDeleter> currentSnapshot
+                const std::unique_ptr<cJSON, CJsonDeleter> currentSnapshotPtr
                 { 
                     cJSON_Parse(currentSnapToString(snapshotsIdxFile).c_str())
                 };
                 cJSON* snapshotLambda{ nullptr };
-                if(0 == dbsync_update_with_snapshot(handle, currentSnapshot.get(), &snapshotLambda))
+                if(0 == dbsync_update_with_snapshot(handle, currentSnapshotPtr.get(), &snapshotLambda))
                 {
                     // Create and flush snapshot diff data in files like: snapshot_<#idx>.json
                     const std::unique_ptr<cJSON, ResultDeleter> snapshotLambdaPtr(snapshotLambda);
