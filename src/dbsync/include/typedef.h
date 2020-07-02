@@ -21,16 +21,20 @@
 
 #include "cJSON.h"
 
-typedef enum {
+typedef enum 
+{
     MANAGER = 0,
     AGENT = 1
 }HostType;
 
-typedef enum {
-    SQLITE3 = 0
+typedef enum 
+{
+    UNDEFINED = -1,    
+    SQLITE3 = 0,
 }DbEngineType;
 
-typedef enum {
+typedef enum 
+{
     MODIFIED = 0,
     DELETED = 1,
     INSERTED = 2
