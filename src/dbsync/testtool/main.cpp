@@ -49,16 +49,11 @@ static std::string currentSnapToString(const std::string& inputFile)
 
 int main(int argc, const char* argv[])
 {
-    CmdLineArgs cmdLineArgs(argc, argv);
-
-    if (!cmdLineArgs.argsAreOK())
+    try
     {
-        cmdLineArgs.showHelp();
-    }
-    else
-    {
-        std::vector<std::string> snapshots;
-        cmdLineArgs.snapshotList(snapshots);
+        CmdLineArgs cmdLineArgs(argc, argv);
+    
+        const auto snapshots { cmdLineArgs.snapshots() };
 
         // dbsync configuration data 
         std::ifstream configFile{ cmdLineArgs.configFile() };
@@ -72,9 +67,9 @@ int main(int argc, const char* argv[])
         auto handle 
         { 
             dbsync_create((hostType.compare("0") == 0) ? HostType::MANAGER : HostType::AGENT,
-                          (dbType.compare("1") == 0) ? DbEngineType::SQLITE3 : DbEngineType::UNDEFINED,
-                          dbName.c_str(),
-                          sqlStmt.c_str())
+                            (dbType.compare("1") == 0) ? DbEngineType::SQLITE3 : DbEngineType::UNDEFINED,
+                            dbName.c_str(),
+                            sqlStmt.c_str())
         };
 
         if(0 != handle)
@@ -107,8 +102,14 @@ int main(int argc, const char* argv[])
         else
         {
             std::cout << "\nSomething went wrong configuring the database. Please, check the config file data" << std::endl;
-            cmdLineArgs.showHelp();
+            CmdLineArgs::showHelp();
         }
     }
+    catch(const std::exception& ex)
+    {
+        CmdLineArgs::showHelp();
+        std::cerr << ex.what() << '\n';
+    }        
+
     return 0;
 }
