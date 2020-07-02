@@ -13,15 +13,27 @@
 #include <string>
 #include <sqlite3.h>
 #include <memory>
+#include "db_exception.h"
 
 namespace SQLite
 {
+    class sqlite_error : public DbSync::dbsync_error
+    {
+    public:
+        sqlite_error(const int id,
+                     const std::string& whatArg)
+        : DbSync::dbsync_error{m_sqliteErrorIndex + id, "sqlite: " + whatArg}
+        {}
+    private:
+        const int m_sqliteErrorIndex{600};
+    };
+
     class IConnection
     {
     public:
         virtual ~IConnection() = default;
-        virtual bool close() = 0;
-        virtual bool execute(const std::string& query) = 0;
+        virtual void close() = 0;
+        virtual void execute(const std::string& query) = 0;
         virtual const std::shared_ptr<sqlite3>& db() const = 0;
     };
 
@@ -29,8 +41,8 @@ namespace SQLite
     {
     public:
         virtual ~ITransaction() = default;
-        virtual bool commit() = 0;
-        virtual bool rollback() = 0;
+        virtual void commit() = 0;
+        virtual void rollback() = 0;
     };
 
     class IColumn
@@ -50,14 +62,14 @@ namespace SQLite
     public:
         virtual ~IStatement() = default;
         virtual int32_t step() = 0;
-        virtual bool bind(const int32_t index, const int32_t value) = 0;
-        virtual bool bind(const int32_t index, const uint64_t value) = 0;
-        virtual bool bind(const int32_t index, const int64_t value) = 0;
-        virtual bool bind(const int32_t index, const std::string& value) = 0;
-        virtual bool bind(const int32_t index, const double value) = 0;
+        virtual void bind(const int32_t index, const int32_t value) = 0;
+        virtual void bind(const int32_t index, const uint64_t value) = 0;
+        virtual void bind(const int32_t index, const int64_t value) = 0;
+        virtual void bind(const int32_t index, const std::string& value) = 0;
+        virtual void bind(const int32_t index, const double value) = 0;
 
         virtual std::unique_ptr<IColumn> column(const int32_t index) = 0;
-        virtual bool reset() = 0;
+        virtual void reset() = 0;
 
     };
 

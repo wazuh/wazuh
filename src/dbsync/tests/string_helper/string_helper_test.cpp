@@ -8,7 +8,7 @@ void StringHelperTest::TearDown() {};
 TEST_F(StringHelperTest, CheckReplacement) 
 {
     std::string string_base { "hello_world" };
-    const auto ret_val { StringHelper::replace_string(string_base, "hello_", "bye_") };
+    const auto ret_val { StringHelper::replaceAll(string_base, "hello_", "bye_") };
     EXPECT_EQ(string_base, "bye_world");
     EXPECT_TRUE(ret_val);
 }
@@ -16,7 +16,7 @@ TEST_F(StringHelperTest, CheckReplacement)
 TEST_F(StringHelperTest, CheckNotReplacement) 
 {
     std::string string_base {"hello_world" };
-    const auto ret_val { StringHelper::replace_string(string_base, "nothing_", "bye_") };
+    const auto ret_val { StringHelper::replaceAll(string_base, "nothing_", "bye_") };
     EXPECT_EQ(string_base, "hello_world");
     EXPECT_FALSE(ret_val);
 }
