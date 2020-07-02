@@ -21,36 +21,27 @@ class CmdLineArgs
 {
 public:
     CmdLineArgs(const int argc, const char* argv[])
+    : m_configFile{ paramValueOf(argc, argv, "-c") }
+    , m_outputFolder{ paramValueOf(argc, argv, "-o") }
+    , m_snapshots{ splitSnapshots(paramValueOf(argc, argv, "-s")) }
+    {}
+
+    const std::string& configFile() const
     {
-        m_cmdLineArgs.reserve(argc);
-        for (int i = 1; i < argc; ++i)
-        {
-            m_cmdLineArgs.push_back(argv[i]);
-        }
+        return m_configFile;
     }
 
-    const std::string configFile() const
+    const std::vector<std::string>& snapshots() const
     {
-        return std::move(paramValueOf("-c"));
+        return m_snapshots;
     }
 
-    void snapshotList(std::vector<std::string>& snapshots) const
+    const std::string& outputFolder() const
     {
-        std::stringstream ss{ std::move(paramValueOf("-s")) };
-        while (ss.good()) 
-        { 
-            std::string substr; 
-            getline(ss, substr, ','); // Getting each string between ',' character 
-            snapshots.push_back(std::move(substr));
-        } 
-    }
-
-    const std::string outputFolder() const
-    {
-        return std::move(paramValueOf("-o"));
+        return m_outputFolder;
     }    
 
-    void showHelp() const
+    static void showHelp()
     {
         std::cout << "\nUsage: dbsync_test_tool <option(s)> SOURCES \n"
                   << "Options:\n"
@@ -63,52 +54,43 @@ public:
                   << std::endl;
     }
 
-    bool argsAreOK() const
-    {
-        bool res{ false };
-        if(m_cmdLineArgs.size() != 0)
-        {
-            bool configOK{ false };
-            bool snapshotsOK{ false };
-            bool outputOK{ false };
-            const auto argsSize{ m_cmdLineArgs.size() };
-            for(size_t i = 0ull; i < argsSize; ++i)
-            {
-                if(m_cmdLineArgs[i].compare("-c") == 0 && (i+1 < argsSize) && !m_cmdLineArgs[i+1].empty())
-                {
-                    configOK = true;
-                }
-                else if(m_cmdLineArgs[i].compare("-s") == 0 && (i+1 < argsSize) && !m_cmdLineArgs[i+1].empty())
-                {
-                    snapshotsOK = true;
-                }
-                else if(m_cmdLineArgs[i].compare("-o") == 0 && (i+1 < argsSize) && !m_cmdLineArgs[i+1].empty())
-                {
-                    outputOK = true;
-                }
-            }
-            res = configOK && snapshotsOK && outputOK;
-        }
-        return res;
-    }
 private:
 
-    const std::string paramValueOf(const std::string& input) const
+    static std::string paramValueOf(const int argc,
+                                    const char* argv[],
+                                    const std::string& switchValue)
     {
-        std::string result;
-        const auto argsSize{ m_cmdLineArgs.size() };
-        for(unsigned int i = 0; i < argsSize; ++i)
+        for(int i = 1; i < argc; ++i)
         {
-            if(m_cmdLineArgs[i].compare(input) == 0 && (i+1 < argsSize) && !m_cmdLineArgs[i+1].empty())
+            const std::string currentValue{ argv[i] };
+            if(currentValue == switchValue && i+1 < argc)
             {
-                result = m_cmdLineArgs[i+1];
-                break;
+                // Switch found
+                return argv[i+1];
             }
         }
-        return std::move(result);
+        throw std::runtime_error
+        {
+            "Switch value: "+ switchValue +" not found."
+        };
     }
 
-    std::vector<std::string> m_cmdLineArgs;
+    static std::vector<std::string> splitSnapshots(const std::string& values)
+    {
+        std::vector<std::string> snapshots;
+        std::stringstream ss{ values };
+        while (ss.good())
+        {
+            std::string substr;
+            getline(ss, substr, ','); // Getting each string between ',' character
+            snapshots.push_back(std::move(substr));
+        }
+        return snapshots;
+    }
+
+    const std::string m_configFile;
+    const std::string m_outputFolder;
+    const std::vector<std::string> m_snapshots;
 };
 
 #endif // _CMD_LINE_ARGS_HELPER_H_
