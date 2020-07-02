@@ -44,7 +44,6 @@ if(NOT WAZUHEXT)
   message(FATAL_ERROR "libwazuhext not found! Aborting...")
 endif()
 
-
 add_subdirectory(syscheckd)
 add_subdirectory(shared)
 

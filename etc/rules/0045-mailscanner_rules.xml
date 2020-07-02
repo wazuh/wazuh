@@ -34,7 +34,7 @@
       <id>T1110</id>
       <id>T1114</id>
     </mitre>
-    <group>multiple_spam,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>multiple_spam,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="3752" level="0">

@@ -1407,7 +1407,11 @@ char* get_default_gateway(char *ifa_name){
         while (fgets(string, OS_MAXSTR, fp) != NULL){
 
             if (sscanf(string, "%s %8x %8x %d %d %d %d", if_name, &destination, &gateway, &flags, &ref, &use, &metric) == 7){
-                if (destination == 00000000 && !strcmp(if_name, interface)){
+                if (destination != 00000000) {
+                    break;
+                }
+
+                if (!strcmp(if_name, interface)) {
                     address.s_addr = gateway;
                     snprintf(def_gateway, V_LENGTH, "%s|%d", inet_ntoa(*(struct in_addr *) &address), metric);
                     fclose(fp);

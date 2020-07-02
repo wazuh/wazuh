@@ -1,8 +1,6 @@
 /**
  * @file dbsync.c
- * @author Vikman Fernandez-Castro (victor@wazuh.com)
  * @brief Database synchronization decoder
- * @version 0.1
  * @date 2019-09-03
  *
  * @copyright Copyright (c) 2019 Wazuh, Inc.

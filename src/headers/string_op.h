@@ -190,4 +190,16 @@ char * wstr_escape_json(const char * string);
  */
 char * wstr_unescape_json(const char * string);
 
+/**
+ * @brief Lowercase a string
+ *
+ * @param string Input string
+ * @return Pointer to a new string containing a lowercased copy of "string"
+ */
+char * w_tolower_str(const char *string);
+
+/* b64 function prototypes */
+char *decode_base64(const char *src);
+char *encode_base64(int size, const char *src);
+
 #endif

@@ -410,10 +410,6 @@ char * wrap_win_whodata_fgets (char * __s, int __n, FILE * __stream) {
   return NULL;
 }
 
-int FOREVER() {
-  return mock();
-}
-
 VOID wrap_win_whodata_Sleep (DWORD dwMilliseconds) {
     check_expected(dwMilliseconds);
 }

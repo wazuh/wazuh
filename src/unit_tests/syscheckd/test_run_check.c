@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../wrappers/common.h"
 #include "../syscheckd/syscheck.h"
 #include "../wrappers/syscheckd/run_check.h"
 #include "../syscheckd/fim_db.h"
@@ -148,9 +149,11 @@ int __wrap_audit_set_db_consistency() {
     return 1;
 }
 
+#ifndef TEST_WINAGENT
 int __wrap_time() {
     return 1;
 }
+#endif
 
 int __wrap_lstat(const char *filename, struct stat *buf) {
     check_expected(filename);
@@ -244,6 +247,10 @@ static int setup_group(void ** state) {
     }
 
     OSHash_Add_ex(syscheck.realtime->dirtb, "key", strdup("data"));
+
+    #ifdef TEST_WINAGENT
+    time_mock_value = 1;
+    #endif
 
     return 0;
 }
@@ -400,7 +407,7 @@ void test_fim_send_msg_retry_error(void **state) {
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, -1);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: '/var/ossec/queue/ossec/queue'. Giving up..");
+    expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: '/var/ossec/queue/ossec/queue'. Giving up.");
 
     // This code shouldn't run
     expect_string(__wrap_SendMSG, message, "test");
@@ -438,7 +445,7 @@ void test_fim_whodata_initialize_fail_set_policies(void **state)
 
         str_lowercase(expanded_dirs[i]);
         expect_string(__wrap_realtime_adddir, dir, expanded_dirs[i]);
-        expect_value(__wrap_realtime_adddir, whodata, 9);
+        expect_value(__wrap_realtime_adddir, whodata, 10);
         will_return(__wrap_realtime_adddir, 0);
     }
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -22,6 +22,7 @@ int mitre_load(char * mode){
     char *wazuhdb_query = NULL;
     char *response = NULL;
     char *ext_id = NULL;
+    char * arg = NULL;
     cJSON *root = NULL;
     cJSON *ids = NULL;
     cJSON *id = NULL;
@@ -29,6 +30,7 @@ int mitre_load(char * mode){
     cJSON *tactics_json = NULL;
     cJSON *tactics = NULL;
     cJSON *tactic = NULL;
+    mitre_data * data_mitre = NULL;
 
     /* Create hash table */
     mitre_table = OSHash_Create();
@@ -38,20 +40,10 @@ int mitre_load(char * mode){
     os_calloc(OS_SIZE_6144, sizeof(char), response);
 
     snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT id from attack;");
-    if (result = wdbc_query_ex(&sock, wazuhdb_query, response, OS_SIZE_6144), result == -2) {
-        merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
-        goto end;
-    }
+    root = wdbc_query_parse_json(&sock, wazuhdb_query, response, OS_SIZE_6144);
 
-    if (result == -1) {
-        merror("No response or bad response from wazuh-db: '%s'", response);
-        goto end;
-    }
-
-    /* Parse IDs string */
-    const char *jsonErrPtr;
-    if (root = cJSON_ParseWithOpts(response+3, &jsonErrPtr, 0), !root) {
-        merror("Response from the Mitre database cannot be parsed: '%s'", response);
+    if (!root) {
+        merror("Response from the Mitre database cannot be parsed.");
         result = -1;
         goto end;
     }
@@ -69,26 +61,18 @@ int mitre_load(char * mode){
         if (id = cJSON_GetObjectItem(ids,"id"), id == NULL) {
             merror("It was not possible to get Mitre techniques information.");
             result = -1;
-            goto end; 
+            goto end;
         }
         ext_id = id->valuestring;
 
         /* Consulting Mitre's database to get Tactics */
         snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT phase_name FROM has_phase WHERE attack_id = '%s';", ext_id);
-        if (result = wdbc_query_ex(&sock, wazuhdb_query, response, OS_SIZE_6144), result == -2) {
-            merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
-            goto end;
-        }
-
-        if (result == -1) {
-            merror("No response or bad response from wazuh-db: '%s'", response);
-            goto end;
-        }
+        tactics_json = wdbc_query_parse_json(&sock, wazuhdb_query, response, OS_SIZE_6144);
 
         /* Getting tactics from Mitre's database in Wazuh-DB */
         tactics_array = cJSON_CreateArray();
-        if (tactics_json = cJSON_ParseWithOpts(response+3, &jsonErrPtr, 0), !tactics_json) {
-            merror("Response from the Mitre database cannot be parsed: '%s'", response);
+        if (!tactics_json) {
+            merror("Response from the Mitre database cannot be parsed.");
             result = -1;
             goto end;
         }
@@ -110,15 +94,45 @@ int mitre_load(char * mode){
         cJSON_Delete(tactics_json);
         tactics_json = NULL;
 
+        /* Consulting Mitre's database to get technique's name */
+        snprintf(wazuhdb_query, OS_SIZE_6144, "mitre get name %s", ext_id);
+        result = wdbc_query_ex(&sock, wazuhdb_query, response, OS_SIZE_6144);
+
+        switch (result) {
+        case -2:
+            merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
+            goto end;
+        case -1:
+            merror("No response from wazuh-db.");
+            goto end;
+        }
+
+        switch (wdbc_parse_result(response, &arg)) {
+        case WDBC_OK:
+            break;
+        case WDBC_ERROR:
+            merror("Bad response from wazuh-db: %s", arg);
+            // Fallthrough
+        default:
+            result = -1;
+            goto end;
+        }
+
+        os_malloc(sizeof(mitre_data), data_mitre);
+        data_mitre->tactics_array = tactics_array;
+        data_mitre->technique_name = strdup(response+3);
+
         /* Filling Hash table with Mitre's information */
-        if (hashcheck = OSHash_Add(mitre_table, ext_id, tactics_array), hashcheck == 0) {
+        if (hashcheck = OSHash_Add(mitre_table, ext_id, data_mitre), hashcheck == 0) {
             merror("Mitre Hash table adding failed. Mitre Technique ID '%s' cannot be stored.", ext_id);
             result = -1;
             goto end;
         }
 
         if (mode != NULL && !strcmp(mode,"test")) {
-            cJSON_Delete(tactics_array);
+            cJSON_Delete(data_mitre->tactics_array);
+            os_free(data_mitre->technique_name);
+            os_free(data_mitre);
         }
     }
 
@@ -127,7 +141,7 @@ end:
     os_free(response);
     if (mode != NULL && !strcmp(mode,"test")) {
         OSHash_Free(mitre_table);
-    }  
+    }
     if (root != NULL) {
         cJSON_Delete(root);
     }
@@ -143,6 +157,6 @@ end:
     return result;
 }
 
-cJSON * mitre_get_attack(const char * mitre_id) {
+mitre_data * mitre_get_attack(const char * mitre_id) {
     return OSHash_Get(mitre_table, mitre_id);
 }

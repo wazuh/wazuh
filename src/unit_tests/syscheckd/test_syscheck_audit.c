@@ -17,11 +17,11 @@
 #include "syscheckd/syscheck.h"
 #include "external/procps/readproc.h"
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
-extern volatile int audit_health_check_deletion;
 extern volatile int hc_thread_active;
+extern volatile int audit_health_check_creation;
 
 int test_mode = 0;
+int hc_success = 0;
 
 /* redefinitons/wrapping */
 
@@ -210,6 +210,13 @@ int __wrap_audit_add_rule()
     return mock();
 }
 
+int __wrap_audit_delete_rule(const char *path, const char *key) {
+    check_expected(path);
+    check_expected(key);
+
+    return mock();
+}
+
 int __wrap_W_Vector_insert_unique()
 {
     return mock();
@@ -280,11 +287,6 @@ int __wrap_select(int nfds, fd_set *restrict readfds, fd_set *restrict writefds,
     return mock();
 }
 
-int __wrap_sleep(int time)
-{
-    return 1;
-}
-
 int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags)
 {
     int ret;
@@ -297,7 +299,43 @@ int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags)
         ret = __n;
     if(ret > 0)
         memcpy(__buf, mock_type(void*), ret);
+
     return ret;
+}
+  
+int __wrap_pthread_cond_init(pthread_cond_t *__cond, const pthread_condattr_t *__cond_attr) {
+    function_called();
+    return 0;
+}
+
+int __wrap_pthread_cond_wait (pthread_cond_t *__cond, pthread_mutex_t *__mutex) {
+    function_called();
+
+    hc_thread_active = 1;
+
+    return 0;
+}
+
+int __wrap_pthread_mutex_lock (pthread_mutex_t *__mutex) {
+    function_called();
+    return 0;
+}
+
+int __wrap_pthread_mutex_unlock (pthread_mutex_t *__mutex) {
+    function_called();
+    return 0;
+}
+
+int __wrap_CreateThread(void * (*function_pointer)(void *), void *data) {
+    return 1;
+}
+
+unsigned int __wrap_sleep(unsigned int seconds) {
+    if(hc_success) {
+        audit_health_check_creation = 1;
+    }
+
+    return 0;
 }
 
 /* setup/teardown */
@@ -333,6 +371,18 @@ static int test_audit_read_events_teardown(void **state)
 {
     int *audit_sock = *state;
     free(audit_sock);
+    return 0;
+}
+
+static int setup_hc_success(void **state)
+{
+    hc_success = 1;
+    return 0;
+}
+
+static int teardown_hc_success(void **state)
+{
+    hc_success = 0;
     return 0;
 }
 
@@ -906,7 +956,9 @@ void test_add_audit_rules_syscheck_not_added(void **state)
 
     // Add rule
     will_return(__wrap_audit_add_rule, 1);
+    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_W_Vector_insert_unique, 1);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6322): Reloaded audit rule for monitoring directory: '/var/test'");
 
@@ -946,7 +998,9 @@ void test_add_audit_rules_syscheck_not_added_new(void **state)
 
     // Add rule
     will_return(__wrap_audit_add_rule, 1);
+    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_W_Vector_insert_unique, 0);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6270): Added audit rule for monitoring directory: '/var/test'");
 
@@ -987,7 +1041,7 @@ void test_add_audit_rules_syscheck_not_added_error(void **state)
     // Add rule
     will_return(__wrap_audit_add_rule, -1);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6226): Unable to add audit rule for '/var/test'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6926): Unable to add audit rule for '/var/test'");
 
     int ret;
     ret = add_audit_rules_syscheck(0);
@@ -1026,7 +1080,7 @@ void test_add_audit_rules_syscheck_not_added_first_error(void **state)
     // Add rule
     will_return(__wrap_audit_add_rule, -1);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6226): Unable to add audit rule for '/var/test'");
+    expect_string(__wrap__mwarn, formatted_msg, "(6926): Unable to add audit rule for '/var/test'");
 
     int ret;
     ret = add_audit_rules_syscheck(1);
@@ -1061,7 +1115,9 @@ void test_add_audit_rules_syscheck_added(void **state)
     will_return(__wrap_search_audit_rule, 1);
 
     // Add rule
+    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_W_Vector_insert_unique, 0);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6271): Audit rule for monitoring directory '/var/test' already added.");
 
@@ -1629,7 +1685,9 @@ void test_audit_parse_delete(void **state)
     will_return(__wrap_search_audit_rule, 1);
 
     // Add rule
+    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_W_Vector_insert_unique, 1);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
 
@@ -1910,11 +1968,7 @@ void test_audit_parse_rm_hc(void **state)
     expect_string(__wrap__mdebug2, msg, FIM_HEALTHCHECK_DELETE);
     expect_string(__wrap__mdebug2, formatted_msg, "(6253): Whodata health-check: Detected file deletion event (263)");
 
-    audit_health_check_deletion = 0;
-
     audit_parse(buffer);
-
-    assert_int_equal(audit_health_check_deletion, 1);
 }
 
 
@@ -2198,6 +2252,125 @@ void test_audit_parse_delete_folder_hex5_error(void **state)
     audit_parse(buffer);
 }
 
+/* audit_health_check() tests */
+void test_audit_health_check_fail_to_add_rule(void **state)
+{
+    int ret;
+
+    will_return(__wrap_audit_add_rule, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_RULE);
+
+    ret = audit_health_check(123456);
+
+    assert_int_equal(ret, -1);
+    assert_int_equal(hc_thread_active, 0);
+}
+
+void test_audit_health_check_fail_to_create_hc_file(void **state)
+{
+    int ret;
+
+    hc_thread_active = 0;
+
+    will_return(__wrap_audit_add_rule, -17);
+
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_START);
+
+    expect_function_call(__wrap_pthread_cond_init);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_cond_wait);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_string_count(__wrap_fopen, filename, "/var/ossec/tmp/audit_hc", 10);
+    expect_string_count(__wrap_fopen, mode, "w", 10);
+    will_return_count(__wrap_fopen, 0, 10);
+
+    expect_string_count(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_FILE, 10);
+
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_HEALTHCHECK_CREATE_ERROR);
+
+    will_return(__wrap_unlink, 0);
+
+    expect_string(__wrap_audit_delete_rule, path, "/var/ossec/tmp");
+    expect_string(__wrap_audit_delete_rule, key, "wazuh_hc");
+    will_return(__wrap_audit_delete_rule, 1);
+
+    ret = audit_health_check(123456);
+
+    assert_int_equal(ret, -1);
+    assert_int_equal(hc_thread_active, 0);
+}
+
+void test_audit_health_check_no_creation_event_detected(void **state)
+{
+    int ret;
+
+    hc_thread_active = 0;
+
+    will_return(__wrap_audit_add_rule, -17);
+
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_START);
+
+    expect_function_call(__wrap_pthread_cond_init);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_cond_wait);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_string_count(__wrap_fopen, filename, "/var/ossec/tmp/audit_hc", 10);
+    expect_string_count(__wrap_fopen, mode, "w", 10);
+    will_return_count(__wrap_fopen, 1, 10);
+
+    will_return_count(__wrap_fclose, 0, 10);
+
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_HEALTHCHECK_CREATE_ERROR);
+
+    will_return(__wrap_unlink, 0);
+
+    expect_string(__wrap_audit_delete_rule, path, "/var/ossec/tmp");
+    expect_string(__wrap_audit_delete_rule, key, "wazuh_hc");
+    will_return(__wrap_audit_delete_rule, 1);
+
+    ret = audit_health_check(123456);
+
+    assert_int_equal(ret, -1);
+    assert_int_equal(hc_thread_active, 0);
+}
+
+void test_audit_health_check_success(void **state)
+{
+    int ret;
+
+    hc_thread_active = 0;
+
+    will_return(__wrap_audit_add_rule, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_START);
+
+    expect_function_call(__wrap_pthread_cond_init);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_cond_wait);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap_fopen, filename, "/var/ossec/tmp/audit_hc");
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, 1);
+
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_HEALTHCHECK_SUCCESS);
+
+    will_return(__wrap_unlink, 0);
+
+    expect_string(__wrap_audit_delete_rule, path, "/var/ossec/tmp");
+    expect_string(__wrap_audit_delete_rule, key, "wazuh_hc");
+    will_return(__wrap_audit_delete_rule, 1);
+
+    ret = audit_health_check(123456);
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(hc_thread_active, 0);
+}
 
 
 void test_audit_read_events_select_error(void **state)
@@ -2569,17 +2742,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_endline, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_id, test_audit_read_events_setup, test_audit_read_events_teardown),
-        cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_too_long, test_audit_read_events_setup, test_audit_read_events_teardown)
-       };
+        cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_too_long, test_audit_read_events_setup, test_audit_read_events_teardown),
+        cmocka_unit_test(test_audit_health_check_fail_to_add_rule),
+        cmocka_unit_test(test_audit_health_check_fail_to_create_hc_file),
+        cmocka_unit_test(test_audit_health_check_no_creation_event_detected),
+        cmocka_unit_test_setup_teardown(test_audit_health_check_success, setup_hc_success, teardown_hc_success),
+    };
+  
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
-
-#elif defined(TEST_WINAGENT)
-
-int main(void) {
-    const struct CMUnitTest tests[] = {
-    };
-    return cmocka_run_group_tests(tests, NULL, NULL);
-}
-
-#endif

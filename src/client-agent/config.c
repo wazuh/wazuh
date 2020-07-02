@@ -139,7 +139,7 @@ cJSON *getLabelsConfig(void) {
             cJSON_AddItemToObject(labels, "", label);
         }
     }
-    
+
     cJSON_AddItemToObject(root, "labels", labels);
 
     return root;

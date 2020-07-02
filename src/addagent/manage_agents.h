@@ -14,10 +14,6 @@
 
 /** Prototypes **/
 
-/* b64 function prototypes */
-char *decode_base64(const char *src);
-char *encode_base64(int size, char *src);
-
 /* Read any input from the user (stdin) */
 char *read_from_user(void);
 
