@@ -29,8 +29,8 @@ typedef enum
 
 typedef enum 
 {
-    UNDEFINED = -1,    
-    SQLITE3 = 0,
+    UNDEFINED = 0,
+    SQLITE3 = 1,
 }DbEngineType;
 
 typedef enum 

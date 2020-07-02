@@ -1,7 +1,7 @@
 /*
  * Wazuh DBSYNC
  * Copyright (C) 2015-2020, Wazuh Inc.
- * June 11, 2020.
+ * July 02, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -23,6 +23,14 @@ struct CJsonDeleter
     }
 };
 
+struct ResultDeleter
+{
+    void operator()(cJSON* json)
+    {
+        dbsync_free_result(&json);
+    }
+};
+
 struct CharDeleter
 {
     void operator()(char* json)
@@ -39,7 +47,7 @@ static std::string currentSnapToString(const std::string& inputFile)
     return jsonSnapshotContent;
 }
 
-int main(int argc, char* argv[])
+int main(int argc, const char* argv[])
 {
     CmdLineArgs cmdLineArgs(argc, argv);
 
@@ -63,10 +71,10 @@ int main(int argc, char* argv[])
 
         auto handle 
         { 
-            dbsync_initialize((hostType.compare("0") == 0) ? HostType::MANAGER : HostType::AGENT, 
-                              (dbType.compare("0") == 0) ? DbEngineType::SQLITE3 : DbEngineType::UNDEFINED, 
-                              dbName.c_str(),
-                              sqlStmt.c_str()) 
+            dbsync_create((hostType.compare("0") == 0) ? HostType::MANAGER : HostType::AGENT,
+                          (dbType.compare("1") == 0) ? DbEngineType::SQLITE3 : DbEngineType::UNDEFINED,
+                          dbName.c_str(),
+                          sqlStmt.c_str())
         };
 
         if(0 != handle)
@@ -83,18 +91,23 @@ int main(int argc, char* argv[])
                 if(0 == dbsync_update_with_snapshot(handle, currentSnapshot.get(), &snapshotLambda))
                 {
                     // Create and flush snapshot diff data in files like: snapshot_<#idx>.json
+                    const std::unique_ptr<cJSON, ResultDeleter> snapshotLambdaPtr(snapshotLambda);
                     std::cout << "Processing file: " << snapshots[idx] << std::endl;
                     std::stringstream oFileName;
                     oFileName << "snapshot_" << idx << ".json";
                     const std::string outputFileName{ cmdLineArgs.outputFolder()+"/"+oFileName.str() };
                     std::ofstream outputFile{ outputFileName };
-                    const std::unique_ptr<char, CharDeleter> snapshotDiff{ cJSON_Print(snapshotLambda) };
+                    const std::unique_ptr<char, CharDeleter> snapshotDiff{ cJSON_Print(snapshotLambdaPtr.get()) };
                     outputFile << snapshotDiff.get() << std::endl;
                     outputFile.close();
-                    dbsync_free_result(&snapshotLambda);                 
                 }
             }
             std::cout << "Resulting files are located in the "<< cmdLineArgs.outputFolder() << "folder" << std::endl;
+        }
+        else
+        {
+            std::cout << "\nSomething went wrong configuring the database. Please, check the config file data" << std::endl;
+            cmdLineArgs.showHelp();
         }
     }
     return 0;
