@@ -1,5 +1,5 @@
 #include "wmodules_scheduling_helpers.h"
-#include <time.h> 
+#include <time.h>
 
 static time_t current_time = 0;
 extern time_t __real_time(time_t *_time);
@@ -31,12 +31,12 @@ void __wrap_w_sleep_until(const time_t new_time){
 /**
  * Receives a string in XML format and returnes it as an xml_node array structure
  * Example:
- *  
+ *
  *          "<disabled>no</disabled>\n"
  *          "<interval>10m</interval>\n"
  *          "<run_on_start>yes</run_on_start>\n"
  *          "<skip_on_error>yes</skip_on_error>\n"
- *         "<bucket type=\"config\">\n"
+ *          "<bucket type=\"config\">\n"
  *          "    <name>wazuh-aws-wodle</name>\n"
  *          "    <path>config</path>\n"
  *          "   <aws_profile>default</aws_profile>\n"
@@ -83,7 +83,7 @@ void check_time_interval(const sched_scan_config *scan_config, struct tm *date_a
 }
 
 /**
- * Test that all executions matches day of the month configuration 
+ * Test that all executions matches day of the month configuration
  * */
 void check_day_of_month(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES) {
     for (int i = 0; i < MAX_DATES; i++) {
@@ -96,7 +96,7 @@ void check_day_of_month(const sched_scan_config *scan_config, struct tm *date_ar
 }
 
 /**
- * Test that all executions matches day of the month configuration 
+ * Test that all executions matches day of the month configuration
  * */
 void check_day_of_week(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES) {
     for (int i = 0; i < MAX_DATES; i++) {
@@ -113,7 +113,7 @@ void check_day_of_week(const sched_scan_config *scan_config, struct tm *date_arr
 }
 
 /**
- * Test that all executions matches day of the month configuration 
+ * Test that all executions matches day of the month configuration
  * */
 void check_time_of_day(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES) {
     for (int i = 0; i < MAX_DATES; i++) {
@@ -121,7 +121,7 @@ void check_time_of_day(const sched_scan_config *scan_config, struct tm *date_arr
         // Look for the particular hour
         int tm_hour = atoi(parts[0]);
         int tm_min = atoi(parts[1]);
-        
+
         assert_int_equal( tm_hour, date_array[i].tm_hour);
         assert_int_equal( tm_min, date_array[i].tm_min);
         if(i > 0){

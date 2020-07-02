@@ -12,7 +12,15 @@
 #ifndef EXEC_OP_WRAPPERS_H
 #define EXEC_OP_WRAPPERS_H
 
+#ifdef WIN32
+#include <processthreadsapi.h>
+#endif
+#include <stdio.h>
+#include <sys/types.h>
+#include "../headers/exec_op.h"
 
+int __wrap_wpclose();
 
+wfd_t *__wrap_wpopenv();
 
 #endif

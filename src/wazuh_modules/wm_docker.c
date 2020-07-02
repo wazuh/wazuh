@@ -42,7 +42,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
     wm_docker_setup(docker_conf);
     mtinfo(WM_DOCKER_LOGTAG, "Module docker-listener started.");
 
-    // Main 
+    // Main
     do {
         const time_t time_sleep = sched_scan_get_time_until_next_scan(&(docker_conf->scan_config), WM_DOCKER_LOGTAG, docker_conf->flags.run_on_start);
 

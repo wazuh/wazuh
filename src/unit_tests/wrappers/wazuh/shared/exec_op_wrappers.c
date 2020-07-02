@@ -13,3 +13,14 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+
+extern void write_date_storage();
+
+int __wrap_wpclose() {
+    return mock();
+}
+
+wfd_t *__wrap_wpopenv() {
+    return mock_type(wfd_t *);
+}
