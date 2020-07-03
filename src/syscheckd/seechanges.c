@@ -270,7 +270,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
         if (tmp_diff_size > syscheck.disk_quota_limit) {
             minfo(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
 
-            seechanges_delete_compressed_file(filename);
+            seechanges_delete_compressed_file(filename_abs);
 
             if (rmdir_ex(localtmp_path) < 0) {
                 mdebug2(RMDIR_ERROR, localtmp_path, errno, strerror(errno));

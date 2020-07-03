@@ -2261,6 +2261,10 @@ void Free_Syscheck(syscheck_config * config) {
             free(config->recursion_level);
         }
 
+        if (config->diff_size_limit) {
+            free(config->diff_size_limit);
+        }
+
     #ifdef WIN32
         if (config->registry_ignore) {
             for (i=0; config->registry_ignore[i].entry != NULL; i++) {
