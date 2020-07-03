@@ -3,24 +3,57 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import os
+import sys
+from unittest.mock import patch, MagicMock
 
-from unittest.mock import patch
+import pytest
+
+from wazuh.tests.util import InitWDBSocketMock
+
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        from wazuh import ciscat
+        sys.modules['api'] = MagicMock()
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        import wazuh.rbac.decorators
+        del sys.modules['wazuh.rbac.orm']
+        del sys.modules['api']
+        from wazuh.tests.util import RBAC_bypasser
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+
+        from wazuh.ciscat import get_ciscat_results
+        from wazuh.core.results import AffectedItemsWazuhResult
 
 
-@patch("wazuh.ciscat.get_item_agent", return_value=None)
-def test_get_ciscat_agent(mock_response):
-    """
-        Tests get_netiface_agent method
-    """
-    ciscat.get_results_agent('001')
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 
-@patch("wazuh.ciscat._get_agent_items", return_value=None)
-def test_get_ciscat_result(mock_response):
+@pytest.mark.parametrize('agent_id, exception', [
+    (['001'], False),
+    (['003'], True)
+])
+@patch('wazuh.common.wdb_path', new=test_data_path)
+@patch('socket.socket.connect')
+@patch('wazuh.ciscat.get_agents_info', return_value=['001'])
+def test_get_ciscat_results(agents_info_mock, socket_mock, agent_id, exception):
+    """Test function `get_ciscat_results` from ciscat module.
+
+    Parameters
+    ----------
+    agent_id :  list
+        List of agent IDs.
+    exception : bool
+        True if the code will go through an exception. False otherwise.
     """
-        Tests get_packages method
-    """
-    ciscat.get_ciscat_results()
+    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
+        mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_ciscat_test.sql')
+        result = get_ciscat_results(agent_id)
+        assert isinstance(result, AffectedItemsWazuhResult)
+        if not exception:
+            assert result.affected_items
+            assert result.total_affected_items == 2
+            assert result.total_failed_items == 0
+        else:
+            assert not result.affected_items
+            assert result.total_failed_items == 1
+            assert result. total_affected_items == 0

@@ -1,4 +1,4 @@
-<group name="mac-os-sshd">
+<group name="mac-os-sshd,">
 
 <rule id="64250" level="0">
   <decoded_as>macos-date-format-sshd</decoded_as>

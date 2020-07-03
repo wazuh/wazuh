@@ -909,3 +909,25 @@ char * wstr_unescape_json(const char * string) {
     output[j] = '\0';
     return output;
 }
+
+// Lowercase a string
+
+char * w_tolower_str(const char *string) {
+    char *tolower_str;
+    int count;
+
+    if (!string) {
+        return NULL;
+    }
+
+    os_malloc(1, tolower_str);
+
+    for(count = 0; string[count]; count++) {
+        os_realloc(tolower_str, count + 2, tolower_str);
+        tolower_str[count] = tolower(string[count]);
+    }
+
+    tolower_str[count] = '\0';
+
+    return tolower_str;
+}

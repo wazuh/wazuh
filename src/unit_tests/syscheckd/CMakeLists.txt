@@ -86,19 +86,18 @@ else()
   list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches")
 endif()
 
-list(APPEND syscheckd_tests_names "test_syscheck_audit")
-if(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags " ")
-else()
+if(NOT ${TARGET} STREQUAL "winagent")
+  list(APPEND syscheckd_tests_names "test_syscheck_audit")
   list(APPEND syscheckd_tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,IsSocket -Wl,--wrap,IsFile -Wl,--wrap,IsDir -Wl,--wrap,IsLink -Wl,--wrap,IsFile -Wl,--wrap,audit_restart \
                        -Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,fopen -Wl,--wrap,fwrite -Wl,--wrap,fprintf -Wl,--wrap,fclose -Wl,--wrap,symlink -Wl,--wrap,unlink \
                        -Wl,--wrap,audit_open -Wl,--wrap,audit_get_rule_list -Wl,--wrap,audit_close -Wl,--wrap,_mdebug1 -Wl,--wrap,_mwarn -Wl,--wrap,W_Vector_length -Wl,--wrap,search_audit_rule \
-                       -Wl,--wrap,audit_add_rule -Wl,--wrap,W_Vector_insert_unique -Wl,--wrap,SendMSG -Wl,--wrap,fim_whodata_event \
+                       -Wl,--wrap,audit_add_rule -Wl,--wrap,W_Vector_insert_unique -Wl,--wrap,SendMSG -Wl,--wrap,fim_whodata_event -Wl,--wrap,audit_delete_rule \
                        -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc -Wl,--wrap,closeproc -Wl,--wrap,_mdebug2 -Wl,--wrap,get_user -Wl,--wrap,get_group -Wl,--wrap,realpath \
-                       -Wl,--wrap,readlink")
+                       -Wl,--wrap,pthread_cond_init -Wl,--wrap,pthread_cond_wait -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,CreateThread \
+                       -Wl,--wrap,select -Wl,--wrap,recv -Wl,--wrap,sleep -Wl,--wrap,readlink")
 endif()
 
-set(SEECHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat -Wl,--wrap,abspath -Wl,--wrap,fopen -Wl,--wrap,fread \
+set(SEECHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat -Wl,--wrap,abspath -Wl,--wrap,wfopen -Wl,--wrap,fread \
                            -Wl,--wrap,fclose -Wl,--wrap,fwrite -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir \
                            -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange -Wl,--wrap,rename -Wl,--wrap,system")
 
@@ -156,7 +155,7 @@ else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
 endif()
 
-set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
+set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
                          -Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex -Wl,--wrap,fim_db_get_row_path \
                          -Wl,--wrap,fim_db_get_data_checksum -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_send_sync_msg \
                          -Wl,--wrap,fim_db_get_count_range -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_entry_json \
@@ -167,17 +166,17 @@ list(APPEND syscheckd_tests_names "test_fim_sync")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock")
 else()
-  list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS}")
+  list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap,time")
 endif()
 
 set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror_exit \
                           -Wl,--wrap,sleep -Wl,--wrap,SendMSG -Wl,--wrap,StartMQ -Wl,--wrap,realtime_adddir -Wl,--wrap,audit_set_db_consistency \
-                          -Wl,--wrap,time -Wl,--wrap,fim_checker -Wl,--wrap,fim_db_get_path_range -Wl,--wrap,fim_db_delete_range -Wl,--wrap,lstat \
+                          -Wl,--wrap,fim_checker -Wl,--wrap,fim_db_get_path_range -Wl,--wrap,fim_db_delete_range -Wl,--wrap,lstat \
                           -Wl,--wrap,fim_configuration_directory -Wl,--wrap,inotify_rm_watch -Wl,--wrap,os_random")
 
 list(APPEND syscheckd_tests_names "test_run_check")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot,--wrap=sleep")
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot,--wrap=sleep,--wrap,time")
 elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start")
 
@@ -185,7 +184,7 @@ elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_event_tests_names "test_run_check_event")
   list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start,--wrap=run_whodata_scan,--wrap=audit_restore")
 else()
-  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep")
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep,--wrap,time")
 endif()
 
 set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2,--wrap=sqlite3_exec,--wrap=_merror \
@@ -196,17 +195,17 @@ set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2
                        -Wl,--wrap=fim_entry_json,--wrap=sqlite3_last_insert_rowid,--wrap=EVP_DigestUpdate \
                        -Wl,--wrap=fim_configuration_directory,--wrap=fim_json_event,--wrap=send_syscheck_msg \
                        -Wl,--wrap=delete_target_file,--wrap=_minfo,--wrap=_mdebug1,--wrap=_mdebug2 \
-                       -Wl,--wrap=fseek,--wrap=fclose,--wrap=fopen,--wrap=time,--wrap=getpid,--wrap=fflush \
+                       -Wl,--wrap=fseek,--wrap=fclose,--wrap=fopen,--wrap=getpid,--wrap=fflush \
                        -Wl,--wrap=fgets,--wrap=wstr_escape_json,--wrap=sqlite3_bind_int64,--wrap=sqlite3_column_int64")
 
 list(APPEND syscheckd_tests_names "test_fim_db")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot,--wrap=fprintf \
-                                     -Wl,--wrap=usleep")
+                                     -Wl,--wrap=usleep,--wrap=time")
 elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS}")
 else()
-list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=fprintf,--wrap=usleep")
+list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=fprintf,--wrap=usleep,--wrap=time")
 endif()
 
 if(${TARGET} STREQUAL "winagent")
@@ -221,7 +220,7 @@ if(${TARGET} STREQUAL "winagent")
                                            -Wl,--wrap=OSHash_Delete_ex,--wrap=_mterror,--wrap=check_path_type,--wrap=_minfo \
                                            -Wl,--wrap=OSHash_Create,--wrap=OSHash_SetFreeDataPointer,--wrap=fim_whodata_event \
                                            -Wl,--wrap=fim_configuration_directory,--wrap=fim_checker,--wrap=OSHash_Get \
-                                           -Wl,--wrap=convert_windows_string,--wrap=OSHash_Get_ex")
+                                           -Wl,--wrap=convert_windows_string,--wrap=OSHash_Get_ex,--wrap=FOREVER")
 endif()
 
 # Compiling tests

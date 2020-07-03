@@ -1173,15 +1173,13 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 continue;
             }
 
-            int file_limit_enabled = true;
-
             for(j = 0; children[j]; j++) {
                 if (strcmp(children[j]->element, xml_file_limit_enabled) == 0) {
                     if (strcmp(children[j]->content, "yes") == 0) {
-                        file_limit_enabled = true;
+                        syscheck->file_limit_enabled = true;
                     }
                     else if (strcmp(children[j]->content, "no") == 0) {
-                        file_limit_enabled = false;
+                        syscheck->file_limit_enabled = false;
                     }
                     else {
                         merror(XML_VALUEERR, children[j]->element, children[j]->content);
@@ -1203,9 +1201,11 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 }
             }
 
-            if (!file_limit_enabled) {
+            if (!syscheck->file_limit_enabled) {
                 syscheck->file_limit = 0;
             }
+
+            OS_ClearNode(children);
         }
 
         /* Get if xml_scan_on_start */

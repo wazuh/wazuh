@@ -7,6 +7,8 @@
  * Foundation
 */
 
+#ifndef WIN32
+
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_gcp.h"
 
@@ -192,3 +194,4 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
 
     return 0;
 }
+#endif /* WIN32 */

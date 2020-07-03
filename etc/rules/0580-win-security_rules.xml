@@ -8,7 +8,7 @@
 
 <var name="MS_FREQ">8</var>
 
-<group name="windows, windows_security,">
+<group name="windows,windows_security,">
 
   <rule id="60100" level="0">
     <if_sid>60001</if_sid>
@@ -1133,7 +1133,7 @@
 
  <!-- MS IPSec rules -->
 
-<group name="windows, windows_security, ipsec,">
+<group name="windows,windows_security,ipsec,">
 
   <rule id="60208" level="8">
     <if_sid>60103</if_sid>

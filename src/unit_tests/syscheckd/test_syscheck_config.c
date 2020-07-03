@@ -248,8 +248,13 @@ void test_getSyscheckConfig(void **state)
     assert_string_equal(cJSON_GetStringValue(disabled), "no");
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
     assert_int_equal(frequency->valueint, 43200);
+
     cJSON *file_limit = cJSON_GetObjectItem(sys_items, "file_limit");
-    assert_int_equal(file_limit->valueint, 50000);
+    cJSON *file_limit_enabled = cJSON_GetObjectItem(file_limit, "enabled");
+    assert_string_equal(cJSON_GetStringValue(file_limit_enabled), "yes");
+    cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
+    assert_int_equal(file_limit_entries->valueint, 50000);
+
     cJSON *skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
     assert_string_equal(cJSON_GetStringValue(skip_nfs), "yes");
     cJSON *skip_dev = cJSON_GetObjectItem(sys_items, "skip_dev");
@@ -358,8 +363,13 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_string_equal(cJSON_GetStringValue(disabled), "no");
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
     assert_int_equal(frequency->valueint, 43200);
+
     cJSON *file_limit = cJSON_GetObjectItem(sys_items, "file_limit");
-    assert_int_equal(file_limit->valueint, 50000);
+    cJSON *file_limit_enabled = cJSON_GetObjectItem(file_limit, "enabled");
+    assert_string_equal(cJSON_GetStringValue(file_limit_enabled), "yes");
+    cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
+    assert_int_equal(file_limit_entries->valueint, 50000);
+
     cJSON *skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
     assert_string_equal(cJSON_GetStringValue(skip_nfs), "no");
     cJSON *skip_dev = cJSON_GetObjectItem(sys_items, "skip_dev");
@@ -456,8 +466,12 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_string_equal(cJSON_GetStringValue(disabled), "yes");
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
     assert_int_equal(frequency->valueint, 43200);
+    
     cJSON *file_limit = cJSON_GetObjectItem(sys_items, "file_limit");
-    assert_int_equal(file_limit->valueint, 100000);
+    cJSON *file_limit_enabled = cJSON_GetObjectItem(file_limit, "enabled");
+    assert_string_equal(cJSON_GetStringValue(file_limit_enabled), "yes");
+    cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
+    assert_int_equal(file_limit_entries->valueint, 100000);
 
     cJSON *skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
     assert_string_equal(cJSON_GetStringValue(skip_nfs), "yes");

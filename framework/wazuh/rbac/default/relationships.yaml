@@ -1,0 +1,57 @@
+relationships:
+  users:
+    wazuh:
+      role_ids:
+        - administrator
+
+    wazuh-wui:
+      role_ids:
+        - readonly
+
+  roles:
+    administrator:
+      policy_ids:
+        - agents_all
+        - agents_commands
+        - security_all
+        - cluster_all
+        - ciscat_read
+        - decoders_read
+        - lists_read
+        - rules_read
+        - mitre_read
+        - sca_read
+        - syscheck_all
+        - syscollector_read
+
+    readonly:
+      policy_ids:
+        - agents_read
+        - ciscat_read
+        - decoders_read
+        - lists_read
+        - rules_read
+        - mitre_read
+        - sca_read
+        - syscheck_read
+        - syscollector_read
+
+    users_admin:
+      policy_ids:
+        - users_all
+
+    agents_readonly:
+      policy_ids:
+        - agents_read
+
+    agents_admin:
+      policy_ids:
+        - agents_all
+
+    cluster_readonly:
+      policy_ids:
+        - cluster_read
+
+    cluster_admin:
+      policy_ids:
+        - cluster_all
