@@ -24,6 +24,11 @@ int __wrap__merror()
     return 0;
 }
 
+int __wrap__mwarn()
+{
+    return 0;
+}
+
 #ifdef TEST_AGENT
 char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 
@@ -86,7 +91,7 @@ void test_Read_Syscheck_Config_success(void **state)
     (void) state;
     int ret;
 
-    ret = Read_Syscheck_Config("test_syscheck.conf");
+    ret = Read_Syscheck_Config("test_syscheck_max_dir.conf");
 
     assert_int_equal(ret, 0);
     assert_int_equal(syscheck.rootcheck, 0);
@@ -105,6 +110,12 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_null(syscheck.scan_day);
     assert_null(syscheck.scan_time);
     assert_non_null(syscheck.dir);
+    // Directories configuration have 100 directories in one line. It only can monitor 64 per line.
+    // With the first 6 directories in other lines, the count should be 70 (71 should be NULL)
+    for (int i = 0; i < 70; i++){
+        assert_non_null(syscheck.dir[i]);
+    }
+    assert_null(syscheck.dir[70]);
     assert_non_null(syscheck.opts);
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
