@@ -97,6 +97,7 @@ int main(int argc, const char* argv[])
                     outputFile.close();
                 }
             }
+            dbsync_teardown();
             std::cout << "Resulting files are located in the "<< cmdLineArgs.outputFolder() << "folder" << std::endl;
         }
         else
