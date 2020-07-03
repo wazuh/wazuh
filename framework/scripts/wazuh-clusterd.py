@@ -1,62 +1,30 @@
-#!/var/ossec/framework/python/bin/python3
+#!/usr/bin/env python
 
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-import logging
-import asyncio
 import argparse
+import asyncio
+import logging
 import os
 import sys
-import time
-from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__, master, local_server, worker
-from wazuh import common, configuration, pyDaemonModule, Wazuh
+
+import wazuh.core.cluster.cluster
+import wazuh.core.cluster.utils as cluster_utils
+from wazuh.core import pyDaemonModule, common, configuration
+from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__, master, local_server, worker
 
 
 #
 # Aux functions
 #
-def set_logging(debug_mode=0):
-    logger = logging.getLogger('wazuh')
-    logger.propagate = False
-    # configure logger
-    fh = cluster.CustomFileRotatingHandler(filename="{}/logs/cluster.log".format(common.ossec_path), when='midnight')
-    formatter = logging.Formatter(
-        fmt='%(asctime)s wazuh-clusterd: %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
-        datefmt="%Y/%m/%d %H:%M:%S"
-    )
-    formatter.converter = time.gmtime
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
 
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-
-    logger.addFilter(cluster.ClusterFilter(tag='Cluster', subtag='Main'))
-
-    # add a new debug level
-    logging.DEBUG2 = 5
-
-    def debug2(self, message, *args, **kws):
-        if self.isEnabledFor(logging.DEBUG2):
-            self._log(logging.DEBUG2, message, args, **kws)
-
-    def error(self, msg, *args, **kws):
-        if self.isEnabledFor(logging.ERROR):
-            kws['exc_info'] = self.isEnabledFor(logging.DEBUG2)
-            self._log(logging.ERROR, msg, args, **kws)
-
-    logging.addLevelName(logging.DEBUG2, "DEBUG2")
-
-    logging.Logger.debug2 = debug2
-    logging.Logger.error = error
-
-    debug_level = logging.DEBUG2 if debug_mode == 2 else logging.DEBUG if \
-                  debug_mode == 1 else logging.INFO
-
-    logger.setLevel(debug_level)
-    return logger
+def set_logging(foreground_mode=False, debug_mode=0):
+    cluster_logger = cluster_utils.ClusterLogger(foreground_mode=foreground_mode, log_path='logs/cluster.log',
+                                                 debug_level=debug_mode,
+                                                 tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}')
+    cluster_logger.setup_logger()
+    return cluster_logger
 
 
 def print_version():
@@ -67,8 +35,8 @@ def print_version():
 # Master main
 #
 async def master_main(args, cluster_config, cluster_items, logger):
-    cluster.context_tag.set('Master')
-    cluster.context_subtag.set("Main")
+    cluster_utils.context_tag.set('Master')
+    cluster_utils.context_subtag.set("Main")
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
                               configuration=cluster_config, enable_ssl=args.ssl, logger=logger,
                               cluster_items=cluster_items)
@@ -83,8 +51,8 @@ async def master_main(args, cluster_config, cluster_items, logger):
 # Worker main
 #
 async def worker_main(args, cluster_config, cluster_items, logger):
-    cluster.context_tag.set('Worker')
-    cluster.context_subtag.set("Main")
+    cluster_utils.context_tag.set('Worker')
+    cluster_utils.context_subtag.set("Main")
     while True:
         my_client = worker.Worker(configuration=cluster_config, enable_ssl=args.ssl,
                                   performance_test=args.performance_test, concurrency_test=args.concurrency_test,
@@ -149,14 +117,14 @@ if __name__ == '__main__':
         os.chown('{0}/logs/cluster.log'.format(common.ossec_path), common.ossec_uid(), common.ossec_gid())
         os.chmod('{0}/logs/cluster.log'.format(common.ossec_path), 0o660)
 
-    main_logger = set_logging(debug_mode)
+    main_logger = set_logging(foreground_mode=args.foreground, debug_mode=debug_mode)
 
-    cluster_configuration = cluster.read_config(config_file=args.config_file)
+    cluster_configuration = cluster_utils.read_config(config_file=args.config_file)
     if cluster_configuration['disabled']:
         sys.exit(0)
-    cluster_items = cluster.get_cluster_items()
+    cluster_items = cluster_utils.get_cluster_items()
     try:
-        cluster.check_cluster_config(cluster_configuration)
+        wazuh.core.cluster.cluster.check_cluster_config(cluster_configuration)
     except Exception as e:
         main_logger.error(e)
         sys.exit(1)
@@ -165,7 +133,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     # clean
-    cluster.clean_up()
+    wazuh.core.cluster.cluster.clean_up()
 
     # Foreground/Daemon
     if not args.foreground:

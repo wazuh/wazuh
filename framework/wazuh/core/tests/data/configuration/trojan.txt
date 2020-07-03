@@ -1,0 +1,12 @@
+# Comment
+trojan !trojan!trojan
+trojan !trojan!
+trojan !trojan::trojan
+trojan !trojan::trojan
+[trojan][trojan][trojan]
+$trojan=trojan
+t:trojan
+{trojan: trojan trojan}
+[{trojan: trojan trojan}][trojan][trojan]
+[{trojan: PCI trojan}][trojan][trojan]
+[{trojan: CIS trojan}][trojan][trojan]

@@ -2,29 +2,42 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-import json
 import os
+import pathlib
+import sys
+from functools import wraps
+from datetime import datetime
+from unittest.mock import patch, MagicMock, mock_open
+
 import pytest
-from unittest.mock import patch, mock_open, MagicMock
+
+from wazuh.core.tests.test_manager import get_ossec_log
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        from wazuh import common
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        sys.modules['api'] = MagicMock()
+        import wazuh.rbac.decorators
+        del sys.modules['wazuh.rbac.orm']
+
+        from wazuh.tests.util import RBAC_bypasser
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.manager import *
-        from wazuh.exception import WazuhException
-        
-from shutil import Error
-from xml.parsers.expat import ExpatError
-from datetime import datetime
+        del sys.modules['api']
+
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 
+@pytest.fixture(scope='module', autouse=True)
+def mock_ossec_path():
+    with patch('wazuh.common.ossec_path', new=test_data_path):
+        yield
+
+
 class InitManager:
     def __init__(self):
-        """
-        Sets up necessary environment to test manager functions
-        """
+        """Sets up necessary environment to test manager functions"""
         # path for temporary API files
         self.api_tmp_path = os.path.join(test_data_path, 'tmp')
         # rules
@@ -45,254 +58,166 @@ def test_manager():
     return test_manager
 
 
-@pytest.mark.parametrize('process_status', [
-    'running',
-    'stopped',
-    'failed',
-    'restarting',
-    'starting'
+manager_status = {'ossec-agentlessd': 'running', 'ossec-analysisd': 'running', 'ossec-authd': 'running',
+ 'ossec-csyslogd': 'running', 'ossec-dbd': 'running', 'ossec-monitord': 'running',
+ 'ossec-execd': 'running', 'ossec-integratord': 'running', 'ossec-logcollector': 'running',
+ 'ossec-maild': 'running', 'ossec-remoted': 'running', 'ossec-reportd': 'running',
+ 'ossec-syscheckd': 'running', 'wazuh-clusterd': 'running', 'wazuh-modulesd': 'running',
+ 'wazuh-db': 'running', 'wazuh-apid': 'running'}
+
+
+@patch('wazuh.core.manager.status', return_value=manager_status)
+def test_get_status(mock_status):
+    """Tests get_status() function works"""
+    result = get_status()
+
+    # Assert there are no errors and type returned
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['total_failed_items'] == 0
+
+
+@pytest.mark.parametrize('category, type_log, total_items, sort_by, sort_ascending', [
+    ('all', 'all', 12, None, None),
+    ('wazuh-modulesd:database', 'all', 1, None, None),
+    ('wazuh-modulesd:syscollector', 'all', 2, None, None),
+    ('wazuh-modulesd:syscollector', 'all', 2, None, None),
+    ('wazuh-modulesd:aws-s3', 'all', 5, None, None),
+    ('ossec-execd', 'all', 1, None, None),
+    ('ossec-csyslogd', 'all', 2, None, None),
+    ('random', 'all', 0, ['timestamp'], True),
+    ('all', 'info', 7, ['timestamp'], False),
+    ('all', 'error', 2, ['level'], True),
+    ('all', 'debug', 1, ['level'], False),
+    ('all', 'random', 0, None, True),
+    ('all', 'warning', 2, None, False),
 ])
-@patch('wazuh.cluster.utils.exists')
-@patch('wazuh.cluster.utils.glob')
-def test_status(manager_glob, manager_exists, test_manager, process_status):
+@patch("wazuh.manager.previous_month", return_value=datetime.strptime('2019-03-01 00:00:00', '%Y-%m-%d %H:%M:%S'))
+def test_ossec_log(mock_month, type_log, category, total_items, sort_by, sort_ascending):
+    """Test reading ossec.log file contents.
+
+    Parameters
+    ----------
+    type_log : str
+        Filters by log type: all, error or info.
+    category : str
+        Filters by log category (i.e. ossec-remoted).
+    total_items : int
+        Expected items to be returned after calling ossec_log.
+    sort_by : list
+        Fields to sort the items by.
+    sort_ascending : boolean
+        Sort in ascending (true) or descending (false) order.
     """
-    Tests manager.status() function in two cases:
-        * PID files are created and processed are running,
-        * No process is running and therefore no PID files have been created
-    :param manager_glob: mock of glob.glob function
-    :param manager_exists: mock of os.path.exists function
-    :param test_manager: pytest fixture
-    :param process_status: status to test (valid values: running/stopped/failed/restarting).
-    :return:
-    """
-    def mock_glob(path_to_check):
-        return [path_to_check.replace('*', '0234')] if process_status == 'running' else []
+    with patch('wazuh.manager.tail') as tail_patch:
+        # Return ossec_log_file when calling tail() method
+        ossec_log_file = get_ossec_log()
+        tail_patch.return_value = ossec_log_file.splitlines()
 
-    def mock_exists(path_to_check):
-        if path_to_check == '/proc/0234':
-            return process_status == 'running'
-        else:
-            return path_to_check.endswith(f'.{process_status.replace("ing","").replace("re", "")}') or \
-                   path_to_check.endswith(f'.{process_status.replace("ing","")}')
+        result = ossec_log(type_log=type_log, category=category, sort_by=sort_by, sort_ascending=sort_ascending)
 
-    manager_glob.side_effect = mock_glob
-    manager_exists.side_effect = mock_exists
-    manager_status = status()
-    assert isinstance(manager_status, dict)
-    assert all(process_status == x for x in manager_status.values())
-    if process_status == 'running':
-        manager_exists.assert_any_call("/proc/0234")
+        # Assert type, number of items and presence of trailing characters
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['total_affected_items'] == total_items
+        assert all(log['description'][-1] != '\n' for log in result.render()['data']['affected_items'])
+        if category != 'all' and category != 'wazuh-modulesd:syscollector':
+            assert all('\n' not in log['description'] for log in result.render()['data']['affected_items'])
 
 
-@pytest.mark.parametrize('input_file, output_file, content_type', [
-    ('input_rules_file', 'output_rules_file', 'application/xml'),
-    ('input_decoders_file', 'output_decoders_file', 'application/xml'),
-    ('input_lists_file', 'output_lists_file', 'application/octet-stream')
+def test_ossec_log_ko():
+    """Test reading ossec.log file contents."""
+    error_log = ("2019/04/11 12:53:37 wazuh-modulesd:aws-s3: "
+                 "ERROR: statfs('******') produced error: No such file or directory"
+                 "db_maintenance() got an unexpected keyword argument 'aws_account_id'")
+
+    with patch('wazuh.manager.tail') as tail_patch:
+        tail_patch.return_value = error_log.splitlines()
+
+        # Check it doesn't read logs older than a specific date
+        result = ossec_log(type_log='all', category='all')
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['message'] == 'Could not read logs'
+
+        with patch("wazuh.manager.previous_month",
+                   return_value=datetime.strptime('2019-03-01 00:00:00', '%Y-%m-%d %H:%M:%S')):
+            # Check it finds ERROR tag in log
+            result = ossec_log(category='all', type_log='error')
+            assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+            assert 'ERROR: statfs(' in result.render()['data']['affected_items'][0], \
+                'Expected message not found in result'
+
+
+@patch("wazuh.manager.previous_month", return_value=datetime.strptime('2019-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'))
+def test_ossec_log_summary(mock_month):
+    """Tests ossec_log_summary function works and returned data match with expected"""
+    ossec_log_file = get_ossec_log()
+    m = mock_open(read_data=ossec_log_file)
+    with patch('builtins.open', m):
+        result = ossec_log_summary()
+
+        # Assert data match what was expected and type of the result.
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['total_affected_items'] == 6
+        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['all'] == 2
+        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['info'] == 2
+        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['error'] == 0
+        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['critical'] == 0
+        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['warning'] == 0
+        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['debug'] == 0
+
+
+@patch("wazuh.manager.previous_month", return_value=datetime.strptime('2020-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'))
+def test_ossec_log_summary_ko(mock_month):
+    """Tests ossec_log_summary function doesn't read logs older than a specific date"""
+    ossec_log_file = get_ossec_log()
+    m = mock_open(read_data=ossec_log_file)
+    with patch('builtins.open', m):
+        result = ossec_log_summary()
+
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['total_failed_items'] == 0
+
+
+@pytest.mark.parametrize('path, overwrite', [
+    ('test.xml', False),
+    ('test_rules.xml', True),
+    ('etc/lists', False),
 ])
-@patch('wazuh.common.ossec_path', new=test_data_path)
-@patch('wazuh.manager.common.ossec_path', new=test_data_path)
-@patch('wazuh.manager.remove')
+@patch('wazuh.manager.delete_file')
 @patch('wazuh.manager.upload_xml')
 @patch('wazuh.manager.upload_list')
-def test_upload_file(list_mock, xml_mock, remove_mock, test_manager, input_file, output_file, content_type):
+def test_upload_file(mock_list, mock_xml, mock_delete, path, overwrite):
+    """Tests uploading a file to the manager
+
+    Parameters
+    ----------
+    path : str
+        Path of destination of the new file.
+    overwrite : boolean
+        True for updating existing files, False otherwise.
     """
-    Tests uploading a file to the manager
-    """
-    input_file, output_file = getattr(test_manager, input_file), getattr(test_manager, output_file)
+    result = upload_file(path, 'test', overwrite=overwrite)
 
-    with open(os.path.join(test_data_path, input_file)) as f:
-        xml_file = f.read()
-    m = mock_open(read_data=xml_file)
-    with patch('builtins.open', m):
-        upload_file(input_file, output_file, content_type)
-
-    m.assert_any_call(os.path.join(test_data_path, input_file))
-    remove_mock.assert_called_once_with(os.path.join(test_data_path, input_file))
+    # Assert data match what was expected, type of the result and correct parameters in delete() method.
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['affected_items'][0] == path, 'Expected item not found'
+    if overwrite:
+        mock_delete.assert_called_once_with(path=path), 'delete_file method not called with expected parameter'
 
 
-@patch('wazuh.manager.remove')
-def test_upload_file_ko(mock_remove, test_manager):
-    """Tests upload_file function exceptions works"""
+@patch('wazuh.manager.delete_file')
+@patch('wazuh.manager.upload_xml')
+@patch('wazuh.manager.upload_list')
+def test_upload_file_ko(mock_list, mock_xml, mock_delete):
+    """Tests uploading a file to the manager"""
+    # Error when file exists and overwrite is not True
+    result = upload_file('test_rules.xml', 'test', overwrite=False)
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1905, 'Error code not expected.'
 
-    input_file, output_file = getattr(test_manager, 'input_rules_file'), getattr(test_manager, 'output_rules_file')
-
-    with patch('wazuh.manager.remove'):
-        # Overwrite is False and file exists
-        with patch('wazuh.manager.exists', return_value=True):
-            with pytest.raises(WazuhException, match='.* 1905 .*'):
-                upload_file(input_file, output_file, 'application/xml')
-
-
-        with patch('wazuh.manager.exists', return_value=False):
-            # Open function raise IOError
-            with patch('wazuh.manager.open', side_effect=IOError) as m:
-                with pytest.raises(WazuhException, match='.* 1005 .*'):
-                    upload_file(input_file, output_file, 'application/xml')
-
-            # Open function raise Exception
-            with patch('wazuh.manager.open', side_effect=Exception):
-                with pytest.raises(WazuhException, match='.* 1000 .*'):
-                    upload_file(input_file, output_file, 'application/xml')
-
-            m.assert_any_call(os.path.join(common.ossec_path, input_file))
-
-        # File open len == 0
-        m = mock_open(read_data='')
-        with patch('builtins.open', m):
-            with pytest.raises(WazuhException, match='.* 1112 .*'):
-                upload_file(input_file, output_file, 'application/xml')
-
-            m.assert_any_call(os.path.join(common.ossec_path, input_file))
-
-        # Content type != application/xml || application/octet-stream
-        with open(os.path.join(test_data_path, input_file)) as f:
-            xml_file = f.read()
-        m = mock_open(read_data=xml_file)
-        with patch('builtins.open', m):
-            with pytest.raises(WazuhException, match='.* 1016 .*'):
-                upload_file(input_file, output_file, 'bad_type')
-
-    # Open function raise OSError
-    with patch('wazuh.manager.remove', side_effect=OSError):
-        with pytest.raises(WazuhException, match='.* 1903 .*'):
-            upload_file(input_file, output_file, 'application/xml')
-
-
-@patch('time.time', return_value=0)
-@patch('random.randint', return_value=0)
-@patch('wazuh.manager.chmod')
-@patch('wazuh.manager.load_wazuh_xml')
-@patch('wazuh.manager.safe_move')
-@patch('wazuh.manager.common.ossec_path', new=test_data_path)
-def test_upload_xml(mock_safe, mock_load_wazuh, mock_chmod, mock_random, mock_time, test_manager):
-    """Tests upload_xml function works"""
-
-    input_file, output_file = getattr(test_manager, 'input_rules_file'), getattr(test_manager, 'output_rules_file')
-
-    with open(os.path.join(test_data_path, input_file)) as f:
-        xml_file = f.read()
-    m = mock_open(read_data=xml_file)
-    with patch('builtins.open', m):
-        result = upload_xml(xml_file, output_file)
-
-    assert isinstance(result, str)
-    mock_time.assert_called_once_with()
-    mock_random.assert_called_once_with(0, 1000)
-    m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'), 'w')
-    mock_chmod.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'),0o660)
-    mock_load_wazuh.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'))
-    mock_safe.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'),
-                                      os.path.join(test_data_path, output_file),
-                                      permissions=0o660)
-
-
-@pytest.mark.parametrize('effect, expected_exception', [
-    (IOError, 1005),
-    (ExpatError, 1113),
-    (Exception, 1000)
-])
-def test_upload_xml_open_ko(effect, expected_exception, test_manager):
-    """Tests upload_xml function works when open function raise an exception"""
-
-    input_file, output_file = getattr(test_manager, 'input_rules_file'), getattr(test_manager, 'output_rules_file')
-
-    with patch('wazuh.manager.open', side_effect=effect):
-        with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-            upload_xml(input_file, output_file)
-
-
-@patch('time.time', return_value=0)
-@patch('random.randint', return_value=0)
-@patch('wazuh.manager.chmod')
-@patch('wazuh.manager.remove')
-@patch('wazuh.manager.common.ossec_path', new=test_data_path)
-def test_upload_xml_ko(mock_remove, mock_chmod, mock_random, mock_time, test_manager):
-    """Tests upload_xml function exception works"""
-
-    input_file, output_file = getattr(test_manager, 'input_rules_file'), getattr(test_manager, 'output_rules_file')
-
-    with open(os.path.join(test_data_path, input_file)) as f:
-        xml_file = f.read()
-    m = mock_open(read_data=xml_file)
-    with patch('builtins.open', m):
-        with patch('wazuh.manager.load_wazuh_xml', side_effect=Exception):
-            with pytest.raises(WazuhException, match=f'.* 1113 .*'):
-                upload_xml(xml_file, output_file)
-
-        with patch('wazuh.manager.load_wazuh_xml'):
-            with patch('wazuh.manager.safe_move', side_effect=Error):
-                with pytest.raises(WazuhException, match=f'.* 1016 .*'):
-                    upload_xml(xml_file, output_file)
-
-            with patch('wazuh.manager.safe_move', side_effect=Exception):
-                with pytest.raises(WazuhException, match=f'.* 1000 .*'):
-                    upload_xml(xml_file, output_file)
-
-    mock_time.assert_called_with()
-    mock_random.assert_called_with(0, 1000)
-    mock_chmod.assert_called_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'), 0o660)
-    mock_remove.assert_called_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'))
-
-
-@patch('time.time', return_value=0)
-@patch('random.randint', return_value=0)
-@patch('wazuh.manager.chmod')
-@patch('wazuh.manager.safe_move')
-@patch('wazuh.manager.common.ossec_path', new=test_data_path)
-def test_upload_list(mock_safe, mock_chmod, mock_random, mock_time, test_manager):
-    """Tests upload_list function works"""
-
-    input_file, output_file = getattr(test_manager, 'input_rules_file'), getattr(test_manager, 'output_rules_file')
-
-    m = mock_open(read_data=ossec_log_file)
-    with patch('builtins.open', m):
-        result = upload_list(ossec_log_file, output_file)
-
-    assert isinstance(result, str)
-
-    mock_time.assert_called_once_with()
-    mock_random.assert_called_once_with(0, 1000)
-    mock_chmod.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.txt'), 0o640)
-    mock_safe.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.txt'),
-                                      os.path.join(test_data_path, output_file),
-                                      permissions=0o660)
-
-@pytest.mark.parametrize('effect, expected_exception', [
-    (IOError, 1005),
-    (Exception, 1000)
-])
-def test_upload_list_open_ko(effect, expected_exception, test_manager):
-    """Tests upload_list function works when open function raise an exception"""
-
-    input_file, output_file = getattr(test_manager, 'input_rules_file'), getattr(test_manager, 'output_rules_file')
-
-    with patch('wazuh.manager.open', side_effect=effect):
-        with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-            upload_list(input_file, output_file)
-
-
-@patch('time.time', return_value=0)
-@patch('random.randint', return_value=0)
-@patch('wazuh.manager.chmod')
-@patch('wazuh.manager.common.ossec_path', new=test_data_path)
-def test_upload_list_ko(mock_chmod, mock_random, mock_time, test_manager):
-    """Tests upload_list function exception works"""
-
-    input_file, output_file = getattr(test_manager, 'input_rules_file'), getattr(test_manager, 'output_rules_file')
-
-    m = mock_open(read_data=ossec_log_file)
-    with patch('builtins.open', m):
-        with patch('wazuh.manager.safe_move', side_effect=Error):
-            with pytest.raises(WazuhException, match=f'.* 1016 .*'):
-                upload_list(ossec_log_file, output_file)
-
-        with patch('wazuh.manager.safe_move', side_effect=Exception):
-            with pytest.raises(WazuhException, match=f'.* 1000 .*'):
-                upload_list(ossec_log_file, output_file)
-
-        mock_time.assert_called_with()
-        mock_random.assert_called_with(0, 1000)
-        mock_chmod.assert_called_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.txt'), 0o640)
+    # Error when content is empty
+    result = upload_file('no_exist.xml', '', overwrite=False)
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1112, 'Error code not expected.'
 
 
 @pytest.mark.parametrize('input_file', [
@@ -300,145 +225,128 @@ def test_upload_list_ko(mock_chmod, mock_random, mock_time, test_manager):
     'input_decoders_file',
     'input_lists_file'
 ])
-@patch('wazuh.common.ossec_path', test_data_path)
 def test_get_file(test_manager, input_file):
     """Tests get_file function works"""
 
     input_file = getattr(test_manager, input_file)
-    with open(os.path.join(test_data_path, input_file)) as f:
+    input_path = os.path.join(test_data_path, input_file)
+    with open(input_path) as f:
         xml_file = f.read()
 
     with patch('builtins.open', mock_open(read_data=xml_file)):
-        result = get_file(input_file)
+        result = get_file(input_path)
 
-    assert result == xml_file
+    # Assert xml returned
+    assert result.render()["contents"] == xml_file
 
 
+@patch('wazuh.manager.common.ossec_path', new=os.path.join(test_data_path, 'manager'))
 def test_get_file_ko():
     """Tests get_file function works"""
 
     # Bad format CDB list
-    with patch('wazuh.manager.validate_cdb_list', return_value=False):
-        with patch('wazuh.manager.re.match', return_value=True):
-            with pytest.raises(WazuhException, match=f'.* 1800 .*'):
-                get_file('input_rules_file', True)
+    with pytest.raises(WazuhError, match=f'.* 1800 .*'):
+        get_file(['etc/lists/bad_format_file'], True)
 
     # Xml syntax error
     with patch('wazuh.manager.validate_cdb_list', return_value=True):
-        with patch('wazuh.manager.validate_xml', return_value=False):
-            with pytest.raises(WazuhException, match=f'.* 1113 .*'):
-                get_file('input_rules_file', True)
+        with pytest.raises(WazuhError, match=f'.* 1113 .*'):
+            get_file(['etc/lists/bad_format_file'], True)
+
+    # Path does not exist error
+    with pytest.raises(WazuhError, match=f'.* 1906 .*'):
+        get_file(['does_not_exist'])
 
     # Open function raise IOError
-    with patch('wazuh.manager.open', side_effect=IOError):
-        with pytest.raises(WazuhException, match=f'.* 1005 .*'):
-            get_file('input_rules_file')
-
-
-@pytest.mark.parametrize('input_file', [
-    'input_rules_file',
-    'input_decoders_file',
-    'input_lists_file'
-])
-@patch('wazuh.common.ossec_path', test_data_path)
-def test_validate_xml(test_manager, input_file):
-    """Tests validate_xml function works"""
-
-    input_file = getattr(test_manager, input_file)
-    with open(os.path.join(test_data_path, input_file)) as f:
-        xml_file = f.read()
-
-    with patch('builtins.open', mock_open(read_data=xml_file)):
-        result = validate_xml(input_file)
-
-        assert result == True
-
-
-def test_validate_xml_ko():
-    """Tests validate_xml function exceptions works"""
-
-    # Open function raise IOError
-    with patch('wazuh.manager.open', side_effect=IOError):
-        with pytest.raises(WazuhException, match=f'.* 1005 .*'):
-            validate_xml('test_path')
-
-    # Open function raise ExpatError
-    with patch('wazuh.manager.open', side_effect=ExpatError):
-        result = validate_xml('test_path')
-
-        assert result == False
-
-
-@patch('wazuh.manager.re.match', return_value=True)
-def test_validate_cdb_list(mock_match):
-    """Tests validate_cdb function works"""
-
-    m = mock_open(read_data=ossec_log_file)
-    with patch('builtins.open', m):
-        result = validate_cdb_list('path')
-
-
-@patch('wazuh.manager.re.match', return_value=False)
-def test_validate_cdb_list_ko(mock_match):
-    """Tests validate_cdb function exceptions works"""
-
-    # Match error
-    m = mock_open(read_data=ossec_log_file)
-    with patch('wazuh.manager.open', m):
-        result = validate_cdb_list('path')
-
-    assert result is False
-
-    # Open function raise IOError
-    with patch('wazuh.manager.open', side_effect=IOError):
-        with pytest.raises(WazuhException, match=f'.* 1005 .*'):
-            validate_cdb_list('path')
-
-
-def test_delete_file(test_manager):
-    """Tests delete_file function and all possible scenarios"""
-
     with patch('wazuh.manager.exists', return_value=True):
-        with patch('wazuh.manager.remove'):
-            assert(isinstance(delete_file('/test/file'), str))
-        with patch('wazuh.manager.remove', side_effect=IOError()):
-            with pytest.raises(WazuhException, match='.* 1907 .*'):
-                delete_file('/test/file')
+        with patch('wazuh.manager.open', side_effect=IOError):
+            with pytest.raises(WazuhInternalError, match=f'.* 1005 .*'):
+                get_file(['etc/lists/bad_format_file'])
 
+
+def test_delete_file():
+    """Tests delete_file function and all possible scenarios"""
+    with patch('wazuh.manager.exists', return_value=True):
+        # Assert returned type is AffectedItemsWazuhResult when everything is correct
+        with patch('wazuh.manager.remove'):
+            assert(isinstance(delete_file('/test/file'), AffectedItemsWazuhResult))
+        # Assert error code when remove() method returns IOError
+        with patch('wazuh.manager.remove', side_effect=IOError()):
+            result = delete_file('/test/file')
+            assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+            assert result.render()['data']['failed_items'][0]['error']['code'] == 1907, 'Error code not expected.'
+
+    # Assert error code when exists() method returns False
     with patch('wazuh.manager.exists', return_value=False):
-        with pytest.raises(WazuhException, match='.* 1906 .*'):
-            delete_file('/test/file')
+        result = delete_file('/test/file')
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1906, 'Error code not expected.'
+
+
+def test_get_api_config():
+    """Checks that get_api_config method is returning current api_conf dict."""
+    result = get_api_config().render()
+
+    assert 'node_api_config' in result['data']['affected_items'][0], 'node_api_config key not found in result'
+    assert result['data']['affected_items'][0]['node_name'] == 'manager', 'Not expected node name'
+
+
+@patch('wazuh.core.manager.yaml')
+@patch('wazuh.core.manager.open')
+def test_update_api_config(mock_open, mock_yaml):
+    """Checks that update_api_config method is updating current api_conf dict and returning expected result."""
+    old_config = {'experimental_features': True}
+    new_config = {'experimental_features': False}
+
+    with patch('wazuh.core.manager.configuration.api_conf', new=old_config):
+        result = update_api_config(updated_config=new_config)
+
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type.'
+        assert result.render()['data']['total_failed_items'] == 0, 'Total_failed_items should be 0.'
+        assert old_config == new_config, 'Old configuration should be equal to new configuration.'
+
+
+def test_update_api_config_ko():
+    """Checks that update_api_config method is returning expected fail."""
+    with patch('wazuh.core.manager.configuration.api_conf'):
+        result = update_api_config()
+
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type.'
+        assert result.render()['data']['total_failed_items'] == 1, 'Total_failed_items should be 1.'
 
 
 @patch('socket.socket')
-@patch('wazuh.cluster.utils.execq_lockfile', return_value=os.path.join(test_data_path, "var", "run", ".api_execq_lock"))
-@patch("wazuh.cluster.utils.exists", return_value=True)
-def test_restart_ok(mock_exist, mock_path, mock_socket):
-    """
-    Tests restarting a manager
-    """
-    assert restart() == 'Restart request sent'
+@patch('wazuh.core.cluster.utils.fcntl')
+@patch('wazuh.core.cluster.utils.open')
+@patch("wazuh.core.cluster.utils.exists", return_value=True)
+def test_restart_ok(mock_exist, mock_path, mock_fcntl, mock_socket):
+    """Tests restarting a manager"""
+    result = restart()
+
+    # Assert there are no errors and type of the result.
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['total_failed_items'] == 0
 
 
-@patch('wazuh.cluster.utils.open')
-@patch('wazuh.cluster.utils.fcntl.lockf')
-@patch('wazuh.cluster.utils.exists', return_value=False)
-def test_restart_ko_socket(mock_exist, mock_lockf, mock_open):
+@patch('wazuh.core.cluster.utils.open')
+@patch('wazuh.core.cluster.utils.fcntl')
+@patch('wazuh.core.cluster.utils.exists', return_value=False)
+def test_restart_ko_socket(mock_exist, mock_fcntl, mock_open):
     """Tests restarting a manager exceptions"""
 
     # Socket path not exists
-    with pytest.raises(WazuhException, match='.* 1901 .*'):
+    with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
         restart()
 
     # Socket error
-    with patch("wazuh.cluster.utils.exists", return_value=True):
+    with patch("wazuh.core.cluster.utils.exists", return_value=True):
         with patch('socket.socket', side_effect=socket.error):
-            with pytest.raises(WazuhException, match='.* 1902 .*'):
+            with pytest.raises(WazuhInternalError, match='.* 1902 .*'):
                 restart()
 
         with patch('socket.socket.connect'):
             with patch('socket.socket.send', side_effect=socket.error):
-                with pytest.raises(WazuhException, match='.* 1014 .*'):
+                with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
                     restart()
 
 
@@ -450,119 +358,117 @@ def test_restart_ko_socket(mock_exist, mock_lockf, mock_open):
         "'use_source_i'.\n2019/02/27 11:30:24 ossec-authd: ERROR: (1202): Configuration error at "
         "'/var/ossec/etc/ossec.conf'.")
 ])
-@patch('wazuh.manager.execq_lockfile', return_value=os.path.join(common.ossec_path, "var", "run", ".api_execq_lock"))
+@patch('wazuh.manager.open')
+@patch('wazuh.manager.fcntl')
 @patch("wazuh.manager.exists", return_value=True)
 @patch("wazuh.manager.remove", return_value=True)
-def test_validation(mock_remove, mock_exists, mock_path, test_manager, error_flag, error_msg):
-    """
+def test_validation(mock_remove, mock_exists, mock_fcntl, mock_open, error_flag, error_msg):
+    """Test validation() method works as expected
+
     Tests configuration validation function with multiple scenarios:
         * No errors found in configuration
         * Error found in cluster configuration
         * Error found in any other configuration
+
+    Parameters
+    ----------
+    error_flag : int
+        Error flag to be mocked in the socket response.
+    error_msg : str
+        Error message to be mocked in the socket response.
     """
-    json_response = json.dumps({'error': error_flag, 'message': error_msg}).encode()
     with patch('socket.socket') as sock:
+        # Mock sock response
+        json_response = json.dumps({'error': error_flag, 'message': error_msg}).encode()
         sock.return_value.recv.return_value = json_response
         result = validation()
-    assert result['status'] == ('KO' if error_flag > 0 else 'OK')
-    if error_flag:
-        assert all(map(lambda x: x[0] in x[1], zip(result['details'], error_msg.split('\n'))))
+
+        # Assert if error was returned
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['total_failed_items'] == error_flag
 
 
 @patch('wazuh.manager.open')
-@patch('wazuh.manager.fcntl.lockf')
+@patch('wazuh.manager.fcntl')
 @patch("wazuh.manager.exists", return_value=True)
 def test_validation_ko(mosck_exists, mock_lockf, mock_open):
-
     # Remove api_socket raise OSError
     with patch('wazuh.manager.remove', side_effect=OSError):
-        with pytest.raises(WazuhException, match='.* 1014 .*'):
+        with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
             validation()
-
 
     with patch('wazuh.manager.remove'):
         # Socket creation raise socket.error
         with patch('socket.socket', side_effect=socket.error):
-            with pytest.raises(WazuhException, match='.* 1013 .*'):
+            with pytest.raises(WazuhInternalError, match='.* 1013 .*'):
                 validation()
 
         with patch('socket.socket.bind'):
             # Socket connection raise socket.error
             with patch('socket.socket.connect', side_effect=socket.error):
-                with pytest.raises(WazuhException, match='.* 1013 .*'):
+                with pytest.raises(WazuhInternalError, match='.* 1013 .*'):
                     validation()
 
             # execq_socket_path not exists
             with patch("wazuh.manager.exists", return_value=False):
-                 with pytest.raises(WazuhException, match='.* 1901 .*'):
+                 with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
                     validation()
 
             with patch('socket.socket.connect'):
                 # Socket send raise socket.error
                 with patch('socket.socket.send', side_effect=socket.error):
-                    with pytest.raises(WazuhException, match='.* 1014 .*'):
+                    with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
                         validation()
 
                 with patch('socket.socket.send'):
                     # Socket recv raise socket.error
                     with patch('socket.socket.recv', side_effect=socket.timeout):
-                        with pytest.raises(WazuhException, match='.* 1014 .*'):
+                        with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
                             validation()
 
                     # _parse_execd_output raise KeyError
                     with patch('socket.socket.recv'):
-                        with patch('wazuh.manager._parse_execd_output', side_effect=KeyError):
-                            with pytest.raises(WazuhException, match='.* 1904 .*'):
+                        with patch('wazuh.manager.parse_execd_output', side_effect=KeyError):
+                            with pytest.raises(WazuhInternalError, match='.* 1904 .*'):
                                 validation()
 
-@patch('wazuh.configuration.get_active_configuration')
+
+@patch('wazuh.core.configuration.get_active_configuration')
 def test_get_config(mock_act_conf):
+    """Tests get_config() method works as expected"""
     get_config('component', 'config')
 
+    # Assert whether get_active_configuration() method receives the expected parameters.
     mock_act_conf.assert_called_once_with(agent_id='000', component='component', configuration='config')
 
 
+def test_get_config_ko():
+    """Tests get_config() function returns an error"""
+    result = get_config()
 
-ossec_log_file = '''2019/03/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:501 at wm_get_os_arch(): DEBUG: Detected architecture from Linux |ip-10-0-1-141.us-west-1.compute.internal |3.10.0-957.1.3.el7.x86_64 |#1 SMP Thu Nov 29 14:49:43 UTC 2018 |x86_64: x86_64
-2019/02/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:695 at wm_sync_agentinfo(): DEBUG: wm_sync_agentinfo(4): 0.091 ms.
-2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: Starting evaluation.
-2019/03/27 10:42:07 wazuh-modulesd:rootcheck: INFO: Starting evaluation.
-2019/03/26 13:03:11 ossec-csyslogd: INFO: Remote syslog server not configured. Clean exit.
-2019/03/26 19:49:15 ossec-execd: ERROR: (1210): Queue '/var/ossec/queue/alerts/execa' not accessible: 'No such file or directory'.
-2019/03/26 17:07:32 wazuh-modulesd:aws-s3[13155] wmodules-aws.c:186 at wm_aws_read(): ERROR: Invalid bucket type 'inspector'. Valid ones are 'cloudtrail', 'config', 'custom', 'guardduty' or 'vpcflow'
-2019/04/11 12:51:40 wazuh-modulesd:aws-s3: INFO: Executing Bucket Analysis: wazuh-aws-wodle
-2019/04/11 12:53:37 wazuh-modulesd:aws-s3: WARNING: Bucket:  -  Returned exit code 7
-2019/04/11 12:53:37 wazuh-modulesd:aws-s3: WARNING: Bucket:  -  Unexpected error querying/working with objects in S3: db_maintenance() got an unexpected keyword argument 'aws_account_id'
-
-2019/04/11 12:53:37 wazuh-modulesd:aws-s3: INFO: Executing Bucket Analysis: wazuh-aws-wodle
-2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: This is a
-multiline log
-2019/03/26 13:03:11 ossec-csyslogd: INFO: Remote syslog server not configured. Clean exit.'''
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1307
 
 
-@pytest.mark.parametrize('category, type_log, totalItems, sort', [
-    ('all', 'all', 12, None),
-    ('wazuh-modulesd:database', 'all', 1, None),
-    ('wazuh-modulesd:syscollector', 'all', 2, None),
-    ('wazuh-modulesd:syscollector', 'all', 2, None),
-    ('wazuh-modulesd:aws-s3', 'all', 5, None),
-    ('ossec-execd', 'all', 1, None),
-    ('ossec-csyslogd', 'all', 2, None),
-    ('random', 'all', 0, {'order':'asc', 'fields':['timestamp']}),
-    ('all', 'info', 7, {'order':'desc', 'fields':['timestamp']}),
-    ('all', 'error', 2, {'order':'asc', 'fields':['level']}),
-    ('all', 'debug', 1, {'order':'desc', 'fields':['level']}),
-    ('all', 'random', 0, {'order':'asc', 'fields':None}),
-    ('all', 'warning', 2, {'order':'desc', 'fields':None})
-])
-@patch("wazuh.manager.previous_month", return_value=datetime.strptime('2019-03-01 00:00:00', '%Y-%m-%d %H:%M:%S'))
-def test_ossec_log(mock_month, test_manager, category, type_log, totalItems, sort):
-    """Test reading ossec.log file contents."""
-    with patch('wazuh.manager.tail') as tail_patch:
-        tail_patch.return_value = ossec_log_file.splitlines()
-        filters = {'category': category, 'type_log': type_log}
-        logs = ossec_log(filters=filters, sort=sort)
-        assert logs['totalItems'] == totalItems
-        assert all(log['description'][-1] != '\n' for log in logs['items'])
-        if category != 'all' and category != 'wazuh-modulesd:syscollector':
-            assert all('\n' not in log['description'] for log in logs['items'])
+def test_read_ossec_conf():
+    """Tests read_ossec_conf() function works as expected"""
+    result = read_ossec_conf()
+
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['total_failed_items'] == 0
+
+
+def test_read_ossec_con_ko():
+    """Tests read_ossec_conf() function returns an error"""
+    result = read_ossec_conf(section='test')
+
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1102
+
+@patch('builtins.open')
+def test_get_basic_info(mock_open):
+    """Tests get_basic_info() function works as expected"""
+    result = get_basic_info()
+
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['total_failed_items'] == 0

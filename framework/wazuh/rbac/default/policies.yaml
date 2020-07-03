@@ -1,0 +1,268 @@
+default_policies:
+  agents_all:
+    description: Grant full access to all agents related functionalities.
+    policies:
+      resourceless:
+        actions:
+          - agent:create
+          - group:create
+        resources:
+          - '*:*:*'
+        effect: allow
+      agents:
+        actions:
+          - agent:read
+          - agent:delete
+          - agent:modify_group
+          - agent:restart
+          - agent:upgrade
+        resources:
+          - agent:id:*
+          - agent:group:*
+        effect: allow
+      groups:
+        actions:
+          - group:read
+          - group:delete
+          - group:update_config
+          - group:modify_assignments
+        resources:
+          - group:id:*
+        effect: allow
+
+  agents_read:
+    description: Grant read access to all agents related functionalities.
+    policies:
+      agents:
+        actions:
+          - agent:read
+        resources:
+          - agent:id:*
+          - agent:group:*
+        effect: allow
+      groups:
+        actions:
+          - group:read
+        resources:
+          - group:id:*
+        effect: allow
+
+  agents_commands:
+    description: Allow sending commands to agents.
+    policies:
+      agents:
+        actions:
+          - active-response:command
+        resources:
+          - agent:id:*
+        effect: allow
+
+  security_all:
+    description: Provide full access to all security related functionalities.
+    policies:
+      resourceless:
+        actions:
+          - security:create
+          - security:create_user
+          - security:read_config
+          - security:update_config
+          - security:revoke
+        resources:
+          - '*:*:*'
+        effect: allow
+      security:
+        actions:
+          - security:read
+          - security:update
+          - security:delete
+        resources:
+          - role:id:*
+          - policy:id:*
+          - user:id:*
+        effect: allow
+
+  users_all:
+    description: Provide full access to all users related functionalities.
+    policies:
+      resourceless:
+        actions:
+          - security:create_user
+          - security:revoke
+        resources:
+          - '*:*:*'
+        effect: allow
+      users:
+        actions:
+          - security:read
+          - security:update
+          - security:delete
+        resources:
+          - user:id:*
+        effect: allow
+
+  ciscat_read:
+    description: Allow read agent’s ciscat results information.
+    policies:
+      ciscat:
+        actions:
+          - ciscat:read
+        resources:
+          - agent:id:*
+        effect: allow
+
+  decoders_read:
+    description: Allow read all decoder files in the system.
+    policies:
+      decoders:
+        actions:
+          - decoders:read
+        resources:
+          - decoder:file:*
+        effect: allow
+
+  mitre_read:
+    description: Allow read MITRE database information.
+    policies:
+      mitre:
+        actions:
+          - mitre:read
+        resources:
+          - '*:*:*'
+        effect: allow
+
+  lists_read:
+    description: Allow read all lists paths in the system.
+    policies:
+      rules:
+        actions:
+          - lists:read
+        resources:
+          - list:path:*
+        effect: allow
+
+  rules_read:
+    description: Allow read all rule files in the system.
+    policies:
+      rules:
+        actions:
+          - rules:read
+        resources:
+          - rule:file:*
+        effect: allow
+
+  sca_read:
+    description: Allow read agent’s sca information.
+    policies:
+      sca:
+        actions:
+          - sca:read
+        resources:
+          - agent:id:*
+        effect: allow
+
+  syscheck_read:
+    description: Allow read syscheck information
+    policies:
+      syscheck:
+        actions:
+          - syscheck:read
+        resources:
+          - agent:id:*
+        effect: allow
+
+  syscheck_all:
+    description: Allow read, run and clear syscheck information
+    policies:
+      syscheck:
+        actions:
+          - syscheck:clear
+          - syscheck:read
+          - syscheck:run
+        resources:
+          - agent:id:*
+        effect: allow
+
+  syscollector_read:
+    description: Allow read agents information
+    policies:
+      syscollector:
+        actions:
+          - syscollector:read
+        resources:
+          - agent:id:*
+        effect: allow
+
+  cluster_all:
+    description: Provide full access to all cluster/manager related functionalities.
+    policies:
+      resourceless:
+        actions:
+          - cluster:status
+          - manager:read_config
+          - manager:read_api_config
+          - manager:update_api_config
+          - manager:upload_file
+          - manager:restart
+          - manager:delete_file
+        resources:
+          - '*:*:*'
+        effect: allow
+      files:
+        actions:
+          - manager:delete_file
+          - manager:read_file
+        resources:
+          - file:path:*
+        effect: allow
+      nodes:
+        actions:
+          - cluster:delete_file
+          - cluster:read_api_config
+          - cluster:read_config
+          - cluster:read_api_config
+          - cluster:update_api_config
+          - cluster:restart
+          - cluster:upload_file
+        resources:
+          - node:id:*
+        effect: allow
+      combination:
+        actions:
+          - cluster:read_file
+          - cluster:delete_file
+        resources:
+          - node:id:*&file:path:*
+        effect: allow
+
+  cluster_read:
+    description: Provide read access to all cluster/manager related functionalities.
+    policies:
+      resourceless:
+        actions:
+          - cluster:status
+          - manager:read_config
+          - manager:read_api_config
+        resources:
+          - '*:*:*'
+        effect: allow
+      files:
+        actions:
+          - manager:read_config
+          - manager:read_api_config
+        resources:
+          - file:path:*
+        effect: allow
+      nodes:
+        actions:
+          - cluster:read_api_config
+          - cluster:read_config
+          - cluster:read_api_config
+        resources:
+          - node:id:*
+        effect: allow
+      combination:
+        actions:
+          - cluster:read_file
+        resources:
+          - node:id:*&file:path:*
+        effect: allow
