@@ -6192,6 +6192,42 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
 
+  /agents/node/{node_id}/restart:
+      put:
+        tags:
+          - agents
+        summary: "Restart all agents which belong to a node"
+        description: "Restart all agents which belong to a specific given node"
+        operationId: api.controllers.agents_controller.restart_agents_by_node
+        x-rbac-actions:
+          - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+          - $ref: '#/x-rbac-catalog/actions/agent:restart'
+        parameters:
+          - $ref: '#/components/parameters/pretty'
+          - $ref: '#/components/parameters/wait_for_complete'
+          - $ref: '#/components/parameters/node_id'
+        responses:
+          '200':
+            description: 'Agents restarted'
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ApiResponse'
+                example:
+                  data:
+                    affected_items:
+                      - "002"
+                      - "003"
+                      - "007"
+                    total_affected_items: 3
+                    failed_items: []
+                    total_failed_items: 0
+                  message: "Restart command sent to all agents"
+          '400':
+            $ref: '#/components/responses/ResponseError'
+          '401':
+            $ref: '#/components/responses/UnauthorizedResponse'
+
   /agents/outdated:
     get:
       tags:

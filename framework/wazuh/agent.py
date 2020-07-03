@@ -123,6 +123,32 @@ def restart_agents(agent_list=None):
     return result
 
 
+@expose_resources(actions=['cluster:read_config'], resources=['node:id:{node_id}'], post_proc_func=None)
+def restart_agents_by_node(node_id=None):
+    """Restart all agents which belong to `node_id`.
+
+    Parameters
+    ----------
+    node_id : list
+        One element list with the name of the node.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+    """
+    # Check the node exists
+    if node_id[0] not in common.cluster_nodes.get():
+        raise WazuhError(1730)
+
+    # Get all agents belonging to that node
+    data_query = WazuhDBQueryAgents(select=['id'], filters={'node_name': node_id})
+    agent_list = data_query.run()['items']
+
+    # Restart every agent
+    result = restart_agents(agent_list=[agent['id'] for agent in agent_list if agent['id'] != '000'])
+    return result
+
+
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701]})
 def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,

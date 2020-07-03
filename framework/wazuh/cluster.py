@@ -1,14 +1,13 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.control import get_health, get_nodes
 from wazuh.core.cluster.utils import get_cluster_status, read_cluster_config, read_config
 from wazuh.core.exception import WazuhError
-from wazuh.rbac.decorators import expose_resources, async_list_handler
 from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.rbac.decorators import expose_resources, async_list_handler
 
 cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
