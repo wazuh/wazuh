@@ -10,12 +10,11 @@
  */
 
 #pragma once
-#include <vector>
+#include <map>
 #include <memory>
 #include <mutex>
 
 #include "dbengine_factory.h"
-#include "dbengine_context.h"
 #include "typedef.h"
 #include "json.hpp"
 
@@ -43,12 +42,27 @@ namespace DbSync
                                  const std::string& sqlStatement);
         void release();
     private:
+
+        struct DbEngineContext
+        {
+            DbEngineContext(std::unique_ptr<IDbEngine>& dbEngine,
+                            const HostType hostType,
+                            const DbEngineType dbType)
+            : m_dbEngine{std::move(dbEngine)}
+            , m_hostType{hostType}
+            , m_dbEngineType{dbType}
+            {}
+            const std::unique_ptr<IDbEngine> m_dbEngine;
+            const HostType m_hostType;
+            const DbEngineType m_dbEngineType;
+        };
+
         std::shared_ptr<DbEngineContext> dbEngineContext(const DBSYNC_HANDLE handle);
         DBSyncImplementation() = default;
         ~DBSyncImplementation() = default;
         DBSyncImplementation(const DBSyncImplementation&) = delete;
         DBSyncImplementation& operator=(const DBSyncImplementation&) = delete;
-        std::vector<std::shared_ptr<DbEngineContext>> m_dbSyncContexts;
+        std::map<DBSYNC_HANDLE, std::shared_ptr<DbEngineContext>> m_dbSyncContexts;
         std::mutex m_mutex;
     };
 }
