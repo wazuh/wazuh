@@ -477,7 +477,7 @@ float DirSize(const char *path) {
     char *entry;
 
     if (directory = opendir(path), directory == NULL) {
-        mdebug2("Couln't open directory '%s'.", path);
+        mdebug2("Couldn't open directory '%s'.", path);
         return -1;
     }
 
