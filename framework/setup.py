@@ -40,18 +40,18 @@ class InstallCommand(install):
 
 
 setup(name='wazuh',
-      version='3.14.0',
+      version='4.0.0',
       description='Wazuh control with Python',
       url='https://github.com/wazuh',
       author='Wazuh',
       author_email='hello@wazuh.com',
       license='GPLv2',
       packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
-      package_data={'wazuh': ['wazuh.json']},
+      package_data={'wazuh': ['wazuh.json', 'core/cluster/cluster.json', 'rbac/default/*.yaml']},
       include_package_data=True,
       install_requires=[],
       zip_safe=False,
       cmdclass={
-          'install': InstallCommand,
+          'install': InstallCommand
       }
       )
