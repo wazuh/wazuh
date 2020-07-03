@@ -11,8 +11,8 @@
 
 #pragma once
 #include "db_exception.h"
-#include "sqlite_dbengine.h"
-#include "sqlite_wrapper_factory.h"
+#include "sqlite/sqlite_dbengine.h"
+#include "sqlite/sqlite_wrapper_factory.h"
 #include "typedef.h"
 #include <iostream>
 
