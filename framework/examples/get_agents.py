@@ -31,7 +31,7 @@ path.append(framework_path)
 
 try:
     from wazuh import Wazuh
-    from wazuh.agent import Agent
+    from wazuh.core.agent import Agent
 except Exception as e:
     print("No module 'wazuh' found.")
     exit()
