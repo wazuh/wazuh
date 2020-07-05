@@ -299,14 +299,26 @@ checkInstallation() {
 }
 
 main() {
-    healthCheck
-    installPrerequisites
-    addWazuhrepo
-    installWazuh
-    installElasticsearch
-    installFilebeat
-    installKibana
-    checkInstallation
+    if [ "$1" == "-i" ] || [ "$1" == "--ignore-healthcheck" ]
+    then
+        echo "Health-check ignored."
+        installPrerequisites
+        addWazuhrepo
+        installWazuh
+        installElasticsearch
+        installFilebeat
+        installKibana
+        checkInstallation
+    else
+        healthCheck
+        installPrerequisites
+        addWazuhrepo
+        installWazuh
+        installElasticsearch
+        installFilebeat
+        installKibana
+        checkInstallation         
+    fi 
 }
 
-main
+main "$@"
