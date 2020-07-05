@@ -111,11 +111,20 @@ healthCheck() {
 
 main() {
 
-    healthCheck
-    installPrerequisites
-    addWazuhrepo
-    installWazuh
-    installFilebeat
+    if [ "$1" == "-i" ] || [ "$1" == "--ignore-healthcheck" ]
+    then
+        echo "Health-check ignored."
+        installPrerequisites
+        addWazuhrepo
+        installWazuh
+        installFilebeat
+    else
+        healthCheck
+        installPrerequisites
+        addWazuhrepo
+        installWazuh
+        installFilebeat
+    fi      
     
     if [ -n "$1" ] 
     then    
