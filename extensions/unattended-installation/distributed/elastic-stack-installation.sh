@@ -195,9 +195,16 @@ main() {
 
     if [ -n "$1" ] 
     then
-        healthCheck
-        installPrerequisites
-        addWazuhrepo 
+        if [ "$1" == "-i" ] || [ "$1" == "--ignore-healthcheck" ]
+        then
+            echo "Health-check ignored."
+            installPrerequisites
+            addWazuhrepo     
+        else
+            healthCheck
+            installPrerequisites
+            addWazuhrepo             
+        fi        
         while [ -n "$1" ]
         do
             case "$1" in
