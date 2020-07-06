@@ -55,6 +55,7 @@ static void wm_vuldet_remove_os_feed(vu_os_feed *feed, char full_r);
 static void wm_vuldet_remove_os_feed_list(vu_os_feed *feeds);
 static void wm_vuldet_init_provider_options(provider_options *options);
 static void wm_vuldet_clear_provider_options(provider_options options);
+static void wm_vuldet_enable_rhel_json_feed(update_node **updates);
 
 // Options
 static const char *XML_DISABLED = "disabled";
@@ -206,7 +207,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         upd->dist_tag_ref = FEED_JREDHAT;
         upd->dist_ext = vu_feed_ext[FEED_JREDHAT];
         upd->dist_ref = FEED_JREDHAT;
-        upd->update_from_year = RED_HAT_REPO_DEFAULT_MIN_YEAR;
+        upd->update_from_year = RED_HAT_REPO_MIN_YEAR;
         upd->json_format = 1;
 
     } else if (strcasestr(feed, vu_feed_tag[FEED_REDHAT])) {
@@ -411,7 +412,8 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_FEED) ||
-                   !strcmp(nodes[i]->element, XML_UPDATE_UBUNTU_OVAL)) {
+                   !strcmp(nodes[i]->element, XML_UPDATE_UBUNTU_OVAL) || 
+                   !strcmp(nodes[i]->element, XML_UPDATE_REDHAT_OVAL)) {
             if (wm_vuldet_read_deprecated_config(xml, nodes[i], updates, &run_update)) {
                 return OS_INVALID;
             }
@@ -435,9 +437,28 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
         }
     }
 
+    wm_vuldet_enable_rhel_json_feed(updates);
+
     vuldet->flags.update = vuldet->flags.update | run_update;
 
     return 0;
+}
+
+void wm_vuldet_enable_rhel_json_feed(update_node **updates) {
+    int8_t rhel_enabled = 0;
+
+    // Search for any enabled rhel feed
+    for (int i = 0; i <= CVE_JREDHAT; i++) {
+        if (updates[i] && updates[i]->dist_ref == FEED_REDHAT) {    
+            rhel_enabled = 1;
+            break;
+        }
+    }
+
+    // As soon as a valid RedHat O.S. is detected, enable the RedHat JSON feed
+    if (rhel_enabled && !updates[CVE_JREDHAT]) {
+        wm_vuldet_set_feed_version("jredhat", NULL, updates);
+    } 
 }
 
 int wm_vuldet_read_deprecated_config(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update) {
@@ -676,6 +697,22 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         goto end;
     }
 
+
+    if (strcasestr(pr_name, "redhat") && p_options.update_since) {
+        // If a deprecated option is used, enable all rhel OVALs
+        char vsr [2] = {0};
+        vu_os_feed *list, *tmp_list = NULL;
+        // New @os_list linked list for RedHat
+        for (int i = 5; i <= 8; i++) {
+            os_calloc(1, sizeof(vu_os_feed), list);
+            if (tmp_list) tmp_list->next = list;
+            if (!os_list) os_list = list;
+            sprintf(vsr, "%d", i);
+            os_strdup(vsr, list->version);
+            tmp_list = list;
+        }
+    }
+
     if (!multi_provider) {
         while (os_list) {
             vu_os_feed *rem = os_list;
@@ -697,13 +734,6 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             if (os_list->allow && wm_vuldet_add_allow_os(updates[os_index], os_list->allow, 0)) {
                 wm_vuldet_remove_os_feed(rem, 0);
                 return OS_INVALID;
-            }
-
-            // As soon as a valid RedHat  O.S. is detected, enable the RedHat JSON feed
-            if (!strcmp(pr_name, "redhat") && !updates[CVE_JREDHAT]) {
-                if (os_index = wm_vuldet_set_feed_version("JREDHAT", "", updates), os_index == OS_INVALID || os_index == OS_SUPP_SIZE) {
-                    goto end;
-                }
             }
 
             mdebug1("Added %s (%s) feed. Interval: %lus | Path: '%s' | Url: '%s' | Timeout: %lds",
@@ -1013,6 +1043,7 @@ int wm_vuldet_add_multi_allow_os(update_node *update, char **src_os, char **dst_
 int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_provider, provider_options *options) {
     int i, j;
     int elements;
+    int8_t rhel_enabled = 0;
 
     memset(options, '\0', sizeof(provider_options));
 
@@ -1021,8 +1052,13 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
 
     for (i = 0; node[i]; i++) {
         if (!strcmp(node[i]->element, XML_UPDATE_FROM_YEAR)) {
-            if (multi_provider) {
-                int min_year = strcasestr(name, vu_feed_tag[FEED_REDHAT]) ? RED_HAT_REPO_MIN_YEAR : NVD_REPO_MIN_YEAR;
+            // Deprectared in RHEL
+            if (strcasestr(name, vu_feed_tag[FEED_REDHAT])) {
+                mwarn("'%s' option at module '%s' is deprecated. Use '%s' instead.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name, XML_OS);
+                rhel_enabled = 1;
+            }
+            if (multi_provider || rhel_enabled) {
+                int min_year = rhel_enabled ? RED_HAT_REPO_MIN_YEAR : NVD_REPO_MIN_YEAR;
                 if (!wm_vuldet_is_valid_year(node[i]->content, &options->update_since, min_year)) {
                     merror("Invalid content for '%s' option at module '%s'.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name);
                     return OS_INVALID;
