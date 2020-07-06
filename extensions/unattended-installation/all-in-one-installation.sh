@@ -165,7 +165,7 @@ installElasticsearch() {
         rm /etc/elasticsearch/esnode-key.pem /etc/elasticsearch/esnode.pem /etc/elasticsearch/kirk-key.pem /etc/elasticsearch/kirk.pem /etc/elasticsearch/root-ca.pem -f > /dev/null 2>&1
         mkdir /etc/elasticsearch/certs > /dev/null 2>&1
         cd /etc/elasticsearch/certs > /dev/null 2>&1
-        wget -q https://releases.floragunn.com/search-guard-tlstool/1.7/search-guard-tlstool-1.7.zip > /dev/null 2>&1
+        curl -so /etc/elasticsearch/certs/search-guard-tlstool-1.7.zip https://releases.floragunn.com/search-guard-tlstool/1.7/search-guard-tlstool-1.7.zip --max-time 300 > /dev/null 2>&1
         unzip search-guard-tlstool-1.7.zip -d searchguard > /dev/null 2>&1
         curl -so /etc/elasticsearch/certs/searchguard/search-guard.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/searchguard/search-guard-aio.yml --max-time 300 > /dev/null 2>&1
         chmod +x searchguard/tools/sgtlstool.sh > /dev/null 2>&1
