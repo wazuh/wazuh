@@ -197,10 +197,11 @@ async def restart_agents_by_node(request, node_id, pretty=False, wait_for_comple
     """
     nodes = await get_system_nodes()
 
-    f_kwargs = {'node_id': node_id}
+    f_kwargs = {'node_id': node_id, 'agent_list': '*'}
+
     dapi = DistributedAPI(f=agent.restart_agents_by_node,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
+                          request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,

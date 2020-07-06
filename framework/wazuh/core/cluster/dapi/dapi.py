@@ -457,13 +457,24 @@ class DistributedAPI:
         if 'agent_id' in self.f_kwargs or 'agent_list' in self.f_kwargs:
             # Group requested agents by node_name
             requested_agents = self.f_kwargs.get('agent_list', None) or [self.f_kwargs['agent_id']]
-            filters = {'id': requested_agents} if requested_agents != '*' else None
+            node_ids = self.f_kwargs.get('node_id', None)
+            if requested_agents != '*':
+                filters = {'id': requested_agents}
+            else:
+                if node_ids is not None:
+                    filters = {'node_name': node_ids}
+                    del self.f_kwargs['node_id']
+                else:
+                    filters = None
             system_agents = agent.Agent.get_agents_overview(select=select_node,
                                                             limit=None,
                                                             filters=filters,
                                                             sort={'fields': ['node_name'], 'order': 'desc'})['items']
             node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
                          itertools.groupby(system_agents, key=operator.itemgetter('node_name'))}
+            if not node_name and node_ids:
+                node_name[node_ids] = requested_agents
+
             if requested_agents != '*':  # When all agents are requested cannot be non existent ids
                 # Add non existing ids in the master's dictionary entry
                 non_existent_ids = list(set(requested_agents) - set(map(operator.itemgetter('id'), system_agents)))
