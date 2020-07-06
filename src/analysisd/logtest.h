@@ -11,6 +11,7 @@
 #include "rules.h"
 #include "decoders/decoder.h"
 #include "eventinfo.h"
+#include "../config/logtest-config.h"
 #include "../os_net/os_net.h"
 
 
@@ -52,6 +53,11 @@ typedef struct w_logtest_connection {
  * Then, call function w_logtest_main.
  */
 void *w_logtest_init();
+
+/**
+ * @brief Initialize internal options parameters
+ */
+int w_logtest_init_parameters();
 
 /**
  * @brief Main function of Wazuh Logtest module.
