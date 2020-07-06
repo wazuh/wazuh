@@ -2368,6 +2368,12 @@ components:
           format: int32
           minimum: 0
           example: 300
+        max_request_per_minute:
+          description: "Maximum number of requests per minute to be attended"
+          type: integer
+          format: int32
+          minimum: 1
+          example: 300
 
     # SCA models
     SCAChecks:
@@ -12747,6 +12753,9 @@ paths:
               example:
                 auth_token_exp_timeout: 36000
                 rbac_mode: white
+                max_n_attempts: 5
+                block_time: 300
+                max_request_per_minute: 300
         "400":
           $ref: "#/components/responses/ResponseError"
         "401":

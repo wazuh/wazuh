@@ -218,7 +218,7 @@ def to_relative_path(full_path):
     return os.path.relpath(full_path, WAZUH_PATH)
 
 
-def _create_problem(exc: Exception):
+def _create_problem(exc: Exception, code=None):
     """
     Transforms an exception into a ProblemException according to `exc`
 
@@ -227,6 +227,8 @@ def _create_problem(exc: Exception):
     exc : Exception
         If `exc` is an instance of `WazuhException` it will be casted into a ProblemException, otherwise it will be
         raised
+    code : int
+        HTTP status code for this response
 
     Raises
     ------
@@ -242,24 +244,31 @@ def _create_problem(exc: Exception):
     else:
         ext = None
     if isinstance(exc, WazuhError):
-        raise ProblemException(status=400, title='Wazuh Error', detail=exc.message, ext=ext)
+        raise ProblemException(status=400 if not code else code, title='Wazuh Error', detail=exc.message, ext=ext)
     elif isinstance(exc, (WazuhInternalError, WazuhException)):
-        raise ProblemException(status=500, title='Wazuh Internal Error', detail=exc.message, ext=ext)
+        raise ProblemException(status=500 if not code else code, title='Wazuh Internal Error', detail=exc.message, ext=ext)
     elif isinstance(exc, APIError):
-        raise ProblemException(status=400, title='Wazuh Error', detail=exc.details, ext=ext)
+        raise ProblemException(status=400 if not code else code, title='Wazuh Error', detail=exc.details, ext=ext)
     elif isinstance(exc, APIException):
-        raise ProblemException(status=500, title='Wazuh Internal Error', detail=exc.details, ext=ext)
+        raise ProblemException(status=500 if not code else code, title='Wazuh Internal Error', detail=exc.details, ext=ext)
     raise exc
 
 
-def raise_if_exc(obj):
-    """
-    Checks if obj is an Exception and raises it. Otherwise it is returned
+def raise_if_exc(obj, code=None):
+    """Checks if obj is an Exception and raises it. Otherwise it is returned
 
-    :param obj: object to be checked
-    :return: obj only if it is not an Exception instance
+    Parameters
+    ----------
+    obj : dict
+        Object to be checked
+    code : int
+        HTTP status code for this response
+
+    Returns
+    -------
+    An obj only if it is not an Exception instance
     """
     if isinstance(obj, Exception):
-        _create_problem(obj)
+        _create_problem(obj, code)
     else:
         return obj

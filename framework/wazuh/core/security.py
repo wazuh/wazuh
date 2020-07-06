@@ -33,7 +33,7 @@ def update_security_conf(new_config):
     need_revoke = False
     if new_config:
         for key in new_config:
-            if key in configuration.security_conf.keys():
+            if key in configuration.need_revoke_config:
                 need_revoke = True
         try:
             with open(SECURITY_CONFIG_PATH, 'w+') as f:

@@ -2,6 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from base64 import b64decode
+from json import loads
 from logging import getLogger
 from time import time
 
@@ -38,7 +40,8 @@ ip_block = set()
 
 
 @web.middleware
-async def prevent_denial_of_service(request, handler):
+async def prevent_bruteforce_attack(request, handler):
+    global ip_stats, ip_block
     if 'authenticate' in request.path:
         try:
             if time() - configuration.security_conf['block_time'] >= ip_stats[request.remote]['timestamp']:
@@ -63,11 +66,34 @@ async def prevent_denial_of_service(request, handler):
 
     response = await handler(request)
 
-    # If the user is correctly authenticate, his restrictions must be remove
-    try:
-        ip_stats.pop(request.remote)
-        ip_block.remove(request.remote)
-    except KeyError:
-        pass
+    return response
+
+
+request_counter = 0
+current_time = None
+
+
+@web.middleware
+async def prevent_denial_of_service(request, handler):
+    if 'authenticate' not in request.path:
+        global current_time, request_counter
+        if not current_time:
+            current_time = time()
+
+        if time() - 60 <= current_time:
+            request_counter += 1
+        else:
+            request_counter = 0
+            current_time = time()
+
+        if request_counter > configuration.security_conf['max_request_per_minute']:
+            logger.debug(f'Request rejected due to high request per second: Source IP: {request.remote}')
+            try:
+                payload = dict(request.raw_headers)[b'Authorization'].decode().split('.')[1]
+            except KeyError:
+                payload = dict(request.raw_headers)[b'authorization'].decode().split('.')[1]
+            request['user'] = loads(b64decode(payload).decode())['sub']
+            raise_if_exc(WazuhError(6001), code=429)
+    response = await handler(request)
 
     return response

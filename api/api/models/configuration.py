@@ -292,25 +292,28 @@ class SecurityConfigurationModel(Body):
     """Security configuration model."""
 
     def __init__(self, auth_token_exp_timeout: int = None, rbac_mode: str = None,
-                 max_n_attempts: int = None, block_time: int = None):
+                 max_n_attempts: int = None, block_time: int = None, max_request_per_minute: int = None):
         self.swagger_types = {
             'auth_token_exp_timeout': int,
             'rbac_mode': str,
             'max_n_attempts': int,
-            'block_time': int
+            'block_time': int,
+            'max_request_per_minute': int
         }
 
         self.attribute_map = {
             'auth_token_exp_timeout': 'auth_token_exp_timeout',
             'rbac_mode': 'rbac_mode',
             'max_n_attempts': 'max_n_attempts',
-            'block_time': 'block_time'
+            'block_time': 'block_time',
+            'max_request_per_minute': 'max_request_per_minute'
         }
 
         self._auth_token_exp_timeout = auth_token_exp_timeout
         self._rbac_mode = rbac_mode
         self._max_n_attempts = max_n_attempts
         self._block_time = block_time
+        self._max_request_per_minute = max_request_per_minute
 
     @property
     def auth_token_exp_timeout(self):
@@ -343,3 +346,11 @@ class SecurityConfigurationModel(Body):
     @block_time.setter
     def block_time(self, block_time):
         self._block_time = block_time
+
+    @property
+    def max_request_per_minute(self):
+        return self._max_request_per_minute
+
+    @max_request_per_minute.setter
+    def max_request_per_minute(self, max_request_per_minute):
+        self._max_request_per_minute = max_request_per_minute
