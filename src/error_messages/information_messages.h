@@ -60,5 +60,6 @@
 
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"
+#define LOGTEST_DISABLED                    "(7201): Logtest disabled"
 
 #endif /* INFO_MESSAGES_H */
