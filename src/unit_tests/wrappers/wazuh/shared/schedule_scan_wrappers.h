@@ -12,7 +12,11 @@
 #ifndef SCHEDULE_SCAN_WRAPPERS_H
 #define SCHEDULE_SCAN_WRAPPERS_H
 
+#include <time.h>
+#include "shared.h"
 
-
+time_t __wrap_sched_scan_get_time_until_next_scan(sched_scan_config *config,
+                                                  const char *MODULE_TAG,
+                                                  const int run_on_start);
 
 #endif
