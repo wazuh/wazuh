@@ -491,6 +491,7 @@ float DirSize(const char *path) {
         snprintf(entry, strlen(path) + 2 + strlen(dir->d_name), "%s/%s", path, dir->d_name);
 
         if (stat(entry, &buf) == -1) {
+            os_free(entry);
             return 0;
         }
 

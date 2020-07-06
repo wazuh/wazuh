@@ -1259,7 +1259,6 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                             }
                             else if (isdigit(children[j]->content[len_str_limit - 2])) {
                                 merror(XML_VALUEERR, children[j]->element, children[j]->content);
-                                os_free(limit_value_str);
                                 OS_ClearNode(children);
                                 return;
                             }
@@ -1284,7 +1283,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         }
                     }
                     else {
-                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        merror(XML_VALUEERR, children[j]->element, "");     // children[j]->content
                         OS_ClearNode(children);
                         return;
                     }
@@ -1385,7 +1384,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         }
                     }
                     else {
-                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        merror(XML_VALUEERR, children[j]->element, "");     // Null children[j]->content
                         OS_ClearNode(children);
                         return;
                     }
