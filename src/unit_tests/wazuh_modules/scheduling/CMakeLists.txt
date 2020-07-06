@@ -71,7 +71,8 @@ list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_gcp_scheduling")
 list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
-                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=FOREVER,--wrap=realpath,--wrap=IsFile,--wrap,atexit")
+                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=FOREVER,--wrap=realpath,--wrap=IsFile,--wrap,atexit \
+                         -Wl,--wrap=sched_scan_get_time_until_next_scan")
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_oscap_scheduling")
