@@ -1,0 +1,42 @@
+## Multi-node configuration
+
+## Elasticsearch configuration
+network.host: <elasticsearch_ip>
+node.name: <node_name>
+cluster.name: <elastic_cluster>
+cluster.initial_master_nodes:
+        - <master_node_1>
+        - <master_node_2>
+        - <master_node_3>
+discovery.seed_hosts:
+        - <elasticsearch_ip_node1>
+        - <elasticsearch_ip_node2>
+        - <elasticsearch_ip_node3>
+opendistro_security.nodes_dn:
+        - CN=node-1,OU=Docu,O=Wazuh,L=California,C=US
+        - CN=node-2,OU=Docu,O=Wazuh,L=California,C=US
+        - CN=node-3,OU=Docu,O=Wazuh,L=California,C=US     
+
+## Certificates creation
+# Nodes certificates
+nodes:
+  - name: node-1
+    dn: CN=node-1,OU=Docu,O=Wazuh,L=California,C=US
+    ip:
+      - <elasticsearch_ip>
+# Clients certificates
+clients:
+  - name: admin
+    dn: CN=admin,OU=Docu,O=Wazuh,L=California,C=US
+    admin: true
+  - name: kibana
+    dn: CN=kibana,OU=Docu,O=Wazuh,L=California,C=US    
+  - name: filebeat
+    dn: CN=filebeat,OU=Docu,O=Wazuh,L=California,C=US
+
+
+## Kibana IP
+server.host: "<kibana-ip>"
+
+## Wazuh master IP
+url: <wazuh_master_server_IP>

@@ -1,0 +1,32 @@
+## Single-node configuration
+
+## Elasticsearch configuration
+network.host: <elasticsearch_ip>
+node.name: node-1
+cluster.initial_master_nodes: node-1
+
+## Certificates creation
+# Nodes certificates
+nodes:
+  - name: node-1
+    dn: CN=node-1,OU=Docu,O=Wazuh,L=California,C=US
+    ip:
+      - <elasticsearch_ip>
+# Clients certificates
+clients:
+  - name: admin
+    dn: CN=admin,OU=Docu,O=Wazuh,L=California,C=US
+    admin: true
+  - name: kibana
+    dn: CN=kibana,OU=Docu,O=Wazuh,L=California,C=US    
+  - name: filebeat
+    dn: CN=filebeat,OU=Docu,O=Wazuh,L=California,C=US
+
+
+## Kibana IP
+server.host: "<kibana-ip>"
+
+elasticsearch.hosts: https://<elasticsearch-ip>:9200
+
+## Wazuh master IP
+url: <wazuh_master_server_IP>
