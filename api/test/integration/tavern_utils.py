@@ -153,3 +153,17 @@ def test_validate_restart_by_node(response, data):
             failed_items.append(item['id'])
     assert response.json()['data']['affected_items'] == affected_items
     assert response.json()['data']['failed_items'] == failed_items
+
+
+def test_validate_restart_by_node_rbac(response, permitted_agents):
+    data = response.json().get('data', None)
+    if data:
+        if data['affected_items']:
+            for agent in data['affected_items']:
+                assert agent in permitted_agents
+        else:
+            assert data['total_affected_items'] == 0
+    else:
+        assert response.json()['status'] == 400
+        assert response.json()['code'] == 4000
+        assert 'agent:id' in response.json()['detail']
