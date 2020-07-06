@@ -25,6 +25,7 @@ clients:
 
 ## Kibana IP
 server.host: "<kibana-ip>"
+elasticsearch.hosts: https://<elasticsearch-ip>:9200
 
 elasticsearch.hosts: https://<elasticsearch-ip>:9200
 

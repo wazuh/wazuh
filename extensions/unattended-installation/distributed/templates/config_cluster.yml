@@ -37,6 +37,7 @@ clients:
 
 ## Kibana IP
 server.host: "<kibana-ip>"
+elasticsearch.hosts: https://<elasticsearch-ip>:9200
 
 ## Wazuh master IP
 url: <wazuh_master_server_IP>
