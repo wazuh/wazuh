@@ -499,6 +499,7 @@
 #define LOGTEST_ERROR_ACCEPT_CONN                   "(7301): Failure to accept connection. Errno: %s"
 #define LOGTEST_ERROR_RECV_MSG                      "(7302): Failure to receive message. Errno: %s"
 #define LOGTEST_ERROR_INIT_HASH                     "(7303): Failure to initialize all_sesssions hash"
+#define LOGTEST_ERROR_INV_CONF                      "(7304): Invalid wazuh-logtest configuration"
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

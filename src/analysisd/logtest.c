@@ -9,9 +9,31 @@
 
 #include "logtest.h"
 
+
+/**
+ * @brief Internal options configuration
+ */
+static logtestConfig config;
+
+/**
+ * @brief Mutex to prevent race condition in accept syscall.
+ */
+static pthread_mutex_t mutex;
+
+
 void *w_logtest_init() {
 
     w_logtest_connection connection;
+
+    if(w_logtest_init_parameters() == OS_INVALID) {
+        merror(LOGTEST_ERROR_INV_CONF);
+        return NULL;
+    }
+
+    if(!strcmp(config.enabled, "no")) {
+        minfo(LOGTEST_DISABLED);
+        return NULL;
+    }
 
     if (connection.sock = OS_BindUnixDomain(LOGTEST_SOCK, SOCK_STREAM, OS_MAXSTR), connection.sock < 0) {
         merror(LOGTEST_ERROR_BIND_SOCK, LOGTEST_SOCK, errno, strerror(errno));
@@ -27,6 +49,10 @@ void *w_logtest_init() {
 
     minfo(LOGTEST_INITIALIZED);
 
+    for(int i = 1; i < config.threads; i++) {
+        w_create_thread(w_logtest_main, &connection);
+    }
+
     w_logtest_main(&connection);
 
     close(connection.sock);
@@ -40,7 +66,26 @@ void *w_logtest_init() {
 }
 
 
-void *w_logtest_main(w_logtest_connection * connection) {
+int w_logtest_init_parameters() {
+
+    int modules = CLOGTEST;
+
+    config.threads = LOGTEST_THREAD;
+    config.max_sessions = LOGTEST_MAX_SESSIONS;
+    config.session_timeout = LOGTEST_SESSION_TIMEOUT;
+
+    os_calloc(4, sizeof(char), config.enabled);
+    os_strdup("yes", config.enabled);
+
+    if (ReadConfig(modules, OSSECCONF, &config, NULL) < 0) {
+        return OS_INVALID;
+    }
+
+    return OS_SUCCESS;
+}
+
+
+void *w_logtest_main(w_logtest_connection *connection) {
 
     int client;
     char msg_received[OS_MAXSTR];
