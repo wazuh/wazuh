@@ -18,13 +18,14 @@ DBSYNC_HANDLE DBSyncImplementation::initialize(const HostType hostType,
                                                const std::string& sqlStatement)
 {
     auto db{ FactoryDbEngine::create(dbType, path, sqlStatement) };
+    const auto spDbEngineContext
+    {
+        std::make_shared<DbEngineContext>(db, hostType, dbType)
+    };
+    const DBSYNC_HANDLE handle{ spDbEngineContext.get() };
     std::lock_guard<std::mutex> lock{m_mutex};
-    m_dbSyncContexts.push_back(std::make_shared<DbEngineContext>(
-      db,
-      hostType,
-      dbType
-    ));
-    return m_dbSyncContexts.back().get();
+    m_dbSyncContexts[handle] = spDbEngineContext;
+    return handle;
 }
 
 void DBSyncImplementation::release()
@@ -38,7 +39,7 @@ void DBSyncImplementation::insertBulkData(const DBSYNC_HANDLE handle,
 {
     const auto ctx{ dbEngineContext(handle) };
     const auto json { nlohmann::json::parse(jsonRaw)};
-    ctx->dbEngine()->bulkInsert(json[0]["table"], json[0]["data"]);
+    ctx->m_dbEngine->bulkInsert(json[0]["table"], json[0]["data"]);
 }
 
 void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE handle,
@@ -48,7 +49,7 @@ void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE handle,
     const auto ctx{ dbEngineContext(handle) };
     const auto json { nlohmann::json::parse(jsonSnapshot)};
     nlohmann::json jsonResult;
-    ctx->dbEngine()->refreshTableData(json[0], std::make_tuple(std::ref(jsonResult), nullptr));
+    ctx->m_dbEngine->refreshTableData(json[0], std::make_tuple(std::ref(jsonResult), nullptr));
     result = std::move(jsonResult.dump());
 }
 
@@ -59,21 +60,13 @@ void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE handle,
     const auto ctx{ dbEngineContext(handle) };
     const auto json { nlohmann::json::parse(jsonSnapshot)};
     nlohmann::json fake;
-    ctx->dbEngine()->refreshTableData(json[0], std::make_tuple(std::ref(fake), callback));
+    ctx->m_dbEngine->refreshTableData(json[0], std::make_tuple(std::ref(fake), callback));
 }
 
-std::shared_ptr<DbEngineContext> DBSyncImplementation::dbEngineContext(const DBSYNC_HANDLE handle)
+std::shared_ptr<DBSyncImplementation::DbEngineContext> DBSyncImplementation::dbEngineContext(const DBSYNC_HANDLE handle)
 {
     std::lock_guard<std::mutex> lock{m_mutex};
-    const auto it
-    {
-        std::find_if(m_dbSyncContexts.begin(),
-                     m_dbSyncContexts.end(),
-                     [handle](const std::shared_ptr<DbEngineContext>& context)
-                     {
-                        return context.get() == handle;
-                     })
-    };
+    const auto it{ m_dbSyncContexts.find(handle) };
     if (it == m_dbSyncContexts.end())
     {
         throw dbsync_error
@@ -81,5 +74,5 @@ std::shared_ptr<DbEngineContext> DBSyncImplementation::dbEngineContext(const DBS
             2, "Invalid handle value."
         };
     }
-    return *it;
+    return it->second;
 }
