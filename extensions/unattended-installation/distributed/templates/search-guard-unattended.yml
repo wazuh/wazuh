@@ -1,0 +1,40 @@
+# Self-signed certificate authority
+ca:
+   root:
+      dn: CN=elasticsearch,OU=Docu,O=Wazuh,L=California,C=US
+      keysize: 2048
+      validityDays: 3650
+      pkPassword: none
+      file: root-ca.pem
+
+# Default values and global settings
+defaults:
+
+      validityDays: 3650
+      pkPassword: none
+      generatedPasswordLength: 12
+      httpsEnabled: true
+
+
+# Nodes certificates
+nodes:
+  - name: node-1
+    dn: CN=node-1,OU=Docu,O=Wazuh,L=California,C=US
+    ip: 
+      - <elasticsearch_1_IP>
+  - name: node-2
+    dn: CN=node-2,OU=Docu,O=Wazuh,L=California,C=US
+    ip: 
+      - <elasticsearch_2_IP>
+  - name: node-3
+    dn: CN=node-3,OU=Docu,O=Wazuh,L=California,C=US
+    ip:
+      - <elasticsearch_3_IP>
+
+# Clients certificates
+clients:
+  - name: admin
+    dn: CN=admin,OU=Docu,O=Wazuh,L=California,C=US
+    admin: true
+  - name: filebeat
+    dn: CN=filebeat,OU=Docu,O=Wazuh,L=California,C=US
