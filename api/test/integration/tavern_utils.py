@@ -136,3 +136,20 @@ def test_response_is_different(response, response_value, unexpected_value):
     :param unexpected_value: Response value should be different to this.
     """
     assert response_value != unexpected_value, f"{response_value} and {unexpected_value} shouldn't be the same"
+
+
+def test_save_response_data(response):
+    return Box({'response_data': response.json()['data']})
+
+
+def test_validate_restart_by_node(response, data):
+    data = json.loads(data.replace("'", '"'))
+    affected_items = list()
+    failed_items = list()
+    for item in data['affected_items']:
+        if item['status'] == 'active':
+            affected_items.append(item['id'])
+        else:
+            failed_items.append(item['id'])
+    assert response.json()['data']['affected_items'] == affected_items
+    assert response.json()['data']['failed_items'] == failed_items
