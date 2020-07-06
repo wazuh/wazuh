@@ -23,7 +23,15 @@ nodes:
   - name: node-1
     dn: CN=node-1,OU=Docu,O=Wazuh,L=California,C=US
     ip:
-      - <elasticsearch_ip>
+      - <elasticsearch_ip_1>
+  - name: node-2
+    dn: CN=node-2,OU=Docu,O=Wazuh,L=California,C=US
+    ip:
+      - <elasticsearch_ip_2>
+  - name: node-3
+    dn: CN=node-3,OU=Docu,O=Wazuh,L=California,C=US
+    ip:
+      - <elasticsearch_ip_3>            
 # Clients certificates
 clients:
   - name: admin
