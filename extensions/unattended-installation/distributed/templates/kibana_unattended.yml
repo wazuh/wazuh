@@ -1,0 +1,10 @@
+server.port: 443
+elasticsearch.ssl.verificationMode: none
+elasticsearch.username: kibanaserver
+elasticsearch.password: kibanaserver
+elasticsearch.requestHeadersWhitelist: ["securitytenant","Authorization"]
+opendistro_security.multitenancy.enabled: false
+opendistro_security.readonly_mode.roles: ["kibana_read_only"]
+server.ssl.enabled: true
+server.ssl.key: "/etc/kibana/certs/kibana.key"
+server.ssl.certificate: "/etc/kibana/certs/kibana.pem"
