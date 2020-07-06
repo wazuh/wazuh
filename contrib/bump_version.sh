@@ -63,7 +63,8 @@ NSIS_FILE="../src/win32/ossec-installer.nsi"
 MSI_FILE="../src/win32/wazuh-installer.wxs"
 FW_SETUP="../framework/setup.py"
 FW_INIT="../framework/wazuh/__init__.py"
-CLUSTER_INIT="../framework/wazuh/cluster/__init__.py"
+CLUSTER_INIT="../framework/wazuh/core/cluster/__init__.py"
+API_SETUP="../api/setup.py"
 VERSION_DOCU="../src/Doxyfile"
 
 if [ -n "$version" ]
@@ -118,9 +119,14 @@ then
 
     sed -E -i'' -e "s/__version__ = '.+'/__version__ = '${version:1}'/g" $CLUSTER_INIT
 
+<<<<<<< HEAD
+    # API
+    sed -E -i'' -e "s/VERSION = '.+'/VERSION = '${version:1}'/g" $API_SETUP
+=======
     # Documentation config file
 
     sed -E -i'' -e "s/PROJECT_NUMBER         = \".+\"/PROJECT_NUMBER         = \"$version\"/g" $VERSION_DOCU
+>>>>>>> 3.12
 fi
 
 if [ -n "$revision" ]

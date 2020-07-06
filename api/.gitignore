@@ -1,0 +1,11 @@
+# Python
+*.pyc
+*.egg-info
+*.egg
+
+# Framework
+dist/
+build/
+
+# Projects
+.idea

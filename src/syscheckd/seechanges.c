@@ -181,7 +181,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
     snprintf(path, PATH_MAX, "%s/local/%s/diff.%d",
              DIFF_DIR_PATH, filename_abs + PATH_OFFSET, (int)alert_diff_time);
 
-    fp = fopen(path, "rb");
+    fp = wfopen(path, "rb");
     if (!fp) {
         merror(FIM_ERROR_GENDIFF_OPEN, path);
         return (NULL);
@@ -221,7 +221,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
 
         n = strlen(diff_str);
 
-        if(*(++p) != '*') {
+        if(p && p[1] != '*') {
             // If the second line does not start with '*', an error message was printed,
             // most likely stating that the files are "too different"
             if(n >= OS_MAXSTR - OS_SK_HEADER - 1 - strlen(STR_MORE_CHANGES)) {
@@ -263,12 +263,12 @@ static int seechanges_dupfile(const char *old, const char *current)
 
     buf[2048] = '\0';
 
-    fpr = fopen(old, "rb");
+    fpr = wfopen(old, "rb");
     if (!fpr) {
         return (0);
     }
 
-    fpw = fopen(current, "wb");
+    fpw = wfopen(current, "wb");
     if (!fpw) {
         fclose(fpr);
         return (0);
@@ -478,7 +478,7 @@ char *seechanges_addfile(const char *filename)
         /* Dont leak sensible data with a diff hanging around */
         FILE *fdiff;
         char* nodiff_message = "<Diff truncated because nodiff option>";
-        fdiff = fopen(diff_location, "wb");
+        fdiff = wfopen(diff_location, "wb");
         if (!fdiff){
             merror(FIM_ERROR_GENDIFF_OPEN_FILE, diff_location);
             goto cleanup;

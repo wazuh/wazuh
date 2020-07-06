@@ -131,7 +131,7 @@ If you need to rebuild cmocka, remember to remove all files from the `build` dir
 On Ubuntu, run the following commands:
 ```
 # Add 32 bit architecture
-sudo dpkg –-add-architecture i386
+sudo dpkg --add-architecture i386
 
 # Add key
 wget -qO - https://dl.winehq.org/wine-builds/winehq.key | sudo apt-key add -

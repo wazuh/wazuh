@@ -13,8 +13,7 @@
 #include "shared_download.h"
 #include <unistd.h>
 
-/* Global variables */
-int pass_empty_keyfile;
+
 
 /* Prototypes */
 static void help_remoted(void) __attribute__((noreturn));

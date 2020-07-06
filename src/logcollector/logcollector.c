@@ -43,6 +43,7 @@ int force_reload;
 int reload_interval;
 int reload_delay;
 int free_excluded_files_interval;
+OSHash * msg_queues_table;
 
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
@@ -264,8 +265,9 @@ void LogCollectorStart()
         } else {
             /* On Windows we need to forward the seek for wildcard files */
 #ifdef WIN32
-            set_read(current, i, j);
-            minfo(READING_FILE, current->file);
+            if (current->file) {
+                minfo(READING_FILE, current->file);
+            }
 
             if (current->fp) {
                 current->read(current, &r, 1);
@@ -1822,7 +1824,7 @@ void * w_output_thread(void * args){
                 #endif
 
                 while(1) {
-                    if(logr_queue = StartMQ(DEFAULTQPATH, WRITE), logr_queue > 0) {
+                    if(logr_queue = StartMQ(DEFAULTQPATH, WRITE), logr_queue >= 0) {
                         if (SendMSG(logr_queue, message->buffer, message->file, message->queue_mq) == 0) {
                             minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
                             break;  //  We sent the message successfully, we can go on.

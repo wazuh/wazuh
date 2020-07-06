@@ -260,19 +260,19 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
     memset(&sum, 0, sizeof(sk_sum_t));
 
     if (wdb_stmt_cache(wdb, WDB_STMT_FIM_LOAD) < 0) {
-        merror("DB(%s) Can't cache statement", wdb->agent_id);
+        merror("DB(%s) Can't cache statement", wdb->id);
         return -1;
     }
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        merror("DB(%s) Can't begin transaction", wdb->agent_id);
+        merror("DB(%s) Can't begin transaction", wdb->id);
         return -1;
     }
 
     stmt = wdb->stmt[WDB_STMT_FIM_LOAD];
 
     if (sqlite3_bind_text(stmt, 1, file, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -309,7 +309,7 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         return 0;
 
     default:
-        merror("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        merror("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -331,20 +331,20 @@ int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file
     }
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        merror("DB(%s) Can't begin transaction", wdb->agent_id);
+        merror("DB(%s) Can't begin transaction", wdb->id);
         goto end;
     }
 
     switch (wdb_fim_find_entry(wdb, file)) {
     case -1:
-        mdebug1("DB(%s) Can't find file by name", wdb->agent_id);
+        mdebug1("DB(%s) Can't find file by name", wdb->id);
         goto end;
 
     case 0:
         // File not found, add
 
         if (wdb_fim_insert_entry(wdb, file, ftype, &sum) < 0) {
-            mdebug1("DB(%s) Can't insert file entry", wdb->agent_id);
+            mdebug1("DB(%s) Can't insert file entry", wdb->id);
             goto end;
         }
 
@@ -354,7 +354,7 @@ int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file
         // Update entry
 
         if (wdb_fim_update_entry(wdb, file, &sum) < 1) {
-            mdebug1("DB(%s) Can't update file entry", wdb->agent_id);
+            mdebug1("DB(%s) Can't update file entry", wdb->id);
             goto end;
         }
     }
@@ -377,17 +377,17 @@ int wdb_syscheck_save2(wdb_t * wdb, const char * payload) {
     }
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse FIM payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse FIM payload: '%s'", wdb->id, payload);
         goto end;
     }
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        merror("DB(%s) Can't begin transaction.", wdb->agent_id);
+        merror("DB(%s) Can't begin transaction.", wdb->id);
         goto end;
     }
 
     if (wdb_fim_insert_entry2(wdb, data) == -1) {
-        mdebug1("DB(%s) Can't insert file entry.", wdb->agent_id);
+        mdebug1("DB(%s) Can't insert file entry.", wdb->id);
         goto end;
     }
 
@@ -404,7 +404,7 @@ int wdb_fim_find_entry(wdb_t * wdb, const char * path) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_FIM_FIND_ENTRY) < 0) {
-        merror("DB(%s) Can't cache statement", wdb->agent_id);
+        merror("DB(%s) Can't cache statement", wdb->id);
         return -1;
     }
 
@@ -420,7 +420,7 @@ int wdb_fim_find_entry(wdb_t * wdb, const char * path) {
         return 0;
         break;
     default:
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -438,12 +438,12 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
         s_ftype = "registry";
         break;
     default:
-        merror("DB(%s) Invalid file type '%d'", wdb->agent_id, ftype);
+        merror("DB(%s) Invalid file type '%d'", wdb->id, ftype);
         return -1;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_FIM_INSERT_ENTRY) < 0) {
-        merror("DB(%s) Can't cache statement", wdb->agent_id);
+        merror("DB(%s) Can't cache statement", wdb->id);
         return -1;
     }
 
@@ -478,7 +478,7 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
         return 0;
     } else {
         free(unescaped_perms);
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -493,7 +493,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
     cJSON *json_path = cJSON_GetObjectItem(data, "path");
 
     if (!json_path) {
-        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        merror("DB(%s) fim/save request with no file path argument.", wdb->id);
         return -1;
     }
 
@@ -501,19 +501,19 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
     cJSON * timestamp = cJSON_GetObjectItem(data, "timestamp");
 
     if (!cJSON_IsNumber(timestamp)) {
-        merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) fim/save request with no timestamp path argument.", wdb->id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) fim/save request with no valid attributes.", wdb->agent_id);
+        merror("DB(%s) fim/save request with no valid attributes.", wdb->id);
         return -1;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_FIM_INSERT_ENTRY2) < 0) {
-        merror("DB(%s) Can't cache statement", wdb->agent_id);
+        merror("DB(%s) Can't cache statement", wdb->id);
         return -1;
     }
 
@@ -537,7 +537,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
             } else if (strcmp(element->string, "inode") == 0) {
                 sqlite3_bind_int64(stmt, 13, element->valuedouble);
             } else {
-                merror("DB(%s) Invalid attribute name: %s", wdb->agent_id, element->string);
+                merror("DB(%s) Invalid attribute name: %s", wdb->id, element->string);
                 return -1;
             }
 
@@ -569,14 +569,14 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
             } else if (strcmp(element->string, "attributes") == 0) {
                 sqlite3_bind_text(stmt, 15, element->valuestring, -1, NULL);
             } else {
-                merror("DB(%s) Invalid attribute name: %s", wdb->agent_id, element->string);
+                merror("DB(%s) Invalid attribute name: %s", wdb->id, element->string);
                 return -1;
             }
         }
     }
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -589,7 +589,7 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     char s_perm[16];
 
     if (wdb_stmt_cache(wdb, WDB_STMT_FIM_UPDATE_ENTRY) < 0) {
-        merror("DB(%s) Can't cache statement", wdb->agent_id);
+        merror("DB(%s) Can't cache statement", wdb->id);
         return -1;
     }
 
@@ -624,7 +624,7 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
         return sqlite3_changes(wdb->db);
     } else {
         free(unescaped_perms);
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -634,7 +634,7 @@ int wdb_fim_delete(wdb_t * wdb, const char * path) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_FIM_DELETE) < 0) {
-        merror("DB(%s) Can't cache statement", wdb->agent_id);
+        merror("DB(%s) Can't cache statement", wdb->id);
         return -1;
     }
 
@@ -650,7 +650,7 @@ int wdb_fim_delete(wdb_t * wdb, const char * path) {
         return 0;
         break;
     default:
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -659,7 +659,7 @@ int wdb_fim_update_date_entry(wdb_t * wdb, const char *path) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_FIM_UPDATE_DATE) < 0) {
-        merror("DB(%s) Can't cache statement", wdb->agent_id);
+        merror("DB(%s) Can't cache statement", wdb->id);
         return -1;
     }
 
@@ -669,10 +669,10 @@ int wdb_fim_update_date_entry(wdb_t * wdb, const char *path) {
 
     switch (sqlite3_step(stmt)) {
     case SQLITE_DONE:
-        mdebug2("DB(%s) Updated date field for file '%s' to '%ld'", wdb->agent_id, path, (long)time(NULL));
+        mdebug2("DB(%s) Updated date field for file '%s' to '%ld'", wdb->id, path, (long)time(NULL));
         return 0;
     default:
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -685,11 +685,11 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
     long date;
 
     if(result = wdb_scan_info_get (wdb, "fim", "fim_third_check", &tscheck3), result < 0) {
-        mdebug1("DB(%s) Can't get scan_info entry", wdb->agent_id);
+        mdebug1("DB(%s) Can't get scan_info entry", wdb->id);
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_FIM_FIND_DATE_ENTRIES) < 0) {
-        merror("DB(%s) Can't cache statement", wdb->agent_id);
+        merror("DB(%s) Can't cache statement", wdb->id);
         return -1;
     }
 
@@ -702,15 +702,15 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
                 //call to delete
                 file = (char *)sqlite3_column_text(stmt, 0);
                 date = sqlite3_column_int64(stmt, 13);
-                mdebug2("DB(%s) Cleaning FIM DDBB. Deleting entry '%s' date<tscheck3 '%ld'<'%ld'.", wdb->agent_id, file, date, tscheck3);
+                mdebug2("DB(%s) Cleaning FIM DDBB. Deleting entry '%s' date<tscheck3 '%ld'<'%ld'.", wdb->id, file, date, tscheck3);
                 if(strcmp(file, "internal_options.conf") != 0 && strcmp(file, "ossec.conf") != 0) {
                     if (del_result = wdb_fim_delete(wdb, file), del_result < 0) {
-                        mdebug1("DB(%s) Can't delete FIM entry '%s'.", wdb->agent_id, file);
+                        mdebug1("DB(%s) Can't delete FIM entry '%s'.", wdb->id, file);
                     }
                 }
                 break;
             default:
-                mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+                mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                 return -1;
         }
     }

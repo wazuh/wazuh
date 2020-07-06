@@ -1,8 +1,6 @@
 /**
  * @file rbtree_op.c
- * @author Vikman Fernandez-Castro (victor@wazuh.com)
  * @brief RB tree data structure definition
- * @version 0.1
  * @date 2019-08-21
  *
  * @copyright Copyright (c) 2019 Wazuh, Inc.
@@ -25,6 +23,13 @@ extern void mock_assert(const int result, const char* const expression,
 #define assert(expression) \
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
+
+void customAssert(bool expression);
+void customAssert(bool expression) {
+    if (expression == FALSE) {
+        exit(1);
+    }
+}
 
 /* Private functions **********************************************************/
 
@@ -255,7 +260,7 @@ static void rb_balance_delete(rb_tree * tree, rb_node * node, rb_node * parent) 
         if (node == parent->left) {
             rb_node * sibling = parent->right;
 
-            assert(sibling != NULL);
+            customAssert(sibling != NULL);
 
             if (sibling->color == RB_RED) {
                 // Case 1: sibling is red
@@ -283,7 +288,7 @@ static void rb_balance_delete(rb_tree * tree, rb_node * node, rb_node * parent) 
                     sibling = parent->right;
                 }
 
-                assert(sibling->right != NULL);
+                customAssert(sibling->right != NULL);
                 // Case 4: Sibling is black, right nephew is red
 
                 sibling->color = parent->color;
@@ -323,7 +328,7 @@ static void rb_balance_delete(rb_tree * tree, rb_node * node, rb_node * parent) 
                     sibling = parent->left;
                 }
 
-                assert(sibling->left != NULL);
+                customAssert(sibling->left != NULL);
                 // Case 4b: Sibling is black, right nephew is red
 
                 sibling->color = parent->color;
