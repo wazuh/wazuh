@@ -450,15 +450,26 @@ void wm_vuldet_enable_rhel_json_feed(update_node **updates) {
     // Search for any enabled rhel feed
     for (int i = 0; i <= CVE_JREDHAT; i++) {
         if (updates[i] && updates[i]->dist_ref == FEED_REDHAT) {    
-            rhel_enabled = 1;
+            rhel_enabled = i;
             break;
         }
     }
 
-    // As soon as a valid RedHat O.S. is detected, enable the RedHat JSON feed
-    if (rhel_enabled && !updates[CVE_JREDHAT]) {
+    if (!rhel_enabled)
+        return;
+
+    if (updates[CVE_JREDHAT]) {
+        // Offline JSON but online OVALs
+        if (!updates[rhel_enabled]->path && !updates[rhel_enabled]->url) 
+            mwarn(VU_OFFLINE_CONFLICT, updates[CVE_JREDHAT]->dist);
+    } else {
+        // Online JSON but Offline OVALs
+        if (updates[rhel_enabled]->path || updates[rhel_enabled]->url) {
+            mwarn(VU_OFFLINE_CONFLICT, updates[rhel_enabled]->dist);
+        }
+        // As soon as a valid RedHat O.S. is detected, enable the RedHat JSON feed
         wm_vuldet_set_feed_version("jredhat", NULL, updates);
-    } 
+    }
 }
 
 int wm_vuldet_read_deprecated_config(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update) {
@@ -698,14 +709,14 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
     }
 
     if (strcasestr(pr_name, "redhat") && !os_list) {
-        // Enable all rhel OVALs if no feeds are specified.
+        mwarn(VU_NO_ENABLED_FEEDS, pr_name);
         char vsr [2] = {0};
         vu_os_feed *list, *tmp_list = NULL;
-        // New @os_list linked list for RedHat
+        // New linked list for RedHat (5, 6, 7 and 8)
         for (int i = 5; i <= 8; i++) {
             os_calloc(1, sizeof(vu_os_feed), list);
             if (tmp_list) tmp_list->next = list;
-            if (!os_list) os_list = list;
+            if (!os_list) os_list = list; // Save tail
             sprintf(vsr, "%d", i);
             os_strdup(vsr, list->version);
             tmp_list = list;
