@@ -1744,3 +1744,25 @@ stages:
         dapi_errors:
           unknown-node: # No permissions to see node name
             error: !anystr
+
+---
+test_name: PUT /agents/node/{node_id}/restart
+
+stages:
+
+  - name: Restart all agents belonging to master-node (Deny node_id - Could deny agent_id)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/node/master-node/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code:
+        - 200
+        - 400
+      verify_response_with:
+        - function: tavern_utils:test_validate_restart_by_node_rbac
+          extra_kwargs:
+            permitted_agents: ['001', '003', '004', '007'] # Only these agents can be restarted
+    delay_after: 10
