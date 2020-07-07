@@ -9,13 +9,12 @@
 
 /**
  * @file enrollment_op.h
- * @author Nicolas Papp (nicolas.papp@wazuh.com)
  * @date 4 April 2020
  * @brief Library that handles the enrollment process of an agent
  *
  * Wazuh agents need to register to a manager before being able to start sending messages
  * There are several way of registering according to manager's configuration
- * This library receives a enrollment configuration and target especification and registers to the 
+ * This library receives a enrollment configuration and target especification and registers to the
  * manager or shows several messages in case of failure
  * For details on enrollment process @see https://documentation.wazuh.com/3.12/user-manual/registering/
  */
@@ -41,13 +40,13 @@ typedef struct _enrollment_target_cfg {
 } w_enrollment_target;
 
 /**
- * @brief Certificate configurations 
- * 
+ * @brief Certificate configurations
+ *
  * Struct that defines the enrollment certificate configuration
  * Client Enrollment methods:
  * 1. Simple verification (only chipers needed)
  * 2. Password (uses authpass param)
- * 3. Manager Verificatiion (uses ca_cert param) 
+ * 3. Manager Verificatiion (uses ca_cert param)
  * 4. Manager and Agent Verification (uses agent_cert and agent_key params)
  */
 typedef struct _enrollment_cert_cfg {
@@ -58,7 +57,7 @@ typedef struct _enrollment_cert_cfg {
     char *agent_key;   /**> Agent Key (null if not used) */
     char *ca_cert;     /**> CA Certificate to verificate server (null if not used) */
     unsigned int auto_method:1; /**> 0 for TLS v1.2 only (Default), 1 for Auto negotiate the most secure common SSL/TLS method with the client. */
-} w_enrollment_cert; 
+} w_enrollment_cert;
 
 /**
  * @brief Strcture that handles all the enrollment configuration
@@ -108,7 +107,7 @@ void w_enrollment_destroy(w_enrollment_ctx *cfg);
 
 /**
  * @brief Generates an enrollment process
- * 
+ *
  * @param cfg configuration @see w_enrollment_ctx
  * @param server_adress (optional) If null server_adress will be obtained from cfg
  * @return 0 if successfull, -1 on error
