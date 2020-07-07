@@ -5467,6 +5467,38 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
 
+  /agents/group/{group_id}/restart:
+    put:
+      tags:
+        - agents
+      summary: 'Restart all agents in a group'
+      description: 'Restart all agents which belong to a given group'
+      operationId: api.controllers.agents_controller.restart_agents_by_group
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:restart'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/group_id'
+      responses:
+        '200':
+          description: Agents restarted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                example:
+                  message: "Restart command sent to all selected agents"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+
   /groups:
     delete:
       tags:
@@ -5938,38 +5970,6 @@ paths:
             application/xml:
               schema:
                 type: string
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-  /groups/{group_id}/restart:
-    put:
-      tags:
-        - groups
-      summary: 'Restart all agents in a group'
-      description: 'Restart all agents which belong to a given group'
-      operationId: api.controllers.agents_controller.restart_agents_by_group
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:restart'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id'
-      responses:
-        '200':
-          description: Agents restarted
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
-                example:
-                  message: "Restart command sent to all selected agents"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
