@@ -188,7 +188,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if(chld_node && (strcmp(node[i]->element, wlogtest) == 0)) {
-            if ((modules & CLOGTEST) && (Read_Logtest(chld_node, d1) < 0)) {
+            if ((modules & CLOGTEST) && (Read_Logtest(chld_node) < 0)) {
                 goto fail;
             }
 
