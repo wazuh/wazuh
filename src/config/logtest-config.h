@@ -28,3 +28,15 @@ typedef struct logtest_config {
     unsigned int session_timeout;
 
 } logtestConfig;
+
+/**
+ * @brief Global variable to save the configuration
+ */
+logtestConfig logtest_conf;
+
+
+/**
+ * @brief Return the rule_test configuration on demand
+ * @return Configuration in JSON format
+ */
+cJSON *getRuleTestConfig();

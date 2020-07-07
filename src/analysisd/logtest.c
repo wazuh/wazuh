@@ -11,11 +11,6 @@
 
 
 /**
- * @brief Internal options configuration
- */
-static logtestConfig config;
-
-/**
  * @brief Mutex to prevent race condition in accept syscall.
  */
 static pthread_mutex_t mutex;
@@ -30,7 +25,7 @@ void *w_logtest_init() {
         return NULL;
     }
 
-    if(!strcmp(config.enabled, "no")) {
+    if(!strcmp(logtest_conf.enabled, "no")) {
         minfo(LOGTEST_DISABLED);
         return NULL;
     }
@@ -49,7 +44,7 @@ void *w_logtest_init() {
 
     minfo(LOGTEST_INITIALIZED);
 
-    for(int i = 1; i < config.threads; i++) {
+    for(int i = 1; i < logtest_conf.threads; i++) {
         w_create_thread(w_logtest_main, &connection);
     }
 
@@ -70,14 +65,14 @@ int w_logtest_init_parameters() {
 
     int modules = CLOGTEST;
 
-    config.threads = LOGTEST_THREAD;
-    config.max_sessions = LOGTEST_MAX_SESSIONS;
-    config.session_timeout = LOGTEST_SESSION_TIMEOUT;
+    logtest_conf.threads = LOGTEST_THREAD;
+    logtest_conf.max_sessions = LOGTEST_MAX_SESSIONS;
+    logtest_conf.session_timeout = LOGTEST_SESSION_TIMEOUT;
 
-    os_calloc(4, sizeof(char), config.enabled);
-    os_strdup("yes", config.enabled);
+    os_calloc(4, sizeof(char), logtest_conf.enabled);
+    os_strdup("yes", logtest_conf.enabled);
 
-    if (ReadConfig(modules, OSSECCONF, &config, NULL) < 0) {
+    if (ReadConfig(modules, OSSECCONF, NULL, NULL) < 0) {
         return OS_INVALID;
     }
 
