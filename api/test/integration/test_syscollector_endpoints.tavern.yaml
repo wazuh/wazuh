@@ -253,6 +253,26 @@ stages:
     response:
       <<: *error_response_1724
 
+  - name: Filter by query
+    request:
+      verify: False
+      <<: *packages_request_000
+      params:
+        q: scan.id={expected_scan_id};architecture={expected_architecture};description={expected_description}
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - architecture: "{expected_architecture}"
+              description: "{expected_description}"
+              scan:
+                id: !int "{expected_scan_id}"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
+
   - name: Limit and offset
     request:
       verify: False
@@ -847,6 +867,19 @@ stages:
               share: !int "{expected_share}"
               tty: !int "{expected_tty}"
 
+  - name: Filter by query
+    request:
+      verify: False
+      <<: *processes_request_000
+      params:
+        q: state={expected_state};pid={expected_pid};pgrp={expected_pgrp}
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - state: "{expected_state}"
+
   - name: Wrong param
     request:
       verify: False
@@ -1171,6 +1204,20 @@ stages:
         pid: "???"
     response:
       status_code: 200
+
+  - name: Filter by query
+    request:
+      verify: False
+      <<: *port_request_000
+      params:
+        q: local.ip={expected_local_ip};state={expected_state};tx_queue={expected_tx_queue};remote.ip={expected_remote_ip}
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *port_response
 
   - name: Not allowed selector
     request:
@@ -1572,6 +1619,19 @@ stages:
         sort: -wrong
     response:
       <<: *error_response_1403
+
+  - name: Filter by query with broadcast and iface
+    request:
+      verify: False
+      <<: *netaddr_request_000
+      params:
+        q: broadcast={expected_broadcast};iface={expected_iface}
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *netaddr_response
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
@@ -2328,6 +2388,20 @@ stages:
           affected_items:
             - <<: *netiface_response_000
           total_affected_items: !anyint
+
+  - name: Filter by query
+    request:
+      verify: False
+      <<: *netiface_request_000
+      params:
+        q: mac={expected_mac};state={expected_state}
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - mac: "{expected_mac}"
+              state: "{expected_state}"
 
   - name: Filter invalid tx.packets
     request:
@@ -3331,6 +3405,20 @@ stages:
           affected_items:
             - iface: "{expected_iface}"
 
+  - name: Filter by query
+    request:
+      verify: False
+      <<: *netproto_request
+      params:
+        q: gateway={expected_gateway};iface={expected_iface}
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - gateway: "{expected_gateway}"
+              iface: "{expected_iface}"
+
   - name: Not allowed selector
     request:
       verify: False
@@ -4110,4 +4198,19 @@ stages:
               scan_time: !anystr
           failed_items: []
           total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Filter hotfix with non-existent query
+    request:
+      verify: False
+      <<: *hotfix_request_000
+      params:
+        q: 'hotfix=0'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
           total_failed_items: 0

@@ -723,6 +723,25 @@ stages:
          total_affected_items: 4
          total_failed_items: 0
 
+ - name: Filter agents by complex query
+   request:
+     verify: False
+     <<: *get_agents
+     params:
+       q: id<5;id!=2;manager~waz;(os.major=16,os.major=18)
+   response:
+     status_code: 200
+     json:
+       data:
+         affected_items:
+           - id: '000'
+           - id: '001'
+           - id: '003'
+           - id: '004'
+         failed_items: []
+         total_affected_items: 4
+         total_failed_items: 0
+
  - name: Try to show agents using an wrong query
    request:
      verify: False
@@ -2132,6 +2151,22 @@ stages:
          total_affected_items: 2
          total_failed_items: 0
 
+ - name: Try to get groups information with q parameter
+   request:
+     verify: False
+     <<: *get_agents_groups
+     params:
+       q: 'name=default'
+   response:
+     status_code: 200
+     json:
+       data:
+         affected_items:
+           - name: 'default'
+         failed_items: []
+         total_affected_items: 4
+         total_failed_items: 0
+
 ---
 test_name: GET /groups filter hash
 
@@ -2471,6 +2506,22 @@ stages:
            - id: '008'
          failed_items: []
          total_affected_items: 2
+         total_failed_items: 0
+
+ - name: Filter agents by complex query
+   request:
+     verify: False
+     <<: *groups_id_request
+     params:
+       q: id<5;id!=2;manager~waz;(os.major>14,os.major<20)
+   response:
+     status_code: 200
+     json:
+       data:
+         affected_items:
+           - id: '003'
+         failed_items: []
+         total_affected_items: 1
          total_failed_items: 0
 
  - name: Try show agents with bad query
@@ -3511,6 +3562,24 @@ stages:
        data:
          <<: *outdated_agents_response
 
+ - name: Filter agents by query
+   request:
+     verify: False
+     <<: *agents_outdated_request
+     params:
+       q: id<5;id!=2;manager~waz;(os.major=16,os.major=18)
+   response:
+     status_code: 200
+     json:
+       data:
+         affected_items:
+           - id: '001'
+           - id: '003'
+           - id: '004'
+         failed_items: []
+         total_affected_items: !anyint
+         total_failed_items: 0
+
  - name: Try show agents with bad query
    request:
      verify: False
@@ -3808,6 +3877,24 @@ stages:
      status_code: 400
      json:
        <<: *error_spec
+
+ - name: Try show agents with complex query
+   request:
+     verify: False
+     <<: *distinct_request
+     params:
+       fields: status
+       q: id<5;id!=2;manager~waz;(os.major=16,os.major=18)
+   response:
+     status_code: 200
+     json:
+       data:
+         affected_items:
+           - count: 4
+             status: 'active'
+         failed_items: []
+         total_affected_items: !anyint
+         total_failed_items: 0
 
 ---
 test_name: GET /agents/stats/distinct {fields}

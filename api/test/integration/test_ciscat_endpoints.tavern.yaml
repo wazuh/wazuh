@@ -234,6 +234,23 @@ stages:
           total_failed_items: 0
         message: All CISCAT results loaded
 
+  # GET /ciscat/001/results?q=benchmark~CIS;(pass>200,fail<100);score!=0
+  - name: Filter data by query
+    request:
+      verify: False
+      <<: *get_ciscat_results_001
+      params:
+        q: benchmark~CIS;(pass>200,fail<100);score!=0
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          total_affected_items: 1
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
+
 ---
 test_name: GET /ciscat/002/results
 

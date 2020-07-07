@@ -179,6 +179,40 @@ stages:
           total_failed_items: 0
         message: !anystr
 
+  - name: Filter nodes by query
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        q: version>3;type=worker
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *cluster_nodes_response
+            - <<: *cluster_nodes_response
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Filter nodes by query with non-existent values
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        q: version<3
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: !anystr
+
   - name: Retrieve all elements with limit=0
     request:
       verify: False
@@ -2175,6 +2209,24 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
         message: !anystr
+
+  - name: Filters by query (tag=ossec-syscheckd, level=info)
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        q: tag=ossec-syscheckd;level=info
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "tag"
+            expected_values: "ossec-syscheckd"
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "level"
+            expected_values: "info"
 
 ---
 test_name: GET /cluster/{node_id}/logs/summary
