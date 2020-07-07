@@ -697,9 +697,8 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         goto end;
     }
 
-
-    if (strcasestr(pr_name, "redhat") && p_options.update_since) {
-        // If a deprecated option is used, enable all rhel OVALs
+    if (strcasestr(pr_name, "redhat") && !os_list) {
+        // Enable all rhel OVALs if no feeds are specified.
         char vsr [2] = {0};
         vu_os_feed *list, *tmp_list = NULL;
         // New @os_list linked list for RedHat
@@ -713,6 +712,11 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         }
     }
 
+
+    /** 
+     *  single_provider = Ubuntu, Debian and RedHat. 
+     *  Those which use the <os> tag.
+     **/
     if (!multi_provider) {
         while (os_list) {
             vu_os_feed *rem = os_list;
@@ -748,7 +752,16 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             os_list = os_list->next;
             wm_vuldet_remove_os_feed(rem, 0);
         }
-    } else {
+    }
+    
+    /**
+    *  multi_provider = NVD and RedHat.
+    *  Those which use <path> or <url> tags.
+    **/
+    if (multi_provider || (p_options.multi_path || p_options.multi_url)) {
+        // Only the JSON feed of RedHat is multi_provider
+        pr_name = (strcasestr(pr_name, "redhat")) ? "jredhat" : pr_name;
+
         if (os_index = wm_vuldet_set_feed_version(pr_name, NULL, updates), os_index == OS_INVALID || os_index == OS_SUPP_SIZE) {
             goto end;
         }
@@ -1043,7 +1056,7 @@ int wm_vuldet_add_multi_allow_os(update_node *update, char **src_os, char **dst_
 int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_provider, provider_options *options) {
     int i, j;
     int elements;
-    int8_t rhel_enabled = 0;
+    int8_t rhel_enabled = (strcasestr(name, vu_feed_tag[FEED_REDHAT])) ? 1 : 0;
 
     memset(options, '\0', sizeof(provider_options));
 
@@ -1053,9 +1066,8 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
     for (i = 0; node[i]; i++) {
         if (!strcmp(node[i]->element, XML_UPDATE_FROM_YEAR)) {
             // Deprectared in RHEL
-            if (strcasestr(name, vu_feed_tag[FEED_REDHAT])) {
+            if (rhel_enabled) {
                 mwarn("'%s' option at module '%s' is deprecated. Use '%s' instead.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name, XML_OS);
-                rhel_enabled = 1;
             }
             if (multi_provider || rhel_enabled) {
                 int min_year = rhel_enabled ? RED_HAT_REPO_MIN_YEAR : NVD_REPO_MIN_YEAR;
@@ -1079,14 +1091,14 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
                 options->timeout = WM_VULNDETECTOR_DEFAULT_TIMEOUT;
             }
         } else if (!strcmp(node[i]->element, XML_PATH)) {
-            if (multi_provider) {
+            if (multi_provider || rhel_enabled) {
                 os_free(options->multi_path);
                 os_strdup(node[i]->content, options->multi_path);
             } else {
                 mwarn("'%s' option can only be used in a multi-provider.", node[i]->element);
             }
         } else if (!strcmp(node[i]->element, XML_URL)) {
-            if (multi_provider) {
+            if (multi_provider || rhel_enabled) {
                 os_free(options->multi_url);
                 os_strdup(node[i]->content, options->multi_url);
                 for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
@@ -1110,7 +1122,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
                 mwarn("'%s' option can only be used in a multi-provider.", node[i]->element);
             }
         } else if (!strcmp(node[i]->element, XML_ALLOW)) {
-            if (multi_provider) {
+            if (multi_provider || rhel_enabled) {
                 if (!node[i]->attributes || !*node[i]->attributes || strcmp(*node[i]->attributes, XML_REPLACED_OS) ||
                     !node[i]->values || !*node[i]->values || !**node[i]->values) {
                     merror("Invalid '%s' value.", XML_REPLACED_OS);
