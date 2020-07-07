@@ -21,7 +21,7 @@ import wazuh.core.manager
 import wazuh.core.results as wresults
 from wazuh import agent
 from wazuh.core import common, exception
-from wazuh.cluster import get_node_wrapper
+from wazuh.cluster import get_node_wrapper, get_nodes_info
 from wazuh.core.cluster import local_client, common as c_common
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 
@@ -457,23 +457,25 @@ class DistributedAPI:
         if 'agent_id' in self.f_kwargs or 'agent_list' in self.f_kwargs:
             # Group requested agents by node_name
             requested_agents = self.f_kwargs.get('agent_list', None) or [self.f_kwargs['agent_id']]
-            node_ids = self.f_kwargs.get('node_id', None)
-            if requested_agents != '*':
+            if 'node_id' in self.f_kwargs:
+                common.rbac.set(self.rbac_permissions)
+                nodes_info = await get_nodes_info(self.get_client(),
+                                                  filter_node=self.f_kwargs.get('node_list', None) or [
+                                                      self.f_kwargs['node_id']])
+                requested_nodes = [item['name'] for item in nodes_info.affected_items]
+                filters = {'node_name': requested_nodes}
+                del self.f_kwargs['node_id']
+            elif requested_agents != '*':
                 filters = {'id': requested_agents}
             else:
-                if node_ids is not None:
-                    filters = {'node_name': node_ids}
-                    del self.f_kwargs['node_id']
-                else:
-                    filters = None
+                filters = None
+
             system_agents = agent.Agent.get_agents_overview(select=select_node,
                                                             limit=None,
                                                             filters=filters,
                                                             sort={'fields': ['node_name'], 'order': 'desc'})['items']
             node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
                          itertools.groupby(system_agents, key=operator.itemgetter('node_name'))}
-            if not node_name and node_ids:
-                node_name[node_ids] = requested_agents
 
             if requested_agents != '*':  # When all agents are requested cannot be non existent ids
                 # Add non existing ids in the master's dictionary entry
@@ -487,7 +489,9 @@ class DistributedAPI:
             return node_name
 
         elif 'node_id' in self.f_kwargs or ('node_list' in self.f_kwargs and self.f_kwargs['node_list'] != '*'):
+            common.rbac.set(self.rbac_permissions)
             requested_nodes = self.f_kwargs.get('node_list', None) or [self.f_kwargs['node_id']]
+            await get_nodes_info(self.get_client(), filter_node=requested_nodes)
             del self.f_kwargs['node_id' if 'node_id' in self.f_kwargs else 'node_list']
             return {node_id: [] for node_id in requested_nodes}
 
