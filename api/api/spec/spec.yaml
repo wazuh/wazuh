@@ -6212,7 +6212,12 @@ paths:
             content:
               application/json:
                 schema:
-                  $ref: '#/components/schemas/ApiResponse'
+                  allOf:
+                    - $ref: '#/components/schemas/ApiResponse'
+                    - type: object
+                      properties:
+                        data:
+                          $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
                   data:
                     affected_items:

@@ -684,12 +684,6 @@ stages:
       status_code: 400
       json:
         code: 3022
-        dapi_errors: {}
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
 ---
 test_name: PUT /agents/{agent_id}/upgrade
