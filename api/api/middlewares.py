@@ -61,7 +61,7 @@ async def prevent_bruteforce_attack(request, handler):
         else:
             ip_stats[request.remote]['attempts'] += 1
 
-        if ip_stats[request.remote]['attempts'] >= configuration.security_conf['max_n_attempts']:
+        if ip_stats[request.remote]['attempts'] >= configuration.security_conf['max_login_attempts']:
             ip_block.add(request.remote)
 
     response = await handler(request)

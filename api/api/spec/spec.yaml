@@ -2407,7 +2407,7 @@ components:
           type: string
           enum: [white, black]
           example: white
-        max_n_attempts:
+        max_login_attempts:
           description: "Maximum number of session attempts in the time set in block_time"
           type: integer
           format: int32
@@ -13411,7 +13411,7 @@ paths:
               example:
                 auth_token_exp_timeout: 36000
                 rbac_mode: white
-                max_n_attempts: 5
+                max_login_attempts: 5
                 block_time: 300
                 max_request_per_minute: 300
         '400':

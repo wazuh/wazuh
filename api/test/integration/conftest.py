@@ -16,6 +16,8 @@ current_path = os.path.dirname(os.path.abspath(__file__))
 with open('common.yaml', 'r') as stream:
     common = yaml.safe_load(stream)['variables']
 login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['version']}{common['login_endpoint']}"
+security_config_url = \
+    f"{common['protocol']}://{common['host']}:{common['port']}/{common['version']}{common['security_config_endpoint']}"
 basic_auth = f"{common['user']}:{common['pass']}".encode()
 login_headers = {'Content-Type': 'application/json',
                  'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
@@ -36,9 +38,17 @@ def get_token_login_api():
         raise Exception(f"Error obtaining login token: {response.json()}")
 
 
+def disable_bruteforce_checker():
+    """Disable the new login bruteforce detector"""
+    response = requests.put(security_config_url, headers=login_headers, verify=False, data={'max_login_attempts': 1000})
+    if response.status_code != 200:
+        raise Exception("Error disabling max_login_attempts")
+
+
 def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     """Disable HTTPS verification warnings."""
     urllib3.disable_warnings()
+    disable_bruteforce_checker()
     variables["test_login_token"] = get_token_login_api()
 
 

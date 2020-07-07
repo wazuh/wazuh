@@ -24,7 +24,7 @@ need_revoke_config = ["auth_token_exp_timeout", "rbac_mode"]
 default_security_configuration = {
     "auth_token_exp_timeout": 36000,
     "rbac_mode": "black",
-    "max_n_attempts": 5,
+    "max_login_attempts": 5,
     "block_time": 300,
     "max_request_per_minute": 300
 }
