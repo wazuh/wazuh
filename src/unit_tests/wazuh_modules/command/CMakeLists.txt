@@ -35,36 +35,35 @@ enable_testing()
 
 
 # Tests list and flags
-list(APPEND tests_names "test_wm_gcp")
-list(APPEND tests_flags "-Wl,--wrap,wm_exec,--wrap,_mtdebug1,--wrap,_mtinfo,--wrap,_mtwarn,--wrap,_mterror \
-                         -Wl,--wrap,sched_scan_dump,--wrap,sched_scan_get_time_until_next_scan,--wrap,cJSON_CreateObject \
-                         -Wl,--wrap,FOREVER,--wrap,_mtdebug2")
-list(APPEND use_shared_libs 0)
+list(APPEND tests_names "test_wm_command")
+list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
+                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER")
+list(APPEND use_shared_libs 1)
 
-list(APPEND tests_names "test_wmodules_gcp")
-list(APPEND tests_flags "-Wl,--wrap,sched_scan_read,--wrap,realpath,--wrap,IsFile,--wrap,_mwarn,--wrap,_merror,--wrap,atexit")
-list(APPEND use_shared_libs 0)
+list(APPEND shared_libs "../scheduling/global_helpers.c")
+list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
+list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.c")
 
 # Generate wazuh modules library
-file(GLOB gcp ../../../wazuh_modules/*.o ../../../config/*.o)
-list(REMOVE_ITEM gcp ../../../wazuh_modules/main.o)
+file(GLOB command ../../../wazuh_modules/*.o)
+list(REMOVE_ITEM command ../../../wazuh_modules/main.o)
 
-add_library(GCP_O STATIC ${gcp})
+add_library(COMMAND_O STATIC ${command})
 
 set_source_files_properties(
-  ${gcp}
+  ${command}
   PROPERTIES
   EXTERNAL_OBJECT true
   GENERATED true
   )
 
 set_target_properties(
-  GCP_O
+  COMMAND_O
   PROPERTIES
   LINKER_LANGUAGE C
   )
 
-target_link_libraries(GCP_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+target_link_libraries(COMMAND_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 
 # Compiling tests
@@ -73,14 +72,19 @@ math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
     list(GET tests_names ${counter} test_name)
     list(GET tests_flags ${counter} test_flags)
+    list(GET use_shared_libs ${counter} use_libs)
 
-    add_executable(${test_name} ${test_name}.c)
+    if(use_libs EQUAL "1")
+      add_executable(${test_name} ${test_name}.c ${shared_libs})
+    else ()
+      add_executable(${test_name} ${test_name}.c)
+    endif()
 
     target_link_libraries(
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
-        GCP_O
+        COMMAND_O
         -lcmocka
         -fprofile-arcs
         -ftest-coverage

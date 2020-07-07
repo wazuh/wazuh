@@ -1,16 +1,16 @@
 /**
- * Unitary test for methods 
- * described in 'headers/schedule_scan.h' and 
+ * Unitary test for methods
+ * described in 'headers/schedule_scan.h' and
  * 'shared/schedule_scan.c' files
 * */
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include <time.h> 
+#include <time.h>
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
-#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 static time_t current_time = 0;
 
@@ -23,7 +23,7 @@ typedef struct test_structure {
     sched_scan_config *scan_config;
 } test_structure;
 /*********************************/
-/*       WRAPS                   */ 
+/*       WRAPS                   */
 /*********************************/
 int __wrap_OS_StrIsNum(const char *str) {
     int retval = mock();
@@ -47,7 +47,7 @@ void __wrap_w_time_delay(unsigned int msec){
 /*       SETUP-TEARDOWN          */
 /*********************************/
 static int test_scan_read_setup(void **state) {
-    test_structure *test; 
+    test_structure *test;
     test = calloc(1, sizeof(test_structure));
     xml_node **nodes;
     nodes = calloc(2, sizeof(xml_node*));
@@ -59,7 +59,7 @@ static int test_scan_read_setup(void **state) {
 }
 
 static int test_scan_read_teardown(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     free(test->nodes[0]->element);
     free(test->nodes[0]->content);
     free(test->nodes[0]);
@@ -111,7 +111,7 @@ void test_tag_failure(void **state) {
     assert_int_equal(is_sched_tag("bar"), 0);
     assert_int_equal(is_sched_tag("parrot"), 0);
     assert_int_equal(is_sched_tag("fake_tag"), 0);
-} 
+}
 
 void test_sched_scan_init(void **state){
     sched_scan_config scan_config;
@@ -126,7 +126,7 @@ void test_sched_scan_init(void **state){
 }
 
 void test_sched_scan_read_correct_day(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("day");
@@ -140,7 +140,7 @@ void test_sched_scan_read_correct_day(void **state) {
 }
 
 void test_sched_scan_read_wrong_day(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("day");
@@ -154,7 +154,7 @@ void test_sched_scan_read_wrong_day(void **state) {
 }
 
 void test_sched_scan_read_not_number(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("day");
@@ -168,7 +168,7 @@ void test_sched_scan_read_not_number(void **state) {
 }
 
 void test_sched_scan_read_correct_wday(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one week. New interval value: 1w" );
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
@@ -180,7 +180,7 @@ void test_sched_scan_read_correct_wday(void **state) {
 }
 
 void test_sched_scan_read_wrong_wday(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("wday");
@@ -192,7 +192,7 @@ void test_sched_scan_read_wrong_wday(void **state) {
 }
 
 void test_sched_scan_read_correct_time(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("time");
@@ -203,7 +203,7 @@ void test_sched_scan_read_correct_time(void **state) {
 }
 
 void test_sched_scan_read_wrong_time(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("time");
@@ -215,7 +215,7 @@ void test_sched_scan_read_wrong_time(void **state) {
 }
 
 void test_sched_scan_read_correct_interval_month(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     expect_string(__wrap__mwarn, formatted_msg, "Interval value is in months. Setting scan day to first day of the month." );
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
@@ -228,7 +228,7 @@ void test_sched_scan_read_correct_interval_month(void **state) {
 }
 
 void test_sched_scan_read_correct_interval_week(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("interval");
@@ -240,7 +240,7 @@ void test_sched_scan_read_correct_interval_week(void **state) {
 }
 
 void test_sched_scan_read_correct_interval_day(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("interval");
@@ -252,7 +252,7 @@ void test_sched_scan_read_correct_interval_day(void **state) {
 }
 
 void test_sched_scan_read_correct_interval_hour(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("interval");
@@ -264,7 +264,7 @@ void test_sched_scan_read_correct_interval_hour(void **state) {
 }
 
 void test_sched_scan_read_correct_interval_minute(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("interval");
@@ -276,7 +276,7 @@ void test_sched_scan_read_correct_interval_minute(void **state) {
 }
 
 void test_sched_scan_read_correct_interval_second(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("interval");
@@ -288,7 +288,7 @@ void test_sched_scan_read_correct_interval_second(void **state) {
 }
 
 void test_sched_scan_read_wrong_interval(void **state) {
-    test_structure *test = ( test_structure *) *state; 
+    test_structure *test = ( test_structure *) *state;
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("interval");
@@ -527,7 +527,7 @@ void test_get_time_to_hour_num_days(void **state) {
 void test_get_time_to_day_same_wday_positive_diff(void **state) {
     /* Date: Wed 2020/06/03 15:00:00 */
     int wday;
-    char hour[6]; 
+    char hour[6];
     const unsigned int num_weeks = 1;
     bool first_time = true;
     unsigned long diff_test;

@@ -21,6 +21,8 @@
 
 int __wrap_wpclose();
 
+wfd_t *__wrap_wpopenl();
+
 wfd_t *__wrap_wpopenv();
 
 #endif
