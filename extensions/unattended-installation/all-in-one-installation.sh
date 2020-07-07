@@ -1,6 +1,6 @@
 #!/bin/bash
 ## Check if system is based on yum or apt-get
-
+char="#"
 if [ -n "$(command -v yum)" ] 
 then
     sys_type="yum"
@@ -26,15 +26,6 @@ if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
     else
         echo "${1^} started"
     fi  
-elif [ -x /etc/rc.d/init.d/$1 ] ; then
-    /etc/rc.d/init.d/$1 start > /dev/null 2>&1
-    if [  "$?" != 0  ]
-    then
-        echo "${1^} could not be started."
-        exit 1;
-    else
-        echo "${1^} started"
-    fi       
 elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
     chkconfig $1 on > /dev/null 2>&1
     service $1 start > /dev/null 2>&1
@@ -45,7 +36,16 @@ elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
         exit 1;
     else
         echo "${1^} started"
-    fi       
+    fi     
+elif [ -x /etc/rc.d/init.d/$1 ] ; then
+    /etc/rc.d/init.d/$1 start > /dev/null 2>&1
+    if [  "$?" != 0  ]
+    then
+        echo "${1^} could not be started."
+        exit 1;
+    else
+        echo "${1^} started"
+    fi             
 else
     echo "Error: ${1^} could not start. No service manager found on the system."
     exit 1;
@@ -191,16 +191,16 @@ installElasticsearch() {
 
         # Start Elasticsearch
         startService "elasticsearch"
-
+        echo "Initializing Elasticsearch..."
         until $(curl -XGET https://localhost:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
-            echo "Waiting for Elasticsearch..."
-            sleep 5
+            echo -ne $char
+            sleep 10
         done    
 
         cd /usr/share/elasticsearch/plugins/opendistro_security/tools/ > /dev/null 2>&1
         ./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key > /dev/null 2>&1
 
-        logger "Done"
+        echo $'\Done'
     fi
 }
 
@@ -292,10 +292,13 @@ checkInstallation() {
     else
         echo "Filebeat installation succeeded."
     fi    
+    logger "Initializing Kibana (this may take a while)"
     until [[ "$(curl -XGET https://localhost/status -I -uadmin:admin -k -s | grep "200 OK")" ]]; do
-        echo "Waiting for Kibana..."
-        sleep 15
+        echo -ne $char
+        sleep 10
     done    
+    echo $'\nInstallation finished'
+    exit 1;
 }
 
 main() {
