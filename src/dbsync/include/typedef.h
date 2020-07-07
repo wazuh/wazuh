@@ -19,8 +19,8 @@
  */
 typedef enum 
 {
-    MANAGER = 0,    /*< Manager host type. */
-    AGENT   = 1     /*< Agent host type.   */
+    MANAGER = 0,
+    AGENT   = 1
 }HostType;
 
 /**
@@ -48,24 +48,26 @@ typedef enum
 typedef void* DBSYNC_HANDLE;
 
 /**
- * @brief Represents the transaction handle associated with database instance.
+ * @brief Represents the transaction handle associated with a database instance.
  */
 typedef void* TXN_HANDLE;
 
 /**
  * @brief Callback function for results
  *
- * Callback called for each result obtained, after evaluating changes between two snapshots.
  * @param result_type Enumeration value indicating what action was taken.
  * @param result_json Json which describe the change.
+ *
+ * @details Callback called for each obtained result, after evaluating changes between two snapshots.
  */
-typedef void((*result_callback)(ReturnTypeCallback result_type, cJSON* result_json));
+typedef void((*result_callback_t)(ReturnTypeCallback result_type, cJSON* result_json));
 
 /**
  * @brief Callback function for user defined logging.
  *
- * Callback called to get deeper information during the dbsync interaction.
  * @param msg Message to be logged.
+ *
+ * @details Useful to get deeper information during the dbsync interaction.
  */
 typedef void((*log_fnc_t)(const char* msg));
 
