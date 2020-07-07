@@ -1,4 +1,3 @@
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -6,13 +5,15 @@
 import datetime
 import os
 import typing
+from json import loads
+from xml.etree.ElementTree import fromstring, ParseError
 
 import six
 from connexion import ProblemException
 
+from api.api_exception import APIException, APIError
 from wazuh.core.common import ossec_path as WAZUH_PATH
 from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError
-from api.api_exception import APIException, APIError
 
 
 def serialize(item):
@@ -246,11 +247,13 @@ def _create_problem(exc: Exception, code=None):
     if isinstance(exc, WazuhError):
         raise ProblemException(status=400 if not code else code, title='Wazuh Error', detail=exc.message, ext=ext)
     elif isinstance(exc, (WazuhInternalError, WazuhException)):
-        raise ProblemException(status=500 if not code else code, title='Wazuh Internal Error', detail=exc.message, ext=ext)
+        raise ProblemException(status=500 if not code else code, title='Wazuh Internal Error', detail=exc.message,
+                               ext=ext)
     elif isinstance(exc, APIError):
         raise ProblemException(status=400 if not code else code, title='Wazuh Error', detail=exc.details, ext=ext)
     elif isinstance(exc, APIException):
-        raise ProblemException(status=500 if not code else code, title='Wazuh Internal Error', detail=exc.details, ext=ext)
+        raise ProblemException(status=500 if not code else code, title='Wazuh Internal Error', detail=exc.details,
+                               ext=ext)
     raise exc
 
 
@@ -272,3 +275,18 @@ def raise_if_exc(obj, code=None):
         _create_problem(obj, code)
     else:
         return obj
+
+
+def validate_content_type(content_type, body):
+    if type(body) == dict and 'json' not in content_type:
+        raise_if_exc(WazuhError(6002), code=406)
+    if 'json' in content_type and not type(body) == dict:
+        try:
+            loads(body)
+        except ValueError:
+            raise_if_exc(WazuhError(6002), code=406)
+    elif 'xml' in content_type:
+        try:
+            fromstring(body)
+        except ParseError:
+            raise_if_exc(WazuhError(6002), code=406)

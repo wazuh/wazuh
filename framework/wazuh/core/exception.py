@@ -528,8 +528,9 @@ class WazuhException(Exception):
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '
                           'The current IP has been blocked due to a high number of login attempts'},
-        6001: {'message': 'Maximum number of request per minute reached. '
-                          'This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html'}
+        6001: {'message': 'Maximum number of request per minute reached',
+               'remediation': 'This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html'},
+        6002: {'message': 'The body type is not the one specified in the content-type'}
 
         # > 9000: Authd
     }

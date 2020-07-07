@@ -15,7 +15,7 @@ from api import configuration
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Data, Body
 from api.models.configuration import APIConfigurationModel
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date, validate_content_type
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
@@ -580,6 +580,7 @@ async def put_api_config(request, pretty=False, wait_for_complete=False, list_no
     """
     updated_conf = await APIConfigurationModel.get_kwargs(request)
     f_kwargs = {'node_list': list_nodes, 'updated_config': updated_conf}
+    validate_content_type(content_type=request.content_type, body=f_kwargs)
 
     nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.update_api_config,

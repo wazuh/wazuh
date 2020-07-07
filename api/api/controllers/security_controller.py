@@ -15,7 +15,7 @@ from api.encoder import dumps, prettify
 from api.models.configuration import SecurityConfigurationModel
 from api.models.security import CreateUserModel, UpdateUserModel
 from api.models.token_response import TokenResponseModel
-from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
+from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param, validate_content_type
 from wazuh import security
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.exception import WazuhError
@@ -149,6 +149,7 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
+
 async def create_user(request):
     """Create a new user.
 
@@ -161,6 +162,8 @@ async def create_user(request):
     User data
     """
     f_kwargs = await CreateUserModel.get_kwargs(request)
+    validate_content_type(content_type=request.content_type, body=f_kwargs)
+
     dapi = DistributedAPI(f=security.create_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -187,6 +190,8 @@ async def update_user(request, user_id: str):
     User data
     """
     f_kwargs = await UpdateUserModel.get_kwargs(request, additional_kwargs={'user_id': user_id})
+    validate_content_type(content_type=request.content_type, body=f_kwargs)
+
     dapi = DistributedAPI(f=security.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -294,6 +299,7 @@ async def add_role(request, pretty: bool = False, wait_for_complete: bool = Fals
         role_added_model = await request.json()
     except JSONDecodeError as e:
         raise_if_exc(APIError(code=2005, details=e.msg))
+    validate_content_type(content_type=request.content_type, body=role_added_model)
 
     f_kwargs = {'name': role_added_model['name'], 'rule': role_added_model['rule']}
 
@@ -365,6 +371,7 @@ async def update_role(request, role_id: int, pretty: bool = False, wait_for_comp
         role_added_model = await request.json()
     except JSONDecodeError as e:
         raise_if_exc(APIError(code=2005, details=e.msg))
+    validate_content_type(content_type=request.content_type, body=role_added_model)
 
     f_kwargs = {'role_id': role_id, 'name': role_added_model.get('name', None),
                 'rule': role_added_model.get('rule', None)}
@@ -450,6 +457,7 @@ async def add_policy(request, pretty: bool = False, wait_for_complete: bool = Fa
         policy_added_model = await request.json()
     except JSONDecodeError as e:
         raise_if_exc(APIError(code=2005, details=e.msg))
+    validate_content_type(content_type=request.content_type, body=policy_added_model)
 
     f_kwargs = {'name': policy_added_model['name'], 'policy': policy_added_model['policy']}
 
@@ -521,6 +529,7 @@ async def update_policy(request, policy_id: int, pretty: bool = False, wait_for_
         policy_added_model = await request.json()
     except JSONDecodeError as e:
         raise_if_exc(APIError(code=2005, details=e.msg))
+    validate_content_type(content_type=request.content_type, body=policy_added_model)
 
     f_kwargs = {'policy_id': policy_id,
                 'name': policy_added_model.get('name', None),
@@ -539,15 +548,15 @@ async def update_policy(request, policy_id: int, pretty: bool = False, wait_for_
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def set_user_role(request, username: str, role_ids: list, position: int = None,
+async def set_user_role(request, user_id: str, role_ids: list, position: int = None,
                         pretty: bool = False, wait_for_complete: bool = False):
     """Add a list of roles to one specified user.
 
     Parameters
     ----------
     request : connexion.request
-    username : str
-        User's username
+    user_id : str
+        User ID
     role_ids : list of int
         List of role ids
     position : int, optional
@@ -562,7 +571,7 @@ async def set_user_role(request, username: str, role_ids: list, position: int = 
     Dict
         User-Role information
     """
-    f_kwargs = {'user_id': username, 'role_ids': role_ids, 'position': position}
+    f_kwargs = {'user_id': user_id, 'role_ids': role_ids, 'position': position}
     dapi = DistributedAPI(f=security.set_user_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -576,14 +585,15 @@ async def set_user_role(request, username: str, role_ids: list, position: int = 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def remove_user_role(request, username: str, role_ids: list, pretty: bool = False,
+async def remove_user_role(request, user_id: str, role_ids: list, pretty: bool = False,
                            wait_for_complete: bool = False):
     """Delete a list of roles of one specified user.
 
     Parameters
     ----------
     request : connexion.request
-    username : str
+    user_id : str
+        User ID
     role_ids : list
         List of roles ids
     pretty : bool, optional
@@ -595,7 +605,7 @@ async def remove_user_role(request, username: str, role_ids: list, pretty: bool 
     -------
     Result of the operation
     """
-    f_kwargs = {'user_id': username, 'role_ids': role_ids}
+    f_kwargs = {'user_id': user_id, 'role_ids': role_ids}
 
     dapi = DistributedAPI(f=security.remove_user_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -792,6 +802,7 @@ async def put_security_config(request, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     """
     f_kwargs = {'updated_config': await SecurityConfigurationModel.get_kwargs(request)}
+    validate_content_type(content_type=request.content_type, body=f_kwargs)
 
     dapi = DistributedAPI(f=security.update_security_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

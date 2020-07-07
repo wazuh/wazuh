@@ -87,7 +87,7 @@ async def prevent_denial_of_service(request, handler):
             current_time = time()
 
         if request_counter > configuration.security_conf['max_request_per_minute']:
-            logger.debug(f'Request rejected due to high request per second: Source IP: {request.remote}')
+            logger.debug(f'Request rejected due to high request per minute: Source IP: {request.remote}')
             try:
                 payload = dict(request.raw_headers)[b'Authorization'].decode().split('.')[1]
             except KeyError:
