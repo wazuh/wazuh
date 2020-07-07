@@ -15,13 +15,13 @@
 #include <fstream>
 
 void SQLiteDBEngine::execute(
-    const std::string& query) {
-}
+    const std::string& /*query*/)
+{}
 
 void SQLiteDBEngine::select(
-    const std::string& query, 
-    nlohmann::json& result) {
-}
+    const std::string& /*query*/,
+    nlohmann::json& /*result*/)
+{}
 
 
 SQLiteDBEngine::SQLiteDBEngine(

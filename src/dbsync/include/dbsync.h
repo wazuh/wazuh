@@ -9,15 +9,8 @@
  * Foundation.
  */
 
-/**
- * @file dbsync.h
- * @author Dwordcito
- * @date 16 May 2020
- * @brief File containing the interface to the usage of DBSync.
- *
- */
-
-#pragma once
+#ifndef _DBSYNC_H_
+#define _DBSYNC_H_
 
 // Define EXPORTED for any platform
 #ifdef _WIN32
@@ -37,111 +30,211 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-/**
- * @brief Initializes the shared library.
- * @param log_function pointer to log function to be used by the dbsync.
- */
-  EXPORTED void dbsync_initialize(log_fnc_t log_function);
 
 /**
- * @brief Turn off the services provided by the shared library.
+ * @brief Initializes the shared library.
+ *
+ * @param log_function pointer to log function to be used by the dbsync.
  */
-  EXPORTED void dbsync_teardown(void);
+EXPORTED void dbsync_initialize(log_fnc_t log_function);
 
 /**
  * @brief Creates a new DBSync instance.
  *
- * @param host_type Define the dynamic library host type.
- * @param db_type Define the type of database.
- * @param path Path of local db.
- * @param sql_statement sql sentence to create tables in a SQL engine.
+ * @param host_type     Dynamic library host type to be used.
+ * @param db_type       Database type to be used (currently only supported SQLITE3)
+ * @param path          Path where the local database will be created.
+ * @param sql_statement SQL sentence to create tables in a SQL engine.
  *
- * @return return a handle to be used in the future (cannot be used by more than 1 thread).
+ * @return Handle instance to be used for common sql operations (cannot be used by more than 1 thread).
  */
-  EXPORTED DBSYNC_HANDLE dbsync_create(
-    const HostType host_type, 
-    const DbEngineType db_type,
-    const char* path, 
-    const char* sql_statement);
+EXPORTED DBSYNC_HANDLE dbsync_create(const HostType      host_type,
+                                     const DbEngineType  db_type,
+                                     const char*         path,
+                                     const char*         sql_statement);
 
 /**
- * @brief Insert bulk data based on json string.
- *
- * @param handle Handle assigned and returned in the initialize method..
- * @param json_raw JSON with snapshot values.
- *
- * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
+ * @brief Turns off the services provided by the shared library.
  */
-  EXPORTED int dbsync_insert_data(
-    const DBSYNC_HANDLE handle,
-    const cJSON* json_insert);
+EXPORTED void dbsync_teardown(void);
+
+/**
+ * @brief Creates a database transaction based on the supplied information.
+ *
+ * @param handle         Handle assigned as part of the \ref dbsync_create method.
+ * @param tables         Tables to be created in the transaction.
+ * @param thread_number  Number of worker threads for processing data.
+ * @param max_queue_size Max data number to hold/queue to be processed. If 0 hardware concurrency
+ *                       value will be used.
+ * @param callback       Associated function callback with the results.
+ *
+ * @return Resulting database transaction after tables creation.
+ */
+EXPORTED TXN_HANDLE dbsync_create_transaction(const DBSYNC_HANDLE handle,
+                                              const char**        tables,
+                                              const int           thread_number,
+                                              const int           max_queue_size,
+                                              void*               callback);
+
+/**
+ * @brief Closes the \ref txn database transaction.
+ *
+ * @param txn Database transaction to be closed.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ */
+EXPORTED int dbsync_close_transaction(const TXN_HANDLE txn);
+
+/**
+ * @brief Synchronizes the \ref js_input data using the \ref txn current
+ *  database transaction.
+ *
+ * @param txn      Database transaction to be used for \ref js_input data sync.
+ * @param js_input JSON information to be inserted.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ */
+EXPORTED int dbsync_sync_txn_row(const TXN_HANDLE txn,
+                                 const cJSON*    js_input);
+
+/**
+ * @brief Inserts into an auxiliary table the information to be associated accordingly.
+ *
+ * @param handle        Handle assigned as part of the \ref dbsync_create method.
+ * @param table         Table to be added.
+ * @param parent_table  Parent table to be associated with \ref table one.
+ * @param key_base      Unique key to be assigned.
+ * @param parent_field  Parent table field to be associated.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ */
+EXPORTED int dbsync_add_table_relationship(const DBSYNC_HANDLE handle,
+                                           const char*         table,
+                                           const char*         parent_table,
+                                           const char*         key_base,
+                                           const char*         parent_field);
+
+/**
+ * @brief Insert the \ref js_insert data in the database.
+ *
+ * @param handle    Handle assigned as part of the \ref dbsync_create method().
+ * @param js_insert JSON information with snapshot values.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ */
+EXPORTED int dbsync_insert_data(const DBSYNC_HANDLE handle,
+                                const cJSON*        js_insert);
+
+/**
+ * @brief Sets the max rows in the \ref table table.
+ *
+ * @param handle   Handle assigned as part of the \ref dbsync_create method().
+ * @param table    Table name to apply the max rows configuration.
+ * @param max_rows Max rows number to be applied in the table \ref table table.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ *
+ * @details The table will work as a queue if the limit is exceeded.
+ */
+EXPORTED int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
+                                       const char*              table,
+                                       const unsigned long long max_rows);
+
+/**
+ * @brief Inserts (or modifies) a database record.
+ *
+ * @param handle    Handle instance assigned as part of the \ref dbsync_create method().
+ * @param input     JSON information used to add/modified a database record.
+ * @param callback  Associated function callback with the results.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ */
+EXPORTED int dbsync_sync_row(const DBSYNC_HANDLE handle,
+                             const cJSON*        js_input,
+                             void*               callback);
+
+/**
+ * @brief Select data, based in \ref json_data_input data, from the database table.
+ *
+ * @param handle        Handle assigned as part of the \ref dbsync_create method().
+ * @param js_data_input JSON with table name, fields and filters to apply in the query.
+ * @param callback      Associated function callback with the results.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ */
+EXPORTED int dbsync_select_rows(const DBSYNC_HANDLE handle,
+                                const cJSON*        js_data_input,
+                                void*               callback);
+
+/**
+ * @brief Deletes a database table record and its relationships based on \ref js_key_values value.
+ *
+ * @param handle        Handle instance assigned as part of the \ref dbsync_create method().
+ * @param js_key_values JSON information to be applied/deleted in the database.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ */
+EXPORTED int dbsync_delete_rows(const DBSYNC_HANDLE handle,
+                                const cJSON*        js_key_values);
+
+/**
+ * @brief Gets the deleted rows (diff) from the database.
+ *
+ * @param txn      Database transaction to be used.
+ * @param callback Associated function callback with the results.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ */
+EXPORTED int dbsync_get_deleted_rows(const TXN_HANDLE txn,
+                                     void*            callback);
+
+/**
+ * @brief Updates data table with \ref js_snapshot information. \ref js_result value will
+ *  hold/contain the results of this operation (rows insertion, modification and/or deletion).
+ *
+ * @param handle      Handle instance assigned as part of the \ref dbsync_create method().
+ * @param js_snapshot JSON information with snapshot values.
+ * @param js_result   JSON with deletes, creations and modifications (diffs) in rows.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ */
+EXPORTED int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
+                                         const cJSON*        js_snapshot,
+                                         cJSON**             js_result);
 
 /**
  * @brief Update data table, based on json_raw_snapshot bulk data based on json string.
  *
- * @param handle Handle assigned and returned in the initialize method.
- * @param json_raw_snapshot JSON with snapshot values.
- * @param json_return_modifications JSON with deletes, creations and modifications in rows.
+ * @param handle      Handle assigned as part of the \ref dbsync_create method().
+ * @param js_snapshot JSON with snapshot values.
+ * @param callback    Associated function callback with the results.
  *
- * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
  */
-  EXPORTED int dbsync_update_with_snapshot(
-    const DBSYNC_HANDLE handle,
-    const cJSON* json_snapshot,
-    cJSON** json_return_modifications);
+  EXPORTED int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
+                                              const cJSON*        js_snapshot,
+                                              void*               callback);
 
 /**
  * @brief Deallocate cJSON result data.
  *
- * @param json_result pointer to pointer of the cJSON result data.
- *
+ * @param js_data JSON information be be deallocated.
  */
-  EXPORTED void dbsync_free_result(
-    cJSON** json_result);
-
-/**
- * @brief Update data table, based on json_raw_snapshot bulk data based on json string.
- *
- * @param handle Handle assigned and returned in the initialize method.
- * @param json_raw_snapshot JSON with snapshot values.
- * @param callback function callback to return individually result.
- *
- * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
- */
-  EXPORTED int dbsync_update_with_snapshot_cb(
-    const DBSYNC_HANDLE handle,
-    const cJSON* json_snapshot,
-    void* callback);
-
-/**
- * @brief Select data from table.
- *
- * @param handle Handle assigned and returned in the initialize method.
- * @param json_raw_data_input JSON with table name, fields to be return, and filters to apply in the query.
- * @param json_return_rows JSON that containt rows.
- *
- * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
- */
-  EXPORTED int dbsync_select_rows(
-    const DBSYNC_HANDLE handle,
-    const cJSON* json_data_input,
-    cJSON** json_return_rows);
-
-/**
- * @brief Set max rows in table, the table works as queue if the limit is exceeded.
- *
- * @param handle Handle assigned and returned in the initialize method.
- * @param table Table name to apply the max rows configuration.
- * @param max_rows Quantity of max rows to apply in table.
- *
- * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
- */
-  EXPORTED int dbsync_set_max_rows(
-    const DBSYNC_HANDLE handle,
-    const char* table,
-    const unsigned long long max_rows);
-
+  EXPORTED void dbsync_free_result(cJSON** js_data);
 
 #ifdef __cplusplus
     }
 #endif
+
+#endif // _DBSYNC_H_

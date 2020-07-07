@@ -13,10 +13,13 @@
 #include <mutex>
 #include "dbsync.h"
 #include "dbsync_implementation.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 using namespace DbSync;
+
 struct CJsonDeleter
 {
     void operator()(char* json)
@@ -46,10 +49,10 @@ void dbsync_initialize(log_fnc_t log_function)
     }
 }
 
-DBSYNC_HANDLE dbsync_create(const HostType host_type,
+DBSYNC_HANDLE dbsync_create(const HostType     host_type,
                             const DbEngineType db_type,
-                            const char* path,
-                            const char* sql_statement)
+                            const char*        path,
+                            const char*        sql_statement)
 {
     DBSYNC_HANDLE ret_val{ nullptr };
     std::string error_message;
@@ -80,12 +83,50 @@ DBSYNC_HANDLE dbsync_create(const HostType host_type,
     return ret_val;
 }
 
+void dbsync_teardown(void)
+{
+    DBSyncImplementation::instance().release();
+}
+
+TXN_HANDLE dbsync_create_transaction(const DBSYNC_HANDLE /*handle*/,
+                                    const char**         /*tables*/,
+                                    const int            /*thread_number*/,
+                                    const int            /*max_queue_size*/,
+                                    void*                /*callback*/)
+{
+    // Dummy function for now.
+    return nullptr;
+}
+
+int dbsync_close_transaction(const TXN_HANDLE /*txn*/)
+{
+    // Dummy function for now.
+    return 0;
+}
+
+int dbsync_sync_txn_row(const TXN_HANDLE /*txn*/,
+                        const cJSON*     /*js_input*/)
+{
+    // Dummy function for now.
+    return 0;
+}
+
+int dbsync_add_table_relationship(const DBSYNC_HANDLE /*handle*/,
+                                  const char*         /*table*/,
+                                  const char*         /*parent_table*/,
+                                  const char*         /*key_base*/,
+                                  const char*         /*parent_field*/)
+{
+    // Dummy function for now.
+    return 0;
+}
+
 int dbsync_insert_data(const DBSYNC_HANDLE handle,
-                       const cJSON* json_raw)
+                       const cJSON*        js_insert)
 {
     auto ret_val { -1 };
     std::string error_message;
-    if (!handle || !json_raw)
+    if (!handle || !js_insert)
     {
         error_message += "Invalid handle or json.";
     }
@@ -93,7 +134,7 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
     {
         try
         {
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(json_raw)};
+            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(js_insert)};
             DBSyncImplementation::instance().insertBulkData(handle, spJsonBytes.get());
             ret_val = 0;
         }
@@ -117,13 +158,51 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
     return ret_val;
 }
 
+int dbsync_set_table_max_rows(const DBSYNC_HANDLE      /*handle*/,
+                              const char*              /*table*/,
+                              const unsigned long long /*max_rows*/)
+{
+    // Dummy function for now.
+    return 0;
+}
+
+int dbsync_sync_row(const DBSYNC_HANDLE /*handle*/,
+                    const cJSON*        /*js_input*/,
+                    void*               /*callback*/)
+{
+    // Dummy function for now.
+    return 0;
+}
+
+int dbsync_select_rows(const DBSYNC_HANDLE /*handle*/,
+                       const cJSON*        /*js_data_input*/,
+                       void*               /*callback*/)
+{
+    // Dummy function for now.
+    return 0;
+}
+
+int dbsync_delete_rows(const DBSYNC_HANDLE /*handle*/,
+                       const cJSON*        /*js_key_values*/)
+{
+    // Dummy function for now.
+    return 0;
+}
+
+int dbsync_get_deleted_rows(const TXN_HANDLE /*txn*/,
+                            void*           /*callback*/)
+{
+    // Dummy function for now.
+    return 0;
+}
+
 int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
-                                const cJSON* json_snapshot,
-                                cJSON** json_return_modifications)
+                                const cJSON*        js_snapshot,
+                                cJSON**             js_result)
 {
     auto ret_val { -1 };
     std::string error_message;
-    if (!handle || !json_snapshot || !json_return_modifications)
+    if (!handle || !js_snapshot || !js_result)
     {
         error_message += "Invalid input parameter.";
     }
@@ -132,9 +211,9 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
         try
         {
             std::string result;
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json_snapshot)};
+            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
             DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), result);
-            *json_return_modifications = cJSON_Parse(result.c_str());
+            *js_result = cJSON_Parse(result.c_str());
             ret_val = 0;
         }
         catch(const nlohmann::detail::exception& ex)
@@ -157,12 +236,12 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
 }
 
 int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
-                                   const cJSON* json_snapshot,
-                                   void* callback)
+                                   const cJSON*        js_snapshot,
+                                   void*               callback)
 {
     auto ret_val { -1 };
     std::string error_message;
-    if (!handle || !json_snapshot || !callback)
+    if (!handle || !js_snapshot || !callback)
     {
         error_message += "Invalid input parameters.";
     }
@@ -170,7 +249,7 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
     {
         try
         {
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json_snapshot)};
+            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
             DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), callback);
             ret_val = 0;
         }
@@ -193,16 +272,11 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
     return ret_val;
 }
 
-void dbsync_teardown(void)
+void dbsync_free_result(cJSON** js_data)
 {
-    DBSyncImplementation::instance().release();
-}
-
-void dbsync_free_result(cJSON** json_result)
-{
-    if (*json_result)
+    if (*js_data)
     {
-        cJSON_Delete(*json_result);
+        cJSON_Delete(*js_data);
     }
 }
 
