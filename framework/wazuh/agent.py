@@ -125,7 +125,19 @@ def restart_agents(agent_list=None):
 
 @expose_resources(actions=['cluster:read_config'], resources=['node:id:{node_id}'], post_proc_func=None)
 def restart_agents_by_node(agent_list=None, node_id=None):
-    """Restart all agents belonging to a node."""
+    """Restart all agents belonging to a node.
+
+    Parameters
+    ----------
+    agent_list : list, optional
+        List of agents. Default `None`
+    node_id : str, optional
+        Node name. Only used for RBAC. Default `None`
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+    """
     if '000' in agent_list:
         agent_list.remove('000')
 
