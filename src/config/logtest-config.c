@@ -10,14 +10,14 @@
 
 #include "logtest-config.h"
 
-int Read_Logtest(XML_NODE node, void *config) {
 
-    const char *logtest_enabled = "enabled";
-    const char *logtest_threads = "threads";
-    const char *logtest_users_allowed = "max_sessions";
-    const char *logtest_idle_time_allowed = "session_timeout";
+const char *enabled = "enabled";
+const char *threads = "threads";
+const char *max_sessions = "max_sessions";
+const char *session_timeout = "session_timeout";
 
-    logtestConfig *logtest_conf = (logtestConfig *) config;
+
+int Read_Logtest(XML_NODE node) {
 
     for(int i = 0; node[i]; i++) {
 
@@ -31,17 +31,17 @@ int Read_Logtest(XML_NODE node, void *config) {
             return OS_INVALID;
         }
 
-        else if (!strcmp(node[i]->element, logtest_enabled)) {
+        else if (!strcmp(node[i]->element, enabled)) {
             if (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no")) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
-            strcpy(logtest_conf->enabled, node[i]->content);
+            strcpy(logtest_conf.enabled, node[i]->content);
         }
 
-        else if (!strcmp(node[i]->element, logtest_threads)) {
+        else if (!strcmp(node[i]->element, threads)) {
             if (!strcmp(node[i]->content, "auto")) {
-                logtest_conf->threads = get_nprocs();
+                logtest_conf.threads = get_nprocs();
                 continue;
             }
 
@@ -52,30 +52,30 @@ int Read_Logtest(XML_NODE node, void *config) {
                 return OS_INVALID;
             }
 
-            logtest_conf->threads = (unsigned short) value;
-            if(logtest_conf->threads > LOGTEST_MAXTHREAD) {
-                logtest_conf->threads = LOGTEST_MAXTHREAD;
+            logtest_conf.threads = (unsigned short) value;
+            if(logtest_conf.threads > LOGTEST_MAXTHREAD) {
+                logtest_conf.threads = LOGTEST_MAXTHREAD;
                 mwarn(LOGTEST_INV_NUM_THREADS, LOGTEST_MAXTHREAD);
             }
         }
 
-        else if(!strcmp(node[i]->element, logtest_users_allowed)) {
+        else if(!strcmp(node[i]->element, max_sessions)) {
             char *end;
             long value = strtol(node[i]->content, &end, 10);
             if (value < 0 || value > 65534 || *end) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
-            logtest_conf->max_sessions = (unsigned short) value;
+            logtest_conf.max_sessions = (unsigned short) value;
         }
 
-        else if(!strcmp(node[i]->element, logtest_idle_time_allowed)) {
+        else if(!strcmp(node[i]->element, session_timeout)) {
             long value = w_parse_time(node[i]->content);
             if (value <= 0) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
-            logtest_conf->session_timeout = value;
+            logtest_conf.session_timeout = value;
         }
 
         else {
@@ -85,4 +85,20 @@ int Read_Logtest(XML_NODE node, void *config) {
     }
 
     return OS_SUCCESS;
+}
+
+
+cJSON *getRuleTestConfig() {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *ruletest = cJSON_CreateObject();
+
+    if (logtest_conf.enabled) cJSON_AddStringToObject(ruletest, enabled, logtest_conf.enabled);
+    if (logtest_conf.threads)cJSON_AddNumberToObject(ruletest, threads, logtest_conf.threads);
+    if (logtest_conf.max_sessions)cJSON_AddNumberToObject(ruletest, max_sessions, logtest_conf.max_sessions);
+    if (logtest_conf.session_timeout)cJSON_AddNumberToObject(ruletest, session_timeout, logtest_conf.session_timeout);
+
+    cJSON_AddItemToObject(root, "rule_test", ruletest);
+
+    return root;
 }
