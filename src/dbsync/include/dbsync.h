@@ -73,10 +73,10 @@ EXPORTED void dbsync_teardown(void);
  * @details If the max queue size is reached then this will be processed synchronously.
  */
 EXPORTED TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
-                                              const char**        tables,
-                                              const int           thread_number,
-                                              const int           max_queue_size,
-                                              void*               callback);
+                                      const char**        tables,
+                                      const int           thread_number,
+                                      const int           max_queue_size,
+                                      void*               callback);
 
 /**
  * @brief Closes the \p txn database transaction.
