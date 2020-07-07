@@ -88,17 +88,17 @@ void dbsync_teardown(void)
     DBSyncImplementation::instance().release();
 }
 
-TXN_HANDLE dbsync_create_transaction(const DBSYNC_HANDLE /*handle*/,
-                                    const char**         /*tables*/,
-                                    const int            /*thread_number*/,
-                                    const int            /*max_queue_size*/,
-                                    void*                /*callback*/)
+TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE /*handle*/,
+                             const char**        /*tables*/,
+                             const int           /*thread_number*/,
+                             const int           /*max_queue_size*/,
+                             void*               /*callback*/)
 {
     // Dummy function for now.
     return nullptr;
 }
 
-int dbsync_close_transaction(const TXN_HANDLE /*txn*/)
+int dbsync_close_txn(const TXN_HANDLE /*txn*/)
 {
     // Dummy function for now.
     return 0;
