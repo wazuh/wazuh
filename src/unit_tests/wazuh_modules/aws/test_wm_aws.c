@@ -10,7 +10,7 @@
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_aws.h"
-#include "wmodules_scheduling_helpers.h"
+#include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 
@@ -20,16 +20,11 @@ static wmodule *aws_module;
 static OS_XML *lxml;
 extern int test_mode;
 
-static unsigned test_aws_date_counter = 0;
-static struct tm test_aws_date_storage[TEST_MAX_DATES];
-
 extern void wm_aws_run_s3(wm_aws_bucket *bucket);
 
 void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     // Will wrap this function to check running times in order to check scheduling
-    time_t current_time = time(NULL);
-    struct tm *date = localtime(&current_time);
-    test_aws_date_storage[test_aws_date_counter++] = *date;
+    return;
 }
 /****************************************************************/
 
@@ -76,7 +71,6 @@ static int teardown_module() {
 
 static int setup_test_executions(void **state) {
     wm_max_eps = 1;
-    test_aws_date_counter = 0;
     return 0;
 }
 
@@ -122,72 +116,7 @@ void test_interval_execution(void **state) {
     expect_any_always(__wrap__mtinfo, formatted_msg);
 
     aws_module->context->start(module_data);
-    check_time_interval( &module_data->scan_config, &test_aws_date_storage[0], TEST_MAX_DATES);
 }
-
-void test_day_of_month(void **state) {
-    wm_aws* module_data = (wm_aws *)aws_module->data;
-    *state = module_data;
-    module_data->scan_config.next_scheduled_scan_time = 0;
-    module_data->scan_config.scan_day = 3;
-    module_data->scan_config.scan_wday = -1;
-    module_data->scan_config.scan_time =strdup("00:00");
-    module_data->scan_config.interval = 1; // 1 month
-    module_data->scan_config.month_interval = true;
-
-    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
-    will_return(__wrap_FOREVER, 0);
-    expect_string_count(__wrap__mterror, tag, "wazuh-modulesd:aws-s3", TEST_MAX_DATES + 1);
-    expect_string_count(__wrap__mterror, formatted_msg, "Couldn't save running state.", TEST_MAX_DATES + 1);
-    expect_any_always(__wrap__mtinfo, tag);
-    expect_any_always(__wrap__mtinfo, formatted_msg);
-
-    aws_module->context->start(module_data);
-    check_day_of_month( &module_data->scan_config, &test_aws_date_storage[0], TEST_MAX_DATES);
-}
-
-void test_day_of_week(void **state) {
-    wm_aws* module_data = (wm_aws *)aws_module->data;
-    *state = module_data;
-    module_data->scan_config.next_scheduled_scan_time = 0;
-    module_data->scan_config.scan_day = 0;
-    module_data->scan_config.scan_wday = 6;
-    module_data->scan_config.scan_time = strdup("00:00");
-    module_data->scan_config.interval = 604800;  // 1 week
-    module_data->scan_config.month_interval = false;
-
-    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
-    will_return(__wrap_FOREVER, 0);
-    expect_string_count(__wrap__mterror, tag, "wazuh-modulesd:aws-s3", TEST_MAX_DATES + 1);
-    expect_string_count(__wrap__mterror, formatted_msg, "Couldn't save running state.", TEST_MAX_DATES + 1);
-    expect_any_always(__wrap__mtinfo, tag);
-    expect_any_always(__wrap__mtinfo, formatted_msg);
-
-    aws_module->context->start(module_data);
-    check_day_of_week( &module_data->scan_config, &test_aws_date_storage[0], TEST_MAX_DATES);
-}
-
-void test_time_of_day(void **state) {
-    wm_aws* module_data = (wm_aws *)aws_module->data;
-    *state = module_data;
-    module_data->scan_config.next_scheduled_scan_time = 0;
-    module_data->scan_config.scan_day = 0;
-    module_data->scan_config.scan_wday = -1;
-    module_data->scan_config.scan_time = strdup("00:00");
-    module_data->scan_config.interval = WM_DEF_INTERVAL;  // 1 day
-    module_data->scan_config.month_interval = false;
-
-    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
-    will_return(__wrap_FOREVER, 0);
-    expect_string_count(__wrap__mterror, tag, "wazuh-modulesd:aws-s3", TEST_MAX_DATES + 1);
-    expect_string_count(__wrap__mterror, formatted_msg, "Couldn't save running state.", TEST_MAX_DATES + 1);
-    expect_any_always(__wrap__mtinfo, tag);
-    expect_any_always(__wrap__mtinfo, formatted_msg);
-
-    aws_module->context->start(module_data);
-    check_time_of_day( &module_data->scan_config, &test_aws_date_storage[0], TEST_MAX_DATES);
-}
-
 
 void test_fake_tag(void **state) {
     const char *string =
@@ -307,10 +236,7 @@ void test_read_scheduling_interval_configuration(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
-        cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_day_of_month, setup_test_executions, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_day_of_week, setup_test_executions, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_time_of_day, setup_test_executions, teardown_test_executions)
+        cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)
     };
     const struct CMUnitTest tests_without_startup[] = {
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),

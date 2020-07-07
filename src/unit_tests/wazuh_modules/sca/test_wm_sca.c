@@ -1,16 +1,16 @@
 /**
  * Test corresponding to the scheduling capacities
- * for SCA Module 
+ * for SCA Module
  * */
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include <time.h> 
+#include <time.h>
 #include <stdlib.h>
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
-#include "wmodules_scheduling_helpers.h"
+#include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 #define TEST_MAX_DATES 3
@@ -18,9 +18,6 @@
 static wmodule *sca_module;
 static OS_XML *lxml;
 extern int test_mode;
-
-static unsigned test_sca_date_counter = 0;
-static struct tm test_sca_date_storage[TEST_MAX_DATES];
 
 extern void wm_sca_send_policies_scanned(wm_sca_t * data);
 
@@ -61,9 +58,7 @@ int __wrap_wm_sendmsg(int usec, int queue, const char *message, const char *locm
 void wm_sca_send_policies_scanned(wm_sca_t * data)
 {
     // Will wrap this function to check running times in order to check scheduling
-    time_t current_time = time(NULL);
-    struct tm *date = localtime(&current_time);
-    test_sca_date_storage[test_sca_date_counter++] = *date;
+    return;
 }
 
 /******* Helpers **********/
@@ -85,7 +80,7 @@ static void wmodule_cleanup(wmodule *module){
 /***  SETUPS/TEARDOWNS  ******/
 static int setup_module() {
     sca_module = calloc(1, sizeof(wmodule));
-    const char *string = 
+    const char *string =
         "<enabled>yes</enabled>\n"
         "<interval>12h</interval>\n"
         "<scan_on_start>no</scan_on_start>\n"
@@ -114,7 +109,6 @@ static int teardown_module(){
 
 static int setup_test_executions(void **state) {
     wm_max_eps = 1;
-    test_sca_date_counter = 0;
     return 0;
 }
 
@@ -134,7 +128,7 @@ static int teardown_test_executions(void **state) {
 static int setup_test_read(void **state) {
     test_structure *test = calloc(1, sizeof(test_structure));
     test->module =  calloc(1, sizeof(wmodule));
-    *state = test;   
+    *state = test;
     return 0;
 }
 
@@ -170,79 +164,11 @@ void test_interval_execution(void **state) {
     expect_any_always(__wrap__mtwarn, tag);
     expect_any_always(__wrap__mtwarn, formatted_msg);
 
-
     sca_module->context->start(module_data);
-    check_time_interval( &module_data->scan_config, &test_sca_date_storage[0], TEST_MAX_DATES);   
-}
-
-void test_day_of_month(void **state) {
-    wm_sca_t* module_data = (wm_sca_t *)sca_module->data;
-    *state = module_data;
-    module_data->scan_config.next_scheduled_scan_time = 0;
-    module_data->scan_config.scan_day = 13;
-    module_data->scan_config.scan_wday = -1;
-    module_data->scan_config.scan_time = strdup("00:00");
-    module_data->scan_config.interval = 1; // 1 month
-    module_data->scan_config.month_interval = true;
-
-    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
-    will_return(__wrap_FOREVER, 0);
-    expect_any_always(__wrap__mtinfo, tag);
-    expect_any_always(__wrap__mtinfo, formatted_msg);
-    expect_any_always(__wrap__mtwarn, tag);
-    expect_any_always(__wrap__mtwarn, formatted_msg);
-
-
-    sca_module->context->start(module_data);
-    check_day_of_month( &module_data->scan_config, &test_sca_date_storage[0], TEST_MAX_DATES);   
-}
-
-void test_day_of_week(void **state) {
-    wm_sca_t* module_data = (wm_sca_t *)sca_module->data;
-    *state = module_data;
-    module_data->scan_config.next_scheduled_scan_time = 0;
-    module_data->scan_config.scan_day = 0;
-    module_data->scan_config.scan_wday = 4;
-    module_data->scan_config.scan_time = strdup("00:00");
-    module_data->scan_config.interval = 604800;  // 1 week
-    module_data->scan_config.month_interval = false;
-
-    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
-    will_return(__wrap_FOREVER, 0);
-    expect_any_always(__wrap__mtinfo, tag);
-    expect_any_always(__wrap__mtinfo, formatted_msg);
-    expect_any_always(__wrap__mtwarn, tag);
-    expect_any_always(__wrap__mtwarn, formatted_msg);
-
-
-    sca_module->context->start(module_data);
-    check_day_of_week( &module_data->scan_config, &test_sca_date_storage[0], TEST_MAX_DATES);
-}
-
-void test_time_of_day(void **state) {
-    wm_sca_t* module_data = (wm_sca_t *)sca_module->data;
-    *state = module_data;
-    module_data->scan_config.next_scheduled_scan_time = 0;
-    module_data->scan_config.scan_day = 0;
-    module_data->scan_config.scan_wday = -1;
-    module_data->scan_config.scan_time = strdup("05:25");
-    module_data->scan_config.interval = WM_DEF_INTERVAL;  // 1 day
-    module_data->scan_config.month_interval = false;
-
-    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
-    will_return(__wrap_FOREVER, 0);
-    expect_any_always(__wrap__mtinfo, tag);
-    expect_any_always(__wrap__mtinfo, formatted_msg);
-    expect_any_always(__wrap__mtwarn, tag);
-    expect_any_always(__wrap__mtwarn, formatted_msg);
-
-
-    sca_module->context->start(module_data);
-    check_time_of_day( &module_data->scan_config, &test_sca_date_storage[0], TEST_MAX_DATES);
 }
 
 void test_fake_tag(void **state) {
-    const char *string = 
+    const char *string =
         "<enabled>yes</enabled>\n"
         "<scan_on_start>no</scan_on_start>\n"
         "<time>03:30</time>\n"
@@ -262,7 +188,7 @@ void test_fake_tag(void **state) {
 }
 
 void test_read_scheduling_monthday_configuration(void **state) {
-    const char *string = 
+    const char *string =
         "<enabled>yes</enabled>\n"
         "<scan_on_start>no</scan_on_start>\n"
         "<day>7</day>\n"
@@ -287,7 +213,7 @@ void test_read_scheduling_monthday_configuration(void **state) {
 }
 
 void test_read_scheduling_weekday_configuration(void **state) {
-    const char *string = 
+    const char *string =
         "<enabled>yes</enabled>\n"
         "<scan_on_start>no</scan_on_start>\n"
         "<wday>Monday</wday>\n"
@@ -312,7 +238,7 @@ void test_read_scheduling_weekday_configuration(void **state) {
 }
 
 void test_read_scheduling_daytime_configuration(void **state) {
-    const char *string = 
+    const char *string =
         "<enabled>yes</enabled>\n"
         "<scan_on_start>no</scan_on_start>\n"
         "<time>05:30</time>\n"
@@ -323,7 +249,7 @@ void test_read_scheduling_daytime_configuration(void **state) {
 
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_string(__wrap__mtinfo, formatted_msg, "Could not open the default SCA ruleset folder '/var/ossec/ruleset/sca/': Permission denied");
-    
+
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),0);
     wm_sca_t* module_data = (wm_sca_t *)test->module->data;
@@ -335,7 +261,7 @@ void test_read_scheduling_daytime_configuration(void **state) {
 }
 
 void test_read_scheduling_interval_configuration(void **state) {
-    const char *string = 
+    const char *string =
         "<enabled>yes</enabled>\n"
         "<scan_on_start>no</scan_on_start>\n"
         "<interval>2h</interval>\n"
@@ -346,7 +272,7 @@ void test_read_scheduling_interval_configuration(void **state) {
 
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_string(__wrap__mtinfo, formatted_msg, "Could not open the default SCA ruleset folder '/var/ossec/ruleset/sca/': Permission denied");
-    
+
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),0);
     wm_sca_t* module_data = (wm_sca_t *)test->module->data;
@@ -359,10 +285,7 @@ void test_read_scheduling_interval_configuration(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
-        cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_day_of_month, setup_test_executions, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_day_of_week, setup_test_executions, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_time_of_day, setup_test_executions, teardown_test_executions)
+        cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)
     };
     const struct CMUnitTest tests_without_startup[] = {
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),

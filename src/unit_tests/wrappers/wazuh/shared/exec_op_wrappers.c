@@ -21,6 +21,10 @@ int __wrap_wpclose() {
     return mock();
 }
 
+wfd_t *__wrap_wpopenl() {
+    return mock_type(wfd_t *);
+}
+
 wfd_t *__wrap_wpopenv() {
     return mock_type(wfd_t *);
 }

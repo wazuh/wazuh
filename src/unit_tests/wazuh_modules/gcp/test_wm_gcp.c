@@ -19,6 +19,7 @@
 #include "../../headers/defs.h"
 #include "../../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/schedule_scan_wrappers.h"
 
 void wm_gcp_run(const wm_gcp *data);
 cJSON *wm_gcp_dump(const wm_gcp *data);
@@ -48,14 +49,6 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
 void __wrap_sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object) {
     check_expected_ptr(scan_config);
     check_expected_ptr(cjson_object);
-}
-
-time_t __wrap_sched_scan_get_time_until_next_scan(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
-    check_expected_ptr(config);
-    check_expected(MODULE_TAG);
-    check_expected(run_on_start);
-
-    return mock_type(time_t);
 }
 
 /* setup/teardown */
