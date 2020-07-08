@@ -212,6 +212,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
 
     } else if (strcasestr(feed, vu_feed_tag[FEED_REDHAT])) {
         if (!version) {
+            os_free(upd);
             return OS_INVALID;
         }
         // RHEL8
@@ -739,6 +740,10 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                 goto end;
             }
 
+            if (os_list->allow && wm_vuldet_add_allow_os(updates[os_index], os_list->allow, 0)) {
+                goto end;
+            }
+
             if (os_list->interval) {
                 updates[os_index]->interval = os_list->interval;
             } else if (p_options.update_interval) {
@@ -749,10 +754,6 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             updates[os_index]->url = os_list->url;
             updates[os_index]->path = os_list->path;
             updates[os_index]->port = os_list->port;
-            if (os_list->allow && wm_vuldet_add_allow_os(updates[os_index], os_list->allow, 0)) {
-                wm_vuldet_remove_os_feed(rem, 0);
-                return OS_INVALID;
-            }
 
             mdebug1("Added %s (%s) feed. Interval: %lus | Path: '%s' | Url: '%s' | Timeout: %lds",
                         pr_name,
@@ -833,7 +834,8 @@ end:
     }
 
     wm_vuldet_clear_provider_options(p_options);
-    if (retval) {
+    
+    if (os_list) {
         wm_vuldet_remove_os_feed_list(os_list);
     }
 
