@@ -49,7 +49,7 @@ public:
                   << "\t-c JSON_CONFIG_FILE\tSpecifies the json config file to initialize the database.\n"
                   << "\t-s SNAPSHOT_LIST\tSpecifies the list of snapshots to exercise the dabase.\n"
                   << "\t-o OUTPUT_FOLDER\tSpecifies the output folder path where the results will be generated.\n"         
-                  << "\n Example:"
+                  << "\nExample:"
                   << "\n\t./dbsync_test_tool -c config.json -s input1.json,input2.json,input3.json -o ./output\n"
                   << std::endl;
     }

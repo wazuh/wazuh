@@ -15,13 +15,13 @@
 #include <fstream>
 
 void SQLiteDBEngine::execute(
-    const std::string& query) {
-}
+    const std::string& /*query*/)
+{}
 
 void SQLiteDBEngine::select(
-    const std::string& query, 
-    nlohmann::json& result) {
-}
+    const std::string& /*query*/,
+    nlohmann::json& /*result*/)
+{}
 
 
 SQLiteDBEngine::SQLiteDBEngine(
@@ -274,7 +274,7 @@ bool SQLiteDBEngine::removeNotExistsRows(
         }
         auto callback { std::get<ResponseType::RT_CALLBACK>(delta) };
         if (nullptr != callback) {
-          result_callback Notify = reinterpret_cast<result_callback>(callback);
+          result_callback_t Notify = reinterpret_cast<result_callback_t>(callback);
           cJSON* json_result { cJSON_Parse(object.dump().c_str()) };
           Notify(ReturnTypeCallback::DELETED, json_result);
           cJSON_Delete(json_result);
@@ -532,7 +532,7 @@ bool SQLiteDBEngine::insertNewRows(
         }
         auto callback { std::get<ResponseType::RT_CALLBACK>(delta) };
         if (nullptr != callback) {
-          result_callback Notify = reinterpret_cast<result_callback>(callback);
+          result_callback_t Notify = reinterpret_cast<result_callback_t>(callback);
           cJSON* json_result { cJSON_Parse(object.dump().c_str()) };
           Notify(ReturnTypeCallback::INSERTED, json_result);
           cJSON_Delete(json_result);
@@ -591,7 +591,7 @@ int SQLiteDBEngine::changeModifiedRows(
         }
         auto callback { std::get<ResponseType::RT_CALLBACK>(delta) };
         if (nullptr != callback) {
-          result_callback Notify = reinterpret_cast<result_callback>(callback);
+          result_callback_t Notify = reinterpret_cast<result_callback_t>(callback);
           cJSON* json_result { cJSON_Parse(object.dump().c_str()) };
           Notify(ReturnTypeCallback::MODIFIED, json_result);
           cJSON_Delete(json_result);
