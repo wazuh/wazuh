@@ -6,10 +6,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
 */
-#ifndef WIN32
-#ifndef CLIENT
 
-#include "wazuh_modules/wm_agent_upgrade.h"
+#include "wazuh_modules/agent_upgrade/wm_agent_upgrade.h"
 
 int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
     if (!module->data) {
@@ -24,6 +22,3 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
 
     return 0;
 }
-
-#endif 
-#endif

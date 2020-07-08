@@ -164,6 +164,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WM_KEY_REQUEST_SOCK "/queue/ossec/krequest"
 #define WM_KEY_REQUEST_SOCK_PATH DEFAULTDIR WM_KEY_REQUEST_SOCK
 
+// Tasks socket
+#define WM_UPGRADE_SOCK "/queue/tasks/upgrade"
+#define WM_UPGRADE_SOCK_PATH DEFAULTDIR WM_UPGRADE_SOCK
+
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
 
