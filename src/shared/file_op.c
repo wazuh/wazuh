@@ -492,6 +492,7 @@ float DirSize(const char *path) {
 
         if (stat(entry, &buf) == -1) {
             os_free(entry);
+            closedir(directory);
             return 0;
         }
 
@@ -512,9 +513,7 @@ float DirSize(const char *path) {
             break;
         }
 
-        if (entry) {
-            free(entry);
-        }
+        os_free(entry);
     }
 
     closedir(directory);

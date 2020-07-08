@@ -54,7 +54,7 @@
 #define FIM_DB_80_PERCENTAGE_ALERT          "(6039): Sending DB 80%% full alert."
 #define FIM_DB_90_PERCENTAGE_ALERT          "(6039): Sending DB 90%% full alert."
 
-#define FIM_DIFF_FILE_SIZE_LIMIT            "(6040): Maximum file size limit configured to '%d KB' for '%s'."
+#define FIM_DIFF_FILE_SIZE_LIMIT            "(6040): Maximum file size limit to generate diff information configured to '%d KB' for '%s'."
 #define FIM_DISK_QUOTA_LIMIT                "(6041): Maximum disk quota size limit configured to '%d KB'."
 #define FIM_BIG_FILE_REPORT_CHANGES         "(6042): File '%s' is too big for configured maximum size to perform diff operation."
 #define FIM_DISK_QUOTA_LIMIT_REACHED        "(6043): The maximum configured size for the '%s' folder has been reached, the diff operation cannot be performed."

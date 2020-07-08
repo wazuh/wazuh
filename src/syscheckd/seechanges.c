@@ -485,7 +485,7 @@ void seechanges_delete_compressed_file(const char *path){
 
     snprintf(
         last_entry_file,
-        PATH_MAX,
+        strlen(containing_folder) + strlen(DIFF_LAST_FILE) + 5,
         "%s/%s.gz",
         containing_folder,
         DIFF_LAST_FILE

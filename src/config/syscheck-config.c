@@ -808,8 +808,9 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                                 tmp_diff_size = adjust_value_to_data_unit(atoi(limit_value_str), diff_size_data_unit);
                             }
                             else {
-                                os_free(limit_value_str);
                                 mwarn(FIM_INVALID_OPTION_SKIP, value, *attrs, dirs);
+                                os_free(limit_value_str);
+                                os_free(value);
                                 goto out_free;
                             }
 
@@ -819,6 +820,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     else if (isdigit(value[len_str_limit - 1])) {
                         if (!OS_StrIsNum(value)) {
                             mwarn(FIM_INVALID_OPTION_SKIP, value, *attrs, dirs);
+                            os_free(value);
                             goto out_free;
                         }
 
@@ -826,6 +828,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     }
                     else {
                         mwarn(FIM_INVALID_OPTION_SKIP, value, *attrs, dirs);
+                        os_free(value);
                         goto out_free;
                     }
 
