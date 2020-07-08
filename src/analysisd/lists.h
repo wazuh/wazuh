@@ -55,15 +55,15 @@ int Lists_OP_LoadList(char *listfile);
 
 int OS_DBSearchKey(ListRule *lrule, char *key);
 
-int OS_DBSearch(ListRule *lrule, char *key);
+int OS_DBSearch(ListRule *lrule, char *key, ListNode *l_node);
 
-void OS_ListLoadRules(void);
+void OS_ListLoadRules(ListNode **l_node);
 
-ListRule *OS_AddListRule(ListRule *first_rule_list, int lookup_type, int field, const char *dfield, char *listname, OSMatch *matcher);
+ListRule *OS_AddListRule(ListRule *first_rule_list, int lookup_type, int field, const char *dfield, char *listname, OSMatch *matcher, ListNode *l_node);
 
 ListNode *OS_GetFirstList(void);
 
-ListNode *OS_FindList(const char *listname);
+ListNode *OS_FindList(const char *listname, ListNode *l_node);
 
 void Lists_OP_CreateLists(void);
 
