@@ -302,7 +302,7 @@ int main(int argc, char **argv)
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     mdebug1("Reading rules file: '%s'", *rulesfiles);
-                    if (Rules_OP_ReadRules(*rulesfiles) < 0) {
+                    if (Rules_OP_ReadRules(*rulesfiles, rulenode, global_listnode) < 0) {
                         merror_exit(RULES_ERROR, *rulesfiles);
                     }
 
@@ -319,7 +319,7 @@ int main(int argc, char **argv)
              * having to search thought the list of lists for the correct file
              * during rule evaluation.
              */
-            OS_ListLoadRules();
+            OS_ListLoadRules(&global_listnode);
         }
     }
 

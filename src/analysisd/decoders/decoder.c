@@ -17,9 +17,8 @@
 
 
 /* Use the osdecoders to decode the received event */
-void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
+void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match, OSDecoderNode *node)
 {
-    OSDecoderNode *node;
     OSDecoderNode *child_node;
     OSDecoderInfo *nnode;
 
@@ -28,12 +27,6 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
     const char *cmatch = NULL;
     const char *regex_prev = NULL;
     const char *result = NULL;
-
-    node = OS_GetFirstOSDecoder(lf->program_name);
-
-    if (!node) {
-        return;
-    }
 
 #ifdef TESTRULE
     if (!alert_only) {
