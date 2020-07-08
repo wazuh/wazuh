@@ -79,7 +79,7 @@ typedef struct dbsync_context_t {
  * list and to get the first osdecoder
  */
 void OS_CreateOSDecoderList(void);
-int OS_AddOSDecoder(OSDecoderInfo *pi);
+int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode, OSDecoderNode **npn_osdecodernode);
 OSDecoderNode *OS_GetFirstOSDecoder(const char *pname);
 int getDecoderfromlist(const char *name);
 char *GetGeoInfobyIP(char *ip_addr);

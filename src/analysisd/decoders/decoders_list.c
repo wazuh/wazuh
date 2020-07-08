@@ -16,13 +16,7 @@
 #include "decoder.h"
 #include "error_messages/error_messages.h"
 #include "error_messages/debug_messages.h"
-
-/* We have two internal lists. One with the program_name
- * and one without. This is going to improve greatly the
- * performance of our decoder matching.
- */
-OSDecoderNode *osdecodernode_forpname;
-OSDecoderNode *osdecodernode_nopname;
+#include "analysisd.h"
 
 static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi);
 
@@ -134,7 +128,7 @@ error:
     return (NULL);
 }
 
-int OS_AddOSDecoder(OSDecoderInfo *pi)
+int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode, OSDecoderNode **npn_osdecodernode)
 {
     int added = 0;
     OSDecoderNode *osdecodernode;
@@ -143,14 +137,14 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
      * name and the other without.
      */
     if (pi->program_name) {
-        osdecodernode = osdecodernode_forpname;
+        osdecodernode = *pn_osdecodernode;
     } else {
-        osdecodernode = osdecodernode_nopname;
+        osdecodernode = *npn_osdecodernode;
     }
 
     /* Search for parent on both lists */
     if (pi->parent) {
-        OSDecoderNode *tmp_node = osdecodernode_forpname;
+        OSDecoderNode *tmp_node = *pn_osdecodernode;
 
         /* List with p_name */
         while (tmp_node) {
@@ -166,7 +160,7 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
         }
 
         /* List without p name */
-        tmp_node = osdecodernode_nopname;
+        tmp_node = *npn_osdecodernode;
         while (tmp_node) {
             if (strcmp(tmp_node->osdecoder->name, pi->parent) == 0) {
                 tmp_node->child = _OS_AddOSDecoder(tmp_node->child, pi);
@@ -195,9 +189,9 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
 
         /* Update global decoder pointers */
         if (pi->program_name) {
-            osdecodernode_forpname = osdecodernode;
+            *pn_osdecodernode = osdecodernode;
         } else {
-            osdecodernode_nopname = osdecodernode;
+            *npn_osdecodernode = osdecodernode;
         }
     }
     return (1);
