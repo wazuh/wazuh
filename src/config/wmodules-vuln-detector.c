@@ -211,6 +211,9 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         upd->json_format = 1;
 
     } else if (strcasestr(feed, vu_feed_tag[FEED_REDHAT])) {
+        if (!version) {
+            return OS_INVALID;
+        }
         // RHEL8
         if (!strcmp(version, "8")) {
             os_index = CVE_REDHAT8;
