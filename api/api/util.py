@@ -6,7 +6,6 @@ import datetime
 import os
 import typing
 from json import loads
-from xml.etree.ElementTree import fromstring, ParseError
 
 import six
 from connexion import ProblemException
@@ -286,7 +285,8 @@ def validate_content_type(content_type, body):
         except ValueError:
             raise_if_exc(WazuhError(6002), code=406)
     elif 'xml' in content_type:
-        try:
-            fromstring(body)
-        except ParseError:
-            raise_if_exc(WazuhError(6002), code=406)
+        # Wazuh has its own XML parser, if we block the errors related to the
+        # XML validation, we would be blocking the errors of the Framework.
+        # In any case, if we receive a non-XML content-type and the body is a
+        # Wazuh XML, we would cover the case with an error 6002
+        pass
