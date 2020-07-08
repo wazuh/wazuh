@@ -38,7 +38,7 @@ for sql_file in /configuration_files/*.sql; do
   sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file
 done
 
-echo "max_login_attempts: 1000" >> /var/ossec/api/configuration/security/security.yaml
+echo "max_login_attempts: 10000" >> /var/ossec/api/configuration/security/security.yaml
 
 /var/ossec/bin/wazuh-apid restart
 
