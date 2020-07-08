@@ -200,7 +200,7 @@ installElasticsearch() {
         cd /usr/share/elasticsearch/plugins/opendistro_security/tools/ > /dev/null 2>&1
         ./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key > /dev/null 2>&1
 
-        echo $'\Done'
+        echo $'\nDone'
     fi
 }
 
