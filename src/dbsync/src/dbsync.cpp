@@ -92,7 +92,7 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE /*handle*/,
                              const char**        /*tables*/,
                              const int           /*thread_number*/,
                              const int           /*max_queue_size*/,
-                             void*               /*callback*/)
+                             result_callback_t   /*callback*/)
 {
     // Dummy function for now.
     return nullptr;
@@ -168,7 +168,7 @@ int dbsync_set_table_max_rows(const DBSYNC_HANDLE      /*handle*/,
 
 int dbsync_sync_row(const DBSYNC_HANDLE /*handle*/,
                     const cJSON*        /*js_input*/,
-                    void*               /*callback*/)
+                    result_callback_t   /*callback*/)
 {
     // Dummy function for now.
     return 0;
@@ -176,7 +176,7 @@ int dbsync_sync_row(const DBSYNC_HANDLE /*handle*/,
 
 int dbsync_select_rows(const DBSYNC_HANDLE /*handle*/,
                        const cJSON*        /*js_data_input*/,
-                       void*               /*callback*/)
+                       result_callback_t   /*callback*/)
 {
     // Dummy function for now.
     return 0;
@@ -189,8 +189,8 @@ int dbsync_delete_rows(const DBSYNC_HANDLE /*handle*/,
     return 0;
 }
 
-int dbsync_get_deleted_rows(const TXN_HANDLE /*txn*/,
-                            void*           /*callback*/)
+int dbsync_get_deleted_rows(const TXN_HANDLE  /*txn*/,
+                            result_callback_t /*callback*/)
 {
     // Dummy function for now.
     return 0;
