@@ -76,7 +76,7 @@ EXPORTED TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
                                       const char**        tables,
                                       const int           thread_number,
                                       const int           max_queue_size,
-                                      void*               callback);
+                                      result_callback_t   callback);
 
 /**
  * @brief Closes the \p txn database transaction.
@@ -159,7 +159,7 @@ EXPORTED int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
  */
 EXPORTED int dbsync_sync_row(const DBSYNC_HANDLE handle,
                              const cJSON*        js_input,
-                             void*               callback);
+                             result_callback_t   callback);
 
 /**
  * @brief Select data, based in \p json_data_input data, from the database table.
@@ -173,7 +173,7 @@ EXPORTED int dbsync_sync_row(const DBSYNC_HANDLE handle,
  */
 EXPORTED int dbsync_select_rows(const DBSYNC_HANDLE handle,
                                 const cJSON*        js_data_input,
-                                void*               callback);
+                                result_callback_t   callback);
 
 /**
  * @brief Deletes a database table record and its relationships based on \p js_key_values value.
@@ -196,8 +196,8 @@ EXPORTED int dbsync_delete_rows(const DBSYNC_HANDLE handle,
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
-EXPORTED int dbsync_get_deleted_rows(const TXN_HANDLE txn,
-                                     void*            callback);
+EXPORTED int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
+                                     result_callback_t callback);
 
 /**
  * @brief Updates data table with \p js_snapshot information. \p js_result value will
