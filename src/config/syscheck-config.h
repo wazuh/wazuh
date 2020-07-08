@@ -146,6 +146,7 @@ typedef struct whodata_evt {
     unsigned __int64 process_id;
     unsigned int mask;
     char scan_directory;
+    int config_node;
 #endif
 } whodata_evt;
 

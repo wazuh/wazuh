@@ -652,7 +652,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     short event_id;
     unsigned __int64 handle_id;
     char is_directory;
-    int position;
     whodata_directory *w_dir;
     SYSTEMTIME system_time;
     unsigned long mask = 0;
@@ -695,7 +694,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     free_whodata_event(w_evt);
                     goto clean;
                 }
-                if (position = fim_configuration_directory(w_evt->path, "file"), position < 0 &&
+                if (w_evt->config_node = fim_configuration_directory(w_evt->path, "file"), w_evt->config_node < 0 &&
                     !(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
                     // Discard the file or directory if its monitoring has not been activated
                     mdebug2(FIM_WHODATA_NOT_ACTIVE, w_evt->path);
@@ -704,7 +703,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 }
 
                 // Ignore the file if belongs to a non-whodata directory
-                if (!(position >= 0 ? syscheck.wdata.dirs_status[position].status & WD_CHECK_WHODATA : 0) &&
+                if (!(w_evt->config_node >= 0 ? syscheck.wdata.dirs_status[w_evt->config_node].status & WD_CHECK_WHODATA : 0) &&
                     !(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
                     mdebug2(FIM_WHODATA_CANCELED, w_evt->path);
                     free_whodata_event(w_evt);
@@ -763,6 +762,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
             // Write fd
             case 4663:
+                if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), !w_evt) {
+                    goto clean;
+                }
+
                 // Check if the mask is relevant
                 if (whodata_get_access_mask(buffer, &mask)) {
                     goto clean;
@@ -772,9 +775,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     goto clean;
                 }
 
-                if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), !w_evt) {
-                    goto clean;
-                }
                 w_evt->mask |= mask;
 
                 // Check if it is a rename or copy event
@@ -802,7 +802,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, w_evt->path);
                 } else {
                     // Check if is a valid directory
-                    if (position = fim_configuration_directory(w_evt->path, "file"), position < 0) {
+                    if (w_evt->config_node < 0) {
                         mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, w_evt->path);
                         w_evt->scan_directory = 2;
                         break;
