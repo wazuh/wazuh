@@ -15,6 +15,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include_directories(${CMAKE_SOURCE_DIR}/include/)
+include_directories(${CMAKE_SOURCE_DIR}/utils/)
 include_directories(${CMAKE_SOURCE_DIR}/src/)
 include_directories(${EXTERNAL_LIB}/sqlite/)
 include_directories(${EXTERNAL_LIB}/nlohmann/)
@@ -24,7 +25,8 @@ link_directories(${EXTERNAL_LIB}/cJSON/)
 
 file(GLOB DBSYNC_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sqlite/*.cpp")
+    "${CMAKE_SOURCE_DIR}/src/sqlite/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/*.cpp")
 
 add_library(dbsync SHARED 
     "${DBSYNC_SRC}" )

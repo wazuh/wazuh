@@ -45,7 +45,7 @@ void SQLiteDBEngine::initialize(
   if (cleanDB(path)) {
     m_sqlite_connection = m_sqlite_factory->createConnection(path);
 
-    const auto create_db_querys_list { StringHelper::split(table_statement_creation,';')};
+    const auto create_db_querys_list { Utils::split(table_statement_creation,';')};
 
     m_sqlite_connection->execute("PRAGMA temp_store = memory;");
     m_sqlite_connection->execute("PRAGMA synchronous = OFF;");
@@ -218,7 +218,7 @@ bool SQLiteDBEngine::createCopyTempTable(const std::string& table) {
   std::string result_query;
   deleteTempTable(table);
   if (getTableCreateQuery(table, result_query)) {
-    if (StringHelper::replaceAll(result_query, "CREATE TABLE " + table, "CREATE TEMP TABLE " + table + "_TEMP")) {
+    if (Utils::replaceAll(result_query, "CREATE TABLE " + table, "CREATE TEMP TABLE " + table + "_TEMP")) {
       auto const& stmt { getStatement(result_query) };
       ret_val = SQLITE_DONE == stmt->step();
     }
