@@ -20,6 +20,7 @@
 #include "../../wazuh_modules/wm_gcp.h"
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/file_op_wrappers.h"
 
 static const char *XML_ENABLED = "enabled";
 static const char *XML_PROJECT_ID = "project_id";
@@ -65,12 +66,6 @@ int replace_configuration_value(XML_NODE nodes, const char *tag, const char *new
 int __wrap_sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char *MODULE_NAME) {
     check_expected_ptr(nodes);
     check_expected(MODULE_NAME);
-
-    return mock();
-}
-
-int __wrap_IsFile(const char *file) {
-    check_expected(file);
 
     return mock();
 }

@@ -14,6 +14,7 @@
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/file_op_wrappers.h"
 
 #define TEST_MAX_DATES 5
 
@@ -23,11 +24,6 @@ extern int test_mode;
 
 int __wrap_os_random() {
     // Will wrap this function to check running times in order to check scheduling
-    return 0;
-}
-
-int __wrap_IsDir(const char *file) {
-    // Bypass dir verification in main loop
     return 0;
 }
 
@@ -115,6 +111,8 @@ void test_interval_execution(void **state) {
     module_data->scan_config.interval = 120; // 2min
     module_data->scan_config.month_interval = false;
 
+    expect_string(__wrap_IsDir, file, "/var/ossec/wodles/ciscat");
+    will_return(__wrap_IsDir, 0);
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
     expect_string_count(__wrap__mterror, tag, "wazuh-modulesd:ciscat", TEST_MAX_DATES + 1);

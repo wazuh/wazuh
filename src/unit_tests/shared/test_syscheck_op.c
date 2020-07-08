@@ -46,24 +46,6 @@ typedef struct __unescape_syscheck_field_data_s {
 
 /* wrappers */
 
-int __wrap_rmdir_ex(const char *name) {
-    int ret = mock();
-
-    if(ret == -1) {
-        errno = ENOTEMPTY;
-    } else {
-        errno = 0;
-    }
-
-    check_expected(name);
-    return ret;
-}
-
-char ** __wrap_wreaddir(const char * name) {
-    check_expected(name);
-    return mock_type(char**);
-}
-
 extern void __real_wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str);
 void __wrap_wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str) {
     if(mock()) {

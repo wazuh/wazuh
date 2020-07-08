@@ -18,6 +18,8 @@
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/linux/inotify_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
@@ -162,12 +164,6 @@ int __wrap_fim_configuration_directory(const char *path, const char *entry) {
 #ifdef WIN_WHODATA
 int __wrap_whodata_audit_start() {
     return 0;
-}
-
-int __wrap_check_path_type(const char *dir) {
-    check_expected(dir);
-
-    return mock();
 }
 
 int __wrap_set_winsacl(const char *dir, int position) {

@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "../syscheckd/syscheck.h"
 
 
@@ -94,12 +95,6 @@ void test_read_internal_debug(void **state)
 }
 #ifdef TEST_WINAGENT
 int Start_win32_Syscheck();
-
-int __wrap_File_DateofChange(const char * file)
-{
-    check_expected_ptr(file);
-    return mock();
-}
 
 int __wrap_Read_Syscheck_Config(const char * file)
 {

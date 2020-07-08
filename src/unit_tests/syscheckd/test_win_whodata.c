@@ -22,6 +22,8 @@
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/libc/stdlib_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "syscheckd/syscheck.h"
 
 
@@ -348,12 +350,6 @@ void __wrap_free_whodata_event(whodata_evt *w_evt) {
     }
 }
 
-int __wrap_IsFile(const char * file)
-{
-    check_expected(file);
-    return mock();
-}
-
 int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
     check_expected(command);
     if (output) {
@@ -368,12 +364,6 @@ void *__wrap_OSHash_Delete_ex(OSHash *self, const char *key) {
     check_expected(key);
 
     return mock_type(void*);
-}
-
-int __wrap_check_path_type(const char *dir) {
-    check_expected(dir);
-
-    return mock();
 }
 
 OSHash *__wrap_OSHash_Create() {

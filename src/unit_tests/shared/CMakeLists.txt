@@ -1,6 +1,6 @@
 
 # Tests list and flags
-set(FILE_OP_BASE_FLAGS "-Wl,--wrap,isChroot -Wl,--wrap,stat -Wl,--wrap,chmod -Wl,--wrap,File_DateofChange -Wl,--wrap,getpid \
+set(FILE_OP_BASE_FLAGS "-Wl,--wrap,isChroot -Wl,--wrap,stat -Wl,--wrap,chmod -Wl,--wrap,getpid \
                         -Wl,--wrap,unlink -Wl,--wrap,_merror -Wl,--wrap,_minfo -Wl,--wrap,_mwarn -Wl,--wrap,fopen -Wl,--wrap,_mferror \
                         -Wl,--wrap=fflush,--wrap=fclose,--wrap,fread,--wrap=fseek,--wrap=fwrite,--wrap=remove,--wrap,fprintf,--wrap=fgets")
 

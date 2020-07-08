@@ -22,13 +22,6 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../headers/file_op.h"
 
-/* redefinitons/wrapping */
-
-int __wrap_File_DateofChange(const char *file)
-{
-    return 1;
-}
-
 /* setups/teardowns */
 static int setup_group(void **state) {
     test_mode = 1;

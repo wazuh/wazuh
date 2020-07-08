@@ -27,11 +27,6 @@ extern OSHash **cis_db;
 extern struct cis_db_hash_info_t *cis_db_for_hash;
 extern unsigned int policies_count;
 
-int __wrap_IsFile(const char *file)
-{
-    return 0;
-}
-
 int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max)
 {
     if( !strcmp(low_name, "request_db_interval") ) {
@@ -91,6 +86,8 @@ static int setup_module() {
 
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_string(__wrap__mtinfo, formatted_msg, "Could not open the default SCA ruleset folder '/var/ossec/ruleset/sca/': Permission denied");
+    expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
+    will_return(__wrap_IsFile, 0);
 
     XML_NODE nodes = string_to_xml_node(string, lxml);
     int ret = wm_sca_read(lxml, nodes, sca_module);
@@ -183,6 +180,8 @@ void test_fake_tag(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "No such tag 'fake' at module 'sca'.");
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_string(__wrap__mtinfo, formatted_msg, "Could not open the default SCA ruleset folder '/var/ossec/ruleset/sca/': Permission denied");
+    expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
+    will_return(__wrap_IsFile, 0);
 
     assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),-1);
 }
@@ -201,6 +200,8 @@ void test_read_scheduling_monthday_configuration(void **state) {
     expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one month. New interval value: 1M");
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_string(__wrap__mtinfo, formatted_msg, "Could not open the default SCA ruleset folder '/var/ossec/ruleset/sca/': Permission denied");
+    expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
+    will_return(__wrap_IsFile, 0);
 
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),0);
@@ -226,6 +227,8 @@ void test_read_scheduling_weekday_configuration(void **state) {
     expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one week. New interval value: 1w");
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_string(__wrap__mtinfo, formatted_msg, "Could not open the default SCA ruleset folder '/var/ossec/ruleset/sca/': Permission denied");
+    expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
+    will_return(__wrap_IsFile, 0);
 
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),0);
@@ -249,6 +252,8 @@ void test_read_scheduling_daytime_configuration(void **state) {
 
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_string(__wrap__mtinfo, formatted_msg, "Could not open the default SCA ruleset folder '/var/ossec/ruleset/sca/': Permission denied");
+    expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
+    will_return(__wrap_IsFile, 0);
 
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),0);
@@ -272,6 +277,8 @@ void test_read_scheduling_interval_configuration(void **state) {
 
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_string(__wrap__mtinfo, formatted_msg, "Could not open the default SCA ruleset folder '/var/ossec/ruleset/sca/': Permission denied");
+    expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
+    will_return(__wrap_IsFile, 0);
 
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),0);

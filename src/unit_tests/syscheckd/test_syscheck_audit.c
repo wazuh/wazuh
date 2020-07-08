@@ -26,6 +26,8 @@
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/audit_op_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "external/procps/readproc.h"
 
 extern volatile int audit_health_check_deletion;
@@ -34,30 +36,6 @@ extern volatile int audit_health_check_deletion;
 
 int __wrap_OS_ConnectUnixDomain()
 {
-    return mock();
-}
-
-int __wrap_IsDir(const char * file)
-{
-    check_expected(file);
-    return mock();
-}
-
-int __wrap_IsLink(const char * file)
-{
-    check_expected(file);
-    return mock();
-}
-
-int __wrap_IsFile(const char * file)
-{
-    check_expected(file);
-    return mock();
-}
-
-int __wrap_IsSocket(const char * sock)
-{
-    check_expected(sock);
     return mock();
 }
 
@@ -370,7 +348,7 @@ void test_set_auditd_config_audit_plugin_not_created(void **state)
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
 
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/var/ossec/etc/af_wazuh.conf'");
-    
+
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
@@ -392,7 +370,7 @@ void test_set_auditd_config_audit_plugin_not_created(void **state)
     will_return(__wrap_symlink, 1);
 
     expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (/var/ossec/etc/af_wazuh.conf) was modified. Restarting Auditd service.");
-    
+
     // Restart
     syscheck.restart_audit = 1;
     will_return(__wrap_audit_restart, 99);
@@ -413,7 +391,7 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state)
     will_return(__wrap_IsDir, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/var/ossec/etc/af_wazuh.conf'");
-    
+
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
 
@@ -438,7 +416,7 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state)
     (void) state;
 
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/var/ossec/etc/af_wazuh.conf'");
-    
+
     // Audit 3
     expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
     will_return(__wrap_IsDir, 0);
@@ -475,7 +453,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink(void **sta
     (void) state;
 
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/var/ossec/etc/af_wazuh.conf'");
-    
+
     // Audit 3
     expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
     will_return(__wrap_IsDir, 0);
@@ -536,7 +514,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(vo
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
 
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/var/ossec/etc/af_wazuh.conf'");
-    
+
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
@@ -567,7 +545,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(vo
     will_return(__wrap_symlink, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (/var/ossec/etc/af_wazuh.conf) was modified. Restarting Auditd service.");
-    
+
     // Restart
     syscheck.restart_audit = 1;
     will_return(__wrap_audit_restart, 99);
@@ -588,7 +566,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void
     will_return(__wrap_IsDir, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/var/ossec/etc/af_wazuh.conf'");
-    
+
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
 
@@ -639,7 +617,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_unlink_err
     will_return(__wrap_IsDir, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/var/ossec/etc/af_wazuh.conf'");
-    
+
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
 

@@ -22,6 +22,8 @@
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 
 #ifndef TEST_WINAGENT
 #define PATH_OFFSET 1
@@ -82,38 +84,6 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
 
 /* redefinitons/wrapping */
 
-int __wrap_abspath(const char *path, char *buffer, size_t size) {
-    check_expected(path);
-
-    strncpy(buffer, path, size);
-    buffer[size - 1] = '\0';
-
-    return mock();
-}
-
-FILE *__wrap_wfopen(const char * __filename, const char * __modes) {
-    check_expected(__filename);
-    check_expected(__modes);
-    return mock_type(FILE *);
-}
-
-int __wrap_w_compress_gzfile(const char *filesrc, const char *filedst) {
-    check_expected(filesrc);
-    check_expected(filedst);
-    return mock();
-}
-
-int __wrap_w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
-    check_expected(gzfilesrc);
-    check_expected(gzfiledst);
-    return mock();
-}
-
-int __wrap_IsDir(const char *file) {
-    check_expected(file);
-    return mock();
-}
-
 int __wrap_OS_MD5_File(const char *fname, os_md5 output, int mode) {
     check_expected(fname);
     check_expected(mode);
@@ -122,10 +92,6 @@ int __wrap_OS_MD5_File(const char *fname, os_md5 output, int mode) {
     strncpy(output, md5, sizeof(os_md5));
 
     return mock();
-}
-
-int __wrap_File_DateofChange(const char *file) {
-    return 1;
 }
 
 /* Setup/teardown */
@@ -553,7 +519,7 @@ void test_gen_diff_alert_big_size(void **state) {
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
-    
+
 #ifndef TEST_WINAGENT
     expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
     will_return(__wrap_unlink, 0);
@@ -649,7 +615,7 @@ void test_gen_diff_alert_fread_error(void **state) {
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
-    
+
 #ifndef TEST_WINAGENT
     expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
     will_return(__wrap_unlink, 0);
@@ -697,7 +663,7 @@ void test_gen_diff_alert_compress_error(void **state) {
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
-    
+
 #ifndef TEST_WINAGENT
     expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
     will_return(__wrap_unlink, 0);
@@ -947,9 +913,15 @@ void test_seechanges_addfile(void **state) {
     will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
     will_return(__wrap_OS_MD5_File, 0);
 
+    expect_string(__wrap_File_DateofChange, file, last_entry);
+    will_return(__wrap_File_DateofChange, 1);
+
     expect_string(__wrap_rename, __old, last_entry);
     expect_string(__wrap_rename, __new, state_file);
     will_return(__wrap_rename, 1);
+
+    expect_string(__wrap_File_DateofChange, file, last_entry);
+    will_return(__wrap_File_DateofChange, 1);
 
     // seechanges_dupfile()
     expect_string(__wrap_wfopen, __filename, file_name);
@@ -1094,9 +1066,15 @@ void test_seechanges_addfile_run_diff(void **state) {
     will_return(__wrap_unlink, 0);
 #endif
 
+    expect_string(__wrap_File_DateofChange, file, last_entry);
+    will_return(__wrap_File_DateofChange, 1);
+
     expect_string(__wrap_rename, __old, last_entry);
     expect_string(__wrap_rename, __new, state_file);
     will_return(__wrap_rename, 1);
+
+    expect_string(__wrap_File_DateofChange, file, last_entry);
+    will_return(__wrap_File_DateofChange, 1);
 
     // seechanges_dupfile()
     expect_string(__wrap_wfopen, __filename, file_name);
@@ -1437,6 +1415,9 @@ void test_seechanges_addfile_rename_error(void **state) {
     will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
     will_return(__wrap_OS_MD5_File, 0);
 
+    expect_string(__wrap_File_DateofChange, file, last_entry);
+    will_return(__wrap_File_DateofChange, 1);
+
     expect_string(__wrap_rename, __old, last_entry);
     expect_string(__wrap_rename, __new, state_file);
     will_return(__wrap_rename, -1);
@@ -1487,6 +1468,9 @@ void test_seechanges_addfile_dupfile_error(void **state) {
     expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
     will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
     will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_File_DateofChange, file, last_entry);
+    will_return(__wrap_File_DateofChange, 1);
 
     expect_string(__wrap_rename, __old, last_entry);
     expect_string(__wrap_rename, __new, state_file);
@@ -1556,9 +1540,15 @@ void test_seechanges_addfile_fopen_error(void **state) {
     will_return(__wrap_unlink, 0);
 #endif
 
+    expect_string(__wrap_File_DateofChange, file, last_entry);
+    will_return(__wrap_File_DateofChange, 1);
+
     expect_string(__wrap_rename, __old, last_entry);
     expect_string(__wrap_rename, __new, state_file);
     will_return(__wrap_rename, 1);
+
+    expect_string(__wrap_File_DateofChange, file, last_entry);
+    will_return(__wrap_File_DateofChange, 1);
 
     // seechanges_dupfile()
     expect_string(__wrap_wfopen, __filename, file_name);
@@ -1666,9 +1656,15 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     will_return(__wrap_unlink, 0);
 #endif
 
+    expect_string(__wrap_File_DateofChange, file, last_entry);
+    will_return(__wrap_File_DateofChange, 1);
+
     expect_string(__wrap_rename, __old, last_entry);
     expect_string(__wrap_rename, __new, state_file);
     will_return(__wrap_rename, 1);
+
+    expect_string(__wrap_File_DateofChange, file, last_entry);
+    will_return(__wrap_File_DateofChange, 1);
 
     // seechanges_dupfile()
     expect_string(__wrap_wfopen, __filename, file_name);
@@ -1801,9 +1797,15 @@ void test_seechanges_addfile_run_diff_system_error(void **state) {
     will_return(__wrap_unlink, 0);
 #endif
 
+    expect_string(__wrap_File_DateofChange, file, last_entry);
+    will_return(__wrap_File_DateofChange, 1);
+
     expect_string(__wrap_rename, __old, last_entry);
     expect_string(__wrap_rename, __new, state_file);
     will_return(__wrap_rename, 1);
+
+    expect_string(__wrap_File_DateofChange, file, last_entry);
+    will_return(__wrap_File_DateofChange, 1);
 
     // seechanges_dupfile()
     expect_string(__wrap_wfopen, __filename, file_name);
