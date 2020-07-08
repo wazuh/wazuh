@@ -26,12 +26,12 @@ const wm_context WM_TASK_MANAGER_CONTEXT = {
 };
 
 void * wm_task_manager_main(wm_task_manager* task_config) {
-    mtinfo(WM_TASK_MANAGER_LOGTAG, "Module TaskManager started");
+    mtinfo(WM_TASK_MANAGER_LOGTAG, "Module Task Manager started");
     return NULL;
 }
 
 void wm_task_manager_destroy(wm_task_manager* task_config) {
-    mtinfo(WM_TASK_MANAGER_LOGTAG, "Module TaskManager finished");
+    mtinfo(WM_TASK_MANAGER_LOGTAG, "Module Task Manager finished");
     os_free(task_config);
 }
 

@@ -16,7 +16,7 @@
 
 #include "../wmodules.h"
 
-#define WM_TASK_MANAGER_LOGTAG TASK_MANAGER_WM_NAME
+#define WM_TASK_MANAGER_LOGTAG ARGV0 ":" TASK_MANAGER_WM_NAME
 
 typedef struct _wm_task_manager {
     int enabled;
