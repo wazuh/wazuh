@@ -1,5 +1,6 @@
 #!/bin/bash
 ## Check if system is based on yum or apt-get
+
 if [ -n "$(command -v yum)" ] 
 then
     sys_type="yum"
@@ -13,15 +14,52 @@ logger() {
     echo $1
 }
 
+startService() {
+
+if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
+    systemctl daemon-reload > /dev/null 2>&1
+    systemctl enable $1.service > /dev/null 2>&1
+    systemctl start $1.service > /dev/null 2>&1
+    if [  "$?" != 0  ]
+    then
+        echo "${1^} could not be started."
+        exit 1;
+    else
+        echo "${1^} started"
+    fi  
+elif [ -x /etc/rc.d/init.d/$1 ] ; then
+    /etc/rc.d/init.d/$1 start > /dev/null 2>&1
+    if [  "$?" != 0  ]
+    then
+        echo "${1^} could not be started."
+        exit 1;
+    else
+        echo "${1^} started"
+    fi       
+elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
+    chkconfig $1 on > /dev/null 2>&1
+    service $1 start > /dev/null 2>&1
+    /etc/init.d/$1 start > /dev/null 2>&1
+    if [  "$?" != 0  ]
+    then
+        echo "${1^} could not be started."
+        exit 1;
+    else
+        echo "${1^} started"
+    fi       
+else
+    echo "Error: ${1^} could not start. No service manager found on the system."
+    exit 1;
+fi
+}
+
 ## Show script usage
 getHelp() {
    echo ""
    echo "Usage: $0 arguments"
    echo -e "\t-e   | --install-elasticsearch Install Elasticsearch"
    echo -e "\t-k   | --install-kibana Install Kibana"
-   echo -e "\t-ip  | --elasticsearch-ip <elasticsearch_ip> Elasticsearch's IP"
-   echo -e "\t-kip | --kibana-ip <kibana_ip> Kibana's IP"
-   echo -e "\t-m   | --multi-node Indicates whether it is a multinode installation or not"
+   echo -e "\t-m   | --master-node Indicates whether it is a master or a worker node"
    echo -e "\t-h   | --help Shows help"
    exit 1 # Exit script after printing help
 }
@@ -86,6 +124,15 @@ addWazuhrepo() {
 
 ## Elasticsearch
 installElasticsearch() {
+
+    head=$(head -n1 config.yml)
+    if [ "${head}" == "## Multi-node configuration" ]
+    then
+        master=1
+    else
+        single=1
+    fi
+
     logger "Installing Opend Distro for Elasticsearch..."
 
     if [ $sys_type == "yum" ] 
@@ -105,13 +152,18 @@ installElasticsearch() {
 
         logger "Configuring Elasticsearch..."
 
-        curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/7.x/elasticsearch_all_in_one.yml --max-time 300 > /dev/null 2>&1
+        curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/unattended-installation/distributed/templates/elasticsearch_unattended.yml --max-time 300 > /dev/null 2>&1
+        
+        awk -v RS='' '/## Elasticsearch/' ~/config.yml >> /etc/elasticsearch/elasticsearch.yml
 
         curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles.yml --max-time 300 > /dev/null 2>&1
         curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles_mapping.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles_mapping.yml --max-time 300 > /dev/null 2>&1
         curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/internal_users.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/internal_users.yml --max-time 300 > /dev/null 2>&1
         rm /etc/elasticsearch/esnode-key.pem /etc/elasticsearch/esnode.pem /etc/elasticsearch/kirk-key.pem /etc/elasticsearch/kirk.pem /etc/elasticsearch/root-ca.pem -f > /dev/null 2>&1
-    
+        mkdir /etc/elasticsearch/certs > /dev/null 2>&1
+        cd /etc/elasticsearch/certs > /dev/null 2>&1
+
+        
         # Configure JVM options for Elasticsearch
         ram_gb=$(free -g | awk '/^Mem:/{print $2}')
         ram=$(( ${ram_gb} / 2 ))
@@ -119,35 +171,53 @@ installElasticsearch() {
         if [ ${ram} -eq "0" ]; then
             ram=1;
         fi    
+        sed -i "s/-Xms1g/-Xms${ram}g/" /etc/elasticsearch/jvm.options > /dev/null 2>&1
+        sed -i "s/-Xmx1g/-Xmx${ram}g/" /etc/elasticsearch/jvm.options > /dev/null 2>&1
 
-        conf="$(awk '{sub(/-Xms1g/,"-Xms'${ram}'g")}1' /etc/elasticsearch/jvm.options)"
-        echo "$conf" > /etc/elasticsearch/jvm.options
-        conf="$(awk '{sub(/-Xmx1g/,"-Xmx'${ram}'g")}1' /etc/elasticsearch/jvm.options)"
-        echo "$conf" > /etc/elasticsearch/jvm.options
-        logger "Done"        
+
+        logger "Done"
+
+        if [ -n "$single" ]
+        then
+            createCertificates
+        fi
     fi
 }
 
-configureElastic() {
+createCertificates() {
 
-    if [ -n "$m" ]
+    logger "Creating the certificates..."
+    curl -so /etc/elasticsearch/certs/search-guard-tlstool-1.7.zip https://releases.floragunn.com/search-guard-tlstool/1.7/search-guard-tlstool-1.7.zip --max-time 300 > /dev/null 2>&1
+    unzip search-guard-tlstool-1.7.zip -d searchguard > /dev/null 2>&1
+    curl -so /etc/elasticsearch/certs/searchguard/search-guard.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/unattended-installation/distributed/templates/search-guard-unattended.yml --max-time 300 > /dev/null 2>&1
+
+    awk -v RS='' '/## Certificates/' ~/config.yml >> /etc/elasticsearch/certs/searchguard/search-guard.yml
+
+    chmod +x searchguard/tools/sgtlstool.sh > /dev/null 2>&1
+    ./searchguard/tools/sgtlstool.sh -c ./searchguard/search-guard.yml -ca -crt -t /etc/elasticsearch/certs/ > /dev/null 2>&1            
+    if [  "$?" != 0  ]
     then
-        curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/7.x/elasticsearch_cluster.yml --max-time 300 > /dev/null 2>&1
-        conf="$(awk '{sub(/<elasticsearch_ip>/,"'$ip'")}1' /etc/elasticsearch/elasticsearch.yml)"
-        echo "$conf" > /etc/elasticsearch/elasticsearch.yml
+        echo "Error: certificates were no created"
+        exit 1;
     else
-        conf="$(awk '{sub(/127.0.0.1/,"'$ip'")}1' /etc/elasticsearch/elasticsearch.yml)"
-        echo "$conf" > /etc/elasticsearch/elasticsearch.yml
+        logger "Certificates created"
+        mv /etc/elasticsearch/certs/node-1.pem /etc/elasticsearch/certs/elasticsearch.pem
+        mv /etc/elasticsearch/certs/node-1.key /etc/elasticsearch/certs/elasticsearch.key
+        mv /etc/elasticsearch/certs/node-1_http.pem /etc/elasticsearch/certs/elasticsearch_http.pem
+        mv /etc/elasticsearch/certs/node-1_http.key /etc/elasticsearch/certs/elasticsearch_http.key            
+        rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f > /dev/null 2>&1
     fi
 
-}
+    # Start Elasticsearch
 
-configureKibana() {
-
-    conf="$(awk '{sub(/localhost/,"'$ip'")}1' /etc/kibana/kibana.yml)"
-    echo "$conf" > /etc/kibana/kibana.yml
-    conf="$(awk '{sub(/0.0.0.0/,"'$kip'")}1' /etc/kibana/kibana.yml)"
-    echo "$conf" > /etc/kibana/kibana.yml
+    startService "elasticsearch"
+    cd /usr/share/elasticsearch/plugins/opendistro_security/tools/ > /dev/null 2>&1
+    ./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key -h $elk > /dev/null 2>&1 
+    elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs)
+    until $(curl -XGET https://${elk}:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
+        echo "Waiting for Elasticsearch..."
+        sleep 5
+    done    
 }
 
 ## Kibana
@@ -169,7 +239,12 @@ installKibana() {
             echo "Error: Wazuh Kibana plugin could not be installed."
             exit 1;
         fi     
+        mkdir /etc/kibana/certs > /dev/null 2>&1
+        mv /etc/elasticsearch/certs/kibana* /etc/kibana/certs/ > /dev/null 2>&1
         setcap 'cap_net_bind_service=+ep' /usr/share/kibana/node/bin/node > /dev/null 2>&1
+        awk -v RS='' '/## Kibana/' ~/config.yml >> /etc/kibana/kibana.yml   
+        # Start Kibana
+        startService "kibana"
 
         logger "Done"
     fi
@@ -195,58 +270,46 @@ main() {
 
     if [ -n "$1" ] 
     then
-        if [ "$1" == "-i" ] || [ "$1" == "--ignore-healthcheck" ]
+        if [ "$1" == "-h" ] || [ "$1" == "--help" ]
         then
-            echo "Health-check ignored."
-            installPrerequisites
-            addWazuhrepo     
+            getHelp
+            exit 1;
         else
-            healthCheck
-            installPrerequisites
-            addWazuhrepo             
-        fi        
-        while [ -n "$1" ]
-        do
-            case "$1" in
-            "-e"|"--install-elasticsearch")        
-                e=1
-                installElasticsearch
-                shift 1
-                ;;
-            "-m"|"--multi-node") 
-                m=1           
-                shift 1
-                ;;                   
-            "-k"|"--install-kibana") 
-                k=1          
-                installKibana
-                shift 1
-                ;;
-            "-ip"|"--elasticsearch-ip")        
-                ip=$2
-                shift
-                shift
-                ;;
-            "-kip"|"--kibana-ip")        
-                kip=$2
-                shift
-                shift
-                ;;  
-            "-h"|"--help")        
-                getHelp
-                ;;                                         
-            *)
-                exit 1
-            esac
-        done
-        if [ -n "$e" ] && [ -n "$ip" ]
-        then
-            configureElastic $ip $m
+            if [ "$1" == "-i" ] || [ "$1" == "--ignore-healthcheck" ]
+            then
+                echo "Health-check ignored."
+                installPrerequisites
+                addWazuhrepo     
+            else
+                healthCheck
+                installPrerequisites
+                addWazuhrepo             
+            fi        
+            while [ -n "$1" ]
+            do
+                case "$1" in           
+                "-e"|"--install-elasticsearch")        
+                    e=1
+                    installElasticsearch
+                    shift 1
+                    ;;      
+                "-c"|"--create-certificates") 
+                    createCertificates       
+                    shift 1
+                    ;;                                  
+                "-k"|"--install-kibana") 
+                    k=1          
+                    installKibana
+                    shift 1
+                    ;;
+                "-h"|"--help")        
+                    getHelp
+                    ;;                                         
+                *)
+                    exit 1
+                esac
+            done        
         fi
-        if [ -n "$k" ] && [ -n "$ip" ] && [ -n "$kip" ]
-        then
-            configureKibana $kip $ip
-        fi         
     else
         getHelp
     fi
