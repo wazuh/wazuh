@@ -33,14 +33,35 @@ extern struct timespec c_timespec; /* Current time of event. Used everywhere */
 extern char __shost[512];
 
 extern OSDecoderInfo *NULL_Decoder;
-extern OSDecoderNode *osdecodernode_forpname;
-extern OSDecoderNode *osdecodernode_nopname;
-extern RuleNode *rulenode;
 extern rlim_t nofile;
 extern int sys_debug_level;
 extern OSDecoderInfo *fim_decoder;
-extern EventList *last_events_list;
 extern time_t current_time;
+
+/**
+ * @brief We have two internal lists for decoders. One with the program_name
+ * and one without. This is going to improve greatly the
+ * performance of our decoder matching.
+ */
+
+OSDecoderNode *osdecodernode_forpname;
+OSDecoderNode *osdecodernode_nopname;
+/**
+ * @brief Structure to save all rules read in starting.
+ */
+RuleNode *rulenode;
+/**
+ * @brief Structure to save the last list of events.
+ */
+EventList *last_events_list;
+/**
+ * @brief Structure to save a node in a list of lists.
+ */
+ListNode *global_listnode;
+/**
+ * @brief Structure to save a list of rules.
+ */
+ListRule *global_listrule;
 
 // Com request thread dispatcher
 void * asyscom_main(__attribute__((unused)) void * arg) ;

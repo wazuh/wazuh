@@ -57,7 +57,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
 static void LoopRule(RuleNode *curr_node, FILE *flog);
 
 /* For decoders */
-void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match);
+void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match, OSDecoderNode *node);
 int DecodeSyscheck(Eventinfo *lf, _sdb *sdb);
 // Decode events in json format
 int decode_fim_event(_sdb *sdb, Eventinfo *lf);
@@ -585,7 +585,7 @@ int main_analysisd(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading rules file: '%s'", *rulesfiles);
                     }
-                    if (Rules_OP_ReadRules(*rulesfiles) < 0) {
+                    if (Rules_OP_ReadRules(*rulesfiles, rulenode, &global_listnode) < 0) {
                         merror_exit(RULES_ERROR, *rulesfiles);
                     }
 
@@ -602,7 +602,7 @@ int main_analysisd(int argc, char **argv)
              * search thought the list of lists for the correct file during
              * rule evaluation.
              */
-            OS_ListLoadRules();
+            OS_ListLoadRules(&global_listnode);
         }
     }
 
@@ -1339,7 +1339,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->srcip) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->srcip)) {
+                    if (!OS_DBSearch(list_holder, lf->srcip, global_listnode)) {
                         return (NULL);
                     }
                     break;
@@ -1347,7 +1347,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->srcport) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->srcport)) {
+                    if (!OS_DBSearch(list_holder, lf->srcport, global_listnode)) {
                         return (NULL);
                     }
                     break;
@@ -1355,7 +1355,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->dstip) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->dstip)) {
+                    if (!OS_DBSearch(list_holder, lf->dstip, global_listnode)) {
                         return (NULL);
                     }
                     break;
@@ -1363,17 +1363,17 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->dstport) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->dstport)) {
+                    if (!OS_DBSearch(list_holder, lf->dstport, global_listnode)) {
                         return (NULL);
                     }
                     break;
                 case RULE_USER:
                     if (lf->srcuser) {
-                        if (!OS_DBSearch(list_holder, lf->srcuser)) {
+                        if (!OS_DBSearch(list_holder, lf->srcuser, global_listnode)) {
                             return (NULL);
                         }
                     } else if (lf->dstuser) {
-                        if (!OS_DBSearch(list_holder, lf->dstuser)) {
+                        if (!OS_DBSearch(list_holder, lf->dstuser, global_listnode)) {
                             return (NULL);
                         }
                     } else {
@@ -1384,7 +1384,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->url) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->url)) {
+                    if (!OS_DBSearch(list_holder, lf->url, global_listnode)) {
                         return (NULL);
                     }
                     break;
@@ -1392,7 +1392,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->id) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->id)) {
+                    if (!OS_DBSearch(list_holder, lf->id, global_listnode)) {
                         return (NULL);
                     }
                     break;
@@ -1400,7 +1400,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->hostname) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->hostname)) {
+                    if (!OS_DBSearch(list_holder, lf->hostname, global_listnode)) {
                         return (NULL);
                     }
                     break;
@@ -1408,7 +1408,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->program_name) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->program_name)) {
+                    if (!OS_DBSearch(list_holder, lf->program_name, global_listnode)) {
                         return (NULL);
                     }
                     break;
@@ -1416,7 +1416,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->status) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->status)) {
+                    if (!OS_DBSearch(list_holder, lf->status, global_listnode)) {
                         return (NULL);
                     }
                     break;
@@ -1424,7 +1424,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->action) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->action)) {
+                    if (!OS_DBSearch(list_holder, lf->action, global_listnode)) {
                         return (NULL);
                     }
                     break;
@@ -1432,7 +1432,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->systemname) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->systemname)){
+                    if (!OS_DBSearch(list_holder, lf->systemname, global_listnode)){
                         return (NULL);
                     }
                     break;
@@ -1440,7 +1440,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->protocol) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->protocol)){
+                    if (!OS_DBSearch(list_holder, lf->protocol, global_listnode)){
                         return (NULL);
                     }
                     break;
@@ -1448,7 +1448,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->data) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->data)){
+                    if (!OS_DBSearch(list_holder, lf->data, global_listnode)){
                         return (NULL);
                     }
                     break;
@@ -1456,14 +1456,14 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->extra_data) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->extra_data)) {
+                    if (!OS_DBSearch(list_holder, lf->extra_data, global_listnode)) {
                         return (NULL);
                     }
                     break;
                 case RULE_DYNAMIC:
                     field = FindField(lf, list_holder->dfield);
 
-                    if (!(field &&OS_DBSearch(list_holder, (char*)field)))
+                    if (!(field &&OS_DBSearch(list_holder, (char*)field, global_listnode)))
                         return NULL;
 
                     break;
@@ -2194,6 +2194,7 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
 
 void * w_decode_event_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
+    OSDecoderNode *node;
     char * msg = NULL;
     regex_matching decoder_match;
     memset(&decoder_match, 0, sizeof(regex_matching));
@@ -2223,7 +2224,12 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
                     continue;
                 }
             } else {
-                DecodeEvent(lf, &decoder_match);
+                node = OS_GetFirstOSDecoder(lf->program_name);
+
+                if (!node) {
+                    return (NULL);
+                }
+                DecodeEvent(lf, &decoder_match, node);
             }
 
             free(msg);

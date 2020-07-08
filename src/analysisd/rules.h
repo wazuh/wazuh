@@ -231,10 +231,10 @@ RuleInfo *zerorulemember(int id,
 void OS_CreateRuleList(void);
 
 /* Add rule information to the list */
-int OS_AddRule(RuleInfo *read_rule);
+int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node);
 
 /* Add rule information as a child */
-int OS_AddChild(RuleInfo *read_rule);
+int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node);
 
 /* Add an overwrite rule */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid);
@@ -250,7 +250,7 @@ RuleNode *OS_GetFirstRule(void);
 
 void Rules_OP_CreateRules(void);
 
-int Rules_OP_ReadRules(const char *rulefile);
+int Rules_OP_ReadRules(const char *rulefile, RuleNode *r_node, ListNode **l_node);
 
 int AddHash_Rule(RuleNode *node);
 
