@@ -169,7 +169,7 @@ stages:
   - name: Try to delete a non-existent user-role
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/no_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/987/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -184,7 +184,7 @@ stages:
   - name: Try to delete a non-existent user-role (role non-existent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/new_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/105/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE

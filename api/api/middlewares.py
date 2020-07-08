@@ -92,6 +92,7 @@ async def prevent_denial_of_service(request, handler):
                 payload = dict(request.raw_headers)[b'Authorization'].decode().split('.')[1]
             except KeyError:
                 payload = dict(request.raw_headers)[b'authorization'].decode().split('.')[1]
+            payload += "=" * ((4 - len(payload) % 4) % 4)
             request['user'] = loads(b64decode(payload).decode())['sub']
             raise_if_exc(WazuhError(6001), code=429)
     response = await handler(request)

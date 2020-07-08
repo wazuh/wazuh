@@ -39,6 +39,7 @@ for sql_file in /configuration_files/*.sql; do
 done
 
 echo "max_login_attempts: 10000" >> /var/ossec/api/configuration/security/security.yaml
+echo "max_request_per_minute: 10000" >> /var/ossec/api/configuration/security/security.yaml
 
 /var/ossec/bin/wazuh-apid restart
 
