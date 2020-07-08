@@ -11,9 +11,8 @@
 #include "shared.h"
 #include "rules.h"
 #include "eventinfo.h"
+#include "analysisd.h"
 
-/* Rulenode local  */
-RuleNode *rulenode;
 
 /* _OS_Addrule: Internal AddRule */
 static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
@@ -115,7 +114,7 @@ static int _AddtoRule(int sid, int level, int none, const char *group,
 }
 
 /* Add a child */
-int OS_AddChild(RuleInfo *read_rule)
+int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node)
 {
     if (!read_rule) {
         merror("rules_list: Passing a NULL rule. Inconsistent state");
@@ -138,7 +137,7 @@ int OS_AddChild(RuleInfo *read_rule)
             } else if ((isdigit((int)*sid)) || (*sid == '\0')) {
                 if (val == 0) {
                     rule_id = atoi(sid);
-                    if (!_AddtoRule(rule_id, 0, 0, NULL, NULL, read_rule)) {
+                    if (!_AddtoRule(rule_id, 0, 0, NULL, *r_node, read_rule)) {
                         merror_exit("rules_list: Signature ID '%d' not "
                                   "found. Invalid 'if_sid'.", rule_id);
                     }
@@ -163,7 +162,7 @@ int OS_AddChild(RuleInfo *read_rule)
 
         ilevel *= 100;
 
-        if (!_AddtoRule(0, ilevel, 0, NULL, NULL, read_rule)) {
+        if (!_AddtoRule(0, ilevel, 0, NULL, r_node, read_rule)) {
             merror_exit("rules_list: Level ID '%d' not "
                       "found. Invalid 'if_level'.", ilevel);
         }
@@ -171,7 +170,7 @@ int OS_AddChild(RuleInfo *read_rule)
 
     /* Adding for if_group */
     else if (read_rule->if_group) {
-        if (!_AddtoRule(0, 0, 0, read_rule->if_group, NULL, read_rule)) {
+        if (!_AddtoRule(0, 0, 0, read_rule->if_group, r_node, read_rule)) {
             merror_exit("rules_list: Group '%s' not "
                       "found. Invalid 'if_group'.", read_rule->if_group);
         }
@@ -179,7 +178,7 @@ int OS_AddChild(RuleInfo *read_rule)
 
     /* Just add based on the category */
     else {
-        if (!_AddtoRule(0, 0, 0, NULL, NULL, read_rule)) {
+        if (!_AddtoRule(0, 0, 0, NULL, r_node, read_rule)) {
             merror_exit("rules_list: Category '%d' not "
                       "found. Invalid 'category'.", read_rule->category);
         }
@@ -245,9 +244,9 @@ static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
 }
 
 /* External AddRule */
-int OS_AddRule(RuleInfo *read_rule)
+int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node)
 {
-    rulenode = _OS_AddRule(rulenode, read_rule);
+    rulenode = _OS_AddRule(*r_node, read_rule);
 
     return (0);
 }

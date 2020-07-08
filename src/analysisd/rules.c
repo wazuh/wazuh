@@ -46,7 +46,7 @@ void Rules_OP_CreateRules()
 }
 
 /* Read the log rules */
-int Rules_OP_ReadRules(const char *rulefile)
+int Rules_OP_ReadRules(const char *rulefile, RuleNode *r_node, ListNode **l_node)
 {
     OS_XML xml;
     XML_NODE node = NULL;
@@ -331,7 +331,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                     goto cleanup;
                 }
 
-                if (overwrite != 1 && doesRuleExist(id, NULL)) {
+                if (overwrite != 1 && doesRuleExist(id, rulenode)) {
                     merror("Duplicate rule ID:%d", id);
                     goto cleanup;
                 }
@@ -817,7 +817,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                                                                     rule_type,
                                                                     rule_dfield,
                                                                     rule_opt[k]->content,
-                                                                    matcher);
+                                                                    matcher,
+                                                                    *l_node);
                             if (config_ruleinfo->lists == NULL) {
                                 merror("List error: Could not load %s", rule_opt[k]->content);
                                 goto cleanup;
@@ -1101,7 +1102,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
-                    } else if (strcmp(rule_opt[k]->element, xml_different_id) == 0 || 
+                    } else if (strcmp(rule_opt[k]->element, xml_different_id) == 0 ||
                                strcmp(rule_opt[k]->element, xml_notsame_id) == 0) {
                         config_ruleinfo->different_field |= FIELD_ID;
 
@@ -1169,7 +1170,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_user) == 0 ||
-                               strcasecmp(rule_opt[k]->element, 
+                               strcasecmp(rule_opt[k]->element,
                                           xml_notsame_user) == 0) {
                         config_ruleinfo->different_field |= FIELD_USER;
 
@@ -1185,7 +1186,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
-                        } 
+                        }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_global_frequency) == 0) {
                         config_ruleinfo->context_opts |= FIELD_GFREQUENCY;
@@ -1427,7 +1428,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                 }
 
                 /* Check for valid use of frequency */
-                if ((config_ruleinfo->context_opts || config_ruleinfo->same_field || 
+                if ((config_ruleinfo->context_opts || config_ruleinfo->same_field ||
                         config_ruleinfo->different_field ||
                         config_ruleinfo->frequency) &&
                         !config_ruleinfo->context) {
@@ -1705,16 +1706,16 @@ int Rules_OP_ReadRules(const char *rulefile)
              * will be a "child" of someone.
              */
             if (config_ruleinfo->sigid < 10) {
-                OS_AddRule(config_ruleinfo);
+                OS_AddRule(config_ruleinfo, &r_node);
             } else if (config_ruleinfo->alert_opts & DO_OVERWRITE) {
-                if (!OS_AddRuleInfo(NULL, config_ruleinfo,
+                if (!OS_AddRuleInfo(r_node, config_ruleinfo,
                                     config_ruleinfo->sigid)) {
                     merror("Overwrite rule '%d' not found.",
                            config_ruleinfo->sigid);
                     goto cleanup;
                 }
             } else {
-                OS_AddChild(config_ruleinfo);
+                OS_AddChild(config_ruleinfo, &r_node);
             }
 
             /* Clean what we do not need */

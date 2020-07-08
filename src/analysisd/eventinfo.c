@@ -21,7 +21,6 @@ int alert_only;
 
 #define OS_COMMENT_MAX 1024
 
-EventList *last_events_list;
 time_t current_time = 0;
 
 size_t field_offset[] = {
