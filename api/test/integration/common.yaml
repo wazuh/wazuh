@@ -13,7 +13,6 @@ variables:
   pass: wazuh
   version: v4
   login_endpoint: /security/user/authenticate
-  security_config_endpoint: /security/config
 
   custom_wpk_path: "/var/ossec/test_custom_upgrade_3.10.2.wpk"
 
