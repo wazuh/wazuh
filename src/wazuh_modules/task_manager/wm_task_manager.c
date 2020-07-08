@@ -16,6 +16,7 @@
 static void* wm_task_manager_main(wm_task_manager* task_config);    // Module main function. It won't return
 static void wm_task_manager_destroy(wm_task_manager* task_config);  
 cJSON *wm_task_manager_dump(const wm_task_manager* task_config);
+static void wm_task_manager_init(wm_task_manager *task_config);
 
 /* Context definition */
 const wm_context WM_TASK_MANAGER_CONTEXT = {
@@ -26,12 +27,19 @@ const wm_context WM_TASK_MANAGER_CONTEXT = {
 };
 
 void * wm_task_manager_main(wm_task_manager* task_config) {
-    mtinfo(WM_TASK_MANAGER_LOGTAG, "Module Task Manager started");
+    wm_task_manager_init(task_config);
+
+    mtinfo(WM_TASK_MANAGER_LOGTAG, "Module Task Manager started.");
+
+    while (1) {
+        // Main loop
+    }
+
     return NULL;
 }
 
 void wm_task_manager_destroy(wm_task_manager* task_config) {
-    mtinfo(WM_TASK_MANAGER_LOGTAG, "Module Task Manager finished");
+    mtinfo(WM_TASK_MANAGER_LOGTAG, "Module Task Manager finished.");
     os_free(task_config);
 }
 
@@ -47,6 +55,13 @@ cJSON *wm_task_manager_dump(const wm_task_manager* task_config){
     cJSON_AddItemToObject(root, "task-manager", wm_info);
 
     return root;
+}
+
+void wm_task_manager_init(wm_task_manager *task_config) {
+    if (!task_config->enabled) {
+        mtinfo(WM_TASK_MANAGER_LOGTAG, "Module disabled. Exiting...");
+        pthread_exit(NULL);
+    }
 }
 
 #endif
