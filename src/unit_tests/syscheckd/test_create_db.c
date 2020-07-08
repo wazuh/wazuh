@@ -1313,7 +1313,7 @@ static void test_fim_configuration_directory_registry_found(void **state) {
 
     ret = fim_configuration_directory(path, entry);
 
-    assert_int_equal(ret, 20);
+    assert_int_equal(ret, 28);
 }
 #endif
 
