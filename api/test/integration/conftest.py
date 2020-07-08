@@ -12,6 +12,7 @@ import urllib3
 import yaml
 
 current_path = os.path.dirname(os.path.abspath(__file__))
+security_conf_changed = False
 
 with open('common.yaml', 'r') as stream:
     common = yaml.safe_load(stream)['variables']
@@ -38,9 +39,10 @@ def get_token_login_api():
         raise Exception(f"Error obtaining login token: {response.json()}")
 
 
-def disable_bruteforce_checker():
+def disable_bruteforce_checker(token):
     """Disable the new login bruteforce detector"""
-    response = requests.put(security_config_url, headers=login_headers, verify=False, data={'max_login_attempts': 1000})
+    token["Content-type"] = "application/json"
+    response = requests.put(security_config_url, headers=token, verify=False, data="{\"max_login_attempts\":1000}")
     if response.status_code != 200:
         raise Exception("Error disabling max_login_attempts")
 
@@ -48,8 +50,12 @@ def disable_bruteforce_checker():
 def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     """Disable HTTPS verification warnings."""
     urllib3.disable_warnings()
-    disable_bruteforce_checker()
     variables["test_login_token"] = get_token_login_api()
+
+    global security_conf_changed
+    if not security_conf_changed:
+        disable_bruteforce_checker(token={'Authorization': f'Bearer {variables["test_login_token"]}'})
+        security_conf_changed = True
 
 
 def build_and_up(interval: int = 10):
