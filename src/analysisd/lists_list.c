@@ -11,14 +11,12 @@
 #include "shared.h"
 #include "rules.h"
 #include "cdb/cdb.h"
+#include "analysisd.h"
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 
-/* Local variables */
-static ListNode *global_listnode;
-static ListRule *global_listrule;
 
 
 /* Create the ListRule */
@@ -38,12 +36,12 @@ ListNode *OS_GetFirstList()
     return (listnode_pt);
 }
 
-void OS_ListLoadRules()
+void OS_ListLoadRules(ListNode **l_node)
 {
     ListRule *lrule = global_listrule;
     while (lrule != NULL) {
         if (!lrule->loaded) {
-            lrule->db = OS_FindList(lrule->filename);
+            lrule->db = OS_FindList(lrule->filename, *l_node);
             lrule->loaded = 1;
         }
         lrule = lrule->next;
@@ -69,9 +67,9 @@ int OS_AddList(ListNode *new_listnode)
     return 0;
 }
 
-ListNode *OS_FindList(const char *listname)
+ListNode *OS_FindList(const char *listname, ListNode *l_node)
 {
-    ListNode *last_list_node = OS_GetFirstList();
+    ListNode *last_list_node = l_node;
     if (last_list_node != NULL) {
         do {
             if (strcmp(last_list_node->txt_filename, listname) == 0 ||
@@ -90,7 +88,8 @@ ListRule *OS_AddListRule(ListRule *first_rule_list,
                          int field,
                          const char *dfield,
                          char *listname,
-                         OSMatch *matcher)
+                         OSMatch *matcher,
+                         ListNode *l_node)
 {
     ListRule *new_rulelist_pt = NULL;
     new_rulelist_pt = (ListRule *)calloc(1, sizeof(ListRule));
@@ -105,7 +104,7 @@ ListRule *OS_AddListRule(ListRule *first_rule_list,
     new_rulelist_pt->filename = strdup(listname);
     new_rulelist_pt->dfield = field == RULE_DYNAMIC ? strdup(dfield) : NULL;
     new_rulelist_pt->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
-    if ((new_rulelist_pt->db = OS_FindList(listname)) == NULL) {
+    if ((new_rulelist_pt->db = OS_FindList(listname, l_node)) == NULL) {
         new_rulelist_pt->loaded = 0;
     } else {
         new_rulelist_pt->loaded = 1;
@@ -283,12 +282,12 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
     return 0;
 }
 
-int OS_DBSearch(ListRule *lrule, char *key)
+int OS_DBSearch(ListRule *lrule, char *key, ListNode *l_node)
 {
     //XXX - god damn hack!!! Jeremy Rossi
     w_mutex_lock(&lrule->mutex);
     if (lrule->loaded == 0) {
-        lrule->db = OS_FindList(lrule->filename);
+        lrule->db = OS_FindList(lrule->filename, l_node);
         lrule->loaded = 1;
     }
     w_mutex_unlock(&lrule->mutex);
