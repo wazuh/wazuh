@@ -1283,7 +1283,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         }
                     }
                     else {
-                        merror(XML_VALUEERR, children[j]->element, "");     // children[j]->content
+                        merror(XML_VALUEERR, children[j]->element, "");     // Null children[j]->content
                         OS_ClearNode(children);
                         return;
                     }
@@ -2261,7 +2261,7 @@ void Free_Syscheck(syscheck_config * config) {
         }
 
         if (config->diff_size_limit) {
-            free(config->diff_size_limit);
+            os_free(config->diff_size_limit);
         }
 
     #ifdef WIN32
