@@ -254,6 +254,7 @@
 #define AG_MAX_ERROR    "(4110): Maximum number of agents '%d' reached."
 #define AG_AX_AGENTS    "(4111): Maximum number of agents allowed: '%d'."
 #define AG_INV_MNGIP    "(4112): Invalid server address found: '%s'"
+#define AG_ENROLL_FAIL  "(4113): Auto Enrollment configuration failed." 
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."

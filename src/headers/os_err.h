@@ -31,4 +31,6 @@
 #define OS_ENDFILE      -20 /* End of file              */
 #define OS_FINISH       -21 /* Finished this task       */
 
+typedef int w_err_t;
+
 #endif /* OS_ERR */
