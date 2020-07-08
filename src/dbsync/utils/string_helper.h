@@ -13,7 +13,7 @@
 #include <string>
 #include <sstream>
 
-namespace StringHelper
+namespace Utils
 {
     static bool replaceAll(std::string& data,
                            const std::string& toSearch,
