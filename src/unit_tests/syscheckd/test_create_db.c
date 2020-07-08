@@ -19,6 +19,7 @@
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 #include "../syscheckd/fim_db.h"
@@ -84,7 +85,7 @@ int __wrap_realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
     return 0;
 }
 
-bool __wrap_HasFilesystem(__attribute__((unused))const char * path, __attribute__((unused))fs_set set) {
+bool __wrap_HasFilesystem(__attribute__((unused))const char * path, __attribute__((unused)) fs_set set) {
     check_expected(path);
 
     return mock();
@@ -3804,7 +3805,7 @@ static void test_fim_whodata_event_file_missing(void **state) {
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
-    
+
     expect_function_call(__wrap_pthread_mutex_unlock);
 #else
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
