@@ -38,6 +38,11 @@ list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,_merror -Wl,--w
 LIST(APPEND analysisd_names "test_same_different_loop")
 LIST(APPEND analysisd_flags "-W")
 
+LIST(APPEND analysisd_names "test_logtest")
+LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OSHash_Create \
+                             -Wl,--wrap,pthread_mutex_init -Wl,--wrap,_minfo -Wl,--wrap,_w_mutex_init -Wl,--wrap,w_create_thread \
+                             -Wl,--wrap,mutex_destroy -Wl,--wrap,close")
+
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
