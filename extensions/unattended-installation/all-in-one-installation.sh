@@ -64,10 +64,10 @@ installPrerequisites() {
         then
             yum install java-1.8.0-openjdk-devel -y -q > /dev/null 2>&1
             export JAVA_HOME=/usr/
-            yum install unzip wget curl libcap -y -q > /dev/null 2>&1
+            yum install unzip curl libcap -y -q > /dev/null 2>&1
         else
             export JAVA_HOME=/usr/
-            yum install unzip wget curl libcap -y -q > /dev/null 2>&1
+            yum install unzip curl libcap -y -q > /dev/null 2>&1
         fi        
     elif [ $sys_type == "apt-get" ] 
     then
@@ -80,7 +80,7 @@ installPrerequisites() {
         apt-get update -q > /dev/null 2>&1
         apt-get install openjdk-11-jdk -y -q > /dev/null 2>&1 
         export JAVA_HOME=/usr/ 
-        apt-get install apt-transport-https curl unzip wget libcap2-bin -y -q > /dev/null 2>&1
+        apt-get install apt-transport-https curl unzip libcap2-bin -y -q > /dev/null 2>&1
     fi
 
     if [  "$?" != 0  ]
