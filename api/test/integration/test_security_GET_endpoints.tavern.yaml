@@ -1103,3 +1103,4 @@ stages:
         rbac_mode: !anystr
         max_login_attempts: !anyint
         block_time: !anyint
+        max_request_per_minute: !anyint

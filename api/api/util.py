@@ -277,6 +277,15 @@ def raise_if_exc(obj, code=None):
 
 
 def validate_content_type(content_type, body):
+    """This function checks that the type specified in content-type header is the same as the type of the request's body
+
+    Parameters
+    ----------
+    content_type : str
+        Content-type of the request
+    body : json or xml
+        Body of the request
+    """
     if type(body) == dict and 'json' not in content_type:
         raise_if_exc(WazuhError(6002), code=406)
     if 'json' in content_type and not type(body) == dict:

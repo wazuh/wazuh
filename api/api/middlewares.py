@@ -41,6 +41,7 @@ ip_block = set()
 
 @web.middleware
 async def prevent_bruteforce_attack(request, handler):
+    """This function checks that the IPs that are requesting an API token do not do so repeatedly"""
     global ip_stats, ip_block
     if 'authenticate' in request.path:
         try:
@@ -75,6 +76,7 @@ current_time = None
 
 @web.middleware
 async def prevent_denial_of_service(request, handler):
+    """This function checks that the maximum number of requests per minute set in the configuration is not exceeded"""
     if 'authenticate' not in request.path:
         global current_time, request_counter
         if not current_time:

@@ -32,7 +32,7 @@ security_conf = {
 }
 payload = {
     "iss": 'wazuh',
-    "aud": '/security/user/authenticate',
+    "aud": 'Wazuh API REST',
     "nbf": 0,
     "exp": security_conf['auth_token_exp_timeout'],
     "sub": '001',
