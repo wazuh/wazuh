@@ -104,7 +104,7 @@ void test_w_logtest_init_parameters_invalid(void **state)
     will_return(__wrap_ReadConfig, OS_INVALID);
 
     int ret = w_logtest_init_parameters();
-    assert_int_equal(ret, -1);
+    assert_int_equal(ret, OS_INVALID);
 }
 
 void test_w_logtest_init_parameters_done(void **state)
@@ -112,7 +112,7 @@ void test_w_logtest_init_parameters_done(void **state)
     will_return(__wrap_ReadConfig, 0);
 
     int ret = w_logtest_init_parameters();
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, OS_SUCCESS);
 }
 
 /* w_logtest_init */
