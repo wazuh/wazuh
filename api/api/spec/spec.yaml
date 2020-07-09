@@ -445,8 +445,8 @@ components:
             detail: "No authorization token provided"
             status: 401
 
-    InvalidHTTPVerbResponse:
-      description: "Response to an invalid HTTP verbs"
+    InvalidHTTPMethodResponse:
+      description: "Response to an invalid HTTP method"
       content:
         application/json:
           schema:
@@ -491,8 +491,8 @@ components:
           example:
             type: "about:blank"
             title: "Wazuh Error"
-            detail: "Maximum number of request per second reached. This limit can be changed in
-            security.yaml file. More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html"
+            detail: "Maximum number of request per minute reached"
+            remediation: "This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html"
             code: 6001
             status: 429
 
@@ -2408,19 +2408,19 @@ components:
           enum: [white, black]
           example: white
         max_login_attempts:
-          description: "Maximum number of session attempts in the time set in block_time"
+          description: "Maximum number of login attempts in {block_time} seconds"
           type: integer
           format: int32
           minimum: 1
           example: 5
         block_time:
-          description: "Blocking time for IPs that have exceeded the maximum number of login attempts in this time"
+          description: "Blocking time for IPs that have exceeded {max_login_attempts}. Time counts from the first attempt"
           type: integer
           format: int32
           minimum: 0
           example: 300
         max_request_per_minute:
-          description: "Maximum number of requests per minute to be attended"
+          description: "Maximum number of requests allowed per minute"
           type: integer
           format: int32
           minimum: 1
@@ -4850,7 +4850,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
@@ -4907,7 +4907,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
     get:
@@ -5037,7 +5037,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
     post:
@@ -5095,7 +5095,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
@@ -5148,7 +5148,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5193,7 +5193,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5236,7 +5236,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5269,7 +5269,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5308,7 +5308,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5351,7 +5351,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5393,7 +5393,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5428,7 +5428,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5461,7 +5461,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5498,7 +5498,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse' 
+          $ref: '#/components/responses/InvalidHTTPMethodResponse' 
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5546,7 +5546,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5604,7 +5604,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5654,7 +5654,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5711,7 +5711,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5741,7 +5741,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5865,7 +5865,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5931,7 +5931,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
     put:
@@ -5969,7 +5969,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
@@ -6039,7 +6039,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6089,7 +6089,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6120,7 +6120,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6156,7 +6156,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6226,7 +6226,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
@@ -6268,7 +6268,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6389,7 +6389,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6439,7 +6439,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6482,7 +6482,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6577,7 +6577,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6615,7 +6615,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6655,7 +6655,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6721,7 +6721,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6773,7 +6773,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6832,7 +6832,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6900,7 +6900,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6949,7 +6949,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7031,7 +7031,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7118,7 +7118,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7160,7 +7160,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
@@ -7202,7 +7202,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7259,7 +7259,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7308,7 +7308,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7383,7 +7383,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7446,7 +7446,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7508,7 +7508,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7733,7 +7733,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7815,7 +7815,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7859,7 +7859,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7918,7 +7918,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7979,7 +7979,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8021,7 +8021,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8068,7 +8068,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
@@ -8107,7 +8107,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8150,7 +8150,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8197,7 +8197,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8248,7 +8248,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8333,7 +8333,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8387,7 +8387,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8443,7 +8443,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8491,7 +8491,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8565,7 +8565,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8627,7 +8627,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8688,7 +8688,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8912,7 +8912,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8993,7 +8993,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9036,7 +9036,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9094,7 +9094,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9154,7 +9154,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9195,7 +9195,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9237,7 +9237,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
@@ -9277,7 +9277,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9337,7 +9337,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9377,7 +9377,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
@@ -9417,7 +9417,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9453,7 +9453,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9490,7 +9490,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9534,7 +9534,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9615,7 +9615,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9708,7 +9708,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9758,7 +9758,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9810,7 +9810,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9869,7 +9869,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9898,7 +9898,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9971,7 +9971,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10060,7 +10060,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10105,7 +10105,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10189,7 +10189,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10230,7 +10230,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10273,7 +10273,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10341,7 +10341,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10397,7 +10397,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10426,7 +10426,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10486,7 +10486,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10540,7 +10540,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10630,7 +10630,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10721,7 +10721,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10795,7 +10795,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10911,7 +10911,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10982,7 +10982,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -11081,7 +11081,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -11177,7 +11177,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -11276,7 +11276,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -11400,7 +11400,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -11455,7 +11455,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -11511,7 +11511,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -11562,7 +11562,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -11620,7 +11620,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -11698,7 +11698,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -11755,7 +11755,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -11813,7 +11813,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -11909,7 +11909,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -12008,7 +12008,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -12132,7 +12132,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -12231,7 +12231,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -12283,7 +12283,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -12302,7 +12302,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -12366,7 +12366,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -12419,7 +12419,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
@@ -12489,7 +12489,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -12544,7 +12544,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
@@ -12609,7 +12609,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -12667,7 +12667,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
@@ -12730,7 +12730,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -12796,7 +12796,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
@@ -12867,7 +12867,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -12911,7 +12911,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -12959,7 +12959,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -13003,7 +13003,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -13138,7 +13138,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -13195,7 +13195,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
@@ -13231,7 +13231,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
@@ -13288,7 +13288,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
@@ -13385,7 +13385,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -13419,7 +13419,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -13447,7 +13447,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
@@ -13472,7 +13472,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
-          $ref: '#/components/responses/InvalidHTTPVerbResponse'
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 

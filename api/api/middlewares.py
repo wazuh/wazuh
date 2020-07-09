@@ -52,7 +52,7 @@ async def prevent_bruteforce_attack(request, handler):
             pass
 
         if request.remote in ip_block:
-            logger.warning(f'IP blocked due to number of failed logins: {request.remote}')
+            logger.warning(f'P blocked due to exceeded number of logins attempts: {request.remote}')
             raise_if_exc(WazuhError(6000))
 
         if request.remote not in ip_stats.keys():
