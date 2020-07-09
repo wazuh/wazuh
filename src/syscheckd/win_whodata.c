@@ -702,12 +702,21 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     goto clean;
                 }
 
-                // Ignore the file if belongs to a non-whodata directory
-                if (!(w_evt->config_node >= 0 ? syscheck.wdata.dirs_status[w_evt->config_node].status & WD_CHECK_WHODATA : 0) &&
-                    !(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
-                    mdebug2(FIM_WHODATA_CANCELED, w_evt->path);
-                    free_whodata_event(w_evt);
-                    goto clean;
+                if (w_evt->config_node >= 0) {
+                    // Ignore the file if belongs to a non-whodata directory
+                    if (!(syscheck.wdata.dirs_status[w_evt->config_node].status & WD_CHECK_WHODATA) &&
+                        !(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
+                        mdebug2(FIM_WHODATA_CANCELED, w_evt->path);
+                        free_whodata_event(w_evt);
+                        goto clean;
+                    }
+
+                    // Ignore any and all events that are beyond the configured recursion level.
+                    int depth = fim_check_depth(w_evt->path, w_evt->config_node);
+                    if (depth > syscheck.recursion_level[w_evt->config_node]) {
+                        mdebug2(FIM_MAX_RECURSION_LEVEL, depth, syscheck.recursion_level[w_evt->config_node], w_evt->path);
+                        goto clean;
+                    }
                 }
 
                 int device_type;
@@ -799,7 +808,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         w_evt->scan_directory = 3;
                         break;
                     }
-                    mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, w_evt->path);
+                    GetSystemTime(&w_dir->timestamp);
+                    mdebug2(FIM_WHODATA_CHECK_NEW_FILES, w_evt->path);
                 } else {
                     // Check if is a valid directory
                     if (w_evt->config_node < 0) {
@@ -838,15 +848,13 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                         } else if ((w_evt->mask & FILE_WRITE_DATA) && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             // Check that a new file has been added
-                            GetSystemTime(&w_dir->timestamp);
                             fim_whodata_event(w_evt);
 
                             mdebug1(FIM_WHODATA_SCAN, w_evt->path);
 
                         } else if(w_evt->mask & FILE_APPEND_DATA || w_evt->mask & FILE_WRITE_DATA) {
                             // Find new files
-                            int pos = fim_configuration_directory(w_evt->path, "file");
-                            fim_checker(syscheck.dir[pos], item, w_evt, 1);
+                            fim_whodata_event(w_evt);
 
                         } else {
                             mdebug2(FIM_WHODATA_NO_NEW_FILES, w_evt->path, w_evt->mask);
