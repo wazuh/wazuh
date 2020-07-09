@@ -43,6 +43,9 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap
                              -Wl,--wrap,pthread_mutex_init -Wl,--wrap,_minfo -Wl,--wrap,_w_mutex_init -Wl,--wrap,w_create_thread \
                              -Wl,--wrap,mutex_destroy -Wl,--wrap,close")
 
+LIST(APPEND analysisd_names "test_logtest-config")
+LIST(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn")
+
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
