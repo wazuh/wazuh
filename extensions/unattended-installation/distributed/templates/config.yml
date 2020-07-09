@@ -23,9 +23,9 @@ clients:
     dn: CN=filebeat,OU=Docu,O=Wazuh,L=California,C=US
 
 
-## Kibana IP
+## Kibana configuration
 server.host: "<kibana-ip>"
 elasticsearch.hosts: https://<elasticsearch-ip>:9200
 
-## Wazuh master IP
-url: <wazuh_master_server_IP>
+## Wazuh master configuration
+url: https://<wazuh_master_server_IP>
