@@ -103,6 +103,18 @@ STATIC const wchar_t* event_fields[] = {
     L"Event/EventData/Data[@Name='SubjectUserSid']",
     L"Event/System/TimeCreated/@SystemTime"
 };
+enum rendered_fields {
+    RENDERED_EVENT_ID = 0,
+    RENDERED_USER_NAME,
+    RENDERED_PATH,
+    RENDERED_PROCESS_NAME,
+    RENDERED_PROCESS_ID,
+    RENDERED_HANDLE_ID,
+    RENDERED_ACCESS_MASK,
+    RENDERED_USER_SID,
+    RENDERED_TIMESTAMP
+};
+
 static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
 static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 static LPCTSTR priv = "SeSecurityPrivilege";
@@ -527,11 +539,11 @@ int whodata_get_event_id(const PEVT_VARIANT raw_data, short *event_id) {
     }
 
     // EventID
-    if (raw_data[0].Type != EvtVarTypeUInt16) {
-        merror(FIM_WHODATA_PARAMETER, raw_data[0].Type, "event_id");
+    if (raw_data[RENDERED_EVENT_ID].Type != EvtVarTypeUInt16) {
+        merror(FIM_WHODATA_PARAMETER, raw_data[RENDERED_EVENT_ID].Type, "event_id");
         return -1;
     }
-    *event_id = raw_data[0].Int16Val;
+    *event_id = raw_data[RENDERED_EVENT_ID].Int16Val;
 
     return 0;
 }
@@ -543,17 +555,17 @@ int whodata_get_handle_id(const PEVT_VARIANT raw_data, unsigned __int64 *handle_
 
     // HandleId
     // In 32-bit Windows we find EvtVarTypeSizeT or EvtVarTypeHexInt32
-    if (raw_data[5].Type != EvtVarTypeHexInt64) {
-        if (raw_data[5].Type == EvtVarTypeSizeT) {
-            *handle_id = (unsigned __int64) raw_data[5].SizeTVal;
-        } else if (raw_data[5].Type == EvtVarTypeHexInt32) {
-            *handle_id = (unsigned __int64) raw_data[5].UInt32Val;
+    if (raw_data[RENDERED_HANDLE_ID].Type != EvtVarTypeHexInt64) {
+        if (raw_data[RENDERED_HANDLE_ID].Type == EvtVarTypeSizeT) {
+            *handle_id = (unsigned __int64) raw_data[RENDERED_HANDLE_ID].SizeTVal;
+        } else if (raw_data[RENDERED_HANDLE_ID].Type == EvtVarTypeHexInt32) {
+            *handle_id = (unsigned __int64) raw_data[RENDERED_HANDLE_ID].UInt32Val;
         } else {
-            merror(FIM_WHODATA_PARAMETER, raw_data[5].Type, "handle_id");
+            merror(FIM_WHODATA_PARAMETER, raw_data[RENDERED_HANDLE_ID].Type, "handle_id");
             return -1;
         }
     } else {
-        *handle_id = raw_data[5].UInt64Val;
+        *handle_id = raw_data[RENDERED_HANDLE_ID].UInt64Val;
     }
     return 0;
 }
@@ -564,27 +576,26 @@ int whodata_get_access_mask(const PEVT_VARIANT raw_data, unsigned long *mask) {
     }
 
     // AccessMask
-    if (raw_data[6].Type != EvtVarTypeHexInt32) {
-        merror(FIM_WHODATA_PARAMETER, raw_data[6].Type, "mask");
+    if (raw_data[RENDERED_ACCESS_MASK].Type != EvtVarTypeHexInt32) {
+        merror(FIM_WHODATA_PARAMETER, raw_data[RENDERED_ACCESS_MASK].Type, "mask");
         return -1;
     }
-    *mask = raw_data[6].UInt32Val;
+    *mask = raw_data[RENDERED_ACCESS_MASK].UInt32Val;
 
     return 0;
 }
 
 int whodata_event_parse(const PEVT_VARIANT raw_data, whodata_evt *event_data) {
-    // See event_fields[] definition for array members meaning
     if (!raw_data || !event_data) {
         return -1;
     }
 
     // ObjectName
-    if (raw_data[2].Type != EvtVarTypeString) {
-        merror(FIM_WHODATA_PARAMETER, raw_data[2].Type, "path");
+    if (raw_data[RENDERED_PATH].Type != EvtVarTypeString) {
+        merror(FIM_WHODATA_PARAMETER, raw_data[RENDERED_PATH].Type, "path");
         return -1;
     }  else {
-        if (event_data->path = get_whodata_path(raw_data[2].XmlVal), !event_data->path) {
+        if (event_data->path = get_whodata_path(raw_data[RENDERED_PATH].XmlVal), !event_data->path) {
             return -1;
         }
 
@@ -598,41 +609,41 @@ int whodata_event_parse(const PEVT_VARIANT raw_data, whodata_evt *event_data) {
     }
 
     // SubjectUserName
-    if (raw_data[1].Type != EvtVarTypeString) {
-        mwarn(FIM_WHODATA_PARAMETER, raw_data[1].Type, "user_name");
+    if (raw_data[RENDERED_USER_NAME].Type != EvtVarTypeString) {
+        mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_USER_NAME].Type, "user_name");
         event_data->user_name = NULL;
     } else {
-        event_data->user_name = convert_windows_string(raw_data[1].XmlVal);
+        event_data->user_name = convert_windows_string(raw_data[RENDERED_USER_NAME].XmlVal);
     }
 
     // ProcessName
-    if (raw_data[3].Type != EvtVarTypeString) {
-        mwarn(FIM_WHODATA_PARAMETER, raw_data[3].Type, "process_name");
+    if (raw_data[RENDERED_PROCESS_NAME].Type != EvtVarTypeString) {
+        mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_PROCESS_NAME].Type, "process_name");
         event_data->process_name = NULL;
     } else {
-        event_data->process_name = convert_windows_string(raw_data[3].XmlVal);
+        event_data->process_name = convert_windows_string(raw_data[RENDERED_PROCESS_NAME].XmlVal);
     }
 
     // ProcessId
     // In 32-bit Windows we find EvtVarTypeSizeT
-    if (raw_data[4].Type != EvtVarTypeHexInt64) {
-        if (raw_data[4].Type == EvtVarTypeSizeT) {
-            event_data->process_id = (unsigned __int64) raw_data[4].SizeTVal;
-        } else if (raw_data[4].Type == EvtVarTypeHexInt32) {
-            event_data->process_id = (unsigned __int64) raw_data[4].UInt32Val;
+    if (raw_data[RENDERED_PROCESS_ID].Type != EvtVarTypeHexInt64) {
+        if (raw_data[RENDERED_PROCESS_ID].Type == EvtVarTypeSizeT) {
+            event_data->process_id = (unsigned __int64) raw_data[RENDERED_PROCESS_ID].SizeTVal;
+        } else if (raw_data[RENDERED_PROCESS_ID].Type == EvtVarTypeHexInt32) {
+            event_data->process_id = (unsigned __int64) raw_data[RENDERED_PROCESS_ID].UInt32Val;
         } else {
-            mwarn(FIM_WHODATA_PARAMETER, raw_data[4].Type, "process_id");
+            mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_PROCESS_ID].Type, "process_id");
             event_data->process_id = 0;
         }
     } else {
-        event_data->process_id = raw_data[4].UInt64Val;
+        event_data->process_id = raw_data[RENDERED_PROCESS_ID].UInt64Val;
     }
 
     // SubjectUserSid
-    if (raw_data[7].Type != EvtVarTypeSid) {
-        mwarn(FIM_WHODATA_PARAMETER, raw_data[7].Type, "user_id");
+    if (raw_data[RENDERED_USER_SID].Type != EvtVarTypeSid) {
+        mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_USER_SID].Type, "user_id");
         event_data->user_id = NULL;
-    } else if (!ConvertSidToStringSid(raw_data[7].SidVal, &event_data->user_id)) {
+    } else if (!ConvertSidToStringSid(raw_data[RENDERED_USER_SID].SidVal, &event_data->user_id)) {
         if (event_data->user_name) {
             mdebug1(FIM_WHODATA_INVALID_UID, event_data->user_name);
         } else {
@@ -793,12 +804,12 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                 if (w_dir = OSHash_Get_ex(syscheck.wdata.directories, w_evt->path), w_dir) {
                     // Get the event time
-                    if (buffer[8].Type != EvtVarTypeFileTime) {
-                        merror(FIM_WHODATA_PARAMETER, buffer[8].Type, "event_time");
+                    if (buffer[RENDERED_TIMESTAMP].Type != EvtVarTypeFileTime) {
+                        merror(FIM_WHODATA_PARAMETER, buffer[RENDERED_TIMESTAMP].Type, "event_time");
                         w_evt->scan_directory = 2;
                         goto clean;
                     }
-                    if (!get_file_time(buffer[8].FileTimeVal, &system_time)) {
+                    if (!get_file_time(buffer[RENDERED_TIMESTAMP].FileTimeVal, &system_time)) {
                         merror(FIM_ERROR_WHODATA_HANDLER_EVENT, handle_id);
                         goto clean;
                     }
@@ -846,7 +857,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         if (w_evt->mask & DELETE) {
                             fim_whodata_event(w_evt);
 
-                        } else if ((w_evt->mask & FILE_WRITE_DATA) && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
+                        } else if ((w_evt->mask & FILE_WRITE_DATA) && (w_dir = OSHash_Get_ex(syscheck.wdata.directories, w_evt->path))) {
                             // Check that a new file has been added
                             fim_whodata_event(w_evt);
 
