@@ -133,15 +133,14 @@ def generate_token(user_id=None, rbac_policies=None):
                           wait_for_complete=True,
                           logger=logging.getLogger('wazuh')
                           )
-    result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).values()
-    token_exp, rbac_mode = list(result)[0:2]
+    result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
     timestamp = int(time())
-    rbac_policies['rbac_mode'] = rbac_mode
+    rbac_policies['rbac_mode'] = result['rbac_mode']
     payload = {
         "iss": JWT_ISSUER,
         "aud": "Wazuh API REST",
         "nbf": int(timestamp),
-        "exp": int(timestamp + token_exp),
+        "exp": int(timestamp + result['auth_token_exp_timeout']),
         "sub": str(user_id),
         "rbac_policies": rbac_policies
     }
