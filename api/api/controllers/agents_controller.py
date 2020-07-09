@@ -555,7 +555,7 @@ async def delete_groups(request, list_groups=None, pretty=False, wait_for_comple
 
 
 async def get_list_group(request, pretty=False, wait_for_complete=False, list_groups=None, offset=0, limit=None,
-                         sort=None, search=None, q=None):
+                         sort=None, search=None):
     """Get groups.
 
     Returns a list containing basic information about each agent group such as number of agents belonging to the group
@@ -569,7 +569,6 @@ async def get_list_group(request, pretty=False, wait_for_complete=False, list_gr
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
-    :param q: Query to filter results by.
     :return: AllItemsResponseGroups
     """
     hash_ = request.query.get('hash', 'md5')  # Select algorithm to generate the returned checksums.
@@ -578,8 +577,7 @@ async def get_list_group(request, pretty=False, wait_for_complete=False, list_gr
                 'group_list': list_groups,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'hash_algorithm': hash_,
-                'q': q}
+                'hash_algorithm': hash_}
     dapi = DistributedAPI(f=agent.get_agent_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -1001,20 +999,15 @@ async def get_agent_summary_status(request, pretty=False, wait_for_complete=Fals
     return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_summary_os(request, pretty=False, wait_for_complete=False, sort=None, search=None, q=None):
+async def get_agent_summary_os(request, pretty=False, wait_for_complete=False):
     """Get agents OS summary.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: ListMetadata
     """
-    f_kwargs = {'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'q': q}
+    f_kwargs = {}
 
     dapi = DistributedAPI(f=agent.get_agents_summary_os,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

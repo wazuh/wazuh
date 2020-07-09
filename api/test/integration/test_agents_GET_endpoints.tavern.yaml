@@ -2151,22 +2151,6 @@ stages:
          total_affected_items: 2
          total_failed_items: 0
 
- - name: Try to get groups information with q parameter
-   request:
-     verify: False
-     <<: *get_agents_groups
-     params:
-       q: 'name=default'
-   response:
-     status_code: 200
-     json:
-       data:
-         affected_items:
-           - name: 'default'
-         failed_items: []
-         total_affected_items: 4
-         total_failed_items: 0
-
 ---
 test_name: GET /groups filter hash
 

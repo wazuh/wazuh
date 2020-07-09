@@ -5529,7 +5529,6 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/hash'
-        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "List all groups"
@@ -6380,9 +6379,6 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Get summary of agents OS"

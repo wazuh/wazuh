@@ -71,13 +71,10 @@ def get_agents_summary_status(agent_list=None):
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_agents_summary_os(agent_list=None, sort=None, search=None, q=""):
+def get_agents_summary_os(agent_list=None):
     """Gets a list of available OS.
 
     :param agent_list: List of agents ID's.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param search: Looks for items with the specified string.
-    :param q: Query to filter results.
     :return: WazuhResult.
     """
     result = AffectedItemsWazuhResult(none_msg='Could not get the operative system of the agents',
@@ -87,7 +84,7 @@ def get_agents_summary_os(agent_list=None, sort=None, search=None, q=""):
 
         db_query = WazuhDBQueryAgents(select=['os.platform'], filters={'id': agent_list},
                                       default_sort_field='os_platform', min_select_fields=set(),
-                                      distinct=True, sort=sort, search=search, query=q)
+                                      distinct=True)
         query_data = db_query.run()
         query_data['items'] = [row['os']['platform'] for row in query_data['items']]
         result.affected_items = query_data['items']
@@ -307,7 +304,7 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1, use_o
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
                   post_proc_kwargs={'exclude_codes': [1710]})
-def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=None, q=None, hash_algorithm='md5'):
+def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=None, hash_algorithm='md5'):
     """Gets the existing groups.
 
     :param group_list: List of Group names.
@@ -315,7 +312,6 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
     :param limit: Maximum number of items to return.
     :param sort: Fields to sort the items by.
     :param search: Text to search.
-    :param q: Defines query to filter.
     :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
     :return: AffectedItemsWazuhResult.
     """
@@ -347,9 +343,7 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
             group['configSum'] = conf_sum
         affected_groups.append(group)
 
-    data = process_array(affected_groups, q=q)
-
-    result.affected_items = data['items']
+    result.affected_items = affected_groups
     result.total_affected_items = query_data['totalItems']
 
     return result
