@@ -11,7 +11,7 @@ import six
 from connexion import ProblemException
 
 from wazuh.core.common import ossec_path as WAZUH_PATH
-from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError
+from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError, WazuhPermissionError
 from api.api_exception import APIException, APIError
 
 
@@ -241,14 +241,12 @@ def _create_problem(exc: Exception):
         ext = remove_nones_to_dict({'code': exc.code})
     else:
         ext = None
-    if isinstance(exc, WazuhError):
-        raise ProblemException(status=400, title='Wazuh Error', detail=exc.message, ext=ext)
-    elif isinstance(exc, (WazuhInternalError, WazuhException)):
-        raise ProblemException(status=500, title='Wazuh Internal Error', detail=exc.message, ext=ext)
-    elif isinstance(exc, APIError):
-        raise ProblemException(status=400, title='Wazuh Error', detail=exc.details, ext=ext)
-    elif isinstance(exc, APIException):
-        raise ProblemException(status=500, title='Wazuh Internal Error', detail=exc.details, ext=ext)
+    if isinstance(exc, (WazuhInternalError, APIException)):
+        raise ProblemException(status=500, type=exc.response_type, title=exc.title, detail=exc.message, ext=ext)
+    elif isinstance(exc, WazuhPermissionError):
+        raise ProblemException(status=403, type=exc.response_type, title=exc.title, detail=exc.message, ext=ext)
+    elif isinstance(exc, (WazuhError, APIError)):
+        raise ProblemException(status=400, type=exc.response_type, title=exc.title, detail=exc.message, ext=ext)
     raise exc
 
 

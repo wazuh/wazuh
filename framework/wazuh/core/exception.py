@@ -528,7 +528,8 @@ class WazuhException(Exception):
         # > 9000: Authd
     }
 
-    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None):
+    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, title=None,
+                 response_type=None):
         """
         Creates a Wazuh Exception.
 
@@ -540,7 +541,10 @@ class WazuhException(Exception):
                             {'master-node': {'error': 'Wazuh Internal error',
                                              'logfile': WAZUH_HOME/logs/api.log}
                             }
+        :param title: Name of the exception to be shown
         """
+        self._response_type = response_type if response_type else 'about:blank'
+        self._title = title if title else self.__class__.__name__
         self._code = code
         self._extra_message = extra_message
         self._extra_remediation = extra_remediation
@@ -576,16 +580,20 @@ class WazuhException(Exception):
     def __eq__(self, other):
         if not isinstance(other, WazuhException):
             return NotImplemented
-        return (self._code,
+        return (self._response_type,
+                self._title,
+                self._code,
                 self._extra_message,
                 self._extra_remediation,
-                self._cmd_error) == (other._code,
+                self._cmd_error) == (other._response_type,
+                                     other._title,
+                                     other._code,
                                      other._extra_message,
                                      other._extra_remediation,
                                      other._cmd_error)
 
     def __hash__(self):
-        return hash((self._code, self._extra_message, self._extra_remediation, self._cmd_error))
+        return hash((self._response_type, self._title, self._code, self._extra_message, self._extra_remediation, self._cmd_error))
 
     def __or__(self, other):
         if isinstance(other, WazuhException):
@@ -601,12 +609,22 @@ class WazuhException(Exception):
         return obj
 
     def to_dict(self):
-        return {'code': self._code,
+        return {'type': self._response_type,
+                'title': self._title,
+                'code': self._code,
                 'extra_message': self._extra_message,
                 'extra_remediation': self._extra_remediation,
                 'cmd_error': self._cmd_error,
                 'dapi_errors': self._dapi_errors
                 }
+
+    @property
+    def response_type(self):
+        return self._response_type
+
+    @property
+    def title(self):
+        return self._title
 
     @property
     def message(self):
@@ -638,7 +656,8 @@ class WazuhInternalError(WazuhException):
     This type of exception is raised when an unexpected error in framework code occurs,
     which means an internal error could not be handled
     """
-    pass
+    _default_type = "about:blank"
+    _default_title = "Wazuh Internal Error"
 
 
 class WazuhError(WazuhException):
@@ -646,8 +665,11 @@ class WazuhError(WazuhException):
     This type of exception is raised as a controlled response to a bad request from user
     that cannot be performed properly
     """
+    _default_type = "about:blank"
+    _default_title = "Bad Request"
 
-    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, ids=None):
+    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, ids=None,
+                 title=None, response_type=None):
         """Creates a WazuhError exception.
 
         :param code: Exception code.
@@ -660,10 +682,13 @@ class WazuhError(WazuhException):
                             }
         :param ids: List or set with the ids involved in the exception
         """
+
         super().__init__(code, extra_message=extra_message,
                          extra_remediation=extra_remediation,
                          cmd_error=cmd_error,
-                         dapi_errors=dapi_errors
+                         dapi_errors=dapi_errors,
+                         title=title if title else self._default_title,
+                         response_type=response_type if response_type else self._default_type
                          )
         self._ids = set() if ids is None else set(ids)
 
@@ -685,8 +710,17 @@ class WazuhError(WazuhException):
         return result
 
 
+class WazuhPermissionError(WazuhError):
+    """
+    This type of exception is raised as a controlled response to a permission denied from user
+    """
+    _default_type = "about:blank"
+    _default_title = "Permission Denied"
+
+
 class WazuhClusterError(WazuhException):
     """
     This type of exception is raised inside the cluster.
     """
-    pass
+    _default_type = "about:blank"
+    _default_title = "Wazuh Cluster Error"

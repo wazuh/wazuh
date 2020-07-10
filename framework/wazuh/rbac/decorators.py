@@ -14,7 +14,7 @@ from wazuh.core.cdb_list import iterate_lists
 from wazuh.core.utils import get_files
 from wazuh.core.agent import get_agents_info, get_groups, expand_group
 from wazuh.core.rule import format_rule_decoder_file, Status
-from wazuh.core.exception import WazuhError
+from wazuh.core.exception import WazuhError, WazuhPermissionError
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager
 from wazuh.core.results import AffectedItemsWazuhResult
 
@@ -398,7 +398,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                 except Exception:
                     if add_denied:
                         denied = _get_denied(original_kwargs, allow, target_param, res_id, resources=resources)
-                        raise WazuhError(4000, extra_message=f'Resource type: {res_id}', ids=denied)
+                        raise WazuhPermissionError(4000, extra_message=f'Resource type: {res_id}', ids=denied, title="Permssion Denied")
                     else:
                         if target_param != '*':
                             kwargs[target_param] = list()
