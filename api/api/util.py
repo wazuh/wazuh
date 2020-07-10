@@ -243,16 +243,12 @@ def _create_problem(exc: Exception, code=None):
         ext = remove_nones_to_dict({'code': exc.code})
     else:
         ext = None
-    if isinstance(exc, WazuhError):
+    if isinstance(exc, (WazuhError, APIError)):
         raise ProblemException(status=400 if not code else code, title='Wazuh Error', detail=exc.message, ext=ext)
-    elif isinstance(exc, (WazuhInternalError, WazuhException)):
+    elif isinstance(exc, (WazuhInternalError, WazuhException, APIException)):
         raise ProblemException(status=500 if not code else code, title='Wazuh Internal Error', detail=exc.message,
                                ext=ext)
-    elif isinstance(exc, APIError):
-        raise ProblemException(status=400 if not code else code, title='Wazuh Error', detail=exc.details, ext=ext)
-    elif isinstance(exc, APIException):
-        raise ProblemException(status=500 if not code else code, title='Wazuh Internal Error', detail=exc.details,
-                               ext=ext)
+
     raise exc
 
 
