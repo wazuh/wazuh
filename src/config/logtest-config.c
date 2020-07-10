@@ -47,35 +47,45 @@ int Read_Logtest(XML_NODE node) {
 
             char *end;
             long value = strtol(node[i]->content, &end, 10);
+
             if (value < 0 || value > 65534 || *end) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
-            }
-
-            logtest_conf.threads = (unsigned short) value;
-            if(logtest_conf.threads > LOGTEST_MAXTHREAD) {
-                logtest_conf.threads = LOGTEST_MAXTHREAD;
-                mwarn(LOGTEST_INV_NUM_THREADS, LOGTEST_MAXTHREAD);
+            } else if(value > LOGTEST_LIMIT_THREAD) {
+                mdebug2(LOGTEST_INV_NUM_THREADS, LOGTEST_LIMIT_THREAD);
+                logtest_conf.threads = LOGTEST_LIMIT_THREAD;
+            } else {
+                logtest_conf.threads = (unsigned short) value;
             }
         }
 
         else if(!strcmp(node[i]->element, max_sessions)) {
             char *end;
             long value = strtol(node[i]->content, &end, 10);
+
             if (value < 0 || value > 65534 || *end) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
+            } else if (value > LOGTEST_LIMIT_MAX_SESSIONS) {
+                mdebug2(LOGTEST_INV_NUM_USERS, LOGTEST_LIMIT_MAX_SESSIONS);
+                logtest_conf.max_sessions = LOGTEST_LIMIT_MAX_SESSIONS;
+            } else {
+                logtest_conf.max_sessions = (unsigned short) value;
             }
-            logtest_conf.max_sessions = (unsigned short) value;
         }
 
         else if(!strcmp(node[i]->element, session_timeout)) {
             long value = w_parse_time(node[i]->content);
+
             if (value <= 0) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
+            } else if (value > LOGTEST_LIMIT_SESSION_TIMEOUT) {
+                mdebug2(LOGTEST_INV_NUM_TIMEOUT, LOGTEST_LIMIT_SESSION_TIMEOUT);
+                logtest_conf.session_timeout = LOGTEST_LIMIT_SESSION_TIMEOUT;
+            } else {
+                logtest_conf.session_timeout = value;
             }
-            logtest_conf.session_timeout = value;
         }
 
         else {
@@ -93,7 +103,7 @@ cJSON *getRuleTestConfig() {
     cJSON *root = cJSON_CreateObject();
     cJSON *ruletest = cJSON_CreateObject();
 
-    if (logtest_conf.enabled) cJSON_AddStringToObject(ruletest, enabled, logtest_conf.enabled);
+    if (logtest_conf.enabled)cJSON_AddStringToObject(ruletest, enabled, logtest_conf.enabled);
     if (logtest_conf.threads)cJSON_AddNumberToObject(ruletest, threads, logtest_conf.threads);
     if (logtest_conf.max_sessions)cJSON_AddNumberToObject(ruletest, max_sessions, logtest_conf.max_sessions);
     if (logtest_conf.session_timeout)cJSON_AddNumberToObject(ruletest, session_timeout, logtest_conf.session_timeout);
