@@ -31,8 +31,8 @@
 #define VU_INS_CPES_SEC       "(5416): Inserting CPEs section."
 #define VU_INS_CPES_DIC       "(5417): Inserting Wazuh's CPE dictonary."
 #define VU_INS_MSU            "(5418): Inserting Microsoft Security Update dictonary."
-#define VU_INS_NVD_SEC        "(5419): Inserting NVD vulnerabilities section."
-#define VU_INS_RH_SEC         "(5420): Inserting RedHat vulnerabilities section."
+#define VU_INS_VUL_SEC        "(5419): Inserting %s vulnerabilities section."
+/* ID 5420 is available */
 #define VU_INDEX_TIME         "(5421): It took '%ld' seconds to '%s' vulnerabilities."
 #define VU_INS_TEST_SEC       "(5422): Inserting '%s' vulnerabilities references."
 #define VU_UPDATE_VU_CO       "(5423): Inserting '%s' vulnerabilities conditions."
