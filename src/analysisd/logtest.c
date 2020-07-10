@@ -69,7 +69,6 @@ int w_logtest_init_parameters() {
     logtest_conf.max_sessions = LOGTEST_MAX_SESSIONS;
     logtest_conf.session_timeout = LOGTEST_SESSION_TIMEOUT;
 
-    os_calloc(4, sizeof(char), logtest_conf.enabled);
     os_strdup("yes", logtest_conf.enabled);
 
     if (ReadConfig(modules, OSSECCONF, NULL, NULL) < 0) {
