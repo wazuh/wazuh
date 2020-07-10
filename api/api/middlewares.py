@@ -1,5 +1,4 @@
 from aiohttp import web
-from aiohttp.web_response import Response
 
 from api import configuration
 from api.api_exception import APIError
