@@ -243,4 +243,9 @@
 #define FIM_BIG_FILE_REPORT_CHANGES         "(6349): File '%s' is too big for configured maximum size to perform diff operation."
 #define FIM_DISK_QUOTA_LIMIT_REACHED        "(6350): The maximum configured size for the '%s' folder has been reached, the diff operation cannot be performed."
 
+/* wazuh-logtest debug messages*/
+#define LOGTEST_INV_NUM_THREADS             "(7000): Number of logtest threads too high. Only creates %d threads"
+#define LOGTEST_INV_NUM_USERS               "(7001): Number of maximum users connected in logtest too high. Only allows %d users"
+#define LOGTEST_INV_NUM_TIMEOUT             "(7002): Number of maximum user timeouts in logtest too high. Only allows %ds maximum timeouts"
+
 #endif /* DEBUG_MESSAGES_H */
