@@ -1,6 +1,6 @@
 #!/bin/bash
 ## Check if system is based on yum or apt-get
-
+char="#"
 if [ -n "$(command -v yum)" ] 
 then
     sys_type="yum"
@@ -27,15 +27,6 @@ if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
     else
         echo "${1^} started"
     fi  
-elif [ -x /etc/rc.d/init.d/$1 ] ; then
-    /etc/rc.d/init.d/$1 start > /dev/null 2>&1
-    if [  "$?" != 0  ]
-    then
-        echo "${1^} could not be started."
-        exit 1;
-    else
-        echo "${1^} started"
-    fi       
 elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
     chkconfig $1 on > /dev/null 2>&1
     service $1 start > /dev/null 2>&1
@@ -46,7 +37,16 @@ elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
         exit 1;
     else
         echo "${1^} started"
-    fi       
+    fi     
+elif [ -x /etc/rc.d/init.d/$1 ] ; then
+    /etc/rc.d/init.d/$1 start > /dev/null 2>&1
+    if [  "$?" != 0  ]
+    then
+        echo "${1^} could not be started."
+        exit 1;
+    else
+        echo "${1^} started"
+    fi             
 else
     echo "Error: ${1^} could not start. No service manager found on the system."
     exit 1;
@@ -76,10 +76,10 @@ installPrerequisites() {
         then
             yum install java-1.8.0-openjdk-devel -y -q > /dev/null 2>&1
             export JAVA_HOME=/usr/
-            yum install unzip wget curl libcap -y -q > /dev/null 2>&1
+            yum install unzip curl wget libcap -y -q > /dev/null 2>&1
         else
             export JAVA_HOME=/usr/
-            yum install unzip wget curl libcap -y -q > /dev/null 2>&1
+            yum install unzip curl wget libcap -y -q > /dev/null 2>&1
         fi        
     elif [ $sys_type == "apt-get" ] 
     then
@@ -125,14 +125,6 @@ addWazuhrepo() {
 ## Elasticsearch
 installElasticsearch() {
 
-    head=$(head -n1 config.yml)
-    if [ "${head}" == "## Multi-node configuration" ]
-    then
-        master=1
-    else
-        single=1
-    fi
-
     logger "Installing Opend Distro for Elasticsearch..."
 
     if [ $sys_type == "yum" ] 
@@ -176,15 +168,18 @@ installElasticsearch() {
 
 
         logger "Done"
-
-        if [ -n "$single" ]
-        then
-            createCertificates
-        fi
     fi
 }
 
 createCertificates() {
+
+    head=$(head -n1 config.yml)
+    if [ "${head}" == "## Multi-node configuration" ]
+    then
+        master=1
+    else
+        single=1
+    fi    
 
     logger "Creating the certificates..."
     curl -so /etc/elasticsearch/certs/search-guard-tlstool-1.7.zip https://releases.floragunn.com/search-guard-tlstool/1.7/search-guard-tlstool-1.7.zip --max-time 300 > /dev/null 2>&1
@@ -208,16 +203,24 @@ createCertificates() {
         rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f > /dev/null 2>&1
     fi
 
-    # Start Elasticsearch
+    logger "Elasticsearch installed."  
 
+    # Start Elasticsearch
     startService "elasticsearch"
-    cd /usr/share/elasticsearch/plugins/opendistro_security/tools/ > /dev/null 2>&1
-    ./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key -h $elk > /dev/null 2>&1 
     elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs)
+    echo "Initializing Elasticsearch..."
     until $(curl -XGET https://${elk}:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
-        echo "Waiting for Elasticsearch..."
-        sleep 5
+        echo -ne $char
+        sleep 10
     done    
+
+    if [ -n "$single" ]
+    then
+        cd /usr/share/elasticsearch/plugins/opendistro_security/tools/ > /dev/null 2>&1
+        ./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key -h ${elk} > /dev/null 2>&1
+    fi
+
+    echo $'\nDone'    
 }
 
 ## Kibana
@@ -231,23 +234,42 @@ installKibana() {
         echo "Error: Kibana installation failed"
         exit 1;
     else   
-        curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/kibana/7.x/kibana_all_in_one.yml --max-time 300 > /dev/null 2>&1
+        curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/unattended-installation/distributed/templates/kibana_unattended.yml --max-time 300 > /dev/null 2>&1
         cd /usr/share/kibana > /dev/null 2>&1
         sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages.wazuh.com/wazuhapp/wazuhapp-3.13.0_7.7.0.zip > /dev/null 2>&1
+        setcap 'cap_net_bind_service=+ep' /usr/share/kibana/node/bin/node > /dev/null 2>&1
         if [  "$?" != 0  ]
         then
             echo "Error: Wazuh Kibana plugin could not be installed."
             exit 1;
         fi     
         mkdir /etc/kibana/certs > /dev/null 2>&1
-        mv /etc/elasticsearch/certs/kibana* /etc/kibana/certs/ > /dev/null 2>&1
-        setcap 'cap_net_bind_service=+ep' /usr/share/kibana/node/bin/node > /dev/null 2>&1
-        awk -v RS='' '/## Kibana/' ~/config.yml >> /etc/kibana/kibana.yml   
-        # Start Kibana
-        startService "kibana"
 
         logger "Done"
+
+        if [[ -n "$e" ]] && [[ -n "$k" ]]
+        then
+            initializeKibana
+        fi
     fi
+
+    logger $'\nKibana installed.'  
+}
+
+initializeKibana() {
+    mv /etc/elasticsearch/certs/kibana* /etc/kibana/certs/ > /dev/null 2>&1
+    # Start Kibana
+    startService "kibana"   
+    logger "Initializing Kibana (this may take a while)" 
+    awk -v RS='' '/## Kibana/' ~/config.yml >> /etc/kibana/kibana.yml 
+    elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs) 
+    until [[ "$(curl -XGET https://${elk}/status -I -uadmin:admin -k -s | grep "200 OK")" ]]; do
+        echo -ne $char
+        sleep 10
+    done     
+    wip=$(cat ~/config.yml | grep "url: https:")
+    conf="$(awk '{sub("url: https://localhost", "'"${wip}"'")}1' /usr/share/kibana/optimize/wazuh/config/wazuh.yml)"
+    echo "$conf" > /usr/share/kibana/optimize/wazuh/config/wazuh.yml   
 }
 
 ## Health check
@@ -280,6 +302,7 @@ main() {
                 echo "Health-check ignored."
                 installPrerequisites
                 addWazuhrepo     
+                shift
             else
                 healthCheck
                 installPrerequisites
