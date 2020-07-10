@@ -3720,7 +3720,6 @@ components:
       description: "Query to filter results by. For example q=&quot;status=active&quot;"
       schema:
         type: string
-      allowReserved: true
     rationale:
       in: query
       name: rationale
@@ -6486,7 +6485,7 @@ paths:
         - $ref: '#/components/parameters/notchecked'
         - $ref: '#/components/parameters/unknown'
         - $ref: '#/components/parameters/score'
-
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "List of agents or error description"
@@ -6589,6 +6588,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/node_type'
         - $ref: '#/components/parameters/list_nodes'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "List of connected nodes"
@@ -7611,6 +7611,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/category'
         - $ref: '#/components/parameters/type_log'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Wazuh node logs"
@@ -8713,6 +8714,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/category'
         - $ref: '#/components/parameters/type_log'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Wazuh logs"
@@ -9707,6 +9709,7 @@ paths:
         - $ref: '#/components/parameters/sha256'
         - $ref: '#/components/parameters/hashfilter'
         - $ref: '#/components/parameters/distinct'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Latest syscheck scan result"
@@ -11030,6 +11033,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/hotfix'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return an agent's hotfix results"
@@ -11081,6 +11085,7 @@ paths:
         - $ref: '#/components/parameters/address'
         - $ref: '#/components/parameters/broadcast'
         - $ref: '#/components/parameters/netmask'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's network results"
@@ -11143,6 +11148,7 @@ paths:
         - $ref: '#/components/parameters/rx.errors'
         - $ref: '#/components/parameters/tx.dropped'
         - $ref: '#/components/parameters/rx.dropped'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's network interfaces results"
@@ -11208,6 +11214,7 @@ paths:
         - $ref: '#/components/parameters/type_syscollector'
         - $ref: '#/components/parameters/gateway'
         - $ref: '#/components/parameters/dhcp'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's network protocol results"
@@ -11316,6 +11323,7 @@ paths:
         - $ref: '#/components/parameters/architecture'
         - $ref: '#/components/parameters/file_format'
         - $ref: '#/components/parameters/package_version'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's packages results"
@@ -11411,6 +11419,7 @@ paths:
         - $ref: '#/components/parameters/tx_queue'
         - $ref: '#/components/parameters/state'
         - $ref: '#/components/parameters/process'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's packages results"
@@ -11512,6 +11521,7 @@ paths:
         - $ref: '#/components/parameters/ruser'
         - $ref: '#/components/parameters/sgroup'
         - $ref: '#/components/parameters/suser'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's processes results"

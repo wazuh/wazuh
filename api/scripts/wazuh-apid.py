@@ -16,8 +16,8 @@ import aiohttp_cors
 import connexion
 import psutil
 import uvloop
-from aiohttp_swagger import setup_swagger
 from aiohttp_cache import setup_cache
+from aiohttp_swagger import setup_swagger
 
 from api import alogging, configuration, __path__ as api_path
 # noinspection PyUnresolvedReferences
@@ -26,6 +26,7 @@ from api.api_exception import APIException
 from api.configuration import generate_self_signed_certificate, generate_private_key
 from api.constants import CONFIG_FILE_PATH, API_LOG_FILE_PATH
 from api.middlewares import set_user_name, check_experimental
+from api.uri_parser import APIUriParser
 from api.util import to_relative_path
 from wazuh.core import pyDaemonModule, common
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
@@ -108,7 +109,7 @@ def start(foreground, root, config_file):
     app = connexion.AioHttpApp(__name__, host=api_conf['host'],
                                port=api_conf['port'],
                                specification_dir=os.path.join(api_path[0], 'spec'),
-                               options={"swagger_ui": False}
+                               options={"swagger_ui": False, 'uri_parser_class': APIUriParser}
                                )
     app.add_api('spec.yaml',
                 arguments={'title': 'Wazuh API',
