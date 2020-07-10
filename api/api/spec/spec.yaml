@@ -3180,6 +3180,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    command:
+      in: query
+      name: command
+      description: "Filter by command"
+      schema:
+        type: string
+        format: alphanumeric
     component:
       in: path
       name: component
@@ -3425,7 +3432,7 @@ components:
       description: "Filter by policy description"
       schema:
         type: string
-        format: alphanumeric
+        format: alphanumeric_symbols
     directory:
       in: query
       name: directory
@@ -3720,7 +3727,7 @@ components:
       description: "Filter by rationale"
       schema:
         type: string
-        format: alphanumeric
+        format: alphanumeric_symbols
     registry:
       in: query
       name: registry
@@ -3740,6 +3747,7 @@ components:
       description: "Filter by remediation"
       schema:
         type: string
+        format: alphanumeric_symbols
     rule_requirement:
       in: path
       name: requirement
@@ -3792,6 +3800,13 @@ components:
       schema:
         type: integer
         minimum: 0
+    reason:
+      in: query
+      name: reason
+      description: "Filter by reason"
+      schema:
+        type: string
+        format: alphanumeric_symbols
     rule_ids:
       in: query
       name: rule_ids
@@ -3839,6 +3854,13 @@ components:
       schema:
         type: string
         format: sort
+    status:
+      in: query
+      name: status
+      description: "Filter by status"
+      schema:
+        type: string
+        format: alphanumeric
     statusAgentParam:
       in: query
       name: status
@@ -3871,7 +3893,7 @@ components:
       description: "Filter by title"
       schema:
         type: string
-        format: alphanumeric
+        format: alphanumeric_symbols
     type_agents:
       in: query
       name: type
@@ -9548,6 +9570,9 @@ paths:
         - $ref: '#/components/parameters/description'
         - $ref: '#/components/parameters/rationale'
         - $ref: '#/components/parameters/remediation'
+        - $ref: '#/components/parameters/command'
+        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/reason'
         - $ref: '#/components/parameters/full_path_filter'
         - $ref: '#/components/parameters/process'
         - $ref: '#/components/parameters/directory'

@@ -926,6 +926,8 @@ class WazuhDBQuery(object):
         self.min_select_fields = min_select_fields
         self.query_operators = {"=": "=", "!=": "!=", "<": "<", ">": ">", "~": 'LIKE'}
         self.query_separators = {',': 'OR', ';': 'AND', '': ''}
+        self.special_characters = "\'\""
+        self.wildcard_equal_fields = set()
         # To correctly turn a query into SQL, a regex is used. This regex will extract all necessary information:
         # For example, the following regex -> (name!=wazuh;id>5),group=webserver <- would return 3 different matches:
         #   (name != wazuh ;
@@ -946,6 +948,17 @@ class WazuhDBQuery(object):
         self.legacy_filters = filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
         self.backend = backend
+
+    def _clean_filter(self, query_filter):
+        # Replace special characters with wildcards
+        for sp_char in self.special_characters:
+            if isinstance(query_filter['value'], str) and sp_char in query_filter['value']:
+                if query_filter['operator'] != 'LIKE':
+                    # If original operator was not LIKE, do not append % at the beginning and end of the string
+                    self.wildcard_equal_fields.add(query_filter['field'])
+
+                query_filter['value'] = query_filter['value'].replace(sp_char, '_')
+                query_filter['operator'] = 'LIKE'
 
     def _add_limit_to_query(self):
         if self.limit:
@@ -982,7 +995,7 @@ class WazuhDBQuery(object):
                 f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)' for x in
                 self.fields.values()) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
-            self.request['search'] = "%{0}%".format(self.search['value'])
+            self.request['search'] = "%{0}%".format(re.sub(f"[{self.special_characters}]", '_', self.search['value']))
 
     def _parse_select_filter(self, select_fields):
         if select_fields:
@@ -1043,8 +1056,8 @@ class WazuhDBQuery(object):
         """Parses legacy filters."""
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
         legacy_filters_as_list = {
-            name: value.split(',') if isinstance(value, str) else (value if isinstance(value, list) else [value])
-            for name, value in self.legacy_filters.items()}
+            name: value if isinstance(value, list) else [value] for name, value in self.legacy_filters.items()
+        }
         # each filter is represented using a dictionary containing the following fields:
         #   * Value     -> Value to filter by
         #   * Field     -> Field to filter by. Since there can be multiple filters over the same field, a numeric ID
@@ -1086,7 +1099,7 @@ class WazuhDBQuery(object):
             if q_filter['value'] is not None:
                 self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
                     r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
-                if q_filter['operator'] == 'LIKE':
+                if q_filter['operator'] == 'LIKE' and q_filter['field'] not in self.wildcard_equal_fields:
                     self.request[field_filter] = "%{}%".format(self.request[field_filter])
                 self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'],
                                                  field_filter)
@@ -1100,6 +1113,7 @@ class WazuhDBQuery(object):
         self._parse_filters()
         curr_level = 0
         for q_filter in self.query_filters:
+            self._clean_filter(q_filter)
             field_name = q_filter['field'].split('$', 1)[0]
             field_filter = q_filter['field'].replace('.', '_')
 

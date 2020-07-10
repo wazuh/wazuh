@@ -441,6 +441,66 @@ stages:
           failed_items: []
           total_failed_items: 0
 
+  - name: Parameters -> title="Ensure address space layout randomization (ASLR) is enabled"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        title: Ensure address space layout randomization (ASLR) is enabled
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - title: Ensure address space layout randomization (ASLR) is enabled
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> title="non-existent"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        title: non-existent
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 0
+          affected_items: []
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> description="The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        description: The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root.
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - description: The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root.
+          failed_items: []
+          total_failed_items: 0
+        message: !anystr
+
   - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
       verify: False
@@ -459,6 +519,92 @@ stages:
           affected_items:
             - <<: *sca_check_result_001
               remediation: Remove any legacy + entries from /etc/group if they exist.
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> rationale with apostrophe and parenthesis"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        rationale: >-
+          Having no timeout value associated with a connection could allow an unauthorized user access to
+          another user's ssh session (e.g. user walks away from their computer and doesn't lock the screen). Setting a
+          timeout value at least reduces the risk of this happening. While the recommended setting is 300 seconds (5
+          minutes), set this timeout value based on site policy. The recommended setting for ClientAliveCountMax is 0.
+          In this case, the client session will be terminated after 5 minutes of idle time and no keepalive messages
+          will be sent.
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - id: 3081
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> command="dpkg -s libpam-pwquality"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        command: dpkg -s libpam-pwquality
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - command: dpkg -s libpam-pwquality
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> status="Not applicable"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        status: Not applicable
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - status: Not applicable
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> reason="Invalid path or wrong permissions to run command 'ip6tables -L'"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        reason: Invalid path or wrong permissions to run command 'ip6tables -L'
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - reason: Invalid path or wrong permissions to run command 'ip6tables -L'
           failed_items: []
           total_failed_items: 0
 
@@ -924,6 +1070,86 @@ stages:
           failed_items: []
           total_failed_items: 0
 
+  - name: Parameters -> rationale with apostrophe"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        rationale: With automounting enabled anyone with physical access could attach a USB drive or disc and have it's contents available in system even if they lacked permissions to mount it themselves.
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - rationale: With automounting enabled anyone with physical access could attach a USB drive or disc and have it's contents available in system even if they lacked permissions to mount it themselves.
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> command="systemctl is-enabled autofs"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        command: systemctl is-enabled autofs
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - command: systemctl is-enabled autofs
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> status="Not applicable"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        status: Not applicable
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - status: Not applicable
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> reason="Invalid path or wrong permissions to run command '/sbin/modprobe -n -v freevxfs'"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        reason: Invalid path or wrong permissions to run command '/sbin/modprobe -n -v freevxfs'
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - reason: Invalid path or wrong permissions to run command '/sbin/modprobe -n -v freevxfs'
+          failed_items: []
+          total_failed_items: 0
+
 ---
 test_name: GET /sca/003
 
@@ -1383,5 +1609,91 @@ stages:
           affected_items:
             - <<: *sca_check_result_003
               remediation: Remove any legacy + entries from /etc/group if they exist.
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> rationale with apostrophe and parenthesis"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        rationale: >-
+          Having no timeout value associated with a connection could allow an unauthorized user access to
+          another user's ssh session (e.g. user walks away from their computer and doesn't lock the screen). Setting a
+          timeout value at least reduces the risk of this happening. While the recommended setting is 300 seconds (5
+          minutes), set this timeout value based on site policy. The recommended setting for ClientAliveCountMax is 0.
+          In this case, the client session will be terminated after 5 minutes of idle time and no keepalive messages
+          will be sent.
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - id: 3081
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> command="dpkg -s libpam-pwquality"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        command: dpkg -s libpam-pwquality
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - command: dpkg -s libpam-pwquality
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> status="Not applicable"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        status: Not applicable
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - status: Not applicable
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> reason="Invalid path or wrong permissions to run command 'ip6tables -L'"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        reason: Invalid path or wrong permissions to run command 'ip6tables -L'
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - reason: Invalid path or wrong permissions to run command 'ip6tables -L'
           failed_items: []
           total_failed_items: 0
