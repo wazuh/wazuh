@@ -44,7 +44,7 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap
                              -Wl,--wrap,mutex_destroy -Wl,--wrap,close")
 
 LIST(APPEND analysisd_names "test_logtest-config")
-LIST(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn")
+LIST(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 -Wl,--wrap,get_nprocs")
 
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")
