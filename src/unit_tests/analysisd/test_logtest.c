@@ -105,6 +105,8 @@ void test_w_logtest_init_parameters_invalid(void **state)
 
     int ret = w_logtest_init_parameters();
     assert_int_equal(ret, OS_INVALID);
+
+    os_free(logtest_conf.enabled);
 }
 
 void test_w_logtest_init_parameters_done(void **state)
@@ -113,6 +115,8 @@ void test_w_logtest_init_parameters_done(void **state)
 
     int ret = w_logtest_init_parameters();
     assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(logtest_conf.enabled);
 }
 
 /* w_logtest_init */
@@ -123,24 +127,26 @@ void test_w_logtest_init_error_parameters(void **state)
     expect_string(__wrap__merror, formatted_msg, "(7104): Invalid wazuh-logtest configuration");
 
     w_logtest_init();
+
+    os_free(logtest_conf.enabled);
 }
 
 
 void test_w_logtest_init_logtest_disabled(void **state)
 {
-    strcpy(logtest_conf.enabled, "no");
-
     will_return(__wrap_ReadConfig, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(7100): At wazuh_logtest_init(): Unable to bind to socket '/queue/ossec/logtest'. Errno: (2) No such file or directory");
+    // strcpy(logtest_conf.enabled, "no");
+
+    expect_string(__wrap__minfo, formatted_msg, "(7201): Logtest disabled");
 
     w_logtest_init();
+
+    os_free(logtest_conf.enabled);
 }
 
 void test_w_logtest_init_conection_fail(void **state)
 {
-    strcpy(logtest_conf.enabled, "yes");
-
     will_return(__wrap_ReadConfig, 0);
 
     will_return(__wrap_OS_BindUnixDomain, OS_SOCKTERR);
@@ -148,12 +154,12 @@ void test_w_logtest_init_conection_fail(void **state)
     expect_string(__wrap__merror, formatted_msg, "(7100): At wazuh_logtest_init(): Unable to bind to socket '/queue/ossec/logtest'. Errno: (0) Success");
 
     w_logtest_init();
+
+    os_free(logtest_conf.enabled);
 }
 
 void test_w_logtest_init_OSHash_create_fail(void **state)
 {
-    strcpy(logtest_conf.enabled, "yes");
-
     will_return(__wrap_ReadConfig, 0);
 
     will_return(__wrap_OS_BindUnixDomain, OS_SUCCESS);
@@ -163,6 +169,8 @@ void test_w_logtest_init_OSHash_create_fail(void **state)
     expect_string(__wrap__merror, formatted_msg, "(7103): Failure to initialize all_sesssions hash");
 
     w_logtest_init();
+
+    os_free(logtest_conf.enabled);
 }
 
 // void test_w_logtest_init_done(void **state) -> Needs to implement w_logtest_main
