@@ -59,7 +59,8 @@ getHelp() {
    echo "Usage: $0 arguments"
    echo -e "\t-e   | --install-elasticsearch Install Elasticsearch"
    echo -e "\t-k   | --install-kibana Install Kibana"
-   echo -e "\t-c   | --create-certificates Generates the certificates for all the nodes indicated on the configuration file"
+   echo -e "\t-c   | --create-certificates Generates the certificates for all the indicated nodes"
+   echo -e "\t-i   | --ignore-health-check Ignores the health-check"
    echo -e "\t-h   | --help Shows help"
    exit 1 # Exit script after printing help
 }
@@ -199,6 +200,12 @@ createCertificates() {
         mv /etc/elasticsearch/certs/node-1_http.pem /etc/elasticsearch/certs/elasticsearch_http.pem
         mv /etc/elasticsearch/certs/node-1_http.key /etc/elasticsearch/certs/elasticsearch_http.key            
         rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f > /dev/null 2>&1
+    fi
+
+    if [ -n "$c" ]
+    then
+        tar -cf certs.tar *
+        tar --delete -f certs.tar 'searchguard'
     fi
 
     logger "Elasticsearch installed."  
