@@ -5,7 +5,7 @@ from wazuh.core.cluster import local_client
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.control import get_health, get_nodes
 from wazuh.core.cluster.utils import get_cluster_status, read_cluster_config, read_config
-from wazuh.core.exception import WazuhError
+from wazuh.core.exception import WazuhError, WazuhException
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.decorators import expose_resources, async_list_handler
 
@@ -89,8 +89,12 @@ async def get_nodes_info(lc: local_client.LocalClient, filter_node=None, **kwarg
                                       none_msg='No information is shown'
                                       )
 
-    data = await get_nodes(lc, filter_node=filter_node, **kwargs)
-    result.affected_items.extend(data['items'])
-    result.total_affected_items = data['totalItems']
+    for node in filter_node:
+        try:
+            data = await get_nodes(lc, filter_node=node, **kwargs)
+            result.affected_items.append(data['items'][0])
+        except WazuhException as e:
+            result.add_failed_item(id_=node, error=e)
+    result.total_affected_items = len(result.affected_items)
 
     return result
