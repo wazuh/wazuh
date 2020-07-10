@@ -46,6 +46,21 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
     check_expected(formatted_msg);
 }
 
+void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
+int __wrap_get_nprocs (void) {
+    return mock();
+}
+
 /* tests */
 
 /* Read_Logtest */
@@ -154,6 +169,29 @@ void test_Read_Logtest_invalid_threads(void **state)
     os_free(logtest_conf.enabled);
 }
 
+void test_Read_Logtest_auto_threads(void **state)
+{
+    xml_node **nodes;
+    nodes = calloc(2, sizeof(xml_node*));
+    nodes[0] = calloc(1, sizeof(xml_node));
+
+    os_calloc(4, sizeof(char), logtest_conf.enabled);
+
+    nodes[0]->element = strdup("threads");
+    nodes[0]->content = strdup("auto");
+
+    will_return(__wrap_get_nprocs, 1);
+
+    int ret = Read_Logtest(nodes);
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(nodes[0]->element);
+    os_free(nodes[0]->content);
+    os_free(nodes[0]);
+    os_free(nodes);
+    os_free(logtest_conf.enabled);
+}
+
 void test_Read_Logtest_smaller_threads(void **state)
 {
     xml_node **nodes;
@@ -200,7 +238,7 @@ void test_Read_Logtest_bigger_threads(void **state)
     os_free(logtest_conf.enabled);
 }
 
-void test_Read_Logtest_auto_threads(void **state)
+void test_Read_Logtest_limit_threads(void **state)
 {
     xml_node **nodes;
     nodes = calloc(2, sizeof(xml_node*));
@@ -209,7 +247,9 @@ void test_Read_Logtest_auto_threads(void **state)
     os_calloc(4, sizeof(char), logtest_conf.enabled);
 
     nodes[0]->element = strdup("threads");
-    nodes[0]->content = strdup("auto");
+    nodes[0]->content = strdup("256");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(7000): Number of logtest threads too high. Only creates 128 threads");
 
     int ret = Read_Logtest(nodes);
     assert_int_equal(ret, OS_SUCCESS);
@@ -311,6 +351,29 @@ void test_Read_Logtest_bigger_max_sessions(void **state)
     os_free(logtest_conf.enabled);
 }
 
+void test_Read_Logtest_limit_max_sessions(void **state)
+{
+    xml_node **nodes;
+    nodes = calloc(2, sizeof(xml_node*));
+    nodes[0] = calloc(1, sizeof(xml_node));
+
+    os_calloc(4, sizeof(char), logtest_conf.enabled);
+
+    nodes[0]->element = strdup("max_sessions");
+    nodes[0]->content = strdup("700");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(7001): Number of maximum users connected in logtest too high. Only allows 500 users");
+
+    int ret = Read_Logtest(nodes);
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(nodes[0]->element);
+    os_free(nodes[0]->content);
+    os_free(nodes[0]);
+    os_free(nodes);
+    os_free(logtest_conf.enabled);
+}
+
 void test_Read_Logtest_valid_max_sessions(void **state)
 {
     xml_node **nodes;
@@ -320,12 +383,10 @@ void test_Read_Logtest_valid_max_sessions(void **state)
     os_calloc(4, sizeof(char), logtest_conf.enabled);
 
     nodes[0]->element = strdup("max_sessions");
-    nodes[0]->content = strdup("1000000");
-
-    expect_string(__wrap__mwarn, formatted_msg, "(1235): Invalid value for element 'max_sessions': 1000000.");
+    nodes[0]->content = strdup("200");
 
     int ret = Read_Logtest(nodes);
-    assert_int_equal(ret, OS_INVALID);
+    assert_int_equal(ret, OS_SUCCESS);
 
     os_free(nodes[0]->element);
     os_free(nodes[0]->content);
@@ -380,6 +441,29 @@ void test_Read_Logtest_smaller_session_timeout(void **state)
     os_free(logtest_conf.enabled);
 }
 
+void test_Read_Logtest_limit_session_timeout(void **state)
+{
+    xml_node **nodes;
+    nodes = calloc(2, sizeof(xml_node*));
+    nodes[0] = calloc(1, sizeof(xml_node));
+
+    os_calloc(4, sizeof(char), logtest_conf.enabled);
+
+    nodes[0]->element = strdup("session_timeout");
+    nodes[0]->content = strdup("32000000");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(7002): Number of maximum user timeouts in logtest too high. Only allows 31536000s maximum timeouts");
+
+    int ret = Read_Logtest(nodes);
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(nodes[0]->element);
+    os_free(nodes[0]->content);
+    os_free(nodes[0]);
+    os_free(nodes);
+    os_free(logtest_conf.enabled);
+}
+
 void test_Read_Logtest_valid_session_timeout(void **state)
 {
     xml_node **nodes;
@@ -410,15 +494,19 @@ int main(void)
         cmocka_unit_test(test_Read_Logtest_invalid_enabled),
         cmocka_unit_test(test_Read_Logtest_valid_enabled),
         cmocka_unit_test(test_Read_Logtest_invalid_threads),
+        cmocka_unit_test(test_Read_Logtest_auto_threads),
         cmocka_unit_test(test_Read_Logtest_smaller_threads),
         cmocka_unit_test(test_Read_Logtest_bigger_threads),
+        cmocka_unit_test(test_Read_Logtest_limit_threads),
         cmocka_unit_test(test_Read_Logtest_valid_threads),
         cmocka_unit_test(test_Read_Logtest_invalid_max_sessions),
         cmocka_unit_test(test_Read_Logtest_smaller_max_sessions),
         cmocka_unit_test(test_Read_Logtest_bigger_max_sessions),
+        cmocka_unit_test(test_Read_Logtest_limit_max_sessions),
         cmocka_unit_test(test_Read_Logtest_valid_max_sessions),
         cmocka_unit_test(test_Read_Logtest_invalid_session_timeout),
         cmocka_unit_test(test_Read_Logtest_smaller_session_timeout),
+        cmocka_unit_test(test_Read_Logtest_limit_session_timeout),
         cmocka_unit_test(test_Read_Logtest_valid_session_timeout)
     };
 
