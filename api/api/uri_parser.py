@@ -28,7 +28,7 @@ class APIUriParser(connexion.decorators.uri_parsing.OpenAPIURIParser):
                 q = parse_api_param(request.url, 'q')
                 if q:
                     if ';' in q:
-                        raise_if_exc(APIException(code=2009,  details='Semicolon (;) must be percent-encoded (%3B)'))
+                        raise_if_exc(APIException(code=2009))
 
             query = coerce_dict(request.query)
             path_params = coerce_dict(request.path_params)

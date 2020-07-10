@@ -1004,7 +1004,6 @@ async def get_agent_summary_os(request, pretty=False, wait_for_complete=False):
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    ascending or descending order.
     :return: ListMetadata
     """
     f_kwargs = {}
