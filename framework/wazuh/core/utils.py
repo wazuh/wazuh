@@ -741,7 +741,6 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     :return: list with processed query
     """
-
     def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
         """
         Checks an operation between value1 and value2. 'value1' could be an
@@ -773,7 +772,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             return False
 
     # compile regular expression only one time when function is called
-    re_get_elements = re.compile(r'([\w\-.]+)(=|!=|<|>|~)([\w\-./]+)')  # regex for getting elements in a clause
+    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-]*))(=|!=|<|>|~)([\w\-./]+)') # get elements in a clause
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
@@ -787,16 +786,25 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             for and_clause in and_clauses:
                 # get elements in a clause
                 try:
-                    field_name, op, value = re_get_elements.match(and_clause).groups()
+                    field_name, field_subname, op, value = re_get_elements.match(and_clause).groups()
                 except AttributeError:
                     raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
 
                 # check if a clause is satisfied
-                if field_name in elem and check_clause(elem[field_name], op, value):
-                    continue
+                if field_subname:
+                    if field_name in elem and field_subname in elem[field_name] and \
+                            check_clause(elem[field_name][field_subname], op, value):
+                        continue
+                    else:
+                        match = False
+                        break
                 else:
-                    match = False
-                    break
+                    if field_name in elem and check_clause(elem[field_name], op, value):
+                        continue
+                    else:
+                        match = False
+                        break
+
             # if match = True, add element to output and break the loop
             if match:
                 output_array.append(elem)
@@ -1043,8 +1051,8 @@ class WazuhDBQuery(object):
         """Parses legacy filters."""
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
         legacy_filters_as_list = {
-            name: value.split(',') if isinstance(value, str) else (value if isinstance(value, list) else [value])
-            for name, value in self.legacy_filters.items()}
+            name: value if isinstance(value, list) else [value] for name, value in self.legacy_filters.items()
+        }
         # each filter is represented using a dictionary containing the following fields:
         #   * Value     -> Value to filter by
         #   * Field     -> Field to filter by. Since there can be multiple filters over the same field, a numeric ID

@@ -207,6 +207,25 @@ def _parse_sort_param(sort: str) -> [typing.Dict, None]:
     return {'fields': sort_fields.split(','), 'order': 'desc' if sort[0] == '-' else 'asc'}
 
 
+def _parse_q_param(query: str):
+    """Search and parse q parameter inside the query string
+
+    Parameters
+    ----------
+    query : str
+        String query which can contain q parameter
+
+    Returns
+    -------
+    q : str
+        Parsed query
+    """
+    q = next((q for q in query.split('&') if q.startswith('q=')), None)
+
+    if q:
+        return q[2:]
+
+
 def to_relative_path(full_path):
     """Returns a relative path from Wazuh base directory
 

@@ -261,6 +261,40 @@ stages:
           total_affected_items: !anyint
           total_failed_items: !anyint
 
+  # GET /decoders?q=details.prematch~wazuh;filename=0005-wazuh_decoders.xml;position<5
+  - name: Get decoders using query parameter
+    request:
+      verify: False
+      <<: *get_decoders
+      params:
+        q: 'details.prematch~wazuh;filename=0005-wazuh_decoders.xml;position<5'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *full_items_array
+              position: 0
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: !anyint
+
+    # GET /decoders?q=details.prematch~wazuh;filename=0005-wazuh_decoders.xml;position>5 (empty response)
+  - name: Get decoders using query parameter
+    request:
+      verify: False
+      <<: *get_decoders
+      params:
+        q: 'details.prematch~wazuh;filename=0005-wazuh_decoders.xml;position>5'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: !anyint
+
 ---
 test_name: GET /decoders
 

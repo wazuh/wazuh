@@ -1074,6 +1074,25 @@ stages:
           failed_items: []
           total_failed_items: 0
 
+  - name: Parameters -> q=policy_id~cis_;total_checks>20;total_checks<50
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        q: policy_id~cis_;total_checks>20;total_checks<50
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 1
+          affected_items:
+            - <<: *sca_agent_result_003
+          failed_items: []
+          total_failed_items: 0
+
   - name: Parameters -> limit=2500
     request:
       verify: False
@@ -1280,6 +1299,26 @@ stages:
           affected_items:
             - <<: *sca_check_result_003
               id: 3098
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> q=result=passed;file~/etc/pass;compliance.value=5.4.3;id<5000
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        q: result=passed;file~/etc/pass;compliance.value=5.4.3;id<5000
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - <<: *sca_check_result_003
+              id: 3091
           failed_items: []
           total_failed_items: 0
 
