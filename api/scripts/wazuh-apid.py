@@ -25,11 +25,12 @@ from api import validator
 from api.api_exception import APIException
 from api.configuration import generate_self_signed_certificate, generate_private_key
 from api.constants import CONFIG_FILE_PATH, API_LOG_FILE_PATH
-from api.middlewares import set_user_name, check_experimental
+from api.middlewares import set_user_name, check_experimental, response_postprocessing
 from api.util import to_relative_path
 from wazuh.core import pyDaemonModule, common
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
 
+from aiohttp.web_response import Response
 
 def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
     for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh'):
@@ -119,7 +120,7 @@ def start(foreground, root, config_file):
                 strict_validation=True,
                 validate_responses=True,
                 pass_context_arg_name='request',
-                options={"middlewares": [set_user_name, check_experimental]})
+                options={"middlewares": [set_user_name, check_experimental, response_postprocessing]})
 
     # Enable CORS
     if cors['enabled']:
