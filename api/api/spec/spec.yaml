@@ -424,13 +424,23 @@ components:
             $ref: '#/components/schemas/ApiError'
           example:
             type: "about:blank"
-            title: "Wazuh Error"
+            title: "Bad Request"
+            detail: "'{invalid_param}' is not a '{expected_type}'. Failed validating 'format' in schema['items']: {'description': '{parameter_name}', 'format': '{expected_format}', 'minLength': {expected_length}, 'type': '{expected_type}', 'x-scope': ['', '#/components/parameters/{parameter_name}']}."
+
+    PermissionDeniedResponse:
+      description: "Response to report a permission denied request"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            type: "about:blank"
+            title: "Permission Denied"
             detail: "Permission denied: Resource type: *:*"
-            status: 400
             remediation: "Please, make sure you have permissions to execute the current request. For more information on how to set up permissions, please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html"
             code: 4000
             dapi_errors:
-              master-node:
+              unknown-node:
                 error: "Permission denied: Resource type: *:*"
 
     UnauthorizedResponse:
@@ -443,7 +453,6 @@ components:
             type: "about:blank"
             title: "Unauthorized"
             detail: "No authorization token provided"
-            status: 401
 
   schemas:
     ## Common models
@@ -4780,6 +4789,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents:
     delete:
@@ -4829,6 +4840,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
     get:
       tags:
       - agents
@@ -4955,6 +4968,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
     post:
       tags:
       - agents
@@ -5009,6 +5024,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/{agent_id}/config/{component}/{configuration}:
     get:
@@ -5054,6 +5071,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/{agent_id}/group:
     delete:
@@ -5095,6 +5114,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/{agent_id}/group/is_sync:
     get:
@@ -5134,6 +5155,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/{agent_id}/group/{group_id}:
     delete:
@@ -5163,6 +5186,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     put:
       tags:
@@ -5198,6 +5223,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/{agent_id}/key:
     get:
@@ -5237,6 +5264,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/{agent_id}/restart:
     put:
@@ -5275,6 +5304,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/{agent_id}/upgrade:
     put:
@@ -5306,6 +5337,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/{agent_id}/upgrade_custom:
     put:
@@ -5335,6 +5368,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/{agent_id}/upgrade_result:
     get:
@@ -5368,6 +5403,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/group:
     delete:
@@ -5412,6 +5449,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     put:
       tags:
@@ -5466,6 +5505,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /groups:
     delete:
@@ -5512,6 +5553,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     get:
       tags:
@@ -5565,6 +5608,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     post:
       tags:
@@ -5591,6 +5636,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /groups/{group_id}/agents:
     get:
@@ -5711,6 +5758,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /groups/{group_id}/configuration:
     get:
@@ -5773,6 +5822,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
     put:
       tags:
         - groups
@@ -5807,6 +5858,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /groups/{group_id}/files:
     get:
@@ -5869,6 +5922,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /groups/{group_id}/files/{file_name}/json:
     get:
@@ -5915,6 +5970,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /groups/{group_id}/files/{file_name}/xml:
     get:
@@ -5942,6 +5999,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /groups/{group_id}/restart:
     put:
@@ -5974,6 +6033,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/insert:
     post:
@@ -6040,6 +6101,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/insert/quick:
     post:
@@ -6074,6 +6137,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/no_group:
     get:
@@ -6191,6 +6256,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/outdated:
     get:
@@ -6237,6 +6304,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/restart:
     put:
@@ -6276,6 +6345,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/stats/distinct:
     get:
@@ -6367,6 +6438,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/summary/os:
     get:
@@ -6401,6 +6474,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /agents/summary/status:
     get:
@@ -6437,6 +6512,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /ciscat/{agent_id}/results:
     get:
@@ -6499,6 +6576,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/local/info:
     get:
@@ -6547,6 +6626,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/nodes:
     get:
@@ -6602,6 +6683,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/healthcheck:
     get:
@@ -6666,6 +6749,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/status:
     get:
@@ -6711,6 +6796,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/local/config:
     get:
@@ -6789,6 +6876,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/api/config:
     get:
@@ -6872,6 +6961,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     put:
       tags:
@@ -6910,6 +7001,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     delete:
       tags:
@@ -6944,6 +7037,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/{node_id}/status:
     get:
@@ -6997,6 +7092,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/{node_id}/info:
     get:
@@ -7042,6 +7139,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/{node_id}/configuration:
     get:
@@ -7113,6 +7212,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/{node_id}/stats:
     get:
@@ -7172,6 +7273,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/{node_id}/stats/hourly:
     get:
@@ -7230,6 +7333,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/{node_id}/stats/weekly:
     get:
@@ -7451,6 +7556,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/{node_id}/stats/analysisd:
     get:
@@ -7529,6 +7636,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/{node_id}/stats/remoted:
     get:
@@ -7569,6 +7678,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/{node_id}/logs:
     get:
@@ -7624,6 +7735,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/{node_id}/logs/summary:
     get:
@@ -7681,6 +7794,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/{node_id}/files:
     get:
@@ -7719,6 +7834,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     put:
       tags:
@@ -7762,6 +7879,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     delete:
       tags:
@@ -7795,6 +7914,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/restart:
     put:
@@ -7834,6 +7955,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/configuration/validation:
     get:
@@ -7877,6 +8000,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /cluster/{node_id}/configuration/{component}/{configuration}:
     get:
@@ -7924,6 +8049,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /lists:
     get:
@@ -8005,6 +8132,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /lists/files:
     get:
@@ -8055,6 +8184,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/status:
     get:
@@ -8107,6 +8238,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/info:
     get:
@@ -8151,6 +8284,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/configuration:
     get:
@@ -8221,6 +8356,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/stats:
     get:
@@ -8279,6 +8416,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/stats/hourly:
     get:
@@ -8336,6 +8475,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/stats/weekly:
     get:
@@ -8556,6 +8697,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/stats/analysisd:
     get:
@@ -8633,6 +8776,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/stats/remoted:
     get:
@@ -8672,6 +8817,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/logs:
     get:
@@ -8726,6 +8873,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/logs/summary:
     get:
@@ -8782,6 +8931,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/files:
     get:
@@ -8819,6 +8970,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     put:
       tags:
@@ -8857,6 +9010,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     delete:
       tags:
@@ -8891,6 +9046,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/api/config:
     get:
@@ -8947,6 +9104,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     put:
       tags:
@@ -8983,6 +9142,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     delete:
       tags:
@@ -9015,6 +9176,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/restart:
     put:
@@ -9047,6 +9210,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/configuration/validation:
     get:
@@ -9080,6 +9245,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /manager/configuration/{component}/{configuration}:
     get:
@@ -9120,6 +9287,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /mitre:
     get:
@@ -9197,6 +9366,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /rules:
     get:
@@ -9286,6 +9457,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /rules/groups:
     get:
@@ -9332,6 +9505,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /rules/requirement/{requirement}:
     get:
@@ -9380,6 +9555,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /rules/files:
     get:
@@ -9435,6 +9612,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /rules/files/{filename}/download:
     get:
@@ -9460,6 +9639,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /sca/{agent_id}:
     get:
@@ -9529,6 +9710,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /sca/{agent_id}/checks/{policy_id}:
     get:
@@ -9614,6 +9797,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /syscheck:
     put:
@@ -9655,6 +9840,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /syscheck/{agent_id}:
     get:
@@ -9735,6 +9922,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     delete:
       tags:
@@ -9772,6 +9961,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /syscheck/{agent_id}/last_scan:
     get:
@@ -9811,6 +10002,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /decoders:
     get:
@@ -9875,6 +10068,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /decoders/files:
     get:
@@ -9927,6 +10122,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /decoders/files/{filename}/download:
     get:
@@ -9952,6 +10149,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /decoders/parents:
     get:
@@ -10008,6 +10207,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /experimental/syscheck:
     delete:
@@ -10058,6 +10259,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /experimental/ciscat/results:
     get:
@@ -10144,6 +10347,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /experimental/syscollector/hardware:
     get:
@@ -10231,6 +10436,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /experimental/syscollector/netaddr:
     get:
@@ -10301,6 +10508,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /experimental/syscollector/netiface:
     get:
@@ -10413,6 +10622,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /experimental/syscollector/netproto:
     get:
@@ -10480,6 +10691,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /experimental/syscollector/os:
     get:
@@ -10575,6 +10788,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /experimental/syscollector/packages:
     get:
@@ -10667,6 +10882,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /experimental/syscollector/ports:
     get:
@@ -10762,6 +10979,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /experimental/syscollector/processes:
     get:
@@ -10882,6 +11101,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /experimental/syscollector/hotfixes:
     get:
@@ -10933,6 +11154,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /syscollector/{agent_id}/hardware:
     get:
@@ -10985,6 +11208,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /syscollector/{agent_id}/hotfixes:
     get:
@@ -11032,6 +11257,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /syscollector/{agent_id}/netaddr:
     get:
@@ -11086,6 +11313,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /syscollector/{agent_id}/netiface:
     get:
@@ -11160,6 +11389,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /syscollector/{agent_id}/netproto:
     get:
@@ -11213,6 +11444,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /syscollector/{agent_id}/os:
     get:
@@ -11267,6 +11500,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /syscollector/{agent_id}/packages:
     get:
@@ -11359,6 +11594,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /syscollector/{agent_id}/ports:
     get:
@@ -11454,6 +11691,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /syscollector/{agent_id}/processes:
     get:
@@ -11574,6 +11813,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /security/user/authenticate:
     get:
@@ -11651,6 +11892,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /security/resources:
     get:
@@ -11699,6 +11942,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /security/user/revoke:
     put:
@@ -11714,6 +11959,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /security/roles:
     get:
@@ -11774,6 +12021,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     post:
       tags:
@@ -11823,6 +12072,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     delete:
       tags:
@@ -11885,6 +12136,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /security/roles/{role_id}:
     put:
@@ -11936,6 +12189,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /security/policies:
     get:
@@ -11993,6 +12248,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     post:
       tags:
@@ -12047,6 +12304,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     delete:
       tags:
@@ -12102,6 +12361,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /security/policies/{policy_id}:
     put:
@@ -12164,6 +12425,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /security/roles/{role_id}/policies:
     post:
@@ -12227,6 +12490,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     delete:
       tags:
@@ -12267,6 +12532,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /security/users/{username}/roles:
     post:
@@ -12311,6 +12578,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     delete:
       tags:
@@ -12350,6 +12619,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /security/users/me:
     get:
@@ -12481,6 +12752,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     post:
       tags:
@@ -12694,6 +12967,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
   /security/config:
     get:
@@ -12719,8 +12994,10 @@ paths:
                 rbac_mode: white
         "400":
           $ref: "#/components/responses/ResponseError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedResponse"
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     put:
       tags:
@@ -12743,8 +13020,10 @@ paths:
           description: "Configuration successfully updated"
         "400":
           $ref: "#/components/responses/ResponseError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedResponse"
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
     delete:
       tags:
@@ -12762,8 +13041,10 @@ paths:
           description: "Configuration successfully restored"
         "400":
           $ref: "#/components/responses/ResponseError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedResponse"
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
 
 externalDocs:
   description: "Find more about Wazuh API usage"
