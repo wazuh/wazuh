@@ -59,7 +59,7 @@ getHelp() {
    echo "Usage: $0 arguments"
    echo -e "\t-e   | --install-elasticsearch Install Elasticsearch"
    echo -e "\t-k   | --install-kibana Install Kibana"
-   echo -e "\t-m   | --master-node Indicates whether it is a master or a worker node"
+   echo -e "\t-c   | --create-certificates Generates the certificates for all the nodes indicated on the configuration file"
    echo -e "\t-h   | --help Shows help"
    exit 1 # Exit script after printing help
 }
@@ -125,6 +125,7 @@ addWazuhrepo() {
 ## Elasticsearch
 installElasticsearch() {
 
+
     logger "Installing Opend Distro for Elasticsearch..."
 
     if [ $sys_type == "yum" ] 
@@ -166,20 +167,17 @@ installElasticsearch() {
         sed -i "s/-Xms1g/-Xms${ram}g/" /etc/elasticsearch/jvm.options > /dev/null 2>&1
         sed -i "s/-Xmx1g/-Xmx${ram}g/" /etc/elasticsearch/jvm.options > /dev/null 2>&1
 
-
+        if [ -n "$single" ]
+        then
+            createCertificates
+        fi
+        
         logger "Done"
     fi
 }
 
 createCertificates() {
-
-    head=$(head -n1 config.yml)
-    if [ "${head}" == "## Multi-node configuration" ]
-    then
-        master=1
-    else
-        single=1
-    fi    
+  
 
     logger "Creating the certificates..."
     curl -so /etc/elasticsearch/certs/search-guard-tlstool-1.7.zip https://releases.floragunn.com/search-guard-tlstool/1.7/search-guard-tlstool-1.7.zip --max-time 300 > /dev/null 2>&1
@@ -225,6 +223,7 @@ createCertificates() {
 
 ## Kibana
 installKibana() {
+     
     
     logger "Installing Open Distro for Kibana..."
 
@@ -247,7 +246,7 @@ installKibana() {
 
         logger "Done"
 
-        if [[ -n "$e" ]] && [[ -n "$k" ]]
+        if [[ -n "$e" ]] && [[ -n "$k" ]] && [[ -n "$single" ]]
         then
             initializeKibana
         fi
@@ -272,6 +271,17 @@ initializeKibana() {
     echo "$conf" > /usr/share/kibana/optimize/wazuh/config/wazuh.yml   
 }
 
+## Check nodes
+checkNodes() {
+    head=$(head -n1 config.yml)
+    if [ "${head}" == "## Multi-node configuration" ]
+    then
+        master=1
+    else
+        single=1
+    fi    
+}
+
 ## Health check
 healthCheck() {
     cores=$(cat /proc/cpuinfo | grep processor | wc -l)
@@ -291,47 +301,54 @@ healthCheck() {
 main() {
 
     if [ -n "$1" ] 
-    then
-        if [ "$1" == "-h" ] || [ "$1" == "--help" ]
+    then      
+        while [ -n "$1" ]
+        do
+            case "$1" in           
+            "-e"|"--install-elasticsearch")        
+                e=1
+                shift 1
+                ;;      
+            "-c"|"--create-certificates") 
+                c=1  
+                shift 1
+                ;;                                  
+            "-k"|"--install-kibana") 
+                k=1          
+                shift 1
+                ;;
+            "-i"|"--ignore-healthcheck") 
+                i=1          
+                shift 1
+                ;;                
+            "-h"|"--help")        
+                getHelp
+                ;;                                         
+            *)
+                exit 1
+            esac
+        done    
+
+        if [ -n "$i" ]
         then
-            getHelp
-            exit 1;
+            echo "Health-check ignored."    
         else
-            if [ "$1" == "-i" ] || [ "$1" == "--ignore-healthcheck" ]
-            then
-                echo "Health-check ignored."
-                installPrerequisites
-                addWazuhrepo     
-                shift
-            else
-                healthCheck
-                installPrerequisites
-                addWazuhrepo             
-            fi        
-            while [ -n "$1" ]
-            do
-                case "$1" in           
-                "-e"|"--install-elasticsearch")        
-                    e=1
-                    installElasticsearch
-                    shift 1
-                    ;;      
-                "-c"|"--create-certificates") 
-                    createCertificates       
-                    shift 1
-                    ;;                                  
-                "-k"|"--install-kibana") 
-                    k=1          
-                    installKibana
-                    shift 1
-                    ;;
-                "-h"|"--help")        
-                    getHelp
-                    ;;                                         
-                *)
-                    exit 1
-                esac
-            done        
+            healthCheck           
+        fi             
+        installPrerequisites
+        addWazuhrepo   
+        checkNodes        
+        if [ -n "$e" ]
+        then
+            installElasticsearch
+        fi
+        if [[ -n "$c" ]] && [[ -n "$e" ]]
+        then
+            createCertificates
+        fi
+        if [ -n "$k" ]
+        then
+            installKibana
         fi
     else
         getHelp
