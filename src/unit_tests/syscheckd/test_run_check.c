@@ -18,6 +18,7 @@
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/linux/inotify_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
 
@@ -75,19 +76,6 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
 }
 
 #endif
-
-int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc) {
-    check_expected(message);
-    check_expected(locmsg);
-    check_expected(loc);
-    return mock();
-}
-
-int __wrap_StartMQ(const char *path, short int type) {
-    check_expected(path);
-    check_expected(type);
-    return mock();
-}
 
 #ifndef TEST_WINAGENT
 int __wrap_time() {

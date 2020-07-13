@@ -41,7 +41,6 @@ list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_unti
                          -Wl,--wrap=atexit")
 list(APPEND use_shared_libs 1)
 
-list(APPEND shared_libs "../scheduling/global_helpers.c")
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.c")
 

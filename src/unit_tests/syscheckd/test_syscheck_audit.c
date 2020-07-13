@@ -28,6 +28,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
+#include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "external/procps/readproc.h"
 
 extern volatile int audit_health_check_deletion;
@@ -47,12 +48,6 @@ int __wrap_W_Vector_length()
 int __wrap_W_Vector_insert_unique()
 {
     return mock();
-}
-
-int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc)
-{
-    check_expected(message);
-    return 1;
 }
 
 int __wrap_fim_whodata_event(whodata_evt * w_evt)
@@ -1480,6 +1475,9 @@ void test_audit_parse_delete(void **state)
     will_return(__wrap_W_Vector_insert_unique, 1);
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6276): Audit rules reloaded. Rules loaded: 1");
 
@@ -1525,6 +1523,9 @@ void test_audit_parse_delete_recursive(void **state)
 
     expect_string_count(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed", 4);
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+    expect_string_count(__wrap_SendMSG, locmsg, SYSCHECK, 5);
+    expect_value_count(__wrap_SendMSG, loc, LOCALFILE_MQ, 5);
+    will_return_always(__wrap_SendMSG, 1);
 
     expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
     expect_string(__wrap__mdebug1, formatted_msg, "(6275): Reloading Audit rules.");
@@ -1842,6 +1843,9 @@ void test_audit_parse_delete_folder(void **state)
     expect_value(__wrap_fim_whodata_event, w_evt->ppid, 4340);
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Monitored directory was removed: Audit rule removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     audit_parse(buffer);
 }
@@ -1893,6 +1897,9 @@ void test_audit_parse_delete_folder_hex(void **state)
     expect_value(__wrap_fim_whodata_event, w_evt->ppid, 4340);
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Monitored directory was removed: Audit rule removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     audit_parse(buffer);
 }
@@ -1936,7 +1943,14 @@ void test_audit_parse_delete_folder_hex3_error(void **state)
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '5'");
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
+
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     audit_parse(buffer);
 }
@@ -1982,7 +1996,14 @@ void test_audit_parse_delete_folder_hex4_error(void **state)
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '6'");
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
+
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     audit_parse(buffer);
 }
@@ -2028,7 +2049,14 @@ void test_audit_parse_delete_folder_hex5_error(void **state)
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '7'");
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
+
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     audit_parse(buffer);
 }

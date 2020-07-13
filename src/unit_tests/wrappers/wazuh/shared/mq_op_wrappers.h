@@ -12,7 +12,8 @@
 #ifndef MQ_OP_WRAPPERS_H
 #define MQ_OP_WRAPPERS_H
 
+int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc);
 
-
+int __wrap_StartMQ(const char *path, short int type);
 
 #endif

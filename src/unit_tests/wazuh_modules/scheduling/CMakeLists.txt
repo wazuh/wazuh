@@ -39,7 +39,6 @@ list(APPEND tests_names "test_wmodules_scheduling")
 list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror")
 list(APPEND use_shared_libs 1)
 
-list(APPEND shared_libs "global_helpers.c")
 list(APPEND shared_libs "wmodules_scheduling_helpers.h")
 list(APPEND shared_libs "wmodules_scheduling_helpers.c")
 

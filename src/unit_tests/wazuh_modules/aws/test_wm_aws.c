@@ -114,6 +114,10 @@ void test_interval_execution(void **state) {
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
 
+    expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, 0);
+
     expect_string(__wrap_wm_state_io, tag, "aws-s3");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_value(__wrap_wm_state_io, state, &module_data->state);

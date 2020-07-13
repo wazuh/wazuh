@@ -25,6 +25,7 @@
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
+#include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "syscheckd/syscheck.h"
 
 
@@ -325,14 +326,6 @@ char *__wrap_wstr_replace(const char * string, const char * search, const char *
     check_expected(replace);
 
     return mock_type(char*);
-}
-
-int __wrap_SendMSG(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc) {
-    check_expected(message);
-    check_expected(locmsg);
-    check_expected(loc);
-
-    return mock();
 }
 
 void __wrap_free_whodata_event(whodata_evt *w_evt) {
