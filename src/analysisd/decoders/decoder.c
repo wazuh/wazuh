@@ -28,6 +28,10 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match, OSDecoderNode *no
     const char *regex_prev = NULL;
     const char *result = NULL;
 
+    if (!node) {
+        return;
+    }
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("\n**Phase 2: Completed decoding.");

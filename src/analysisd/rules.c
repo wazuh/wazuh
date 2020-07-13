@@ -46,7 +46,7 @@ void Rules_OP_CreateRules()
 }
 
 /* Read the log rules */
-int Rules_OP_ReadRules(const char *rulefile, RuleNode *r_node, ListNode **l_node)
+int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node)
 {
     OS_XML xml;
     XML_NODE node = NULL;
@@ -1706,16 +1706,16 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode *r_node, ListNode **l_node
              * will be a "child" of someone.
              */
             if (config_ruleinfo->sigid < 10) {
-                OS_AddRule(config_ruleinfo, &r_node);
+                OS_AddRule(config_ruleinfo, r_node);
             } else if (config_ruleinfo->alert_opts & DO_OVERWRITE) {
-                if (!OS_AddRuleInfo(r_node, config_ruleinfo,
+                if (!OS_AddRuleInfo(*r_node, config_ruleinfo,
                                     config_ruleinfo->sigid)) {
                     merror("Overwrite rule '%d' not found.",
                            config_ruleinfo->sigid);
                     goto cleanup;
                 }
             } else {
-                OS_AddChild(config_ruleinfo, &r_node);
+                OS_AddChild(config_ruleinfo, r_node);
             }
 
             /* Clean what we do not need */
