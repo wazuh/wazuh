@@ -677,13 +677,18 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/node/notexists/restart"
       method: PUT
-      data: "{new_rules:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 200
       json:
-        code: 1730
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - "notexists"
 
 ---
 test_name: PUT /agents/{agent_id}/upgrade
