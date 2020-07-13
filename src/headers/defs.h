@@ -168,6 +168,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WM_UPGRADE_SOCK "/queue/tasks/upgrade"
 #define WM_UPGRADE_SOCK_PATH DEFAULTDIR WM_UPGRADE_SOCK
 
+#define WM_TASK_MODULE_SOCK "/queue/tasks/task"
+#define WM_TASK_MODULE_SOCK_PATH DEFAULTDIR WM_TASK_MODULE_SOCK
+
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
 

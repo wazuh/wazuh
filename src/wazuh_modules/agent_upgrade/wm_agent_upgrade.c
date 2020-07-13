@@ -38,6 +38,9 @@ const wm_context WM_AGENT_UPGRADE_CONTEXT = {
 void * wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Module AgentUpgrade started");
 
+    // Initialize task table
+    wm_agent_init_task_table();
+
     int sock = OS_BindUnixDomain(WM_UPGRADE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
     if (sock < 0) {
         merror("Unable to bind to socket '%s': %s", WM_UPGRADE_SOCK_PATH, strerror(errno));
@@ -79,11 +82,10 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
         }
         
         // Get request string
-        char *output = NULL;
+        
         char *buffer = NULL;
-        wm_upgrade_task* task = NULL;
+        cJSON* json_response = NULL;
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
-        os_calloc(OS_MAXSTR, sizeof(char), output);
         int length;
         switch (length = OS_RecvTCPBuffer(peer, buffer,OS_MAXSTR), length) {
         case OS_SOCKTERR:
@@ -97,15 +99,12 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
             break;
         default:
             /* Correctly received message */
-            task = wm_agent_parse_upgrade_command(&buffer[0], &output[0]);
-            if (!task && (task->state == ERROR)) {
-                mterror(WM_AGENT_UPGRADE_LOGTAG, "%s", output);
-            } else {
-                /* Parsing is correct */
-            }
-            char *response = wm_agent_parse_response_mesage(task->state, output);
-            OS_SendTCP(peer, response);
+            json_response = wm_agent_parse_command(&buffer[0]);
+            OS_SendTCP(peer, cJSON_Print(json_response));
             break;
+        }
+        if (json_response) {
+            cJSON_Delete(json_response);
         }
         free(buffer);
         close(peer);
@@ -115,6 +114,8 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
 void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config) {
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Module AgentUpgrade finished");
     os_free(upgrade_config);
+
+    wm_agent_destroy_task_table();
 }
 
 cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
