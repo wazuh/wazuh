@@ -92,7 +92,9 @@ async def get_nodes_info(lc: local_client.LocalClient, filter_node=None, **kwarg
     for node in filter_node:
         try:
             data = await get_nodes(lc, filter_node=node, **kwargs)
-            result.affected_items.append(data['items'][0])
+            # Avoid empty data
+            if data['items']:
+                result.affected_items.append(data['items'][0])
         except WazuhException as e:
             result.add_failed_item(id_=node, error=e)
     result.total_affected_items = len(result.affected_items)

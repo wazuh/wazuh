@@ -425,9 +425,14 @@ class DistributedAPI:
         self.from_cluster = True
         # Check cluster:read_config permissions for each node
         common.rbac.set(self.rbac_permissions)
-        allowed_nodes = await get_nodes_info(self.get_client(), filter_node=list(nodes))
+        common.cluster_nodes.set(self.nodes)
+        common.broadcast.set(self.broadcasting)
+        filter_node_kwarg = {'filter_node': list(nodes)} if nodes else {}
+        allowed_nodes = await get_nodes_info(self.get_client(), **filter_node_kwarg)
 
         valid_nodes = list()
+        if not nodes:
+            nodes = {node_name['name']: [] for node_name in allowed_nodes.affected_items}
         for node in nodes.items():
             if node[0] in [node_name['name'] for node_name in allowed_nodes.affected_items] or node[0] == 'unknown':
                 valid_nodes.append(node)
@@ -525,12 +530,7 @@ class DistributedAPI:
             if self.broadcasting:
                 if 'node_list' in self.f_kwargs:
                     del self.f_kwargs['node_list']
-                client = self.get_client()
-                nodes = json.loads(await client.execute(command=b'get_nodes',
-                                                        data=json.dumps({}).encode(),
-                                                        wait_for_complete=False),
-                                   object_hook=c_common.as_wazuh_object)
-                node_name = {item['name']: [] for item in nodes['items']}
+                node_name = {}
             else:
                 # agents, syscheck and syscollector
                 # API calls that affect all agents. For example, PUT/agents/restart, etc...
