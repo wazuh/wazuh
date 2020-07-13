@@ -74,8 +74,8 @@ async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete
     :param rationale: Filters by rationale
     :param remediation: Filters by remediation
     :param command: Filters by command
-    :param command: Filters by status
-    :param command: Filters by reason
+    :param status: Filters by status
+    :param reason: Filters by reason
     :param file: Filters by file
     :param process: Filters by process
     :param directory: Filters by directory

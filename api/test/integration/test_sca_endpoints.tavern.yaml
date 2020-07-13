@@ -548,6 +548,53 @@ stages:
           failed_items: []
           total_failed_items: 0
 
+  - name: Parameters -> rationale with word "count"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        rationale: >-
+          Any users assigned to the shadow group would be granted read access to the /etc/shadow file.
+          If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking
+          program against the hashed passwords to break them. Other security information that is stored in
+          the /etc/shadow file (such as expiration) could also be useful to subvert additional user accounts.
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          affected_items:
+            - rationale: >-
+                Any users assigned to the shadow group would be granted read access to the /etc/shadow file.
+                If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking
+                program against the hashed passwords to break them. Other security information that is stored in
+                the /etc/shadow file (such as expiration) could also be useful to subvert additional user accounts.
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Parameters -> rationale with word "offset"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        rationale: offset
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 0
+          affected_items: []
+          failed_items: []
+          total_failed_items: 0
+
   - name: Parameters -> command="dpkg -s libpam-pwquality"
     request:
       verify: False
