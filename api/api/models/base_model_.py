@@ -197,7 +197,10 @@ class Body(Model):
         # Check that the current content-type matches the expected content-type
         path = request.path.split('/v4')[-1]
         if additional_kwargs and wildcard:
-            path = path.replace(additional_kwargs.get(list(additional_kwargs.keys())[0])[0], f'{{{wildcard}}}')
+            to_be_replace = additional_kwargs.get(list(additional_kwargs.keys())[0])
+            if isinstance(to_be_replace, list):
+                to_be_replace = to_be_replace[0]
+            path = path.replace(to_be_replace, f'{{{wildcard}}}')
         expected_content_types = load_spec()['paths'][path][request.method.lower()]['requestBody']['content'].keys()
         if request.content_type not in expected_content_types:
             raise_if_exc(WazuhError(6002), code=406)

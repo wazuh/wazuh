@@ -111,5 +111,5 @@ class PolicyModel(Body):
         return self._policy
 
     @policy.setter
-    def rule(self, policy):
+    def policy(self, policy):
         self._policy = policy
