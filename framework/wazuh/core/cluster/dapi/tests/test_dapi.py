@@ -225,9 +225,8 @@ def test_DistributedAPI_local_request(mock_local_request):
 
 
 @patch('wazuh.core.cluster.cluster.check_cluster_status', return_value=False)
-@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.release_local_clients', side_effect=None)
 @patch('wazuh.core.cluster.local_client.LocalClient.execute', new=AsyncMock(return_value='{"Testing": 1}'))
-def test_DistributedAPI_remote_request(mock_cluster_status, mock_release_local_clients):
+def test_DistributedAPI_remote_request(mock_cluster_status):
     """Test `execute_remote_request` method from class DistributedAPI."""
     dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'remote'}
     raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
@@ -246,12 +245,11 @@ def test_DistributedAPI_logger():
 
 
 @patch('wazuh.core.cluster.cluster.check_cluster_status', return_value=False)
-@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.release_local_clients', side_effect=None)
 @patch('wazuh.core.cluster.local_client.LocalClient.send_file', new=AsyncMock(return_value='{"Testing": 1}'))
 @patch('wazuh.core.cluster.local_client.LocalClient.execute', new=AsyncMock(return_value='{"Testing": 1}'))
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.get_solver_node',
        new=AsyncMock(return_value=WazuhResult({'testing': ['001', '002']})))
-def test_DistributedAPI_tmp_file(mock_cluster_status, mock_release_local_clients):
+def test_DistributedAPI_tmp_file(mock_cluster_status):
     """Test the behaviour when processing temporal files to be send. Master node and unknown node."""
     open('/tmp/dapi_file.txt', 'a').close()
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'unknown'}):
@@ -267,11 +265,10 @@ def test_DistributedAPI_tmp_file(mock_cluster_status, mock_release_local_clients
 
 
 @patch('wazuh.core.cluster.cluster.check_cluster_status', return_value=False)
-@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.release_local_clients', side_effect=None)
 @patch('wazuh.core.cluster.local_client.LocalClient.send_file', new=AsyncMock(return_value='{"Testing": 1}'))
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.get_solver_node',
        new=AsyncMock(return_value=WazuhResult({'testing': ['001', '002']})))
-def test_DistributedAPI_tmp_file_cluster_error(mock_cluster_status, mock_release_local_clients):
+def test_DistributedAPI_tmp_file_cluster_error(mock_cluster_status):
     """Test the behaviour when an error raises with temporal files function."""
     open('/tmp/dapi_file.txt', 'a').close()
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'unknown'}):
@@ -292,12 +289,11 @@ def test_DistributedAPI_tmp_file_cluster_error(mock_cluster_status, mock_release
 
 
 @patch('wazuh.core.cluster.cluster.check_cluster_status', return_value=False)
-@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.release_local_clients', side_effect=None)
 @patch('wazuh.core.cluster.local_client.LocalClient.execute',
        new=AsyncMock(return_value='{"items": [{"name": "testing"}]}'))
 @patch('wazuh.agent.Agent.get_agents_overview', return_value={'items': [{'id': '001', 'node_name': 'master'},
                                                                         {'id': '002', 'node_name': 'master'}]})
-def test_DistributedAPI_get_solver_node(mock_cluster_status, mock_release_local_clients, mock_agents_overview):
+def test_DistributedAPI_get_solver_node(mock_cluster_status, mock_agents_overview):
     """Test `get_solver_node` function."""
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'unknown'}):
         dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',

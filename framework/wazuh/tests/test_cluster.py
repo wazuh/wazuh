@@ -78,12 +78,20 @@ async def test_get_health_nodes(mock_unix_connection):
 @pytest.mark.asyncio
 async def test_get_nodes_info():
     """Verify that get_nodes_info returns the information of all nodes."""
-    async def async_mock(lc=None, filter_node=None):
-        return {'items': ['master', 'worker1'], 'totalItems': 2}
+    async def valid_node(lc=None, filter_node=None):
+        return {'items': ['master'], 'totalItems': 1}
+
+    async def invalid_node(lc=None, filter_node=None):
+        raise WazuhError(3022)
 
     local_client = LocalClient()
-    with patch('wazuh.cluster.get_nodes', side_effect=async_mock):
-        result = await cluster.get_nodes_info(lc=local_client)
-    expected = await async_mock()
+    with patch('wazuh.cluster.get_nodes', side_effect=valid_node):
+        result = await cluster.get_nodes_info(lc=local_client, filter_node=['master'])
+    expected = await valid_node()
 
     assert result.affected_items == expected['items']
+
+    with patch('wazuh.cluster.get_nodes', side_effect=invalid_node):
+        result = await cluster.get_nodes_info(lc=local_client, filter_node=['master'])
+
+    assert result.failed_items[WazuhError(3022)] == {'master'}
