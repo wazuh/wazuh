@@ -40,24 +40,28 @@ extern time_t current_time;
 
 /**
  * @brief We have two internal lists for decoders. One with the program_name
- * and one without. This is going to improve greatly the
- * performance of our decoder matching.
+ * and one without.
+ *
+ * This is going to improve greatly the performance of our decoder matching.
  */
-
 OSDecoderNode *osdecodernode_forpname;
 OSDecoderNode *osdecodernode_nopname;
+
 /**
  * @brief Structure to save all rules read in starting.
  */
 RuleNode *rulenode;
+
 /**
  * @brief Structure to save the last list of events.
  */
 EventList *last_events_list;
+
 /**
  * @brief Structure to save a node in a list of lists.
  */
 ListNode *global_listnode;
+
 /**
  * @brief Structure to save a list of rules.
  */
