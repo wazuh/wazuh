@@ -139,7 +139,7 @@ installWazuh() {
 
 ## Elasticsearch
 installElasticsearch() {
-    logger "Installing Opend Distro for Elasticsearch..."
+    logger "Installing Open Distro for Elasticsearch..."
 
     if [ $sys_type == "yum" ] 
     then
@@ -172,7 +172,7 @@ installElasticsearch() {
         ./searchguard/tools/sgtlstool.sh -c ./searchguard/search-guard.yml -ca -crt -t /etc/elasticsearch/certs/ > /dev/null 2>&1
         if [  "$?" != 0  ]
         then
-            echo "Error: certificates were no created"
+            echo "Error: certificates were not created"
             exit 1;
         else
             logger "Certificates created"
