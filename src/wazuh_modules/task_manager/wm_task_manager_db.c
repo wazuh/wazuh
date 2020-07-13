@@ -11,6 +11,7 @@
 
 #ifndef WIN32
 
+#include "../wmodules.h"
 #include "wm_task_manager_db.h"
 #include "wazuh_db/wdb.h"
 
@@ -49,8 +50,9 @@ int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt) {
     return OS_INVALID;
 }
 
-int wm_task_manager_check_db(const char *path, const char *source) {
-    const char *ROOT = "root";
+int wm_task_manager_check_db() {
+    const char *ROOT = ROOTUSER;
+    const char *path = TASKS_DB;
     const char *sql;
     const char *tail;
     sqlite3 *db;
@@ -63,7 +65,7 @@ int wm_task_manager_check_db(const char *path, const char *source) {
     }
 
     // Load the tables schema
-    for (sql = source; sql && *sql; sql = tail) {
+    for (sql = schema_task_manager_sql; sql && *sql; sql = tail) {
         if (wm_task_manager_prepare(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
             mterror(WM_TASK_MANAGER_LOGTAG, "DB couldn't be checked or created.");
             return wm_task_manager_sql_error(db, stmt);

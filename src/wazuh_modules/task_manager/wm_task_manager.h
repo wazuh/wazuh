@@ -14,8 +14,6 @@
 #ifndef WM_TASK_MANAGER_H
 #define WM_TASK_MANAGER_H
 
-#include "../wmodules.h"
-
 #define WM_TASK_MANAGER_LOGTAG ARGV0 ":" TASK_MANAGER_WM_NAME
 
 typedef struct _wm_task_manager {
@@ -26,6 +24,9 @@ extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
 
 // Parse XML configuration
 int wm_task_manager_read(xml_node **nodes, wmodule *module);
+
+// Function headers
+int wm_task_manager_check_db();
 
 #endif
 #endif

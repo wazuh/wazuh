@@ -10,7 +10,7 @@
 #ifndef CLIENT
 #ifndef WIN32
 
-#include "wazuh_modules/task_manager/wm_task_manager.h"
+#include "wazuh_modules/wmodules.h"
 
 static const char *XML_DISABLED = "disabled";
 

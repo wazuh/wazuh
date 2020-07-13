@@ -11,7 +11,7 @@
 
 #ifndef WIN32
 
-#include "wm_task_manager_db.h"
+#include "../wmodules.h"
 
 static void wm_task_manager_init(wm_task_manager *task_config);
 static void* wm_task_manager_main(wm_task_manager* task_config);    // Module main function. It won't return
@@ -34,13 +34,13 @@ void wm_task_manager_init(wm_task_manager *task_config) {
     }
 
     // Check or create tasks DB
-    if (wm_task_manager_check_db(TASKS_DB, schema_task_manager_sql)) {
+    if (wm_task_manager_check_db()) {
         mterror(WM_TASK_MANAGER_LOGTAG, "DB integrity is invalid. Exiting...");
         pthread_exit(NULL);
     }
 }
 
-void * wm_task_manager_main(wm_task_manager* task_config) {
+void* wm_task_manager_main(wm_task_manager* task_config) {
     wm_task_manager_init(task_config);
 
     mtinfo(WM_TASK_MANAGER_LOGTAG, "Module Task Manager started.");
@@ -57,7 +57,7 @@ void wm_task_manager_destroy(wm_task_manager* task_config) {
     os_free(task_config);
 }
 
-cJSON *wm_task_manager_dump(const wm_task_manager* task_config){
+cJSON* wm_task_manager_dump(const wm_task_manager* task_config){
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_info = cJSON_CreateObject();
 
