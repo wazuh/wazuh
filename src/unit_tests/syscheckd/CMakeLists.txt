@@ -137,7 +137,7 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
                              -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror_exit -Wl,--wrap,send_log_msg -Wl,--wrap,rbtree_keys \
                              -Wl,--wrap,fim_realtime_event -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap=OSHash_Begin \
                              -Wl,--wrap=OSHash_Next -Wl,--wrap=pthread_mutex_lock -Wl,--wrap=pthread_mutex_unlock \
-                             -Wl,--wrap=getpid -Wl,--wrap=atexit")
+                             -Wl,--wrap=getpid -Wl,--wrap=atexit -Wl,--wrap=os_random")
 
 list(APPEND syscheckd_tests_names "test_run_realtime")
 if(${TARGET} STREQUAL "agent")

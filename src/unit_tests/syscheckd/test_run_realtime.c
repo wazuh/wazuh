@@ -42,6 +42,10 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap);
 #endif
 /* redefinitons/wrapping */
 
+int __wrap_os_random() {
+    return 12345;
+}
+
 void * __wrap_rbtree_insert() {
     return NULL;
 }
@@ -271,21 +275,8 @@ static int teardown_hash_node(void **state) {
     return 0;
 }
 
-int __wrap_os_random() {
-    return 12345;
-}
-
 static int setup_OSHash(void **state) {
     test_mode = 0;
-
-#ifndef TEST_WINAGENT
-    will_return(__wrap_read, "");
-    will_return(__wrap_read, sizeof(int));
-    will_return(__wrap_read, sizeof(int));
-    will_return(__wrap_read, "");
-    will_return(__wrap_read, sizeof(int));
-    will_return(__wrap_read, sizeof(int));
-#endif
 
     OSHash *hash = OSHash_Create();
 
