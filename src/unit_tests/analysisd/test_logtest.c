@@ -136,7 +136,7 @@ void test_w_logtest_init_logtest_disabled(void **state)
 {
     will_return(__wrap_ReadConfig, 0);
 
-    // strcpy(logtest_conf.enabled, "no");
+    strcpy(logtest_conf.enabled, "no");
 
     expect_string(__wrap__minfo, formatted_msg, "(7201): Logtest disabled");
 
@@ -184,7 +184,6 @@ int main(void)
         cmocka_unit_test(test_w_logtest_init_parameters_done),
         // Tests w_logtest_init
         cmocka_unit_test(test_w_logtest_init_error_parameters),
-        //cmocka_unit_test(test_w_logtest_init_logtest_disabled),
         cmocka_unit_test(test_w_logtest_init_conection_fail),
         cmocka_unit_test(test_w_logtest_init_OSHash_create_fail),
     };
