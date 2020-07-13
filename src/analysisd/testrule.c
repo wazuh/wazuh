@@ -36,7 +36,7 @@ void OS_ReadMSG(char *ut_str);
 /* Analysisd function */
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match);
 
-void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match);
+void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match, OSDecoderNode *node);
 
 // Cleanup at exit
 static void onexit();
@@ -302,7 +302,7 @@ int main(int argc, char **argv)
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     mdebug1("Reading rules file: '%s'", *rulesfiles);
-                    if (Rules_OP_ReadRules(*rulesfiles, rulenode, global_listnode) < 0) {
+                    if (Rules_OP_ReadRules(*rulesfiles, &rulenode, &global_listnode) < 0) {
                         merror_exit(RULES_ERROR, *rulesfiles);
                     }
 
@@ -405,6 +405,7 @@ void OS_ReadMSG(char *ut_str)
 
     RuleInfoDetail *last_info_detail;
     Eventinfo *lf;
+    OSDecoderNode *node = NULL;
 
     RuleInfo * currently_rule;
     /* Null global pointer to current rule */
@@ -484,7 +485,8 @@ void OS_ReadMSG(char *ut_str)
             lf->size = strlen(lf->log);
 
             /* Decode event */
-            DecodeEvent(lf, &decoder_match);
+            node = OS_GetFirstOSDecoder(lf->program_name);
+            DecodeEvent(lf, &decoder_match, node);
 
             /* Run accumulator */
             if ( lf->decoder_info->accumulate == 1 ) {
