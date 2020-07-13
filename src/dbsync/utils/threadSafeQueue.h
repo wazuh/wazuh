@@ -34,6 +34,7 @@ namespace Utils
 			{
 				Lock lock{ m_mutex };
 				m_queue.push(value);
+				lock.unlock();
 				m_cv.notify_one();
 			}
 		}
@@ -85,7 +86,9 @@ namespace Utils
 
 		void cancel()
 		{
+			Lock lock{ m_mutex };
 			m_canceled = true;
+			lock.unlock();
 			m_cv.notify_all();
 		}
 

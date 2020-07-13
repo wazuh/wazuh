@@ -30,9 +30,13 @@ TEST_F(PipelineNodesTest, ReadNodeAsync)
     for (int i = 0; i < 10; ++i)
     {
         EXPECT_CALL(functor, Operator(i));
+    }
+    for (int i = 0; i < 10; ++i)
+    {
         rNode.receive(i);
     }
     rNode.rundown();
+    EXPECT_TRUE(rNode.cancelled());
     EXPECT_EQ(0ul, rNode.size());
 }
 
@@ -57,10 +61,15 @@ TEST_F(PipelineNodesTest, ReadWriteNodeAsync)
     for (int i = 0; i < 10; ++i)
     {
         EXPECT_CALL(functor, Operator(i));
+    }
+    for (int i = 0; i < 10; ++i)
+    {
         spReadWriteNode->receive(std::to_string(i));
     }
     spReadWriteNode->rundown();
     EXPECT_EQ(0ul, spReadWriteNode->size());
+    EXPECT_TRUE(spReadWriteNode->cancelled());
     spReadNode->rundown();
     EXPECT_EQ(0ul, spReadNode->size());
+    EXPECT_TRUE(spReadNode->cancelled());
 }
