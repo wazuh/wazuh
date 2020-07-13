@@ -423,19 +423,26 @@ class DistributedAPI:
         # get the node(s) who has all available information to answer the request.
         nodes = await self.get_solver_node()
         self.from_cluster = True
-        # Check cluster:read_config permissions for each node
-        common.rbac.set(self.rbac_permissions)
-        common.cluster_nodes.set(self.nodes)
-        common.broadcast.set(self.broadcasting)
-        filter_node_kwarg = {'filter_node': list(nodes)} if nodes else {}
-        allowed_nodes = await get_nodes_info(self.get_client(), **filter_node_kwarg)
+        if 'node_id' in self.f_kwargs or 'node_list' in self.f_kwargs:
+            # Check cluster:read_config permissions for each node
+            common.rbac.set(self.rbac_permissions)
+            common.cluster_nodes.set(self.nodes)
+            common.broadcast.set(self.broadcasting)
+            filter_node_kwarg = {'filter_node': list(nodes)} if nodes else {}
+            allowed_nodes = await get_nodes_info(self.get_client(), **filter_node_kwarg)
 
-        valid_nodes = list()
-        if not nodes:
-            nodes = {node_name['name']: [] for node_name in allowed_nodes.affected_items}
-        for node in nodes.items():
-            if node[0] in [node_name['name'] for node_name in allowed_nodes.affected_items] or node[0] == 'unknown':
-                valid_nodes.append(node)
+            valid_nodes = list()
+            if not nodes:
+                nodes = {node_name['name']: [] for node_name in allowed_nodes.affected_items}
+            for node in nodes.items():
+                if node[0] in [node_name['name'] for node_name in allowed_nodes.affected_items] or node[0] == 'unknown':
+                    valid_nodes.append(node)
+            del self.f_kwargs['node_id' if 'node_id' in self.f_kwargs else 'node_list']
+        else:
+            valid_nodes = list(nodes.items())
+            allowed_nodes = wresults.AffectedItemsWazuhResult()
+            allowed_nodes.affected_items = list(nodes)
+            allowed_nodes.total_affected_items = len(allowed_nodes.affected_items)
         response = await asyncio.shield(asyncio.gather(*[forward(node) for node in valid_nodes]))
 
         if allowed_nodes.total_affected_items > 1:
@@ -496,8 +503,6 @@ class DistributedAPI:
                 if self.f_kwargs['node_id'] not in node_name:
                     node_name.update({self.f_kwargs['node_id']: []})
 
-                del self.f_kwargs['node_id']
-
             if requested_agents != '*':  # When all agents are requested cannot be non existent ids
                 # Add non existing ids in the master's dictionary entry
                 non_existent_ids = list(set(requested_agents) - set(map(operator.itemgetter('id'), system_agents)))
@@ -511,7 +516,6 @@ class DistributedAPI:
 
         elif 'node_id' in self.f_kwargs or ('node_list' in self.f_kwargs and self.f_kwargs['node_list'] != '*'):
             requested_nodes = self.f_kwargs.get('node_list', None) or [self.f_kwargs['node_id']]
-            del self.f_kwargs['node_id' if 'node_id' in self.f_kwargs else 'node_list']
             return {node_id: [] for node_id in requested_nodes}
 
         elif 'group_id' in self.f_kwargs:
@@ -528,8 +532,6 @@ class DistributedAPI:
 
         else:
             if self.broadcasting:
-                if 'node_list' in self.f_kwargs:
-                    del self.f_kwargs['node_list']
                 node_name = {}
             else:
                 # agents, syscheck and syscollector
