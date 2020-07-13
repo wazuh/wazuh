@@ -13,3 +13,8 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+cJSON * __wrap_json_fread(const char * path, __attribute__((unused)) char retry) {
+    if (path) check_expected(path);
+    return mock_type(cJSON *);
+}
