@@ -202,7 +202,7 @@ createCertificates() {
         rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f > /dev/null 2>&1
     fi
 
-    if [ -n "$c" ]
+    if [[ -n "$c" ]] || [[ -n "$single" ]]
     then
         tar -cf certs.tar *
         tar --delete -f certs.tar 'searchguard'
