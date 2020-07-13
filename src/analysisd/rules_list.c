@@ -44,7 +44,7 @@ static int _AddtoRule(int sid, int level, int none, const char *group,
      * the beginning of the list
      */
     if (!r_node) {
-        r_node = OS_GetFirstRule();
+        return r_code;
     }
 
     while (r_node) {
@@ -162,7 +162,7 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node)
 
         ilevel *= 100;
 
-        if (!_AddtoRule(0, ilevel, 0, NULL, r_node, read_rule)) {
+        if (!_AddtoRule(0, ilevel, 0, NULL, *r_node, read_rule)) {
             merror_exit("rules_list: Level ID '%d' not "
                       "found. Invalid 'if_level'.", ilevel);
         }
@@ -170,7 +170,7 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node)
 
     /* Adding for if_group */
     else if (read_rule->if_group) {
-        if (!_AddtoRule(0, 0, 0, read_rule->if_group, r_node, read_rule)) {
+        if (!_AddtoRule(0, 0, 0, read_rule->if_group, *r_node, read_rule)) {
             merror_exit("rules_list: Group '%s' not "
                       "found. Invalid 'if_group'.", read_rule->if_group);
         }
@@ -178,7 +178,7 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node)
 
     /* Just add based on the category */
     else {
-        if (!_AddtoRule(0, 0, 0, NULL, r_node, read_rule)) {
+        if (!_AddtoRule(0, 0, 0, NULL, *r_node, read_rule)) {
             merror_exit("rules_list: Category '%d' not "
                       "found. Invalid 'category'.", read_rule->category);
         }
@@ -246,7 +246,7 @@ static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
 /* External AddRule */
 int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node)
 {
-    rulenode = _OS_AddRule(*r_node, read_rule);
+    *r_node = _OS_AddRule(*r_node, read_rule);
 
     return (0);
 }

@@ -250,7 +250,7 @@ RuleNode *OS_GetFirstRule(void);
 
 void Rules_OP_CreateRules(void);
 
-int Rules_OP_ReadRules(const char *rulefile, RuleNode *r_node, ListNode **l_node);
+int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node);
 
 int AddHash_Rule(RuleNode *node);
 
