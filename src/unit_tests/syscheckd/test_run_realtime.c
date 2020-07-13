@@ -518,7 +518,7 @@ void test_realtime_adddir_realtime_add(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/etc/folder'");
 
     test_mode = 0;
-    OSHash_Add_ex(hash, "1", "/etc/folder"); // Duplicate simulation
+    OSHash_Add_ex(syscheck.realtime->dirtb, "1", "/etc/folder"); // Duplicate simulation
     ret = realtime_adddir(path, 0, 0);
     test_mode = 1;
 
