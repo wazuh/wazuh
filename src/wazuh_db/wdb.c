@@ -117,7 +117,7 @@ int wdb_open_global() {
 
     if (!wdb_global) {
         // Database dir
-        snprintf(dir, OS_FLSIZE, "%s%s/%s", isChroot() ? "/" : "", WDB_DIR, WDB_GLOB_NAME);
+        snprintf(dir, OS_FLSIZE, "%s%s/%s", isChroot() ? "/" : "", WDB2_DIR, WDB_GLOB_NAME);
 
         // Connect to the database
 
