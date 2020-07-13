@@ -12,6 +12,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/pthreads_op_wrappers.h"
 
 #define TEST_MAX_DATES 3
 
@@ -36,10 +37,6 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
         return 300;
     }
     return 0;
-}
-
-int __wrap_CreateThread(void * (*function_pointer)(void *), void *data) {
-    return 1;
 }
 
 int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {

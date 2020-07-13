@@ -13,3 +13,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+int __wrap_CreateThread(void * (*function_pointer)(void *), void *data) {
+    return 1;
+}

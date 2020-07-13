@@ -12,7 +12,7 @@
 #ifndef PTHREADS_OP_WRAPPERS_H
 #define PTHREADS_OP_WRAPPERS_H
 
-
+int __wrap_CreateThread(void * (*function_pointer)(void *), void *data);
 
 
 #endif
