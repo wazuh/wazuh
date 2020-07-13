@@ -21,6 +21,8 @@
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/os_utils_wrappers.h"
+
 #include "../syscheckd/fim_db.h"
 #include "../config/syscheck-config.h"
 
@@ -40,11 +42,6 @@ void fim_db_clean_file(fim_tmp_file **file, int storage);
 
 
 /*--------------WRAPS-----------------------*/
-
-int __wrap_w_is_file(const char * const file) {
-    check_expected(file);
-    return mock();
-}
 
 #ifndef TEST_WINAGENT
 extern unsigned long __real_time();

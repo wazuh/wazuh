@@ -12,7 +12,6 @@
 #ifndef OS_UTILS_WRAPPERS_H
 #define OS_UTILS_WRAPPERS_H
 
-
-
+int __wrap_w_is_file(const char * const file);
 
 #endif
