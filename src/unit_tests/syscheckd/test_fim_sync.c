@@ -17,6 +17,7 @@
 #include "../wrappers/common.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/integrity_op_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
 
@@ -62,17 +63,6 @@ int __wrap_fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
     check_expected_ptr(fim_sql);
 
     return mock();
-}
-
-char * __wrap_dbsync_check_msg(const char * component, dbsync_msg msg, long id, const char * start, const char * top, const char * tail, const char * checksum) {
-    check_expected(component);
-    check_expected(msg);
-    check_expected(id);
-    check_expected(start);
-    check_expected(top);
-    check_expected(tail);
-
-    return mock_type(char*);
 }
 
 void __wrap_fim_send_sync_msg(const char * msg) {

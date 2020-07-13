@@ -13,3 +13,15 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+char * __wrap_dbsync_check_msg(const char * component, dbsync_msg msg, long id, const char * start, const char * top,
+                                const char * tail, const char * checksum) {
+    check_expected(component);
+    check_expected(msg);
+    check_expected(id);
+    check_expected(start);
+    check_expected(top);
+    check_expected(tail);
+
+    return mock_type(char*);
+}

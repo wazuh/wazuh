@@ -12,7 +12,9 @@
 #ifndef INTEGRITY_OP_WRAPPERS_H
 #define INTEGRITY_OP_WRAPPERS_H
 
+#include "../headers/integrity_op.h"
 
-
+char * __wrap_dbsync_check_msg(const char * component, dbsync_msg msg, long id, const char * start, const char * top,
+                                const char * tail, const char * checksum);
 
 #endif
