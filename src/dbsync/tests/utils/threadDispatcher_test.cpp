@@ -33,9 +33,13 @@ TEST_F(ThreadDispatcherTest, AsyncDispatcherPushAndRundown)
     for (int i = 0; i < 10; ++i)
     {
         EXPECT_CALL(functor, Operator(i));
+    }
+    for (int i = 0; i < 10; ++i)
+    {
         dispatcher.push(i);
     }
     dispatcher.rundown();
+    EXPECT_TRUE(dispatcher.cancelled());
     EXPECT_EQ(0ul, dispatcher.size());
 }
 

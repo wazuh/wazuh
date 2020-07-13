@@ -4,6 +4,7 @@
 #include <thread>
 #include <atomic>
 #include <future>
+#include <functional>
 #include "threadSafeQueue.h"
 namespace Utils
 {
@@ -54,7 +55,7 @@ namespace Utils
 	public:
 		AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency())
 		: m_functor{ functor }
-		, m_rundown{ false }
+		, m_blocked{ false }
 		, m_numberOfThreads{ numberOfThreads }
 		{
 			m_threads.reserve(m_numberOfThreads);
@@ -76,17 +77,34 @@ namespace Utils
 
 		void push(const Type& value)
 		{
-			m_queue.push(value);
+			if (!m_blocked)
+			{
+				m_queue.push
+				(
+					[value, this]()
+					{
+						this->m_functor(value);
+					}
+				);
+			}
 		}
 
 		void rundown()
 		{
-			m_rundown = true;
-			if (!m_queue.empty() && !m_queue.cancelled())
+			if (!cancelled())
 			{
-				auto fut {m_rundownPromise.get_future()};
+				m_blocked = true;
+				std::promise<void> promise;
+				auto fut { promise.get_future() };
+				m_queue.push
+				(
+					[&promise]()
+					{
+						promise.set_value();
+					}
+				);
 				fut.wait();
-				m_rundownPromise = std::promise<void>{};
+				cancel();
 			}
 		}
 		void cancel()
@@ -110,22 +128,16 @@ namespace Utils
 	private:
 		void dispatch()
 		{
-			Type data{};
-			while(m_queue.pop(data))
+			std::function<void()> fnc;
+			while(m_queue.pop(fnc))
 			{
-				m_functor(data);
-				if (m_rundown && m_queue.empty())
-				{
-					m_rundown = false;	
-					m_rundownPromise.set_value();
-				}
+				fnc();
 			}
 		}
 		Functor m_functor;
-		SafeQueue<Type> m_queue;
+		SafeQueue<std::function<void()>> m_queue;
 		std::vector<std::thread> m_threads;
-		std::atomic_bool m_rundown;
-		std::promise<void> m_rundownPromise;
+		std::atomic_bool m_blocked;
 		const unsigned int m_numberOfThreads;
 	};
 
