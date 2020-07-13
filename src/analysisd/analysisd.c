@@ -585,7 +585,7 @@ int main_analysisd(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading rules file: '%s'", *rulesfiles);
                     }
-                    if (Rules_OP_ReadRules(*rulesfiles, rulenode, &global_listnode) < 0) {
+                    if (Rules_OP_ReadRules(*rulesfiles, &rulenode, &global_listnode) < 0) {
                         merror_exit(RULES_ERROR, *rulesfiles);
                     }
 
@@ -2228,10 +2228,6 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
                 }
             } else {
                 node = OS_GetFirstOSDecoder(lf->program_name);
-
-                if (!node) {
-                    return (NULL);
-                }
                 DecodeEvent(lf, &decoder_match, node);
             }
 
