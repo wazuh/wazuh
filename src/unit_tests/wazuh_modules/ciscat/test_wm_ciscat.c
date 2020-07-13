@@ -15,17 +15,13 @@
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/randombytes_wrappers.h"
 
 #define TEST_MAX_DATES 5
 
 static wmodule *ciscat_module;
 static OS_XML *lxml;
 extern int test_mode;
-
-int __wrap_os_random() {
-    // Will wrap this function to check running times in order to check scheduling
-    return 0;
-}
 
 static void wmodule_cleanup(wmodule *module){
     wm_ciscat* module_data = (wm_ciscat *) module->data;

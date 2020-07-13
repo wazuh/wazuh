@@ -13,3 +13,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+int __wrap_os_random() {
+    return mock();
+}

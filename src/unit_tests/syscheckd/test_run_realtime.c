@@ -22,6 +22,7 @@
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
+#include "../wrappers/wazuh/shared/randombytes_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
@@ -41,10 +42,6 @@ void free_win32rtfim_data(win32rtfim *data);
 void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap);
 #endif
 /* redefinitons/wrapping */
-
-int __wrap_os_random() {
-    return 12345;
-}
 
 void * __wrap_rbtree_insert() {
     return NULL;
@@ -278,6 +275,7 @@ static int teardown_hash_node(void **state) {
 static int setup_OSHash(void **state) {
     test_mode = 0;
 
+    will_return_always(__wrap_os_random, 12345);
     OSHash *hash = OSHash_Create();
 
 #ifndef TEST_WINAGENT

@@ -19,6 +19,7 @@
 #include "../wrappers/linux/inotify_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
+#include "../wrappers/wazuh/shared/randombytes_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
 
@@ -121,10 +122,6 @@ int __wrap_realtime_start(void) {
 }
 #endif
 
-int __wrap_os_random() {
-    return 12345;
-}
-
 #ifdef TEST_WINAGENT
 int __wrap_run_whodata_scan(void) {
     return mock();
@@ -139,6 +136,7 @@ int __wrap_audit_restore(void) {
 
 static int setup_group(void ** state) {
     expect_any_always(__wrap__mdebug1, formatted_msg);
+    will_return_always(__wrap_os_random, 12345);
 
 #ifdef TEST_AGENT
     will_return_always(__wrap_isChroot, 1);

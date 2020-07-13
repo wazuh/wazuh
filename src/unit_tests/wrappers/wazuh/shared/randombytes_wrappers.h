@@ -12,6 +12,7 @@
 #ifndef RANDOM_WRAPPERS_H
 #define RANDOM_WRAPPERS_H
 
+int __wrap_os_random();
 
 
 
