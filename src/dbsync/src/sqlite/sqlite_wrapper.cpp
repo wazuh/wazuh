@@ -164,9 +164,7 @@ int32_t Statement::step()
 }
 void Statement::reset()
 {
-    const auto result{ sqlite3_reset(m_stmt.get()) };
-    // not sure y reset should throw or not.
-    // checkSqliteResult(result, "Error reseting statement.");
+    sqlite3_reset(m_stmt.get());
 }
 
 void Statement::bind(const int32_t index, const int32_t value)
