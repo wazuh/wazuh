@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file.
 
 - Added two new settings <max_retries> and <retry_interval> to adjust the agent failover interval. ([#5433](https://github.com/wazuh/wazuh/pull/5433))
 
+### Fixed
+
+- Fixed a crash in Modulesd caused by Vulnerability Detector when skipping a kernel package if the agent has OS info disabled. ([#5467](https://github.com/wazuh/wazuh/pull/5467))
+
 
 ## [v3.13.0] - 2020-06-29
 
