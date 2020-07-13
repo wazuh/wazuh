@@ -13,3 +13,11 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+void * __wrap_rbtree_insert() {
+    return NULL;
+}
+
+char **__wrap_rbtree_keys(__attribute__((unused)) const rb_tree *tree) {
+    return mock_type(char **);
+}

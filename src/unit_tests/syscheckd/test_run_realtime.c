@@ -43,16 +43,8 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap);
 #endif
 /* redefinitons/wrapping */
 
-void * __wrap_rbtree_insert() {
-    return NULL;
-}
-
 int __wrap_send_log_msg() {
     return mock();
-}
-
-char **__wrap_rbtree_keys(const rb_tree *tree) {
-    return mock_type(char **);
 }
 
 void __wrap_fim_realtime_event(char *file) {

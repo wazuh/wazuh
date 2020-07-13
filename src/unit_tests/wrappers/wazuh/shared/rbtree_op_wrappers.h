@@ -12,7 +12,10 @@
 #ifndef RBTREE_OP_WRAPPERS_H
 #define RBTREE_OP_WRAPPERS_H
 
+#include <rbtree_op.h>
 
+void * __wrap_rbtree_insert();
 
+char **__wrap_rbtree_keys(const rb_tree *tree);
 
 #endif
