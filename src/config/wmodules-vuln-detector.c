@@ -209,8 +209,8 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
 
     } else if (strcasestr(feed, vu_feed_tag[FEED_REDHAT])) {
         if (!version) {
-            os_free(upd);
-            return OS_INVALID;
+            retval = OS_INVALID;
+            goto end;
         }
         // RHEL8
         if (!strcmp(version, "8")) {
@@ -284,7 +284,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
 
     retval = os_index;
 end:
-    if (retval == OS_SUPP_SIZE || retval == OS_INVALID) {
+    if (retval == OS_SUPP_SIZE || retval == OS_INVALID || retval == OS_DEPRECATED) {
         wm_vuldet_free_update_node(upd);
         free(upd);
     }
@@ -1082,7 +1082,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
 
     for (i = 0; node[i]; i++) {
         if (!strcmp(node[i]->element, XML_UPDATE_FROM_YEAR)) {
-            // Deprectared in RHEL
+            // Deprecated in RHEL
             if (rhel_enabled) {
                 mwarn("'%s' option at module '%s' is deprecated. Use '%s' instead.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name, XML_OS);
             }
