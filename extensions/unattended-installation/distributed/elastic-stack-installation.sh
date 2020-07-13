@@ -171,9 +171,10 @@ installElasticsearch() {
         if [ -n "$single" ]
         then
             createCertificates
+        else
+            logger "Done"
         fi
         
-        logger "Done"
     fi
 }
 
