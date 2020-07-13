@@ -114,6 +114,8 @@ static int teardown_test_read(void **state) {
 /** Tests **/
 void test_interval_execution(void **state) {
     wm_oscap* module_data = (wm_oscap *)oscap_module->data;
+    int i = 0;
+
     *state = module_data;
     module_data->scan_config.next_scheduled_scan_time = 0;
     module_data->scan_config.scan_day = 0;
@@ -123,6 +125,21 @@ void test_interval_execution(void **state) {
 
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
+
+    expect_string(__wrap_wm_state_io, tag, "open-scap");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_value(__wrap_wm_state_io, state, &module_data->state);
+    expect_value(__wrap_wm_state_io, size, sizeof(module_data->state));
+    will_return(__wrap_wm_state_io, 1);
+
+    for (i = 0; i < TEST_MAX_DATES + 1; i++) {
+        expect_string(__wrap_wm_state_io, tag, "open-scap");
+        expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
+        expect_value(__wrap_wm_state_io, state, &module_data->state);
+        expect_value(__wrap_wm_state_io, size, sizeof(module_data->state));
+        will_return(__wrap_wm_state_io, -1);
+    }
+
     expect_string_count(__wrap__mterror, tag, "wazuh-modulesd:oscap", TEST_MAX_DATES + 1);
     expect_string_count(__wrap__mterror, formatted_msg, "Couldn't save running state.", TEST_MAX_DATES + 1);
     expect_any_always(__wrap__mtinfo, tag);

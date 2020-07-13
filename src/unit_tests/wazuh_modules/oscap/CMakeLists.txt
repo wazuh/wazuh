@@ -38,7 +38,7 @@ enable_testing()
 list(APPEND tests_names "test_wm_oscap")
 list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
                          -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER \
-                         -Wl,--wrap=wm_sendmsg,--wrap=SendMSG,--wrap=atexit")
+                         -Wl,--wrap=wm_sendmsg,--wrap=SendMSG,--wrap=atexit,--wrap=wm_state_io")
 list(APPEND use_shared_libs 1)
 
 list(APPEND shared_libs "../scheduling/global_helpers.c")
