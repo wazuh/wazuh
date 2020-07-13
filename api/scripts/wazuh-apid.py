@@ -25,7 +25,7 @@ from api import validator
 from api.api_exception import APIException
 from api.configuration import generate_self_signed_certificate, generate_private_key
 from api.constants import CONFIG_FILE_PATH, API_LOG_FILE_PATH
-from api.middlewares import set_user_name, check_experimental
+from api.middlewares import set_user_name
 from api.uri_parser import APIUriParser
 from api.util import to_relative_path
 from wazuh.core import pyDaemonModule, common
@@ -120,7 +120,7 @@ def start(foreground, root, config_file):
                 strict_validation=True,
                 validate_responses=True,
                 pass_context_arg_name='request',
-                options={"middlewares": [set_user_name, check_experimental]})
+                options={"middlewares": [set_user_name]})
 
     # Enable CORS
     if cors['enabled']:
