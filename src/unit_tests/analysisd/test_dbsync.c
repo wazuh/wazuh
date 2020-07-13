@@ -13,6 +13,7 @@
 #include <cmocka.h>
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/read-agents_wrappers.h"
 #include "../analysisd/eventinfo.h"
 #include "../analysisd/decoders/decoder.h"
 #include "../headers/wazuhdb_op.h"
@@ -53,19 +54,6 @@ int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     check_expected(sock);
     check_expected(size);
     check_expected(msg);
-
-    return mock();
-}
-
-int __wrap_connect_to_remoted() {
-    return mock();
-}
-
-int __wrap_send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const char *exec) {
-    check_expected(msocket);
-    check_expected(msg);
-    check_expected(agt_id);
-    check_expected_ptr(exec);
 
     return mock();
 }

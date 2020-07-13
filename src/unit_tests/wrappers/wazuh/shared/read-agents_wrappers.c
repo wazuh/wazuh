@@ -13,3 +13,16 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+int __wrap_connect_to_remoted() {
+    return mock();
+}
+
+int __wrap_send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const char *exec) {
+    check_expected(msocket);
+    check_expected(msg);
+    check_expected(agt_id);
+    check_expected_ptr(exec);
+
+    return mock();
+}

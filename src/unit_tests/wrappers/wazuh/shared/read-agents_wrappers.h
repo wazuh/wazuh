@@ -12,7 +12,8 @@
 #ifndef READ_AGENTS_WRAPPERS_H
 #define READ_AGENTS_WRAPPERS_H
 
+int __wrap_connect_to_remoted();
 
-
+int __wrap_send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const char *exec);
 
 #endif
