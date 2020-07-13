@@ -266,16 +266,8 @@ static int teardown_hash_node(void **state) {
 
 static int setup_OSHash(void **state) {
     test_mode = 0;
-
     will_return_always(__wrap_os_random, 12345);
     OSHash *hash = OSHash_Create();
-
-#ifndef TEST_WINAGENT
-    OSHash_Add_ex(hash, "1", "/etc/folder");
-#else
-    OSHash_Add_ex(hash, "1", "C:\\a\\path");
-#endif
-
     *state = hash;
     test_mode = 1;
     return 0;
@@ -285,7 +277,9 @@ static int teardown_OSHash(void **state) {
     test_mode = 0;
     OSHash *hash = *state;
     void *rtlocald = OSHash_Delete_ex(hash, "1");
-    // os_free(rtlocald);
+#ifdef TEST_WINAGENT
+    free_win32rtfim_data(hash);
+#endif
     return 0;
 }
 
@@ -524,6 +518,7 @@ void test_realtime_adddir_realtime_add(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/etc/folder'");
 
     test_mode = 0;
+    OSHash_Add_ex(hash, "1", "/etc/folder"); // Duplicate simulation
     ret = realtime_adddir(path, 0, 0);
     test_mode = 1;
 
@@ -1146,36 +1141,6 @@ void test_realtime_adddir_handle_error(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_realtime_adddir_out_of_memory_error(void **state) {
-    int ret;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
-    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
-    will_return(__wrap_OSHash_Get_ex, 0);
-
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_CreateFile, (HANDLE)123456);
-
-    will_return(wrap_ReadDirectoryChangesW, 1);
-
-    OSHash_Add_ex_check_data = 0;
-    expect_value(__wrap_OSHash_Add_ex, self, syscheck.realtime->dirtb);
-    expect_string(__wrap_OSHash_Add_ex, key, "C:\\a\\path");
-    will_return(__wrap_OSHash_Add_ex, 0);
-
-    expect_string(__wrap__merror_exit, formatted_msg, FIM_CRITICAL_ERROR_OUT_MEM);
-
-    expect_string(__wrap__mdebug1, formatted_msg,
-                  "(6227): Directory added for real time monitoring: 'C:\\a\\path'");
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    ret = realtime_adddir("C:\\a\\path", 0, 0);
-
-    assert_int_equal(ret, 1);
-}
-
 void test_realtime_adddir_success(void **state) {
     int ret;
     syscheck.realtime->dirtb = *state;
@@ -1393,7 +1358,6 @@ int main(void) {
         cmocka_unit_test(test_realtime_adddir_max_limit_reached),
         cmocka_unit_test(test_realtime_adddir_duplicate_entry),
         cmocka_unit_test(test_realtime_adddir_handle_error),
-        cmocka_unit_test(test_realtime_adddir_out_of_memory_error),
         cmocka_unit_test_setup_teardown(test_realtime_adddir_success, setup_OSHash, teardown_OSHash),
     };
 #endif
