@@ -12,7 +12,8 @@
 #ifndef QUEUE_OP_WRAPPERS_H
 #define QUEUE_OP_WRAPPERS_H
 
+#include "../headers/queue_op.h"
 
-
+int __wrap_queue_push_ex(w_queue_t * queue, void * data);
 
 #endif

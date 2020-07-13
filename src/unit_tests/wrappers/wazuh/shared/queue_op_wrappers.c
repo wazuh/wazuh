@@ -13,3 +13,18 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+int __wrap_queue_push_ex(w_queue_t * queue, void * data) {
+    int retval = mock();
+
+    check_expected_ptr(queue);
+    check_expected(data);
+
+    if (retval != -1) {
+        queue->data[queue->begin] = data;
+        queue->begin = (queue->begin + 1) % queue->size;
+        queue->elements++;
+    }
+
+    return retval;
+}

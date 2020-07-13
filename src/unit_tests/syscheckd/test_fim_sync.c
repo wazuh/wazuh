@@ -18,6 +18,8 @@
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/integrity_op_wrappers.h"
+#include "../wrappers/wazuh/shared/queue_op_wrappers.h"
+
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
 
@@ -37,18 +39,6 @@ int __wrap_time() {
     return 1572521857;
 }
 #endif
-
-int __wrap_queue_push_ex(w_queue_t * queue, void * data) {
-    int retval = mock();
-
-    check_expected_ptr(queue);
-    check_expected(data);
-
-    if(retval != -1)
-        free(data);     //  This won't be used, free it
-
-    return retval;
-}
 
 int __wrap_fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
     check_expected_ptr(fim_sql);
@@ -137,14 +127,31 @@ static int setup_group(void **state) {
 }
 
 static int setup_fim_sync_queue(void **state) {
+    char *msg = (char *)malloc(sizeof(char) * 45);
+
+    snprintf(msg, 45, "%s", "This is a mock message, it won't go anywhere");
+    
+    *state = msg;
+
     fim_sync_queue = queue_init(10);
 
     return 0;
 }
 
 static int teardown_fim_sync_queue(void **state) {
-    queue_free(fim_sync_queue);
+    char *msg = *state;
 
+    free(msg);
+    msg = NULL;
+
+    char *copy = (char *)queue_pop(fim_sync_queue);
+
+    if (copy) {
+        free(copy);
+        copy = NULL;
+    }
+
+    queue_free(fim_sync_queue);
     fim_sync_queue = NULL;
 
     return 0;
@@ -189,7 +196,7 @@ static int teardown_json_payload(void **state) {
 /* tests */
 /* fim_sync_push_msg */
 static void test_fim_sync_push_msg_success(void **state) {
-    char *msg = "This is a mock message, it won't go anywhere";
+    char *msg = *state;
 
     expect_value(__wrap_queue_push_ex, queue, fim_sync_queue);
     expect_string(__wrap_queue_push_ex, data, msg);
@@ -199,7 +206,7 @@ static void test_fim_sync_push_msg_success(void **state) {
 }
 
 static void test_fim_sync_push_msg_queue_full(void **state) {
-    char *msg = "This is a mock message, it won't go anywhere";
+    char *msg = *state;
 
     expect_value(__wrap_queue_push_ex, queue, fim_sync_queue);
     expect_string(__wrap_queue_push_ex, data, msg);
