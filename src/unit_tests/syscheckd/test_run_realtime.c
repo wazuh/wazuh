@@ -14,12 +14,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../wrappers/common.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/linux/inotify_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
+#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
@@ -40,62 +42,8 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap);
 #endif
 /* redefinitons/wrapping */
 
-int __wrap_OSHash_Get_ex() {
-    return mock();
-}
-
-char *__wrap_OSHash_Get() {
-    return mock_type(char *);
-}
-
-int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data) {
-#if TEST_WINAGENT
-    if(data) {
-        win32rtfim *rtlocald = data;
-
-        free(rtlocald->dir);
-        free(rtlocald->overlap.Pointer);
-        free(rtlocald);
-    }
-#endif
-
-    return mock();
-}
-
-int __wrap_OSHash_Update_ex(OSHash *self, const char *key, void *data) {
-    int retval = mock();
-
-    if(retval != 0)
-        free(data); //  This won't be used, free it
-
-    return retval;
-}
-
-void *__wrap_OSHash_Delete_ex() {
-    char *ret = mock_type(char *);
-    ret = calloc(1, sizeof(char *));
-
-    return (void*)ret;
-}
-
-void *__wrap_OSHash_Begin(const OSHash *self, unsigned int *i) {
-    check_expected_ptr(self);
-
-    return mock_type(OSHashNode*);
-}
-
-void *__wrap_OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current) {
-    check_expected_ptr(self);
-
-    return mock_type(OSHashNode*);
-}
-
 void * __wrap_rbtree_insert() {
     return NULL;
-}
-
-OSHash * __wrap_OSHash_Create() {
-    return mock_type(OSHash*);
 }
 
 int __wrap_send_log_msg() {
@@ -188,6 +136,7 @@ static int setup_group(void **state) {
     will_return_always(__wrap_isChroot, 1);
 #endif
 
+    test_mode = 0;
     Read_Syscheck_Config("test_syscheck.conf");
 
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
@@ -195,10 +144,12 @@ static int setup_group(void **state) {
     if(syscheck.realtime == NULL)
         return -1;
 
+    test_mode = 1;
     return 0;
 }
 
 static int teardown_group(void **state) {
+    test_mode = 0;
     Free_Syscheck(&syscheck);
 
     return 0;
@@ -320,12 +271,50 @@ static int teardown_hash_node(void **state) {
     return 0;
 }
 
+int __wrap_os_random() {
+    return 12345;
+}
+
+static int setup_OSHash(void **state) {
+    test_mode = 0;
+
+#ifndef TEST_WINAGENT
+    will_return(__wrap_read, "");
+    will_return(__wrap_read, sizeof(int));
+    will_return(__wrap_read, sizeof(int));
+    will_return(__wrap_read, "");
+    will_return(__wrap_read, sizeof(int));
+    will_return(__wrap_read, sizeof(int));
+#endif
+
+    OSHash *hash = OSHash_Create();
+
+#ifndef TEST_WINAGENT
+    OSHash_Add_ex(hash, "1", "/etc/folder");
+#else
+    OSHash_Add_ex(hash, "1", "C:\\a\\path");
+#endif
+
+    *state = hash;
+    test_mode = 1;
+    return 0;
+}
+
+static int teardown_OSHash(void **state) {
+    test_mode = 0;
+    OSHash *hash = *state;
+    void *rtlocald = OSHash_Delete_ex(hash, "1");
+    // os_free(rtlocald);
+    return 0;
+}
+
 /* tests */
 
 void test_realtime_start_success(void **state) {
     OSHash *hash = *state;
     int ret;
 
+    expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, hash);
 
 #if defined(TEST_SERVER) || defined(TEST_AGENT)
@@ -351,6 +340,7 @@ void test_realtime_start_success(void **state) {
 void test_realtime_start_failure_hash(void **state) {
     int ret;
 
+    expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, NULL);
 
     errno = ENOMEM;
@@ -416,6 +406,7 @@ void test_realtime_start_failure_inotify(void **state) {
     OSHash *hash = *state;
     int ret;
 
+    expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, hash);
     will_return(__wrap_inotify_init, -1);
 
@@ -471,6 +462,7 @@ void test_realtime_adddir_realtime_start_failure(void **state)
 
     const char * path = "/etc/folder";
 
+    expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "(1102): Could not acquire memory due to [(0)-(Success)].");
@@ -537,17 +529,22 @@ void test_realtime_adddir_realtime_add(void **state)
 {
     (void) state;
     int ret;
-
     const char * path = "/etc/folder";
 
     syscheck.realtime->fd = 1;
+    syscheck.realtime->dirtb = *state;
     will_return(__wrap_inotify_add_watch, 1);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "1");
     will_return(__wrap_OSHash_Get_ex, 0);
-    will_return(__wrap_OSHash_Add_ex, 1);
+
     expect_string(__wrap__mdebug2, formatted_msg, "(6224): Entry '/etc/folder' already exists in the RT hash table.");
     expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/etc/folder'");
 
+    test_mode = 0;
     ret = realtime_adddir(path, 0, 0);
+    test_mode = 1;
 
     assert_int_equal(ret, 1);
 }
@@ -562,12 +559,22 @@ void test_realtime_adddir_realtime_add_hash_failure(void **state)
 
     syscheck.realtime->fd = 1;
     will_return(__wrap_inotify_add_watch, 1);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "1");
     will_return(__wrap_OSHash_Get_ex, 0);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Add_ex, key, "1");
     will_return(__wrap_OSHash_Add_ex, 0);
+
     expect_string(__wrap__merror_exit, formatted_msg, "(6697): Out of memory. Exiting.");
     expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/etc/folder'");
 
+    test_mode = 1;
     ret = realtime_adddir(path, 0, 0);
+    test_mode = 0;
 
     assert_int_equal(ret, 1);
 }
@@ -582,7 +589,11 @@ void test_realtime_adddir_realtime_update(void **state)
 
     syscheck.realtime->fd = 1;
     will_return(__wrap_inotify_add_watch, 1);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "1");
     will_return(__wrap_OSHash_Get_ex, 1);
+
     will_return(__wrap_OSHash_Update_ex, 1);
 
     ret = realtime_adddir(path, 0, 0);
@@ -600,7 +611,11 @@ void test_realtime_adddir_realtime_update_failure(void **state)
 
     syscheck.realtime->fd = 1;
     will_return(__wrap_inotify_add_watch, 1);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "1");
     will_return(__wrap_OSHash_Get_ex, 1);
+
     will_return(__wrap_OSHash_Update_ex, 0);
 
     expect_string(__wrap__merror, formatted_msg, "Unable to update 'dirtb'. Directory not found: '/etc/folder'");
@@ -641,6 +656,7 @@ void test_realtime_process(void **state)
 
     will_return(__wrap_read, NULL);
     will_return(__wrap_read, 0);
+    will_return(__wrap_read, 0);
 
     realtime_process();
 }
@@ -654,8 +670,13 @@ void test_realtime_process_len(void **state)
     syscheck.realtime->fd = 1;
 
     will_return(__wrap_read, event);
+    will_return(__wrap_read, sizeof(event));
     will_return(__wrap_read, 16);
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get, key, "1");
     will_return(__wrap_OSHash_Get, "test");
+
     expect_string(__wrap__mdebug2, formatted_msg, "Duplicate event in real-time buffer: test/test");
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
@@ -674,8 +695,13 @@ void test_realtime_process_len_zero(void **state)
     syscheck.realtime->fd = 1;
 
     will_return(__wrap_read, event);
+    will_return(__wrap_read, sizeof(event));
     will_return(__wrap_read, 16);
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get, key, "1");
     will_return(__wrap_OSHash_Get, "test");
+
     expect_string(__wrap__mdebug2, formatted_msg, "Duplicate event in real-time buffer: test");
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
@@ -694,8 +720,13 @@ void test_realtime_process_len_path_separator(void **state)
     syscheck.realtime->fd = 1;
 
     will_return(__wrap_read, event);
+    will_return(__wrap_read, sizeof(event));
     will_return(__wrap_read, 16);
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get, key, "1");
     will_return(__wrap_OSHash_Get, "test/");
+
     expect_string(__wrap__mdebug2, formatted_msg, "Duplicate event in real-time buffer: test/test");
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
@@ -714,6 +745,7 @@ void test_realtime_process_overflow(void **state)
     syscheck.realtime->fd = 1;
 
     will_return(__wrap_read, event);
+    will_return(__wrap_read, sizeof(event));
     will_return(__wrap_read, 16);
     expect_string(__wrap__mwarn, formatted_msg, "Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
     will_return(__wrap_send_log_msg, 1);
@@ -734,12 +766,21 @@ void test_realtime_process_delete(void **state)
     syscheck.realtime->fd = 1;
 
     will_return(__wrap_read, event);
+    will_return(__wrap_read, sizeof(event));
     will_return(__wrap_read, 16);
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get, key, "1");
     will_return(__wrap_OSHash_Get, "test");
+
     expect_string(__wrap__mdebug2, formatted_msg, "Duplicate event in real-time buffer: test/test");
     expect_function_call(__wrap_pthread_mutex_lock);
-    char *data;
-    will_return_always(__wrap_OSHash_Delete_ex, data);
+
+    char *data = strdup("delete this");
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Delete_ex, key, "1");
+    will_return(__wrap_OSHash_Delete_ex, data);
+
     expect_string(__wrap__mdebug2, formatted_msg, "(6344): Inotify watch deleted for 'test'");
     expect_function_call(__wrap_pthread_mutex_unlock);
     char **paths = NULL;
@@ -747,7 +788,9 @@ void test_realtime_process_delete(void **state)
     will_return(__wrap_rbtree_keys, paths);
     expect_string(__wrap_fim_realtime_event, file, "/test");
 
+    test_mode = 1;
     realtime_process();
+    test_mode = 0;
 }
 
 void test_realtime_process_move_self(void **state) {
@@ -759,8 +802,13 @@ void test_realtime_process_move_self(void **state) {
     syscheck.realtime->fd = 1;
 
     will_return(__wrap_read, event);
+    will_return(__wrap_read, sizeof(event));
     will_return(__wrap_read, 16);
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get, key, "1");
     will_return(__wrap_OSHash_Get, "test");
+
     expect_string(__wrap__mdebug2, formatted_msg, "Duplicate event in real-time buffer: test/test");
 
     // In delete_subdirectories_watches
@@ -773,8 +821,6 @@ void test_realtime_process_move_self(void **state) {
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, node);
 
-    char *data = strdup("delete this");
-    // will_return_always(__wrap_OSHash_Delete_ex, data);
     expect_string(__wrap__mdebug2, formatted_msg, "(6344): Inotify watch deleted for 'test/sub'");
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
@@ -783,14 +829,16 @@ void test_realtime_process_move_self(void **state) {
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    free(data);
-
     // Back to realtime_process
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    data = strdup("delete this");
-    will_return_always(__wrap_OSHash_Delete_ex, data);
+    char *data = strdup("delete this");
+    expect_value_count(__wrap_OSHash_Delete_ex, self, syscheck.realtime->dirtb, 2);
+    expect_string(__wrap_OSHash_Delete_ex, key, "dummy_key");
+    expect_string(__wrap_OSHash_Delete_ex, key, "1");
+    will_return_count(__wrap_OSHash_Delete_ex, data, 2);
+
     expect_string(__wrap__mdebug2, formatted_msg, "(6344): Inotify watch deleted for 'test'");
 
     char **paths = NULL;
@@ -798,9 +846,9 @@ void test_realtime_process_move_self(void **state) {
     will_return(__wrap_rbtree_keys, paths);
     expect_string(__wrap_fim_realtime_event, file, "/test");
 
-    free(data);
-
+    test_mode = 1;
     realtime_process();
+    test_mode = 0;
 }
 
 void test_realtime_process_failure(void **state)
@@ -810,6 +858,7 @@ void test_realtime_process_failure(void **state)
     syscheck.realtime->fd = 1;
 
     will_return(__wrap_read, NULL);
+    will_return(__wrap_read, 0);
     will_return(__wrap_read, -1);
 
     expect_string(__wrap__merror, formatted_msg, FIM_ERROR_REALTIME_READ_BUFFER);
@@ -879,7 +928,10 @@ void test_delete_subdirectories_watches_deletes(void **state) {
     will_return(__wrap_OSHash_Begin, node);
 
     char *data = strdup("delete this");
-    will_return_always(__wrap_OSHash_Delete_ex, data);
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Delete_ex, key, "dummy_key");
+    will_return(__wrap_OSHash_Delete_ex, data);
+
     expect_string(__wrap__mdebug2, formatted_msg, "(6344): Inotify watch deleted for '/test/sub'");
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
@@ -887,9 +939,9 @@ void test_delete_subdirectories_watches_deletes(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    free(data);
-
+    test_mode = 1;
     delete_subdirectories_watches(dir);
+    test_mode = 0;
 }
 
 #else // TEST_WINAGENT
@@ -1041,6 +1093,7 @@ void test_realtime_adddir_realtime_start_error(void **state) {
     int ret;
     errno = 0;
 
+    expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "(1102): Could not acquire memory due to [(0)-(Success)].");
@@ -1074,6 +1127,8 @@ void test_realtime_adddir_duplicate_entry(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_lock);
 
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Get_ex, 1);
 
     expect_string(__wrap_w_directory_exists, path, "C:\\a\\path");
@@ -1093,6 +1148,8 @@ void test_realtime_adddir_handle_error(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_lock);
 
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Get_ex, 0);
 
     expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
@@ -1113,6 +1170,8 @@ void test_realtime_adddir_out_of_memory_error(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_lock);
 
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Get_ex, 0);
 
     expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
@@ -1120,7 +1179,11 @@ void test_realtime_adddir_out_of_memory_error(void **state) {
 
     will_return(wrap_ReadDirectoryChangesW, 1);
 
-    will_return(__wrap_OSHash_Add_ex, NULL);
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Add_ex, key, "C:\\a\\path");
+    will_return(__wrap_OSHash_Add_ex, 0);
+
     expect_string(__wrap__merror_exit, formatted_msg, FIM_CRITICAL_ERROR_OUT_MEM);
 
     expect_string(__wrap__mdebug1, formatted_msg,
@@ -1134,22 +1197,26 @@ void test_realtime_adddir_out_of_memory_error(void **state) {
 
 void test_realtime_adddir_success(void **state) {
     int ret;
+    syscheck.realtime->dirtb = *state;
 
     expect_function_call(__wrap_pthread_mutex_lock);
 
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Get_ex, 0);
 
     expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
     will_return(wrap_CreateFile, (HANDLE)123456);
 
     will_return(wrap_ReadDirectoryChangesW, 1);
-    will_return(__wrap_OSHash_Add_ex, 1);
 
     expect_string(__wrap__mdebug1, formatted_msg,
                   "(6227): Directory added for real time monitoring: 'C:\\a\\path'");
     expect_function_call(__wrap_pthread_mutex_unlock);
 
+    test_mode = 0;
     ret = realtime_adddir("C:\\a\\path", 0, 0);
+    test_mode = 1;
 
     assert_int_equal(ret, 1);
 }
@@ -1166,6 +1233,8 @@ void test_RTCallBack_error_on_callback(void **state) {
 void test_RTCallBack_empty_hash_table(void **state) {
     OVERLAPPED ov;
 
+    expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get, key, "test_RTCallBack_empty_hash_table");
     will_return(__wrap_OSHash_Get, NULL);
 
     expect_string(__wrap__merror, formatted_msg, FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY);
@@ -1178,6 +1247,9 @@ void test_RTCallBack_no_bytes_returned(void **state) {
     OVERLAPPED ov;
 
     rt->watch_status = 1;
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
+    expect_any(__wrap_OSHash_Get, key);
     will_return(__wrap_OSHash_Get, rt);
 
     expect_string(__wrap__mwarn, formatted_msg, FIM_WARN_REALTIME_OVERFLOW);
@@ -1206,6 +1278,9 @@ void test_RTCallBack_acquired_changes_null_dir(void **state) {
     ov.Pointer = "C:\\a\\path";
 
     // Begin calls to mock functions
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Get, rt);
 
     expect_string(__wrap_fim_configuration_directory, path, "C:\\a\\path");
@@ -1240,6 +1315,9 @@ void test_RTCallBack_acquired_changes(void **state) {
     ov.Pointer = "C:\\a\\path\\file.test";
 
     // Begin calls to mock functions
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get, key, "C:\\a\\path\\file.test");
     will_return(__wrap_OSHash_Get, rt);
 
     expect_string(__wrap_fim_configuration_directory, path, "C:\\a\\path\\file.test");
@@ -1276,7 +1354,7 @@ int main(void) {
         cmocka_unit_test(test_realtime_adddir_realtime_failure),
         cmocka_unit_test(test_realtime_adddir_realtime_watch_max_reached_failure),
         cmocka_unit_test(test_realtime_adddir_realtime_watch_generic_failure),
-        cmocka_unit_test(test_realtime_adddir_realtime_add),
+        cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_add, setup_OSHash, teardown_OSHash),
         cmocka_unit_test(test_realtime_adddir_realtime_add_hash_failure),
         cmocka_unit_test(test_realtime_adddir_realtime_update),
         cmocka_unit_test(test_realtime_adddir_realtime_update_failure),
@@ -1335,7 +1413,7 @@ int main(void) {
         cmocka_unit_test(test_realtime_adddir_duplicate_entry),
         cmocka_unit_test(test_realtime_adddir_handle_error),
         cmocka_unit_test(test_realtime_adddir_out_of_memory_error),
-        cmocka_unit_test(test_realtime_adddir_success),
+        cmocka_unit_test_setup_teardown(test_realtime_adddir_success, setup_OSHash, teardown_OSHash),
     };
 #endif
 

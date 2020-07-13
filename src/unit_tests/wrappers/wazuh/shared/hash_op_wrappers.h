@@ -12,7 +12,33 @@
 #ifndef HASH_OP_WRAPPERS_H
 #define HASH_OP_WRAPPERS_H
 
+#include "hash_op.h"
 
+extern int OSHash_Add_ex_check_data;
 
+int __wrap_OSHash_Add(OSHash *self, const char *key, void *data);
+
+int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data);
+
+void *__wrap_OSHash_Begin(const OSHash *self, unsigned int *i);
+
+void *__wrap_OSHash_Clean(OSHash *self, void (*cleaner)(void*));
+
+OSHash *__wrap_OSHash_Create();
+
+void *__wrap_OSHash_Delete_ex(OSHash *self, const char *key);
+
+void *__wrap_OSHash_Get(const OSHash *self, const char *key);
+
+void *__wrap_OSHash_Get_ex(const OSHash *self, const char *key);
+
+void *__wrap_OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current);
+
+int __wrap_OSHash_SetFreeDataPointer(__attribute__((unused)) OSHash *self,
+                                     __attribute__((unused)) void (free_data_function)(void *));
+
+int __wrap_OSHash_setSize(OSHash *self, unsigned int new_size);
+
+int __wrap_OSHash_Update_ex(OSHash *self, const char *key, void *data);
 
 #endif

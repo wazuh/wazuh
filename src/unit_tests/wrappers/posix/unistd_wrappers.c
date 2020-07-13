@@ -58,10 +58,15 @@ int __wrap_sysconf(__attribute__((unused)) int name) {
 
 ssize_t __wrap_read(__attribute__((unused)) int fildes,
                     void *buf,
-                    __attribute__((unused))  size_t nbyte) {
+                    size_t nbyte) {
     char * buffer = mock_type(char *);
+    size_t n = mock_type(size_t);
     if(buffer) {
-        memcpy(buf, buffer, 32);
+        if (nbyte > n){
+                memcpy(buf, buffer, n);
+        } else {
+                memcpy(buf, buffer, nbyte);
+        }
     }
     return mock_type(ssize_t);
 }

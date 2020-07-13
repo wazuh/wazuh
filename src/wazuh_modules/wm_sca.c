@@ -3045,7 +3045,7 @@ cJSON *wm_sca_dump(const wm_sca_t *data) {
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "scan_on_start", data->scan_on_start ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "skip_nfs", data->skip_nfs ? "yes" : "no");
-    
+
     if (data->policies && *data->policies) {
         cJSON *policies = cJSON_CreateArray();
         int i;

@@ -24,6 +24,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
+#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "syscheckd/syscheck.h"
 
 
@@ -64,7 +65,6 @@ extern int restore_policies;
 extern EVT_HANDLE context;
 
 extern const wchar_t* event_fields[];
-static int OSHash_Add_ex_check_data = 1;
 /**************************************************************************/
 /*************************WRAPS - FIXTURES*********************************/
 int test_group_setup(void **state) {
@@ -335,15 +335,6 @@ int __wrap_SendMSG(__attribute__((unused)) int queue, const char *message, const
     return mock();
 }
 
-int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data) {
-    check_expected(self);
-    check_expected(key);
-    if (OSHash_Add_ex_check_data) {
-        check_expected(data);
-    }
-    return mock();
-}
-
 void __wrap_free_whodata_event(whodata_evt *w_evt) {
     if (OSHash_Add_ex_check_data) {
         check_expected(w_evt);
@@ -356,23 +347,6 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
         *output = mock_type(char *);
     }
     *exitcode = mock_type(int);
-    return mock();
-}
-
-void *__wrap_OSHash_Delete_ex(OSHash *self, const char *key) {
-    check_expected(self);
-    check_expected(key);
-
-    return mock_type(void*);
-}
-
-OSHash *__wrap_OSHash_Create() {
-    function_called();
-    return mock_type(OSHash*);
-}
-
-int __wrap_OSHash_SetFreeDataPointer(__attribute__((unused)) OSHash *self, __attribute__((unused)) void (free_data_function)(void *)) {
-    function_called();
     return mock();
 }
 
@@ -394,23 +368,9 @@ void __wrap_fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int r
     check_expected(report);
 }
 
-void *__wrap_OSHash_Get(const OSHash *self, const char *key) {
-    check_expected(self);
-    check_expected(key);
-
-    return mock_type(void*);
-}
-
 char *__wrap_convert_windows_string(LPCWSTR string) {
     check_expected(string);
     return mock_type(char*);
-}
-
-void *__wrap_OSHash_Get_ex(const OSHash *self, const char *key) {
-    check_expected(self);
-    check_expected(key);
-
-    return mock_type(void*);
 }
 
 /**************************************************************************/
