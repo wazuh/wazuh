@@ -1,7 +1,7 @@
 /*
- * Wazuh Module for Security Configuration Assessment
+ * Wazuh Module for Task management.
  * Copyright (C) 2015-2020, Wazuh Inc.
- * November 25, 2018.
+ * July 13, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
