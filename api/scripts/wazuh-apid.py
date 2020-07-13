@@ -19,6 +19,7 @@ import uvloop
 from aiohttp_cache import setup_cache
 from aiohttp_swagger import setup_swagger
 
+import wazuh.security
 from api import alogging, configuration, __path__ as api_path
 # noinspection PyUnresolvedReferences
 from api import validator
@@ -30,6 +31,9 @@ from api.uri_parser import APIUriParser
 from api.util import to_relative_path
 from wazuh.core import pyDaemonModule, common
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
+
+# We load the SPEC file into memory to use as a reference for future calls
+wazuh.security.load_spec()
 
 
 def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):

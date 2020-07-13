@@ -5,7 +5,6 @@
 import datetime
 import os
 import typing
-from json import loads
 
 import six
 from connexion import ProblemException
@@ -38,7 +37,7 @@ def _deserialize(data, klass):
 
     if klass in six.integer_types or klass in (float, str, bool):
         return _deserialize_primitive(data, klass)
-    elif klass == object:
+    elif klass == object or klass == dict:
         return _deserialize_object(data)
     elif klass == datetime.date:
         return deserialize_date(data)
@@ -289,28 +288,3 @@ def raise_if_exc(obj, code=None):
         _create_problem(obj, code)
     else:
         return obj
-
-
-def validate_content_type(content_type, body):
-    """This function checks that the type specified in content-type header is the same as the type of the request's body
-
-    Parameters
-    ----------
-    content_type : str
-        Content-type of the request
-    body : json or xml
-        Body of the request
-    """
-    if type(body) == dict and 'json' not in content_type:
-        raise_if_exc(WazuhError(6002), code=406)
-    if 'json' in content_type and not type(body) == dict:
-        try:
-            loads(body)
-        except ValueError:
-            raise_if_exc(WazuhError(6002), code=406)
-    elif 'xml' in content_type:
-        # Wazuh has its own XML parser, if we block the errors related to the
-        # XML validation, we would be blocking the errors of the Framework.
-        # In any case, if we receive a non-XML content-type and the body is a
-        # Wazuh XML, we would cover the case with an error 6002
-        pass

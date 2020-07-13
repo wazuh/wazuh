@@ -9,7 +9,7 @@ info:
     \ or looking up syscheck details.\n"
   version: '4.0.0'
   x-revision: 4000
-  title: 'Wazuh API'
+  title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
     url: 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
@@ -1541,6 +1541,36 @@ components:
       format: alphanumeric
     PoliciesRequest:
       type: object
+      required:
+        - name
+        - policy
+      properties:
+        name:
+          description: "Policy name"
+          type: string
+        policy:
+          description: "This is the definition of the new policy"
+          type: object
+          properties:
+            actions:
+              type: array
+              description: "These are the actions that the policy performs"
+              items:
+                type: string
+            resources:
+              type: array
+              description: "Resources accessed by policy"
+              items:
+                type: string
+            effect:
+              type: string
+              description: "Effect of the policy"
+          required:
+            - actions
+            - resources
+            - effect
+    PoliciesRequest_no_required:
+      type: object
       properties:
         name:
           description: "Policy name"
@@ -1605,6 +1635,18 @@ components:
           type: object
           description: "Role rule"
     RolesRequest:
+      type: object
+      required:
+        - name
+        - rule
+      properties:
+        name:
+          type: string
+          description: "Role name"
+        rule:
+          type: object
+          description: "Role rule"
+    RolesRequest_no_required:
       type: object
       properties:
         name:
@@ -12520,7 +12562,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RolesRequest'
+              $ref: '#/components/schemas/RolesRequest_no_required'
             example:
               name: "normal"
               rule:
@@ -12761,7 +12803,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PoliciesRequest'
+              $ref: '#/components/schemas/PoliciesRequest_no_required'
             example:
               name: 'wazuhPolicy'
               policy:

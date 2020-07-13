@@ -13,7 +13,7 @@ from api.encoder import dumps, prettify
 from api.models.agent_added import AgentAddedModel
 from api.models.agent_inserted import AgentInsertedModel
 from api.models.base_model_ import Data, Body
-from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc, validate_content_type
+from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
 from wazuh.core.exception import WazuhError
@@ -125,7 +125,6 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
     """
     # Get body parameters
     f_kwargs = await AgentAddedModel.get_kwargs(request)
-    validate_content_type(content_type=request.content_type, body=f_kwargs)
 
     # Get IP if not given
     if not f_kwargs['ip']:
@@ -697,8 +696,8 @@ async def put_group_config(request, body, group_id, pretty=False, wait_for_compl
     :return: ApiResponse
     """
     # Parse body to utf-8
+    Body.validate_content_type(request, expected_content_types='application/xml')
     parsed_body = Body.decode_body(body, unicode_error=2006, attribute_error=2007)
-    validate_content_type(content_type=request.content_type, body=parsed_body)
 
     f_kwargs = {'group_list': [group_id],
                 'file_data': parsed_body}
@@ -842,7 +841,6 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     """
     # Get body parameters
     f_kwargs = await AgentInsertedModel.get_kwargs(request)
-    validate_content_type(content_type=request.content_type, body=f_kwargs)
 
     # Get IP if not given
     if not f_kwargs['ip']:

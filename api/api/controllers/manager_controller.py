@@ -370,6 +370,9 @@ async def put_api_config(request, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
+    # Check body parameters
+    Body.validate_content_type(request, expected_content_types='application/json')
+
     try:
         f_kwargs = {"updated_config": await request.json()}
     except JSONDecodeError as e:

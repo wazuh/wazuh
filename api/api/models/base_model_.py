@@ -1,15 +1,15 @@
 import pprint
-from json import JSONDecodeError
-
-import six
 import typing
-
-from api import util
+from json import JSONDecodeError
 from typing import List, Dict  # noqa: F401
 
+import six
+
+from api import util
 from api.api_exception import APIError
 from api.util import raise_if_exc
 from wazuh import WazuhError
+from wazuh.security import load_spec
 
 T = typing.TypeVar('T')
 
@@ -193,7 +193,15 @@ class Items(Model):
 
 class Body(Model):
     @classmethod
-    async def get_kwargs(cls, request, additional_kwargs: dict = None):
+    async def get_kwargs(cls, request, additional_kwargs: dict = None, wildcard: str = None):
+        # Check that the current content-type matches the expected content-type
+        path = request.path.split('/v4')[-1]
+        if additional_kwargs and wildcard:
+            path = path.replace(additional_kwargs.get(list(additional_kwargs.keys())[0])[0], f'{{{wildcard}}}')
+        expected_content_types = load_spec()['paths'][path][request.method.lower()]['requestBody']['content'].keys()
+        if request.content_type not in expected_content_types:
+            raise_if_exc(WazuhError(6002), code=406)
+
         try:
             dikt = request if isinstance(request, dict) else await request.json()
             f_kwargs = util.deserialize_model(dikt, cls).to_dict()
@@ -230,3 +238,8 @@ class Body(Model):
         except AttributeError:
             raise_if_exc(WazuhError(attribute_error))
         return body
+
+    @classmethod
+    def validate_content_type(cls, request, expected_content_types):
+        if request.content_type not in expected_content_types:
+            raise_if_exc(WazuhError(6002), code=406)
