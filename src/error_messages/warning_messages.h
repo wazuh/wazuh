@@ -41,4 +41,7 @@
 #define FIM_WARN_WHODATA_ADD_RULE               "(6926): Unable to add audit rule for '%s'"
 #define FIM_DB_FULL_ALERT                       "(6927): Sending DB 100%% full alert."
 
+/* wazuh-logtest warning messages*/
+#define LOGTEST_INV_NUM_THREADS                 "(7000): Invalid number of wazuh-logtest threads. Only creates %d threads"
+
 #endif /* WARN_MESSAGES_H */
