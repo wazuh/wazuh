@@ -456,10 +456,9 @@ def get_username(user_id):
     -------
     username if the user_id exists, unknown in other case
     """
-    user = get_users(user_ids=user_id)
-    username = 'unknown'
-    if len(user.affected_items) > 0 and len(user.failed_items) == 0:
-        username = user.affected_items[0]['username']
+    with AuthenticationManager() as am:
+        user = am.get_user_id(user_id=user_id[0])
+        username = user['username'] if user else 'unknown'
 
     return username
 
