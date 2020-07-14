@@ -489,6 +489,14 @@
 #define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files."
 #define FIM_ERROR_WHODATA_INIT                      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode"
 
+/* Wazuh Modules */
+#define WM_UPGRADE_JSON_PARSE_ERROR                 "(8101): Cannot parse JSON: '%s'"
+#define WM_UPGRADE_UNDEFINED_ACTION_ERRROR          "(8102): No action defined for command: '%s'"
+#define WM_UPGRADE_COMMAND_PARSE_ERROR              "(8103): Error parsing command: '%s'"
+#define WM_UPGRADE_UNREACHEABLE_TASK_MANAGER        "(8104): Cannot connect to '%s'. Could not reach task maanger module"
+#define WM_UPGRADE_INVALID_TASK_MAN_JSON            "(8105): Response from task manager does not have a valid JSON format"
+#define WM_UPGRADE_EMPTY_MESSAGE                    "(8106): Empty message from task manager module"
+
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
 #define PRIVSEP_MSG "Chrooted to directory: %s, using user: %s"

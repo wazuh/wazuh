@@ -41,8 +41,8 @@ cJSON* wm_agent_parse_command(const char* buffer) {
     cJSON *json_api = NULL; // Response for API
     cJSON * root = cJSON_Parse(buffer);
     if (!root) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, "Cannot parse JSON: %s",  buffer);
-        json_api = wm_agent_parse_response_mesage(1, "Could not parse message JSON", NULL, NULL);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_JSON_PARSE_ERROR,  buffer);
+        json_api = wm_agent_parse_response_mesage(PARSING_ERROR, "Could not parse message JSON", NULL, NULL);
     } else {
         char *output = NULL;
         os_calloc(OS_MAXSTR, sizeof(char), output);
@@ -53,13 +53,13 @@ cJSON* wm_agent_parse_command(const char* buffer) {
             task = (void*) wm_agent_parse_upgrade_command(params, output);
         } else {
             // TODO invalid command
-            mterror(WM_AGENT_UPGRADE_LOGTAG, "No action defined for command: %s",  command);
-            json_api = wm_agent_parse_response_mesage(1, "Could not recognice received command ", NULL, NULL);
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR,  command);
+            json_api = wm_agent_parse_response_mesage(TASK_CONFIGURATIONS, "Command not recognized", NULL, NULL);
         }
 
         if (!task) {
-            mterror(WM_AGENT_UPGRADE_LOGTAG, "Error parsing command: %s", output);
-            json_api = wm_agent_parse_response_mesage(1, output, NULL, NULL);
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, output);
+            json_api = wm_agent_parse_response_mesage(TASK_CONFIGURATIONS, output, NULL, NULL);
         } else {
             json_api = cJSON_CreateArray();
             cJSON *json_task_module = cJSON_CreateArray();
@@ -78,18 +78,21 @@ static void wm_agent_parse_task_information(cJSON *json_api, const cJSON* json_t
         // Parse task module responses into API
         for(int i=0; i < cJSON_GetArraySize(task_module_response); i++) {
             cJSON *task_response = cJSON_GetArrayItem(task_module_response, i);
-            cJSON_AddItemReferenceToArray(json_api, task_response);
+            int agent_id = cJSON_GetObjectItem(task_response, "agent")->valueint;
             if (cJSON_HasObjectItem(task_response, "task_id")) {
                 // Store task_id
                 int task_id = cJSON_GetObjectItem(task_response, "task_id")->valueint;
-                int agent_id = cJSON_GetObjectItem(task_response, "agent")->valueint;
                 wm_agent_insert_taks_id(task_id, agent_id);
+                cJSON_AddItemReferenceToArray(json_api, task_response);
+            } else {
+                cJSON *json_message = wm_agent_parse_response_mesage(TASK_MANAGER_FAILURE, cJSON_GetObjectItem(task_response, "data")->valuestring, &agent_id, NULL);
+                cJSON_AddItemToArray(json_api, json_message);
             }
         }
     } else {
         for(int i=0; i < cJSON_GetArraySize(json_task_module); i++) {
             int agent_id = cJSON_GetObjectItem(cJSON_GetArrayItem(json_task_module, i), "agent")->valueint;
-            cJSON_AddItemReferenceToArray(json_api, wm_agent_parse_response_mesage(1, "Could not create task id for upgrade task", &agent_id, NULL));
+            cJSON_AddItemReferenceToArray(json_api, wm_agent_parse_response_mesage(TASK_MANAGER_COMMUNICATION, "Could not create task id for upgrade task", &agent_id, NULL));
         }
     }
 }
@@ -106,7 +109,7 @@ static wm_upgrade_task* wm_agent_parse_upgrade_command(const cJSON* params, char
                 task->custom_file_path = strdup(item->valuestring);
             } else {
                 sprintf(output, "Parameter \"%s\" should be a string", item->string);
-                task->state = ERROR;
+                error_flag = 1;
             }
         } else if(strcmp(item->string, "installer") == 0) {
             /* Installer */

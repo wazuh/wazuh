@@ -31,6 +31,16 @@ enum wm_upgrade_state {
     ERROR
 };
 
+enum wm_upgrade_error_codes {
+    SUCCESS,
+    PARSING_ERROR,
+    TASK_CONFIGURATIONS,
+    TASK_MANAGER_COMMUNICATION,
+    TASK_MANAGER_FAILURE,
+    UPGRADE_ALREADY_ON_PROGRESS,
+    UNKNOWN_ERROR
+};
+
 /**
  * Definition of the structure that will represent an agent doing a certain task
  * */
