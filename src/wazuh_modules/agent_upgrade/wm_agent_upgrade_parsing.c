@@ -47,7 +47,7 @@ cJSON* wm_agent_parse_command(const char* buffer) {
 
         if (!task) {
             mterror(WM_AGENT_UPGRADE_LOGTAG, "Error parsing command: %s", output);
-            json_api = wm_agent_parse_response_mesage(1, "Error parsing command parameters ", NULL, NULL);
+            json_api = wm_agent_parse_response_mesage(1, output, NULL, NULL);
         } else {
             json_api = cJSON_CreateArray();
             cJSON *json_task_module = cJSON_CreateArray();
