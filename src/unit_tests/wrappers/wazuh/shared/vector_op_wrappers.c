@@ -13,3 +13,15 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+int __wrap_W_Vector_insert_unique(W_Vector *v, const char *element) {
+    check_expected_ptr(v);
+    check_expected(element);
+
+    return mock();
+}
+
+int __wrap_W_Vector_length()
+{
+    return mock();
+}

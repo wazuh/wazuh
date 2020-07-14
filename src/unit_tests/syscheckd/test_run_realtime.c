@@ -24,6 +24,7 @@
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
+#include "../wrappers/wazuh/shared/vector_op_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
@@ -50,13 +51,6 @@ int __wrap_send_log_msg() {
 
 void __wrap_fim_realtime_event(char *file) {
     check_expected(file);
-}
-
-int __wrap_W_Vector_insert_unique(W_Vector *v, const char *element) {
-    check_expected_ptr(v);
-    check_expected(element);
-
-    return mock();
 }
 
 #if defined(TEST_AGENT) || defined(TEST_WINAGENT)

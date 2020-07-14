@@ -30,6 +30,7 @@
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
+#include "../wrappers/wazuh/shared/vector_op_wrappers.h"
 #include "external/procps/readproc.h"
 
 extern volatile int audit_health_check_deletion;
@@ -37,16 +38,6 @@ extern volatile int audit_health_check_deletion;
 /* redefinitons/wrapping */
 
 int __wrap_OS_ConnectUnixDomain()
-{
-    return mock();
-}
-
-int __wrap_W_Vector_length()
-{
-    return mock();
-}
-
-int __wrap_W_Vector_insert_unique()
 {
     return mock();
 }
@@ -723,6 +714,8 @@ void test_add_audit_rules_syscheck_not_added(void **state)
 
     // Add rule
     will_return(__wrap_audit_add_rule, 1);
+    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
+    expect_string(__wrap_W_Vector_insert_unique, element, "/var/test");
     will_return(__wrap_W_Vector_insert_unique, 1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6322): Reloaded audit rule for monitoring directory: '/var/test'");
@@ -769,6 +762,8 @@ void test_add_audit_rules_syscheck_not_added_new(void **state)
 
     // Add rule
     will_return(__wrap_audit_add_rule, 1);
+    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
+    expect_string(__wrap_W_Vector_insert_unique, element, "/var/test");
     will_return(__wrap_W_Vector_insert_unique, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6270): Added audit rule for monitoring directory: '/var/test'");
@@ -902,6 +897,8 @@ void test_add_audit_rules_syscheck_added(void **state)
     will_return(__wrap_search_audit_rule, 1);
 
     // Add rule
+    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
+    expect_string(__wrap_W_Vector_insert_unique, element, "/var/test");
     will_return(__wrap_W_Vector_insert_unique, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6271): Audit rule for monitoring directory '/var/test' already added.");
@@ -1467,6 +1464,8 @@ void test_audit_parse_delete(void **state)
     will_return(__wrap_search_audit_rule, 1);
 
     // Add rule
+    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
+    expect_string(__wrap_W_Vector_insert_unique, element, "/var/test");
     will_return(__wrap_W_Vector_insert_unique, 1);
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
