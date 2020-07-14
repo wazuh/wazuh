@@ -20,16 +20,36 @@ typedef struct _wm_task_manager {
     int enabled:1;
 } wm_task_manager;
 
+typedef enum _json_key {
+    MODULE = 0,
+    COMMAND,
+    AGENT_ID,
+    TASK_ID,
+    ERROR,
+    DATA
+} json_key;
+
+typedef enum _error_code {
+    SUCCESS = 0,
+    INVALID_MESSAGE,
+    DATABASE_ERROR,
+    UNKNOWN_ERROR
+} error_code;
+
 extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
 
 // Parse XML configuration
 int wm_task_manager_read(xml_node **nodes, wmodule *module);
 
 // Function headers
-int wm_task_manager_check_db();
 size_t wm_task_manager_dispatch(const char *msg, char **response);
 cJSON* wm_task_manager_parse_message(const char *msg);
 char* wm_task_manager_error_message(int error_code);
+cJSON* wm_task_manager_response_message(int agent_id, int task_id);
+
+// Database function headers
+int wm_task_manager_check_db();
+int wm_task_manager_insert_task(int agent_id, char *module, char *command);
 
 #endif
 #endif

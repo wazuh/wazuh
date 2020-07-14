@@ -27,7 +27,8 @@ typedef enum _task_query {
 
 static const char *task_queries[] = {
     [VU_INSERT_TASK] = "INSERT INTO " TASKS_TABLE " VALUES(NULL,?,?,?,?);",
-    [VU_GET_MAX_TASK_ID] = "SELECT MAX(ID) FROM " TASKS_TABLE ";"};
+    [VU_GET_MAX_TASK_ID] = "SELECT MAX(ID) FROM " TASKS_TABLE ";"
+};
 
 extern char *schema_task_manager_sql;
 
