@@ -1,5 +1,16 @@
-#include "string_helper_test.h"
-#include "string_helper.h"
+/*
+ * Wazuh DBSYNC
+ * Copyright (C) 2015-2020, Wazuh Inc.
+ * July 14, 2020.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include "stringHelper_test.h"
+#include "stringHelper.h"
 
 void StringUtilsTest::SetUp() {};
 
