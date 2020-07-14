@@ -33,127 +33,155 @@ static const char *json_keys[] = {
     [AGENT_ID] = "agent",
     [TASK_ID] = "task_id",
     [ERROR] = "error",
-    [DATA] = "data"
+    [ERROR_DATA] = "data"
+};
+
+static const char *modules_list[] = {
+    [UPGRADE_MODULE] = "upgrade_module"
+};
+
+static const char *commands_list[] = {
+    [UPGRADE] = "upgrade"
 };
 
 static const char *error_codes[] = {
-    [SUCCESS] = "Task created successfully",
+    [SUCCESS] = "Success",
     [INVALID_MESSAGE] = "Invalid message",
     [DATABASE_ERROR] = "Database error",
     [UNKNOWN_ERROR] = "Unknown error"
 };
 
 size_t wm_task_manager_dispatch(const char *msg, char **response) {
-    cJSON *event_json = NULL;
+    cJSON *event_array = NULL;
     cJSON *response_array = NULL;
-    int agent = 0;
-    int agents = 0;
+    int task = 0;
+    int tasks = 0;
+    int error_code = SUCCESS;
 
     // Parse message
-    if (event_json = wm_task_manager_parse_message(msg), !event_json) {
-        *response = wm_task_manager_error_message(INVALID_MESSAGE);
+    if (event_array = wm_task_manager_parse_message(msg), !event_array) {
+        *response = wm_task_manager_build_response_error(INVALID_MESSAGE);
         return strlen(*response);
     }
 
     response_array = cJSON_CreateArray();
 
-    agents = cJSON_GetArraySize(event_json);
+    tasks = cJSON_GetArraySize(event_array);
 
-    for (agent = 0; agent < agents; ++agent) {
-        cJSON *agent_json = cJSON_GetArrayItem(event_json, agent);
-        int agent_id = cJSON_GetObjectItem(agent_json, json_keys[AGENT_ID])->valueint;
-        char *module = cJSON_GetObjectItem(agent_json, json_keys[MODULE])->valuestring;
-        char *command = cJSON_GetObjectItem(agent_json, json_keys[COMMAND])->valuestring;
-        int task_id = 0;
+    for (task = 0; task < tasks; ++task) {
+        cJSON *task_object = cJSON_GetArrayItem(event_array, task);
+        char *module = cJSON_GetObjectItem(task_object, json_keys[MODULE])->valuestring;
+        char *command = cJSON_GetObjectItem(task_object, json_keys[COMMAND])->valuestring;
 
-        // Insert task into DB
-        if (task_id = wm_task_manager_insert_task(agent_id, module, command), task_id == OS_INVALID) {
-            cJSON_Delete(event_json);
-            cJSON_Delete(response_array);
-            *response = wm_task_manager_error_message(DATABASE_ERROR);
-            return strlen(*response);
+        if (!strcmp(modules_list[UPGRADE_MODULE], module)) {
+
+            if (!strcmp(commands_list[UPGRADE], command)) {
+                cJSON *agent_json = NULL;
+                int task_id = 0;
+
+                // Detect agent
+                if (agent_json = cJSON_GetObjectItem(task_object, json_keys[AGENT_ID]), !agent_json) {
+                    error_code = INVALID_MESSAGE;
+                    mterror(WM_TASK_MANAGER_LOGTAG, "Agent not found at index '%d'", task);
+                    break;
+                }
+
+                // Insert upgrade task into DB
+                if (task_id = wm_task_manager_insert_task(agent_json->valueint, module, command), task_id == OS_INVALID) {
+                    error_code = DATABASE_ERROR;
+                    mterror(WM_TASK_MANAGER_LOGTAG, "Database error at index '%d'", task);
+                    break;
+                }
+
+                // Add upgrade task response
+                cJSON_AddItemToArray(response_array, wm_task_manager_build_response_insert(agent_json->valueint, task_id));
+
+            } else {
+                error_code = INVALID_MESSAGE;
+                mterror(WM_TASK_MANAGER_LOGTAG, "Invalid command '%s' at index '%d'", command, task);
+                break;
+            }
+        } else {
+            error_code = INVALID_MESSAGE;
+            mterror(WM_TASK_MANAGER_LOGTAG, "Invalid module '%s' at index '%d'", module, task);
+            break;
         }
-        cJSON_AddItemToArray(response_array, wm_task_manager_response_message(agent_id, task_id));
     }
 
-    *response = cJSON_PrintUnformatted(response_array);
+    if (error_code) {
+        *response = wm_task_manager_build_response_error(error_code);
+    } else {
+        *response = cJSON_PrintUnformatted(response_array);
+    }
 
-    cJSON_Delete(event_json);
+    cJSON_Delete(event_array);
     cJSON_Delete(response_array);
 
     return strlen(*response);
 }
 
 cJSON* wm_task_manager_parse_message(const char *msg) {
-    cJSON *event_json = NULL;
-    cJSON *agent_json = NULL;
+    cJSON *event_array = NULL;
+    cJSON *task_object = NULL;
     cJSON *module_json = NULL;
     cJSON *command_json = NULL;
-    cJSON *agentid_json = NULL;
     const char *error;
-    int agent = 0;
-    int agents = 0;
+    int task = 0;
+    int tasks = 0;
 
     // Parsing event
-    if (event_json = cJSON_ParseWithOpts(msg, &error, 0), !event_json) {
+    if (event_array = cJSON_ParseWithOpts(msg, &error, 0), !event_array) {
         mterror(WM_TASK_MANAGER_LOGTAG, "Error parsing JSON event: '%s'", msg);
         return NULL;
     }
 
     // Getting array size
-    if (agents = cJSON_GetArraySize(event_json), !agents) {
-        mterror(WM_TASK_MANAGER_LOGTAG, "Invalid message. Array of agents is empty.");
-        cJSON_Delete(event_json);
+    if (tasks = cJSON_GetArraySize(event_array), !tasks) {
+        mterror(WM_TASK_MANAGER_LOGTAG, "Invalid message. Array of tasks is empty.");
+        cJSON_Delete(event_array);
         return NULL;
     }
 
-    for (agent = 0; agent < agents; ++agent) {
-        // Getting agent
-        agent_json = cJSON_GetArrayItem(event_json, agent);
+    for (task = 0; task < tasks; ++task) {
+        // Getting task
+        task_object = cJSON_GetArrayItem(event_array, task);
 
         // Detect module
-        if (module_json = cJSON_GetObjectItem(agent_json, json_keys[MODULE]), !module_json) {
-            mterror(WM_TASK_MANAGER_LOGTAG, "Invalid message. Module not found at index '%d'", agent);
-            cJSON_Delete(event_json);
+        if (module_json = cJSON_GetObjectItem(task_object, json_keys[MODULE]), !module_json) {
+            mterror(WM_TASK_MANAGER_LOGTAG, "Invalid message. Module not found at index '%d'", task);
+            cJSON_Delete(event_array);
             return NULL;
         }
 
         // Detect command
-        if (command_json = cJSON_GetObjectItem(agent_json, json_keys[COMMAND]), !command_json) {
-            mterror(WM_TASK_MANAGER_LOGTAG, "Invalid message. Command not found at index '%d'", agent);
-            cJSON_Delete(event_json);
-            return NULL;
-        }
-
-        // Detect agent ID
-        if (agentid_json = cJSON_GetObjectItem(agent_json, json_keys[AGENT_ID]), !agentid_json) {
-            mterror(WM_TASK_MANAGER_LOGTAG, "Invalid message. Agent ID not found at index '%d'", agent);
-            cJSON_Delete(event_json);
+        if (command_json = cJSON_GetObjectItem(task_object, json_keys[COMMAND]), !command_json) {
+            mterror(WM_TASK_MANAGER_LOGTAG, "Invalid message. Command not found at index '%d'", task);
+            cJSON_Delete(event_array);
             return NULL;
         }
     }
 
-    return event_json;
+    return event_array;
 }
 
-char* wm_task_manager_error_message(int error_code) {
-    cJSON *error_json = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(error_json, json_keys[ERROR], error_code);
-    cJSON_AddStringToObject(error_json, json_keys[DATA], error_codes[error_code]);
-
-    return cJSON_PrintUnformatted(error_json);
-}
-
-cJSON* wm_task_manager_response_message(int agent_id, int task_id) {
+cJSON* wm_task_manager_build_response_insert(int agent_id, int task_id) {
     cJSON *response_json = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(response_json, json_keys[ERROR], SUCCESS);
-    cJSON_AddStringToObject(response_json, json_keys[DATA], error_codes[SUCCESS]);
+    cJSON_AddStringToObject(response_json, json_keys[ERROR_DATA], error_codes[SUCCESS]);
     cJSON_AddNumberToObject(response_json, json_keys[AGENT_ID], agent_id);
     cJSON_AddNumberToObject(response_json, json_keys[TASK_ID], task_id);
 
     return response_json;
+}
+
+char* wm_task_manager_build_response_error(int error_code) {
+    cJSON *error_json = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(error_json, json_keys[ERROR], error_code);
+    cJSON_AddStringToObject(error_json, json_keys[ERROR_DATA], error_codes[error_code]);
+
+    return cJSON_PrintUnformatted(error_json);
 }
 
 int wm_task_manager_init(wm_task_manager *task_config) {
@@ -220,7 +248,7 @@ void* wm_task_manager_main(wm_task_manager* task_config) {
         }
 
         // Receive message from connection
-        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        /*os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length) {
         case OS_SOCKTERR:
             mterror(WM_TASK_MANAGER_LOGTAG, "Response size is bigger than expected.");
@@ -243,6 +271,13 @@ void* wm_task_manager_main(wm_task_manager* task_config) {
             os_free(response);
             close(peer);
         }
+        os_free(buffer);*/
+
+        buffer = OS_RecvTCP(peer, OS_MAXSTR);
+        length = wm_task_manager_dispatch(buffer, &response);
+        OS_SendTCP(peer, response);
+        os_free(response);
+        close(peer);
         os_free(buffer);
     }
 

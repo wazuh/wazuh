@@ -106,7 +106,7 @@ int wm_task_manager_check_db() {
     return 0;
 }
 
-int wm_task_manager_insert_task(int agent_id, char *module, char *command) {
+int wm_task_manager_insert_task(int agent_id, const char *module, const char *command) {
 
     return 0;
 }

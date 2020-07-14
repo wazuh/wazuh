@@ -26,8 +26,16 @@ typedef enum _json_key {
     AGENT_ID,
     TASK_ID,
     ERROR,
-    DATA
+    ERROR_DATA
 } json_key;
+
+typedef enum _module_list {
+    UPGRADE_MODULE = 0
+} module_list;
+
+typedef enum _command_list {
+    UPGRADE = 0
+} command_list;
 
 typedef enum _error_code {
     SUCCESS = 0,
@@ -44,12 +52,12 @@ int wm_task_manager_read(xml_node **nodes, wmodule *module);
 // Function headers
 size_t wm_task_manager_dispatch(const char *msg, char **response);
 cJSON* wm_task_manager_parse_message(const char *msg);
-char* wm_task_manager_error_message(int error_code);
-cJSON* wm_task_manager_response_message(int agent_id, int task_id);
+cJSON* wm_task_manager_build_response_insert(int agent_id, int task_id);
+char* wm_task_manager_build_response_error(int error_code);
 
 // Database function headers
 int wm_task_manager_check_db();
-int wm_task_manager_insert_task(int agent_id, char *module, char *command);
+int wm_task_manager_insert_task(int agent_id, const char *module, const char *command);
 
 #endif
 #endif
