@@ -13,3 +13,23 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+int __wrap_wurl_request(const char * url, const char * dest, const char *header, const char *data) {
+    if (url) {
+        check_expected(url);
+    }
+    
+    if (dest) {
+        check_expected(dest);
+    }
+    
+    if (header) {
+        check_expected(header);
+    }
+    
+    if (data) {
+        check_expected(data);
+    }
+    
+    return mock();
+}
