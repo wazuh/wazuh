@@ -60,10 +60,8 @@ volatile int write_pending = 0;
 volatile int running = 1;
 
 extern struct keynode *queue_insert;
-extern struct keynode *queue_backup;
 extern struct keynode *queue_remove;
 extern struct keynode * volatile *insert_tail;
-extern struct keynode * volatile *backup_tail;
 extern struct keynode * volatile *remove_tail;
 
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
@@ -479,11 +477,6 @@ int main(int argc, char **argv)
         shost[sizeof(shost) - 1] = '\0';
     }
 
-    /* Load ossec uid and gid for creating backups */
-    if (OS_LoadUid() < 0) {
-        merror_exit("Couldn't get user and group id.");
-    }
-
     /* Chroot */
     if (Privsep_Chroot(dir) < 0)
         merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
@@ -499,7 +492,6 @@ int main(int argc, char **argv)
     /* Initialize queues */
     client_queue = queue_init(AUTH_POOL);
     insert_tail = &queue_insert;
-    backup_tail = &queue_backup;
     remove_tail = &queue_remove;
 
     /* Start working threads */
@@ -757,7 +749,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 void* run_writer(__attribute__((unused)) void *arg) {
     keystore *copy_keys;
     struct keynode *copy_insert;
-    struct keynode *copy_backup;
     struct keynode *copy_remove;
     struct keynode *cur;
     struct keynode *next;
@@ -776,13 +767,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         copy_keys = OS_DupKeys(&keys);
         copy_insert = queue_insert;
-        copy_backup = queue_backup;
         copy_remove = queue_remove;
         queue_insert = NULL;
-        queue_backup = NULL;
         queue_remove = NULL;
         insert_tail = &queue_insert;
-        backup_tail = &queue_backup;
         remove_tail = &queue_remove;
         write_pending = 0;
         w_mutex_unlock(&mutex_keys);
@@ -810,19 +798,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
             free(cur->name);
             free(cur->ip);
             free(cur->group);
-            free(cur);
-        }
-
-        for (cur = copy_backup; cur; cur = next) {
-            next = cur->next;
-            OS_BackupAgentInfo(cur->id, cur->name, cur->ip);
-
-            snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
-            wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-            free(cur->id);
-            free(cur->name);
-            free(cur->ip);
             free(cur);
         }
 
