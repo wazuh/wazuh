@@ -46,11 +46,6 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     return mock();
 }
 
-void __wrap_sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object) {
-    check_expected_ptr(scan_config);
-    check_expected_ptr(cjson_object);
-}
-
 /* setup/teardown */
 static int setup_group(void **state) {
     wm_gcp *gcp_config = calloc(1, sizeof(wm_gcp));

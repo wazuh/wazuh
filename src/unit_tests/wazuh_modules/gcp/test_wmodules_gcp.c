@@ -21,6 +21,7 @@
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/schedule_scan_wrappers.h"
 
 static const char *XML_ENABLED = "enabled";
 static const char *XML_PROJECT_ID = "project_id";
@@ -60,14 +61,6 @@ int replace_configuration_value(XML_NODE nodes, const char *tag, const char *new
     }
     // If we got here, the given tag was not found
     return -2;
-}
-
-/* wraps */
-int __wrap_sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char *MODULE_NAME) {
-    check_expected_ptr(nodes);
-    check_expected(MODULE_NAME);
-
-    return mock();
 }
 
 /* setup/teardown */

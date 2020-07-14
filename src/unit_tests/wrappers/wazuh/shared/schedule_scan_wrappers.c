@@ -15,6 +15,12 @@
 #include <cmocka.h>
 
 
+void __wrap_sched_scan_dump(const sched_scan_config* scan_config,
+                            cJSON *cjson_object) {
+    check_expected_ptr(scan_config);
+    check_expected_ptr(cjson_object);
+}
+
 time_t __wrap_sched_scan_get_time_until_next_scan(sched_scan_config *config,
                                                   const char *MODULE_TAG,
                                                   const int run_on_start) {
@@ -23,4 +29,13 @@ time_t __wrap_sched_scan_get_time_until_next_scan(sched_scan_config *config,
     check_expected(run_on_start);
 
     return mock_type(time_t);
+}
+
+int __wrap_sched_scan_read(sched_scan_config *scan_config,
+                           xml_node **nodes,
+                           const char *MODULE_NAME) {
+    check_expected_ptr(nodes);
+    check_expected(MODULE_NAME);
+
+    return mock();
 }
