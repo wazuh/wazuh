@@ -23,6 +23,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/os_utils_wrappers.h"
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
+#include "../wrappers/wazuh/shared/string_op_wrappers.h"
 
 #include "../syscheckd/fim_db.h"
 #include "../config/syscheck-config.h"
@@ -53,14 +54,6 @@ unsigned long __wrap_time() {
     return __real_time();
 }
 #endif
-
-char *__wrap_wstr_escape_json() {
-    char *ret = mock_type(char *);
-    if (ret) {
-        return strdup(ret);
-    }
-    return NULL;
-}
 
 int __wrap_fim_send_sync_msg(char * msg) {
     return 1;

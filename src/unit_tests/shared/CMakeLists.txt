@@ -1,8 +1,9 @@
 
 # Tests list and flags
 set(FILE_OP_BASE_FLAGS "-Wl,--wrap,isChroot -Wl,--wrap,stat -Wl,--wrap,chmod -Wl,--wrap,getpid \
-                        -Wl,--wrap,unlink -Wl,--wrap,_merror -Wl,--wrap,_minfo -Wl,--wrap,_mwarn -Wl,--wrap,fopen -Wl,--wrap,_mferror \
-                        -Wl,--wrap=fflush,--wrap=fclose,--wrap,fread,--wrap=fseek,--wrap=fwrite,--wrap=remove,--wrap,fprintf,--wrap=fgets")
+                        -Wl,--wrap,unlink -Wl,--wrap,_merror -Wl,--wrap,_minfo -Wl,--wrap,_mwarn -Wl,--wrap,fopen \
+                        -Wl,--wrap,_mferror -Wl,--wrap=fflush,--wrap=fclose,--wrap,fread,--wrap=fseek,--wrap=fwrite \
+                        -Wl,--wrap=remove,--wrap,fprintf,--wrap=fgets")
 
 list(APPEND shared_tests_names "test_file_op")
 
@@ -22,7 +23,7 @@ list(APPEND shared_tests_names "test_string_op")
 list(APPEND shared_tests_flags "")
 
 set(VERSION_OP_BASE_FLAGS "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
-                                -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets")
+                           -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets")
 
 list(APPEND shared_tests_names "test_version_op")
 if(${TARGET} STREQUAL "winagent")
@@ -55,8 +56,9 @@ list(APPEND shared_tests_flags " ")
 
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_bzip2_op")
-list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wrap=fwrite,--wrap=BZ2_bzWriteOpen,--wrap=BZ2_bzWriteClose64 \
-                                -Wl,--wrap=BZ2_bzReadClose,--wrap=BZ2_bzReadOpen,--wrap=BZ2_bzRead,--wrap=BZ2_bzWrite,--wrap=_mdebug2,--wrap=fflush \
+list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wrap=fwrite,--wrap=BZ2_bzWriteOpen \
+                                -Wl,--wrap=BZ2_bzWriteClose64 -Wl,--wrap=BZ2_bzReadClose,--wrap=BZ2_bzReadOpen \
+                                -Wl,--wrap=BZ2_bzRead,--wrap=BZ2_bzWrite,--wrap=_mdebug2,--wrap=fflush \
                                 -Wl,--wrap=fgets,--wrap=fprintf,--wrap=fseek,--wrap=remove")
 
 list(APPEND shared_tests_names "test_schedule_scan")
@@ -73,18 +75,22 @@ list(APPEND shared_tests_names "test_syscheck_op")
 if(${TARGET} STREQUAL "winagent")
     # cJSON_CreateArray@0 instead of cJSON_CreateArray since linker will be looking for cdecl forma
     # More info at: (https://devblogs.microsoft.com/oldnewthing/20040108-00/?p=41163)
-    list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=syscom_dispatch -Wl,--wrap,cJSON_CreateArray@0 -Wl,--wrap,cJSON_CreateObject@0")
+    list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=syscom_dispatch \
+                                    -Wl,--wrap,cJSON_CreateArray@0 -Wl,--wrap,cJSON_CreateObject@0")
 else()
     list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=cJSON_CreateArray,--wrap=cJSON_CreateObject")
 endif()
 
 if(NOT ${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_names "test_audit_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,audit_send -Wl,--wrap,select -Wl,--wrap,audit_get_reply \
-                                -Wl,--wrap,wpopenv -Wl,--wrap,fgets -Wl,--wrap,wpclose -Wl,--wrap,audit_open -Wl,--wrap,audit_add_watch_dir \
-                                -Wl,--wrap,audit_update_watch_perms -Wl,--wrap,audit_errno_to_name -Wl,--wrap,audit_rule_fieldpair_data -Wl,--wrap,fopen \
-                                -Wl,--wrap,audit_add_rule_data -Wl,--wrap,audit_delete_rule_data -Wl,--wrap,audit_close -Wl,--wrap,fclose -Wl,--wrap,fflush \
-                                -Wl,--wrap,fprintf -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove")
+list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,audit_send \
+                                -Wl,--wrap,select -Wl,--wrap,audit_get_reply -Wl,--wrap,wpopenv -Wl,--wrap,fgets \
+                                -Wl,--wrap,wpclose -Wl,--wrap,audit_open -Wl,--wrap,audit_add_watch_dir \
+                                -Wl,--wrap,audit_update_watch_perms -Wl,--wrap,audit_errno_to_name \
+                                -Wl,--wrap,audit_rule_fieldpair_data -Wl,--wrap,fopen -Wl,--wrap,audit_add_rule_data \
+                                -Wl,--wrap,audit_delete_rule_data -Wl,--wrap,audit_close -Wl,--wrap,fclose \
+                                -Wl,--wrap,fflush -Wl,--wrap,fprintf -Wl,--wrap,fread -Wl,--wrap,fseek \
+                                -Wl,--wrap,fwrite -Wl,--wrap,remove")
 
 list(APPEND shared_tests_names "test_privsep_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getgrnam_r,--wrap=getpid")

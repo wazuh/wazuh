@@ -26,6 +26,8 @@
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
+#include "../wrappers/wazuh/shared/string_op_wrappers.h"
+
 #include "syscheckd/syscheck.h"
 
 
@@ -320,14 +322,6 @@ static int teardown_event_4663_dir(void **state) {
     return 0;
 }
 
-char *__wrap_wstr_replace(const char * string, const char * search, const char * replace) {
-    check_expected(string);
-    check_expected(search);
-    check_expected(replace);
-
-    return mock_type(char*);
-}
-
 void __wrap_free_whodata_event(whodata_evt *w_evt) {
     if (OSHash_Add_ex_check_data) {
         check_expected(w_evt);
@@ -359,11 +353,6 @@ void __wrap_fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int r
     function_called();
     check_expected(w_evt);
     check_expected(report);
-}
-
-char *__wrap_convert_windows_string(LPCWSTR string) {
-    check_expected(string);
-    return mock_type(char*);
 }
 
 /**************************************************************************/

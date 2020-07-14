@@ -18,6 +18,7 @@
 #include "../wrappers/posix/grp_wrappers.h"
 #include "../wrappers/posix/pwd_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/string_op_wrappers.h"
 
 
 /* Auxiliar structs */
@@ -45,15 +46,6 @@ typedef struct __unescape_syscheck_field_data_s {
 }unescape_syscheck_field_data_t;
 
 /* wrappers */
-
-extern void __real_wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str);
-void __wrap_wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str) {
-    if(mock()) {
-        __real_wstr_split(str, delim, replace_delim, occurrences, splitted_str);
-    } else {
-        *splitted_str = NULL;
-    }
-}
 
 int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) {
     check_expected(path);

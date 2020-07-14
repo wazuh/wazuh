@@ -13,3 +13,50 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+#ifdef WIN32
+char *__wrap_convert_windows_string(LPCWSTR string) {
+    check_expected(string);
+    return mock_type(char*);
+}
+#endif
+
+int __wrap_wstr_end(char *str, const char *str_end) {
+    if (str) {
+        check_expected(str);
+    }
+
+    if (str_end) {
+        check_expected(str_end);
+    }
+
+    return mock();
+}
+
+char *__wrap_wstr_escape_json() {
+    char *ret = mock_type(char *);
+
+    if (ret) {
+        return strdup(ret);
+    }
+    
+    return NULL;
+}
+
+char *__wrap_wstr_replace(const char * string, const char * search, const char * replace) {
+    check_expected(string);
+    check_expected(search);
+    check_expected(replace);
+
+    return mock_type(char*);
+}
+
+void __real_wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str);
+void __wrap_wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str) {
+    if(mock()) {
+        __real_wstr_split(str, delim, replace_delim, occurrences, splitted_str);
+    }
+    else {
+        *splitted_str = NULL;
+    }
+}
