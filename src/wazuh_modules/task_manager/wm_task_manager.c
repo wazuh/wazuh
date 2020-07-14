@@ -27,6 +27,96 @@ const wm_context WM_TASK_MANAGER_CONTEXT = {
     (cJSON * (*)(const void *))wm_task_manager_dump
 };
 
+size_t wm_task_manager_dispatch(const char *msg, char **response) {
+    cJSON *event_json = NULL;
+
+    if (event_json = wm_task_manager_parse_message(msg), !event_json) {
+        *response = wm_task_manager_error_message(1);
+        return strlen(*response);
+    }
+
+    *response = cJSON_PrintUnformatted(event_json);
+
+    cJSON_Delete(event_json);
+
+    return strlen(*response);
+}
+
+cJSON* wm_task_manager_parse_message(const char *msg) {
+    cJSON *event_json = NULL;
+    cJSON *agent_json = NULL;
+    cJSON *module_json = NULL;
+    cJSON *command_json = NULL;
+    cJSON *agentid_json = NULL;
+    const char *error;
+    int agent = 0;
+    int agents = 0;
+
+    // Parsing event
+    if (event_json = cJSON_ParseWithOpts(msg, &error, 0), !event_json) {
+        mterror(WM_TASK_MANAGER_LOGTAG, "Error parsing JSON event: '%s'", msg);
+        return NULL;
+    }
+
+    // Getting array size
+    if (agents = cJSON_GetArraySize(event_json), !agents) {
+        mterror(WM_TASK_MANAGER_LOGTAG, "Invalid message. Array of agents is empty.");
+        cJSON_Delete(event_json);
+        return NULL;
+    }
+
+    for (agent = 0; agent < agents; ++agent) {
+        // Getting agent
+        agent_json = cJSON_GetArrayItem(event_json, agent);
+
+        // Detect module
+        if (module_json = cJSON_GetObjectItem(agent_json, "module"), !module_json) {
+            mterror(WM_TASK_MANAGER_LOGTAG, "Invalid message. Module not found at index '%d'", agent);
+            cJSON_Delete(event_json);
+            return NULL;
+        }
+
+        // Detect command
+        if (command_json = cJSON_GetObjectItem(agent_json, "command"), !command_json) {
+            mterror(WM_TASK_MANAGER_LOGTAG, "Invalid message. Command not found at index '%d'", agent);
+            cJSON_Delete(event_json);
+            return NULL;
+        }
+
+        // Detect agent ID
+        if (agentid_json = cJSON_GetObjectItem(agent_json, "agent"), !agentid_json) {
+            mterror(WM_TASK_MANAGER_LOGTAG, "Invalid message. Agent ID not found at index '%d'", agent);
+            cJSON_Delete(event_json);
+            return NULL;
+        }
+    }
+
+    return event_json;
+}
+
+char* wm_task_manager_error_message(int error_code) {
+    cJSON *error_json = NULL;
+    char *msg = NULL;
+
+    switch (error_code) {
+    case 1:
+        msg = "Invalid message";
+        break;
+    case 2:
+        msg = "Database error";
+        break;
+    default:
+        msg = "Unknown error";
+        break;
+    }
+
+    error_json = cJSON_CreateObject();
+    cJSON_AddNumberToObject(error_json, "error", error_code);
+    cJSON_AddStringToObject(error_json, "message", msg);
+
+    return cJSON_PrintUnformatted(error_json);
+}
+
 int wm_task_manager_init(wm_task_manager *task_config) {
     int sock = 0;
 
@@ -108,10 +198,10 @@ void* wm_task_manager_main(wm_task_manager* task_config) {
             close(peer);
             break;
         default:
-            //length = wm_task_manager_dispatch(buffer, &response);
+            length = wm_task_manager_dispatch(buffer, &response);
             // Send message to connection
-            //OS_SendSecureTCP(peer, length, response);
-            //os_free(response);
+            OS_SendSecureTCP(peer, length, response);
+            os_free(response);
             close(peer);
         }
         os_free(buffer);

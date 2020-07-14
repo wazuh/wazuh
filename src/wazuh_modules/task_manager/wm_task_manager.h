@@ -27,6 +27,9 @@ int wm_task_manager_read(xml_node **nodes, wmodule *module);
 
 // Function headers
 int wm_task_manager_check_db();
+size_t wm_task_manager_dispatch(const char *msg, char **response);
+cJSON* wm_task_manager_parse_message(const char *msg);
+char* wm_task_manager_error_message(int error_code);
 
 #endif
 #endif
