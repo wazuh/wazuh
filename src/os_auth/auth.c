@@ -21,10 +21,8 @@ char shost[512];
 authd_config_t config;
 
 struct keynode *queue_insert = NULL;
-struct keynode *queue_backup = NULL;
 struct keynode *queue_remove = NULL;
 struct keynode * volatile *insert_tail;
-struct keynode * volatile *backup_tail;
 struct keynode * volatile *remove_tail;
 
 // Append key to insertion queue
@@ -42,19 +40,6 @@ void add_insert(const keyentry *entry,const char *group) {
 
     (*insert_tail) = node;
     insert_tail = &node->next;
-}
-
-// Append key to backup queue
-void add_backup(const keyentry *entry) {
-    struct keynode *node;
-
-    os_calloc(1, sizeof(struct keynode), node);
-    node->id = strdup(entry->id);
-    node->name = strdup(entry->name);
-    node->ip = strdup(entry->ip->ip);
-
-    (*backup_tail) = node;
-    backup_tail = &node->next;
 }
 
 // Append key to deletion queue
@@ -206,8 +191,7 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
                 id_exist = keys.keyentries[index]->id;
                 minfo("Duplicated IP '%s' (%s). Saving backup.", ip, id_exist);
                 
-                OS_RemoveAgentGroup(id_exist);
-                add_backup(keys.keyentries[index]);
+                add_remove(keys.keyentries[index]);
                 OS_DeleteKey(&keys, id_exist, 0);
             } else {
                 merror("Duplicated IP %s", ip);
@@ -232,7 +216,7 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
             id_exist = keys.keyentries[index]->id;
             minfo("Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
 
-            add_backup(keys.keyentries[index]);
+            add_remove(keys.keyentries[index]);
             OS_DeleteKey(&keys, id_exist, 0);
         } else {
             merror("Invalid agent name %s (duplicated)", agentname);

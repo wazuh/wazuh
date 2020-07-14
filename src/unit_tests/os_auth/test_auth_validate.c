@@ -77,7 +77,7 @@ int __wrap__mdebug1(const char * file, int line, const char * func, const char *
 void __wrap_OS_RemoveAgentGroup(const char *id) {    
 }
 
-void __wrap_add_backup(const keyentry *entry) {
+void __wrap_add_remove(const keyentry *entry) {
 }
 
 int __wrap_opendir() {
@@ -125,10 +125,8 @@ typedef struct _enrollment_response {
 
 
 extern struct keynode *queue_insert;
-extern struct keynode *queue_backup;
 extern struct keynode *queue_remove;
 extern struct keynode * volatile *insert_tail;
-extern struct keynode * volatile *backup_tail;
 extern struct keynode * volatile *remove_tail;
 
 /* setup/teardowns */
@@ -145,7 +143,6 @@ static int setup_group(void **state) {
 
     /* Initialize queues */    
     insert_tail = &queue_insert;
-    backup_tail = &queue_backup;
     remove_tail = &queue_remove;
 
     return 0;

@@ -95,10 +95,8 @@ typedef struct _enrollment_response {
 
 
 extern struct keynode *queue_insert;
-extern struct keynode *queue_backup;
 extern struct keynode *queue_remove;
 extern struct keynode * volatile *insert_tail;
-extern struct keynode * volatile *backup_tail;
 extern struct keynode * volatile *remove_tail;
 
 char* new_id = NULL;
@@ -110,7 +108,6 @@ static int setup_group(void **state) {
     
     /* Initialize queues */    
     insert_tail = &queue_insert;
-    backup_tail = &queue_backup;
     remove_tail = &queue_remove;
 
     return 0;
