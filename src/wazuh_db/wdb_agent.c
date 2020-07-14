@@ -47,9 +47,12 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
     sqlite3_stmt *stmt;
     const char * sql = SQL_INSERT_AGENT;
     time_t date;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
     if(keep_date) {
         date = get_agent_date_added(id);
@@ -57,8 +60,8 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
         time(&date);
     }
 
-    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, sql, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -97,12 +100,15 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
 int wdb_update_agent_name(int id, const char *name) {
     int result = 0;
     sqlite3_stmt *stmt;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_NAME, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, SQL_UPDATE_AGENT_NAME, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -120,16 +126,19 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
     int result = 0;
     sqlite3_stmt *stmt;
     const char * sql = SQL_UPDATE_AGENT_VERSION;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
     if(agent_ip) {
         sql = SQL_UPDATE_AGENT_VERSION_IP;
     }
 
-    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, sql, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -154,7 +163,7 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
         sqlite3_bind_int(stmt, 15, id);
     }
 
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb->db) : -1;
     sqlite3_finalize(stmt);
 
     return result;
@@ -164,19 +173,22 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
 int wdb_update_agent_keepalive(int id, long keepalive) {
     int result = 0;
     sqlite3_stmt *stmt;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_KEEPALIVE, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, SQL_UPDATE_AGENT_KEEPALIVE, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
     sqlite3_bind_int64(stmt, 1, keepalive);
     sqlite3_bind_int(stmt, 2, id);
 
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb->db) : -1;
     sqlite3_finalize(stmt);
 
     return result;
@@ -187,12 +199,15 @@ int wdb_remove_agent(int id) {
     int result;
     sqlite3_stmt *stmt;
     char * name;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_DELETE_AGENT, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, SQL_DELETE_AGENT, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -213,12 +228,15 @@ int wdb_remove_agent(int id) {
 char* wdb_agent_name(int id) {
     sqlite3_stmt *stmt = NULL;
     char *result = NULL;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return NULL;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return NULL;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_SELECT_AGENT, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, SQL_SELECT_AGENT, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return NULL;
     }
 
@@ -232,7 +250,7 @@ char* wdb_agent_name(int id) {
         result = NULL;
         break;
     default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         result = NULL;
     }
 
@@ -245,12 +263,15 @@ char* wdb_agent_name(int id) {
 char* wdb_agent_group(int id) {
     sqlite3_stmt *stmt = NULL;
     char *result = NULL;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return NULL;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return NULL;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_SELECT_AGENT_GROUP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, SQL_SELECT_AGENT_GROUP, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return NULL;
     }
 
@@ -267,7 +288,7 @@ char* wdb_agent_group(int id) {
         result = NULL;
         break;
     default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         result = NULL;
     }
 
@@ -379,20 +400,24 @@ int* wdb_get_all_agents() {
     int n = 1;
     int *array;
     sqlite3_stmt *stmt = NULL;
+    wdb_t * wdb; 
+
 
     if (!(array = malloc(sizeof(int)))) {
         merror("wdb_get_all_agents(): memory error");
         return NULL;
     }
 
-    if (wdb_open_global() < 0) {
-        free(array);
-        return NULL;
-    }
+    if (wdb = wdb_open_global(), !wdb) {
+            free(array);
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return NULL;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_SELECT_AGENTS, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
+    if (wdb_prepare(wdb->db, SQL_SELECT_AGENTS, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+        wdb_leave(wdb);
+
         free(array);
         return NULL;
     }
@@ -405,7 +430,8 @@ int* wdb_get_all_agents() {
                 merror("wdb_get_all_agents(): memory error");
                 free(array);
                 sqlite3_finalize(stmt);
-                wdb_close_global();
+                wdb_leave(wdb);
+
                 return NULL;
             }
 
@@ -426,13 +452,17 @@ int* wdb_get_all_agents() {
 int wdb_find_agent(const char *name, const char *ip) {
     sqlite3_stmt *stmt = NULL;
     int result;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_FIND_AGENT, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
+    if (wdb_prepare(wdb->db, SQL_FIND_AGENT, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+        wdb_leave(wdb);
+
         return -1;
     }
 
@@ -467,12 +497,15 @@ long wdb_get_agent_offset(int id_agent, int type) {
     default:
         return -1;
     }
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, sql, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -499,19 +532,22 @@ int wdb_set_agent_offset(int id_agent, int type, long offset) {
     default:
         return -1;
     }
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, sql, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
     sqlite3_bind_int64(stmt, 1, offset);
     sqlite3_bind_int(stmt, 2, id_agent);
 
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb->db) : -1;
     sqlite3_finalize(stmt);
 
     return result;
@@ -522,12 +558,15 @@ int wdb_get_agent_status(int id_agent) {
     int result;
     const char *status;
     sqlite3_stmt *stmt;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_SELECT_AGENT_STATUS, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, SQL_SELECT_AGENT_STATUS, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -563,19 +602,22 @@ int wdb_set_agent_status(int id_agent, int status) {
     default:
         return -1;
     }
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_STATUS, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, SQL_UPDATE_AGENT_STATUS, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
     sqlite3_bind_text(stmt, 1, str_status, -1, NULL);
     sqlite3_bind_int(stmt, 2, id_agent);
 
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb->db) : -1;
     sqlite3_finalize(stmt);
 
     return result;
@@ -585,19 +627,22 @@ int wdb_set_agent_status(int id_agent, int status) {
 int wdb_update_agent_group(int id, char *group) {
     int result = 0;
     sqlite3_stmt *stmt;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_GROUP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, SQL_UPDATE_AGENT_GROUP, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
     sqlite3_bind_text(stmt, 1, group, -1, NULL);
     sqlite3_bind_int(stmt, 2, id);
 
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb->db) : -1;
     sqlite3_finalize(stmt);
 
     if(wdb_update_agent_multi_group(id,group) < 0){
@@ -666,13 +711,17 @@ int wdb_update_agent_multi_group(int id, char *group) {
 int wdb_find_group(const char *name) {
     sqlite3_stmt *stmt = NULL;
     int result;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_FIND_GROUP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
+    if (wdb_prepare(wdb->db, SQL_FIND_GROUP, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+        wdb_leave(wdb);
+
         return -1;
     }
 
@@ -687,22 +736,26 @@ int wdb_find_group(const char *name) {
 int wdb_insert_group(const char *name) {
     sqlite3_stmt *stmt = NULL;
     int result;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_INSERT_AGENT_GROUP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
+    if (wdb_prepare(wdb->db, SQL_INSERT_AGENT_GROUP, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+        wdb_leave(wdb);
+
         return -1;
     }
 
     sqlite3_bind_text(stmt, 1, name, -1, NULL);
 
     if (wdb_step(stmt) == SQLITE_DONE)
-        result = (int)sqlite3_last_insert_rowid(wdb_global);
+        result = (int)sqlite3_last_insert_rowid(wdb->db);
     else {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         result = -1;
     }
 
@@ -714,19 +767,22 @@ int wdb_insert_group(const char *name) {
 int wdb_update_agent_belongs(int id_group, int id_agent) {
     int result = 0;
     sqlite3_stmt *stmt;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_INSERT_AGENT_BELONG, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, SQL_INSERT_AGENT_BELONG, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
     sqlite3_bind_int(stmt, 1, id_group);
     sqlite3_bind_int(stmt, 2, id_agent);
 
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb->db) : -1;
     sqlite3_finalize(stmt);
 
     return result;
@@ -736,18 +792,21 @@ int wdb_update_agent_belongs(int id_group, int id_agent) {
 int wdb_delete_agent_belongs(int id_agent) {
     int result = 0;
     sqlite3_stmt *stmt;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_DELETE_AGENT_BELONG, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, SQL_DELETE_AGENT_BELONG, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
     sqlite3_bind_int(stmt, 1, id_agent);
 
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb->db) : -1;
     sqlite3_finalize(stmt);
 
     return result;
@@ -759,20 +818,24 @@ int wdb_update_groups(const char *dirname) {
     int n = 1;
     char **array;
     sqlite3_stmt *stmt = NULL;
+    wdb_t * wdb; 
+
 
     if (!(array = (char**) calloc(1, sizeof(char*)))) {
         merror("wdb_update_groups(): memory error");
         return -1;
     }
 
-    if (wdb_open_global() < 0) {
-        free(array);
-        return -1;
-    }
+    if (wdb = wdb_open_global(), !wdb) {
+    		free(array);
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_SELECT_GROUPS, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
+    if (wdb_prepare(wdb->db, SQL_SELECT_GROUPS, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+        wdb_leave(wdb);
+
         free(array);
         return -1;
     }
@@ -784,7 +847,8 @@ int wdb_update_groups(const char *dirname) {
             if (!(newarray = (char **)realloc(array, sizeof(char *) * (n *= 2)))) {
                 merror("wdb_update_groups(): memory error");
                 sqlite3_finalize(stmt);
-                wdb_close_global();
+                wdb_leave(wdb);
+
                 free(array);
                 return -1;
             }
@@ -854,19 +918,22 @@ int wdb_remove_group_from_belongs_db(const char *name) {
 
     int result;
     sqlite3_stmt *stmt;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
     // Delete from belongs
-    if (wdb_prepare(wdb_global, SQL_DELETE_GROUP_BELONG, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, SQL_DELETE_GROUP_BELONG, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
     sqlite3_bind_text(stmt, 1, name, -1, NULL);
 
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb->db) : -1;
     sqlite3_finalize(stmt);
 
     return result;
@@ -882,18 +949,21 @@ int wdb_remove_group_db(const char *name) {
 
     int result;
     sqlite3_stmt *stmt;
+    wdb_t * wdb; 
 
-    if (wdb_open_global() < 0)
-        return -1;
+    if (wdb = wdb_open_global(), !wdb) {
+            mdebug1("Couldn't open Global DB : %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            return -1;
+        }
 
-    if (wdb_prepare(wdb_global, SQL_DELETE_GROUP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if (wdb_prepare(wdb->db, SQL_DELETE_GROUP, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
     sqlite3_bind_text(stmt, 1, name, -1, NULL);
 
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb->db) : -1;
     sqlite3_finalize(stmt);
 
     return result;
