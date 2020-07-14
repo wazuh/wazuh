@@ -9,18 +9,18 @@
  * Foundation.
  */
 
-#ifndef THREAD_SAFE_QUEUE_TESTS_H
-#define THREAD_SAFE_QUEUE_TESTS_H
+#ifndef STRING_HELPER_TESTS_H
+#define STRING_HELPER_TESTS_H
 #include "gtest/gtest.h"
 
-class ThreadSafeQueueTest : public ::testing::Test
+class StringUtilsTest : public ::testing::Test
 {
 protected:
 
-    ThreadSafeQueueTest() = default;
-    virtual ~ThreadSafeQueueTest() = default;
+    StringUtilsTest() = default;
+    virtual ~StringUtilsTest() = default;
 
     void SetUp() override;
     void TearDown() override;
 };
-#endif //THREAD_SAFE_QUEUE_TESTS_H
+#endif //STRING_HELPER_TESTS_H

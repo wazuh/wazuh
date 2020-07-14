@@ -1,3 +1,14 @@
+/*
+ * Wazuh DBSYNC
+ * Copyright (C) 2015-2020, Wazuh Inc.
+ * July 14, 2020.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include <thread>
 #include "threadSafeQueue_test.h"
 #include "threadSafeQueue.h"
@@ -15,7 +26,7 @@ TEST_F(ThreadSafeQueueTest, Ctor)
     EXPECT_FALSE(queue.cancelled());
     EXPECT_FALSE(queue.pop(ret_val, false));//non wait pop;
     auto spValue{queue.pop(false)};
-    EXPECT_TRUE(!spValue);
+    EXPECT_FALSE(spValue);
 }
 
 TEST_F(ThreadSafeQueueTest, NonBlockingPop)
@@ -28,10 +39,10 @@ TEST_F(ThreadSafeQueueTest, NonBlockingPop)
     EXPECT_FALSE(queue.pop(ret_val, false));//non wait pop;
     queue.push(1);
     auto spValue{queue.pop(false)};
-    EXPECT_FALSE(!spValue);
+    EXPECT_TRUE(spValue);
     EXPECT_EQ(1, *spValue);
     spValue = queue.pop(false);
-    EXPECT_TRUE(!spValue);
+    EXPECT_FALSE(spValue);
 }
 
 TEST_F(ThreadSafeQueueTest, BlockingPopByRef)
@@ -58,7 +69,7 @@ TEST_F(ThreadSafeQueueTest, BlockingPopBySmartPtr)
         [&queue]()
         {
             auto ret_val{queue.pop()};
-            EXPECT_FALSE(!ret_val);
+            EXPECT_TRUE(ret_val);
             EXPECT_EQ(0, *ret_val);
         }
     };
@@ -88,7 +99,7 @@ TEST_F(ThreadSafeQueueTest, CancelBlockingPop)
         [&queue]()
         {
             auto ret_val{queue.pop()};
-            EXPECT_TRUE(!ret_val);
+            EXPECT_FALSE(ret_val);
             EXPECT_TRUE(queue.cancelled());
         }
     };
