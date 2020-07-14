@@ -31,7 +31,7 @@ time_t __wrap_sched_scan_get_time_until_next_scan(sched_scan_config *config,
     return mock_type(time_t);
 }
 
-int __wrap_sched_scan_read(sched_scan_config *scan_config,
+int __wrap_sched_scan_read(__attribute__((unused)) sched_scan_config *scan_config,
                            xml_node **nodes,
                            const char *MODULE_NAME) {
     check_expected_ptr(nodes);

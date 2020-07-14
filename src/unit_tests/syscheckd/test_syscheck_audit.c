@@ -29,6 +29,7 @@
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
+#include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "external/procps/readproc.h"
 
 extern volatile int audit_health_check_deletion;
@@ -62,16 +63,6 @@ int __wrap_fim_whodata_event(whodata_evt * w_evt)
     check_expected(w_evt->inode);
     check_expected(w_evt->ppid);
     return 1;
-}
-
-const char *__wrap_get_group(int gid) {
-    return mock_ptr_type(const char *);
-}
-
-char *__wrap_get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid)
-{
-    check_expected(uid);
-    return mock_type(char*);
 }
 
 /* setup/teardown */
@@ -1239,6 +1230,7 @@ void test_audit_parse(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6334): Audit: Invalid 'auid' value read. Check Audit configuration (PAM).");
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
@@ -1285,6 +1277,7 @@ void test_audit_parse3(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
@@ -1330,6 +1323,7 @@ void test_audit_parse4(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
@@ -1387,6 +1381,7 @@ void test_audit_parse_hex(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
@@ -1579,6 +1574,7 @@ void test_audit_parse_mv(void **state)
     expect_value(__wrap_get_user, uid, 50);
     will_return(__wrap_get_user, strdup("user50"));
 
+    expect_value(__wrap_get_group, gid, 40);
     will_return(__wrap_get_group, "src");
 
     will_return(__wrap_readlink, 0);
@@ -1625,6 +1621,7 @@ void test_audit_parse_mv_hex(void **state)
     expect_value(__wrap_get_user, uid, 50);
     will_return(__wrap_get_user, strdup("user50"));
 
+    expect_value(__wrap_get_group, gid, 40);
     will_return(__wrap_get_group, "src");
 
     will_return(__wrap_readlink, 0);
@@ -1669,6 +1666,7 @@ void test_audit_parse_rm(void **state)
     expect_value(__wrap_get_user, uid, 2);
     will_return(__wrap_get_user, strdup("daemon"));
 
+    expect_value(__wrap_get_group, gid, 5);
     will_return(__wrap_get_group, "tty");
 
     will_return(__wrap_readlink, 0);
@@ -1711,6 +1709,7 @@ void test_audit_parse_chmod(void **state)
     expect_value(__wrap_get_user, uid, 29);
     will_return(__wrap_get_user, strdup("user29"));
 
+    expect_value(__wrap_get_group, gid, 78);
     will_return(__wrap_get_group, "");
 
     will_return(__wrap_readlink, 0);
@@ -1821,6 +1820,7 @@ void test_audit_parse_delete_folder(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
@@ -1874,6 +1874,7 @@ void test_audit_parse_delete_folder_hex(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
@@ -1931,6 +1932,7 @@ void test_audit_parse_delete_folder_hex3_error(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
@@ -1983,6 +1985,7 @@ void test_audit_parse_delete_folder_hex4_error(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
@@ -2037,6 +2040,7 @@ void test_audit_parse_delete_folder_hex5_error(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);

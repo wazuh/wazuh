@@ -20,6 +20,7 @@
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
+#include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 #include "../syscheckd/fim_db.h"
@@ -44,30 +45,6 @@ typedef struct __fim_data_s {
 /* redefinitons/wrapping */
 
 #ifdef TEST_WINAGENT
-
-int __wrap_w_get_file_permissions(const char *file_path, char *permissions, int perm_size) {
-    check_expected(file_path);
-
-    snprintf(permissions, perm_size, "%s", mock_type(char*));
-
-    return mock();
-}
-
-char *__wrap_decode_win_permissions(char *raw_perm) {
-    check_expected(raw_perm);
-    return mock_type(char*);
-}
-
-unsigned int __wrap_w_get_file_attrs(const char *file_path) {
-    check_expected(file_path);
-    return mock();
-}
-
-void __wrap_decode_win_attributes(char *str, unsigned int attrs) {
-    check_expected(str);
-    check_expected(attrs);
-}
-
 void __wrap_os_winreg_check() {}
 #endif
 
@@ -104,12 +81,6 @@ char **__wrap_fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long in
     check_expected(dev);
 
     return mock_type(char **);
-}
-
-int __wrap_delete_target_file(const char *path) {
-    check_expected(path);
-
-    return mock();
 }
 
 int __wrap_fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
@@ -181,18 +152,6 @@ int __wrap_fim_db_set_scanned(fdb_t *fim_sql, char *path) {
     check_expected(path);
 
     return mock();
-}
-
-char *__wrap_get_user(const char *path, int uid, char **sid) {
-    check_expected(uid);
-
-    return mock_type(char*);
-}
-
-const char *__wrap_get_group(int gid) {
-    check_expected(gid);
-
-    return mock_type(const char*);
 }
 
 void __wrap_fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, void *arg) {

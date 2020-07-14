@@ -12,6 +12,19 @@
 #ifndef SYSCHECK_OP_WRAPPERS_H
 #define SYSCHECK_OP_WRAPPERS_H
 
+char *__wrap_decode_win_permissions(char *raw_perm);
+
+int __wrap_delete_target_file(const char *path);
+
+const char *__wrap_get_group(int gid);
+
+char *__wrap_get_user(const char *path, int uid, char **sid);
+
+unsigned int __wrap_w_directory_exists(const char *path);
+
+unsigned int __wrap_w_get_file_attrs(const char *file_path);
+
+int __wrap_w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
 
 
 

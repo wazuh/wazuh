@@ -23,6 +23,7 @@
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
+#include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
@@ -114,11 +115,6 @@ int __wrap_set_winsacl(const char *dir, int position) {
     return mock();
 }
 
-unsigned int __wrap_w_directory_exists(const char *path) {
-    check_expected(path);
-
-    return mock();
-}
 #endif
 
 /* setup/teardown */

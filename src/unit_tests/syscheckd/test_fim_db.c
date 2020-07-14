@@ -22,6 +22,7 @@
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/os_utils_wrappers.h"
+#include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 
 #include "../syscheckd/fim_db.h"
 #include "../config/syscheck-config.h"
@@ -85,10 +86,6 @@ cJSON *__wrap_fim_json_event() {
 }
 
 int __wrap_send_syscheck_msg() {
-    return 1;
-}
-
-int __wrap_delete_target_file() {
     return 1;
 }
 
@@ -1098,7 +1095,7 @@ void test_fim_db_insert_inode_id_null_delete_error(void **state) {
     expect_any_always(__wrap_sqlite3_bind_text, a);
     expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
-    
+
     expect_any(__wrap_sqlite3_bind_int64, index);
     expect_any(__wrap_sqlite3_bind_int64, value);
     will_return(__wrap_sqlite3_bind_int64, 0);
@@ -1134,7 +1131,7 @@ void test_fim_db_insert_inode_id_null_delete_row_error(void **state) {
     expect_any_always(__wrap_sqlite3_bind_text, a);
     expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
-    
+
     expect_any(__wrap_sqlite3_bind_int64, index);
     expect_any(__wrap_sqlite3_bind_int64, value);
     will_return(__wrap_sqlite3_bind_int64, 0);
@@ -1331,6 +1328,8 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
     will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
 
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_delete_target_file, path, test_data->entry->path);
+    will_return(__wrap_delete_target_file, 0);
     will_return(__wrap_fim_configuration_directory, 1);
 #else
     will_return(__wrap_fim_configuration_directory, 9);
