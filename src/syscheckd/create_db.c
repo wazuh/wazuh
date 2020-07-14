@@ -246,6 +246,10 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         break;
 
     case FIM_DIRECTORY:
+        if (depth == syscheck.recursion_level[node]) {
+            mdebug2(FIM_DIR_RECURSION_LEVEL, path, depth);
+            return;
+        }
 #ifndef WIN32
         if (item->configuration & REALTIME_ACTIVE) {
             realtime_adddir(path, 0, (item->configuration & CHECK_FOLLOW) ? 1 : 0);

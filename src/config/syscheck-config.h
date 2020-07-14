@@ -158,9 +158,7 @@ typedef struct whodata_dir_status {
     SYSTEMTIME last_check;
 } whodata_dir_status;
 
-typedef struct whodata_directory {
-    SYSTEMTIME timestamp;
-} whodata_directory;
+typedef ULARGE_INTEGER whodata_directory;
 
 typedef struct whodata {
     OSHash *fd;                         // Open file descriptors

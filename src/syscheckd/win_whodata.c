@@ -30,6 +30,7 @@
 #define modify_criteria (FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES)
 #define criteria (DELETE | modify_criteria)
 #define WHODATA_DIR_REMOVE_INTERVAL 2
+#define FILETIME_SECOND 10000000
 
 #ifdef UNIT_TESTING
 #include "unit_tests/wrappers/syscheckd/win_whodata.h"
@@ -137,8 +138,6 @@ void whodata_adapt_path(char **path);
 int whodata_check_arch();
 
 // Whodata list operations
-int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
-int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2);
 char *get_whodata_path(const short unsigned int *win_path);
 
 // Get volumes and paths of Windows system
@@ -664,7 +663,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     unsigned __int64 handle_id;
     char is_directory;
     whodata_directory *w_dir;
-    SYSTEMTIME system_time;
     unsigned long mask = 0;
 
     if (action == EvtSubscribeActionDeliver) {
@@ -797,39 +795,46 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                 w_evt->mask |= mask;
 
+                // Get the event time
+                if (buffer[RENDERED_TIMESTAMP].Type != EvtVarTypeFileTime) {
+                    merror(FIM_WHODATA_PARAMETER, buffer[RENDERED_TIMESTAMP].Type, "event_time");
+                    w_evt->scan_directory = 2;
+                    goto clean;
+                }
+
                 // Check if it is a rename or copy event
                 if (w_evt->scan_directory == 0 || (w_evt->mask & (FILE_WRITE_DATA | FILE_APPEND_DATA)) == 0) {
                     goto clean;
                 }
 
-                if (w_dir = OSHash_Get_ex(syscheck.wdata.directories, w_evt->path), w_dir) {
-                    // Get the event time
-                    if (buffer[RENDERED_TIMESTAMP].Type != EvtVarTypeFileTime) {
-                        merror(FIM_WHODATA_PARAMETER, buffer[RENDERED_TIMESTAMP].Type, "event_time");
-                        w_evt->scan_directory = 2;
-                        goto clean;
-                    }
-                    if (!get_file_time(buffer[RENDERED_TIMESTAMP].FileTimeVal, &system_time)) {
-                        merror(FIM_ERROR_WHODATA_HANDLER_EVENT, handle_id);
-                        goto clean;
-                    }
+                // Check if is a valid directory
+                if (w_evt->config_node < 0) {
+                    mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, w_evt->path);
+                    w_evt->scan_directory = 2;
+                    break;
+                }
 
-                    if (!compare_timestamp(&w_dir->timestamp, &system_time)) {
+                w_rwlock_wrlock(&syscheck.wdata.directories->mutex);
+
+                if (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path), w_dir) {
+                    FILETIME ft;
+
+                    if ((buffer[RENDERED_TIMESTAMP].FileTimeVal - w_dir->QuadPart) < FILETIME_SECOND) {
+                        w_rwlock_unlock(&syscheck.wdata.directories->mutex);
                         mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, w_evt->path);
                         w_evt->scan_directory = 3;
                         break;
                     }
-                    GetSystemTime(&w_dir->timestamp);
+                    GetSystemTimeAsFileTime(&ft);
+                    w_dir->LowPart = ft.dwLowDateTime;
+                    w_dir->HighPart = ft.dwHighDateTime;
+
+                    w_rwlock_unlock(&syscheck.wdata.directories->mutex);
+
                     mdebug2(FIM_WHODATA_CHECK_NEW_FILES, w_evt->path);
                 } else {
-                    // Check if is a valid directory
-                    if (w_evt->config_node < 0) {
-                        mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, w_evt->path);
-                        w_evt->scan_directory = 2;
-                        break;
-                    }
+                    w_rwlock_unlock(&syscheck.wdata.directories->mutex);
                     os_calloc(1, sizeof(whodata_directory), w_dir);
-                    memset(&w_dir->timestamp, 0, sizeof(SYSTEMTIME));
 
                     if (result = whodata_hash_add(syscheck.wdata.directories, w_evt->path, w_dir, "directories"), result != 2) {
                         w_evt->scan_directory = 2;
@@ -856,12 +861,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         // Directory scan has been aborted if scan_directory is 2
                         if (w_evt->mask & DELETE) {
                             fim_whodata_event(w_evt);
-
-                        } else if ((w_evt->mask & FILE_WRITE_DATA) && (w_dir = OSHash_Get_ex(syscheck.wdata.directories, w_evt->path))) {
-                            // Check that a new file has been added
-                            fim_whodata_event(w_evt);
-
-                            mdebug1(FIM_WHODATA_SCAN, w_evt->path);
 
                         } else if(w_evt->mask & FILE_APPEND_DATA || w_evt->mask & FILE_WRITE_DATA) {
                             // Find new files
@@ -915,6 +914,12 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     int exists;
     whodata_dir_status *d_status;
     int interval;
+    OSHashNode *w_dir_node;
+    OSHashNode *w_dir_node_prev;
+    whodata_directory *w_dir;
+    unsigned int w_dir_it;
+    FILETIME current_time;
+    ULARGE_INTEGER stale_time;
 
     if (!syscheck.wdata.interval_scan) {
         interval = WDATA_DEFAULT_INTERVAL_SCAN;
@@ -989,6 +994,39 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
             // Set the timestamp
             GetSystemTime(&d_status->last_check);
         }
+
+        // Go through syscheck.wdata.directories and remove stale entries
+        GetSystemTimeAsFileTime(&current_time);
+
+        stale_time.LowPart = current_time.dwLowDateTime;
+        stale_time.HighPart = current_time.dwHighDateTime;
+
+        // 5 seconds ago
+        stale_time.QuadPart -= 5 * FILETIME_SECOND;
+
+        w_dir_it = 0;
+        w_rwlock_wrlock(&syscheck.wdata.directories->mutex);
+
+        w_dir_node_prev = NULL;
+        w_dir_node = OSHash_Begin(syscheck.wdata.directories, &w_dir_it);
+        while (w_dir_node) {
+            w_dir = w_dir_node->data;
+            if (w_dir->QuadPart < stale_time.QuadPart) {
+                if (w_dir = OSHash_Delete(syscheck.wdata.directories, w_dir_node->key), w_dir) {
+                    free(w_dir);
+                    if(!w_dir_node_prev) { // We just deleted the first node, find the new beginning
+                        w_dir_node = OSHash_Begin(syscheck.wdata.directories, &w_dir_it);
+                    } else {
+                        w_dir_node = w_dir_node_prev;
+                    }
+                }
+            }
+            w_dir_node_prev = w_dir_node;
+            w_dir_node = OSHash_Next(syscheck.wdata.directories, &w_dir_it, w_dir_node);
+        }
+
+        w_rwlock_unlock(&syscheck.wdata.directories->mutex);
+
         sleep(interval);
     }
 
@@ -1087,54 +1125,6 @@ void set_subscription_query(wchar_t *query) {
             AUDIT_SUCCESS, // Only successful events
             criteria); // For 4663 and 4656 events need write, delete, change_attributes or change_permissions accesss
 }
-
-int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time) {
-    FILETIME file_time;
-    file_time.dwHighDateTime = (DWORD)((file_time_val >> 32) & 0xFFFFFFFF);
-    file_time.dwLowDateTime = (DWORD)(file_time_val & 0xFFFFFFFF);
-    return FileTimeToSystemTime(&file_time, system_time);
-}
-
-int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2) {
-    if (t1->wYear > t2->wYear) {
-        return 0;
-    } else if (t1->wYear < t2->wYear) {
-        return 1;
-    }
-
-    if (t1->wMonth > t2->wMonth) {
-        return 0;
-    } else if (t1->wMonth < t2->wMonth) {
-        return 1;
-    }
-
-    if (t1->wDay > t2->wDay) {
-        return 0;
-    } else if (t1->wDay < t2->wDay) {
-        return 1;
-    }
-
-    if (t1->wHour > t2->wHour) {
-        return 0;
-    } else if (t1->wHour < t2->wHour) {
-        return 1;
-    }
-
-    if (t1->wMinute > t2->wMinute) {
-        return 0;
-    } else if (t1->wMinute < t2->wMinute) {
-        return 1;
-    }
-
-    if (t1->wSecond > t2->wSecond) {
-        return 0;
-    } else if (t1->wSecond < t2->wSecond) {
-        return 1;
-    }
-
-    return 1;
-}
-
 
 int check_object_sacl(char *obj, int is_file) {
     HANDLE hdle = NULL;
