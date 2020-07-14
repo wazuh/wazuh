@@ -302,6 +302,7 @@ async def put_files(request, body, overwrite=False, pretty=False, wait_for_compl
     :param path: Filepath to return.
     """
     # Parse body to utf-8
+    Body.validate_content_type(request, expected_content_type='application/octet-stream')
     parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
 
     f_kwargs = {'path': path,
@@ -371,7 +372,7 @@ async def put_api_config(request, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     """
     # Check body parameters
-    Body.validate_content_type(request, expected_content_types='application/json')
+    Body.validate_content_type(request, expected_content_type='application/json')
 
     try:
         f_kwargs = {"updated_config": await request.json()}

@@ -162,6 +162,7 @@ async def create_user(request):
     -------
     User data
     """
+    Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await CreateUserModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=security.create_user,
@@ -189,7 +190,8 @@ async def update_user(request, user_id: str):
     -------
     User data
     """
-    f_kwargs = await UpdateUserModel.get_kwargs(request, additional_kwargs={'user_id': user_id}, wildcard='user_id')
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await UpdateUserModel.get_kwargs(request, additional_kwargs={'user_id': user_id})
 
     dapi = DistributedAPI(f=security.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -293,6 +295,7 @@ async def add_role(request, pretty: bool = False, wait_for_complete: bool = Fals
     Role information
     """
     # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await RoleModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=security.add_role,
@@ -358,7 +361,8 @@ async def update_role(request, role_id: int, pretty: bool = False, wait_for_comp
     Role information updated
     """
     # Get body parameters
-    f_kwargs = await RoleModel.get_kwargs(request, additional_kwargs={'role_id': role_id}, wildcard='role_id')
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await RoleModel.get_kwargs(request, additional_kwargs={'role_id': role_id})
 
     dapi = DistributedAPI(f=security.update_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -436,6 +440,7 @@ async def add_policy(request, pretty: bool = False, wait_for_complete: bool = Fa
     Policy information
     """
     # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await PolicyModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=security.add_policy,
@@ -501,7 +506,8 @@ async def update_policy(request, policy_id: int, pretty: bool = False, wait_for_
     Policy information updated
     """
     # Get body parameters
-    f_kwargs = await PolicyModel.get_kwargs(request, additional_kwargs={'policy_id': policy_id}, wildcard='policy_id')
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await PolicyModel.get_kwargs(request, additional_kwargs={'policy_id': policy_id})
 
     dapi = DistributedAPI(f=security.update_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -769,6 +775,7 @@ async def put_security_config(request, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
+    Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = {'updated_config': await SecurityConfigurationModel.get_kwargs(request)}
 
     dapi = DistributedAPI(f=security.update_security_config,
