@@ -10,6 +10,7 @@ from api.api_exception import APIError
 from api.util import raise_if_exc
 from wazuh import WazuhError
 from wazuh.security import load_spec
+from aiohttp.web_request import Request
 
 T = typing.TypeVar('T')
 
@@ -195,15 +196,16 @@ class Body(Model):
     @classmethod
     async def get_kwargs(cls, request, additional_kwargs: dict = None, wildcard: str = None):
         # Check that the current content-type matches the expected content-type
-        path = request.path.split('/v4')[-1]
-        if additional_kwargs and wildcard:
-            to_be_replace = additional_kwargs.get(list(additional_kwargs.keys())[0])
-            if isinstance(to_be_replace, list):
-                to_be_replace = to_be_replace[0]
-            path = path.replace(to_be_replace, f'{{{wildcard}}}')
-        expected_content_types = load_spec()['paths'][path][request.method.lower()]['requestBody']['content'].keys()
-        if request.content_type not in expected_content_types:
-            raise_if_exc(WazuhError(6002), code=406)
+        if type(request) == Request:
+            path = request.path.split('/v4')[-1]
+            if additional_kwargs and wildcard:
+                to_be_replace = additional_kwargs.get(list(additional_kwargs.keys())[0])
+                if isinstance(to_be_replace, list):
+                    to_be_replace = to_be_replace[0]
+                path = path.replace(to_be_replace, f'{{{wildcard}}}')
+            expected_content_types = load_spec()['paths'][path][request.method.lower()]['requestBody']['content'].keys()
+            if request.content_type not in expected_content_types:
+                raise_if_exc(WazuhError(6002), code=406)
 
         try:
             dikt = request if isinstance(request, dict) else await request.json()
