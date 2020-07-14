@@ -55,4 +55,7 @@
 #define COMPRESSED_LOG_LONG_PATH                "(7502): The path of the compressed log is too long."
 #define COMPRESSED_JSON_LONG_PATH               "(7503): The path of the compressed json is too long."
 
+/* wazuh-logtest warning messages*/
+#define LOGTEST_INV_NUM_THREADS                 "(7000): Invalid number of wazuh-logtest threads. Only creates %d threads"
+
 #endif /* WARN_MESSAGES_H */
