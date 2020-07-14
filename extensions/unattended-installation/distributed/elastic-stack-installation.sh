@@ -212,9 +212,9 @@ createCertificates() {
     logger "Elasticsearch installed."  
 
     # Start Elasticsearch
+    logger "Initializing Elasticsearch..."
     startService "elasticsearch"
     elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs)
-    echo "Initializing Elasticsearch..."
     until $(curl -XGET https://${elk}:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
         echo -ne $char
         sleep 10
@@ -226,7 +226,7 @@ createCertificates() {
         ./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key -h ${elk} > /dev/null 2>&1
     fi
 
-    echo $'\nDone'    
+    logger "Done"
 }
 
 ## Kibana
@@ -251,7 +251,7 @@ installKibana() {
             exit 1;
         fi     
         mkdir /etc/kibana/certs > /dev/null 2>&1
-
+        awk -v RS='' '/## Kibana/' ~/config.yml >> /etc/kibana/kibana.yml 
         logger "Done"
 
         if [[ -n "$e" ]] && [[ -n "$k" ]] && [[ -n "$single" ]]
@@ -268,7 +268,6 @@ initializeKibana() {
     # Start Kibana
     startService "kibana"   
     logger "Initializing Kibana (this may take a while)" 
-    awk -v RS='' '/## Kibana/' ~/config.yml >> /etc/kibana/kibana.yml 
     elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs) 
     until [[ "$(curl -XGET https://${elk}/status -I -uadmin:admin -k -s | grep "200 OK")" ]]; do
         echo -ne $char
