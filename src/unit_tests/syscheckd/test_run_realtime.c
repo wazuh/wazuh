@@ -43,6 +43,9 @@ int realtime_win32read(win32rtfim *rtlocald);
 void free_win32rtfim_data(win32rtfim *data);
 void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap);
 #endif
+
+extern int OSHash_Add_ex_check_data;
+
 /* redefinitons/wrapping */
 
 int __wrap_send_log_msg() {

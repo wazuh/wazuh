@@ -14,8 +14,6 @@
 
 #include "hash_op.h"
 
-extern int OSHash_Add_ex_check_data;
-
 int __wrap_OSHash_Add(OSHash *self, const char *key, void *data);
 
 int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data);

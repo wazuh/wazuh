@@ -27,6 +27,7 @@
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/string_op_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/config_wrappers.h"
 
 #include "syscheckd/syscheck.h"
 
@@ -66,6 +67,7 @@ extern PSID everyone_sid;
 extern size_t ev_sid_size;
 extern int restore_policies;
 extern EVT_HANDLE context;
+extern int OSHash_Add_ex_check_data;
 
 extern const wchar_t* event_fields[];
 /**************************************************************************/
@@ -320,12 +322,6 @@ static int teardown_event_4663_dir(void **state) {
         return -1;
 
     return 0;
-}
-
-void __wrap_free_whodata_event(whodata_evt *w_evt) {
-    if (OSHash_Add_ex_check_data) {
-        check_expected(w_evt);
-    }
 }
 
 int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {

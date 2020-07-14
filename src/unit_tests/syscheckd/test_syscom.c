@@ -15,26 +15,12 @@
 #include <string.h>
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/config_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
 
 /* redefinitons/wrapping */
-
-
-cJSON * __wrap_getSyscheckConfig() {
-    return mock_type(cJSON*);
-}
-
-
-cJSON * __wrap_getRootcheckConfig() {
-    return mock_type(cJSON*);
-}
-
-
-cJSON * __wrap_getSyscheckInternalOptions() {
-    return mock_type(cJSON*);
-}
 
 void __wrap_fim_sync_push_msg(const char * msg)
 {

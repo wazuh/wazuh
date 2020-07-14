@@ -14,7 +14,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int OSHash_Add_ex_check_data = 1;
+extern int OSHash_Add_ex_check_data;
 extern int test_mode;
 
 int __wrap_OSHash_Add(__attribute__((unused)) OSHash *self, const char *key,
