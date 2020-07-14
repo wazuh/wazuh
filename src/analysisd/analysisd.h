@@ -16,6 +16,7 @@
 #include "decoders/decoder.h"
 #include "rules.h"
 #include "eventinfo.h"
+#include "logtest.h"
 
 /* Time structures */
 extern int today;
