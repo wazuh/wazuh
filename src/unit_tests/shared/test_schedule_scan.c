@@ -11,8 +11,9 @@
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/time_op_wrappers.h"
 
-static time_t current_time = 0;
+extern time_t current_time;
 
 extern time_t _get_next_time(const sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start);
 extern int _sched_scan_validate_parameters(sched_scan_config *scan_config);
@@ -40,9 +41,6 @@ time_t __wrap_time(time_t *_time){
     return current_time;
 }
 
-void __wrap_w_time_delay(unsigned int msec){
-    current_time += (msec/1000);
-}
 /*********************************/
 /*       SETUP-TEARDOWN          */
 /*********************************/
@@ -96,6 +94,15 @@ static int test_get_time_teardown(void **state) {
     return 0;
 }
 
+static int setup_group(void **state) {
+    current_time = 0;
+    return 0;
+}
+
+static int teardown_group(void **state) {
+    current_time = 0;
+    return 0;
+}
 /*********************************/
 /*       TESTS                   */
 /*********************************/
@@ -747,5 +754,5 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_get_time_to_month_day_high_num_months, test_get_time_setup, test_get_time_teardown),
         cmocka_unit_test_setup_teardown(test_get_time_to_month_day_num_months, test_get_time_setup, test_get_time_teardown)
     };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

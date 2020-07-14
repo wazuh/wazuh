@@ -1,7 +1,7 @@
 #include "wmodules_scheduling_helpers.h"
 #include <time.h>
 
-static time_t current_time = 0;
+extern time_t current_time;
 extern time_t __real_time(time_t *_time);
 /**************** Mocked functions *************/
 /**     Mocked functions       **/
@@ -17,15 +17,6 @@ time_t __wrap_time(time_t *_time){
 void set_current_time(time_t _time) {
     current_time = _time;
 }
-
-void __wrap_w_time_delay(unsigned long int msec){
-    current_time += (msec/1000);
-}
-
-void __wrap_w_sleep_until(const time_t new_time){
-    current_time = new_time;
-}
-
 
 /***************** Helpers  ********************/
 /**

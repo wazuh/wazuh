@@ -13,3 +13,13 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+time_t current_time = 0;
+
+void __wrap_w_sleep_until(const time_t new_time){
+    current_time = new_time;
+}
+
+void __wrap_w_time_delay(unsigned long int msec){
+    current_time += (msec/1000);
+}
