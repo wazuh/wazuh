@@ -58,4 +58,7 @@
 #define FIM_FILE_SIZE_LIMIT_DISABLED        "(6042): File size limit disabled."
 #define FIM_DISK_QUOTA_LIMIT_DISABLED       "(6043): Disk quota limit disabled."
 
+/* wazuh-logtest information messages */
+#define LOGTEST_INITIALIZED                 "(7200): Logtest started"
+
 #endif /* INFO_MESSAGES_H */
