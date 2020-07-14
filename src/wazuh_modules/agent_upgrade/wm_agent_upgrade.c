@@ -38,8 +38,8 @@ const wm_context WM_AGENT_UPGRADE_CONTEXT = {
 void * wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Module AgentUpgrade started");
 
-    // Initialize task table
-    wm_agent_init_task_table();
+    // Initialize task hashmap
+    wm_agent_init_task_map();
 
     int sock = OS_BindUnixDomain(WM_UPGRADE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
     if (sock < 0) {
@@ -115,7 +115,7 @@ void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config) {
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Module AgentUpgrade finished");
     os_free(upgrade_config);
 
-    wm_agent_destroy_task_table();
+    wm_agent_destroy_task_map();
 }
 
 cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){

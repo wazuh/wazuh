@@ -36,6 +36,7 @@ enum wm_upgrade_state {
  * */
 typedef struct _wm_agent_task {
     int agent;                   ///> agent_id to be upgraded
+    int task_id;                 ///> task_id associated with the task
     char *command;               ///> comand that has been requested [upgrade/upgrade_results]
     void *task;                  ///> pointer to a task structure (depends on command)
 } wm_agent_task;
@@ -72,7 +73,7 @@ cJSON* wm_agent_parse_command(const char* buffer);
  * @param task_id [OPTIONAL] id of the task
  * @return resposne json
  * */
-cJSON* wm_agent_parse_response_mesage(int error_id, const char* message, const int agent_id, const int* task_id);
+cJSON* wm_agent_parse_response_mesage(int error_id, const char* message, const int *agent_id, const int* task_id);
 
 /**
  * Parses a message to be sent to the request module
@@ -132,9 +133,11 @@ void wm_agent_create_agent_tasks(cJSON *agents, void *task, const char* command,
  *      "task_id": {{tid2}}
  *  }]
  * */
-cJSON *wm_agent_send_task_information(cJSON *message);
+cJSON *wm_agent_send_task_information(const cJSON *message);
 
-void wm_agent_init_task_table();
+void wm_agent_init_task_map();
 
-void wm_agent_destroy_task_table();
+void wm_agent_destroy_task_map();
+
+void wm_agent_insert_taks_id(const int task_id, const int agent_id);
 #endif

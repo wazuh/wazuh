@@ -59,25 +59,33 @@ void wm_agent_create_agent_tasks(cJSON *agents, void *task, const char* command,
            cJSON *task_message = wm_agent_parse_task_module_message(agent_task->command, agent_task->agent);
            cJSON_AddItemToArray(response, task_message);
         } else if (result == 1) {
-            cJSON *task_message = wm_agent_parse_response_mesage(1, "Upgrade procedure could not start. Agent already upgrading", agent_task->agent, NULL);
+            cJSON *task_message = wm_agent_parse_response_mesage(1, "Upgrade procedure could not start. Agent already upgrading", &(agent_task->agent), NULL);
             cJSON_AddItemToArray(failures, task_message);
         } else {
-            cJSON *task_message = wm_agent_parse_response_mesage(1, "Upgrade procedure could not start", agent_task->agent, NULL);
+            cJSON *task_message = wm_agent_parse_response_mesage(1, "Upgrade procedure could not start", &(agent_task->agent), NULL);
             cJSON_AddItemToArray(failures, task_message);
         }
     }
 }
 
-void wm_agent_init_task_table() {
+void wm_agent_init_task_map() {
     task_table_by_agent_id = OSHash_Create();
 }
 
 
-void wm_agent_destroy_task_table() {
+void wm_agent_destroy_task_map() {
     OSHash_Free(task_table_by_agent_id);
 }
 
-cJSON *wm_agent_send_task_information(cJSON *message) {
+void wm_agent_insert_taks_id(const int task_id, const int agent_id) {
+    char agent_id_string[128];
+    sprintf(agent_id_string, "%d", agent_id);
+    wm_agent_task *agent_task = (wm_agent_task *)OSHash_Get_ex(task_table_by_agent_id, agent_id_string);
+    agent_task->task_id = task_id;
+    OSHash_Update_ex(task_table_by_agent_id, agent_id_string, agent_task);
+}
+
+cJSON *wm_agent_send_task_information(const cJSON *message) {
     cJSON* response = NULL;
     int sock = OS_ConnectUnixDomain(WM_TASK_MODULE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
     if (sock == OS_SOCKTERR) {

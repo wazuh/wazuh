@@ -17,12 +17,20 @@
  * @return upgrade task if there is no error, NULL otherwise
  * */
 static wm_upgrade_task* wm_agent_parse_upgrade_command(const cJSON* params, char* output);
+/**
+ * Sends json with task information to the task module and parses the response
+ * to give back to the api
+ * @param json_api cJSON array where the task response will be stored
+ * @param json_task_module cJSON to be sent to the task module 
+ * */
+static void wm_agent_parse_task_information(cJSON *json_api, const cJSON* json_task_module);
 
 cJSON* wm_agent_parse_command(const char* buffer) {
     cJSON *json_api = NULL; // Response for API
     cJSON * root = cJSON_Parse(buffer);
     if (!root) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, "Cannot parse JSON: %s",  buffer);
+        json_api = wm_agent_parse_response_mesage(1, "Could not parse message JSON", NULL, NULL);
     } else {
         char *output = NULL;
         os_calloc(OS_MAXSTR, sizeof(char), output);
@@ -33,31 +41,45 @@ cJSON* wm_agent_parse_command(const char* buffer) {
             task = (void*) wm_agent_parse_upgrade_command(params, output);
         } else {
             // TODO invalid command
+            mterror(WM_AGENT_UPGRADE_LOGTAG, "No action defined for command: %s",  command);
+            json_api = wm_agent_parse_response_mesage(1, "Could not recognice received command ", NULL, NULL);
         }
 
         if (!task) {
             mterror(WM_AGENT_UPGRADE_LOGTAG, "Error parsing command: %s", output);
+            json_api = wm_agent_parse_response_mesage(1, "Error parsing command parameters ", NULL, NULL);
         } else {
             json_api = cJSON_CreateArray();
             cJSON *json_task_module = cJSON_CreateArray();
             wm_agent_create_agent_tasks(cJSON_GetObjectItem(root, "agents"), task, command, json_task_module, json_api);
-            cJSON *task_module_response = wm_agent_send_task_information(json_task_module);
-            if (task_module_response && (task_module_response->type == cJSON_Array)) {
-                // Parse task module responses into API
-                for(int i=0; i < cJSON_GetArraySize(task_module_response); i++) {
-                    cJSON_AddItemReferenceToArray(json_api, cJSON_GetArrayItem(task_module_response, i));
-                }
-            } else {
-                for(int i=0; i < cJSON_GetArraySize(json_task_module); i++) {
-                    int agent_id = cJSON_GetObjectItem(cJSON_GetArrayItem(json_task_module, i), "agent")->valueint;
-                    cJSON_AddItemReferenceToArray(json_api, wm_agent_parse_response_mesage(1, "Could not create task id for upgrade task", agent_id, NULL));
-                }
-            }
+            wm_agent_parse_task_information(json_api, json_task_module);
             cJSON_Delete(json_task_module);
         }
         cJSON_Delete(root);
     }
     return json_api;
+}
+
+static void wm_agent_parse_task_information(cJSON *json_api, const cJSON* json_task_module) {
+    cJSON *task_module_response = wm_agent_send_task_information(json_task_module);
+    if (task_module_response && (task_module_response->type == cJSON_Array)) {
+        // Parse task module responses into API
+        for(int i=0; i < cJSON_GetArraySize(task_module_response); i++) {
+            cJSON *task_response = cJSON_GetArrayItem(task_module_response, i);
+            cJSON_AddItemReferenceToArray(json_api, task_response);
+            if (cJSON_HasObjectItem(task_response, "task_id")) {
+                // Store task_id
+                int task_id = cJSON_GetObjectItem(task_response, "task_id")->valueint;
+                int agent_id = cJSON_GetObjectItem(task_response, "agent")->valueint;
+                wm_agent_insert_taks_id(task_id, agent_id);
+            }
+        }
+    } else {
+        for(int i=0; i < cJSON_GetArraySize(json_task_module); i++) {
+            int agent_id = cJSON_GetObjectItem(cJSON_GetArrayItem(json_task_module, i), "agent")->valueint;
+            cJSON_AddItemReferenceToArray(json_api, wm_agent_parse_response_mesage(1, "Could not create task id for upgrade task", &agent_id, NULL));
+        }
+    }
 }
 
 static wm_upgrade_task* wm_agent_parse_upgrade_command(const cJSON* params, char* output) {
@@ -119,6 +141,13 @@ static wm_upgrade_task* wm_agent_parse_upgrade_command(const cJSON* params, char
             }
         }
     }
+    // Check incompatible options
+    if ((task->wpk_repository && task->custom_file_path) || (task->custom_version && task->custom_file_path)) {
+        sprintf(output, "Incompatible options. If custom filepath is set WPK options should not be used");
+        error_flag = 1;
+    }
+
+
     if (error_flag) {
         // We will reject this task since the parameters are incorrect
         wm_agent_free_upgrade_task(task);
@@ -128,11 +157,13 @@ static wm_upgrade_task* wm_agent_parse_upgrade_command(const cJSON* params, char
     }
 }
 
-cJSON*  wm_agent_parse_response_mesage(int error_id, const char* message, const int agent_id, const int* task_id) {
+cJSON*  wm_agent_parse_response_mesage(int error_id, const char* message, const int *agent_id, const int* task_id) {
     cJSON * response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", error_id);
     cJSON_AddStringToObject(response, "data", message);
-    cJSON_AddNumberToObject(response, "agent", agent_id);
+    if(agent_id) {
+        cJSON_AddNumberToObject(response, "agent", *agent_id);
+    }
     if (task_id) {
        cJSON_AddNumberToObject(response, "task_id", *task_id); 
     } 
