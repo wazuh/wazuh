@@ -1,5 +1,4 @@
 /* Copyright (C) 2015-2020, Wazuh Inc.
- * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -12,32 +11,36 @@
 
 void *w_logtest_init() {
 
-    int connection = 0;
+    w_logtest_connection connection;
 
-    if (connection = OS_BindUnixDomain(LOGTEST_SOCK, SOCK_STREAM, OS_MAXSTR), connection < 0) {
+    if (connection.sock = OS_BindUnixDomain(LOGTEST_SOCK, SOCK_STREAM, OS_MAXSTR), connection.sock < 0) {
         merror(LOGTEST_ERROR_BIND_SOCK, LOGTEST_SOCK, errno, strerror(errno));
         return NULL;
     }
 
-    if(all_sessions = OSHash_Create(), !all_sessions) {
+    if (w_logtest_sessions = OSHash_Create(), !w_logtest_sessions) {
         merror(LOGTEST_ERROR_INIT_HASH);
         return NULL;
     }
 
-    w_mutex_init(&logtest_mutex, NULL);
+    w_mutex_init(&connection.mutex, NULL);
 
     minfo(LOGTEST_INITIALIZED);
 
     w_logtest_main(&connection);
 
-    close(connection);
-    w_mutex_destroy(&logtest_mutex);
+    close(connection.sock);
+    if (unlink(LOGTEST_SOCK)) {
+        merror(DELETE_ERROR, LOGTEST_SOCK, errno, strerror(errno));
+    }
+
+    w_mutex_destroy(&connection.mutex);
 
     return NULL;
 }
 
 
-void *w_logtest_main(int *connection) {
+void *w_logtest_main(w_logtest_connection * connection) {
 
     int client;
     char msg_received[OS_MAXSTR];
@@ -45,16 +48,16 @@ void *w_logtest_main(int *connection) {
 
     while(1) {
 
-        w_mutex_lock(&logtest_mutex);
+        w_mutex_lock(&connection->mutex);
 
-        if(client = accept(*connection, (struct sockaddr *)NULL, NULL), client < 0) {
+        if (client = accept(connection->sock, (struct sockaddr *)NULL, NULL), client < 0) {
             merror(LOGTEST_ERROR_ACCEPT_CONN, strerror(errno));
             continue;
         }
 
-        w_mutex_unlock(&logtest_mutex);
+        w_mutex_unlock(&connection->mutex);
 
-        if(size_msg_received = recv(client, msg_received, OS_MAXSTR, 0), size_msg_received < 0) {
+        if (size_msg_received = recv(client, msg_received, OS_MAXSTR, 0), size_msg_received < 0) {
             merror(LOGTEST_ERROR_RECV_MSG, strerror(errno));
             close(client);
             continue;
