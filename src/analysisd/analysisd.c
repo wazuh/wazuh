@@ -713,6 +713,9 @@ int main_analysisd(int argc, char **argv)
     /* Load Mitre JSON File and Mitre hash table */
     mitre_load(NULL);
 
+    /* Initialize Logtest */
+    w_create_thread(w_logtest_init, NULL);
+
     /* Going to main loop */
     OS_ReadMSG(m_queue);
 

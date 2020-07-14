@@ -54,4 +54,7 @@
 #define FIM_DB_80_PERCENTAGE_ALERT          "(6039): Sending DB 80%% full alert."
 #define FIM_DB_90_PERCENTAGE_ALERT          "(6039): Sending DB 90%% full alert."
 
+/* wazuh-logtest information messages */
+#define LOGTEST_INITIALIZED                 "(7200): Logtest started"
+
 #endif /* INFO_MESSAGES_H */
