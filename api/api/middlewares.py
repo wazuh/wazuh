@@ -25,16 +25,6 @@ async def set_user_name(request, handler):
     return response
 
 
-@web.middleware
-async def check_experimental(request, handler):
-    if 'experimental' in request.path:
-        if not configuration.api_conf['experimental_features']:
-            raise_if_exc(APIError(code=2008))
-
-    response = await handler(request)
-    return response
-
-
 ip_stats = dict()
 ip_block = set()
 
