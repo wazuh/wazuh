@@ -499,6 +499,7 @@ async def put_files_node(request, body, node_id, path, overwrite=False, pretty=F
     """
 
     # parse body to utf-8
+    Body.validate_content_type(request, expected_content_type='application/octet-stream')
     parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
 
     f_kwargs = {'node_id': node_id,
@@ -582,6 +583,7 @@ async def put_api_config(request, pretty=False, wait_for_complete=False, list_no
     :param wait_for_complete: Disable timeout response
     :param list_nodes: List of node ids
     """
+    Body.validate_content_type(request, expected_content_type='application/json')
     updated_conf = await APIConfigurationModel.get_kwargs(request)
     f_kwargs = {'node_list': list_nodes, 'updated_config': updated_conf}
 
