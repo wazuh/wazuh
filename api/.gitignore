@@ -3,6 +3,9 @@
 *.egg-info
 *.egg
 
+# Tests
+.env
+
 # Framework
 dist/
 build/

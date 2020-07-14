@@ -60,13 +60,13 @@ def test_get_all_token_rules(db_setup):
             assert user in users
 
 
-def test_iat_invalid(db_setup):
+def test_nbf_invalid(db_setup):
     """Check if a user's token is valid by comparing the values with those stored in the database"""
     current_timestamp = int(time())
     users = test_add_token(db_setup)
     with db_setup.TokenManager() as tm:
         for user in users:
-            assert not tm.is_token_valid(username=user, token_iat_time=current_timestamp)
+            assert not tm.is_token_valid(username=user, token_nbf_time=current_timestamp)
 
 
 def test_delete_all_rules(db_setup):
