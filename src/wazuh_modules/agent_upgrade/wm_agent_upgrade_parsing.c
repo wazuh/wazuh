@@ -12,6 +12,18 @@
 
 /**
  * Parses upgrade command and returns an upgrade task from the information
+ * Example: 
+ * WPK Repository
+ * { 
+ *      "version"   : "3.12",
+ *      "use_http"  : "false",
+ *      "force_upgrade" : "0"
+ * }
+ * Custom WPK Package
+ * { 
+ *      "file_path" : "./wazuh_wpk"
+ *      "installer" : "installer.sh"
+ * }
  * @param params JSON where the task parameters are 
  * @param output message in case of error
  * @return upgrade task if there is no error, NULL otherwise

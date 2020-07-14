@@ -59,7 +59,7 @@ typedef struct _wm_upgrade_task {
 #define WM_AGENT_UPGRADE_MODULE_NAME "ugprade_module"
 /**
  * Parse received upgrade message, separetes it according to agent list
- * Will return response JSON to be retorned to the socket
+ * Will return response JSON to be returned to the socket
  * @param buffer message to be parsed
  * @return JSON with all the task responses
  * */
@@ -69,9 +69,9 @@ cJSON* wm_agent_parse_command(const char* buffer);
  * Parses a response message based on state 
  * @param error_id 1 if error, 0 if successs
  * @param message response message
- * @param agent_id id of the agent
+ * @param agent_id [OPTIONAL] id of the agent
  * @param task_id [OPTIONAL] id of the task
- * @return resposne json
+ * @return response json
  * */
 cJSON* wm_agent_parse_response_mesage(int error_id, const char* message, const int *agent_id, const int* task_id);
 
@@ -96,7 +96,7 @@ void wm_agent_free_upgrade_task(wm_upgrade_task* task);
 
 /**
  * Receives the cJSON with the agents_id and creates the tasks structure for each agent
- * Will return two jsons, one with the successfull operation to be sent to the request module
+ * Will modify two jsons (response, failures), one with the successfull operation to be sent to the request module
  * And another one with the failed operation (In case there is already an upgrade in place)
  * @param agents cJSON array with the agents_id
  * @param task pointer to a task structure
@@ -107,7 +107,7 @@ void wm_agent_free_upgrade_task(wm_upgrade_task* task);
 void wm_agent_create_agent_tasks(cJSON *agents, void *task, const char* command, cJSON* response, cJSON* failures);
 
 /**
- * Sends the JSON information to the task module and retrieves the anwser
+ * Sends the JSON information to the task module and retrieves the answer
  * @param message JSON to be sent. Ezample:
  *  [{
  *      "module" : "upgrade_module",
@@ -135,9 +135,20 @@ void wm_agent_create_agent_tasks(cJSON *agents, void *task, const char* command,
  * */
 cJSON *wm_agent_send_task_information(const cJSON *message);
 
+/**
+ * Tasks hashmap initialization
+ * */
 void wm_agent_init_task_map();
 
+/**
+ * Tasks hashmap destructor
+ * */
 void wm_agent_destroy_task_map();
 
+/**
+ * Inserts a task_id into an already existent agent entry
+ * @param task_id id of the task
+ * @param agent_id id of the agent
+ * */
 void wm_agent_insert_taks_id(const int task_id, const int agent_id);
 #endif
