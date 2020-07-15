@@ -20,6 +20,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
 
@@ -84,10 +85,6 @@ int __wrap_time() {
 }
 #endif
 
-void __wrap_fim_checker(char *path) {
-    check_expected(path);
-}
-
 int __wrap_fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
     check_expected_ptr(fim_sql);
     check_expected_ptr(storage);
@@ -102,10 +99,6 @@ int __wrap_fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mute
     check_expected_ptr(storage);
     check_expected_ptr(file);
 
-    return mock();
-}
-
-int __wrap_fim_configuration_directory() {
     return mock();
 }
 
@@ -666,11 +659,13 @@ void test_fim_link_update(void **state) {
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
 
-    expect_string(__wrap_realtime_adddir, dir, "/folder/test");
+    expect_string(__wrap_realtime_adddir, dir, link_path);
     expect_value(__wrap_realtime_adddir, whodata, 0);
     will_return(__wrap_realtime_adddir, 0);
 
     expect_string(__wrap_fim_checker, path, link_path);
+    expect_value(__wrap_fim_checker, w_evt, 0);
+    expect_value(__wrap_fim_checker, report, 0);
 
     fim_link_update(pos, link_path);
 
@@ -710,6 +705,8 @@ void test_fim_link_check_delete(void **state) {
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
 
+    expect_string(__wrap_fim_configuration_directory, path, "/etc");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, -1);
 
     fim_link_check_delete(pos);
@@ -758,8 +755,11 @@ void test_fim_delete_realtime_watches(void **state) {
 
     unsigned int pos = 1;
 
+    expect_string(__wrap_fim_configuration_directory, path, "");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 0);
-
+    expect_string(__wrap_fim_configuration_directory, path, "data");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 0);
 
     will_return(__wrap_inotify_rm_watch, 1);
@@ -820,6 +820,8 @@ void test_fim_link_silent_scan(void **state) {
     will_return(__wrap_realtime_adddir, 0);
 
     expect_string(__wrap_fim_checker, path, link_path);
+    expect_value(__wrap_fim_checker, w_evt, 0);
+    expect_value(__wrap_fim_checker, report, 0);
 
     fim_link_silent_scan(link_path, pos);
 }
@@ -844,6 +846,8 @@ void test_fim_link_reload_broken_link_reload_broken(void **state) {
     char *link_path = "/test";
 
     expect_string(__wrap_fim_checker, path, link_path);
+    expect_value(__wrap_fim_checker, w_evt, 0);
+    expect_value(__wrap_fim_checker, report, 0);
 
     fim_link_reload_broken_link(link_path, pos);
 

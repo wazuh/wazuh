@@ -20,6 +20,7 @@
 
 #include "../wrappers/externals/openssl/digest_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "syscheckd/syscheck.h"
 
 extern char *os_winreg_sethkey(char *reg_entry);
@@ -35,10 +36,6 @@ int test_group_setup(void **state) {
     ret = Read_Syscheck_Config("test_syscheck.conf");
     test_has_started = 1;
     return ret;
-}
-
-int __wrap_fim_registry_event(char *key, fim_entry_data *data, int pos) {
-    return mock();
 }
 
 /**************************************************************************/

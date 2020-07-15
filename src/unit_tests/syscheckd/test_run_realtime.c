@@ -25,6 +25,7 @@
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../wrappers/wazuh/shared/vector_op_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
@@ -50,10 +51,6 @@ extern int OSHash_Add_ex_check_data;
 
 int __wrap_send_log_msg() {
     return mock();
-}
-
-void __wrap_fim_realtime_event(char *file) {
-    check_expected(file);
 }
 
 #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
@@ -89,15 +86,6 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     return (ret);
 }
 
-#endif
-
-#ifdef TEST_WINAGENT
-int __wrap_fim_configuration_directory(const char *path, const char *entry) {
-    check_expected(path);
-    check_expected(entry);
-
-    return mock();
-}
 #endif
 
 #ifdef WIN_WHODATA

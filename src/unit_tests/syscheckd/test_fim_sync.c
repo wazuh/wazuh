@@ -19,6 +19,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/integrity_op_wrappers.h"
 #include "../wrappers/wazuh/shared/queue_op_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
@@ -76,12 +77,6 @@ fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
     return mock_type(fim_entry*);
 }
 
-cJSON *__wrap_fim_entry_json(const char * path, fim_entry_data * data) {
-    check_expected(path);
-
-    return mock_type(cJSON*);
-}
-
 int __wrap_fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
                                       const long id, const int n) {
     check_expected_ptr(fim_sql);
@@ -130,7 +125,7 @@ static int setup_fim_sync_queue(void **state) {
     char *msg = (char *)malloc(sizeof(char) * 45);
 
     snprintf(msg, 45, "%s", "This is a mock message, it won't go anywhere");
-    
+
     *state = msg;
 
     fim_sync_queue = queue_init(10);

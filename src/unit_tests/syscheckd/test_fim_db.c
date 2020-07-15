@@ -24,6 +24,7 @@
 #include "../wrappers/wazuh/shared/os_utils_wrappers.h"
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../wrappers/wazuh/shared/string_op_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 
 #include "../syscheckd/fim_db.h"
 #include "../config/syscheck-config.h"
@@ -59,23 +60,11 @@ int __wrap_fim_send_sync_msg(char * msg) {
     return 1;
 }
 
-cJSON *__wrap_fim_entry_json(const char * path, fim_entry_data * data) {
-    return mock_type(cJSON*);
-}
-
 char *__wrap_dbsync_state_msg(const char * component, cJSON * data) {
     check_expected(component);
     check_expected_ptr(data);
 
     return mock_type(char*);
-}
-
-int __wrap_fim_configuration_directory() {
-    return mock();
-}
-
-cJSON *__wrap_fim_json_event() {
-    return mock_type(cJSON *);
 }
 
 int __wrap_send_syscheck_msg() {
@@ -1151,8 +1140,12 @@ void test_fim_db_insert_inode_id_null_delete_row_error(void **state) {
 void test_fim_db_remove_path_no_entry(void **state) {
     test_fim_db_insert_data *test_data = *state;
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 1);
 #else
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 9);
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1175,8 +1168,12 @@ void test_fim_db_remove_path_no_entry(void **state) {
 void test_fim_db_remove_path_one_entry(void **state) {
     test_fim_db_insert_data *test_data = *state;
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 1);
 #else
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 9);
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1203,8 +1200,12 @@ void test_fim_db_remove_path_one_entry(void **state) {
 void test_fim_db_remove_path_one_entry_step_fail(void **state) {
     test_fim_db_insert_data *test_data = *state;
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 1);
 #else
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 9);
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1233,8 +1234,12 @@ void test_fim_db_remove_path_one_entry_alert_fail(void **state) {
     cJSON * json = cJSON_CreateObject();
 
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 1);
 #else
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 9);
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1253,8 +1258,12 @@ void test_fim_db_remove_path_one_entry_alert_fail(void **state) {
     will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
 
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 1);
 #else
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 9);
 #endif
     will_return(__wrap_fim_json_event, json);
@@ -1271,8 +1280,12 @@ void test_fim_db_remove_path_one_entry_alert_fail_invalid_pos(void **state) {
     test_fim_db_insert_data *test_data = *state;
 
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 1);
 #else
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 9);
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1289,6 +1302,8 @@ void test_fim_db_remove_path_one_entry_alert_fail_invalid_pos(void **state) {
     expect_value(__wrap_sqlite3_column_int, i, 1);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, -1);
     wraps_fim_db_check_transaction();
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
@@ -1301,8 +1316,12 @@ void test_fim_db_remove_path_one_entry_alert_fail_invalid_pos(void **state) {
 void test_fim_db_remove_path_one_entry_alert_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 1);
 #else
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 9);
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1323,8 +1342,12 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_delete_target_file, path, test_data->entry->path);
     will_return(__wrap_delete_target_file, 0);
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 1);
 #else
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 9);
 #endif
     cJSON * json = cJSON_CreateObject();
@@ -1343,8 +1366,12 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
 void test_fim_db_remove_path_multiple_entry(void **state) {
     test_fim_db_insert_data *test_data = *state;
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 1);
 #else
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 9);
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1368,8 +1395,12 @@ void test_fim_db_remove_path_multiple_entry(void **state) {
 void test_fim_db_remove_path_multiple_entry_step_fail(void **state) {
     test_fim_db_insert_data *test_data = *state;
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 1);
 #else
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 9);
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1393,8 +1424,12 @@ void test_fim_db_remove_path_multiple_entry_step_fail(void **state) {
 void test_fim_db_remove_path_failed_path(void **state) {
     test_fim_db_insert_data *test_data = *state;
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 1);
 #else
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 9);
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1416,6 +1451,8 @@ void test_fim_db_remove_path_failed_path(void **state) {
 void test_fim_db_remove_path_no_configuration_file(void **state) {
     test_fim_db_insert_data *test_data = *state;
 
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, -1);
     expect_string(__wrap__mdebug2, formatted_msg, "(6339): Delete event from path without configuration: '/test/path'");
 
@@ -1425,8 +1462,12 @@ void test_fim_db_remove_path_no_configuration_file(void **state) {
 void test_fim_db_remove_path_no_entry_realtime_file(void **state) {
     test_fim_db_insert_data *test_data = *state;
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 3);
 #else
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 7);
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1449,8 +1490,12 @@ void test_fim_db_remove_path_no_entry_realtime_file(void **state) {
 void test_fim_db_remove_path_no_entry_scheduled_file(void **state) {
     test_fim_db_insert_data *test_data = *state;
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 4);
 #else
+    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 1);
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -2214,6 +2259,7 @@ void test_fim_db_sync_path_range_disk(void **state) {
     // fim_db_callback_sync_path_range()
     cJSON *root = cJSON_CreateObject();
     state[1] = root;
+    expect_string(__wrap_fim_entry_json, path, "/some/random/path");
     will_return(__wrap_fim_entry_json, root);
     expect_string(__wrap_dbsync_state_msg, component, "syscheck");
     expect_value(__wrap_dbsync_state_msg, data, root);
@@ -2245,6 +2291,7 @@ void test_fim_db_sync_path_range_memory(void **state) {
     // fim_db_callback_sync_path_range()
     cJSON *root = cJSON_CreateObject();
     state[1] = root;
+    expect_string(__wrap_fim_entry_json, path, "/some/random/path");
     will_return(__wrap_fim_entry_json, root);
     expect_string(__wrap_dbsync_state_msg, component, "syscheck");
     expect_value(__wrap_dbsync_state_msg, data, root);
@@ -2449,6 +2496,7 @@ void test_fim_db_callback_sync_path_range(void **state) {
     cJSON *root = cJSON_CreateObject();
     state[1] = root;
 
+    expect_string(__wrap_fim_entry_json, path, "/test/path");
     will_return(__wrap_fim_entry_json, root);
 
     expect_string(__wrap_dbsync_state_msg, component, "syscheck");

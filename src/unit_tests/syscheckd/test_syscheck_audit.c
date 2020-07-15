@@ -31,6 +31,7 @@
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../wrappers/wazuh/shared/vector_op_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "external/procps/readproc.h"
 
 extern volatile int audit_health_check_deletion;
@@ -40,20 +41,6 @@ extern volatile int audit_health_check_deletion;
 int __wrap_OS_ConnectUnixDomain()
 {
     return mock();
-}
-
-int __wrap_fim_whodata_event(whodata_evt * w_evt)
-{
-    check_expected(w_evt->process_id);
-    check_expected(w_evt->user_id);
-    check_expected(w_evt->group_id);
-    check_expected(w_evt->process_name);
-    check_expected(w_evt->path);
-    check_expected(w_evt->audit_uid);
-    check_expected(w_evt->effective_uid);
-    check_expected(w_evt->inode);
-    check_expected(w_evt->ppid);
-    return 1;
 }
 
 /* setup/teardown */
@@ -1245,7 +1232,6 @@ void test_audit_parse(void **state)
     expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->process_name, "74657374C3B1");
     expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/test");
-    expect_value(__wrap_fim_whodata_event, w_evt->audit_uid, 0);
     expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->inode, "19");
     expect_value(__wrap_fim_whodata_event, w_evt->ppid, 3211);
@@ -1288,7 +1274,6 @@ void test_audit_parse3(void **state)
     expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->process_name, "74657374C3B1");
     expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/test");
-    expect_value(__wrap_fim_whodata_event, w_evt->audit_uid, 0);
     expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->inode, "28");
     expect_value(__wrap_fim_whodata_event, w_evt->ppid, 3211);

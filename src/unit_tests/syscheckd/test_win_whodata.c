@@ -28,6 +28,7 @@
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/string_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/config_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 
 #include "syscheckd/syscheck.h"
 
@@ -331,24 +332,6 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     }
     *exitcode = mock_type(int);
     return mock();
-}
-
-void __wrap_fim_whodata_event(whodata_evt * w_evt) {
-    function_called();
-}
-
-int __wrap_fim_configuration_directory(const char *path, const char *entry) {
-    function_called();
-    check_expected(path);
-    check_expected(entry);
-
-    return mock();
-}
-
-void __wrap_fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) {
-    function_called();
-    check_expected(w_evt);
-    check_expected(report);
 }
 
 /**************************************************************************/
@@ -4415,7 +4398,6 @@ void test_whodata_callback_event_4656_not_active(void **state){
 
     expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
 
-    expect_function_call(__wrap_fim_configuration_directory);
     expect_string(__wrap_fim_configuration_directory, path, "c:\\another\\path.file");
     expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, -1);
@@ -4490,7 +4472,6 @@ void test_whodata_callback_event_4656_canceled(void **state){
 
     expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
 
-    expect_function_call(__wrap_fim_configuration_directory);
     expect_string(__wrap_fim_configuration_directory, path, "c:\\windows");
     expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 8);
@@ -4570,7 +4551,6 @@ void test_whodata_callback_event_4656_handler_not_removed(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
 
-    expect_function_call(__wrap_fim_configuration_directory);
     expect_string(__wrap_fim_configuration_directory, path, "c:\\windows\\sysnative\\");
     expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 1);
@@ -4665,7 +4645,6 @@ void test_whodata_callback_event_4656_directory(void **state){
 
     expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
 
-    expect_function_call(__wrap_fim_configuration_directory);
     expect_string(__wrap_fim_configuration_directory, path, "c:\\windows\\system32\\windowspowershell\\v1.0");
     expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 8);
@@ -4753,7 +4732,6 @@ void test_whodata_callback_event_4656_directory_failed(void **state){
 
     expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
 
-    expect_function_call(__wrap_fim_configuration_directory);
     expect_string(__wrap_fim_configuration_directory, path, "c:\\windows\\system32\\windowspowershell\\v1.0");
     expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 8);
@@ -5017,7 +4995,7 @@ void test_whodata_callback_event_4658_file_deleted(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, "1234567890123456789");
     will_return(__wrap_OSHash_Delete_ex, w_evt);
 
-    expect_function_call(__wrap_fim_whodata_event);
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "C:\\a\\path");
 
     expect_value(__wrap_free_whodata_event, w_evt, w_evt);
 
@@ -5090,7 +5068,7 @@ void test_whodata_callback_event_4658_file_moved_or_renamed(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, "1234567890123456789");
     will_return(__wrap_OSHash_Delete_ex, w_evt);
 
-    expect_function_call(__wrap_fim_whodata_event);
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "C:\\a\\path");
 
     expect_value(__wrap_free_whodata_event, w_evt, w_evt);
 
@@ -5163,7 +5141,7 @@ void test_whodata_callback_event_4658_file_not_modified(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, "1234567890123456789");
     will_return(__wrap_OSHash_Delete_ex, w_evt);
 
-    expect_function_call(__wrap_fim_whodata_event);
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "C:\\a\\path");
 
     expect_value(__wrap_free_whodata_event, w_evt, w_evt);
 
@@ -5234,7 +5212,7 @@ void test_whodata_callback_event_4658_trigger_directory_scan(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, "1234567890123456789");
     will_return(__wrap_OSHash_Delete_ex, w_evt);
 
-    expect_function_call(__wrap_fim_whodata_event);
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "C:\\a\\path");
 
     expect_value(__wrap_free_whodata_event, w_evt, w_evt);
 
@@ -5307,12 +5285,11 @@ void test_whodata_callback_event_4658_rename_dir(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, "1234567890123456789");
     will_return(__wrap_OSHash_Delete_ex, w_evt);
 
-    expect_function_call(__wrap_fim_configuration_directory);
     expect_string(__wrap_fim_configuration_directory, path, "C:\\a\\path");
     expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 0);
 
-    expect_function_call(__wrap_fim_checker);
+    expect_string(__wrap_fim_checker, path, "c:\\programdata\\microsoft\\windows\\start menu\\programs\\startup");
     expect_value(__wrap_fim_checker, w_evt, w_evt);
     expect_value(__wrap_fim_checker, report, 1);
 
@@ -5398,7 +5375,7 @@ void test_whodata_callback_event_4658_new_file_added(void **state) {
 
     will_return(wrap_GetSystemTime, &st);
 
-    expect_function_call(__wrap_fim_whodata_event);
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "C:\\a\\path");
 
     expect_string(__wrap__mdebug1, formatted_msg,
         "(6231): The 'C:\\a\\path' directory has been scanned after detecting event of new files.");
@@ -6013,7 +5990,6 @@ void test_whodata_callback_event_4663_no_event(void **state){
     expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
     will_return(__wrap_OSHash_Get_ex, NULL);
 
-    expect_function_call(__wrap_fim_configuration_directory);
     expect_string(__wrap_fim_configuration_directory, path, "c:\\another\\path.file");
     expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, -1);
@@ -6102,7 +6078,6 @@ void test_whodata_callback_event_4663_no_dir(void **state){
     expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
     will_return(__wrap_OSHash_Get_ex, NULL);
 
-    expect_function_call(__wrap_fim_configuration_directory);
     expect_string(__wrap_fim_configuration_directory, path, "c:\\another\\path.file");
     expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 0);
@@ -6199,7 +6174,6 @@ void test_whodata_callback_event_4663_dir(void **state){
     expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
     will_return(__wrap_OSHash_Get_ex, NULL);
 
-    expect_function_call(__wrap_fim_configuration_directory);
     expect_string(__wrap_fim_configuration_directory, path, "c:\\another\\path.file");
     expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 0);
