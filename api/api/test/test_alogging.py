@@ -29,7 +29,7 @@ def test_apilogger_init(mock_wazuhlogger):
                        logger_name='wazuh')
 
     assert mock_wazuhlogger.call_args.kwargs['log_path'] == 'test_path'
-    assert mock_wazuhlogger.call_args.kwargs['foreground_mode'] == False
+    assert not mock_wazuhlogger.call_args.kwargs['foreground_mode']
     assert mock_wazuhlogger.call_args.kwargs['debug_level'] == 'info'
     assert mock_wazuhlogger.call_args.kwargs['logger_name'] == 'wazuh'
     assert mock_wazuhlogger.call_args.kwargs['tag'] == '{asctime} {levelname}: {message}'

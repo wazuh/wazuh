@@ -7,8 +7,8 @@ from functools import lru_cache
 
 import yaml
 
-from api import __path__ as api_path
-from api import configuration
+import api.middlewares as middlewares
+from api import __path__ as api_path, configuration
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
 from wazuh.rbac.orm import RolesManager, TokenManager
@@ -33,7 +33,7 @@ def update_security_conf(new_config):
     need_revoke = False
     if new_config:
         for key in new_config:
-            if key in configuration.security_conf.keys():
+            if key in configuration.need_revoke_config:
                 need_revoke = True
         try:
             with open(SECURITY_CONFIG_PATH, 'w+') as f:
@@ -42,6 +42,11 @@ def update_security_conf(new_config):
             raise WazuhInternalError(1005)
     else:
         raise WazuhError(4021)
+    if 'max_login_attempts' in new_config.keys():
+        middlewares.ip_stats = dict()
+        middlewares.ip_block = set()
+    if 'max_request_per_minute' in new_config.keys():
+        middlewares.request_counter = 0
 
     return need_revoke
 
