@@ -94,6 +94,6 @@ async def get_nodes_info(lc: local_client.LocalClient, filter_node=None, **kwarg
 
     for node in non_existent_nodes:
         result.add_failed_item(id_=node, error=WazuhError(1730))
-    result.total_affected_items = len(result.affected_items)
+    result.total_affected_items = data['totalItems']
 
     return result

@@ -9,7 +9,7 @@
 - actions:
   - cluster:restart
   resources:
-  - node:id:worker1
+  - node:id:worker2
   effect: allow
 
 - actions:
