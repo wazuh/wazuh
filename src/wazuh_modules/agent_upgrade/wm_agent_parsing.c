@@ -21,6 +21,8 @@ cJSON* wm_agent_parse_command(const char* buffer) {
         const char *command = cJSON_GetObjectItem(root, "command")->valuestring;
         if (strcmp(command, WM_AGENT_UPGRADE_COMMAND_NAME) == 0) {
             json_api = wm_agent_process_upgrade_command(params, cJSON_GetObjectItem(root, "agents"));
+        } else if (strcmp(command, WM_AGENT_UPGRADE_RESULT_COMMAND_NAME) == 0) { 
+            wm_agent_process_upgrade_result_command(cJSON_GetObjectItem(root, "agents"));
         } else {
             // TODO invalid command
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR,  command);

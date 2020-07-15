@@ -237,4 +237,6 @@
 #define FIM_NUM_WATCHES                     "(6345): Folders monitored with real-time engine: %u"
 #define FIM_REALTIME_CALLBACK               "(6346): Realtime watch deleted for '%s'"
 
+
+#define WM_UPGRADE_RESULT_AGENT_INFO        "(8201): Agent Information obtained: \n %s"
 #endif /* DEBUG_MESSAGES_H */

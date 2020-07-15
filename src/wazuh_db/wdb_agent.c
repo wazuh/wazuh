@@ -41,6 +41,8 @@ static const char *SQL_FIND_GROUP = "SELECT id FROM `group` WHERE name = ?;";
 static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
 static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
 
+static const char *SQL_SELECT_AGENTS_VERSION = "SELECT id, version FROM agent WHERE id IN (%s);";
+
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date) {
     int result = 0;
@@ -994,4 +996,53 @@ time_t get_agent_date_added(int agent_id) {
 
     fclose(fp);
     return 0;
+}
+
+
+cJSON* wdb_select_agents_version(const cJSON* agents) {
+    cJSON* result = NULL;
+    sqlite3_stmt *stmt;
+    
+    if (wdb_open_global() < 0)
+        return result;
+
+    int number_agents = cJSON_GetArraySize(agents);
+    char parameterList[number_agents*2];
+    char buffer[OS_MAXSTR];
+    parameterList[0] = '\0';
+    for(int i=0; i < (number_agents -1); i++) {
+        strcat(parameterList, "?,");
+    }
+    strcat(parameterList, "?");
+    sprintf(buffer, SQL_SELECT_AGENTS_VERSION, parameterList);
+
+    if (wdb_prepare(wdb_global, buffer, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        return result;
+    }
+
+    for(int i=0; i < number_agents; i++) {
+        sqlite3_bind_int(stmt, i+1, cJSON_GetArrayItem(agents, i)->valueint);
+    }
+    result = cJSON_CreateArray();
+    bool done = false;
+    while (!done){
+        cJSON* element = cJSON_CreateObject();
+        switch (wdb_step(stmt)) {
+        case SQLITE_ROW:
+            cJSON_AddNumberToObject(element, "agent_id", sqlite3_column_int(stmt,0));
+            cJSON_AddStringToObject(element, "version", strdup((char*)sqlite3_column_text(stmt, 1)));
+            cJSON_AddItemReferenceToArray(result, element);
+            break;
+        case SQLITE_DONE:
+            done = true;
+            break;
+        default:
+            done = true;
+            mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+            break;
+        }
+    }
+    sqlite3_finalize(stmt);
+    return result;
 }

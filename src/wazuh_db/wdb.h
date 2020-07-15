@@ -399,6 +399,9 @@ int wdb_agent_belongs_first_time();
 /* Get the agent first registration date */
 time_t get_agent_date_added(int agent_id);
 
+/* Return information from agent version for a list of agents */
+cJSON* wdb_select_agents_version(const cJSON* agents);
+
 /* Find agent by name and address. Returns id if success, -1 on failure or -2 if it has not been found. */
 int wdb_find_agent(const char *name, const char *ip);
 

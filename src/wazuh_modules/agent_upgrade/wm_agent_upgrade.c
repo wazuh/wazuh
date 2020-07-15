@@ -100,7 +100,10 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
         default:
             /* Correctly received message */
             json_response = wm_agent_parse_command(&buffer[0]);
-            OS_SendTCP(peer, cJSON_Print(json_response));
+            if (json_response) {
+                OS_SendTCP(peer, cJSON_Print(json_response));
+                cJSON_Delete(json_response);
+            }
             break;
         }
         if (json_response) {

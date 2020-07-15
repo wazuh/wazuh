@@ -71,5 +71,6 @@ typedef struct _wm_upgrade_task {
 #define WM_AGENT_UPGRADE_MODULE_NAME "ugprade_module"
 
 #define WM_AGENT_UPGRADE_COMMAND_NAME "upgrade"
+#define WM_AGENT_UPGRADE_RESULT_COMMAND_NAME "upgrade_result"
 
 #endif
