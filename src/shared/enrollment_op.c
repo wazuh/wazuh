@@ -100,7 +100,7 @@ w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_c
     os_malloc(sizeof(w_enrollment_ctx), cfg);
     cfg->target_cfg = target;
     cfg->cert_cfg = cert;
-    cfg->enabled = 1;
+    cfg->enabled = 0;
     cfg->ssl = NULL;
     cfg->allow_localhost = 1;
     cfg->delay_after_enrollment = 20;

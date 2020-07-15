@@ -12,7 +12,6 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
-int rotate_log;
 
 /* Start the agent daemon */
 void AgentdStart(int uid, int gid, const char *user, const char *group)

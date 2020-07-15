@@ -88,11 +88,7 @@ int __crt_wday;
 struct timespec c_timespec;
 char __shost[512];
 OSDecoderInfo *NULL_Decoder;
-rlim_t nofile;
-int sys_debug_level;
 int num_rule_matching_threads;
-EventList *last_events_list;
-time_t current_time;
 
 /* execd queue */
 static int execdq = 0;
@@ -1951,7 +1947,9 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
     #ifdef PRELUDE_OUTPUT_ENABLED
                 /* Log to prelude */
                 if (Config.prelude) {
-                    if (Config.prelude_log_level <= currently_rule->level) {
+                    RuleInfo *rule = lf->generated_rule;
+
+                    if (rule && Config.prelude_log_level <= rule->level) {
                         OS_PreludeLog(lf);
                     }
                 }

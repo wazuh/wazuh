@@ -27,7 +27,6 @@
 /* Prototypes */
 static void help_logcollector(void) __attribute__((noreturn));
 
-int lc_debug_level;
 
 /* Print help statement */
 static void help_logcollector()

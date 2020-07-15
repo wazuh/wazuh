@@ -41,7 +41,6 @@ unsigned int _s_comp_print = 0;
 unsigned int _s_recv_flush = 0;
 int _s_verify_counter = 1;
 
-agent *agt;
 
 
 /* Crypto methods function */

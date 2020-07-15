@@ -17,24 +17,12 @@
 #include "config.h"
 #include "rules.h"
 #include "stats.h"
+#include "fts.h"
 
 long int __crt_ftell; /* Global ftell pointer */
 _Config Config;       /* Global Config structure */
-OSList *active_responses;
-OSList *ar_commands;
-OSDecoderNode *osdecodernode_forpname;
-OSDecoderNode *osdecodernode_nopname;
-RuleNode *rulenode;
-// Extern internal options
-int default_timeframe;
-int maxdiff;
-int mindiff;
-int percent_diff;
-unsigned int fts_minsize_for_str;
-int fts_list_size;
 rlim_t nofile;
 int sys_debug_level;
-
 
 int GlobalConf(const char *cfgfile)
 {
