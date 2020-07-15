@@ -44,6 +44,13 @@ typedef enum _error_code {
     UNKNOWN_ERROR
 } error_code;
 
+typedef enum _task_status {
+    NEW = 0,
+    IN_PROGRESS,
+    DONE,
+    FAILED
+} task_status;
+
 extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
 
 // Parse XML configuration

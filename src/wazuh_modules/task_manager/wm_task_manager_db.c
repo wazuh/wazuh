@@ -19,6 +19,13 @@ static int wm_task_manager_prepare(sqlite3 *db, const char *zSql, int nByte, sql
 static int wm_task_manager_step(sqlite3_stmt *stmt);
 static int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt);
 
+static const char *task_statuses[] = {
+    [NEW] = "New",
+    [IN_PROGRESS] = "In progress",
+    [DONE] = "Done",
+    [FAILED] = "Failed"
+};
+
 int wm_task_manager_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail) {
     int attempts;
     int result;
@@ -55,7 +62,7 @@ int wm_task_manager_check_db() {
     const char *path = TASKS_DB;
     const char *sql;
     const char *tail;
-    sqlite3 *db;
+    sqlite3 *db = NULL;
     sqlite3_stmt *stmt = NULL;
 
     // Open or create the database file
@@ -107,8 +114,48 @@ int wm_task_manager_check_db() {
 }
 
 int wm_task_manager_insert_task(int agent_id, const char *module, const char *command) {
+    sqlite3 *db = NULL;
+    sqlite3_stmt *stmt = NULL;
+    int result = 0;
+    int task_id = 0;
 
-    return 0;
+    if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READWRITE, NULL)) {
+        mterror(WM_TASK_MANAGER_LOGTAG, "DB couldn't be opened.");
+        return wm_task_manager_sql_error(db, stmt);
+    }
+
+    if (wm_task_manager_prepare(db, task_queries[VU_INSERT_TASK], -1, &stmt, NULL) != SQLITE_OK) {
+        mterror(WM_TASK_MANAGER_LOGTAG, "Couldn't prepare SQL statement.");
+        return wm_task_manager_sql_error(db, stmt);
+    }
+
+    sqlite3_bind_int(stmt, 1, agent_id);
+    sqlite3_bind_text(stmt, 2, module, -1, NULL);
+    sqlite3_bind_text(stmt, 3, command, -1, NULL);
+    sqlite3_bind_text(stmt, 4, task_statuses[NEW], -1, NULL);
+
+    if (result = wm_task_manager_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+        mterror(WM_TASK_MANAGER_LOGTAG, "Couldn't execute SQL statement.");
+        return wm_task_manager_sql_error(db, stmt);
+    }
+
+    wdb_finalize(stmt);
+
+    if (wm_task_manager_prepare(db, task_queries[VU_GET_MAX_TASK_ID], -1, &stmt, NULL) != SQLITE_OK) {
+        return wm_task_manager_sql_error(db, stmt);
+    }
+
+    if (result = wm_task_manager_step(stmt), result != SQLITE_ROW) {
+        return wm_task_manager_sql_error(db, stmt);
+    }
+
+    task_id = sqlite3_column_int(stmt, 0);
+
+    wdb_finalize(stmt);
+
+    sqlite3_close_v2(db);
+
+    return task_id;
 }
 
 #endif

@@ -58,9 +58,12 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
     int tasks = 0;
     int error_code = SUCCESS;
 
+    mtdebug1(WM_TASK_MANAGER_LOGTAG, "Incomming message: '%s'", msg);
+
     // Parse message
     if (event_array = wm_task_manager_parse_message(msg), !event_array) {
         *response = wm_task_manager_build_response_error(INVALID_MESSAGE);
+        mtdebug1(WM_TASK_MANAGER_LOGTAG, "Response to message: '%s'", *response);
         return strlen(*response);
     }
 
@@ -87,7 +90,7 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
                 }
 
                 // Insert upgrade task into DB
-                if (task_id = wm_task_manager_insert_task(agent_json->valueint, module, command), task_id == OS_INVALID) {
+                if (task_id = wm_task_manager_insert_task(agent_json->valueint, module, command), task_id <= 0) {
                     error_code = DATABASE_ERROR;
                     mterror(WM_TASK_MANAGER_LOGTAG, "Database error at index '%d'", task);
                     break;
@@ -113,6 +116,8 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
     } else {
         *response = cJSON_PrintUnformatted(response_array);
     }
+
+    mtdebug1(WM_TASK_MANAGER_LOGTAG, "Response to message: '%s'", *response);
 
     cJSON_Delete(event_array);
     cJSON_Delete(response_array);
@@ -248,7 +253,7 @@ void* wm_task_manager_main(wm_task_manager* task_config) {
         }
 
         // Receive message from connection
-        /*os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length) {
         case OS_SOCKTERR:
             mterror(WM_TASK_MANAGER_LOGTAG, "Response size is bigger than expected.");
@@ -271,13 +276,6 @@ void* wm_task_manager_main(wm_task_manager* task_config) {
             os_free(response);
             close(peer);
         }
-        os_free(buffer);*/
-
-        buffer = OS_RecvTCP(peer, OS_MAXSTR);
-        length = wm_task_manager_dispatch(buffer, &response);
-        OS_SendTCP(peer, response);
-        os_free(response);
-        close(peer);
         os_free(buffer);
     }
 
