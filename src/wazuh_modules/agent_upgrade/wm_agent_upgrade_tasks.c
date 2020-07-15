@@ -8,7 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include "wm_agent_upgrade.h"
+#include "wm_agent_upgrade_tasks.h"
 #include "os_net/os_net.h"
 #include "shared.h"
 
@@ -37,37 +37,6 @@ void wm_agent_free_upgrade_task(wm_upgrade_task* task) {
     os_free(task);
 }
 
-
-void wm_agent_create_agent_tasks(cJSON *agents, void *task, const char* command, cJSON* response, cJSON* failures) {
-    assert(agents != NULL);
-    assert(task != NULL);
-    assert(command != NULL);
-    assert(response && (response->type == cJSON_Array));
-    assert(failures && (failures->type == cJSON_Array));
-
-    for(int i=0; i < cJSON_GetArraySize(agents); i++) {
-        wm_agent_task *agent_task;
-        os_malloc(sizeof(wm_agent_task), agent_task);
-        os_strdup(command, agent_task->command);
-        agent_task->task = task;
-        cJSON* agent_id = cJSON_GetArrayItem(agents, i);
-        agent_task->agent = agent_id->valueint;
-        char agent_id_string[128];
-        sprintf(agent_id_string, "%d", agent_id->valueint);
-        int result = OSHash_Add(task_table_by_agent_id, agent_id_string, agent_task);
-        if (result == 2 ) {
-           cJSON *task_message = wm_agent_parse_task_module_message(agent_task->command, agent_task->agent);
-           cJSON_AddItemToArray(response, task_message);
-        } else if (result == 1) {
-            cJSON *task_message = wm_agent_parse_response_mesage(UPGRADE_ALREADY_ON_PROGRESS, "Upgrade procedure could not start. Agent already upgrading", &(agent_task->agent), NULL);
-            cJSON_AddItemToArray(failures, task_message);
-        } else {
-            cJSON *task_message = wm_agent_parse_response_mesage(UNKNOWN_ERROR, "Upgrade procedure could not start", &(agent_task->agent), NULL);
-            cJSON_AddItemToArray(failures, task_message);
-        }
-    }
-}
-
 void wm_agent_init_task_map() {
     task_table_by_agent_id = OSHash_Create();
 }
@@ -85,34 +54,8 @@ void wm_agent_insert_taks_id(const int task_id, const int agent_id) {
     OSHash_Update_ex(task_table_by_agent_id, agent_id_string, agent_task);
 }
 
-cJSON *wm_agent_send_task_information(const cJSON *message) {
-    cJSON* response = NULL;
-    int sock = OS_ConnectUnixDomain(WM_TASK_MODULE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
-    if (sock == OS_SOCKTERR) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNREACHEABLE_TASK_MANAGER, WM_TASK_MODULE_SOCK_PATH);
-    } else {
-        char *buffer = NULL;
-        int length;
-        OS_SendTCP(sock, cJSON_Print(message));
-        os_calloc(OS_MAXSTR, sizeof(char), buffer);
-        switch (length = OS_RecvTCPBuffer(sock, buffer, OS_MAXSTR), length) {
-            case OS_SOCKTERR:
-                mterror(WM_AGENT_UPGRADE_LOGTAG, "OS_RecvSecureTCP(): Too big message size received from task manager module.");
-                break;
-            case -1:
-                mterror(WM_AGENT_UPGRADE_LOGTAG, "OS_RecvSecureTCP(): %s", strerror(errno));
-                break;
-            case 0:
-                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_EMPTY_MESSAGE);
-                break;
-            default:
-                response = cJSON_Parse(buffer);
-                if (!response) {
-                    mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_TASK_MAN_JSON);
-                }
-                break;
-        }
-        os_free(buffer);
-    }
-    return response;
+int wm_agent_create_task_entry(const int agent_id, wm_agent_task* agent_task) {
+    char agent_id_string[128];
+    sprintf(agent_id_string, "%d", agent_id);
+    return OSHash_Add(task_table_by_agent_id, agent_id_string, agent_task);
 }
