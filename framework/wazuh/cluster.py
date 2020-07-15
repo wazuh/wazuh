@@ -1,13 +1,13 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+from wazuh.core import common
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.control import get_health, get_nodes
 from wazuh.core.cluster.utils import get_cluster_status, read_cluster_config, read_config
-from wazuh.core.exception import WazuhError, WazuhException
+from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core import common
 from wazuh.rbac.decorators import expose_resources, async_list_handler
 
 cluster_enabled = not read_cluster_config()['disabled']
@@ -60,9 +60,7 @@ def get_status_json():
     return get_cluster_status()
 
 
-@expose_resources(actions=['cluster:read'],
-                  resources=['node:id:{filter_node}'],
-                  post_proc_func=async_list_handler)
+@expose_resources(actions=['cluster:read'], resources=['node:id:{filter_node}'], post_proc_func=async_list_handler)
 async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
     """ Wrapper for get_health """
     result = AffectedItemsWazuhResult(all_msg='All selected nodes healthcheck information is shown',
@@ -80,9 +78,7 @@ async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
     return result
 
 
-@expose_resources(actions=['cluster:read'],
-                  resources=['node:id:{filter_node}'],
-                  post_proc_func=async_list_handler)
+@expose_resources(actions=['cluster:read'], resources=['node:id:{filter_node}'], post_proc_func=async_list_handler)
 async def get_nodes_info(lc: local_client.LocalClient, filter_node=None, **kwargs):
     """ Wrapper for get_nodes """
     result = AffectedItemsWazuhResult(all_msg='All selected nodes information is shown',

@@ -5,7 +5,7 @@
   - file:path:*
   effect: allow
 - actions:
-  - manager:read_config
+  - manager:read
   - manager:restart
   - manager:read_api_config
   - manager:update_api_config

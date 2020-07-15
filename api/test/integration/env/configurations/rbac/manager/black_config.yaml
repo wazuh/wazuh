@@ -6,7 +6,7 @@
   effect: deny
 - actions:
   - manager:restart
-  - manager:read_config
+  - manager:read
   - manager:read_api_config
   - manager:update_api_config
   resources:

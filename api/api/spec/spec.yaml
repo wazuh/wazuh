@@ -223,12 +223,12 @@ x-rbac-catalog:
         actions: ['cluster:status']
         resources: ['*:*:*']
         effect: "allow"
-    'manager:read_config':
+    'manager:read':
       description: "Read Wazuh manager configuration"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions: ['manager:read_config']
+        actions: ['manager:read']
         resources: ['*:*:*']
         effect: "allow"
     'manager:read_api_config':
@@ -8105,7 +8105,7 @@ paths:
       description: "Return the status of all Wazuh daemons"
       operationId: api.controllers.manager_controller.get_status
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8157,7 +8157,7 @@ paths:
       description: "Return basic information such as version, compilation date, installation path"
       operationId: api.controllers.manager_controller.get_info
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8201,7 +8201,7 @@ paths:
       description: "Return wazuh configuration used"
       operationId: api.controllers.manager_controller.get_configuration
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8271,7 +8271,7 @@ paths:
       description: "Return Wazuh statistical information for the current or specified date"
       operationId: api.controllers.manager_controller.get_stats
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8329,7 +8329,7 @@ paths:
       description: "Return Wazuh statistical information per hour. Each number in the averages field represents the average of alerts per hour"
       operationId: api.controllers.manager_controller.get_stats_hourly
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8386,7 +8386,7 @@ paths:
       description: "Return Wazuh statistical information per week. Each number in the averages field represents the average of alerts per hour for that specific day"
       operationId: api.controllers.manager_controller.get_stats_weekly
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8606,7 +8606,7 @@ paths:
       description: "Return Wazuh analysisd statistical information"
       operationId: api.controllers.manager_controller.get_stats_analysisd
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8683,7 +8683,7 @@ paths:
       description: "Return Wazuh remoted statistical information"
       operationId: api.controllers.manager_controller.get_stats_remoted
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8722,7 +8722,7 @@ paths:
       description: "Return the last 2000 wazuh log entries"
       operationId: api.controllers.manager_controller.get_log
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8776,7 +8776,7 @@ paths:
       description: "Return a summary of the last 2000 wazuh log entries"
       operationId: api.controllers.manager_controller.get_log_summary
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9097,7 +9097,7 @@ paths:
       description: "Return wether the Wazuh configuration is correct"
       operationId: api.controllers.manager_controller.get_conf_validation
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9130,7 +9130,7 @@ paths:
       description: "Return the requested configuration in JSON format"
       operationId: api.controllers.manager_controller.get_manager_config_ondemand
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'

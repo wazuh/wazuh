@@ -377,13 +377,13 @@ get_rbac_actions:
         related_endpoints:
           - GET /lists
           - GET /lists/files
-      manager:read_config:
+      manager:read:
         description: Read Wazuh manager configuration
         resources:
           - "*:*"
         example:
           actions:
-            - manager:read_config
+            - manager:read
           resources:
             - "*:*:*"
           effect: allow
