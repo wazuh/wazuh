@@ -331,7 +331,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     goto cleanup;
                 }
 
-                if (overwrite != 1 && doesRuleExist(id, rulenode)) {
+                if (overwrite != 1 && doesRuleExist(id, os_analysisd_rulelist)) {
                     merror("Duplicate rule ID:%d", id);
                     goto cleanup;
                 }
@@ -1910,8 +1910,8 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->firedtimes = 0;
     ruleinfo_pt->maxsize = maxsize;
     ruleinfo_pt->frequency = frequency;
-    if (ruleinfo_pt->frequency > last_events_list->_max_freq) {
-        last_events_list->_max_freq = ruleinfo_pt->frequency;
+    if (ruleinfo_pt->frequency > os_analysisd_last_events->_max_freq) {
+        os_analysisd_last_events->_max_freq = ruleinfo_pt->frequency;
     }
     ruleinfo_pt->ignore_time = ignore_time;
     ruleinfo_pt->timeframe = timeframe;
