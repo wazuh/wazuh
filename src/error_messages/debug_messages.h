@@ -237,4 +237,12 @@
 #define FIM_NUM_WATCHES                     "(6345): Folders monitored with real-time engine: %u"
 #define FIM_REALTIME_CALLBACK               "(6346): Realtime watch deleted for '%s'"
 
+/* Modules messages */
+#define MOD_TASK_START                      "(8100): Module Task Manager started."
+#define MOD_TASK_FINISH                     "(8101): Module Task Manager finished."
+#define MOD_TASK_DISABLED                   "(8102): Module disabled. Exiting..."
+#define MOD_TASK_EMPTY_MESSAGE              "(8103): Empty message from local client."
+#define MOD_TASK_INCOMMING_MESSAGE          "(8104): Incomming message: '%s'"
+#define MOD_TASK_RESPONSE_MESSAGE           "(8105): Response to message: '%s'"
+
 #endif /* DEBUG_MESSAGES_H */

@@ -58,12 +58,12 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
     int tasks = 0;
     int error_code = SUCCESS;
 
-    mtdebug1(WM_TASK_MANAGER_LOGTAG, "Incomming message: '%s'", msg);
+    mtdebug1(WM_TASK_MANAGER_LOGTAG, MOD_TASK_INCOMMING_MESSAGE, msg);
 
     // Parse message
     if (event_array = wm_task_manager_parse_message(msg), !event_array) {
         *response = wm_task_manager_build_response_error(INVALID_MESSAGE);
-        mtdebug1(WM_TASK_MANAGER_LOGTAG, "Response to message: '%s'", *response);
+        mtdebug1(WM_TASK_MANAGER_LOGTAG, MOD_TASK_RESPONSE_MESSAGE, *response);
         return strlen(*response);
     }
 
@@ -85,14 +85,14 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
                 // Detect agent
                 if (agent_json = cJSON_GetObjectItem(task_object, json_keys[AGENT_ID]), !agent_json) {
                     error_code = INVALID_MESSAGE;
-                    mterror(WM_TASK_MANAGER_LOGTAG, "Agent not found at index '%d'", task);
+                    mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, json_keys[AGENT_ID], task);
                     break;
                 }
 
                 // Insert upgrade task into DB
                 if (task_id = wm_task_manager_insert_task(agent_json->valueint, module, command), task_id <= 0) {
                     error_code = DATABASE_ERROR;
-                    mterror(WM_TASK_MANAGER_LOGTAG, "Database error at index '%d'", task);
+                    mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_DB_ERROR, task);
                     break;
                 }
 
@@ -101,12 +101,12 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
 
             } else {
                 error_code = INVALID_MESSAGE;
-                mterror(WM_TASK_MANAGER_LOGTAG, "Invalid command '%s' at index '%d'", command, task);
+                mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, json_keys[COMMAND], command, task);
                 break;
             }
         } else {
             error_code = INVALID_MESSAGE;
-            mterror(WM_TASK_MANAGER_LOGTAG, "Invalid module '%s' at index '%d'", module, task);
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, json_keys[MODULE], module, task);
             break;
         }
     }
@@ -117,7 +117,7 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
         *response = cJSON_PrintUnformatted(response_array);
     }
 
-    mtdebug1(WM_TASK_MANAGER_LOGTAG, "Response to message: '%s'", *response);
+    mtdebug1(WM_TASK_MANAGER_LOGTAG, MOD_TASK_RESPONSE_MESSAGE, *response);
 
     cJSON_Delete(event_array);
     cJSON_Delete(response_array);
@@ -136,13 +136,13 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
 
     // Parsing event
     if (event_array = cJSON_ParseWithOpts(msg, &error, 0), !event_array) {
-        mterror(WM_TASK_MANAGER_LOGTAG, "Error parsing JSON event: '%s'", msg);
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_JSON_ERROR, msg);
         return NULL;
     }
 
     // Getting array size
     if (tasks = cJSON_GetArraySize(event_array), !tasks) {
-        mterror(WM_TASK_MANAGER_LOGTAG, "Invalid message. Array of tasks is empty.");
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_EMPTY_ERROR);
         cJSON_Delete(event_array);
         return NULL;
     }
@@ -153,14 +153,14 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
 
         // Detect module
         if (module_json = cJSON_GetObjectItem(task_object, json_keys[MODULE]), !module_json) {
-            mterror(WM_TASK_MANAGER_LOGTAG, "Invalid message. Module not found at index '%d'", task);
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, json_keys[MODULE], task);
             cJSON_Delete(event_array);
             return NULL;
         }
 
         // Detect command
         if (command_json = cJSON_GetObjectItem(task_object, json_keys[COMMAND]), !command_json) {
-            mterror(WM_TASK_MANAGER_LOGTAG, "Invalid message. Command not found at index '%d'", task);
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, json_keys[COMMAND], task);
             cJSON_Delete(event_array);
             return NULL;
         }
@@ -194,19 +194,19 @@ int wm_task_manager_init(wm_task_manager *task_config) {
 
     // Check if module is enabled
     if (!task_config->enabled) {
-        mtinfo(WM_TASK_MANAGER_LOGTAG, "Module disabled. Exiting...");
+        mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_DISABLED);
         pthread_exit(NULL);
     }
 
     // Check or create tasks DB
     if (wm_task_manager_check_db()) {
-        mterror(WM_TASK_MANAGER_LOGTAG, "DB integrity is invalid. Exiting...");
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_CHECK_DB_ERROR);
         pthread_exit(NULL);
     }
 
     /* Set the queue */
     if (sock = OS_BindUnixDomain(DEFAULTDIR TASK_QUEUE, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        mterror(WM_TASK_MANAGER_LOGTAG, "Queue '%s' not accesible: '%s'. Exiting...", TASK_QUEUE, strerror(errno));
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_CREATE_SOCK_ERROR, TASK_QUEUE, strerror(errno));
         pthread_exit(NULL);
     }
 
@@ -224,7 +224,7 @@ void* wm_task_manager_main(wm_task_manager* task_config) {
     // Initial configuration
     sock = wm_task_manager_init(task_config);
 
-    mtinfo(WM_TASK_MANAGER_LOGTAG, "Module Task Manager started.");
+    mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_START);
 
     while (1) {
         // Wait for socket
@@ -234,7 +234,7 @@ void* wm_task_manager_main(wm_task_manager* task_config) {
         switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
-                mterror(WM_TASK_MANAGER_LOGTAG, "Error in select(): '%s'. Exiting...", strerror(errno));
+                mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SELECT_ERROR, strerror(errno));
                 pthread_exit(NULL);
             }
             continue;
@@ -247,7 +247,7 @@ void* wm_task_manager_main(wm_task_manager* task_config) {
         // Accept incomming connection
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
-                mterror(WM_TASK_MANAGER_LOGTAG, "Error in accept(): '%s'", strerror(errno));
+                mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_ACCEPT_ERROR, strerror(errno));
             }
             continue;
         }
@@ -256,17 +256,17 @@ void* wm_task_manager_main(wm_task_manager* task_config) {
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length) {
         case OS_SOCKTERR:
-            mterror(WM_TASK_MANAGER_LOGTAG, "Response size is bigger than expected.");
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SOCKTERR_ERROR);
             break;
         case -1:
-            mterror(WM_TASK_MANAGER_LOGTAG, "Error in recv(): '%s'", strerror(errno));
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_RECV_ERROR, strerror(errno));
             break;
         case 0:
-            mtdebug1(WM_TASK_MANAGER_LOGTAG, "Empty message from local client.");
+            mtdebug1(WM_TASK_MANAGER_LOGTAG, MOD_TASK_EMPTY_MESSAGE);
             close(peer);
             break;
         case OS_MAXLEN:
-            mterror(WM_TASK_MANAGER_LOGTAG, "Received message > %i", MAX_DYN_STR);
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_LENGTH_ERROR, MAX_DYN_STR);
             close(peer);
             break;
         default:
@@ -284,7 +284,7 @@ void* wm_task_manager_main(wm_task_manager* task_config) {
 }
 
 void wm_task_manager_destroy(wm_task_manager* task_config) {
-    mtinfo(WM_TASK_MANAGER_LOGTAG, "Module Task Manager finished.");
+    mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_FINISH);
     os_free(task_config);
 }
 

@@ -31,7 +31,7 @@ int wm_task_manager_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_st
     int result;
     for (attempts = 0; (result = sqlite3_prepare_v2(db, zSql, nByte, stmt, pzTail)) == SQLITE_BUSY; attempts++) {
         if (attempts == MAX_SQL_ATTEMPTS) {
-            mterror(WM_TASK_MANAGER_LOGTAG, "Couldn't access tasks DB.");
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_ACCESS_DB_ERROR);
             return OS_INVALID;
         }
     }
@@ -43,7 +43,7 @@ int wm_task_manager_step(sqlite3_stmt *stmt) {
     int result;
     for (attempts = 0; (result = sqlite3_step(stmt)) == SQLITE_BUSY; attempts++) {
         if (attempts == MAX_SQL_ATTEMPTS) {
-            mterror(WM_TASK_MANAGER_LOGTAG, "Couldn't access tasks DB.");
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_ACCESS_DB_ERROR);
             return OS_INVALID;
         }
     }
@@ -51,7 +51,7 @@ int wm_task_manager_step(sqlite3_stmt *stmt) {
 }
 
 int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt) {
-    mterror(WM_TASK_MANAGER_LOGTAG, "SQL error: '%s'", sqlite3_errmsg(db));
+    mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_ERROR, sqlite3_errmsg(db));
     wdb_finalize(stmt);
     sqlite3_close_v2(db);
     return OS_INVALID;
@@ -67,14 +67,14 @@ int wm_task_manager_check_db() {
 
     // Open or create the database file
     if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
-        mterror(WM_TASK_MANAGER_LOGTAG, "DB couldn't be checked or created.");
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_CREATE_DB_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
 
     // Load the tables schema
     for (sql = schema_task_manager_sql; sql && *sql; sql = tail) {
         if (wm_task_manager_prepare(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
-            mterror(WM_TASK_MANAGER_LOGTAG, "DB couldn't be checked or created.");
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_CREATE_DB_ERROR);
             return wm_task_manager_sql_error(db, stmt);
         }
 
@@ -120,12 +120,12 @@ int wm_task_manager_insert_task(int agent_id, const char *module, const char *co
     int task_id = 0;
 
     if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READWRITE, NULL)) {
-        mterror(WM_TASK_MANAGER_LOGTAG, "DB couldn't be opened.");
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
 
     if (wm_task_manager_prepare(db, task_queries[VU_INSERT_TASK], -1, &stmt, NULL) != SQLITE_OK) {
-        mterror(WM_TASK_MANAGER_LOGTAG, "Couldn't prepare SQL statement.");
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
 
@@ -135,7 +135,7 @@ int wm_task_manager_insert_task(int agent_id, const char *module, const char *co
     sqlite3_bind_text(stmt, 4, task_statuses[NEW], -1, NULL);
 
     if (result = wm_task_manager_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
-        mterror(WM_TASK_MANAGER_LOGTAG, "Couldn't execute SQL statement.");
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
 
