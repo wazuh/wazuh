@@ -40,38 +40,55 @@ extern OSDecoderInfo *fim_decoder;
 extern time_t current_time;
 
 /**
- * @brief We have two internal lists for decoders. One with the program_name
- * and one without.
- *
- * This is going to improve greatly the performance of our decoder matching.
+ * @brief Structure to save decoders which have program_name or parent with program_name
  */
-OSDecoderNode *osdecodernode_forpname;
-OSDecoderNode *osdecodernode_nopname;
+OSDecoderNode *os_analysisd_decoderlist_pn;
+
+/**
+ * @brief Structure to save decoders which haven't program_name or parent without program_name
+ */
+OSDecoderNode *os_analysisd_decoderlist_nopn;
 
 /**
  * @brief Structure to save all rules read in starting.
  */
-RuleNode *rulenode;
+RuleNode *os_analysisd_rulelist;
 
 /**
  * @brief Structure to save the last list of events.
  */
-EventList *last_events_list;
+EventList *os_analysisd_last_events;
 
 /**
- * @brief Structure to save a node in a list of lists.
+ * @brief Structure to save all CDB lists.
  */
-ListNode *global_listnode;
+ListNode *os_analysisd_cdblists;
 
 /**
- * @brief Structure to save a list of rules.
+ * @brief Structure to save rules wich depends on a CDB list.
  */
-ListRule *global_listrule;
+ListRule *os_analysisd_cdbrules;
 
-// Com request thread dispatcher
+
+/**
+ * @brief Listen to analysisd socket for new requests
+ */
 void * asyscom_main(__attribute__((unused)) void * arg) ;
+
+/**
+ * @brief Check that request is to get a configuration
+ * @param command message received from api
+ * @param output the configuration to send
+ */
 size_t asyscom_dispatch(char * command, char ** output);
+
+/**
+ * @brief Process the message received to send the configuration requested
+ * @param section contains the name of configuration requested
+ * @param output the configuration to send
+ */
 size_t asyscom_getconfig(const char * section, char ** output);
+
 
 #define WM_ANALYSISD_LOGTAG ARGV0 "" // Tag for log messages
 
