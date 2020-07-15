@@ -101,6 +101,30 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYNC_UPDATE_COMPLETION] = "UPDATE sync_info SET last_attempt = ?, last_completion = ?, n_attempts = n_attempts + 1, n_completions = n_completions + 1 WHERE component = ?;",
     [WDB_STMT_MITRE_NAME_GET] = "SELECT name FROM attack WHERE id = ?;",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
+    [WDB_GLOBAL_STMT_INSERT_AGENT] =  "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?, ?);",
+    [WDB_GLOBAL_STMT_UPDATE_AGENT_NAME] =  "UPDATE agent SET name = ? WHERE id = ?;",
+    [WDB_GLOBAL_STMT_UPDATE_AGENT_VERSION] =   "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? WHERE id = ?;",
+    [WDB_GLOBAL_STMT_UPDATE_AGENT_VERSION_IP] =   "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? , ip = ? WHERE id = ?;",
+    [WDB_GLOBAL_STMT_UPDATE_AGENT_KEEPALIVE] =   "UPDATE agent SET last_keepalive = ? WHERE id = ?;",
+    [WDB_GLOBAL_STMT_SELECT_AGENT_STATUS] =  "SELECT status FROM agent WHERE id = ?;",
+    [WDB_GLOBAL_STMT_UPDATE_AGENT_STATUS] =  "UPDATE agent SET status = ? WHERE id = ?;",
+    [WDB_GLOBAL_STMT_UPDATE_AGENT_GROUP] =  "UPDATE agent SET `group` = ? WHERE id = ?;",
+    [WDB_GLOBAL_STMT_INSERT_AGENT_GROUP] =  "INSERT INTO `group` (name) VALUES(?)",
+    [WDB_GLOBAL_STMT_SELECT_AGENT_GROUP] =  "SELECT `group` FROM agent WHERE id = ?;",
+    [WDB_GLOBAL_STMT_INSERT_AGENT_BELONG] =  "INSERT INTO belongs (id_group, id_agent) VALUES(?, ?)",
+    [WDB_GLOBAL_STMT_DELETE_AGENT_BELONG] =  "DELETE FROM belongs WHERE id_agent = ?",
+    [WDB_GLOBAL_STMT_DELETE_GROUP_BELONG] =  "DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ? );",
+    [WDB_GLOBAL_STMT_SELECT_FIM_OFFSET] =  "SELECT fim_offset FROM agent WHERE id = ?;",
+    [WDB_GLOBAL_STMT_SELECT_REG_OFFSET] =  "SELECT reg_offset FROM agent WHERE id = ?;",
+    [WDB_GLOBAL_STMT_UPDATE_FIM_OFFSET] =  "UPDATE agent SET fim_offset = ? WHERE id = ?;",
+    [WDB_GLOBAL_STMT_UPDATE_REG_OFFSET] =  "UPDATE agent SET reg_offset = ? WHERE id = ?;",
+    [WDB_GLOBAL_STMT_DELETE_AGENT] =  "DELETE FROM agent WHERE id = ?;",
+    [WDB_GLOBAL_STMT_SELECT_AGENT] =  "SELECT name FROM agent WHERE id = ?;",
+    [WDB_GLOBAL_STMT_SELECT_AGENTS] =  "SELECT id FROM agent WHERE id != 0;",
+    [WDB_GLOBAL_STMT_FIND_AGENT] =  "SELECT id FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ?2 || '/_%');",
+    [WDB_GLOBAL_STMT_FIND_GROUP] =  "SELECT id FROM `group` WHERE name = ?;",
+    [WDB_GLOBAL_STMT_SELECT_GROUPS] =  "SELECT name FROM `group`;",
+    [WDB_GLOBAL_STMT_DELETE_GROUP] =   "DELETE FROM `group` WHERE name = ?;",
 };
 
 sqlite3 *wdb_global = NULL;
@@ -145,6 +169,59 @@ int wdb_open_global() {
     }
 
     return 0;
+}
+
+// Opens global database and stores it in DB pool. It returns a locked database or NULL
+wdb_t * wdb_open_global2() {
+    char path[PATH_MAX + 1];
+    sqlite3 *db;
+    wdb_t * wdb = NULL;
+
+    // Find BD in pool
+
+    w_mutex_lock(&pool_mutex);
+
+    if (wdb = (wdb_t *)OSHash_Get(open_dbs, WDB2_GLOB_NAME), wdb) {
+        goto success;
+    }
+
+    // Try to open DB
+
+    snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+    
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+        mdebug1("Global database not found, creating.");
+        sqlite3_close_v2(db);
+
+        if (wdb_create_global(path) < 0) {
+            merror("Couldn't create SQLite database '%s'", path);
+            goto end;
+        }
+
+        // Retry to open
+
+        if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+            merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
+            sqlite3_close_v2(db);
+            goto end;
+        }
+
+        wdb = wdb_init(db, WDB2_GLOB_NAME);
+        wdb_pool_append(wdb);
+
+    } 
+    else {
+        wdb = wdb_init(db, WDB2_GLOB_NAME);
+        wdb_pool_append(wdb);
+    }
+
+success:
+    w_mutex_lock(&wdb->mutex);
+    wdb->refcount++;
+
+end:
+    w_mutex_unlock(&pool_mutex);
+    return wdb;
 }
 
 wdb_t * wdb_open_mitre() {

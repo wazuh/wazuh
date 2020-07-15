@@ -122,6 +122,30 @@ typedef enum wdb_stmt {
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
     WDB_STMT_MITRE_NAME_GET,
+    WDB_GLOBAL_STMT_INSERT_AGENT, 
+    WDB_GLOBAL_STMT_UPDATE_AGENT_NAME,
+    WDB_GLOBAL_STMT_UPDATE_AGENT_VERSION, 
+    WDB_GLOBAL_STMT_UPDATE_AGENT_VERSION_IP, 
+    WDB_GLOBAL_STMT_UPDATE_AGENT_KEEPALIVE, 
+    WDB_GLOBAL_STMT_SELECT_AGENT_STATUS,
+    WDB_GLOBAL_STMT_UPDATE_AGENT_STATUS,
+    WDB_GLOBAL_STMT_UPDATE_AGENT_GROUP,
+    WDB_GLOBAL_STMT_INSERT_AGENT_GROUP,
+    WDB_GLOBAL_STMT_SELECT_AGENT_GROUP,
+    WDB_GLOBAL_STMT_INSERT_AGENT_BELONG,
+    WDB_GLOBAL_STMT_DELETE_AGENT_BELONG,
+    WDB_GLOBAL_STMT_DELETE_GROUP_BELONG,
+    WDB_GLOBAL_STMT_SELECT_FIM_OFFSET,
+    WDB_GLOBAL_STMT_SELECT_REG_OFFSET,
+    WDB_GLOBAL_STMT_UPDATE_FIM_OFFSET,
+    WDB_GLOBAL_STMT_UPDATE_REG_OFFSET,
+    WDB_GLOBAL_STMT_DELETE_AGENT,
+    WDB_GLOBAL_STMT_SELECT_AGENT,
+    WDB_GLOBAL_STMT_SELECT_AGENTS,
+    WDB_GLOBAL_STMT_FIND_AGENT,
+    WDB_GLOBAL_STMT_FIND_GROUP,
+    WDB_GLOBAL_STMT_SELECT_GROUPS,
+    WDB_GLOBAL_STMT_DELETE_GROUP,
     WDB_STMT_SIZE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
@@ -170,6 +194,9 @@ extern OSHash * open_dbs;
 
 /* Open global database. Returns 0 on success or -1 on failure. */
 int wdb_open_global();
+
+// Opens global database and stores it in DB pool. It returns a locked database or NULL
+wdb_t * wdb_open_global2();
 
 /**
  * @brief Open mitre database and store in DB poll.
@@ -660,5 +687,26 @@ int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
+
+// Function to perform sql queries on global.db
+int wdb_parse_global(wdb_t * wdb, char * input, char * output);
+
+// Function to perform select sql queries on global.db
+int wdb_parse_global_select(wdb_t * wdb, char * next, char * result_found);
+
+// Function to perform find sql queries on global.db
+int wdb_parse_global_find(wdb_t * wdb, char * next, char * result_found);
+
+// Function to perform insert sql queries on global.db
+int wdb_parse_global_insert(wdb_t * wdb, char * next, char * result_found);
+
+// Function to INSERT AGENT on global.db
+int wdb_global_insert_agent(wdb_t * wdb, char * next, char * result_found);
+
+// Function to perform UPDATE sql queries on global.db
+int wdb_parse_global_update(wdb_t * wdb, char * next, char * result_found);
+
+// Function to perform DELETE sql queries on global.db
+int wdb_parse_global_delete(wdb_t * wdb, char * next, char * result_found);
 
 #endif
