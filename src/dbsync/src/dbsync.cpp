@@ -13,6 +13,7 @@
 #include <mutex>
 #include "dbsync.h"
 #include "dbsync_implementation.h"
+#include "dbsyncPipelineFactory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -88,27 +89,96 @@ void dbsync_teardown(void)
     DBSyncImplementation::instance().release();
 }
 
-TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE /*handle*/,
-                             const char**        /*tables*/,
-                             const int           /*thread_number*/,
-                             const int           /*max_queue_size*/,
-                             result_callback_t   /*callback*/)
+TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
+                             const char**        tables,
+                             const int           thread_number,
+                             const int           max_queue_size,
+                             result_callback_t   callback)
 {
-    // Dummy function for now.
-    return nullptr;
+    std::string error_message;
+    TXN_HANDLE txn{ nullptr };
+    if (!handle || !tables || !max_queue_size || !callback)
+    {
+        error_message += "Invalid parameters.";
+    }
+    else
+    {
+        try
+        {
+            //DbSyncImplementation...-> txnContext
+            txn = PipelineFactory::instance().create(handle, nullptr, thread_number, max_queue_size, callback);
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+        }
+        catch(...)
+        {
+            error_message += "Unrecognized error.";
+        }
+    }
+    log_message(error_message);
+    return txn;
 }
 
-int dbsync_close_txn(const TXN_HANDLE /*txn*/)
+int dbsync_close_txn(const TXN_HANDLE txn)
 {
-    // Dummy function for now.
-    return 0;
+    auto ret_val { -1 };
+    std::string error_message;
+    if (!txn)
+    {
+        error_message += "Invalid txn.";
+    }
+    else
+    {
+        try
+        {
+            PipelineFactory::instance().destroy(txn);
+            ret_val = 0;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+            ret_val = ex.id();
+        }
+        catch(...)
+        {
+            error_message += "Unrecognized error.";
+        }
+    }
+    log_message(error_message);
+    return ret_val;
 }
 
-int dbsync_sync_txn_row(const TXN_HANDLE /*txn*/,
-                        const cJSON*     /*js_input*/)
+int dbsync_sync_txn_row(const TXN_HANDLE txn,
+                        const cJSON*     js_input)
 {
-    // Dummy function for now.
-    return 0;
+    auto ret_val { -1 };
+    std::string error_message;
+    if (!txn || !js_input)
+    {
+        error_message += "Invalid txn or json.";
+    }
+    else
+    {
+        try
+        {
+            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(js_input)};
+            PipelineFactory::instance().pipeline(txn)->syncRow(spJsonBytes.get());
+            ret_val = 0;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+            ret_val = ex.id();
+        }
+        catch(...)
+        {
+            error_message += "Unrecognized error.";
+        }
+    }
+    log_message(error_message);
+    return ret_val;
 }
 
 int dbsync_add_table_relationship(const DBSYNC_HANDLE /*handle*/,
@@ -189,11 +259,35 @@ int dbsync_delete_rows(const DBSYNC_HANDLE /*handle*/,
     return 0;
 }
 
-int dbsync_get_deleted_rows(const TXN_HANDLE  /*txn*/,
-                            result_callback_t /*callback*/)
+int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
+                            result_callback_t callback)
 {
-    // Dummy function for now.
-    return 0;
+    auto ret_val { -1 };
+    std::string error_message;
+    if (!txn || !callback)
+    {
+        error_message += "Invalid txn or callback.";
+    }
+    else
+    {
+        try
+        {
+            PipelineFactory::instance().pipeline(txn)->getDeleted(callback);
+            ret_val = 0;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+            ret_val = ex.id();
+        }
+        catch(...)
+        {
+            error_message += "Unrecognized error.";
+        }
+    }
+    log_message(error_message);
+
+    return ret_val;
 }
 
 int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
