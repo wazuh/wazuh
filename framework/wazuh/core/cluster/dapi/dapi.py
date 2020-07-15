@@ -424,7 +424,7 @@ class DistributedAPI:
         nodes = await self.get_solver_node()
         self.from_cluster = True
         if 'node_id' in self.f_kwargs or 'node_list' in self.f_kwargs:
-            # Check cluster:read_config permissions for each node
+            # Check cluster:read permissions for each node
             common.rbac.set(self.rbac_permissions)
             common.cluster_nodes.set(self.nodes)
             common.broadcast.set(self.broadcasting)

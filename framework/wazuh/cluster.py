@@ -14,7 +14,7 @@ cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}'])
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def read_config_wrapper():
     """ Wrapper for read_config
 
@@ -32,7 +32,7 @@ def read_config_wrapper():
     return result
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}'])
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def get_node_wrapper():
     """ Wrapper for get_node
 
@@ -60,7 +60,7 @@ def get_status_json():
     return get_cluster_status()
 
 
-@expose_resources(actions=['cluster:read_config'],
+@expose_resources(actions=['cluster:read'],
                   resources=['node:id:{filter_node}'],
                   post_proc_func=async_list_handler)
 async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
@@ -80,7 +80,7 @@ async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
     return result
 
 
-@expose_resources(actions=['cluster:read_config'],
+@expose_resources(actions=['cluster:read'],
                   resources=['node:id:{filter_node}'],
                   post_proc_func=async_list_handler)
 async def get_nodes_info(lc: local_client.LocalClient, filter_node=None, **kwargs):

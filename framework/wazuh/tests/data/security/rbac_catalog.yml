@@ -243,13 +243,13 @@ get_rbac_actions:
         related_endpoints:
           - GET /ciscat/{agent_id}/results
           - GET /experimental/ciscat/results
-      cluster:read_config:
+      cluster:read:
         description: Read Wazuh's cluster configuration
         resources:
           - node:id
         example:
           actions:
-            - cluster:read_config
+            - cluster:read
           resources:
             - node:id:worker1
             - node:id:worker3

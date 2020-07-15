@@ -157,12 +157,12 @@ x-rbac-catalog:
         actions: ['ciscat:read']
         resources: ['agent:id:001', 'agent:id:003']
         effect: "deny"
-    'cluster:read_config':
+    'cluster:read':
       description: "Read Wazuh's cluster configuration"
       resources:
         - $ref: '#/x-rbac-catalog/resources/node:id'
       example:
-        actions: ['cluster:read_config']
+        actions: ['cluster:read']
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
     'cluster:read_api_config':
@@ -6200,7 +6200,7 @@ paths:
         description: "Restart all agents which belong to a specific given node"
         operationId: api.controllers.agents_controller.restart_agents_by_node
         x-rbac-actions:
-          - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+          - $ref: '#/x-rbac-catalog/actions/cluster:read'
           - $ref: '#/x-rbac-catalog/actions/agent:restart'
         parameters:
           - $ref: '#/components/parameters/pretty'
@@ -6549,7 +6549,7 @@ paths:
       description: "Return basic information about the cluster node receiving the request"
       operationId: api.controllers.cluster_controller.get_cluster_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6597,7 +6597,7 @@ paths:
       description: "Get information about all nodes in the cluster or a list of them"
       operationId: api.controllers.cluster_controller.get_cluster_nodes
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6652,7 +6652,7 @@ paths:
       description: "Return cluster healthcheck information for all nodes or a list of them. Such information includes last keep alive, last synchronization time and number of agents reporting on each node"
       operationId: api.controllers.cluster_controller.get_healthcheck
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6761,7 +6761,7 @@ paths:
       description: "Return the current node cluster configuration"
       operationId: api.controllers.cluster_controller.get_config
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6994,7 +6994,7 @@ paths:
       description: "Return the status of all Wazuh daemons in node node_id"
       operationId: api.controllers.cluster_controller.get_status_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7047,7 +7047,7 @@ paths:
       description: "Return basic information about a specified node such as version, compilation date, installation path"
       operationId: api.controllers.cluster_controller.get_info_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7092,7 +7092,7 @@ paths:
       description: "Return wazuh configuration used in node {node_id}"
       operationId: api.controllers.cluster_controller.get_configuration_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7163,7 +7163,7 @@ paths:
       description: "Return Wazuh statistical information in node {node_id} for the current or specified date"
       operationId: api.controllers.cluster_controller.get_stats_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7222,7 +7222,7 @@ paths:
       description: "Return Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the average of alerts per hour"
       operationId: api.controllers.cluster_controller.get_stats_hourly_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7280,7 +7280,7 @@ paths:
       description: "Return Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the average of alerts per hour for that specific day"
       operationId: api.controllers.cluster_controller.get_stats_weekly_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7501,7 +7501,7 @@ paths:
       description: "Return Wazuh analysisd statistical information in node {node_id}"
       operationId: api.controllers.cluster_controller.get_stats_analysisd_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7579,7 +7579,7 @@ paths:
       description: "Return Wazuh remoted statistical information in node {node_id}"
       operationId: api.controllers.cluster_controller.get_stats_remoted_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7619,7 +7619,7 @@ paths:
       description: "Return the last 2000 wazuh log entries in node {node_id}"
       operationId: api.controllers.cluster_controller.get_log_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7674,7 +7674,7 @@ paths:
       description: "Return a summary of the last 2000 wazuh log entries in node {node_id}"
       operationId: api.controllers.cluster_controller.get_log_summary_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7884,7 +7884,7 @@ paths:
       description: "Return whether the Wazuh configuration is correct or not in all cluster nodes or a list of them"
       operationId: api.controllers.cluster_controller.get_conf_validation
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7927,7 +7927,7 @@ paths:
       description: "Return the requested configuration in JSON format"
       operationId: api.controllers.cluster_controller.get_node_config
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'

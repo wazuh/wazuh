@@ -128,7 +128,7 @@ def restart_agents(agent_list=None):
     return result
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}'], post_proc_func=None)
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'], post_proc_func=None)
 def restart_agents_by_node(agent_list=None):
     """Restart all agents belonging to a node.
 

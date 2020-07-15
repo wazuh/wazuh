@@ -1724,7 +1724,7 @@ stages:
         <<: *permission_denied
 
 ---
-test_name: GET /agents (deny cluster:read_config)
+test_name: GET /agents (deny cluster:read)
 
 stages:
 

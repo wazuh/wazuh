@@ -218,7 +218,7 @@ default_policies:
         actions:
           - cluster:delete_file
           - cluster:read_api_config
-          - cluster:read_config
+          - cluster:read
           - cluster:read_api_config
           - cluster:update_api_config
           - cluster:restart
@@ -255,7 +255,7 @@ default_policies:
       nodes:
         actions:
           - cluster:read_api_config
-          - cluster:read_config
+          - cluster:read
           - cluster:read_api_config
         resources:
           - node:id:*
