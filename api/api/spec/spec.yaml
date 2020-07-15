@@ -7731,6 +7731,7 @@ paths:
       description: "Return file contents from any file in cluster node {node_id}"
       operationId: api.controllers.cluster_controller.get_files_node
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
         - $ref: '#/x-rbac-catalog/actions/cluster:read_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -7768,6 +7769,7 @@ paths:
       description: "Replace file contents with the data contained in the API request in a specified cluster node"
       operationId: api.controllers.cluster_controller.put_files_node
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
         - $ref: '#/x-rbac-catalog/actions/cluster:delete_file'
         - $ref: '#/x-rbac-catalog/actions/cluster:upload_file'
       parameters:
@@ -7811,6 +7813,7 @@ paths:
       description: "Remove a specified file in the node {node-id}"
       operationId: api.controllers.cluster_controller.delete_files_node
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
         - $ref: '#/x-rbac-catalog/actions/cluster:delete_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -7845,6 +7848,7 @@ paths:
       description: "Restart all nodes in the cluster or a list of them"
       operationId: api.controllers.cluster_controller.put_restart
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
         - $ref: '#/x-rbac-catalog/actions/cluster:restart'
       parameters:
         - $ref: '#/components/parameters/pretty'

@@ -28,7 +28,7 @@ cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_status():
     """Wrapper for status().
@@ -48,7 +48,7 @@ def get_status():
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
@@ -121,7 +121,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def ossec_log_summary(months=3):
     """ Summary of ossec.log.
@@ -174,6 +174,8 @@ def ossec_log_summary(months=3):
     return result
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:upload_file"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def upload_file(path=None, content=None, overwrite=False):
@@ -209,6 +211,8 @@ def upload_file(path=None, content=None, overwrite=False):
     return result
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_file"],
                   resources=[f'node:id:{node_id}&file:path:{{path}}'] if cluster_enabled else ['file:path:{path}'],
                   post_proc_func=None)
@@ -242,6 +246,8 @@ def get_file(path, validate=False):
     return WazuhResult({'contents': output})
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:delete_file"],
                   resources=[f'node:id:{node_id}&file:path:{{path}}'] if cluster_enabled else ['file:path:{path}'])
 def delete_file(path):
@@ -313,6 +319,8 @@ _update_config_default_result_kwargs = {
 }
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_api_config"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': _update_config_default_result_kwargs})
@@ -352,6 +360,8 @@ _restart_default_result_kwargs = {
 }
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:restart"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': _restart_default_result_kwargs})
@@ -377,7 +387,7 @@ _validation_default_result_kwargs = {
 }
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': _validation_default_result_kwargs})
 def validation():
@@ -465,7 +475,7 @@ def validation():
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_config(component=None, config=None):
     """ Wrapper for get_active_configuration
@@ -491,7 +501,7 @@ def get_config(component=None, config=None):
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def read_ossec_conf(section=None, field=None):
     """ Wrapper for get_ossec_conf
@@ -516,7 +526,7 @@ def read_ossec_conf(section=None, field=None):
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_basic_info():
     """ Wrapper for Wazuh().to_dict
