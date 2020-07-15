@@ -86,10 +86,7 @@ namespace Utils
     template<typename Writer, typename Reader>
     void connect(std::shared_ptr<Writer> writer, std::shared_ptr<Reader> reader)
     {
-        if (writer && reader)
-        {
-            writer->addReader(reader);
-        }
+        writer->addReader(reader);
     }
 }//namespace Utils
 
