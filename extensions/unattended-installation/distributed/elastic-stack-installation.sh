@@ -16,41 +16,41 @@ logger() {
 
 startService() {
 
-if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
-    systemctl daemon-reload > /dev/null 2>&1
-    systemctl enable $1.service > /dev/null 2>&1
-    systemctl start $1.service > /dev/null 2>&1
-    if [  "$?" != 0  ]
-    then
-        echo "${1^} could not be started."
-        exit 1;
+    if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
+        systemctl daemon-reload > /dev/null 2>&1
+        systemctl enable $1.service > /dev/null 2>&1
+        systemctl start $1.service > /dev/null 2>&1
+        if [  "$?" != 0  ]
+        then
+            echo "${1^} could not be started."
+            exit 1;
+        else
+            echo "${1^} started"
+        fi  
+    elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
+        chkconfig $1 on > /dev/null 2>&1
+        service $1 start > /dev/null 2>&1
+        /etc/init.d/$1 start > /dev/null 2>&1
+        if [  "$?" != 0  ]
+        then
+            echo "${1^} could not be started."
+            exit 1;
+        else
+            echo "${1^} started"
+        fi     
+    elif [ -x /etc/rc.d/init.d/$1 ] ; then
+        /etc/rc.d/init.d/$1 start > /dev/null 2>&1
+        if [  "$?" != 0  ]
+        then
+            echo "${1^} could not be started."
+            exit 1;
+        else
+            echo "${1^} started"
+        fi             
     else
-        echo "${1^} started"
-    fi  
-elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
-    chkconfig $1 on > /dev/null 2>&1
-    service $1 start > /dev/null 2>&1
-    /etc/init.d/$1 start > /dev/null 2>&1
-    if [  "$?" != 0  ]
-    then
-        echo "${1^} could not be started."
+        echo "Error: ${1^} could not start. No service manager found on the system."
         exit 1;
-    else
-        echo "${1^} started"
-    fi     
-elif [ -x /etc/rc.d/init.d/$1 ] ; then
-    /etc/rc.d/init.d/$1 start > /dev/null 2>&1
-    if [  "$?" != 0  ]
-    then
-        echo "${1^} could not be started."
-        exit 1;
-    else
-        echo "${1^} started"
-    fi             
-else
-    echo "Error: ${1^} could not start. No service manager found on the system."
-    exit 1;
-fi
+    fi
 }
 
 ## Show script usage
@@ -212,8 +212,9 @@ createCertificates() {
     logger "Elasticsearch installed."  
 
     # Start Elasticsearch
-    logger "Initializing Elasticsearch..."
+    logger "Starting Elasticsearch..."
     startService "elasticsearch"
+    logger "Initializing Elasticsearch..."
     elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs)
     until $(curl -XGET https://${elk}:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
         echo -ne $char
@@ -252,7 +253,7 @@ installKibana() {
         fi     
         mkdir /etc/kibana/certs > /dev/null 2>&1
         awk -v RS='' '/## Kibana/' ~/config.yml >> /etc/kibana/kibana.yml 
-        logger "Done"
+        logger "Kibana installed."
 
         if [[ -n "$e" ]] && [[ -n "$k" ]] && [[ -n "$single" ]]
         then
@@ -260,7 +261,6 @@ installKibana() {
         fi
     fi
 
-    logger $'\nKibana installed.'  
 }
 
 initializeKibana() {

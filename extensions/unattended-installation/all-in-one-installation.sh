@@ -15,41 +15,41 @@ logger() {
 
 startService() {
 
-if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
-    systemctl daemon-reload > /dev/null 2>&1
-    systemctl enable $1.service > /dev/null 2>&1
-    systemctl start $1.service > /dev/null 2>&1
-    if [  "$?" != 0  ]
-    then
-        echo "${1^} could not be started."
-        exit 1;
+    if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
+        systemctl daemon-reload > /dev/null 2>&1
+        systemctl enable $1.service > /dev/null 2>&1
+        systemctl start $1.service > /dev/null 2>&1
+        if [  "$?" != 0  ]
+        then
+            echo "${1^} could not be started."
+            exit 1;
+        else
+            echo "${1^} started"
+        fi  
+    elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
+        chkconfig $1 on > /dev/null 2>&1
+        service $1 start > /dev/null 2>&1
+        /etc/init.d/$1 start > /dev/null 2>&1
+        if [  "$?" != 0  ]
+        then
+            echo "${1^} could not be started."
+            exit 1;
+        else
+            echo "${1^} started"
+        fi     
+    elif [ -x /etc/rc.d/init.d/$1 ] ; then
+        /etc/rc.d/init.d/$1 start > /dev/null 2>&1
+        if [  "$?" != 0  ]
+        then
+            echo "${1^} could not be started."
+            exit 1;
+        else
+            echo "${1^} started"
+        fi             
     else
-        echo "${1^} started"
-    fi  
-elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
-    chkconfig $1 on > /dev/null 2>&1
-    service $1 start > /dev/null 2>&1
-    /etc/init.d/$1 start > /dev/null 2>&1
-    if [  "$?" != 0  ]
-    then
-        echo "${1^} could not be started."
+        echo "Error: ${1^} could not start. No service manager found on the system."
         exit 1;
-    else
-        echo "${1^} started"
-    fi     
-elif [ -x /etc/rc.d/init.d/$1 ] ; then
-    /etc/rc.d/init.d/$1 start > /dev/null 2>&1
-    if [  "$?" != 0  ]
-    then
-        echo "${1^} could not be started."
-        exit 1;
-    else
-        echo "${1^} started"
-    fi             
-else
-    echo "Error: ${1^} could not start. No service manager found on the system."
-    exit 1;
-fi
+    fi
 }
 
 
