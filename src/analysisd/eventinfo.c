@@ -458,7 +458,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
     w_mutex_lock(&rule->mutex);
 
     /* Get the first event */
-    if (first_pt = OS_GetFirstEvent(last_events_list), !first_pt) {
+    if (first_pt = OS_GetFirstEvent(os_analysisd_last_events), !first_pt) {
         /* Nothing found */
         goto end;
     }

@@ -499,9 +499,9 @@ int main_analysisd(int argc, char **argv)
 
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
 
-    if (!last_events_list) {
-        os_calloc(1, sizeof(EventList), last_events_list);
-        OS_CreateEventList(Config.memorysize, last_events_list);
+    if (!os_analysisd_last_events) {
+        os_calloc(1, sizeof(EventList), os_analysisd_last_events);
+        OS_CreateEventList(Config.memorysize, os_analysisd_last_events);
     }
 
     /*
@@ -585,7 +585,7 @@ int main_analysisd(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading rules file: '%s'", *rulesfiles);
                     }
-                    if (Rules_OP_ReadRules(*rulesfiles, &rulenode, &global_listnode) < 0) {
+                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists) < 0) {
                         merror_exit(RULES_ERROR, *rulesfiles);
                     }
 
@@ -602,7 +602,7 @@ int main_analysisd(int argc, char **argv)
              * search thought the list of lists for the correct file during
              * rule evaluation.
              */
-            OS_ListLoadRules(&global_listnode);
+            OS_ListLoadRules(&os_analysisd_cdblists);
         }
     }
 
@@ -1339,7 +1339,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->srcip) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->srcip, global_listnode)) {
+                    if (!OS_DBSearch(list_holder, lf->srcip, os_analysisd_cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1347,7 +1347,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->srcport) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->srcport, global_listnode)) {
+                    if (!OS_DBSearch(list_holder, lf->srcport, os_analysisd_cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1355,7 +1355,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->dstip) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->dstip, global_listnode)) {
+                    if (!OS_DBSearch(list_holder, lf->dstip, os_analysisd_cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1363,17 +1363,17 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->dstport) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->dstport, global_listnode)) {
+                    if (!OS_DBSearch(list_holder, lf->dstport, os_analysisd_cdblists)) {
                         return (NULL);
                     }
                     break;
                 case RULE_USER:
                     if (lf->srcuser) {
-                        if (!OS_DBSearch(list_holder, lf->srcuser, global_listnode)) {
+                        if (!OS_DBSearch(list_holder, lf->srcuser, os_analysisd_cdblists)) {
                             return (NULL);
                         }
                     } else if (lf->dstuser) {
-                        if (!OS_DBSearch(list_holder, lf->dstuser, global_listnode)) {
+                        if (!OS_DBSearch(list_holder, lf->dstuser, os_analysisd_cdblists)) {
                             return (NULL);
                         }
                     } else {
@@ -1384,7 +1384,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->url) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->url, global_listnode)) {
+                    if (!OS_DBSearch(list_holder, lf->url, os_analysisd_cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1392,7 +1392,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->id) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->id, global_listnode)) {
+                    if (!OS_DBSearch(list_holder, lf->id, os_analysisd_cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1400,7 +1400,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->hostname) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->hostname, global_listnode)) {
+                    if (!OS_DBSearch(list_holder, lf->hostname, os_analysisd_cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1408,7 +1408,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->program_name) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->program_name, global_listnode)) {
+                    if (!OS_DBSearch(list_holder, lf->program_name, os_analysisd_cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1416,7 +1416,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->status) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->status, global_listnode)) {
+                    if (!OS_DBSearch(list_holder, lf->status, os_analysisd_cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1424,7 +1424,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->action) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->action, global_listnode)) {
+                    if (!OS_DBSearch(list_holder, lf->action, os_analysisd_cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1432,7 +1432,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->systemname) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->systemname, global_listnode)){
+                    if (!OS_DBSearch(list_holder, lf->systemname, os_analysisd_cdblists)){
                         return (NULL);
                     }
                     break;
@@ -1440,7 +1440,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->protocol) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->protocol, global_listnode)){
+                    if (!OS_DBSearch(list_holder, lf->protocol, os_analysisd_cdblists)){
                         return (NULL);
                     }
                     break;
@@ -1448,7 +1448,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->data) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->data, global_listnode)){
+                    if (!OS_DBSearch(list_holder, lf->data, os_analysisd_cdblists)){
                         return (NULL);
                     }
                     break;
@@ -1456,14 +1456,14 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->extra_data) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->extra_data, global_listnode)) {
+                    if (!OS_DBSearch(list_holder, lf->extra_data, os_analysisd_cdblists)) {
                         return (NULL);
                     }
                     break;
                 case RULE_DYNAMIC:
                     field = FindField(lf, list_holder->dfield);
 
-                    if (!(field &&OS_DBSearch(list_holder, (char*)field, global_listnode)))
+                    if (!(field &&OS_DBSearch(list_holder, (char*)field, os_analysisd_cdblists)))
                         return NULL;
 
                     break;
@@ -2581,7 +2581,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             os_calloc(1, sizeof(Eventinfo), lf_logall);
             w_copy_event_for_log(lf, lf_logall);
             w_free_event_info(lf);
-            OS_AddEvent(lf, last_events_list);
+            OS_AddEvent(lf, os_analysisd_last_events);
             break;
 
         } while ((rulenode_pt = rulenode_pt->next) != NULL);
