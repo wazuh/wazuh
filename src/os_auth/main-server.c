@@ -367,9 +367,16 @@ int main(int argc, char **argv)
         }
     }
 
-    if (w_is_worker()) {
-        minfo("Cluster worker node: Disabling Authd daemon.");
+    switch(w_is_worker()){
+    case -1:
+        merror("Invalid option at cluster configuration");
         exit(0);
+    case 1:	
+        config.worker_node = TRUE;        	
+        break;	
+    case 0:	
+        config.worker_node = FALSE;	
+        break;	
     }
 
     /* Start daemon -- NB: need to double fork and setsid */
