@@ -756,7 +756,7 @@ int ReadDecodeXML(const char *file)
         }
 
         /* Add osdecoder to the list */
-        if (!OS_AddOSDecoder(pi, &osdecodernode_forpname, &osdecodernode_nopname)) {
+        if (!OS_AddOSDecoder(pi, &os_analysisd_decoderlist_pn, &os_analysisd_decoderlist_nopn)) {
             merror(DECODER_ERROR);
             goto cleanup;
         }

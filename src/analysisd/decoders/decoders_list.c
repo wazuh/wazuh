@@ -23,8 +23,8 @@ static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
 /* Create the Event List */
 void OS_CreateOSDecoderList()
 {
-    osdecodernode_forpname = NULL;
-    osdecodernode_nopname = NULL;
+    os_analysisd_decoderlist_pn = NULL;
+    os_analysisd_decoderlist_nopn = NULL;
 
     return;
 }
@@ -34,10 +34,10 @@ OSDecoderNode *OS_GetFirstOSDecoder(const char *p_name)
 {
     /* If program name is set, we return the forpname list */
     if (p_name) {
-        return (osdecodernode_forpname);
+        return (os_analysisd_decoderlist_pn);
     }
 
-    return (osdecodernode_nopname);
+    return (os_analysisd_decoderlist_nopn);
 }
 
 /* Add an osdecoder to the list */
