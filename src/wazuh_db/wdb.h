@@ -151,6 +151,9 @@ typedef enum {
     WDB_FIM         ///< File integrity monitoring.
 } wdb_component_t;
 
+/* Global SQLite database */
+extern sqlite3 *wdb_global;
+
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
 extern char *schema_upgrade_v1_sql;
@@ -165,8 +168,8 @@ extern wdb_t * db_pool;
 extern int db_pool_size;
 extern OSHash * open_dbs;
 
-// Opens global database and stores it in DB pool. It returns a locked database or NULL
-wdb_t * wdb_open_global();
+/* Open global database. Returns 0 on success or -1 on failure. */
+int wdb_open_global();
 
 /**
  * @brief Open mitre database and store in DB poll.
@@ -176,6 +179,9 @@ wdb_t * wdb_open_global();
  * @return wdb_t* Database Structure that store mitre database or NULL on failure.
  */
 wdb_t * wdb_open_mitre();
+
+/* Close global database */
+void wdb_close_global();
 
 /* Open database for agent */
 sqlite3* wdb_open_agent(int id_agent, const char *name);
