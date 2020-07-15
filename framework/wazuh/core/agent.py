@@ -1626,3 +1626,50 @@ def expand_group(group_name):
             agents_ids.add(str(agent['id']).zfill(3))
 
     return agents_ids
+
+def send_task_upgrade_module(command=None, agent_list=None, debug=False, time_out=common.upgrade_result_retries, file_path=None, installer=None, 
+                                wpk_repo=None, version=None, use_http=False, force_upgrade=0, rl_timeout=-1, show_progress=False, chunk_size=None):
+    
+    valid_commands = ['upgrade', 'upgrade_result']
+
+    if command == None or command not in valid_commands:
+        raise WazuhError(1740) #Change this error to "invalid or null command"
+
+    if agent_list == None or "000" in agent_list:
+        raise WazuhError(1703)
+
+    data = { "command" : command, "agents" : agent_list}
+
+    if command == 'upgrade':
+        data["params"] = {}
+        if file_path != None:
+            data.get("params").update({"file_path" : file_path})
+        if installer != None:
+            data.get("params").update({"installer" : installer})
+        if wpk_repo != None:
+            data.get("params").update({"wpk_repo" : wpk_repo})
+        if version != None:
+            data.get("params").update({"version" : version})
+        if use_http != None:
+            data.get("params").update({"use_http" : use_http})
+        if force_upgrade != None:
+            data.get("params").update({"force_upgrade" : force_upgrade})
+        
+    data = str(data).replace("\'", "\"")
+    if debug:
+        print("MSG SENT TO UPGRADE MODULE: {0}".format(data))
+        
+    try:
+        sock = OssecSocket(common.UPGRADE_SOCKET)
+        sock.send(data.encode())
+        data_rec = sock.receive().decode()
+        if debug:
+            print("MSG RECV FROM UPGRADE MODULE: {0}".format(data_rec))
+    except Exception as msg:
+        print(msg)
+        return str(msg)
+    finally:
+        sock.close()
+    
+    return data_rec
+    
