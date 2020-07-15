@@ -22,8 +22,8 @@
 /* Create the ListRule */
 void OS_CreateListsList()
 {
-    global_listnode = NULL;
-    global_listrule = NULL;
+    os_analysisd_cdblists = NULL;
+    os_analysisd_cdbrules = NULL;
 
     return;
 }
@@ -31,14 +31,14 @@ void OS_CreateListsList()
 /* Get first listnode  */
 ListNode *OS_GetFirstList()
 {
-    ListNode *listnode_pt = global_listnode;
+    ListNode *listnode_pt = os_analysisd_cdblists;
 
     return (listnode_pt);
 }
 
 void OS_ListLoadRules(ListNode **l_node)
 {
-    ListRule *lrule = global_listrule;
+    ListRule *lrule = os_analysisd_cdbrules;
     while (lrule != NULL) {
         if (!lrule->loaded) {
             lrule->db = OS_FindList(lrule->filename, *l_node);
@@ -51,12 +51,12 @@ void OS_ListLoadRules(ListNode **l_node)
 /* External AddList */
 int OS_AddList(ListNode *new_listnode)
 {
-    if (global_listnode == NULL) {
+    if (os_analysisd_cdblists == NULL) {
         /* First list */
-        global_listnode = new_listnode;
+        os_analysisd_cdblists = new_listnode;
     } else {
         /* Add new list to the end */
-        ListNode *last_list_node = global_listnode;
+        ListNode *last_list_node = os_analysisd_cdblists;
 
         while (last_list_node->next != NULL) {
             last_list_node = last_list_node->next;
