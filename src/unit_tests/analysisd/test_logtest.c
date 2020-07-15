@@ -19,6 +19,8 @@
 int w_logtest_init_parameters();
 void *w_logtest_init();
 
+int logtest_enabled = 1;
+
 /* setup/teardown */
 
 
@@ -61,6 +63,10 @@ int __wrap_pthread_mutex_destroy() {
 }
 
 int __wrap_ReadConfig(int modules, const char *cfgfile, void *d1, void *d2) {
+    if (!logtest_enabled)
+    {
+        strcpy(w_logtest_conf.enabled,"no");
+    }
     return mock();
 }
 
@@ -106,7 +112,7 @@ void test_w_logtest_init_parameters_invalid(void **state)
     int ret = w_logtest_init_parameters();
     assert_int_equal(ret, OS_INVALID);
 
-    os_free(logtest_conf.enabled);
+    os_free(w_logtest_conf.enabled);
 }
 
 void test_w_logtest_init_parameters_done(void **state)
@@ -116,7 +122,7 @@ void test_w_logtest_init_parameters_done(void **state)
     int ret = w_logtest_init_parameters();
     assert_int_equal(ret, OS_SUCCESS);
 
-    os_free(logtest_conf.enabled);
+    os_free(w_logtest_conf.enabled);
 }
 
 /* w_logtest_init */
@@ -124,11 +130,11 @@ void test_w_logtest_init_error_parameters(void **state)
 {
     will_return(__wrap_ReadConfig, OS_INVALID);
 
-    expect_string(__wrap__merror, formatted_msg, "(7104): Invalid wazuh-logtest configuration");
+    expect_string(__wrap__merror, formatted_msg, "(7304): Invalid wazuh-logtest configuration");
 
     w_logtest_init();
 
-    os_free(logtest_conf.enabled);
+    os_free(w_logtest_conf.enabled);
 }
 
 
@@ -136,13 +142,14 @@ void test_w_logtest_init_logtest_disabled(void **state)
 {
     will_return(__wrap_ReadConfig, 0);
 
-    strcpy(logtest_conf.enabled, "no");
+    logtest_enabled = 0;
 
     expect_string(__wrap__minfo, formatted_msg, "(7201): Logtest disabled");
 
     w_logtest_init();
 
-    os_free(logtest_conf.enabled);
+    os_free(w_logtest_conf.enabled);
+    logtest_enabled = 1;
 }
 
 void test_w_logtest_init_conection_fail(void **state)
@@ -151,11 +158,11 @@ void test_w_logtest_init_conection_fail(void **state)
 
     will_return(__wrap_OS_BindUnixDomain, OS_SOCKTERR);
 
-    expect_string(__wrap__merror, formatted_msg, "(7100): At wazuh_logtest_init(): Unable to bind to socket '/queue/ossec/logtest'. Errno: (0) Success");
+    expect_string(__wrap__merror, formatted_msg, "(7300): Unable to bind to socket '/queue/ossec/logtest'. Errno: (0) Success");
 
     w_logtest_init();
 
-    os_free(logtest_conf.enabled);
+    os_free(w_logtest_conf.enabled);
 }
 
 void test_w_logtest_init_OSHash_create_fail(void **state)
@@ -166,11 +173,11 @@ void test_w_logtest_init_OSHash_create_fail(void **state)
 
     will_return(__wrap_OSHash_Create, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(7103): Failure to initialize all_sesssions hash");
+    expect_string(__wrap__merror, formatted_msg, "(7303): Failure to initialize all_sesssions hash");
 
     w_logtest_init();
 
-    os_free(logtest_conf.enabled);
+    os_free(w_logtest_conf.enabled);
 }
 
 // void test_w_logtest_init_done(void **state) -> Needs to implement w_logtest_main
@@ -184,6 +191,7 @@ int main(void)
         cmocka_unit_test(test_w_logtest_init_parameters_done),
         // Tests w_logtest_init
         cmocka_unit_test(test_w_logtest_init_error_parameters),
+        cmocka_unit_test(test_w_logtest_init_logtest_disabled),
         cmocka_unit_test(test_w_logtest_init_conection_fail),
         cmocka_unit_test(test_w_logtest_init_OSHash_create_fail),
     };
