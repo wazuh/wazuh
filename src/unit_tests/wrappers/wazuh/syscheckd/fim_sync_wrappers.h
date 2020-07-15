@@ -12,7 +12,6 @@
 #ifndef FIM_SYNC_WRAPPERS_H
 #define FIM_SYNC_WRAPPERS_H
 
-
-
+void __wrap_fim_sync_push_msg(const char * msg);
 
 #endif

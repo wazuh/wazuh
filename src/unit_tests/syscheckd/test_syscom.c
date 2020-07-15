@@ -22,11 +22,6 @@
 
 /* redefinitons/wrapping */
 
-void __wrap_fim_sync_push_msg(const char * msg)
-{
-    check_expected(msg);
-}
-
 static int delete_string(void **state)
 {
     char *data = *state;
