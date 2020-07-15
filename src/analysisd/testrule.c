@@ -79,7 +79,7 @@ int main(int argc, char **argv)
     struct sigaction action = { .sa_handler = onsignal };
     int quiet = 0;
     num_rule_matching_threads = 1;
-    last_events_list = NULL;
+    os_analysisd_last_events = NULL;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -200,9 +200,9 @@ int main(int argc, char **argv)
 
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
 
-    if (!last_events_list) {
-        os_calloc(1, sizeof(EventList), last_events_list);
-        OS_CreateEventList(Config.memorysize, last_events_list);
+    if (!os_analysisd_last_events) {
+        os_calloc(1, sizeof(EventList), os_analysisd_last_events);
+        OS_CreateEventList(Config.memorysize, os_analysisd_last_events);
     }
 
     /*
@@ -302,7 +302,7 @@ int main(int argc, char **argv)
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     mdebug1("Reading rules file: '%s'", *rulesfiles);
-                    if (Rules_OP_ReadRules(*rulesfiles, &rulenode, &global_listnode) < 0) {
+                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists) < 0) {
                         merror_exit(RULES_ERROR, *rulesfiles);
                     }
 
@@ -319,7 +319,7 @@ int main(int argc, char **argv)
              * having to search thought the list of lists for the correct file
              * during rule evaluation.
              */
-            OS_ListLoadRules(&global_listnode);
+            OS_ListLoadRules(&os_analysisd_cdblists);
         }
     }
 
@@ -611,7 +611,7 @@ void OS_ReadMSG(char *ut_str)
                     }
                 }
 
-                OS_AddEvent(lf, last_events_list);
+                OS_AddEvent(lf, os_analysisd_last_events);
                 break;
 
             } while ((rulenode_pt = rulenode_pt->next) != NULL);

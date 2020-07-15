@@ -23,14 +23,14 @@ static int _AddtoRule(int sid, int level, int none, const char *group,
 /* Create the RuleList */
 void OS_CreateRuleList()
 {
-    rulenode = NULL;
+    os_analysisd_rulelist = NULL;
     return;
 }
 
 /* Get first node from rule */
 RuleNode *OS_GetFirstRule()
 {
-    RuleNode *rulenode_pt = rulenode;
+    RuleNode *rulenode_pt = os_analysisd_rulelist;
     return (rulenode_pt);
 }
 
