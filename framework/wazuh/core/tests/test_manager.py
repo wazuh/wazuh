@@ -101,6 +101,7 @@ def test_get_ossec_log_fields():
     assert result[2] == 'info'
     assert result[3] == ' Ending rootcheck scan.'
 
+
 def test_get_ossec_log_fields_ko():
     """Test get_ossec_log_fields() method returns None when nothing matches """
     result = get_ossec_log_fields('DEBUG')

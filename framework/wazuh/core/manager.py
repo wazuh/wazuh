@@ -83,7 +83,7 @@ def get_ossec_logs(limit=2000):
     return logs
 
 
-def get_logs_summary(limit=50000):
+def get_logs_summary(limit=2000):
     """Get the number of alerts of each tag.
 
     Parameters
