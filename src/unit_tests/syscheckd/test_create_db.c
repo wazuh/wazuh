@@ -21,6 +21,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 #include "../syscheckd/fim_db.h"
@@ -68,28 +69,6 @@ bool __wrap_HasFilesystem(__attribute__((unused))const char * path, __attribute_
     return mock();
 }
 
-fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
-    check_expected_ptr(fim_sql);
-    check_expected(file_path);
-
-    return mock_type(fim_entry*);
-}
-
-char **__wrap_fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long int inode, const unsigned long int dev) {
-    check_expected_ptr(fim_sql);
-    check_expected(inode);
-    check_expected(dev);
-
-    return mock_type(char **);
-}
-
-int __wrap_fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
-    check_expected_ptr(fim_sql);
-    check_expected(file_path);
-
-    return mock();
-}
-
 int __wrap_OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output, os_sha256 sha256output, int mode, size_t max_size) {
     check_expected(fname);
     check_expected(prefilter_cmd);
@@ -106,57 +85,6 @@ char *__wrap_seechanges_addfile(const char *filename) {
     check_expected(filename);
 
     return mock_type(char*);
-}
-
-int __wrap_fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
-    check_expected_ptr(fim_sql);
-    check_expected_ptr(storage);
-
-    *file = mock_type(fim_tmp_file *);
-
-    return mock();
-}
-
-int __wrap_fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
-    check_expected_ptr(fim_sql);
-    check_expected_ptr(storage);
-
-    *file = mock_type(fim_tmp_file *);
-
-    return mock();
-}
-
-int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode) {
-    check_expected_ptr(fim_sql);
-    check_expected_ptr(file);
-    check_expected_ptr(storage);
-    check_expected_ptr(mode);
-
-    return mock();
-}
-
-int __wrap_fim_db_delete_not_scanned(fdb_t * fim_sql) {
-    check_expected_ptr(fim_sql);
-
-    return mock();
-}
-
-int __wrap_fim_db_set_all_unscanned(fdb_t *fim_sql) {
-    check_expected_ptr(fim_sql);
-
-    return mock();
-}
-
-int __wrap_fim_db_set_scanned(fdb_t *fim_sql, char *path) {
-    check_expected_ptr(fim_sql);
-    check_expected(path);
-
-    return mock();
-}
-
-void __wrap_fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, void *arg) {
-    check_expected_ptr(fim_sql);
-    check_expected_ptr(entry);
 }
 
 int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max) {
@@ -187,10 +115,6 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     free(value);
 
     return (ret);
-}
-
-int __wrap_fim_db_get_count_entry_path(fdb_t * fim_sql){
-    return mock();
 }
 
 int __wrap_send_log_msg(const char * msg) {
@@ -3700,6 +3624,13 @@ static void test_fim_realtime_event_file_missing(void **state) {
     expect_function_call(__wrap_pthread_mutex_lock);
 #endif
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_fim_db_get_path_range, start, "/test\\");
+    expect_string(__wrap_fim_db_get_path_range, top, "/test]");
+#else
+    expect_string(__wrap_fim_db_get_path_range, start, "/test/");
+    expect_string(__wrap_fim_db_get_path_range, top, "/test0");
+#endif
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
@@ -3761,6 +3692,13 @@ static void test_fim_whodata_event_file_missing(void **state) {
     expect_function_call(__wrap_pthread_mutex_lock);
 
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_fim_db_get_path_range, start, "./test/test.file\\");
+    expect_string(__wrap_fim_db_get_path_range, top, "./test/test.file]");
+#else
+    expect_string(__wrap_fim_db_get_path_range, start, "./test/test.file/");
+    expect_string(__wrap_fim_db_get_path_range, top, "./test/test.file0");
+#endif
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
@@ -3778,6 +3716,8 @@ static void test_fim_whodata_event_file_missing(void **state) {
     will_return(__wrap_fim_db_get_path, NULL);
 
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "./test/test.file/");
+    expect_string(__wrap_fim_db_get_path_range, top, "./test/test.file0");
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
@@ -3789,6 +3729,8 @@ static void test_fim_whodata_event_file_missing(void **state) {
         will_return(__wrap_fim_db_get_path, NULL);
 
         expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+        expect_string(__wrap_fim_db_get_path_range, start, "./test/test.file/");
+        expect_string(__wrap_fim_db_get_path_range, top, "./test/test.file0");
         expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
         will_return(__wrap_fim_db_get_path_range, NULL);
         will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
@@ -3811,6 +3753,13 @@ static void test_fim_process_missing_entry_no_data(void **state) {
     expect_function_call(__wrap_pthread_mutex_lock);
 #endif
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_fim_db_get_path_range, start, "/test\\");
+    expect_string(__wrap_fim_db_get_path_range, top, "/test]");
+#else
+    expect_string(__wrap_fim_db_get_path_range, start, "/test/");
+    expect_string(__wrap_fim_db_get_path_range, top, "/test0");
+#endif
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
@@ -3835,6 +3784,13 @@ static void test_fim_process_missing_entry_failure(void **state) {
     expect_function_call(__wrap_pthread_mutex_lock);
 #endif
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_fim_db_get_path_range, start, "/test\\");
+    expect_string(__wrap_fim_db_get_path_range, top, "/test]");
+#else
+    expect_string(__wrap_fim_db_get_path_range, start, "/test/");
+    expect_string(__wrap_fim_db_get_path_range, top, "/test0");
+#endif
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, file);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);

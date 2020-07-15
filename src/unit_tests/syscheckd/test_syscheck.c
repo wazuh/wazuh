@@ -21,11 +21,6 @@
 
 /* redefinitons/wrapping */
 
-fdb_t *__wrap_fim_db_init(int memory) {
-    check_expected(memory);
-    return mock_type(fdb_t*);
-}
-
 int __wrap_getDefine_Int() {
     return mock();
 }

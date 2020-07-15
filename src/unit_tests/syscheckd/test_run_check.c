@@ -21,6 +21,7 @@
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
 
@@ -84,23 +85,6 @@ int __wrap_time() {
     return 1;
 }
 #endif
-
-int __wrap_fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
-    check_expected_ptr(fim_sql);
-    check_expected_ptr(storage);
-
-    *file = mock_type(fim_tmp_file *);
-
-    return mock();
-}
-
-int __wrap_fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
-    check_expected_ptr(fim_sql);
-    check_expected_ptr(storage);
-    check_expected_ptr(file);
-
-    return mock();
-}
 
 int __wrap_realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int followsl) {
     check_expected(dir);
@@ -655,6 +639,8 @@ void test_fim_link_update(void **state) {
     char *link_path = "/folder/test";
 
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "/boot/");
+    expect_string(__wrap_fim_db_get_path_range, top, "/boot0");
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
@@ -679,6 +665,8 @@ void test_fim_link_update_already_added(void **state) {
     char *link_path = "/folder/test";
 
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "/folder/test/");
+    expect_string(__wrap_fim_db_get_path_range, top, "/folder/test0");
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
@@ -701,6 +689,8 @@ void test_fim_link_check_delete(void **state) {
     will_return(__wrap_lstat, 0);
 
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "/etc/");
+    expect_string(__wrap_fim_db_get_path_range, top, "/etc0");
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
@@ -775,6 +765,8 @@ void test_fim_link_delete_range(void **state) {
     fim_tmp_file *tmp_file = *state;
 
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "/media/");
+    expect_string(__wrap_fim_db_get_path_range, top, "/media0");
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, tmp_file);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
@@ -793,6 +785,8 @@ void test_fim_link_delete_range_error(void **state) {
     fim_tmp_file *tmp_file = *state;
 
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "/media/");
+    expect_string(__wrap_fim_db_get_path_range, top, "/media0");
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, tmp_file);
     will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);

@@ -20,6 +20,7 @@
 #include "../wrappers/wazuh/shared/integrity_op_wrappers.h"
 #include "../wrappers/wazuh/shared/queue_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
@@ -41,51 +42,8 @@ int __wrap_time() {
 }
 #endif
 
-int __wrap_fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
-    check_expected_ptr(fim_sql);
-    check_expected(mode);
-
-    *path = mock_type(char*);
-
-    return mock();
-}
-
-int __wrap_fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
-    check_expected_ptr(fim_sql);
-
-    return mock();
-}
-
 void __wrap_fim_send_sync_msg(const char * msg) {
     check_expected(msg);
-}
-
-
-int __wrap_fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *count) {
-    check_expected_ptr(fim_sql);
-    check_expected(start);
-    check_expected(top);
-
-    *count = mock();
-    return mock();
-}
-
-fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
-    check_expected_ptr(fim_sql);
-    check_expected(file_path);
-
-    return mock_type(fim_entry*);
-}
-
-int __wrap_fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
-                                      const long id, const int n) {
-    check_expected_ptr(fim_sql);
-    check_expected(start);
-    check_expected(top);
-    check_expected(id);
-    check_expected(n);
-
-    return mock();
 }
 
 char * __wrap_dbsync_state_msg(const char * component, cJSON * data) {
@@ -93,23 +51,6 @@ char * __wrap_dbsync_state_msg(const char * component, cJSON * data) {
     check_expected_ptr(data);
 
     return mock_type(char*);
-}
-
-int __wrap_fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
-    check_expected_ptr(fim_sql);
-    check_expected(start);
-    check_expected(top);
-    check_expected(storage);
-
-    *file = mock_type(fim_tmp_file *);
-
-    return mock();
-}
-
-int __wrap_fim_db_sync_path_range(fdb_t *fim_sql) {
-    check_expected_ptr(fim_sql);
-
-    return mock();
 }
 
 /* setup/teardown */
