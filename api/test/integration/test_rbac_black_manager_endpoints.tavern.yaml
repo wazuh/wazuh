@@ -204,13 +204,14 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_allowed
+    delay_after: 45
 
 ---
 test_name: GET /manager/stats
 
 stages:
 
-  - name: Request manager stats (Allow) (No data)
+  - name: Request manager stats (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats"

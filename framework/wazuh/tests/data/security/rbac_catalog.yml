@@ -270,6 +270,10 @@ get_rbac_actions:
           - GET /cluster/{node_id}/stats/remoted
           - GET /cluster/{node_id}/logs
           - GET /cluster/{node_id}/logs/summary
+          - GET /cluster/{node_id}/files
+          - PUT /cluster/{node_id}/files
+          - DELETE /cluster/{node_id}/files
+          - PUT /cluster/restart
           - GET /cluster/configuration/validation
           - GET /cluster/{node_id}/configuration/{component}/{configuration}
       cluster:status:
@@ -398,6 +402,9 @@ get_rbac_actions:
           - GET /manager/stats/remoted
           - GET /manager/logs
           - GET /manager/logs/summary
+          - GET /manager/files
+          - PUT /manager/files
+          - DELETE /manager/files
           - GET /manager/configuration/validation
           - GET /manager/configuration/{component}/{configuration}
       manager:read_file:

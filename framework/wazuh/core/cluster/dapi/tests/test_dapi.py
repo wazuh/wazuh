@@ -11,6 +11,8 @@ from unittest.mock import patch, MagicMock
 import pytest
 from connexion import ProblemException
 
+from wazuh.core import common
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../../../../api'))
 
 with patch('wazuh.common.ossec_uid'):

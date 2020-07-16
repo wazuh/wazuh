@@ -3,6 +3,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from wazuh.core import common
+
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
@@ -79,19 +81,15 @@ async def test_get_health_nodes(mock_unix_connection):
 async def test_get_nodes_info():
     """Verify that get_nodes_info returns the information of all nodes."""
     async def valid_node(lc=None, filter_node=None):
-        return {'items': ['master'], 'totalItems': 1}
-
-    async def invalid_node(lc=None, filter_node=None):
-        raise WazuhError(3022)
+        return {'items': ['master', 'worker1'], 'totalItems': 2}
 
     local_client = LocalClient()
+    common.cluster_nodes.set(['master', 'worker1', 'worker2'])
     with patch('wazuh.cluster.get_nodes', side_effect=valid_node):
-        result = await cluster.get_nodes_info(lc=local_client, filter_node=['master'])
+        result = await cluster.get_nodes_info(lc=local_client, filter_node=['master', 'worker1', 'noexists'])
     expected = await valid_node()
 
     assert result.affected_items == expected['items']
-
-    with patch('wazuh.cluster.get_nodes', side_effect=invalid_node):
-        result = await cluster.get_nodes_info(lc=local_client, filter_node=['master'])
-
-    assert result.failed_items[WazuhError(3022)] == {'master'}
+    assert result.total_affected_items == expected['totalItems']
+    assert result.failed_items[WazuhError(1730)] == {'noexists'}
+    assert result.total_failed_items == 1
