@@ -19,7 +19,7 @@ const char *session_timeout = "session_timeout";
 
 int Read_Logtest(XML_NODE node) {
 
-    for(int i = 0; node[i]; i++) {
+    for (int i = 0; node[i]; i++) {
 
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -51,7 +51,7 @@ int Read_Logtest(XML_NODE node) {
             if (value < 0 || value > 65534 || *end) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
-            } else if(value > LOGTEST_LIMIT_THREAD) {
+            } else if (value > LOGTEST_LIMIT_THREAD) {
                 mdebug2(LOGTEST_INV_NUM_THREADS, LOGTEST_LIMIT_THREAD);
                 w_logtest_conf.threads = LOGTEST_LIMIT_THREAD;
             } else {
@@ -59,7 +59,7 @@ int Read_Logtest(XML_NODE node) {
             }
         }
 
-        else if(!strcmp(node[i]->element, max_sessions)) {
+        else if (!strcmp(node[i]->element, max_sessions)) {
             char *end;
             long value = strtol(node[i]->content, &end, 10);
 
@@ -74,7 +74,7 @@ int Read_Logtest(XML_NODE node) {
             }
         }
 
-        else if(!strcmp(node[i]->element, session_timeout)) {
+        else if (!strcmp(node[i]->element, session_timeout)) {
             long value = w_parse_time(node[i]->content);
 
             if (value <= 0) {

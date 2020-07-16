@@ -141,7 +141,7 @@ size_t asyscom_getconfig(const char * section, char ** output) {
             goto error;
         }
     }
-    else if(strcmp(section, "rule_test") == 0) {
+    else if (strcmp(section, "rule_test") == 0) {
         if (cfg = getRuleTestConfig(), cfg) {
             os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
