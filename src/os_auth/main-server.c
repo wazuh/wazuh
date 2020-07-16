@@ -700,7 +700,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         if(enrollment_ok)
         {
-            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", new_id, agentname, ip, new_key);
+            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'", new_id, agentname, ip, new_key);
             minfo("Agent key generated for '%s' (requested by %s)", agentname, ip);
             ret = SSL_write(ssl, response, strlen(response));
 
@@ -733,7 +733,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         }
         else {
             SSL_write(ssl, response, strlen(response));
-            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+            snprintf(response, 2048, "ERROR: Unable to add agent");
             SSL_write(ssl, response, strlen(response));  
         }
             

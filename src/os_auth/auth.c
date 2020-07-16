@@ -91,7 +91,7 @@ w_err_t w_auth_parse_data(const char* buf, char *response,const char *authpass, 
 
         if (parseok == 0) {
             merror("Invalid password provided by %s. Closing connection.", ip);
-            snprintf(response, 2048, "ERROR: Invalid password\n\n");  
+            snprintf(response, 2048, "ERROR: Invalid password");  
             return OS_INVALID;
         }
     }
@@ -119,13 +119,13 @@ w_err_t w_auth_parse_data(const char* buf, char *response,const char *authpass, 
     
     if (!parseok) {
         merror("Invalid request for new agent from: %s", ip);
-        snprintf(response, 2048, "ERROR: Invalid request for new agent\n\n");  
+        snprintf(response, 2048, "ERROR: Invalid request for new agent");  
         return OS_INVALID;
     }    
 
     if (!OS_IsValidName(*agentname)) {
         merror("Invalid agent name: %s from %s", *agentname, ip);
-        snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", *agentname);  
+        snprintf(response, 2048, "ERROR: Invalid agent name: %s", *agentname);  
         return OS_INVALID;
     }
 
@@ -145,7 +145,7 @@ w_err_t w_auth_parse_data(const char* buf, char *response,const char *authpass, 
         }
         *groups = wstr_delete_repeated_groups(tmp_groups);
         if(!*groups){
-            snprintf(response, 2048, "ERROR: Insuficient memory\n\n");  
+            snprintf(response, 2048, "ERROR: Insuficient memory");  
             return OS_MEMERR;
         }
         mdebug1("Group(s) is: %s",*groups);
@@ -172,7 +172,7 @@ w_err_t w_auth_parse_data(const char* buf, char *response,const char *authpass, 
         {
             if (!OS_IsValidIP(client_source_ip, NULL)) {
                 merror("Invalid IP: '%s'", client_source_ip);
-                snprintf(response, 2048, "ERROR: Invalid IP: %s\n\n", client_source_ip);                    
+                snprintf(response, 2048, "ERROR: Invalid IP: %s", client_source_ip);                    
                 return OS_INVALID;
             }
             snprintf(ip, IPSIZE, "%s", client_source_ip);
@@ -211,7 +211,7 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
                 OS_DeleteKey(&keys, id_exist, 0);
             } else {
                 merror("Duplicated IP %s", ip);
-                snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", ip);
+                snprintf(response, 2048, "ERROR: Duplicated IP: %s", ip);
                 return OS_INVALID;
             }
         }
@@ -221,7 +221,7 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
 
     if (!strcmp(agentname, shost)) {
         merror("Invalid agent name %s (same as manager)", agentname);
-        snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
+        snprintf(response, 2048, "ERROR: Invalid agent name: %s", agentname);
         return OS_INVALID;
     }
 
@@ -236,7 +236,7 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
             OS_DeleteKey(&keys, id_exist, 0);
         } else {
             merror("Invalid agent name %s (duplicated)", agentname);
-            snprintf(response, 2048, "ERROR: Duplicated agent name: %s\n\n", agentname);                
+            snprintf(response, 2048, "ERROR: Duplicated agent name: %s", agentname);                
             return OS_INVALID;
         }
     }
@@ -245,7 +245,7 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
 
     if (config.flags.register_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
         merror(AG_MAX_ERROR, MAX_AGENTS - 2);
-        snprintf(response, 2048, "ERROR: The maximum number of agents has been reached\n\n");
+        snprintf(response, 2048, "ERROR: The maximum number of agents has been reached");
         return OS_INVALID;
     }
 
@@ -259,7 +259,7 @@ w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, 
 
     if (index = OS_AddNewAgent(&keys, NULL, agentname, ip, NULL), index < 0) {
         merror("Unable to add agent: %s (internal error)", agentname);
-        snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);        
+        snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s", agentname);        
         return OS_INVALID;
     }
 
@@ -270,7 +270,7 @@ w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, 
             merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
             OS_RemoveAgent(keys.keyentries[index]->id);
             merror("Unable to set agent centralized group: %s (internal error)", groups);
-            snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s\n\n", groups);
+            snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s", groups);
             return OS_INVALID;
         }
     }
@@ -299,7 +299,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         if(max_multigroups > MAX_GROUPS_PER_MULTIGROUP){
             merror("Maximum multigroup reached: Limit is %d",MAX_GROUPS_PER_MULTIGROUP);     
             if (response) {
-                snprintf(response, 2048, "ERROR: Maximum multigroup reached: Limit is %d\n\n", MAX_GROUPS_PER_MULTIGROUP); 
+                snprintf(response, 2048, "ERROR: Maximum multigroup reached: Limit is %d", MAX_GROUPS_PER_MULTIGROUP); 
             }             
             ret = OS_INVALID;
             break;
@@ -310,7 +310,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         if (!dp) {            
             merror("Invalid group: %.255s",group);   
             if (response){
-                snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", group);
+                snprintf(response, 2048, "ERROR: Invalid group: %s", group);
             }             
             ret = OS_INVALID;
             break;
