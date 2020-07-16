@@ -12,7 +12,6 @@
 #ifndef SEECHANGES_WRAPPERS_H
 #define SEECHANGES_WRAPPERS_H
 
-
-
+char *__wrap_seechanges_addfile(const char *filename);
 
 #endif

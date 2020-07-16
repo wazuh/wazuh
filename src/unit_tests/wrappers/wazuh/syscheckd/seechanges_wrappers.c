@@ -13,3 +13,9 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+char *__wrap_seechanges_addfile(const char *filename) {
+    check_expected(filename);
+
+    return mock_type(char*);
+}

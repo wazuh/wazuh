@@ -24,6 +24,7 @@
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_realtime_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/seechanges_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 #include "../syscheckd/fim_db.h"
@@ -67,12 +68,6 @@ int __wrap_OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd,
     check_expected(max_size);
 
     return mock();
-}
-
-char *__wrap_seechanges_addfile(const char *filename) {
-    check_expected(filename);
-
-    return mock_type(char*);
 }
 
 int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max) {
