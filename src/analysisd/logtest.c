@@ -65,11 +65,11 @@ int w_logtest_init_parameters() {
 
     int modules = CLOGTEST;
 
-    logtest_conf.threads = LOGTEST_THREAD;
-    logtest_conf.max_sessions = LOGTEST_MAX_SESSIONS;
-    logtest_conf.session_timeout = LOGTEST_SESSION_TIMEOUT;
+    w_logtest_conf.threads = LOGTEST_THREAD;
+    w_logtest_conf.max_sessions = LOGTEST_MAX_SESSIONS;
+    w_logtest_conf.session_timeout = LOGTEST_SESSION_TIMEOUT;
 
-    os_strdup("yes", logtest_conf.enabled);
+    os_strdup("yes", w_logtest_conf.enabled);
 
     if (ReadConfig(modules, OSSECCONF, NULL, NULL) < 0) {
         return OS_INVALID;
