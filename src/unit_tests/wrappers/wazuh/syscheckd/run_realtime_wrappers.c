@@ -13,3 +13,20 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+int __wrap_count_watches() {
+    function_called();
+
+    return mock();
+}
+
+int __wrap_realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int followsl) {
+    check_expected(dir);
+    check_expected(whodata);
+
+    return mock();
+}
+
+int __wrap_realtime_start(void) {
+    return 0;
+}

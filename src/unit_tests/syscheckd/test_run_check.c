@@ -22,6 +22,7 @@
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/run_realtime_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
 
@@ -83,19 +84,6 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
 #ifndef TEST_WINAGENT
 int __wrap_time() {
     return 1;
-}
-#endif
-
-int __wrap_realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int followsl) {
-    check_expected(dir);
-    check_expected(whodata);
-
-    return mock();
-}
-
-#ifdef TEST_WINAGENT
-int __wrap_realtime_start(void) {
-    return 0;
 }
 #endif
 

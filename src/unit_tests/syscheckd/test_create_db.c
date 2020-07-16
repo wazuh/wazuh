@@ -23,6 +23,7 @@
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/run_realtime_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 #include "../syscheckd/fim_db.h"
@@ -49,12 +50,6 @@ typedef struct __fim_data_s {
 #ifdef TEST_WINAGENT
 void __wrap_os_winreg_check() {}
 #endif
-
-int __wrap_realtime_adddir(const char *dir, __attribute__((unused)) int whodata) {
-    check_expected(dir);
-
-    return 0;
-}
 
 bool __wrap_HasFilesystem(__attribute__((unused))const char * path, __attribute__((unused)) fs_set set) {
     check_expected(path);
@@ -108,12 +103,6 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     free(value);
 
     return (ret);
-}
-
-int __wrap_count_watches() {
-    function_called();
-
-    return mock();
 }
 
 /* setup/teardowns */
@@ -1742,7 +1731,11 @@ static void test_fim_checker_fim_directory(void **state) {
     will_return_always(__wrap_HasFilesystem, 0);
 
     expect_string(__wrap_realtime_adddir, dir, "/media/");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
     expect_string(__wrap_realtime_adddir, dir, "/media/test");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
 
     strcpy(fim_data->entry->d_name, "test");
 
@@ -1772,8 +1765,14 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     will_return_count(__wrap_HasFilesystem, 0, 7);
 
     expect_string(__wrap_realtime_adddir, dir, "/boot");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
     expect_string(__wrap_realtime_adddir, dir, "/home");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
     expect_string(__wrap_realtime_adddir, dir, "/media");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
 
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
@@ -1881,8 +1880,14 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     will_return_count(__wrap_HasFilesystem, 0, 6);
 
     expect_string(__wrap_realtime_adddir, dir, "/boot");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
     expect_string(__wrap_realtime_adddir, dir, "/home");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
     expect_string(__wrap_realtime_adddir, dir, "/media");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
 
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
@@ -1945,6 +1950,8 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
     while (syscheck.dir[it]) {
         expect_string(__wrap_realtime_adddir, dir, syscheck.dir[it]);
+        expect_value(__wrap_realtime_adddir, whodata, 0);
+        will_return(__wrap_realtime_adddir, 0);
         it++;
     }
 
@@ -1993,8 +2000,14 @@ static void test_fim_scan_db_free(void **state) {
     will_return_count(__wrap_HasFilesystem, 0, 6);
 
     expect_string(__wrap_realtime_adddir, dir, "/boot");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
     expect_string(__wrap_realtime_adddir, dir, "/home");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
     expect_string(__wrap_realtime_adddir, dir, "/media");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
 
     // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
@@ -2060,8 +2073,14 @@ static void test_fim_scan_no_limit(void **state) {
     will_return_count(__wrap_HasFilesystem, 0, 6);
 
     expect_string(__wrap_realtime_adddir, dir, "/boot");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
     expect_string(__wrap_realtime_adddir, dir, "/home");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
     expect_string(__wrap_realtime_adddir, dir, "/media");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6343): No limit set to maximum number of files to be monitored");
 
