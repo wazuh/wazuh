@@ -20,12 +20,12 @@ void *w_logtest_init() {
 
     w_logtest_connection connection;
 
-    if(w_logtest_init_parameters() == OS_INVALID) {
+    if (w_logtest_init_parameters() == OS_INVALID) {
         merror(LOGTEST_ERROR_INV_CONF);
         return NULL;
     }
 
-    if(!strcmp(logtest_conf.enabled, "no")) {
+    if (!strcmp(w_logtest_conf.enabled, "no")) {
         minfo(LOGTEST_DISABLED);
         return NULL;
     }
@@ -44,7 +44,7 @@ void *w_logtest_init() {
 
     minfo(LOGTEST_INITIALIZED);
 
-    for(int i = 1; i < logtest_conf.threads; i++) {
+    for (int i = 1; i < w_logtest_conf.threads; i++) {
         w_create_thread(w_logtest_main, &connection);
     }
 
