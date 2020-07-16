@@ -1,4 +1,15 @@
-#pragma once
+/*
+ * Wazuh DBSYNC
+ * Copyright (C) 2015-2020, Wazuh Inc.
+ * July 16, 2020.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+#ifndef DBSYNC_PIPELINE_FACTORY_TESTS_H
+#define DBSYNC_PIPELINE_FACTORY_TESTS_H
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
@@ -15,3 +26,4 @@ protected:
     void TearDown() override;
    	DbSync::PipelineFactory& m_pipelineFactory;
 };
+#endif //DBSYNC_PIPELINE_FACTORY_TESTS_H
