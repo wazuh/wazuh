@@ -47,3 +47,69 @@ class UpdateUserModel(CreateUserModel):
         super().__init__()
         self.swagger_types.pop('username')
         self.attribute_map.pop('username')
+
+
+class RoleModel(Body):
+    """Security role model."""
+    def __init__(self, name: str = None, rule: dict = None):
+        self.swagger_types = {
+            'name': str,
+            'rule': dict,
+        }
+
+        self.attribute_map = {
+            'name': 'name',
+            'rule': 'rule'
+        }
+
+        self._name = name
+        self._rule = rule
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = name
+
+    @property
+    def rule(self):
+        return self._rule
+
+    @rule.setter
+    def rule(self, rule):
+        self._rule = rule
+
+
+class PolicyModel(Body):
+    """Security policy model."""
+    def __init__(self, name: str = None, policy: dict = None):
+        self.swagger_types = {
+            'name': str,
+            'policy': dict,
+        }
+
+        self.attribute_map = {
+            'name': 'name',
+            'policy': 'policy'
+        }
+
+        self._name = name
+        self._policy = policy
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = name
+
+    @property
+    def policy(self):
+        return self._policy
+
+    @policy.setter
+    def policy(self, policy):
+        self._policy = policy

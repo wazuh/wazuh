@@ -40,7 +40,7 @@ async def get_hardware_info(request, agent_id, pretty=False, wait_for_complete=F
 
 
 async def get_hotfix_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                          search=None, select=None, hotfix=None):
+                          search=None, select=None, hotfix=None, q=None):
     """ Get info about an agent's hotfixes
 
     :param agent_id: Agent ID
@@ -53,6 +53,7 @@ async def get_hotfix_info(request, agent_id, pretty=False, wait_for_complete=Fal
     :param search: Looks for elements with the specified string
     :param select: Select which fields to return (separated by comma)
     :param hotfix: Filters by hotfix in Windows agents
+    :param q: Query to filter results by.
     :return:
     """
 
@@ -65,7 +66,8 @@ async def get_hotfix_info(request, agent_id, pretty=False, wait_for_complete=Fal
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
-                'element_type': 'hotfixes'}
+                'element_type': 'hotfixes',
+                'q': q}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -82,7 +84,7 @@ async def get_hotfix_info(request, agent_id, pretty=False, wait_for_complete=Fal
 
 async def get_network_address_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None,
                                    select=None, sort=None, search=None, iface=None, proto=None, address=None,
-                                   broadcast=None, netmask=None):
+                                   broadcast=None, netmask=None, q=None):
     """ Get network address info of an agent
 
     :param agent_id: Agent ID
@@ -99,6 +101,7 @@ async def get_network_address_info(request, agent_id, pretty=False, wait_for_com
     :param address: IP address associated with the network interface
     :param broadcast: Filters by broadcast direction
     :param netmask: Filters by netmask
+    :param q: Query to filter results by.
     :return: Data
     """
     filters = {'iface': iface,
@@ -114,7 +117,8 @@ async def get_network_address_info(request, agent_id, pretty=False, wait_for_com
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
-                'element_type': 'netaddr'}
+                'element_type': 'netaddr',
+                'q': q}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -131,7 +135,7 @@ async def get_network_address_info(request, agent_id, pretty=False, wait_for_com
 
 async def get_network_interface_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None,
                                      select=None, sort=None, search=None, name=None, adapter=None, state=None,
-                                     mtu=None):
+                                     mtu=None, q=None):
     """ Get network interface info of an agent
 
     :param agent_id: Agent ID
@@ -147,6 +151,7 @@ async def get_network_interface_info(request, agent_id, pretty=False, wait_for_c
     :param adapter: Filters by adapter
     :param state: Filters by state
     :param mtu: Filters by mtu
+    :param q: Query to filter results by.
     :return: Data
     """
     filters = {'adapter': adapter,
@@ -166,8 +171,8 @@ async def get_network_interface_info(request, agent_id, pretty=False, wait_for_c
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
-                'element_type': 'netiface'
-                }
+                'element_type': 'netiface',
+                'q': q}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -183,7 +188,7 @@ async def get_network_interface_info(request, agent_id, pretty=False, wait_for_c
 
 
 async def get_network_protocol_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None,
-                                    select=None, sort=None, search=None, iface=None, gateway=None, dhcp=None):
+                                    select=None, sort=None, search=None, iface=None, gateway=None, dhcp=None, q=None):
     """ Get network protocol info of an agent
 
     :param agent_id: Agent ID
@@ -198,6 +203,7 @@ async def get_network_protocol_info(request, agent_id, pretty=False, wait_for_co
     :param iface: Filters by iface
     :param gateway: Filters by gateway
     :param dhcp: Filters by dhcp
+    :param q: Query to filter results by.
     :return: Data
     """
     filters = {'iface': iface,
@@ -212,7 +218,8 @@ async def get_network_protocol_info(request, agent_id, pretty=False, wait_for_co
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
-                'element_type': 'netproto'}
+                'element_type': 'netproto',
+                'q': q}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -254,7 +261,7 @@ async def get_os_info(request, agent_id, pretty=False, wait_for_complete=False, 
 
 
 async def get_packages_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
-                            sort=None, search=None, vendor=None, name=None, architecture=None, version=None):
+                            sort=None, search=None, vendor=None, name=None, architecture=None, version=None, q=None):
     """ Get packages info of an agent
 
     :param agent_id: Agent ID
@@ -270,6 +277,7 @@ async def get_packages_info(request, agent_id, pretty=False, wait_for_complete=F
     :param name: Filters by name
     :param architecture: Filters by architecture
     :param version: Filters by version
+    :param q: Query to filter results by.
     :return: Data
     """
     filters = {'vendor': vendor,
@@ -285,7 +293,8 @@ async def get_packages_info(request, agent_id, pretty=False, wait_for_complete=F
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
-                'element_type': 'packages'}
+                'element_type': 'packages',
+                'q': q}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -301,7 +310,8 @@ async def get_packages_info(request, agent_id, pretty=False, wait_for_complete=F
 
 
 async def get_ports_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
-                         sort=None, search=None, pid=None, protocol=None, tx_queue=None, state=None, process=None):
+                         sort=None, search=None, pid=None, protocol=None, tx_queue=None, state=None, process=None,
+                         q=None):
     """ Get ports info of an agent
 
     :param agent_id: Agent ID
@@ -318,6 +328,7 @@ async def get_ports_info(request, agent_id, pretty=False, wait_for_complete=Fals
     :param tx_queue: Filters by tx_queue
     :param state: Filters by state
     :param process: Filters by process
+    :param q: Query to filter results by.
     :return: Data
     """
     filters = {'pid': pid,
@@ -337,7 +348,8 @@ async def get_ports_info(request, agent_id, pretty=False, wait_for_complete=Fals
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
-                'element_type': 'ports'}
+                'element_type': 'ports',
+                'q': q}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -355,7 +367,7 @@ async def get_ports_info(request, agent_id, pretty=False, wait_for_complete=Fals
 async def get_processes_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None,
                              select=None, sort=None, search=None, pid=None, state=None, ppid=None, egroup=None,
                              euser=None, fgroup=None, name=None, nlwp=None, pgrp=None, priority=None, rgroup=None,
-                             ruser=None, sgroup=None, suser=None):
+                             ruser=None, sgroup=None, suser=None, q=None):
     """ Get processes info an agent
 
     :param agent_id: Agent ID
@@ -381,6 +393,7 @@ async def get_processes_info(request, agent_id, pretty=False, wait_for_complete=
     :param ruser: Filters by process ruser
     :param sgroup: Filters by process sgroup
     :param suser: Filters by process suser
+    :param q: Query to filter results by.
     :return: Data
     """
     filters = {'state': state,
@@ -405,7 +418,8 @@ async def get_processes_info(request, agent_id, pretty=False, wait_for_complete=
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
-                'element_type': 'processes'}
+                'element_type': 'processes',
+                'q': q}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

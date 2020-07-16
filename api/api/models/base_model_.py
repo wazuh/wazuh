@@ -1,15 +1,16 @@
 import pprint
-from json import JSONDecodeError
-
-import six
 import typing
-
-from api import util
+from json import JSONDecodeError
 from typing import List, Dict  # noqa: F401
 
+import six
+
+from api import util
 from api.api_exception import APIError
 from api.util import raise_if_exc
 from wazuh import WazuhError
+from wazuh.security import load_spec
+from aiohttp.web_request import Request
 
 T = typing.TypeVar('T')
 
@@ -230,3 +231,8 @@ class Body(Model):
         except AttributeError:
             raise_if_exc(WazuhError(attribute_error))
         return body
+
+    @classmethod
+    def validate_content_type(cls, request, expected_content_type):
+        if request.content_type != expected_content_type:
+            raise_if_exc(WazuhError(6002), code=406)

@@ -15,9 +15,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 406
       json:
-        code: 2005
+        code: 6002
 
     # POST /agents
   - name: Create a new agent
@@ -222,9 +222,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 406
       json:
-        code: 2005
+        code: 6002
 
     # POST /agents/insert
   - name: Create a new agent specifying id, ip, key and name

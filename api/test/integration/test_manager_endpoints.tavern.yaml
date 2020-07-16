@@ -623,6 +623,27 @@ stages:
             total_failed_items: 0
           message: !anystr
 
+  - name: Filters by query (tag=ossec-syscheckd, level=info)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        q: tag=ossec-syscheckd;level=info
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "tag"
+            expected_values: "ossec-syscheckd"
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "level"
+            expected_values: "info"
+
 ---
 test_name: GET /manager/logs/summary
 

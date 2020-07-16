@@ -12,6 +12,7 @@ from jsonschema import draft4_format_checker
 from wazuh.core import common
 
 _alphanumeric_param = re.compile(r'^[\w,\-\.\+\s\:]+$')
+_symbols_alphanumeric_param = re.compile(r'^[a-zA-Z0-9_,<>!\-.+\s:/()\'"|=]+$')
 _array_numbers = re.compile(r'^\d+(,\d+)*$')
 _array_names = re.compile(r'^[\w\-\.]+(,[\w\-\.]+)*$')
 _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
@@ -116,6 +117,11 @@ def is_safe_path(path: str, basedir: str = common.ossec_path, follow_symlinks: b
 @draft4_format_checker.checks("alphanumeric")
 def format_alphanumeric(value):
     return check_exp(value, _alphanumeric_param)
+
+
+@draft4_format_checker.checks("alphanumeric_symbols")
+def format_alphanumeric_symbols(value):
+    return check_exp(value, _symbols_alphanumeric_param)
 
 
 @draft4_format_checker.checks("base64")
