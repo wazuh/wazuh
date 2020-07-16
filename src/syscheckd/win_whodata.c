@@ -724,6 +724,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     int depth = fim_check_depth(w_evt->path, w_evt->config_node);
                     if (depth > syscheck.recursion_level[w_evt->config_node]) {
                         mdebug2(FIM_MAX_RECURSION_LEVEL, depth, syscheck.recursion_level[w_evt->config_node], w_evt->path);
+                        free_whodata_event(w_evt);
                         goto clean;
                     }
                 }
