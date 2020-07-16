@@ -23,6 +23,7 @@
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_realtime_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
 
@@ -88,10 +89,6 @@ int __wrap_time() {
 #endif
 
 #ifdef TEST_WINAGENT
-int __wrap_run_whodata_scan(void) {
-    return mock();
-}
-
 int __wrap_audit_restore(void) {
     return mock();
 }

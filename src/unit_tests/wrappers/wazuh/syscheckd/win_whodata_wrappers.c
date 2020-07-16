@@ -13,3 +13,18 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+int __wrap_run_whodata_scan(void) {
+    return mock();
+}
+
+int __wrap_set_winsacl(const char *dir, int position) {
+    check_expected(dir);
+    check_expected(position);
+
+    return mock();
+}
+
+int __wrap_whodata_audit_start() {
+    return 0;
+}

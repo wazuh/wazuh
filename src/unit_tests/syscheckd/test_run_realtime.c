@@ -27,6 +27,7 @@
 #include "../wrappers/wazuh/shared/vector_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
@@ -81,20 +82,6 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     free(value);
 
     return (ret);
-}
-
-#endif
-
-#ifdef WIN_WHODATA
-int __wrap_whodata_audit_start() {
-    return 0;
-}
-
-int __wrap_set_winsacl(const char *dir, int position) {
-    check_expected(dir);
-    check_expected(position);
-
-    return mock();
 }
 
 #endif
