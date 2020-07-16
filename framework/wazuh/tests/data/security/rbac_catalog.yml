@@ -405,6 +405,7 @@ get_rbac_actions:
           - GET /manager/files
           - PUT /manager/files
           - DELETE /manager/files
+          - PUT /manager/restart
           - GET /manager/configuration/validation
           - GET /manager/configuration/{component}/{configuration}
       manager:read_file:

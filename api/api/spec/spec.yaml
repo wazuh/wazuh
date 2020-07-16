@@ -9543,6 +9543,7 @@ paths:
       description: "Restart the wazuh manager"
       operationId: api.controllers.manager_controller.put_restart
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
         - $ref: '#/x-rbac-catalog/actions/manager:restart'
       parameters:
         - $ref: '#/components/parameters/pretty'
