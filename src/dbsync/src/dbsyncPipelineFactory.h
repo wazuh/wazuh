@@ -13,17 +13,19 @@
 #include <map>
 #include <mutex>
 #include <memory>
+#include <functional>
 #include "typedef.h"
 
 namespace DbSync
 {
     using TxnContext = void*;
     using PipelineCtxHandle = void*;
+    using ResultCallback = std::function<void(ReturnTypeCallback, cJSON*)>;
     struct IPipeline
     {
         virtual ~IPipeline() = default;
         virtual void syncRow(const char* syncJson) = 0;
-        virtual void getDeleted(result_callback_t callback) = 0;
+        virtual void getDeleted(ResultCallback callback) = 0;
     };
 
     class PipelineFactory
@@ -33,9 +35,9 @@ namespace DbSync
         void release();
         PipelineCtxHandle create(const DBSYNC_HANDLE handle,
                                  const TxnContext txnContext,
-                                 const int threadNumber,
-                                 const int maxQueueSize,
-                                 result_callback_t callback);
+                                 const unsigned int threadNumber,
+                                 const unsigned int maxQueueSize,
+                                 ResultCallback callback);
         const std::shared_ptr<IPipeline>& pipeline(const PipelineCtxHandle handle);
         void destroy(const PipelineCtxHandle handle);
     private:

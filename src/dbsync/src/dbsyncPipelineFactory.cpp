@@ -21,7 +21,7 @@ namespace DbSync
     {
         void operator()(cJSON* json)
         {
-            cJSON_free(json);
+            cJSON_Delete(json);
         }
     };
 
@@ -31,43 +31,57 @@ namespace DbSync
 
         Pipeline(const DBSYNC_HANDLE handle,
                  const TxnContext txnContext,
-                 const int threadNumber,
-                 const int maxQueueSize,
-                 result_callback_t callback)
-        : m_spDispatchNode{ getDispatchNode(threadNumber) }
-        , m_spSyncNode{ getSyncNode(threadNumber) }
+                 const unsigned int threadNumber,
+                 const unsigned int maxQueueSize,
+                 ResultCallback callback)
+        : m_spDispatchNode{ maxQueueSize ? getDispatchNode(threadNumber) : nullptr }
+        , m_spSyncNode{ maxQueueSize ? getSyncNode(threadNumber) : nullptr}
         , m_handle{ handle }
         , m_txnContext{ txnContext }
         , m_maxQueueSize{ maxQueueSize }
         , m_callback{ callback }
         {
+            if (!m_callback || !m_handle || !m_txnContext)
+            {
+                throw dbsync_error
+                {
+                    3, "PipelineFactory, Invalid parameters."
+                };
+            }
             Utils::connect(m_spSyncNode, m_spDispatchNode);
         }
         ~Pipeline()
         {
-            try
+            if (m_spDispatchNode)
             {
-                m_spDispatchNode->rundown();
+                try
+                {
+                    m_spDispatchNode->rundown();
+                }
+                catch(...)
+                {}
             }
-            catch(...)
-            {}
         }
         void syncRow(const char* value) override
         {
-            if (m_spSyncNode->size() >= m_maxQueueSize)
+            const auto async{ m_spSyncNode && m_spSyncNode->size() < m_maxQueueSize };
+            if (async)
+            {
+                m_spSyncNode->receive(value);
+            }
+            else
             {
                 //sync will be processed in the host thread instead of a worker thread.
                 const auto result{ processSyncRow(value) };
                 dispatchResult(result);
             }
-            else
-            {
-                m_spSyncNode->receive(value);
-            }
         }
-        void getDeleted(result_callback_t /*callback*/) override
+        void getDeleted(ResultCallback /*callback*/) override
         {
-            m_spSyncNode->rundown();
+            if (m_spSyncNode)
+            {
+                m_spSyncNode->rundown();
+            }
             // DBSyncImplementation::instance().getDeleted(m_handle, m_txnContext, calback);
         }
     private:
@@ -92,10 +106,10 @@ namespace DbSync
             );
         }
 
-        SyncResult processSyncRow(const char* /*value*/)
+        SyncResult processSyncRow(const char* value)
         {
             ReturnTypeCallback type{ MODIFIED };
-            std::string result;
+            std::string result{value};
             // DBSyncImplementation::instance().syncTxRow(m_handle, m_txnContext, value, type, result);
             return std::make_tuple<ReturnTypeCallback, std::string>(std::move(type), std::move(result));
         }
@@ -112,8 +126,8 @@ namespace DbSync
         const std::shared_ptr<SyncRowNode> m_spSyncNode;
         const DBSYNC_HANDLE m_handle;
         const TxnContext m_txnContext;
-        const int m_maxQueueSize;
-        const result_callback_t m_callback;
+        const unsigned int m_maxQueueSize;
+        const ResultCallback m_callback;
     };
 //----------------------------------------------------------------------------------------
     PipelineFactory& PipelineFactory::instance()
@@ -128,9 +142,9 @@ namespace DbSync
     }
     PipelineCtxHandle PipelineFactory::create(const DBSYNC_HANDLE handle,
                                               const TxnContext txnContext,
-                                              const int threadNumber,
-                                              const int maxQueueSize,
-                                              result_callback_t callback)
+                                              const unsigned int threadNumber,
+                                              const unsigned int maxQueueSize,
+                                              ResultCallback callback)
     {
         std::shared_ptr<IPipeline> spContext
         {
