@@ -16,6 +16,7 @@ from shutil import copyfile, rmtree
 from time import time, sleep
 
 import requests
+import random
 
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
