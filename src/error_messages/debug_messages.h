@@ -238,5 +238,6 @@
 #define FIM_REALTIME_CALLBACK               "(6346): Realtime watch deleted for '%s'"
 
 
-#define WM_UPGRADE_RESULT_AGENT_INFO        "(8201): Agent Information obtained: \n %s"
+#define WM_UPGRADE_RESULT_AGENT_INFO        "(8151): Agent Information obtained: \n %s"
+#define WM_UPGRADE_RESULT_SHOW_RESULTS      "(8152): Upgrade results response: \n %s"
 #endif /* DEBUG_MESSAGES_H */

@@ -19,7 +19,7 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module);
 extern const wm_context WM_AGENT_UPGRADE_CONTEXT;   // Context
 
 cJSON *wm_agent_process_upgrade_command(const cJSON* params, const cJSON* agents);
-
+cJSON* wm_agent_process_upgrade_result_command(const cJSON* agents);
 /**
  * Module general configuration
  * */
@@ -40,6 +40,7 @@ enum wm_upgrade_error_codes {
     TASK_MANAGER_COMMUNICATION,
     TASK_MANAGER_FAILURE,
     UPGRADE_ALREADY_ON_PROGRESS,
+    AGENT_ID_ERROR,
     UNKNOWN_ERROR
 };
 

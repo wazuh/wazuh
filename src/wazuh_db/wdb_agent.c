@@ -40,7 +40,6 @@ static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND (re
 static const char *SQL_FIND_GROUP = "SELECT id FROM `group` WHERE name = ?;";
 static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
 static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
-
 static const char *SQL_SELECT_AGENTS_VERSION = "SELECT id, version FROM agent WHERE id IN (%s);";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
@@ -1031,7 +1030,7 @@ cJSON* wdb_select_agents_version(const cJSON* agents) {
         switch (wdb_step(stmt)) {
         case SQLITE_ROW:
             cJSON_AddNumberToObject(element, "agent_id", sqlite3_column_int(stmt,0));
-            cJSON_AddStringToObject(element, "version", strdup((char*)sqlite3_column_text(stmt, 1)));
+            cJSON_AddStringToObject(element, "version", (char*)sqlite3_column_text(stmt, 1));
             cJSON_AddItemReferenceToArray(result, element);
             break;
         case SQLITE_DONE:

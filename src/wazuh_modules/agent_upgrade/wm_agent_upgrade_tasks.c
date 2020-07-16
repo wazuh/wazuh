@@ -59,3 +59,13 @@ int wm_agent_create_task_entry(const int agent_id, wm_agent_task* agent_task) {
     sprintf(agent_id_string, "%d", agent_id);
     return OSHash_Add(task_table_by_agent_id, agent_id_string, agent_task);
 }
+
+int wm_agent_task_present(const int agent_id) {
+    char agent_id_string[128];
+    sprintf(agent_id_string, "%d", agent_id);
+    wm_agent_task *agent_task = (wm_agent_task *)OSHash_Get_ex(task_table_by_agent_id, agent_id_string);
+    if (agent_task) {
+        return agent_task->task_id;
+    }
+    return -1;
+}

@@ -48,4 +48,10 @@ void wm_agent_insert_taks_id(const int task_id, const int agent_id);
  * */
 int wm_agent_create_task_entry(const int agent_id, wm_agent_task*  agent_task);
 
+/**
+ * Check whether an upgrade task for an agent is present or not
+ * @param agent_id id of the agent
+ * @return task_id if task is present, -1 otherwise
+ * */
+int wm_agent_task_present(const int agent_id);
 #endif

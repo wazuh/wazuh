@@ -9,24 +9,25 @@
  * Foundation.
  */
 #include "wm_agent_parsing.h"
+#include "wm_agent_upgrade_tasks.h"
 
 cJSON* wm_agent_parse_command(const char* buffer) {
     cJSON *json_api = NULL; // Response for API
     cJSON * root = cJSON_Parse(buffer);
     if (!root) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_JSON_PARSE_ERROR,  buffer);
-        json_api = wm_agent_parse_response_mesage(PARSING_ERROR, "Could not parse message JSON", NULL, NULL);
+        json_api = wm_agent_parse_response_mesage(PARSING_ERROR, "Could not parse message JSON", NULL, NULL, NULL);
     } else {
         cJSON *params = cJSON_GetObjectItem(root, "params");
         const char *command = cJSON_GetObjectItem(root, "command")->valuestring;
         if (strcmp(command, WM_AGENT_UPGRADE_COMMAND_NAME) == 0) {
             json_api = wm_agent_process_upgrade_command(params, cJSON_GetObjectItem(root, "agents"));
         } else if (strcmp(command, WM_AGENT_UPGRADE_RESULT_COMMAND_NAME) == 0) { 
-            wm_agent_process_upgrade_result_command(cJSON_GetObjectItem(root, "agents"));
+            json_api = wm_agent_process_upgrade_result_command(cJSON_GetObjectItem(root, "agents"));
         } else {
             // TODO invalid command
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR,  command);
-            json_api = wm_agent_parse_response_mesage(TASK_CONFIGURATIONS, "Command not recognized", NULL, NULL);
+            json_api = wm_agent_parse_response_mesage(TASK_CONFIGURATIONS, "Command not recognized", NULL, NULL, NULL);
         }
         cJSON_Delete(root);
     }
@@ -108,7 +109,7 @@ wm_upgrade_task* wm_agent_parse_upgrade_command(const cJSON* params, char* outpu
     }
 }
 
-cJSON*  wm_agent_parse_response_mesage(int error_id, const char* message, const int *agent_id, const int* task_id) {
+cJSON*  wm_agent_parse_response_mesage(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
     cJSON * response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", error_id);
     cJSON_AddStringToObject(response, "data", message);
@@ -118,6 +119,9 @@ cJSON*  wm_agent_parse_response_mesage(int error_id, const char* message, const 
     if (task_id) {
        cJSON_AddNumberToObject(response, "task_id", *task_id); 
     } 
+    if (status) {
+        cJSON_AddStringToObject(response, "status", status);
+    }
     return response;
 }
 

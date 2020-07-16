@@ -27,9 +27,10 @@ cJSON* wm_agent_parse_command(const char* buffer);
  * @param message response message
  * @param agent_id [OPTIONAL] id of the agent
  * @param task_id [OPTIONAL] id of the task
+ * @param status [OPTIONAL] status string
  * @return response json
  * */
-cJSON* wm_agent_parse_response_mesage(int error_id, const char* message, const int *agent_id, const int* task_id);
+cJSON* wm_agent_parse_response_mesage(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status);
 
 /**
  * Parses a message to be sent to the request module

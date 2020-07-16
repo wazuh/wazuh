@@ -10,6 +10,8 @@
  */
 
 #include "wm_agent_upgrade.h"
+#include "wm_agent_upgrade_tasks.h"
+#include "wm_agent_parsing.h"
 #include "os_net/os_net.h"
 
 /**
@@ -105,9 +107,6 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
                 cJSON_Delete(json_response);
             }
             break;
-        }
-        if (json_response) {
-            cJSON_Delete(json_response);
         }
         free(buffer);
         close(peer);
