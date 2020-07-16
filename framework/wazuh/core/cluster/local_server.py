@@ -292,17 +292,6 @@ class LocalServerHandlerWorker(LocalServerHandler):
                                                          data=future.result()))
         send_res.add_done_callback(self.send_res_callback)
 
-    def send_sync(self, payload):
-        req = asyncio.create_task(local_client.execute(command=b'dapi', data=payload, wait_for_complete=False))
-        req.add_done_callback(functools.partial(self.get_send_sync_response, self.name))
-
-        return None, None
-
-    def get_send_sync_response(self, name, future):
-        result = future.result()
-        msg_counter = self.next_counter()
-        self.server.clients[name].push(self.msg_build(b'send_sync', msg_counter, result.encode()))
-
     def send_file_request(self, path, node_name):
         """
         Sends a file from the API to the master who will send it to the specified cluster node.
