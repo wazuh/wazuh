@@ -12,7 +12,7 @@
 
 #include "wazuh_modules/wmodules.h"
 
-static const char *XML_DISABLED = "disabled";
+static const char *XML_ENABLED = "enabled";
 
 int wm_task_manager_read(xml_node **nodes, wmodule *module) {
 
@@ -39,13 +39,13 @@ int wm_task_manager_read(xml_node **nodes, wmodule *module) {
             merror(XML_ELEMNULL);
             return OS_INVALID;
         }
-        else if (!strcmp(nodes[i]->element, XML_DISABLED)) {
+        else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
             if (!strcmp(nodes[i]->content, "yes"))
-                data->enabled = 0;
-            else if (!strcmp(nodes[i]->content, "no"))
                 data->enabled = 1;
+            else if (!strcmp(nodes[i]->content, "no"))
+                data->enabled = 0;
             else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_TASK_MANAGER_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_TASK_MANAGER_CONTEXT.name);
                 return OS_INVALID;
             }
         }
