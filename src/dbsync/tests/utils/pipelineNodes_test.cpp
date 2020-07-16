@@ -84,3 +84,30 @@ TEST_F(PipelineNodesTest, ReadWriteNodeAsync)
     EXPECT_EQ(0ul, spReadNode->size());
     EXPECT_TRUE(spReadNode->cancelled());
 }
+
+TEST_F(PipelineNodesTest, ConnectInvalidPtrs1)
+{
+    std::shared_ptr<Utils::ReadNode<int>> spReadNode;
+    std::shared_ptr<Utils::ReadWriteNode<int, int, Utils::ReadNode<int>>> spReadWriteNode;
+    EXPECT_NO_THROW(Utils::connect(spReadWriteNode, spReadNode));
+}
+
+TEST_F(PipelineNodesTest, ConnectInvalidPtrs2)
+{
+    const auto spReadNode
+    {
+        std::make_shared<Utils::ReadNode<int>>([](const int&){})
+    };
+    std::shared_ptr<Utils::ReadWriteNode<int, int, Utils::ReadNode<int>>> spReadWriteNode;
+    EXPECT_NO_THROW(Utils::connect(spReadWriteNode, spReadNode));
+}
+
+TEST_F(PipelineNodesTest, ConnectInvalidPtrs3)
+{
+    std::shared_ptr<Utils::ReadNode<int>> spReadNode;
+    const auto spReadWriteNode
+    {
+        std::make_shared<Utils::ReadWriteNode<int, int, Utils::ReadNode<int>>>([](const int&){return 0;})
+    };
+    EXPECT_NO_THROW(Utils::connect(spReadWriteNode, spReadNode));
+}

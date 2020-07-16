@@ -8,11 +8,11 @@ include_directories(${CMAKE_SOURCE_DIR}/include/)
 link_directories(${CMAKE_BINARY_DIR}/lib)
 
 
-file(GLOB STRING_HELPER_UNITTEST_SRC
+file(GLOB INTERFACE_UNITTEST_SRC
     "*.cpp")
 
 add_executable(dbsync_unit_test 
-    "${STRING_HELPER_UNITTEST_SRC}" )
+    "${INTERFACE_UNITTEST_SRC}" )
 
 target_link_libraries(dbsync_unit_test 
     debug gtestd
