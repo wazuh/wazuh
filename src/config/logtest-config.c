@@ -36,12 +36,12 @@ int Read_Logtest(XML_NODE node) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
-            strcpy(logtest_conf.enabled, node[i]->content);
+            strcpy(w_logtest_conf.enabled, node[i]->content);
         }
 
         else if (!strcmp(node[i]->element, threads)) {
             if (!strcmp(node[i]->content, "auto")) {
-                logtest_conf.threads = get_nprocs();
+                w_logtest_conf.threads = get_nproc();
                 continue;
             }
 
@@ -53,9 +53,9 @@ int Read_Logtest(XML_NODE node) {
                 return OS_INVALID;
             } else if(value > LOGTEST_LIMIT_THREAD) {
                 mdebug2(LOGTEST_INV_NUM_THREADS, LOGTEST_LIMIT_THREAD);
-                logtest_conf.threads = LOGTEST_LIMIT_THREAD;
+                w_logtest_conf.threads = LOGTEST_LIMIT_THREAD;
             } else {
-                logtest_conf.threads = (unsigned short) value;
+                w_logtest_conf.threads = (unsigned short) value;
             }
         }
 
@@ -68,9 +68,9 @@ int Read_Logtest(XML_NODE node) {
                 return OS_INVALID;
             } else if (value > LOGTEST_LIMIT_MAX_SESSIONS) {
                 mdebug2(LOGTEST_INV_NUM_USERS, LOGTEST_LIMIT_MAX_SESSIONS);
-                logtest_conf.max_sessions = LOGTEST_LIMIT_MAX_SESSIONS;
+                w_logtest_conf.max_sessions = LOGTEST_LIMIT_MAX_SESSIONS;
             } else {
-                logtest_conf.max_sessions = (unsigned short) value;
+                w_logtest_conf.max_sessions = (unsigned short) value;
             }
         }
 
@@ -82,9 +82,9 @@ int Read_Logtest(XML_NODE node) {
                 return OS_INVALID;
             } else if (value > LOGTEST_LIMIT_SESSION_TIMEOUT) {
                 mdebug2(LOGTEST_INV_NUM_TIMEOUT, LOGTEST_LIMIT_SESSION_TIMEOUT);
-                logtest_conf.session_timeout = LOGTEST_LIMIT_SESSION_TIMEOUT;
+                w_logtest_conf.session_timeout = LOGTEST_LIMIT_SESSION_TIMEOUT;
             } else {
-                logtest_conf.session_timeout = value;
+                w_logtest_conf.session_timeout = value;
             }
         }
 
@@ -103,10 +103,10 @@ cJSON *getRuleTestConfig() {
     cJSON *root = cJSON_CreateObject();
     cJSON *ruletest = cJSON_CreateObject();
 
-    if (logtest_conf.enabled)cJSON_AddStringToObject(ruletest, enabled, logtest_conf.enabled);
-    if (logtest_conf.threads)cJSON_AddNumberToObject(ruletest, threads, logtest_conf.threads);
-    if (logtest_conf.max_sessions)cJSON_AddNumberToObject(ruletest, max_sessions, logtest_conf.max_sessions);
-    if (logtest_conf.session_timeout)cJSON_AddNumberToObject(ruletest, session_timeout, logtest_conf.session_timeout);
+    if (w_logtest_conf.enabled)cJSON_AddStringToObject(ruletest, enabled, w_logtest_conf.enabled);
+    if (w_logtest_conf.threads)cJSON_AddNumberToObject(ruletest, threads, w_logtest_conf.threads);
+    if (w_logtest_conf.max_sessions)cJSON_AddNumberToObject(ruletest, max_sessions, w_logtest_conf.max_sessions);
+    if (w_logtest_conf.session_timeout)cJSON_AddNumberToObject(ruletest, session_timeout, w_logtest_conf.session_timeout);
 
     cJSON_AddItemToObject(root, "rule_test", ruletest);
 
