@@ -211,7 +211,7 @@ async def get_stats_remoted(request, pretty=False, wait_for_complete=False):
 
 
 async def get_log(request, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                  search=None, category=None, type_log=None):
+                  search=None, category=None, type_log=None, q=None):
     """Get manager's or local_node's last 2000 wazuh log entries.
 
     :param pretty: Show results in human-readable format
@@ -223,6 +223,7 @@ async def get_log(request, pretty=False, wait_for_complete=False, offset=0, limi
     :param search: Looks for elements with the specified string
     :param category: Filter by category of log.
     :param type_log: Filters by log level.
+    :param q: Query to filter results by.
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
@@ -231,7 +232,8 @@ async def get_log(request, pretty=False, wait_for_complete=False, offset=0, limi
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'category': category,
-                'type_log': type_log}
+                'type_log': type_log,
+                'q': q}
 
     dapi = DistributedAPI(f=manager.ossec_log,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -300,6 +302,7 @@ async def put_files(request, body, overwrite=False, pretty=False, wait_for_compl
     :param path: Filepath to return.
     """
     # Parse body to utf-8
+    Body.validate_content_type(request, expected_content_type='application/octet-stream')
     parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
 
     f_kwargs = {'path': path,
@@ -368,6 +371,9 @@ async def put_api_config(request, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
+    # Check body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+
     try:
         f_kwargs = {"updated_config": await request.json()}
     except JSONDecodeError as e:

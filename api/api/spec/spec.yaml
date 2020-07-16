@@ -9,7 +9,7 @@ info:
     \ or looking up syscheck details.\n"
   version: '4.0.0'
   x-revision: 4000
-  title: 'Wazuh API'
+  title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
     url: 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
@@ -444,6 +444,57 @@ components:
             title: "Unauthorized"
             detail: "No authorization token provided"
             status: 401
+
+    InvalidHTTPMethodResponse:
+      description: "Response to an invalid HTTP method"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            type: "about:blank"
+            title: "Method Not Allowed"
+            detail: "Specified method is invalid for this resource"
+            status: 405
+
+    WrongContentTypeResponse:
+      description: "The content-type does not match the body type"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            type: "about:blank"
+            title: "Wazuh Error"
+            detail: "The body type is not the one specified in the content-type"
+            status: 406
+            code: 6002
+
+    RequestTooLargeResponse:
+      description: "Maximum request body size exceeded"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            type: "about:blank"
+            title: "Request Entity Too Large"
+            detail: "Maximum request body size 1048576 exceeded, actual body size 1225245"
+            status: 413
+
+    TooManyRequestsResponse:
+      description: "Maximum number of request per minute reached"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            type: "about:blank"
+            title: "Wazuh Error"
+            detail: "Maximum number of request per minute reached"
+            remediation: "This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html"
+            code: 6001
+            status: 429
 
   schemas:
     ## Common models
@@ -1490,6 +1541,36 @@ components:
       format: alphanumeric
     PoliciesRequest:
       type: object
+      required:
+        - name
+        - policy
+      properties:
+        name:
+          description: "Policy name"
+          type: string
+        policy:
+          description: "This is the definition of the new policy"
+          type: object
+          properties:
+            actions:
+              type: array
+              description: "These are the actions that the policy performs"
+              items:
+                type: string
+            resources:
+              type: array
+              description: "Resources accessed by policy"
+              items:
+                type: string
+            effect:
+              type: string
+              description: "Effect of the policy"
+          required:
+            - actions
+            - resources
+            - effect
+    PoliciesRequest_no_required:
+      type: object
       properties:
         name:
           description: "Policy name"
@@ -1554,6 +1635,18 @@ components:
           type: object
           description: "Role rule"
     RolesRequest:
+      type: object
+      required:
+        - name
+        - rule
+      properties:
+        name:
+          type: string
+          description: "Role name"
+        rule:
+          type: object
+          description: "Role rule"
+    RolesRequest_no_required:
       type: object
       properties:
         name:
@@ -2356,6 +2449,24 @@ components:
           type: string
           enum: [white, black]
           example: white
+        max_login_attempts:
+          description: "Maximum number of login attempts in {block_time} seconds"
+          type: integer
+          format: int32
+          minimum: 1
+          example: 5
+        block_time:
+          description: "Blocking time for IPs that have exceeded {max_login_attempts}. Time counts from the first attempt"
+          type: integer
+          format: int32
+          minimum: 0
+          example: 300
+        max_request_per_minute:
+          description: "Maximum number of requests allowed per minute"
+          type: integer
+          format: int32
+          minimum: 1
+          example: 300
 
     # SCA models
     SCAChecks:
@@ -3180,6 +3291,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    command:
+      in: query
+      name: command
+      description: "Filter by command"
+      schema:
+        type: string
+        format: alphanumeric
     component:
       in: path
       name: component
@@ -3425,7 +3543,7 @@ components:
       description: "Filter by policy description"
       schema:
         type: string
-        format: alphanumeric
+        format: alphanumeric_symbols
     directory:
       in: query
       name: directory
@@ -3713,14 +3831,13 @@ components:
       description: "Query to filter results by. For example q=&quot;status=active&quot;"
       schema:
         type: string
-      allowReserved: true
     rationale:
       in: query
       name: rationale
       description: "Filter by rationale"
       schema:
         type: string
-        format: alphanumeric
+        format: alphanumeric_symbols
     registry:
       in: query
       name: registry
@@ -3740,6 +3857,7 @@ components:
       description: "Filter by remediation"
       schema:
         type: string
+        format: alphanumeric_symbols
     rule_requirement:
       in: path
       name: requirement
@@ -3792,6 +3910,13 @@ components:
       schema:
         type: integer
         minimum: 0
+    reason:
+      in: query
+      name: reason
+      description: "Filter by reason"
+      schema:
+        type: string
+        format: alphanumeric_symbols
     rule_ids:
       in: query
       name: rule_ids
@@ -3839,6 +3964,13 @@ components:
       schema:
         type: string
         format: sort
+    status:
+      in: query
+      name: status
+      description: "Filter by status"
+      schema:
+        type: string
+        format: alphanumeric
     statusAgentParam:
       in: query
       name: status
@@ -3871,7 +4003,7 @@ components:
       description: "Filter by title"
       schema:
         type: string
-        format: alphanumeric
+        format: alphanumeric_symbols
     type_agents:
       in: query
       name: type
@@ -4780,6 +4912,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents:
     delete:
@@ -4829,6 +4969,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
     get:
       tags:
       - agents
@@ -4955,6 +5099,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
     post:
       tags:
       - agents
@@ -5009,6 +5157,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/config/{component}/{configuration}:
     get:
@@ -5054,6 +5210,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/group:
     delete:
@@ -5095,6 +5255,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/group/is_sync:
     get:
@@ -5134,6 +5298,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/group/{group_id}:
     delete:
@@ -5163,6 +5331,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     put:
       tags:
@@ -5198,6 +5370,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/key:
     get:
@@ -5237,6 +5413,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/restart:
     put:
@@ -5275,6 +5455,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/upgrade:
     put:
@@ -5306,6 +5490,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/upgrade_custom:
     put:
@@ -5335,6 +5523,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/upgrade_result:
     get:
@@ -5368,6 +5560,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/group:
     delete:
@@ -5412,6 +5608,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     put:
       tags:
@@ -5466,6 +5666,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /groups:
     delete:
@@ -5512,6 +5716,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     get:
       tags:
@@ -5565,6 +5773,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     post:
       tags:
@@ -5591,6 +5803,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /groups/{group_id}/agents:
     get:
@@ -5711,6 +5927,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /groups/{group_id}/configuration:
     get:
@@ -5773,6 +5993,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
     put:
       tags:
         - groups
@@ -5807,6 +6031,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /groups/{group_id}/files:
     get:
@@ -5869,6 +6101,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /groups/{group_id}/files/{file_name}/json:
     get:
@@ -5915,6 +6151,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /groups/{group_id}/files/{file_name}/xml:
     get:
@@ -5942,6 +6182,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /groups/{group_id}/restart:
     put:
@@ -5974,6 +6218,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/insert:
     post:
@@ -6040,6 +6288,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/insert/quick:
     post:
@@ -6074,6 +6330,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/no_group:
     get:
@@ -6191,6 +6451,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/node/{node_id}/restart:
       put:
@@ -6278,6 +6542,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/restart:
     put:
@@ -6317,6 +6585,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/stats/distinct:
     get:
@@ -6408,6 +6680,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/summary/os:
     get:
@@ -6442,6 +6718,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/summary/status:
     get:
@@ -6478,6 +6758,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /ciscat/{agent_id}/results:
     get:
@@ -6505,7 +6789,7 @@ paths:
         - $ref: '#/components/parameters/notchecked'
         - $ref: '#/components/parameters/unknown'
         - $ref: '#/components/parameters/score'
-
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "List of agents or error description"
@@ -6540,6 +6824,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/local/info:
     get:
@@ -6588,6 +6876,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/nodes:
     get:
@@ -6608,6 +6900,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/node_type'
         - $ref: '#/components/parameters/list_nodes'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "List of connected nodes"
@@ -6643,6 +6936,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/healthcheck:
     get:
@@ -6707,6 +7004,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/status:
     get:
@@ -6752,6 +7053,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/local/config:
     get:
@@ -6830,6 +7135,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/api/config:
     get:
@@ -6913,6 +7222,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     put:
       tags:
@@ -6951,6 +7264,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -6985,6 +7306,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/status:
     get:
@@ -7038,6 +7363,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/info:
     get:
@@ -7083,6 +7412,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/configuration:
     get:
@@ -7154,6 +7487,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/stats:
     get:
@@ -7213,6 +7550,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/stats/hourly:
     get:
@@ -7271,6 +7612,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/stats/weekly:
     get:
@@ -7492,6 +7837,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/stats/analysisd:
     get:
@@ -7570,6 +7919,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/stats/remoted:
     get:
@@ -7610,6 +7963,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/logs:
     get:
@@ -7630,6 +7987,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/category'
         - $ref: '#/components/parameters/type_log'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Wazuh node logs"
@@ -7665,6 +8023,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/logs/summary:
     get:
@@ -7722,6 +8084,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/files:
     get:
@@ -7761,6 +8127,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     put:
       tags:
@@ -7805,6 +8175,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -7839,6 +8215,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/restart:
     put:
@@ -7879,6 +8259,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/configuration/validation:
     get:
@@ -7922,6 +8306,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/configuration/{component}/{configuration}:
     get:
@@ -7969,6 +8357,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /lists:
     get:
@@ -8050,6 +8442,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /lists/files:
     get:
@@ -8100,6 +8496,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/status:
     get:
@@ -8152,6 +8552,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/info:
     get:
@@ -8196,6 +8600,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/configuration:
     get:
@@ -8266,6 +8674,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/stats:
     get:
@@ -8324,6 +8736,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/stats/hourly:
     get:
@@ -8381,6 +8797,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/stats/weekly:
     get:
@@ -8601,6 +9021,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/stats/analysisd:
     get:
@@ -8678,6 +9102,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/stats/remoted:
     get:
@@ -8717,6 +9145,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/logs:
     get:
@@ -8736,6 +9168,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/category'
         - $ref: '#/components/parameters/type_log'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Wazuh logs"
@@ -8771,6 +9204,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/logs/summary:
     get:
@@ -8827,6 +9264,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/files:
     get:
@@ -8865,6 +9306,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     put:
       tags:
@@ -8904,6 +9349,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -8939,6 +9390,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/api/config:
     get:
@@ -8995,6 +9450,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     put:
       tags:
@@ -9031,6 +9490,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -9063,6 +9530,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/restart:
     put:
@@ -9095,6 +9566,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/configuration/validation:
     get:
@@ -9128,6 +9603,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/configuration/{component}/{configuration}:
     get:
@@ -9168,6 +9647,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /mitre:
     get:
@@ -9245,6 +9728,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /rules:
     get:
@@ -9334,6 +9821,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /rules/groups:
     get:
@@ -9380,6 +9871,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /rules/requirement/{requirement}:
     get:
@@ -9428,6 +9923,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /rules/files:
     get:
@@ -9483,6 +9982,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /rules/files/{filename}/download:
     get:
@@ -9508,6 +10011,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /sca/{agent_id}:
     get:
@@ -9577,6 +10084,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /sca/{agent_id}/checks/{policy_id}:
     get:
@@ -9596,6 +10107,9 @@ paths:
         - $ref: '#/components/parameters/description'
         - $ref: '#/components/parameters/rationale'
         - $ref: '#/components/parameters/remediation'
+        - $ref: '#/components/parameters/command'
+        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/reason'
         - $ref: '#/components/parameters/full_path_filter'
         - $ref: '#/components/parameters/process'
         - $ref: '#/components/parameters/directory'
@@ -9662,6 +10176,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscheck:
     put:
@@ -9703,6 +10221,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscheck/{agent_id}:
     get:
@@ -9730,6 +10252,7 @@ paths:
         - $ref: '#/components/parameters/sha256'
         - $ref: '#/components/parameters/hashfilter'
         - $ref: '#/components/parameters/distinct'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Latest syscheck scan result"
@@ -9783,6 +10306,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -9820,6 +10347,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscheck/{agent_id}/last_scan:
     get:
@@ -9859,6 +10390,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /decoders:
     get:
@@ -9923,6 +10458,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /decoders/files:
     get:
@@ -9975,6 +10514,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /decoders/files/{filename}/download:
     get:
@@ -10000,6 +10543,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /decoders/parents:
     get:
@@ -10056,6 +10603,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscheck:
     delete:
@@ -10106,6 +10657,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/ciscat/results:
     get:
@@ -10192,6 +10747,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/hardware:
     get:
@@ -10279,6 +10838,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/netaddr:
     get:
@@ -10349,6 +10912,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/netiface:
     get:
@@ -10461,6 +11028,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/netproto:
     get:
@@ -10528,6 +11099,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/os:
     get:
@@ -10623,6 +11198,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/packages:
     get:
@@ -10715,6 +11294,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/ports:
     get:
@@ -10810,6 +11393,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/processes:
     get:
@@ -10930,6 +11517,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/hotfixes:
     get:
@@ -10981,6 +11572,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/hardware:
     get:
@@ -11033,6 +11628,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/hotfixes:
     get:
@@ -11053,6 +11652,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/hotfix'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return an agent's hotfix results"
@@ -11080,6 +11680,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/netaddr:
     get:
@@ -11104,6 +11708,7 @@ paths:
         - $ref: '#/components/parameters/address'
         - $ref: '#/components/parameters/broadcast'
         - $ref: '#/components/parameters/netmask'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's network results"
@@ -11134,6 +11739,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/netiface:
     get:
@@ -11166,6 +11775,7 @@ paths:
         - $ref: '#/components/parameters/rx.errors'
         - $ref: '#/components/parameters/tx.dropped'
         - $ref: '#/components/parameters/rx.dropped'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's network interfaces results"
@@ -11208,6 +11818,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/netproto:
     get:
@@ -11231,6 +11845,7 @@ paths:
         - $ref: '#/components/parameters/type_syscollector'
         - $ref: '#/components/parameters/gateway'
         - $ref: '#/components/parameters/dhcp'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's network protocol results"
@@ -11261,6 +11876,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/os:
     get:
@@ -11315,6 +11934,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/packages:
     get:
@@ -11339,6 +11962,7 @@ paths:
         - $ref: '#/components/parameters/architecture'
         - $ref: '#/components/parameters/file_format'
         - $ref: '#/components/parameters/package_version'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's packages results"
@@ -11407,6 +12031,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/ports:
     get:
@@ -11434,6 +12062,7 @@ paths:
         - $ref: '#/components/parameters/tx_queue'
         - $ref: '#/components/parameters/state'
         - $ref: '#/components/parameters/process'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's packages results"
@@ -11502,6 +12131,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/processes:
     get:
@@ -11535,6 +12168,7 @@ paths:
         - $ref: '#/components/parameters/ruser'
         - $ref: '#/components/parameters/sgroup'
         - $ref: '#/components/parameters/suser'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's processes results"
@@ -11622,6 +12256,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/user/authenticate:
     get:
@@ -11646,6 +12284,24 @@ paths:
                     type: string
               example:
                 token: "<generated_token>"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+
+    delete:
+      tags:
+        - security
+      summary: "Logout current user"
+      description: "This method should be called to invalidate all the current user's tokens."
+      operationId: api.controllers.security_controller.logout_user
+      responses:
+        '200':
+          description: "Logout successful"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: "User wazuh logout correctly."
         '400':
           $ref: '#/components/responses/ResponseError'
 
@@ -11699,6 +12355,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/resources:
     get:
@@ -11747,6 +12407,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/user/revoke:
     put:
@@ -11762,6 +12426,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/roles:
     get:
@@ -11822,6 +12490,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     post:
       tags:
@@ -11871,6 +12543,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -11933,6 +12613,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/roles/{role_id}:
     put:
@@ -11951,7 +12635,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RolesRequest'
+              $ref: '#/components/schemas/RolesRequest_no_required'
             example:
               name: "normal"
               rule:
@@ -11984,6 +12668,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/policies:
     get:
@@ -12041,6 +12733,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     post:
       tags:
@@ -12095,6 +12791,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -12150,6 +12854,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/policies/{policy_id}:
     put:
@@ -12168,7 +12876,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PoliciesRequest'
+              $ref: '#/components/schemas/PoliciesRequest_no_required'
             example:
               name: 'wazuhPolicy'
               policy:
@@ -12212,6 +12920,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/roles/{role_id}/policies:
     post:
@@ -12275,6 +12991,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -12315,8 +13035,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /security/users/{username}/roles:
+  /security/users/{user_id}/roles:
     post:
       tags:
         - security
@@ -12326,7 +13050,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
-        - $ref: '#/components/parameters/username'
+        - $ref: '#/components/parameters/user_id_required'
         - $ref: '#/components/parameters/role_ids_required'
         - $ref: '#/components/parameters/security_position'
         - $ref: '#/components/parameters/pretty'
@@ -12346,19 +13070,23 @@ paths:
               example:
                 data:
                   affected_items:
-                    - roles:
-                        - 3
-                        - 4
-                      username: normal
-                  failed_items: []
+                    - id: 3
+                      username: string
+                      roles:
+                        - 9
+                        - 8
                   total_affected_items: 2
                   total_failed_items: 0
-                message: All roles were linked to user normal
-
+                  failed_items: []
+                message: All roles were linked to user 3
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -12369,7 +13097,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
-        - $ref: '#/components/parameters/username'
+        - $ref: '#/components/parameters/user_id_required'
         - $ref: '#/components/parameters/role_ids_required'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -12388,16 +13116,21 @@ paths:
               example:
                 data:
                   affected_items:
-                    - roles: []
-                      username: normal
-                  failed_items: []
-                  total_affected_items: 2
+                    - id: 3
+                      username: string
+                      roles: []
+                  total_affected_items: 1
                   total_failed_items: 0
-                message: All roles were unlinked from user normal
+                  failed_items: []
+                message: All roles were unlinked from user 3
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/users/me:
     get:
@@ -12529,6 +13262,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     post:
       tags:
@@ -12578,6 +13315,16 @@ paths:
                     total_affected_items: 1
                     total_failed_items: 0
                   message: User created correctly
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -12604,6 +13351,16 @@ paths:
                 example:
                   data:
                     message: 'User deleted correctly'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/users/{user_id}:
     put:
@@ -12651,6 +13408,16 @@ paths:
                     total_failed_items: 0
                     failed_items: []
                   message: User modified correctly
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /overview/agents:
     get:
@@ -12742,6 +13509,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/config:
     get:
@@ -12765,10 +13536,17 @@ paths:
               example:
                 auth_token_exp_timeout: 36000
                 rbac_mode: white
-        "400":
-          $ref: "#/components/responses/ResponseError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedResponse"
+                max_login_attempts: 5
+                block_time: 300
+                max_request_per_minute: 300
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     put:
       tags:
@@ -12787,12 +13565,18 @@ paths:
             schema:
               $ref: "#/components/schemas/SecurityConfiguration"
       responses:
-        "200":
-          description: "Configuration successfully updated"
-        "400":
-          $ref: "#/components/responses/ResponseError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedResponse"
+        '200':
+          description: 'Configuration successfully updated'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -12806,12 +13590,16 @@ paths:
         - $ref: "#/components/parameters/pretty"
         - $ref: "#/components/parameters/wait_for_complete"
       responses:
-        "200":
-          description: "Configuration successfully restored"
-        "400":
-          $ref: "#/components/responses/ResponseError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedResponse"
+        '200':
+          description: 'Configuration successfully restored'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
 externalDocs:
   description: "Find more about Wazuh API usage"

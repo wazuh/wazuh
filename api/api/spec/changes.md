@@ -303,6 +303,7 @@ or a list of them if parameter **list_nodes** is used.
 * New endpoint. Get information about all groups or a list of them. 
 Returns a list containing basic information about each group such as number of agents belonging 
 to the group and the checksums of the configuration and shared files.
+* Removed **q** parameter in query.
 
 ### GET ​   /groups/{group_id}/agents
 * New endpoint. Returns the list of agents that belongs to the specified group.

@@ -125,6 +125,7 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
     :return: AgentIdKey
     """
     # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await AgentAddedModel.get_kwargs(request)
 
     # Get IP if not given
@@ -732,6 +733,7 @@ async def put_group_config(request, body, group_id, pretty=False, wait_for_compl
     :return: ApiResponse
     """
     # Parse body to utf-8
+    Body.validate_content_type(request, expected_content_type='application/xml')
     parsed_body = Body.decode_body(body, unicode_error=2006, attribute_error=2007)
 
     f_kwargs = {'group_list': [group_id],
@@ -875,6 +877,7 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     :return: AgentIdKey
     """
     # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await AgentInsertedModel.get_kwargs(request)
 
     # Get IP if not given
