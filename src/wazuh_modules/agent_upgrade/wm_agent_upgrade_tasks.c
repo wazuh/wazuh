@@ -15,7 +15,6 @@
 /* Hash table of current tasks based on agent_id */
 static OSHash *task_table_by_agent_id;
 
-
 wm_upgrade_task* wm_agent_init_upgrade_task() {
     wm_upgrade_task *task;
     os_malloc(sizeof(wm_upgrade_task), task);

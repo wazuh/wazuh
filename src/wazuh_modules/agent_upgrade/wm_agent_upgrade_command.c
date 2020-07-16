@@ -9,6 +9,8 @@
  * Foundation.
  */
 #include "wm_agent_upgrade.h"
+#include "wm_agent_parsing.h"
+#include "wm_agent_upgrade_tasks.h"
 #include "os_net/os_net.h"
 
 static void wm_agent_create_upgrade_tasks(const cJSON *agents, wm_upgrade_task *task, const char* command, cJSON* response, cJSON* failures);
@@ -23,7 +25,7 @@ cJSON *wm_agent_process_upgrade_command(const cJSON* params, const cJSON* agents
     task = wm_agent_parse_upgrade_command(params, output);
     if (!task) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, output);
-        json_api = wm_agent_parse_response_mesage(TASK_CONFIGURATIONS, output, NULL, NULL);
+        json_api = wm_agent_parse_response_mesage(TASK_CONFIGURATIONS, output, NULL, NULL, NULL);
     } else {
         json_api = cJSON_CreateArray();
         cJSON *json_task_module = cJSON_CreateArray();
@@ -64,10 +66,10 @@ static void wm_agent_create_upgrade_tasks(const cJSON *agents, wm_upgrade_task *
            cJSON *task_message = wm_agent_parse_task_module_message(agent_task->command, agent_task->agent);
            cJSON_AddItemToArray(response, task_message);
         } else if (result == 1) {
-            cJSON *task_message = wm_agent_parse_response_mesage(UPGRADE_ALREADY_ON_PROGRESS, "Upgrade procedure could not start. Agent already upgrading", &(agent_task->agent), NULL);
+            cJSON *task_message = wm_agent_parse_response_mesage(UPGRADE_ALREADY_ON_PROGRESS, upgrade_error_codes[UPGRADE_ALREADY_ON_PROGRESS], &(agent_task->agent), NULL, NULL);
             cJSON_AddItemToArray(failures, task_message);
         } else {
-            cJSON *task_message = wm_agent_parse_response_mesage(UNKNOWN_ERROR, "Upgrade procedure could not start", &(agent_task->agent), NULL);
+            cJSON *task_message = wm_agent_parse_response_mesage(UNKNOWN_ERROR, upgrade_error_codes[UNKNOWN_ERROR], &(agent_task->agent), NULL, NULL);
             cJSON_AddItemToArray(failures, task_message);
         }
     }
@@ -92,14 +94,14 @@ static void wm_agent_parse_task_information(cJSON *json_api, const cJSON* json_t
                 wm_agent_insert_taks_id(task_id, agent_id);
                 cJSON_AddItemReferenceToArray(json_api, task_response);
             } else {
-                cJSON *json_message = wm_agent_parse_response_mesage(TASK_MANAGER_FAILURE, cJSON_GetObjectItem(task_response, "data")->valuestring, &agent_id, NULL);
+                cJSON *json_message = wm_agent_parse_response_mesage(TASK_MANAGER_FAILURE, cJSON_GetObjectItem(task_response, "data")->valuestring, &agent_id, NULL, NULL);
                 cJSON_AddItemToArray(json_api, json_message);
             }
         }
     } else {
         for(int i=0; i < cJSON_GetArraySize(json_task_module); i++) {
             int agent_id = cJSON_GetObjectItem(cJSON_GetArrayItem(json_task_module, i), "agent")->valueint;
-            cJSON_AddItemReferenceToArray(json_api, wm_agent_parse_response_mesage(TASK_MANAGER_COMMUNICATION, "Could not create task id for upgrade task", &agent_id, NULL));
+            cJSON_AddItemReferenceToArray(json_api, wm_agent_parse_response_mesage(TASK_MANAGER_COMMUNICATION, upgrade_error_codes[TASK_MANAGER_COMMUNICATION], &agent_id, NULL, NULL));
         }
     }
 }

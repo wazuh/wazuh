@@ -16,7 +16,7 @@ cJSON* wm_agent_parse_command(const char* buffer) {
     cJSON * root = cJSON_Parse(buffer);
     if (!root) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_JSON_PARSE_ERROR,  buffer);
-        json_api = wm_agent_parse_response_mesage(PARSING_ERROR, "Could not parse message JSON", NULL, NULL, NULL);
+        json_api = wm_agent_parse_response_mesage(PARSING_ERROR, upgrade_error_codes[PARSING_ERROR], NULL, NULL, NULL);
     } else {
         cJSON *params = cJSON_GetObjectItem(root, "params");
         const char *command = cJSON_GetObjectItem(root, "command")->valuestring;
@@ -27,7 +27,7 @@ cJSON* wm_agent_parse_command(const char* buffer) {
         } else {
             // TODO invalid command
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR,  command);
-            json_api = wm_agent_parse_response_mesage(TASK_CONFIGURATIONS, "Command not recognized", NULL, NULL, NULL);
+            json_api = wm_agent_parse_response_mesage(TASK_CONFIGURATIONS, upgrade_error_codes[TASK_CONFIGURATIONS], NULL, NULL, NULL);
         }
         cJSON_Delete(root);
     }

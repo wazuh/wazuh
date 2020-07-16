@@ -23,18 +23,15 @@ cJSON* wm_agent_process_upgrade_result_command(const cJSON* agents);
 /**
  * Module general configuration
  * */
-typedef struct _wm_agent_upgrade {
-    int enabled; ///< Indicates if modules is enabled
-} wm_agent_upgrade;
 
-enum wm_upgrade_state {
+typedef enum _wm_upgrade_state {
     NOT_STARTED,
     STARTED,
     ERROR
-};
+} wm_upgrade_state;
 
-enum wm_upgrade_error_codes {
-    SUCCESS,
+typedef enum _wm_upgrade_error_codes {
+    SUCCESS = 0,
     PARSING_ERROR,
     TASK_CONFIGURATIONS,
     TASK_MANAGER_COMMUNICATION,
@@ -42,7 +39,11 @@ enum wm_upgrade_error_codes {
     UPGRADE_ALREADY_ON_PROGRESS,
     AGENT_ID_ERROR,
     UNKNOWN_ERROR
-};
+} wm_upgrade_error_codes;
+
+typedef struct _wm_agent_upgrade {
+    int enabled; ///< Indicates if modules is enabled
+} wm_agent_upgrade;
 
 /**
  * Definition of the structure that will represent an agent doing a certain task
@@ -64,7 +65,7 @@ typedef struct _wm_upgrade_task {
     char *custom_version;        ///> upgrade to a custom version  
     bool use_http;               ///> when enabled uses http instead of https to connect to repository 
     bool force_upgrade;          ///> when enabled forces upgrade
-    enum wm_upgrade_state state; ///> current state of the task
+    wm_upgrade_state state; ///> current state of the task
 } wm_upgrade_task;
 
 
@@ -73,5 +74,7 @@ typedef struct _wm_upgrade_task {
 
 #define WM_AGENT_UPGRADE_COMMAND_NAME "upgrade"
 #define WM_AGENT_UPGRADE_RESULT_COMMAND_NAME "upgrade_result"
+
+extern const char* upgrade_error_codes[];
 
 #endif

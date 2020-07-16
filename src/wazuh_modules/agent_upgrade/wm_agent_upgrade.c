@@ -14,6 +14,17 @@
 #include "wm_agent_parsing.h"
 #include "os_net/os_net.h"
 
+const char* upgrade_error_codes[] = {
+    [SUCCESS] = "Success",
+    [PARSING_ERROR] = "Could not parse message JSON",
+    [TASK_CONFIGURATIONS] = "Command not recognized",
+    [TASK_MANAGER_COMMUNICATION] ="Could not create task id for upgrade task",
+    [TASK_MANAGER_FAILURE] = "", // Data string wil be provded by task manager
+    [UPGRADE_ALREADY_ON_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading",
+    [AGENT_ID_ERROR] = "Agent id not present in database",
+    [UNKNOWN_ERROR] "Upgrade procedure could not start"
+};
+
 /**
  * Module main function. It won't return
  * */

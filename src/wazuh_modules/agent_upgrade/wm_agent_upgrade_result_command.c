@@ -47,7 +47,7 @@ cJSON* wm_agent_process_upgrade_result_command(const cJSON* agents) {
         }
 
         if (!agent_matched) {
-            cJSON_AddItemToArray(response, wm_agent_parse_response_mesage(AGENT_ID_ERROR, "Agent id not present in database", &agent_id, NULL, "ERROR"));
+            cJSON_AddItemToArray(response, wm_agent_parse_response_mesage(AGENT_ID_ERROR, upgrade_error_codes[AGENT_ID_ERROR], &agent_id, NULL, "ERROR"));
         }   
         
     }
