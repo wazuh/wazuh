@@ -13,6 +13,7 @@
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/pthreads_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/validate_op_wrappers.h"
 
 #define TEST_MAX_DATES 3
 
@@ -27,17 +28,6 @@ extern char **last_sha256;
 extern OSHash **cis_db;
 extern struct cis_db_hash_info_t *cis_db_for_hash;
 extern unsigned int policies_count;
-
-int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max)
-{
-    if( !strcmp(low_name, "request_db_interval") ) {
-        return 5;
-    }
-    if( !strcmp(low_name, "commands_timeout") ) {
-        return 300;
-    }
-    return 0;
-}
 
 int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
     return 0;

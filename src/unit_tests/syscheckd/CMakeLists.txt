@@ -91,8 +91,8 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn
                           -Wl,--wrap,delete_target_file -Wl,--wrap,fim_db_insert -Wl,--wrap,OS_MD5_SHA1_SHA256_File \
                           -Wl,--wrap,seechanges_addfile -Wl,--wrap,fim_db_delete_not_scanned \
                           -Wl,--wrap,fim_db_set_all_unscanned -Wl,--wrap,fim_db_set_scanned -Wl,--wrap,get_user \
-                          -Wl,--wrap,get_group -Wl,--wrap,fim_db_remove_path -Wl,--wrap,getDefine_Int \
-                          -Wl,--wrap,isChroot -Wl,--wrap,fim_db_get_not_scanned -Wl,--wrap,fim_db_set_all_unscanned \
+                          -Wl,--wrap,get_group -Wl,--wrap,fim_db_remove_path -Wl,--wrap,isChroot \
+                          -Wl,--wrap,fim_db_get_not_scanned -Wl,--wrap,fim_db_set_all_unscanned \
                           -Wl,--wrap,fim_db_get_count_entry_path -Wl,--wrap,fim_db_get_path_range \
                           -Wl,--wrap,fim_db_process_missing_entry -Wl,--wrap,send_log_msg -Wl,--wrap,stat")
 
@@ -133,7 +133,7 @@ set(SEECHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat
 
 list(APPEND syscheckd_tests_names "test_seechanges")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${SEECHANGES_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot,--wrap=unlink")
+  list(APPEND syscheckd_tests_flags "${SEECHANGES_BASE_FLAGS} -Wl,--wrap=isChroot,--wrap=unlink")
 elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${SEECHANGES_BASE_FLAGS} -Wl,--wrap=_unlink")
 else()
@@ -151,7 +151,7 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
 
 list(APPEND syscheckd_tests_names "test_run_realtime")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=getDefine_Int -Wl,--wrap=isChroot")
+  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=isChroot")
 elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=fim_configuration_directory")
 
@@ -167,7 +167,7 @@ set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 
 list(APPEND syscheckd_tests_names "test_syscheck_config")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot")
+  list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap=isChroot")
 else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS}")
 endif()
@@ -211,8 +211,7 @@ set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mdebu
 
 list(APPEND syscheckd_tests_names "test_run_check")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot,--wrap=sleep \
-                                                                -Wl,--wrap,time")
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=isChroot,--wrap=sleep -Wl,--wrap,time")
 elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start")
 
@@ -239,8 +238,7 @@ set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2
 
 list(APPEND syscheckd_tests_names "test_fim_db")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot \
-                                     -Wl,--wrap=usleep,--wrap=time")
+  list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=isChroot -Wl,--wrap=usleep,--wrap=time")
 elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS}")
 else()

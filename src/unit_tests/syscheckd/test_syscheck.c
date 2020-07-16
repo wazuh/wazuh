@@ -16,14 +16,12 @@
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
+
 #include "../syscheckd/syscheck.h"
 
 
 /* redefinitons/wrapping */
-
-int __wrap_getDefine_Int() {
-    return mock();
-}
 
 /* setup/teardowns */
 static int setup_group(void **state) {

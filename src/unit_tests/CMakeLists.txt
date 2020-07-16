@@ -54,11 +54,13 @@ if(${TARGET} STREQUAL "winagent")
   configure_file("test_syscheck_win.conf" "syscheckd/ossec.conf" NEWLINE_STYLE WIN32)
   configure_file("test_empty_config.conf" "syscheckd/test_empty_config.conf" NEWLINE_STYLE WIN32)
   configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_local_internal_options.conf" "syscheckd/local_internal_options.conf" NEWLINE_STYLE WIN32)
 else()
   configure_file("test_syscheck.conf" "syscheckd/test_syscheck.conf" COPYONLY)
   configure_file("test_syscheck2.conf" "syscheckd/test_syscheck2.conf" COPYONLY)
   configure_file("test_empty_config.conf" "syscheckd/test_empty_config.conf" COPYONLY)
   configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" COPYONLY)
+  configure_file("test_local_internal_options.conf" "syscheckd/local_internal_options.conf" COPYONLY)
 endif()
 
 # Coverage

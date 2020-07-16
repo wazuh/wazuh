@@ -12,7 +12,11 @@
 #ifndef VALIDATE_OP_WRAPPERS_H
 #define VALIDATE_OP_WRAPPERS_H
 
+#include <ctype.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
-
+int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max);
 
 #endif

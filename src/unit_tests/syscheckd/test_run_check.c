@@ -24,6 +24,7 @@
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_realtime_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
+
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
 
@@ -46,41 +47,6 @@ void fim_delete_realtime_watches(int pos);
 #endif
 
 /* redefinitons/wrapping */
-
-#ifdef TEST_AGENT
-char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
-
-int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max) {
-    int ret;
-    char *value;
-    char *pt;
-
-    /* Try to read from the local define file */
-    value = _read_file(high_name, low_name, "./internal_options.conf");
-    if (!value) {
-        merror_exit(DEF_NOT_FOUND, high_name, low_name);
-    }
-
-    pt = value;
-    while (*pt != '\0') {
-        if (!isdigit((int)*pt)) {
-            merror_exit(INV_DEF, high_name, low_name, value);
-        }
-        pt++;
-    }
-
-    ret = atoi(value);
-    if ((ret < min) || (ret > max)) {
-        merror_exit(INV_DEF, high_name, low_name, value);
-    }
-
-    /* Clear memory */
-    free(value);
-
-    return (ret);
-}
-
-#endif
 
 #ifndef TEST_WINAGENT
 int __wrap_time() {
@@ -698,6 +664,7 @@ void test_fim_link_check_delete_lstat_error(void **state) {
     expect_string(__wrap_lstat, filename, link_path);
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, -1);
+    errno = 0;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: '/home' due to [(0)-(Success)]");
 

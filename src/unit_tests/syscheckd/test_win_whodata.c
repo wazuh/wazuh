@@ -6931,8 +6931,7 @@ void test_run_whodata_scan_no_audit_policies(void **state) {
     expect_string(__wrap_remove, filename, "tmp\\backup-policies");
     will_return(__wrap_remove, 1);
 
-    expect_string(__wrap__merror, formatted_msg,
-         "(6660): 'tmp\\backup-policies' could not be removed: 'No such file or directory' (2).");
+    expect_any(__wrap__merror, formatted_msg);
 }
 
     expect_string(__wrap__merror, formatted_msg,
