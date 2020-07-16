@@ -654,7 +654,7 @@ get_rbac_actions:
           - DELETE /security/roles
           - DELETE /security/policies
           - DELETE /security/roles/{role_id}/policies
-          - DELETE /security/users/{username}/roles
+          - DELETE /security/users/{user_id}/roles
           - DELETE /security/users
       security:update:
         description: Allow update the information of system's security resources
@@ -674,7 +674,7 @@ get_rbac_actions:
           - PUT /security/roles/{role_id}
           - PUT /security/policies/{policy_id}
           - POST /security/roles/{role_id}/policies
-          - POST /security/users/{username}/roles
+          - POST /security/users/{user_id}/roles
           - PUT /security/users/{user_id}
       security:create_user:
         description: Create new system user
