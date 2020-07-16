@@ -215,9 +215,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Rootcheck directory */
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
-/* Backup directory for agents */
-#define AGNBACKUP_DIR    "/backup/agents"
-
 /* Wazuh Database */
 #define WDB_DIR         "var/db"
 #define WDB2_DIR        "queue/db"
