@@ -44,6 +44,7 @@ if(NOT WAZUHEXT)
   message(FATAL_ERROR "libwazuhext not found! Aborting...")
 endif()
 
+add_definitions(-DWAZUH_UNIT_TESTING)
 add_subdirectory(syscheckd)
 add_subdirectory(shared)
 

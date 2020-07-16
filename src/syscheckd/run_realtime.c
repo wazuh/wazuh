@@ -21,7 +21,7 @@ volatile int audit_db_consistency_flag;
 #include "syscheck.h"
 #include "syscheck_op.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
 #include "unit_tests/wrappers/windows/fileapi_wrappers.h"
 #include "unit_tests/wrappers/windows/handleapi_wrappers.h"

@@ -17,7 +17,7 @@
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
 #include <openssl/evp.h>
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/winreg_wrappers.h"
 #endif
 

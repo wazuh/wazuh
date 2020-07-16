@@ -18,7 +18,7 @@
 #include <sys/inotify.h>
 #endif
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
 #else
@@ -31,7 +31,7 @@
 #include "rootcheck/rootcheck.h"
 #include "fim_db.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
 #include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
 #include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"

@@ -1672,7 +1672,7 @@ install_mitre: install_python
 #### test ##########
 ####################
 
-CFLAGS_TEST=-g -O0 --coverage -DUNIT_TESTING
+CFLAGS_TEST=-g -O0 --coverage -DWAZUH_UNIT_TESTING
 LIBS_TEST=-lcmocka
 
 # LIBS_TEST = -lcheck -lm -lrt -lsubunit

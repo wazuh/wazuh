@@ -13,7 +13,7 @@
 
 #include "wmodules.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when testing */
 #define static
 #endif
@@ -285,7 +285,7 @@ void wm_aws_check() {
 }
 
 // Run a bucket parsing
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 __attribute__((weak))
 #endif
 void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {

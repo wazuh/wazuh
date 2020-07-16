@@ -31,7 +31,7 @@
 #define criteria (DELETE | modify_criteria)
 #define WHODATA_DIR_REMOVE_INTERVAL 2
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
 #include "unit_tests/wrappers/windows/aclapi_wrappers.h"
 #include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"

@@ -12,7 +12,7 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
     #define static
     #ifdef WIN32
             #include "unit_tests/wrappers/client-agent/start_agent.h"

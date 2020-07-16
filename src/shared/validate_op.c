@@ -10,7 +10,7 @@
 
 #include "shared.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 #define static
 
 #undef OSSEC_DEFINES

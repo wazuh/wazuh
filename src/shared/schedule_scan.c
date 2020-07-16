@@ -7,7 +7,7 @@ static const char *XML_SCAN_DAY = "day";
 static const char *XML_WEEK_DAY = "wday";
 static const char *XML_TIME = "time";
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 // Remove static for unit testing
 #define static
 #endif

@@ -15,7 +15,7 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "shared.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when testing */
 #define static
 #endif
@@ -34,7 +34,7 @@ const wm_context WM_GCP_CONTEXT = {
     (cJSON * (*)(const void *))wm_gcp_dump
 };
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 // Replace pthread_exit for testing purposes
 #define pthread_exit(a) return a
 #endif
@@ -69,7 +69,7 @@ void* wm_gcp_main(wm_gcp *data) {
     return NULL;
 }
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 /* Replace pthread_exit for testing purposes */
 #undef pthread_exit
 #define pthread_exit(a) return
