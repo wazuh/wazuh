@@ -8836,6 +8836,7 @@ paths:
       description: "Return file contents from any file"
       operationId: api.controllers.manager_controller.get_files
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
         - $ref: '#/x-rbac-catalog/actions/manager:read_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -8872,6 +8873,7 @@ paths:
       description: "Replace file contents with the data contained in the API request"
       operationId: api.controllers.manager_controller.put_files
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
         - $ref: '#/x-rbac-catalog/actions/manager:delete_file'
         - $ref: '#/x-rbac-catalog/actions/manager:upload_file'
       parameters:
@@ -8910,6 +8912,7 @@ paths:
       description: "Remove a specified file"
       operationId: api.controllers.manager_controller.delete_files
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
         - $ref: '#/x-rbac-catalog/actions/manager:delete_file'
       parameters:
         - $ref: '#/components/parameters/pretty'

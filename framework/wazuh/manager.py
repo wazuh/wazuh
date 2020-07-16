@@ -319,8 +319,6 @@ _update_config_default_result_kwargs = {
 }
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_api_config"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': _update_config_default_result_kwargs})
