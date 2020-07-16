@@ -56,14 +56,49 @@ extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
 // Parse XML configuration
 int wm_task_manager_read(xml_node **nodes, wmodule *module);
 
-// Function headers
+/**
+ * Do all the analysis of the incomming message and returns a response.
+ * @param msg Incomming message from a connection.
+ * @param response Response to be sent to the connection.
+ * @return Size of the response string.
+ * */
 size_t wm_task_manager_dispatch(const char *msg, char **response);
+
+/**
+ * Parse the incomming message and return a JSON with the message.
+ * @param msg Incomming message from a connection.
+ * @return JSON array when succeed, NULL otherwise.
+ * */
 cJSON* wm_task_manager_parse_message(const char *msg);
+
+/**
+ * Build a JSON object when creating a new task for an agent.
+ * @param agent_id ID of the agent where the task will be executed.
+ * @param task_id ID of the task recently created for the agent.
+ * @return JSON object.
+ * */
 cJSON* wm_task_manager_build_response_insert(int agent_id, int task_id);
+
+/**
+ * Build a string when there is an error while analyzing a message.
+ * @param error_code Code of the error.
+ * @return Error string.
+ * */
 char* wm_task_manager_build_response_error(int error_code);
 
-// Database function headers
+/**
+ * Create the tasks DB or check that it already exists.
+ * @return 0 when succeed, -1 otherwise.
+ * */
 int wm_task_manager_check_db();
+
+/**
+ * Insert a new task in the tasks DB.
+ * @param agent_id ID of the agent where the task will be executed.
+ * @param module Name of the module where the message comes from.
+ * @param command Command to be executed in the agent.
+ * @return ID of the task recently created when succeed, <=0 otherwise.
+ * */
 int wm_task_manager_insert_task(int agent_id, const char *module, const char *command);
 
 #endif
