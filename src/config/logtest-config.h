@@ -9,7 +9,6 @@
  */
 
 #include "shared.h"
-#include <sys/sysinfo.h>
 
 /* Internal options default values */
 #define LOGTEST_THREAD                  1
@@ -22,19 +21,19 @@
 /**
  * @brief Struct to save the wazuh-logtest internal configuration
  */
-typedef struct logtest_config {
+typedef struct w_logtest_conf_t {
 
     char *enabled;
     unsigned short threads;
     unsigned short max_sessions;
     long int session_timeout;
 
-} logtestConfig;
+} w_logtest_conf_t;
 
 /**
  * @brief Global variable to save the configuration
  */
-logtestConfig logtest_conf;
+w_logtest_conf_t w_logtest_conf;
 
 
 /**
