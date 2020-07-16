@@ -182,11 +182,16 @@ cJSON* wm_task_manager_build_response_insert(int agent_id, int task_id) {
 
 char* wm_task_manager_build_response_error(int error_code) {
     cJSON *error_json = cJSON_CreateObject();
+    char *error = NULL;
 
     cJSON_AddNumberToObject(error_json, json_keys[ERROR], error_code);
     cJSON_AddStringToObject(error_json, json_keys[ERROR_DATA], error_codes[error_code]);
 
-    return cJSON_PrintUnformatted(error_json);
+    error = cJSON_PrintUnformatted(error_json);
+
+    cJSON_Delete(error_json);
+
+    return error;
 }
 
 int wm_task_manager_init(wm_task_manager *task_config) {
