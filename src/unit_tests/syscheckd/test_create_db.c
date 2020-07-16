@@ -26,6 +26,7 @@
 #include "../wrappers/wazuh/syscheckd/run_realtime_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/seechanges_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/win-registry_wrappers.h"
+#include "../wrappers/wazuh/os_crypto/md5_op_wrappers.h"
 
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
@@ -50,18 +51,6 @@ typedef struct __fim_data_s {
 
 bool __wrap_HasFilesystem(__attribute__((unused))const char * path, __attribute__((unused)) fs_set set) {
     check_expected(path);
-
-    return mock();
-}
-
-int __wrap_OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output, os_sha256 sha256output, int mode, size_t max_size) {
-    check_expected(fname);
-    check_expected(prefilter_cmd);
-    check_expected(md5output);
-    check_expected(sha1output);
-    check_expected(sha256output);
-    check_expected(mode);
-    check_expected(max_size);
 
     return mock();
 }

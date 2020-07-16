@@ -14,9 +14,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../wrappers/common.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
+
+#include "../wrappers/common.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/libc/stdlib_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
@@ -24,6 +25,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
+#include "../wrappers/wazuh/os_crypto/md5_op_wrappers.h"
 
 #ifndef TEST_WINAGENT
 #define PATH_OFFSET 1
@@ -42,18 +44,6 @@ int symlink_to_dir (const char *filename);
 char *gen_diff_alert(const char *filename, time_t alert_diff_time, int status);
 int seechanges_dupfile(const char *old, const char *current);
 int seechanges_createpath(const char *filename);
-
-/* redefinitons/wrapping */
-
-int __wrap_OS_MD5_File(const char *fname, os_md5 output, int mode) {
-    check_expected(fname);
-    check_expected(mode);
-
-    char *md5 = mock_type(char *);
-    strncpy(output, md5, sizeof(os_md5));
-
-    return mock();
-}
 
 /* Setup/teardown */
 
