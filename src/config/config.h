@@ -78,6 +78,11 @@ int Read_Authd(XML_NODE node, void *d1, void *d2);
 int Read_Cluster(XML_NODE node, void *d1, void *d2);
 int Read_Socket(XML_NODE node, void *d1, void *d2);
 int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);
+
+/**
+ * @brief Read the configuration for logtest thread
+ * @param node rule_test configuration
+ */
 int Read_Logtest(XML_NODE node);
 
 /* Verifies that the configuration for Syscheck is correct. Return 0 on success or -1 on error.  */
