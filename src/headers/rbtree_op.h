@@ -1,8 +1,6 @@
 /**
  * @file rbtree_op.h
- * @author Vikman Fernandez-Castro (victor@wazuh.com)
  * @brief RB tree data structure declaration
- * @version 0.1
  * @date 2019-08-21
  *
  * @copyright Copyright (c) 2019 Wazuh, Inc.

@@ -3,11 +3,11 @@ file(GLOB analysisd_files
     ${SRC_FOLDER}/analysisd/*.o
     ${SRC_FOLDER}/analysisd/alerts/*.o
     ${SRC_FOLDER}/analysisd/cdb/*.o
-    ${SRC_FOLDER}/analysisd/compiled_rules/*.o
     ${SRC_FOLDER}/analysisd/decoders/*.o
     ${SRC_FOLDER}/analysisd/decoders/plugins/*.o
     ${SRC_FOLDER}/analysisd/format/*.o
-    ${SRC_FOLDER}/analysisd/output/*.o)
+    ${SRC_FOLDER}/analysisd/output/*.o
+    ${SRC_FOLDER}/analysisd/compiled_rules/*.o)
 
 add_library(ANALYSISD_O STATIC ${analysisd_files})
 
@@ -39,7 +39,7 @@ list(APPEND analysisd_names "test_decoder_syscollector")
 list(APPEND analysisd_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,fillData \
                              -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
 list(APPEND analysisd_names "test_mitre")
-list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,_merror")
+list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,_merror -Wl,--wrap,wdbc_query_parse_json")
 
 LIST(APPEND analysisd_names "test_same_different_loop")
 LIST(APPEND analysisd_flags "-W")

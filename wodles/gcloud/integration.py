@@ -80,7 +80,7 @@ class WazuhGCloudSubscriber:
         :param msg: Message to be formatted
         """
         # Insert msg as value of self.key_name key.
-        return f'{{"{self.key_name}": {msg}}}'
+        return f'{{"integration": "gcp", "{self.key_name}": {msg}}}'
 
     def process_message(self, ack_id: str, data: bytes):
         """Send a message to Wazuh queue.

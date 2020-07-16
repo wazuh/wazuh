@@ -49,30 +49,6 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
     return;
 }
 
-int __wrap_check_day_to_scan(int day, const char *hour) {
-    check_expected(day);
-    check_expected(hour);
-    return mock();
-}
-
-int __wrap_get_time_to_hour(const char * hour) {
-    check_expected(hour);
-    return mock();
-}
-
-int __wrap_get_time_to_day(int wday, const char * hour) {
-    check_expected(wday);
-    check_expected(hour);
-    return mock();
-}
-
-int __wrap_get_time_to_month_day(int month_day, const char* hour, int num_of_months) {
-    check_expected(month_day);
-    check_expected(hour);
-    check_expected(num_of_months);
-    return mock();
-}
-
 time_t __wrap_time(time_t *_time){
     if(!current_time){
         current_time = __real_time(NULL);
@@ -123,6 +99,16 @@ static int test_sched_scan_validate_teardown(void **state) {
     sched_scan_config *scan_config = (sched_scan_config *)  *state;
     sched_scan_free(scan_config);
     free(scan_config);
+    return 0;
+}
+
+static int test_get_time_setup(void **state) {
+    current_time = 1591189200;
+    return 0;
+}
+
+static int test_get_time_teardown(void **state) {
+    current_time = 0;
     return 0;
 }
 
@@ -374,12 +360,8 @@ void test_get_next_time_day_configuration(void **state) {
     scan_config->month_interval = true;
     scan_config->interval = 2; //Each 2 months
     scan_config->scan_time = strdup("00:00");
-    expect_value(__wrap_get_time_to_month_day, month_day, 1);
-    expect_string(__wrap_get_time_to_month_day, hour, "00:00");
-    expect_value(__wrap_get_time_to_month_day, num_of_months, 2);
-    will_return(__wrap_get_time_to_month_day, 5);
     time_t ret = _get_next_time(scan_config, "TEST_MODULE", 0);
-    assert_int_equal((int)ret, 5);
+    assert_int_equal((int)ret, get_time_to_month_day(1, "00:00", 2));
 }
 
 
@@ -387,20 +369,15 @@ void test_get_next_time_wday_configuration(void **state) {
     sched_scan_config *scan_config = (sched_scan_config *)  *state;
     scan_config->scan_wday = 2;
     scan_config->scan_time = strdup("00:00");
-    expect_value(__wrap_get_time_to_day, wday, 2);
-    expect_string(__wrap_get_time_to_day, hour, "00:00");
-    will_return(__wrap_get_time_to_day, 15);
     time_t ret = _get_next_time(scan_config, "TEST_MODULE", 0);
-    assert_int_equal((int) ret, 15);
+    assert_int_equal((int) ret, get_time_to_day(2, "00:00", 1, true));
 }
 
 void test_get_next_time_daytime_configuration(void **state) {
     sched_scan_config *scan_config = (sched_scan_config *)  *state;
     scan_config->scan_time = strdup("05:00");
-    expect_string(__wrap_get_time_to_hour, hour, "05:00");
-    will_return(__wrap_get_time_to_hour, 8);
     time_t ret = _get_next_time(scan_config, "TEST_MODULE", 0);
-    assert_int_equal((int) ret, 8);
+    assert_int_equal((int) ret, get_time_to_hour("05:00", 1, true));
 }
 
 void test_get_next_time_interval_configuration(void **state) {
@@ -413,12 +390,324 @@ void test_get_next_time_interval_configuration(void **state) {
     assert_int_equal((int) ret, 3600);
 }
 
+void test_sched_scan_dump_day(void **state) {
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    cJSON * object = cJSON_CreateObject();
+    char * object_str = NULL;
+
+    scan_config->scan_day = 3;
+    scan_config->scan_time = "08:00";
+    scan_config->interval = WM_DEF_INTERVAL;
+    sched_scan_dump(scan_config, object);
+    object_str = cJSON_PrintUnformatted(object);
+
+    assert_string_equal(object_str, "{\"interval\":86400,\"day\":3,\"time\":\"08:00\"}");
+
+    cJSON_Delete(object);
+    os_free(object_str);
+    os_free(scan_config);
+}
+
+void test_sched_scan_dump_wday(void **state) {
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    char * object_str = NULL;
+    cJSON * wday;
+    int i;
+
+    char * week_days[] = {"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"};
+
+    for (i = 0; i < 7; i++) {
+        cJSON * object = cJSON_CreateObject();
+        scan_config->scan_wday = i;
+        sched_scan_dump(scan_config, object);
+        wday = cJSON_GetObjectItem(object, "wday");
+        assert_string_equal(week_days[i], wday->valuestring);
+        cJSON_Delete(object);
+    }
+
+    os_free(scan_config);
+}
+
+void test_check_daylight_first_time(void **state) {
+    (void) state;
+    time_t next_scan_time = 0;
+    time_t next_scan_time_initial = next_scan_time;
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->daylight = -1;
+
+    check_daylight(scan_config, &next_scan_time, false);
+    assert_int_equal(next_scan_time, next_scan_time_initial + 0);
+}
+
+void test_check_daylight_same_daylight_zero(void **state) {
+    (void) state;
+    time_t next_scan_time = 0;
+    time_t next_scan_time_initial = next_scan_time;
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->daylight = 0;
+
+    check_daylight(scan_config, &next_scan_time, false);
+    assert_int_equal(next_scan_time, next_scan_time_initial + 0);
+}
+
+void test_check_daylight_same_daylight_one(void **state) {
+    (void) state;
+    time_t next_scan_time = 0;
+    time_t next_scan_time_initial = next_scan_time;
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->daylight = 1;
+
+    check_daylight(scan_config, &next_scan_time, true);
+    assert_int_equal(next_scan_time, next_scan_time_initial + 0);
+}
+
+void test_check_daylight_different_daylight_one_zero(void **state) {
+    (void) state;
+    time_t next_scan_time = 0;
+    time_t next_scan_time_initial = next_scan_time;
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->daylight = 1;
+
+    check_daylight(scan_config, &next_scan_time, false);
+    assert_int_equal(next_scan_time, next_scan_time_initial + 3600);
+}
+
+void test_check_daylight_different_daylight_zero_one(void **state) {
+    (void) state;
+    time_t next_scan_time = 0;
+    time_t next_scan_time_initial = next_scan_time;
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->daylight = 0;
+
+    check_daylight(scan_config, &next_scan_time, true);
+    assert_int_equal(next_scan_time, next_scan_time_initial - 3600);
+}
+
+void test_get_time_to_hour_no_negative_diff(void **state) {
+    /* Date: Mon 2020/06/03 15:00:00 */
+    char hour[6];
+    const unsigned int num_days = 1;
+    bool first_time = true;
+    unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
+
+    diff_time = current_time + 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    diff_test = get_time_to_hour(hour, num_days, first_time);
+
+    assert_int_equal(diff_test, 60);
+}
+
+void test_get_time_to_hour_first_time(void **state) {
+    /* Date: Wed 2020/06/03 15:00:00 */
+    char hour[6];
+    const unsigned int num_days = 1;
+    bool first_time = true;
+    unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
+
+    diff_time = current_time - 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    diff_test = get_time_to_hour(hour, num_days, first_time);
+
+    assert_int_equal(diff_test, 3600*24-60);
+}
+
+void test_get_time_to_hour_num_days(void **state) {
+    /* Date: Wed 2020/06/03 15:00:00 */
+    char hour[6];
+    const unsigned int num_days = 3;
+    bool first_time = false;
+    unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
+
+    diff_time = current_time - 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    diff_test = get_time_to_hour(hour, num_days, first_time);
+
+    assert_int_equal(diff_test, num_days*3600*24-60);
+}
+
+void test_get_time_to_day_same_wday_positive_diff(void **state) {
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int wday;
+    char hour[6]; 
+    const unsigned int num_weeks = 1;
+    bool first_time = true;
+    unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
+
+    diff_time = current_time + 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    wday = current_tm.tm_wday;
+    diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
+
+    assert_int_equal(diff_test, 60);
+}
+
+void test_get_time_to_day_same_wday_negative_diff_first_time(void **state) {
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int wday;
+    char hour[6];
+    const unsigned int num_weeks = 1;
+    bool first_time = true;
+    unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
+
+    diff_time = current_time - 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    wday = current_tm.tm_wday;
+    diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
+
+    assert_int_equal(diff_test, 3600*24*7-60);
+}
+
+void test_get_time_to_day_same_wday_negative_diff_num_weeks(void **state) {
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int wday;
+    char hour[6];
+    const unsigned int num_weeks = 3;
+    bool first_time = false;
+    unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
+
+    diff_time = current_time - 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    wday = current_tm.tm_wday;
+    diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
+
+    assert_int_equal(diff_test, num_weeks*3600*24*7-60);
+}
+
+void test_get_time_to_day_different_before_wday(void **state) {
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int wday;
+    char hour[6];
+    const unsigned int num_weeks = 1;
+    bool first_time = true;
+    unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
+
+    diff_time = current_time + 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    wday = current_tm.tm_wday + 2;
+    diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
+
+    assert_int_equal(diff_test, 60+3600*24*(wday-current_tm.tm_wday));
+}
+
+void test_get_time_to_day_different_after_wday(void **state) {
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int wday;
+    char hour[6];
+    const unsigned int num_weeks = 1;
+    bool first_time = true;
+    unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
+
+    diff_time = current_time + 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    wday = current_tm.tm_wday - 2;
+    diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
+
+    assert_int_equal(diff_test, 60+3600*24*(7-(current_tm.tm_wday-wday)));
+}
+
+void test_get_time_to_month_day_same_month_day_positive_diff(void **state) {
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int mday;
+    char hour[6];
+    const unsigned int num_months = 1;
+    unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
+
+    diff_time = current_time + 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    mday = current_tm.tm_mday;
+    diff_test = get_time_to_month_day(mday, hour, num_months);
+
+    assert_int_equal(diff_test, 60);
+}
+
+void test_get_time_to_month_day_same_month(void **state) {
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int mday;
+    char hour[6];
+    const unsigned int num_months = 1;
+    unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
+
+    diff_time = current_time + 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    mday = current_tm.tm_mday + 1;
+    diff_test = get_time_to_month_day(mday, hour, num_months);
+
+    assert_int_equal(diff_test, 3600*24+60);
+}
+
+void test_get_time_to_month_day_high_num_months(void **state) {
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int mday;
+    char hour[6];
+    const unsigned int num_months = 13;
+    unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
+
+    diff_time = current_time - 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    mday = current_tm.tm_mday;
+    diff_test = get_time_to_month_day(mday, hour, num_months);
+
+    assert_int_equal(diff_test, 3600*24*395-60);
+}
+
+void test_get_time_to_month_day_num_months(void **state) {
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int mday;
+    char hour[6];
+    const unsigned int num_months = 8;
+    unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
+
+    diff_time = current_time - 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    mday = current_tm.tm_mday;
+    diff_test = get_time_to_month_day(mday, hour, num_months);
+
+    assert_int_equal(diff_test, 3600*24*245-60);
+}
+
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_tag_successfull),
         cmocka_unit_test(test_tag_failure),
         cmocka_unit_test(test_sched_scan_init),
+        /* sched_scan_read function tests */
         cmocka_unit_test_setup_teardown(test_sched_scan_read_correct_day, test_scan_read_setup, test_scan_read_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_read_wrong_day, test_scan_read_setup, test_scan_read_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_read_not_number, test_scan_read_setup, test_scan_read_teardown),
@@ -433,14 +722,40 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_sched_scan_read_correct_interval_minute, test_scan_read_setup, test_scan_read_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_read_correct_interval_second, test_scan_read_setup, test_scan_read_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_read_wrong_interval, test_scan_read_setup, test_scan_read_teardown),
+        /* _sched_scan_validate_parameters function tests */
         cmocka_unit_test_setup_teardown(test_sched_scan_validate_incompatible_wday, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_validate_day_not_month_interval, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_validate_wday_not_week_interval, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_validate_time_not_day_interval, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        /* _get_next_time function tests */
         cmocka_unit_test_setup_teardown(test_get_next_time_day_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
         cmocka_unit_test_setup_teardown(test_get_next_time_wday_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
         cmocka_unit_test_setup_teardown(test_get_next_time_daytime_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
-        cmocka_unit_test_setup_teardown(test_get_next_time_interval_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown)
+        cmocka_unit_test_setup_teardown(test_get_next_time_interval_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        /* sched_scan_dump function tests */
+        cmocka_unit_test_setup(test_sched_scan_dump_day, test_sched_scan_validate_setup),
+        cmocka_unit_test_setup(test_sched_scan_dump_wday, test_sched_scan_validate_setup),
+        /* check_daylight function tests */
+        cmocka_unit_test_setup_teardown(test_check_daylight_first_time, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_check_daylight_same_daylight_zero, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_check_daylight_same_daylight_one, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_check_daylight_different_daylight_one_zero, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_check_daylight_different_daylight_zero_one, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        /* get_time_to_hour function tests */
+        cmocka_unit_test_setup_teardown(test_get_time_to_hour_no_negative_diff, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_hour_first_time, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_hour_num_days, test_get_time_setup, test_get_time_teardown),
+        /* get_time_to_day function tests */
+        cmocka_unit_test_setup_teardown(test_get_time_to_day_same_wday_positive_diff, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_day_same_wday_negative_diff_first_time, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_day_same_wday_negative_diff_num_weeks, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_day_different_before_wday, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_day_different_after_wday, test_get_time_setup, test_get_time_teardown),
+        /* get_time_to_month_day function tests */
+        cmocka_unit_test_setup_teardown(test_get_time_to_month_day_same_month_day_positive_diff, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_month_day_same_month, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_month_day_high_num_months, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_month_day_num_months, test_get_time_setup, test_get_time_teardown)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

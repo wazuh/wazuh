@@ -111,11 +111,12 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_CLEAR] = "DELETE FROM fim_entry;",
     [WDB_STMT_SYNC_UPDATE_ATTEMPT] = "UPDATE sync_info SET last_attempt = ?, n_attempts = n_attempts + 1 WHERE component = ?;",
     [WDB_STMT_SYNC_UPDATE_COMPLETION] = "UPDATE sync_info SET last_attempt = ?, last_completion = ?, n_attempts = n_attempts + 1, n_completions = n_completions + 1 WHERE component = ?;",
+    [WDB_STMT_MITRE_NAME_GET] = "SELECT name FROM attack WHERE id = ?;",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
 };
 
 sqlite3 *wdb_global = NULL;
-wdb_config config;
+wdb_config wconfig;
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 wdb_t * db_pool_begin;
 wdb_t * db_pool_last;
@@ -708,7 +709,7 @@ void wdb_commit_old() {
 
         // Commit condition: more than commit_time_min seconds elapsed from the last query, or more than commit_time_max elapsed from the transaction began.
 
-        if (node->transaction && (cur_time - node->last > config.commit_time_min || cur_time - node->transaction_begin_time > config.commit_time_max)) {
+        if (node->transaction && (cur_time - node->last > wconfig.commit_time_min || cur_time - node->transaction_begin_time > wconfig.commit_time_max)) {
             struct timespec ts_start, ts_end;
 
             gettime(&ts_start);
@@ -730,7 +731,7 @@ void wdb_close_old() {
 
     w_mutex_lock(&pool_mutex);
 
-    for (node = db_pool_begin; node && db_pool_size > config.open_db_limit; node = next) {
+    for (node = db_pool_begin; node && db_pool_size > wconfig.open_db_limit; node = next) {
         next = node->next;
 
         if (node->refcount == 0 && !node->transaction) {

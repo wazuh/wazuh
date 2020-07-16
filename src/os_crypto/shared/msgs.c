@@ -16,6 +16,10 @@
 #include "os_crypto/aes/aes_op.h"
 #include "client-agent/agentd.h"
 
+#ifdef UNIT_TESTING
+#define static
+#endif
+
 /* Prototypes */
 static void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local) __attribute((nonnull));
 static void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local) __attribute((nonnull));
@@ -37,7 +41,6 @@ unsigned int _s_comp_print = 0;
 unsigned int _s_recv_flush = 0;
 int _s_verify_counter = 1;
 
-agent *agt;
 
 
 /* Crypto methods function */

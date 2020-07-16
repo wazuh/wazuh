@@ -133,6 +133,7 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_CLEAR,
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
+    WDB_STMT_MITRE_NAME_GET,
     WDB_STMT_SIZE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
@@ -174,7 +175,7 @@ extern char *schema_upgrade_v4_sql;
 extern char *schema_upgrade_v5_sql;
 extern char *schema_upgrade_v6_sql;
 
-extern wdb_config config;
+extern wdb_config wconfig;
 extern pthread_mutex_t pool_mutex;
 extern wdb_t * db_pool;
 extern int db_pool_size;
@@ -633,6 +634,18 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
 
+/**
+ * @brief Function to get values from MITRE database.
+ * 
+ * @param wdb the MITRE struct database.
+ * @param input query to get a value.
+ * @param output response of the query.
+ * @retval 1 Success: response contains the value.
+ * @retval 0 On error: the value was not found.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output);
+
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
@@ -695,6 +708,18 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
  * @retval -1 On error.
  */
 int wdb_journal_wal(sqlite3 *db);
+
+/**
+ * @brief Function to get a MITRE technique's name.
+ * 
+ * @param wdb the MITRE struct database.
+ * @param id MITRE technique's ID.
+ * @param output MITRE technique's name.
+ * @retval 1 Sucess: name found on MITRE database.
+ * @retval 0 On error: name not found on MITRE database.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

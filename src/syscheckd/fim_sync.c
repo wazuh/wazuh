@@ -1,8 +1,6 @@
 /**
  * @file fim_sync.c
- * @author Vikman Fernandez-Castro (victor@wazuh.com)
  * @brief Definition of FIM data synchronization library
- * @version 0.1
  * @date 2019-08-28
  *
  * @copyright Copyright (c) 2019 Wazuh, Inc.
@@ -22,6 +20,7 @@
 #include "fim_db.h"
 
 #ifdef UNIT_TESTING
+#include "unit_tests/wrappers/common.h"
 /* Remove static qualifier when unit testing */
 #define static
 
@@ -31,6 +30,7 @@ extern void mock_assert(const int result, const char* const expression,
 #undef assert
 #define assert(expression) \
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+
 #endif
 
 static long fim_sync_cur_id;

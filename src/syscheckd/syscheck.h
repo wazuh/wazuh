@@ -70,6 +70,13 @@ typedef struct fim_tmp_file {
     int elements;
 } fim_tmp_file;
 
+
+#ifdef WIN32
+/* Flags to know if a directory/file's watcher has been removed */
+#define FIM_RT_HANDLE_CLOSED 0
+#define FIM_RT_HANDLE_OPEN 1
+#endif
+
 /* Win32 does not have lstat */
 #ifdef WIN32
     #define w_stat(x, y) stat(x, y)

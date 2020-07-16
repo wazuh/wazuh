@@ -1,15 +1,14 @@
 /**
  * @file fim_sync.c
- * @author
  * @brief Definition of FIM data synchronization library
- * @version 0.1
  * @date 2019-08-28
  *
  * @copyright Copyright (c) 2019 Wazuh, Inc.
  */
 
-#include <openssl/evp.h>
+
 #include "shared.h"
+#include <openssl/evp.h>
 #include "syscheck.h"
 #include "external/sqlite/sqlite3.h"
 #include "config/syscheck-config.h"

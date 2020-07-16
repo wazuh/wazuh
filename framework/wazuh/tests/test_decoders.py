@@ -1,279 +1,160 @@
+#!/usr/bin/env python
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch, mock_open
+import os
+import sys
+from unittest.mock import patch, MagicMock
+
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
-        from wazuh.decoder import Decoder
-        from wazuh.exception import WazuhException
+with patch('wazuh.common.getgrnam'):
+    with patch('wazuh.common.getpwnam'):
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        sys.modules['api'] = MagicMock()
+        import wazuh.rbac.decorators
+        del sys.modules['wazuh.rbac.orm']
+        del sys.modules['api']
+        from wazuh.tests.util import RBAC_bypasser
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
+        from wazuh.core.exception import WazuhInternalError, WazuhError
+        from wazuh.core.results import AffectedItemsWazuhResult
+        from wazuh import decoder
+
+
+# Variables
+
+test_data_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 decoder_ossec_conf = {
-    'decoder_dir': ['ruleset/decoders'],
-    'decoder_exclude': 'decoders1.xml'
+    'ruleset': {
+        'decoder_dir': ['core/tests/data/decoders'],
+        'decoder_exclude': 'test2_decoders.xml'
+    }
 }
 
-decoder_contents = '''
-<decoder name="agent-buffer" random="random">
-  <parent>wazuh</parent>
-  <prematch offset="after_parent">^Agent buffer:</prematch>
-  <regex offset="after_prematch">^ '(\\S+)'.</regex>
-  <order>level</order>
-</decoder>
-    '''
-
-mocked_items = {
-    'items': [{'path': 'mocked_path'}]
+decoder_ossec_conf_2 = {
+    'ruleset': {
+        'decoder_dir': ['core/tests/data/decoders'],
+        'decoder_exclude': 'wrong_decoders.xml'
+    }
 }
 
-mock_search = {
-    'value': 'a',
-    'negation': ''
-}
 
-@pytest.fixture()
-def open_mock(monkeypatch):
-    monkeypatch.setattr("wazuh.decoder.glob", decoders_files)
-    monkeypatch.setattr("wazuh.configuration.get_ossec_conf", lambda section: decoder_ossec_conf)
-    return mock_open(read_data=decoder_contents)
+# Module patches
+
+@pytest.fixture(scope='module', autouse=True)
+def mock_ossec_path():
+    with patch('wazuh.common.ossec_path', new=test_data_path):
+        with patch('wazuh.core.configuration.get_ossec_conf', return_value=decoder_ossec_conf):
+            yield
 
 
-def decoders_files(file_path):
-    """Return a list of decoders names.
+# Tests
 
-    :param file_path: A glob file path containing *.xml in the end.
-    :return: A generator
-    """
-    return map(lambda x: file_path.replace('*.xml', f'decoders{x}.xml'), range(2))
+@pytest.mark.parametrize('names, status, filename, relative_dirname, parents, expected_names, expected_total_failed', [
+    (None, None, None, None, False, {'agent-buffer', 'json', 'agent-upgrade', 'wazuh', 'agent-restart'}, 0),
+    (['agent-buffer'], None, None, None, False, {'agent-buffer'}, 0),
+    (['agent-buffer', 'non_existing'], None, None, None, False, {'agent-buffer'}, 1),
+    (None, 'enabled', None, None, False, {'agent-buffer', 'agent-upgrade', 'wazuh', 'agent-restart'}, 0),
+    (None, 'disabled', None, None, False, {'json'}, 0),
+    (['agent-upgrade', 'non_existing', 'json'], 'enabled', None, None, False, {'agent-upgrade'}, 1),
+    (None, None, 'test1_decoders.xml', None, False, {'agent-buffer', 'agent-upgrade', 'wazuh', 'agent-restart'}, 0),
+    (None, None, 'test2_decoders.xml', 'core/tests/data/decoders', False, {'json'}, 0),
+    (None, 'all', None, 'core/tests/data/decoders', True, {'wazuh', 'json'}, 0),
+    (None, 'all', None, 'nothing_here', False, set(), 0)
+])
+def test_get_decoders(names, status, filename, relative_dirname, parents, expected_names, expected_total_failed):
+    wrong_decoder_original_path = os.path.join(test_data_path, 'core/tests/data/decoders', 'wrong_decoders.xml')
+    wrong_decoder_tmp_path = os.path.join(test_data_path, 'core/tests/data', 'wrong_decoders.xml')
+    try:
+        os.rename(wrong_decoder_original_path, wrong_decoder_tmp_path)
+        # UUT call
+        result = decoder.get_decoders(names=names, status=status, filename=filename, relative_dirname=relative_dirname,
+                                      parents=parents)
+        assert isinstance(result, AffectedItemsWazuhResult)
+        # Build result names set from response for filter validation
+        result_names = {d['name'] for d in result.affected_items}
+        assert result_names == expected_names
+        # Assert failed items length matches expected result
+        assert result.total_failed_items == expected_total_failed
+    finally:
+        os.rename(wrong_decoder_tmp_path, wrong_decoder_original_path)
 
 
-def test_decoder__init__():
-    dec = Decoder()
-    assert dec.file is None
-    assert dec.path is None
-    assert dec.name is None
-    assert dec.position is None
-    assert dec.status is None
-    assert isinstance(dec.details, dict)
+@pytest.mark.parametrize('conf, exception', [
+    (decoder_ossec_conf, None),
+    ({'ruleset': None}, WazuhInternalError(1500))
+])
+def test_get_decoders_files(conf, exception):
+    with patch('wazuh.core.configuration.get_ossec_conf', return_value=conf):
+        try:
+            # UUT call
+            result = decoder.get_decoders_files()
+            assert isinstance(result, AffectedItemsWazuhResult)
+            # Assert result is a list with at least one dict element with the appropriate fields
+            assert isinstance(result.affected_items, list)
+            assert len(result.affected_items) != 0
+            for item in result.affected_items:
+                assert {'filename', 'relative_dirname', 'status'}.issubset(set(item))
+            assert result.total_affected_items == len(result.affected_items)
+        except WazuhInternalError as e:
+            # If the UUT call returns an exception we check it has the appropriate error code
+            assert e.code == exception.code
 
 
-def test_decoder__str__():
-    result = Decoder().__str__()
+@pytest.mark.parametrize('status, relative_dirname, filename, expected_files', [
+    (None, None, None, {'test1_decoders.xml', 'test2_decoders.xml', 'wrong_decoders.xml'}),
+    ('all', None, None, {'test1_decoders.xml', 'test2_decoders.xml', 'wrong_decoders.xml'}),
+    ('enabled', None, None, {'test1_decoders.xml', 'wrong_decoders.xml'}),
+    ('disabled', None, None, {'test2_decoders.xml'}),
+    ('all', 'core/tests/data/decoders', None, {'test1_decoders.xml', 'test2_decoders.xml', 'wrong_decoders.xml'}),
+    ('all', 'wrong_path', None, set()),
+    ('disabled', 'core/tests/data/decoders', None, {'test2_decoders.xml'}),
+    (None, 'core/tests/data/decoders', 'test2_decoders.xml', {'test2_decoders.xml'}),
+    ('disabled', 'core/tests/data/decoders', 'test2_decoders.xml', {'test2_decoders.xml'}),
+    ('enabled', 'core/tests/data/decoders', 'test2_decoders.xml', set()),
+    ('enabled', None, 'test1_decoders.xml', {'test1_decoders.xml'}),
+    (None, None, ['test1_decoders.xml', 'test2_decoders.xml'], {'test1_decoders.xml', 'test2_decoders.xml'}),
+    ('enabled', None, ['test1_decoders.xml', 'test2_decoders.xml'], {'test1_decoders.xml'}),
+    ('disabled', None, ['wrong_decoders.xml', 'test2_decoders.xml', 'non_existing.xml'], {'test2_decoders.xml'}),
+    (None, None, 'non_existing.xml', set()),
+])
+def test_get_decoders_files_filters(status, relative_dirname, filename, expected_files):
+    # UUT call
+    result = decoder.get_decoders_files(status=status, relative_dirname=relative_dirname, filename=filename)
+    assert isinstance(result, AffectedItemsWazuhResult)
+    # Build result_files set from response for filter validation
+    result_files = {d['filename'] for d in result.affected_items}
+    assert result_files == expected_files
+
+
+@pytest.mark.parametrize('filename', [
+    'test1_decoders.xml',
+    'test2_decoders.xml',
+    'wrong_decoders.xml',
+])
+def test_get_file(filename):
+    # UUT call
+    result = decoder.get_file(filename=filename)
+    # We assert the result is a plain text str
     assert isinstance(result, str)
 
 
-def test_decoder_to_dict():
-    result = Decoder().to_dict()
-    assert isinstance(result, dict)
-
-
-@pytest.mark.parametrize('detail, value, details', [
-    ('regex', 'w+', {}),
-    ('regex', 'w+', {'regex':'*'}),
-    ('random', 'random', {})
-])
-def test_add_detail(detail, value, details):
-    dec = Decoder()
-    dec.details = dict(frozenset(details.items()))
-    dec.add_detail(detail, value)
-    if not details:
-        assert isinstance(dec.details[detail], str)
-    else:
-        assert isinstance(dec.details[detail], list)
-
-
-
-@pytest.mark.parametrize('func', [
-    Decoder.get_decoders_files,
-    Decoder.get_decoders
-])
-@pytest.mark.parametrize('status', [
-    None,
-    'all',
-    'enabled',
-    'disabled',
-    'random'
-])
-def test_get_decoders_file_status(status, func, open_mock):
-    """Test getting decoders using status filter."""
-    if status == 'random':
-        with pytest.raises(WazuhException, match='.* 1202 .*'):
-            if func == Decoder.get_decoders:
-                filters = {'status': status}
-                func(filters=filters)
-            else:
-                func(status=status)
-    else:
-        with patch('builtins.open', open_mock):
-            if func == Decoder.get_decoders:
-                filters = {'status': status}
-                d_files = func(filters=filters)
-            else:
-                d_files = func(status=status)
-            if isinstance(d_files['items'][0], Decoder):
-                d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
-            if status is None or status == 'all':
-                assert d_files['totalItems'] == 2
-                assert d_files['items'][0]['status'] == 'enabled'
-                assert d_files['items'][1]['status'] == 'disabled'
-            else:
-                assert d_files['totalItems'] == 1
-                assert d_files['items'][0]['status'] == status
-
-
-@pytest.mark.parametrize('func', [
-    Decoder.get_decoders_files,
-    Decoder.get_decoders
-])
-@pytest.mark.parametrize('path', [
-    None,
-    'ruleset/decoders',
-    'random'
-])
-def test_get_decoders_file_path(path, func, open_mock):
-    """Test getting decoders files filtering by path."""
-    with patch('builtins.open', open_mock):
-        if func == Decoder.get_decoders:
-            filters = {'path': path}
-            d_files = func(filters=filters)
-        else:
-            d_files = func(path=path)
-        if path == 'random':
-            assert d_files['totalItems'] == 0
-            assert len(d_files['items']) == 0
-        else:
-            assert d_files['totalItems'] == 2
-            if isinstance(d_files['items'][0], Decoder):
-                d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
-            assert d_files['items'][0]['path'] == 'ruleset/decoders'
-
-
-@pytest.mark.parametrize('func', [
-    Decoder.get_decoders_files,
-    Decoder.get_decoders
-])
-@pytest.mark.parametrize('offset, limit', [
-    (0, 0),
-    (0, 1),
-    (0, 500),
-    (1, 500),
-    (2, 500),
-    (3, 500)
-])
-def test_get_decoders_file_pagination(offset, limit, func, open_mock):
-    """Test getting decoders files using offset and limit."""
-    if limit > 0:
-        with patch('builtins.open', open_mock):
-            d_files = func(offset=offset, limit=limit)
-            limit = d_files['totalItems'] if limit > d_files['totalItems'] else limit
-            assert d_files['totalItems'] == 2
-            assert len(d_files['items']) == (limit - offset if limit > offset else 0)
-    else:
-        with pytest.raises(WazuhException, match='.* 1406 .*'):
-            Decoder.get_decoders_files(offset=offset, limit=limit)
-
-
-@pytest.mark.parametrize('func', [
-    Decoder.get_decoders_files,
-    Decoder.get_decoders
-])
-@pytest.mark.parametrize('sort', [
-    None,
-    {"fields": ["file"], "order": "asc"},
-    {"fields": ["file"], "order": "desc"}
-])
-def test_get_decoders_file_sort(sort, func, open_mock):
-    """Tests getting decoders files and sorting results."""
-    with patch('builtins.open', open_mock):
-        d_files = func(sort=sort)
-        if isinstance(d_files['items'][0], Decoder):
-            d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
-        if sort is not None:
-            assert d_files['items'][0]['file'] == f"decoders{'0' if sort['order'] == 'asc' else '1'}.xml"
-
-
-@pytest.mark.parametrize('search', [
-    None,
-    {"value": "1", "negation": 0},
-    {"value": "1", "negation": 1}
-])
-def test_get_decoders_file_search(search, open_mock):
-    """Test getting decoders files and searching results."""
-    with patch('builtins.open', open_mock):
-        d_files = Decoder.get_decoders_files(search=search)
-        if isinstance(d_files['items'][0], Decoder):
-            d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
-        if search is not None:
-            assert d_files['items'][0]['file'] == f"decoders{'0' if search['negation'] else '1'}.xml"
-
-
-@patch('wazuh.configuration.get_ossec_conf', return_value=None)
-def test_private_get_files_empty_conf(*mocked_args):
-    """Tests empty ossec.conf section exception."""
-    with pytest.raises(WazuhException, match='.* 1500 .*'):
-        Decoder.get_decoders_files()
-
-
-@pytest.mark.parametrize('mock_conf', [
-    {
-        'decoder_dir': ['ruleset/decoders'],
-        'decoder_include': ['decoders1.xml'],
-    },
-    {
-        'decoder_dir': 'ruleset/decoders',
-        'decoder_include': 'decoders1.xml',
-    }
-])
-def test_private_get_files_list_conf(mock_conf):
-    """Test with decoder_dir as a list and as a string, also with decoder_include."""
-    with patch('wazuh.configuration.get_ossec_conf', return_value=mock_conf):
-        result = Decoder.get_decoders_files(file='mock.xml')
-        assert isinstance(result, dict)
-
-
-@pytest.mark.parametrize('name', [
-    None,
-    'random',
-    'agent-buffer'
-])
-@pytest.mark.parametrize('file_', [
-    None,
-    'random',
-    'decoders1.xml'
-])
-def test_get_decoders_name(name, file_, open_mock):
-    """Tests getting decoders by name and file filtering."""
-    with patch('builtins.open', open_mock):
-        filters = {'name': name, 'file': file_}
-        result = Decoder.get_decoders(filters=filters, search=mock_search)
-        if name == 'agent-buffer' and file_ == 'decoders1.xml':
-            assert result['items'][0].name == 'agent-buffer'
-        else:
-            assert isinstance(result, dict)
-
-
-def test_get_decoders_parents(open_mock):
-    """Test getting parent decoders."""
-    with patch('builtins.open', open_mock):
-        filters = {'parents': True}
-        result = Decoder.get_decoders(filters=filters)
-        assert isinstance(result, dict)
-
-
-def test_private_load_decoders_from_file(open_mock):
-    """
-    Tests_load_decoders_from_file
-    """
-    with patch('builtins.open', open_mock):
-        result = Decoder.get_decoders()
-
-        assert isinstance(result, dict)
-
-
-@patch('wazuh.decoder.load_wazuh_xml', side_effect=Exception)
-def test_private_load_decoders_from_file_exceptions(mock_load):
-    """Test exceptions for load wazuh xml."""
-    with pytest.raises(WazuhException, match='.* 1501 .*'):
-        Decoder.get_decoders()
+def test_get_file_exceptions():
+    with pytest.raises(WazuhError, match=r'.* 1503 .*'):
+        # UUT 1st call using a non-existing file that returns 0 decoders
+        decoder.get_file(filename='non_existing_file.xml')
+    with patch('builtins.open', return_value=Exception):
+        with pytest.raises(WazuhInternalError, match=r'.* 1501 .*'):
+            # UUT 2nd call forcing en error opening decoder file
+            decoder.get_file(filename='test1_decoders.xml')
+    with pytest.raises(WazuhError, match=r'.* 1502 .*'):
+        try:
+            filename = 'test2_decoders.xml'
+            os.chmod(os.path.join(test_data_path, 'core/tests/data/decoders', filename), 000)
+            # UUT 3rd call forcing a permissions error opening decoder file
+            decoder.get_file(filename=filename)
+        finally:
+            os.chmod(os.path.join(test_data_path, 'core/tests/data/decoders', filename), 777)

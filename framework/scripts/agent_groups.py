@@ -1,4 +1,4 @@
-#!/var/ossec/framework/python/bin/python3
+#!/usr/bin/env python
 
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -9,10 +9,9 @@ from os.path import basename
 from getopt import GetoptError, getopt
 from signal import signal, SIGINT
 import logging
-from wazuh.cluster.cluster import read_config
-from wazuh import Wazuh
-from wazuh.agent import Agent
-from wazuh.exception import WazuhException
+from wazuh.core.cluster.utils import read_config
+from wazuh.core.agent import Agent
+from wazuh.core.exception import WazuhException
 
 # Global variables
 debug = False

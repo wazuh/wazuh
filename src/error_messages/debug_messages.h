@@ -55,8 +55,8 @@
 #define VU_NO_PACKAGE_SCAN    "(5440): The package inventory of the agent '%.3d' is not available, but a hotfix analysis will be launched."
 #define VU_SOCKET_RETRY       "(5441): Unable to connect to socket '%s'. Waiting '%d' seconds."
 #define VU_NO_HOTFIX_AVAIL    "(5442): It is not possible to perform a hotfix scan on agent '%.3d'"
-#define VU_OSINFO_DISABLED    "(5443): Unable to get the OS release for agent '%.3d'. It may not have the OS inventory enabled. Skipping it."
-#define VU_OSINFOLNX_DISABLED "(5444): Unable to get the OS version and release for agent '%.3d'. It may not have the OS inventory enabled. Skipping it."
+#define VU_OSINFO_DISABLED    "(5443): Unable to get the OS release for agent '%.3d'. It may not have the OS inventory enabled."
+#define VU_OSINFOLNX_DISABLED "(5444): Unable to get the OS version and release for agent '%.3d'. It may not have the OS inventory enabled."
 #define VU_NO_SOFTWARE        "(5445): No changes have been found with respect to the last package inventory or no packages have been indexed for agent '%.3d'"
 #define VU_AGENT_CPE_RECV     "(5446): The CPE '%s' from the agent '%.3d' was indexed."
 #define VU_CPE_GENERATED      "(5447): CPE generated from vendor '%s' and product '%s': '%s'"
@@ -87,6 +87,7 @@
 #define VU_END_SCAN           "(5472): Vulnerability scan finished."
 #define VU_NO_SRC_VERSION     "(5480): Unable to get the source '%s' version for agent '%.3d'"
 #define VU_NO_SRC_NAME        "(5481): Unable to get the source '%s' name for agent '%.3d'"
+#define VU_VULN_SEND_AG_FEED  "(5482): A total of '%d' vulnerabilities have been reported for agent '%.3d' thanks to the '%s' feed."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
@@ -234,5 +235,6 @@
 #define FIM_FILE_LIMIT_UNLIMITED            "(6343): No limit set to maximum number of files to be monitored"
 #define FIM_INOTIFY_WATCH_DELETED           "(6344): Inotify watch deleted for '%s'"
 #define FIM_NUM_WATCHES                     "(6345): Folders monitored with real-time engine: %u"
+#define FIM_REALTIME_CALLBACK               "(6346): Realtime watch deleted for '%s'"
 
 #endif /* DEBUG_MESSAGES_H */
