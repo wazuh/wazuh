@@ -13,3 +13,5 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+void __wrap_os_winreg_check() {}

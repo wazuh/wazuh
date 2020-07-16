@@ -12,7 +12,6 @@
 #ifndef WIN_REGISTRY_WRAPPERS_H
 #define WIN_REGISTRY_WRAPPERS_H
 
-
-
+void __wrap_os_winreg_check();
 
 #endif

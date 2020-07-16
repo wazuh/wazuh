@@ -25,6 +25,7 @@
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_realtime_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/seechanges_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/win-registry_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 #include "../syscheckd/fim_db.h"
@@ -47,10 +48,6 @@ typedef struct __fim_data_s {
 }fim_data_t;
 
 /* redefinitons/wrapping */
-
-#ifdef TEST_WINAGENT
-void __wrap_os_winreg_check() {}
-#endif
 
 bool __wrap_HasFilesystem(__attribute__((unused))const char * path, __attribute__((unused)) fs_set set) {
     check_expected(path);
