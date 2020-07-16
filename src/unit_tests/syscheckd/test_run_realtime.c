@@ -26,6 +26,7 @@
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../wrappers/wazuh/shared/vector_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
@@ -48,10 +49,6 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap);
 extern int OSHash_Add_ex_check_data;
 
 /* redefinitons/wrapping */
-
-int __wrap_send_log_msg() {
-    return mock();
-}
 
 #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
 char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
@@ -259,7 +256,7 @@ static int teardown_OSHash(void **state) {
     OSHash *hash = *state;
     void *rtlocald = OSHash_Delete_ex(hash, "1");
 #ifdef TEST_WINAGENT
-    free_win32rtfim_data(hash);
+    free_win32rtfim_data(rtlocald);
 #endif
     return 0;
 }
@@ -705,6 +702,7 @@ void test_realtime_process_overflow(void **state)
     will_return(__wrap_read, sizeof(event));
     will_return(__wrap_read, 16);
     expect_string(__wrap__mwarn, formatted_msg, "Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
+    expect_string(__wrap_send_log_msg, msg, "ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
     will_return(__wrap_send_log_msg, 1);
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);

@@ -21,6 +21,7 @@
 #include "../wrappers/wazuh/shared/queue_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
 
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
@@ -41,10 +42,6 @@ int __wrap_time() {
     return 1572521857;
 }
 #endif
-
-void __wrap_fim_send_sync_msg(const char * msg) {
-    check_expected(msg);
-}
 
 char * __wrap_dbsync_state_msg(const char * component, cJSON * data) {
     check_expected(component);

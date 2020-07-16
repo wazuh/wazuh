@@ -25,6 +25,7 @@
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../wrappers/wazuh/shared/string_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
 
 #include "../syscheckd/fim_db.h"
 #include "../config/syscheck-config.h"
@@ -56,19 +57,11 @@ unsigned long __wrap_time() {
 }
 #endif
 
-int __wrap_fim_send_sync_msg(char * msg) {
-    return 1;
-}
-
 char *__wrap_dbsync_state_msg(const char * component, cJSON * data) {
     check_expected(component);
     check_expected_ptr(data);
 
     return mock_type(char*);
-}
-
-int __wrap_send_syscheck_msg() {
-    return 1;
 }
 
 #ifdef TEST_AGENT
@@ -2084,6 +2077,9 @@ void test_fim_db_data_checksum_range_success(void **state) {
     expect_value(__wrap_EVP_DigestUpdate, count, 8);
     will_return(__wrap_EVP_DigestUpdate, 0);
 
+    expect_string(__wrap_fim_send_sync_msg, msg, "{\"component\":\"syscheck\",\"type\":\"integrity_check_left\",\"data\":{\"id\":1,\"begin\":\"init\",\"end\":\"/some/random/path\",\"tail\":\"/some/random/path\",\"checksum\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\"}}");
+    expect_string(__wrap_fim_send_sync_msg, msg, "{\"component\":\"syscheck\",\"type\":\"integrity_check_right\",\"data\":{\"id\":1,\"begin\":\"/some/random/path\",\"end\":\"end\",\"checksum\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\"}}");
+
     int ret;
     ret = fim_db_data_checksum_range(test_data->fim_sql, "init", "end", 1, 2, &syscheck.fim_entry_mutex);
     assert_int_equal(ret, FIMDB_OK);
@@ -2270,6 +2266,8 @@ void test_fim_db_sync_path_range_disk(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "Sync Message for /some/random/path sent: This is the returned JSON");
 
+    expect_string(__wrap_fim_send_sync_msg, msg, "This is the returned JSON");
+
     expect_string(__wrap_remove, filename, "/tmp/file");
     will_return(__wrap_remove, 0);
 
@@ -2298,6 +2296,8 @@ void test_fim_db_sync_path_range_memory(void **state) {
     will_return(__wrap_dbsync_state_msg, strdup("This is the returned JSON"));
 
     expect_string(__wrap__mdebug1, formatted_msg, "Sync Message for /some/random/path sent: This is the returned JSON");
+
+    expect_string(__wrap_fim_send_sync_msg, msg, "This is the returned JSON");
 
     syscheck.database_store = 1;
     int ret = fim_db_sync_path_range(test_data->fim_sql, &syscheck.fim_entry_mutex, test_data->tmp_file, syscheck.database_store);
@@ -2504,6 +2504,8 @@ void test_fim_db_callback_sync_path_range(void **state) {
     will_return(__wrap_dbsync_state_msg, strdup("This is the returned JSON"));
 
     expect_string(__wrap__mdebug1, formatted_msg, "Sync Message for /test/path sent: This is the returned JSON");
+
+    expect_string(__wrap_fim_send_sync_msg, msg, "This is the returned JSON");
 
     fim_db_callback_sync_path_range(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, NULL, NULL, NULL);
 }
