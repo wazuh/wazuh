@@ -63,8 +63,7 @@ int __wrap_pthread_mutex_destroy() {
 }
 
 int __wrap_ReadConfig(int modules, const char *cfgfile, void *d1, void *d2) {
-    if (!logtest_enabled)
-    {
+    if (!logtest_enabled) {
         strcpy(w_logtest_conf.enabled,"no");
     }
     return mock();
