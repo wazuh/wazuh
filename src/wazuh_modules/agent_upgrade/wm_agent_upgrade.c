@@ -9,14 +9,14 @@
  * Foundation.
  */
 
+#include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade.h"
-#include "wm_agent_upgrade_tasks.h"
-#include "wm_agent_parsing.h"
 #include "os_net/os_net.h"
 
 const char* upgrade_error_codes[] = {
     [SUCCESS] = "Success",
     [PARSING_ERROR] = "Could not parse message JSON",
+    [PARSING_REQUIRED_PARAMETER] = "Required parameters in json message where not found",
     [TASK_CONFIGURATIONS] = "Command not recognized",
     [TASK_MANAGER_COMMUNICATION] ="Could not create task id for upgrade task",
     [TASK_MANAGER_FAILURE] = "", // Data string wil be provded by task manager
@@ -36,7 +36,7 @@ cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
  * Start listening loop, exits only on error 
  * @param socket to listen to
  * @param timeout_sec timeout in seconds
- * @param return only on errors, socket will be closed
+ * @return only on errors, socket will be closed
  * */
 static void wm_agent_listen_messages(int sock, int timeout_sec);
 
@@ -98,6 +98,9 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
         
         char *buffer = NULL;
         cJSON* json_response = NULL;
+        cJSON* params = NULL;
+        cJSON* agents = NULL;
+        int parsing_retval;
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         int length;
         switch (length = OS_RecvTCPBuffer(peer, buffer,OS_MAXSTR), length) {
@@ -112,13 +115,30 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
             break;
         default:
             /* Correctly received message */
-            json_response = wm_agent_parse_command(&buffer[0]);
-            if (json_response) {
-                OS_SendTCP(peer, cJSON_Print(json_response));
-                cJSON_Delete(json_response);
-            }
+            parsing_retval = wm_agent_parse_command(&buffer[0], &json_response, &params, &agents);
             break;
         }
+        if (json_response) {
+            cJSON *command_response = NULL;
+            switch (parsing_retval)
+            {
+                case 0:
+                    command_response = wm_agent_process_upgrade_command(params, agents);
+                    OS_SendTCP(peer, cJSON_Print(command_response));
+                    cJSON_Delete(command_response);
+                    break;
+                case 1:
+                    command_response = wm_agent_process_upgrade_result_command(agents);
+                    OS_SendTCP(peer, cJSON_Print(command_response));
+                    cJSON_Delete(command_response);
+                    break;
+                default:
+                    OS_SendTCP(peer, cJSON_Print(json_response));
+                    break;
+            }
+            cJSON_Delete(json_response);
+        }
+
         free(buffer);
         close(peer);
     }

@@ -39,7 +39,7 @@ cJSON* wm_agent_process_upgrade_result_command(const cJSON* agents) {
                         cJSON_AddItemToArray(response, wm_agent_parse_response_mesage(SUCCESS, "Agent is outdated", &agent_id, NULL, "OUTDATED"));
                     } else {
                         // Agent on update process
-                        cJSON_AddItemToArray(response, wm_agent_parse_response_mesage(SUCCESS, "Agent is updating", &agent_id, &task_id, "UPDATING"));
+                    cJSON_AddItemToArray(response, wm_agent_parse_response_mesage(SUCCESS, "Agent is updating", &agent_id, &task_id, "UPDATING"));
                     }
                     
                 }

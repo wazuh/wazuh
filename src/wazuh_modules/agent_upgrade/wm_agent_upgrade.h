@@ -33,6 +33,7 @@ typedef enum _wm_upgrade_state {
 typedef enum _wm_upgrade_error_codes {
     SUCCESS = 0,
     PARSING_ERROR,
+    PARSING_REQUIRED_PARAMETER,
     TASK_CONFIGURATIONS,
     TASK_MANAGER_COMMUNICATION,
     TASK_MANAGER_FAILURE,
@@ -48,12 +49,11 @@ typedef struct _wm_agent_upgrade {
 /**
  * Definition of the structure that will represent an agent doing a certain task
  * */
-typedef struct _wm_agent_task {
-    int agent;                   ///> agent_id to be upgraded
+typedef struct _wm_task {
     int task_id;                 ///> task_id associated with the task
     char *command;               ///> comand that has been requested [upgrade/upgrade_results]
     void *task;                  ///> pointer to a task structure (depends on command)
-} wm_agent_task;
+} wm_task;
 
 /**
  * Definition of upgrade task to be run
@@ -69,7 +69,7 @@ typedef struct _wm_upgrade_task {
 } wm_upgrade_task;
 
 
-#define WM_AGENT_UPGRADE_LOGTAG AGENT_UPGRADE_WM_NAME
+#define WM_AGENT_UPGRADE_LOGTAG ARGV0 ":" AGENT_UPGRADE_WM_NAME
 #define WM_AGENT_UPGRADE_MODULE_NAME "ugprade_module"
 
 #define WM_AGENT_UPGRADE_COMMAND_NAME "upgrade"

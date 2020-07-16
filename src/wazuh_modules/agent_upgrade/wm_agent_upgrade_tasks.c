@@ -45,24 +45,32 @@ void wm_agent_destroy_task_map() {
     OSHash_Free(task_table_by_agent_id);
 }
 
-void wm_agent_insert_taks_id(const int task_id, const int agent_id) {
+void wm_agent_insert_tasks_id(const int task_id, const int agent_id) {
     char agent_id_string[128];
     sprintf(agent_id_string, "%d", agent_id);
-    wm_agent_task *agent_task = (wm_agent_task *)OSHash_Get_ex(task_table_by_agent_id, agent_id_string);
-    agent_task->task_id = task_id;
-    OSHash_Update_ex(task_table_by_agent_id, agent_id_string, agent_task);
+    wm_task *agent_task = (wm_task *)OSHash_Get_ex(task_table_by_agent_id, agent_id_string);
+    if (agent_task) {
+        agent_task->task_id = task_id;
+        OSHash_Update_ex(task_table_by_agent_id, agent_id_string, agent_task);
+    }
 }
 
-int wm_agent_create_task_entry(const int agent_id, wm_agent_task* agent_task) {
+int wm_agent_create_task_entry(const int agent_id, wm_task* agent_task) {
     char agent_id_string[128];
     sprintf(agent_id_string, "%d", agent_id);
-    return OSHash_Add(task_table_by_agent_id, agent_id_string, agent_task);
+    return OSHash_Add_ex(task_table_by_agent_id, agent_id_string, agent_task);
+}
+
+void wm_agent_remove_entry(const int agent_id) {
+    char agent_id_string[128];
+    sprintf(agent_id_string, "%d", agent_id);
+    OSHash_Delete_ex(task_table_by_agent_id, agent_id_string);
 }
 
 int wm_agent_task_present(const int agent_id) {
     char agent_id_string[128];
     sprintf(agent_id_string, "%d", agent_id);
-    wm_agent_task *agent_task = (wm_agent_task *)OSHash_Get_ex(task_table_by_agent_id, agent_id_string);
+    wm_task *agent_task = (wm_task *)OSHash_Get_ex(task_table_by_agent_id, agent_id_string);
     if (agent_task) {
         return agent_task->task_id;
     }

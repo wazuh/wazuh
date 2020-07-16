@@ -8,30 +8,39 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
+#include "wazuh_modules/wmodules.h"
 #include "wm_agent_parsing.h"
 #include "wm_agent_upgrade_tasks.h"
 
-cJSON* wm_agent_parse_command(const char* buffer) {
-    cJSON *json_api = NULL; // Response for API
+int wm_agent_parse_command(const char* buffer, cJSON** json_api, cJSON** params, cJSON** agents) {
+    int retval = -1;
     cJSON * root = cJSON_Parse(buffer);
     if (!root) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_JSON_PARSE_ERROR,  buffer);
-        json_api = wm_agent_parse_response_mesage(PARSING_ERROR, upgrade_error_codes[PARSING_ERROR], NULL, NULL, NULL);
+        *json_api = wm_agent_parse_response_mesage(PARSING_ERROR, upgrade_error_codes[PARSING_ERROR], NULL, NULL, NULL);
     } else {
-        cJSON *params = cJSON_GetObjectItem(root, "params");
-        const char *command = cJSON_GetObjectItem(root, "command")->valuestring;
-        if (strcmp(command, WM_AGENT_UPGRADE_COMMAND_NAME) == 0) {
-            json_api = wm_agent_process_upgrade_command(params, cJSON_GetObjectItem(root, "agents"));
-        } else if (strcmp(command, WM_AGENT_UPGRADE_RESULT_COMMAND_NAME) == 0) { 
-            json_api = wm_agent_process_upgrade_result_command(cJSON_GetObjectItem(root, "agents"));
+        cJSON *command = cJSON_GetObjectItem(root, "command");
+        *params = cJSON_GetObjectItem(root, "params");
+        *agents = cJSON_GetObjectItem(root, "agents");
+        if (command && *agents) {
+            *json_api = root;
+            if (strcmp(command->valuestring, WM_AGENT_UPGRADE_COMMAND_NAME) == 0) {
+                retval = 0;
+            } else if (strcmp(command->valuestring, WM_AGENT_UPGRADE_RESULT_COMMAND_NAME) == 0) { 
+                retval = 1;
+            } else {
+                // TODO invalid command
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR,  command->valuestring);
+                json_api = wm_agent_parse_response_mesage(TASK_CONFIGURATIONS, upgrade_error_codes[TASK_CONFIGURATIONS], NULL, NULL, NULL);
+            }
         } else {
-            // TODO invalid command
-            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR,  command);
-            json_api = wm_agent_parse_response_mesage(TASK_CONFIGURATIONS, upgrade_error_codes[TASK_CONFIGURATIONS], NULL, NULL, NULL);
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUIRED_PARAMETERS);
+            *json_api = wm_agent_parse_response_mesage(PARSING_REQUIRED_PARAMETER, upgrade_error_codes[PARSING_REQUIRED_PARAMETER], NULL, NULL, NULL);
+            cJSON_Delete(root);
         }
-        cJSON_Delete(root);
     }
-    return json_api;
+    return retval;
 }
 
 wm_upgrade_task* wm_agent_parse_upgrade_command(const cJSON* params, char* output) {

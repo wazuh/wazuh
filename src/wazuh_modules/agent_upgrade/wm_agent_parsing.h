@@ -17,9 +17,15 @@
  * Parse received upgrade message, separetes it according to agent list
  * Will return response JSON to be returned to the socket
  * @param buffer message to be parsed
- * @return JSON with all the task responses
+ * @param json_api pointer where the parsed message will be allocated
+ * @param params on success command params will be stored in this variable
+ * @param pagents on success agents list will be stored in this variable
+ * @return error code
+ * @retval -1 on errors
+ * @retval 0 if is and upgrade command
+ * @retval 1 if it is and upgrade_result command
  * */
-cJSON* wm_agent_parse_command(const char* buffer);
+int wm_agent_parse_command(const char* buffer, cJSON** json_api, cJSON **params, cJSON **agents);
 
 /**
  * Parses a response message based on state 

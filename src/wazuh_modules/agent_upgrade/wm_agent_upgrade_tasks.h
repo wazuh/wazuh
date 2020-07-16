@@ -39,14 +39,20 @@ void wm_agent_destroy_task_map();
  * @param task_id id of the task
  * @param agent_id id of the agent
  * */
-void wm_agent_insert_taks_id(const int task_id, const int agent_id);
+void wm_agent_insert_tasks_id(const int task_id, const int agent_id);
 
 /**
  * Creates an new entry into the table with the agent_id and task
  * @param agent_id id of the agent
  * @param agent_task pointer to the task
  * */
-int wm_agent_create_task_entry(const int agent_id, wm_agent_task*  agent_task);
+int wm_agent_create_task_entry(const int agent_id, wm_task*  agent_task);
+
+/**
+ * Remoes a entry based on the agent_id
+ * @param agent_id id of the agent
+ * */
+void wm_agent_remove_entry(const int agent_id);
 
 /**
  * Check whether an upgrade task for an agent is present or not
