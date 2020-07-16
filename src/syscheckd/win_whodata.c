@@ -915,7 +915,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     whodata_dir_status *d_status;
     int interval;
     OSHashNode *w_dir_node;
-    OSHashNode *w_dir_node_prev;
+    OSHashNode *w_dir_node_next;
     whodata_directory *w_dir;
     unsigned int w_dir_it;
     FILETIME current_time;
@@ -1007,22 +1007,22 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
         w_dir_it = 0;
         w_rwlock_wrlock(&syscheck.wdata.directories->mutex);
 
-        w_dir_node_prev = NULL;
-        w_dir_node = OSHash_Begin(syscheck.wdata.directories, &w_dir_it);
-        while (w_dir_node) {
-            w_dir = w_dir_node->data;
-            if (w_dir->QuadPart < stale_time.QuadPart) {
-                if (w_dir = OSHash_Delete(syscheck.wdata.directories, w_dir_node->key), w_dir) {
-                    free(w_dir);
-                    if(!w_dir_node_prev) { // We just deleted the first node, find the new beginning
-                        w_dir_node = OSHash_Begin(syscheck.wdata.directories, &w_dir_it);
-                    } else {
-                        w_dir_node = w_dir_node_prev;
+        while (w_dir_it <= syscheck.wdata.directories->rows) {
+            w_dir_node = syscheck.wdata.directories->table[w_dir_it];
+            w_dir_node_next = w_dir_node;
+
+            while(w_dir_node_next) {
+                w_dir_node_next = w_dir_node_next->next;
+
+                w_dir = w_dir_node->data;
+                if (w_dir->QuadPart < stale_time.QuadPart) {
+                    if (w_dir = OSHash_Delete(syscheck.wdata.directories, w_dir_node->key), w_dir) {
+                        free(w_dir);
                     }
                 }
+                w_dir_node = w_dir_node_next;
             }
-            w_dir_node_prev = w_dir_node;
-            w_dir_node = OSHash_Next(syscheck.wdata.directories, &w_dir_it, w_dir_node);
+            w_dir_it++;
         }
 
         w_rwlock_unlock(&syscheck.wdata.directories->mutex);

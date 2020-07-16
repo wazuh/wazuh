@@ -521,6 +521,7 @@ static int teardown_file_limit(void **state) {
     return 0;
 }
 
+#ifndef TEST_WINAGENT
 static int teardown_fim_scan_realtime(void **state) {
     int *dir_opts = *state;
     int it = 0;
@@ -534,6 +535,7 @@ static int teardown_fim_scan_realtime(void **state) {
 
     return 0;
 }
+#endif
 
 /* tests */
 static void test_fim_json_event(void **state) {
@@ -1691,6 +1693,8 @@ static void test_fim_checker_over_max_recursion_level(void **state) {
         "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '/media/a/test.file'");
 
     fim_checker(path, fim_data->item, NULL, 1);
+
+    syscheck.recursion_level[3] = 50;
 }
 
 static void test_fim_checker_deleted_file(void **state) {
@@ -1937,6 +1941,40 @@ static void test_fim_checker_fim_directory(void **state) {
     will_return(__wrap_readdir, NULL);
 
     fim_checker(path, fim_data->item, NULL, 1);
+}
+
+static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char * path = "/media";
+    struct stat buf;
+    buf.st_mode = S_IFDIR;
+    fim_data->item->index = 3;
+    fim_data->item->statbuf = buf;
+    fim_data->item->mode = FIM_REALTIME;
+
+    syscheck.recursion_level[3] = 0;
+
+    will_return_always(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/media");
+    expect_string(__wrap_HasFilesystem, path, "/media/test");
+    will_return_always(__wrap_HasFilesystem, 0);
+
+    expect_string(__wrap_realtime_adddir, dir, "/media");
+
+    strcpy(fim_data->entry->d_name, "test");
+
+    will_return_always(__wrap_opendir, 1);
+    will_return(__wrap_readdir, fim_data->entry);
+    will_return(__wrap_readdir, NULL);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6347): Directory '/media/test' is already on the max recursion_level (0), it will not be scanned.");
+
+    fim_checker(path, fim_data->item, NULL, 1);
+
+    syscheck.recursion_level[3] = 50;
 }
 
 static void test_fim_scan_db_full_double_scan(void **state) {
@@ -2557,6 +2595,7 @@ static void test_fim_checker_fim_directory(void **state) {
     fim_data_t *fim_data = *state;
 
     char * path = "%WINDIR%\\System32\\drivers\\etc";
+    char skip_directory_message[OS_MAXSTR];
     char expanded_path[OS_MAXSTR];
     char expanded_path_test[OS_MAXSTR];
     struct stat buf;
@@ -2583,7 +2622,10 @@ static void test_fim_checker_fim_directory(void **state) {
     will_return_always(__wrap_opendir, 1);
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
-    will_return(__wrap_readdir, NULL);
+
+    snprintf(skip_directory_message, OS_MAXSTR,
+        "(6347): Directory '%s' is already on the max recursion_level (0), it will not be scanned.", expanded_path_test);
+    expect_string(__wrap__mdebug2, formatted_msg, skip_directory_message);
 
     fim_checker(expanded_path, fim_data->item, NULL, 1);
 }
@@ -3996,6 +4038,7 @@ int main(void) {
         cmocka_unit_test(test_fim_checker_fim_regular_ignore),
         cmocka_unit_test(test_fim_checker_fim_regular_restrict),
         cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory, setup_struct_dirent, teardown_struct_dirent),
+        cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory_on_max_recursion_level, setup_struct_dirent, teardown_struct_dirent),
 
         /* fim_directory */
         cmocka_unit_test_setup_teardown(test_fim_directory, setup_struct_dirent, teardown_struct_dirent),

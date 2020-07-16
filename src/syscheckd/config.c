@@ -57,6 +57,8 @@ int Read_Syscheck_Config(const char *cfgfile)
 #ifdef WIN32
     syscheck.realtime_change = 0;
     syscheck.registry       = NULL;
+    syscheck.registry_ignore = NULL;
+    syscheck.registry_ignore_regex = NULL;
     syscheck.max_fd_win_rt  = 0;
 #endif
     syscheck.prefilter_cmd  = NULL;
@@ -67,6 +69,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.sync_max_eps = 10;
     syscheck.max_eps        = 100;
     syscheck.allow_remote_prefilter_cmd  = false;
+    syscheck.audit_key = NULL;
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
 
