@@ -9,7 +9,13 @@
  */
 
 #include "syscom_wrappers.h"
-#include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+size_t __wrap_syscom_dispatch(char * command, char ** output) {
+    check_expected(command);
+
+    *output = mock_type(char*);
+    return mock();
+}

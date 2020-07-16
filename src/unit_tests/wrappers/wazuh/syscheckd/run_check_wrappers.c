@@ -27,6 +27,6 @@ int __wrap_send_log_msg(const char * msg) {
     return mock();
 }
 
-void __wrap_send_syscheck_msg(char *msg) {
+void __wrap_send_syscheck_msg(__attribute__((unused)) char *msg) {
     return;
 }

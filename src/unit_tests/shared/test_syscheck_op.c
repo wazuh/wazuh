@@ -63,15 +63,6 @@ int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     return mock();
 }
 
-#ifdef TEST_WINAGENT
-size_t __wrap_syscom_dispatch(char * command, char ** output) {
-    check_expected(command);
-
-    *output = mock_type(char*);
-    return mock();
-}
-#endif
-
 /* setup/teardown */
 static int teardown_string(void **state) {
     free(*state);

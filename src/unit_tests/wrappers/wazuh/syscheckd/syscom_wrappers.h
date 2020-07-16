@@ -12,7 +12,8 @@
 #ifndef SYSCOM_WRAPPERS_H
 #define SYSCOM_WRAPPERS_H
 
+#include <stddef.h>
 
-
+size_t __wrap_syscom_dispatch(char * command, char ** output);
 
 #endif
