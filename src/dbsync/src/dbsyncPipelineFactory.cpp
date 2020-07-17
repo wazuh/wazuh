@@ -16,15 +16,6 @@
 
 namespace DbSync
 {
-
-    struct CJsonDeleter
-    {
-        void operator()(cJSON* json)
-        {
-            cJSON_Delete(json);
-        }
-    };
-
     class Pipeline : public IPipeline
     {
     public:
@@ -33,7 +24,7 @@ namespace DbSync
                  const TxnContext txnContext,
                  const unsigned int threadNumber,
                  const unsigned int maxQueueSize,
-                 ResultCallback callback)
+                 const ResultCallback callback)
         : m_spDispatchNode{ maxQueueSize ? getDispatchNode(threadNumber) : nullptr }
         , m_spSyncNode{ maxQueueSize ? getSyncNode(threadNumber) : nullptr}
         , m_handle{ handle }
@@ -62,7 +53,7 @@ namespace DbSync
                 {}
             }
         }
-        void syncRow(const char* value) override
+        void syncRow(const nlohmann::json& value) override
         {
             const auto async{ m_spSyncNode && m_spSyncNode->size() < m_maxQueueSize };
             if (async)
@@ -85,9 +76,9 @@ namespace DbSync
             // DBSyncImplementation::instance().getDeleted(m_handle, m_txnContext, calback);
         }
     private:
-        using SyncResult = std::tuple<ReturnTypeCallback, std::string>;
+        using SyncResult = std::tuple<ReturnTypeCallback, nlohmann::json>;
         using DispatchCallbackNode = Utils::ReadNode<SyncResult>;
-        using SyncRowNode = Utils::ReadWriteNode<const char*, SyncResult, DispatchCallbackNode>;
+        using SyncRowNode = Utils::ReadWriteNode<nlohmann::json, SyncResult, DispatchCallbackNode>;
 
         std::shared_ptr<DispatchCallbackNode> getDispatchNode(const int threadNumber)
         {
@@ -106,20 +97,19 @@ namespace DbSync
             );
         }
 
-        SyncResult processSyncRow(const char* value)
+        SyncResult processSyncRow(const nlohmann::json& value)
         {
             ReturnTypeCallback type{ MODIFIED };
-            std::string result{value};
+            const nlohmann::json result{ value };
             // DBSyncImplementation::instance().syncTxRow(m_handle, m_txnContext, value, type, result);
-            return std::make_tuple<ReturnTypeCallback, std::string>(std::move(type), std::move(result));
+            return std::make_tuple<ReturnTypeCallback, std::string>(std::move(type), result[0]);
         }
         void dispatchResult(const SyncResult& result)
         {
-            const auto value{ std::get<1>(result) };
+            const auto& value{ std::get<1>(result) };
             if (!value.empty())
             {
-                const std::unique_ptr<cJSON, CJsonDeleter> spJsonBytes{cJSON_Parse(value.c_str())};
-                m_callback(std::get<0>(result), spJsonBytes.get());
+                m_callback(std::get<0>(result), value);
             }
         }
         const std::shared_ptr<DispatchCallbackNode> m_spDispatchNode;
@@ -144,7 +134,7 @@ namespace DbSync
                                               const TxnContext txnContext,
                                               const unsigned int threadNumber,
                                               const unsigned int maxQueueSize,
-                                              ResultCallback callback)
+                                              const ResultCallback callback)
     {
         std::shared_ptr<IPipeline> spContext
         {

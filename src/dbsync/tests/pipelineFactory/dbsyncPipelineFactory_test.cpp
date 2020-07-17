@@ -35,7 +35,7 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineOk)
                                  txnContext,
                                  threadNumber,
                                  maxQueueSize,
-                                 [](ReturnTypeCallback, cJSON*){})
+                                 [](ReturnTypeCallback, const nlohmann::json&){})
     };
     ASSERT_NE(nullptr, pipeHandle);
     ASSERT_NE(nullptr, m_pipelineFactory.pipeline(pipeHandle));
@@ -53,7 +53,7 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidHandle)
                                  txnContext,
                                  threadNumber,
                                  maxQueueSize,
-                                 [](ReturnTypeCallback, cJSON*){}),
+                                 [](ReturnTypeCallback, const nlohmann::json&){}),
         DbSync::dbsync_error
     );
 }
@@ -70,7 +70,7 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidTxnContext)
                                  txnContext,
                                  threadNumber,
                                  maxQueueSize,
-                                 [](ReturnTypeCallback, cJSON*){}),
+                                 [](ReturnTypeCallback, const nlohmann::json&){}),
         DbSync::dbsync_error
     );
 }
@@ -104,16 +104,14 @@ TEST_F(DBSyncPipelineFactoryTest, GetPipelineInvalidTxnContext)
 
 TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRow)
 {
-    const std::string jsonInput{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})" };
-    const std::string expectedResult{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})" };
-    auto resultFnc
+    const auto jsonInput{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
+    const nlohmann::json expectedResult{ jsonInput };
+
+    const auto resultFnc
     {
-        [expectedResult](ReturnTypeCallback /*result_type*/, cJSON* json)
+        [&expectedResult](ReturnTypeCallback /*result_type*/, const nlohmann::json& result)
         {
-            char * result_json = cJSON_PrintUnformatted(json);
-            const std::string result{result_json};
-            ASSERT_EQ(expectedResult, result);
-            cJSON_free(result_json);
+            ASSERT_EQ(expectedResult[0], result);
         }
     };
     const DBSYNC_HANDLE handle{ reinterpret_cast<DBSYNC_HANDLE*>(0x100) };
@@ -130,23 +128,20 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRow)
     };
     ASSERT_NE(nullptr, pipeHandle);
     const auto pipeline{ m_pipelineFactory.pipeline(pipeHandle) };
-    pipeline->syncRow(jsonInput.c_str());
+    pipeline->syncRow(jsonInput);
     pipeline->getDeleted(nullptr);
     m_pipelineFactory.destroy(pipeHandle);
 }
 
 TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowMaxQueueSize)
 {
-    const std::string jsonInput{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})" };
-    const std::string expectedResult{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})" };
-    auto resultFnc
+    const auto jsonInput{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})" };
+    const nlohmann::json expectedResult{ jsonInput };
+    const auto resultFnc
     {
-        [expectedResult](ReturnTypeCallback /*result_type*/, cJSON* json)
+        [&expectedResult](ReturnTypeCallback /*result_type*/, const nlohmann::json& result)
         {
-            char * result_json = cJSON_PrintUnformatted(json);
-            const std::string result{result_json};
-            ASSERT_EQ(expectedResult, result);
-            cJSON_free(result_json);
+            ASSERT_EQ(expectedResult[0], result);
         }
     };
     const DBSYNC_HANDLE handle{ reinterpret_cast<DBSYNC_HANDLE*>(0x100) };
@@ -163,7 +158,7 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowMaxQueueSize)
     };
     ASSERT_NE(nullptr, pipeHandle);
     const auto pipeline{ m_pipelineFactory.pipeline(pipeHandle) };
-    pipeline->syncRow(jsonInput.c_str());
+    pipeline->syncRow(jsonInput);
     pipeline->getDeleted(nullptr);
     m_pipelineFactory.destroy(pipeHandle);
 }
