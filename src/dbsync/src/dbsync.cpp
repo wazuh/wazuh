@@ -27,6 +27,10 @@ struct CJsonDeleter
     {
         cJSON_free(json);
     }
+    void operator()(cJSON* json)
+    {
+        cJSON_Delete(json);
+    }
 };
 
 static log_fnc_t gs_logFunction{ nullptr };
@@ -304,10 +308,23 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
     {
         try
         {
-            std::string result;
+            nlohmann::json result;
+            const auto callbackWrapper
+            {
+                [&result](ReturnTypeCallback resultType, const nlohmann::json& jsonResult)
+                {
+                    static std::map<ReturnTypeCallback, std::string> s_opMap
+                    {
+                        {MODIFIED, "modified"},
+                        {DELETED,  "deleted"},
+                        {INSERTED,  "inserted"}
+                    };
+                    result[s_opMap.at(resultType)].push_back(jsonResult);
+                }
+            };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
-            DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), result);
-            *js_result = cJSON_Parse(result.c_str());
+            DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), callbackWrapper);
+            *js_result = cJSON_Parse(result.dump().c_str());
             ret_val = 0;
         }
         catch(const nlohmann::detail::exception& ex)
@@ -331,7 +348,7 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
 
 int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
                                    const cJSON*        js_snapshot,
-                                   void*               callback)
+                                   result_callback_t   callback)
 {
     auto ret_val { -1 };
     std::string error_message;
@@ -343,8 +360,16 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
     {
         try
         {
+            const auto callbackWrapper
+            {
+                [callback](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+                {
+                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    callback(result, spJson.get());
+                }
+            };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
-            DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), callback);
+            DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), callbackWrapper);
             ret_val = 0;
         }
         catch(const nlohmann::detail::exception& ex)
