@@ -87,7 +87,9 @@ void w_logtest_process_log(int token);
 void w_logtest_remove_session(int token);
 
 /**
- * @brief Check all sessions. If session is created and the client has been offline
- * for more than 15 minutes, remove it
+ * @brief Check the active log-test sessions
+ *
+ * Check all sessions. If a session is created and the client has been offline
+ * for more than 15 minutes, remove it.
  */
 void w_logtest_check_active_sessions();
