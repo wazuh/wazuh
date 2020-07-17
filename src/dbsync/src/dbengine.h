@@ -14,11 +14,14 @@
 
 #include <string>
 #include <vector>
-#include "typedef.h"
+#include <functional>
 #include <json.hpp>
+#include "typedef.h"
 
 namespace DbSync
 {
+    using ResultCallback = std::function<void(ReturnTypeCallback, const nlohmann::json&)>;
+
     class IDbEngine
     {
     public:
@@ -31,11 +34,11 @@ namespace DbSync
                                 const nlohmann::json& data) = 0;
 
         virtual void refreshTableData(const nlohmann::json& data,
-                                      std::tuple<nlohmann::json&, void *> delta) = 0;
+                                      const ResultCallback callback) = 0;
 
         virtual void syncTableRowData(const std::string& table,
                                       const nlohmann::json& data,
-                                      std::tuple<nlohmann::json&, void *> delta) = 0;
+                                      const ResultCallback callback) = 0;
 
         virtual ~IDbEngine() = default;
 

@@ -9,11 +9,12 @@
  * Foundation.
  */
 
-#pragma once
+#ifndef _DBSYNC_IMPLEMENTATION_H
+#define _DBSYNC_IMPLEMENTATION_H
+
 #include <map>
 #include <memory>
 #include <mutex>
-
 #include "dbengine_factory.h"
 #include "typedef.h"
 #include "json.hpp"
@@ -28,24 +29,24 @@ namespace DbSync
             static DBSyncImplementation s_instance;
             return s_instance;
         }
+
         void insertBulkData(const DBSYNC_HANDLE handle,
-                            const char* jsonRaw);
-        void syncRowData(const DBSYNC_HANDLE handle,
-                         const char* jsonRaw,
-                         result_callback_t callback);
-        void updateSnapshotData(const DBSYNC_HANDLE handle,
-                                const char* jsonSnapshot,
-                                std::string& result);
-        void updateSnapshotData(const DBSYNC_HANDLE handle,
-                                const char* jsonSnapshot,
-                                void* callback);
-        DBSYNC_HANDLE initialize(const HostType hostType,
+                            const char*         jsonRaw);
+
+        void syncRowData(const DBSYNC_HANDLE  handle,
+                         const char*          jsonRaw,
+                         const ResultCallback callback);
+
+        void updateSnapshotData(const DBSYNC_HANDLE  handle,
+                                const char*          jsonSnapshot,
+                                const ResultCallback callback);
+
+        DBSYNC_HANDLE initialize(const HostType     hostType,
                                  const DbEngineType dbType,
                                  const std::string& path,
                                  const std::string& sqlStatement);
         void release();
     private:
-
         struct DbEngineContext
         {
             DbEngineContext(std::unique_ptr<IDbEngine>& dbEngine,
@@ -69,3 +70,5 @@ namespace DbSync
         std::mutex m_mutex;
     };
 }
+
+#endif // _DBSYNC_IMPLEMENTATION_H

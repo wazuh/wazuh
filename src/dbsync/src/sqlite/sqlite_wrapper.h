@@ -22,7 +22,7 @@ namespace SQLite
     public:
         Connection();
         ~Connection() = default;
-        Connection(const std::string& path);
+        explicit Connection(const std::string& path);
 
         void execute(const std::string& query) override;
         void close() override;
@@ -36,7 +36,7 @@ namespace SQLite
     {
     public:
         ~Transaction();
-        Transaction(std::shared_ptr<IConnection>& connection);
+        explicit Transaction(std::shared_ptr<IConnection>& connection);
 
         void commit() override;
         void rollback() override;
