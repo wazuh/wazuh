@@ -23,9 +23,9 @@
  */
 typedef struct w_logtest_conf_t {
 
-    char *enabled;
-    unsigned short threads;
-    unsigned short max_sessions;
+    bool enabled;
+    int threads;
+    int max_sessions;
     long int session_timeout;
 
 } w_logtest_conf_t;

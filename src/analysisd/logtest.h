@@ -16,12 +16,12 @@
 
 
 /**
- * @brief A w_logtest_session_t instance represents a client.
+ * @brief A w_logtest_session_t instance represents a client
  */
 typedef struct w_logtest_session_t {
 
     int token;                              ///< Client ID
-    time_t last_connection;                 ///< Timestamp of the last query.
+    time_t last_connection;                 ///< Timestamp of the last query
 
     RuleNode *rule_list;                    ///< Rule list
     OSDecoderNode *decoderlist_forpname;    ///< Decoder list to match logs which have a program name
@@ -33,7 +33,7 @@ typedef struct w_logtest_session_t {
 } w_logtest_session_t;
 
 /**
- * @brief List of client actives.
+ * @brief List of client actives
  */
 OSHash *w_logtest_sessions;
 
@@ -42,27 +42,27 @@ OSHash *w_logtest_sessions;
  */
 typedef struct w_logtest_connection {
 
-    pthread_mutex_t mutex;      ///< Mutex to prevent race condition in accept syscall.
+    pthread_mutex_t mutex;      ///< Mutex to prevent race condition in accept syscall
     int sock;                   ///< The open connection with logtest queue
 
 } w_logtest_connection;
 
 
 /**
- * @brief Initialize Wazuh Logtest. Initialize the listener and create threads.
- * Then, call function w_logtest_main.
+ * @brief Initialize Wazuh Logtest. Initialize the listener and create threads
+ * Then, call function w_logtest_main
  */
 void *w_logtest_init();
 
 /**
- * @brief Initialize internal options parameters
+ * @brief Initialize logtest configuration. Then, call ReadConfig
  */
 int w_logtest_init_parameters();
 
 /**
- * @brief Main function of Wazuh Logtest module.
+ * @brief Main function of Wazuh Logtest module
  *
- * Listen and treat connections with clients.
+ * Listen and treat connections with clients
  *
  * @param connection The listener where clients connect
  */
@@ -88,6 +88,6 @@ void w_logtest_remove_session(int token);
 
 /**
  * @brief Check all sessions. If session is created and the client has been offline
- * for more than 15 minutes, remove it.
+ * for more than 15 minutes, remove it
  */
 void w_logtest_check_active_sessions();
