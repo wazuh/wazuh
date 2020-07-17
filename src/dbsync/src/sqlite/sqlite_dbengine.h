@@ -94,11 +94,11 @@ class SQLiteDBEngine : public DbSync::IDbEngine
                                 const nlohmann::json& data) override;
 
         virtual void refreshTableData(const nlohmann::json& data,
-                                      const std::tuple<nlohmann::json&, void *> delta) override;
+                                      const DbSync::ResultCallback callback) override;
 
         virtual void syncTableRowData(const std::string& table,
                                       const nlohmann::json& data,
-                                      const std::tuple<nlohmann::json&, void *> delta) override;
+                                      const DbSync::ResultCallback callback) override;
 
     private:
         void initialize(const std::string& path,
@@ -126,22 +126,16 @@ class SQLiteDBEngine : public DbSync::IDbEngine
         bool getTableCreateQuery(const std::string& table,
                                  std::string& resultQuery);
 
-        template<typename T>
-        bool getValueFromTable(const std::string& table,
-                               const std::string& primaryKey,
-                               const T& keyValue, 
-                               std::string& resultQuery);
-
         bool getPrimaryKeysFromTable(const std::string& table,
                                      std::vector<std::string>& primaryKeyList);
 
         bool removeNotExistsRows(const std::string& table,
                                  const std::vector<std::string>& primaryKeyList,
-                                 const std::tuple<nlohmann::json&, void *> delta);
+                                 const DbSync::ResultCallback callback);
 
         bool insertNewRows(const std::string& table,
                            const std::vector<std::string>& primaryKeyList,
-                           const std::tuple<nlohmann::json&, void *> delta);
+                           const DbSync::ResultCallback callback);
 
         bool deleteRows(const std::string& table,
                         const std::vector<std::string>& primaryKeyList,
@@ -182,7 +176,7 @@ class SQLiteDBEngine : public DbSync::IDbEngine
 
         int changeModifiedRows(const std::string& table,
                                const std::vector<std::string>& primaryKeyList,
-                               const std::tuple<nlohmann::json&, void *> delta);
+                               const DbSync::ResultCallback callback);
 
         std::string buildUpdateDataSqlQuery(const std::string& table,
                                             const std::vector<std::string>& primaryKeyList,

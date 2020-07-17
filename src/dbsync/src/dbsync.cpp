@@ -262,8 +262,23 @@ int dbsync_sync_row(const DBSYNC_HANDLE handle,
     {
         try
         {
+            nlohmann::json result;
+            const auto callbackWrapper
+            {
+                [&result](ReturnTypeCallback resultType, const nlohmann::json& jsonResult)
+                {
+                    static std::map<ReturnTypeCallback, std::string> s_opMap
+                    {
+                        { MODIFIED , "modified" },
+                        { DELETED  ,  "deleted" },
+                        { INSERTED , "inserted" }
+                    };
+                    result[s_opMap.at(resultType)].push_back(jsonResult);
+                }
+            };
+
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_input) };
-            DBSyncImplementation::instance().syncRowData(handle, spJsonBytes.get(), callback);
+            DBSyncImplementation::instance().syncRowData(handle, spJsonBytes.get(), callbackWrapper);
             ret_val = 0;
         }
         catch(const nlohmann::detail::exception& ex)
@@ -360,9 +375,9 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
                 {
                     static std::map<ReturnTypeCallback, std::string> s_opMap
                     {
-                        {MODIFIED, "modified"},
-                        {DELETED,  "deleted"},
-                        {INSERTED,  "inserted"}
+                        { MODIFIED , "modified" },
+                        { DELETED  ,  "deleted" },
+                        { INSERTED , "inserted" }
                     };
                     result[s_opMap.at(resultType)].push_back(jsonResult);
                 }

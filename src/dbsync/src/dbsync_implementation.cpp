@@ -9,10 +9,12 @@
  * Foundation.
  */
 
-#include "dbsync_implementation.h"
 #include <iostream>
+#include "dbsync_implementation.h"
+
 using namespace DbSync;
-DBSYNC_HANDLE DBSyncImplementation::initialize(const HostType hostType,
+
+DBSYNC_HANDLE DBSyncImplementation::initialize(const HostType     hostType,
                                                const DbEngineType dbType,
                                                const std::string& path,
                                                const std::string& sqlStatement)
@@ -35,27 +37,26 @@ void DBSyncImplementation::release()
 }
 
 void DBSyncImplementation::insertBulkData(const DBSYNC_HANDLE handle,
-                                          const char* jsonRaw)
+                                          const char*         jsonRaw)
 {
     const auto ctx{ dbEngineContext(handle) };
     const auto json { nlohmann::json::parse(jsonRaw)};
     ctx->m_dbEngine->bulkInsert(json[0]["table"], json[0]["data"]);
 }
 
-void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE handle,
-                                       const char*         jsonRaw,
-                                       result_callback_t   callback)
+void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE  handle,
+                                       const char*          jsonRaw,
+                                       const ResultCallback callback)
 {
-    nlohmann::json jsFake;
     const auto ctx{ dbEngineContext(handle) };
     const auto json { nlohmann::json::parse(jsonRaw) };
     ctx->m_dbEngine->syncTableRowData(json[0]["table"],
                                       json[0]["data"],
-                                      std::make_tuple(std::ref(jsFake), reinterpret_cast<void*>(callback)));
+                                      callback);
 }
 
-void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE handle,
-                                              const char* jsonSnapshot,
+void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE  handle,
+                                              const char*          jsonSnapshot,
                                               const ResultCallback callback)
 {
     const auto ctx{ dbEngineContext(handle) };
