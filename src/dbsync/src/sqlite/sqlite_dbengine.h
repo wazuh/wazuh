@@ -126,6 +126,12 @@ class SQLiteDBEngine : public DbSync::IDbEngine
         bool getTableCreateQuery(const std::string& table,
                                  std::string& resultQuery);
 
+        template<typename T>
+        bool getValueFromTable(const std::string& table,
+                               const std::string& primaryKey,
+                               const T& keyValue, 
+                               std::string& resultQuery);
+
         bool getPrimaryKeysFromTable(const std::string& table,
                                      std::vector<std::string>& primaryKeyList);
 
@@ -135,8 +141,7 @@ class SQLiteDBEngine : public DbSync::IDbEngine
 
         bool insertNewRows(const std::string& table,
                            const std::vector<std::string>& primaryKeyList,
-                           const std::tuple<nlohmann::json&, void *> delta,
-                           const bool tempTable = true);
+                           const std::tuple<nlohmann::json&, void *> delta);
 
         bool deleteRows(const std::string& table,
                         const std::vector<std::string>& primaryKeyList,
@@ -177,8 +182,7 @@ class SQLiteDBEngine : public DbSync::IDbEngine
 
         int changeModifiedRows(const std::string& table,
                                const std::vector<std::string>& primaryKeyList,
-                               const std::tuple<nlohmann::json&, void *> delta,
-                               const bool tempTable = true);
+                               const std::tuple<nlohmann::json&, void *> delta);
 
         std::string buildUpdateDataSqlQuery(const std::string& table,
                                             const std::vector<std::string>& primaryKeyList,
@@ -187,8 +191,7 @@ class SQLiteDBEngine : public DbSync::IDbEngine
 
         bool getRowsToModify(const std::string& table,
                              const std::vector<std::string>& primaryKeyList,
-                             std::vector<Row>& rowKeysValue,
-                             const bool tempTable = true);
+                             std::vector<Row>& rowKeysValue);
 
         bool updateRows(const std::string& table,
                         const std::vector<std::string>& primaryKeyList,

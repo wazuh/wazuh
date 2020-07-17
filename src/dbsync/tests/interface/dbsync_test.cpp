@@ -169,18 +169,22 @@ TEST_F(DBSyncTest, UpdateDataWithLessFields)
 TEST_F(DBSyncTest, SyncRowData)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT,`path` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    const auto row1{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
-    const auto row2{ R"({"table":"processes","data":[{"pid":5,"name":"Cmdline"}]})"};
-    const auto row3{ R"({"table":"processes","data":[{"pid":6,"name":"Powershell"}]})"};
-    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE, sql) };
+    const auto row1{ R"({"table":"processes","data":[{"pid":4,"name":"System"]})"};   // insert
+    const auto row2{ R"({"table":"processes","data":[{"pid":5,"name":"Cmdline"}]})"}; // insert
+
+    const auto row3{ R"({"table":"processes","data":[{"pid":4,"name":"Powershell","path":"C:\temp"}}]})"};  // modified
+    const auto row4{ R"({"table":"processes","data":[{"pid":5,"name":"Powershell"}]})"};                    // modified
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
     result_callback_t notifyCb = reinterpret_cast<result_callback_t>(callback);
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1{ cJSON_Parse(row1) };
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert2{ cJSON_Parse(row2) };
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert3{ cJSON_Parse(row3) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert4{ cJSON_Parse(row4) };
 
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), notifyCb));
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert2.get(), notifyCb));
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert3.get(), notifyCb));
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert4.get(), notifyCb));
 }
