@@ -45,6 +45,8 @@ kibana_user:
   hidden: false
   backend_roles:
   - "kibanauser"
+  - "wazuh_user"
+  - "wazuh_admin"
   hosts: []
   users: []
   and_backend_roles: []

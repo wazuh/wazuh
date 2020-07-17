@@ -15,9 +15,7 @@ wazuh_admin:
   hidden: false
   backend_roles: []
   attributes: {}
-  opendistro_security_roles:
-  - "wazuh_ui_admin"
-  - "kibana_user"
+  opendistro_security_roles: []
   static: false
 wazuh_user:
   hash: "$2y$12$BQixeoQdRubZdVf/7sq1suHwiVRnSst1.lPI2M0.GPZms4bq2D9vO"
@@ -25,9 +23,7 @@ wazuh_user:
   hidden: false
   backend_roles: []
   attributes: {}
-  opendistro_security_roles:
-  - "wazuh_ui_user"
-  - "kibana_user"
+  opendistro_security_roles: []
   static: false
 snapshotrestore:
   hash: "$2y$12$DpwmetHKwgYnorbgdvORCenv4NAK8cPUg8AI6pxLCuWf/ALc0.v7W"
