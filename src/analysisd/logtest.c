@@ -10,12 +10,6 @@
 #include "logtest.h"
 
 
-/**
- * @brief Mutex to prevent race condition in accept syscall.
- */
-static pthread_mutex_t mutex;
-
-
 void *w_logtest_init() {
 
     w_logtest_connection connection;
