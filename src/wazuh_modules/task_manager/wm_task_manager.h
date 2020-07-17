@@ -40,6 +40,10 @@ typedef enum _command_list {
 typedef enum _error_code {
     SUCCESS = 0,
     INVALID_MESSAGE,
+    INVALID_MODULE,
+    INVALID_COMMAND,
+    INVALID_AGENT_ID,
+    INVALID_TASK_ID,
     DATABASE_ERROR,
     UNKNOWN_ERROR
 } error_code;
@@ -72,19 +76,21 @@ size_t wm_task_manager_dispatch(const char *msg, char **response);
 cJSON* wm_task_manager_parse_message(const char *msg);
 
 /**
- * Build a JSON object when creating a new task for an agent.
- * @param agent_id ID of the agent where the task will be executed.
- * @param task_id ID of the task recently created for the agent.
- * @return JSON object.
+ * Analyze a task by module and command. Update the tasks DB when necessary.
+ * @param task_object JSON object with a task to be analyzed.
+ * @param error_code Variable to store an error code if something is wrong.
+ * @return JSON object with the response for this task.
  * */
-cJSON* wm_task_manager_build_response_insert(int agent_id, int task_id);
+cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code);
 
 /**
- * Build a string when there is an error while analyzing a message.
+ * Build a JSON object response.
  * @param error_code Code of the error.
- * @return Error string.
+ * @param agent_id ID of the agent when receiving a request for a specific agent.
+ * @param task_id ID of the task when receiving a request for a specific task.
+ * @return JSON object.
  * */
-char* wm_task_manager_build_response_error(int error_code);
+cJSON* wm_task_manager_build_response(int error_code, int agent_id, int task_id);
 
 /**
  * Create the tasks DB or check that it already exists.

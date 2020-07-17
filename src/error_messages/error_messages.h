@@ -501,7 +501,7 @@
 #define MOD_TASK_PARSE_EMPTY_ERROR                  "(8258): Invalid message. Array of tasks is empty."
 #define MOD_TASK_PARSE_KEY_ERROR                    "(8259): Invalid message. '%s' not found at index '%d'"
 #define MOD_TASK_DB_ERROR                           "(8260): Database error at index '%d'"
-#define MOD_TASK_UNKNOWN_VALUE_ERROR                "(8261): Invalid '%s' '%s' at index '%d'"
+#define MOD_TASK_UNKNOWN_VALUE_ERROR                "(8261): Invalid '%s' at index '%d'"
 
 #define MOD_TASK_ACCESS_DB_ERROR                    "(8275): Couldn't access tasks DB."
 #define MOD_TASK_CREATE_DB_ERROR                    "(8276): DB couldn't be checked or created."
