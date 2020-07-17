@@ -14,6 +14,10 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+int __wrap_wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
+    return 0;
+}
+
 int __wrap_wm_state_io(const char * tag, int op, void *state, size_t size) {
     check_expected(tag);
     check_expected(op);

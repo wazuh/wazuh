@@ -14,6 +14,7 @@
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
 
 #define TEST_MAX_DATES 5
 
@@ -25,10 +26,6 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     // Will wrap this function to check running times in order to check scheduling
     *exitcode = 0;
     *output = strdup("TEST_STRING");
-    return 0;
-}
-
-int __wrap_wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
     return 0;
 }
 

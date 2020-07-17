@@ -14,6 +14,7 @@
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/pthreads_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/validate_op_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
 
 #define TEST_MAX_DATES 3
 
@@ -30,10 +31,6 @@ extern struct cis_db_hash_info_t *cis_db_for_hash;
 extern unsigned int policies_count;
 
 int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
-    return 0;
-}
-
-int __wrap_wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
     return 0;
 }
 
