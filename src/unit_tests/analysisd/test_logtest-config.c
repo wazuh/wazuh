@@ -58,7 +58,7 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
     check_expected(formatted_msg);
 }
 
-int __wrap_get_nprocs (void) {
+int __wrap_get_nproc(void) {
     return mock();
 }
 
@@ -137,10 +137,28 @@ void test_Read_Logtest_invalid_enabled(void **state)
     nodes[0]->element = strdup("enabled");
     nodes[0]->content = strdup("test");
 
-    expect_string(__wrap__mwarn, formatted_msg, "(1235): Invalid value for element 'enabled': test.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'enabled': test.");
 
     int ret = Read_Logtest(nodes);
     assert_int_equal(ret, OS_INVALID);
+
+    os_free(nodes[0]->element);
+    os_free(nodes[0]->content);
+    os_free(nodes[0]);
+    os_free(nodes);
+}
+
+void test_Read_Logtest_valid_disabled(void **state)
+{
+    xml_node **nodes;
+    nodes = calloc(2, sizeof(xml_node*));
+    nodes[0] = calloc(1, sizeof(xml_node));
+
+    nodes[0]->element = strdup("enabled");
+    nodes[0]->content = strdup("no");
+
+    int ret = Read_Logtest(nodes);
+    assert_int_equal(ret, OS_SUCCESS);
 
     os_free(nodes[0]->element);
     os_free(nodes[0]->content);
@@ -154,8 +172,6 @@ void test_Read_Logtest_valid_enabled(void **state)
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
 
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
-
     nodes[0]->element = strdup("enabled");
     nodes[0]->content = strdup("yes");
 
@@ -166,7 +182,6 @@ void test_Read_Logtest_valid_enabled(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_invalid_threads(void **state)
@@ -175,12 +190,10 @@ void test_Read_Logtest_invalid_threads(void **state)
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
 
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
-
     nodes[0]->element = strdup("threads");
     nodes[0]->content = strdup("test");
 
-    expect_string(__wrap__mwarn, formatted_msg, "(1235): Invalid value for element 'threads': test.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'threads': test.");
 
     int ret = Read_Logtest(nodes);
     assert_int_equal(ret, OS_INVALID);
@@ -189,7 +202,6 @@ void test_Read_Logtest_invalid_threads(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_auto_threads(void **state)
@@ -198,12 +210,10 @@ void test_Read_Logtest_auto_threads(void **state)
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
 
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
-
     nodes[0]->element = strdup("threads");
     nodes[0]->content = strdup("auto");
 
-    will_return(__wrap_get_nprocs, 1);
+    will_return(__wrap_get_nproc, 1);
 
     int ret = Read_Logtest(nodes);
     assert_int_equal(ret, OS_SUCCESS);
@@ -212,7 +222,6 @@ void test_Read_Logtest_auto_threads(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_smaller_threads(void **state)
@@ -221,12 +230,10 @@ void test_Read_Logtest_smaller_threads(void **state)
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
 
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
-
     nodes[0]->element = strdup("threads");
     nodes[0]->content = strdup("-1");
 
-    expect_string(__wrap__mwarn, formatted_msg, "(1235): Invalid value for element 'threads': -1.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'threads': -1.");
 
     int ret = Read_Logtest(nodes);
     assert_int_equal(ret, OS_INVALID);
@@ -235,7 +242,6 @@ void test_Read_Logtest_smaller_threads(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_bigger_threads(void **state)
@@ -244,12 +250,10 @@ void test_Read_Logtest_bigger_threads(void **state)
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
 
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
-
     nodes[0]->element = strdup("threads");
     nodes[0]->content = strdup("1000000");
 
-    expect_string(__wrap__mwarn, formatted_msg, "(1235): Invalid value for element 'threads': 1000000.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'threads': 1000000.");
 
     int ret = Read_Logtest(nodes);
     assert_int_equal(ret, OS_INVALID);
@@ -258,7 +262,6 @@ void test_Read_Logtest_bigger_threads(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_limit_threads(void **state)
@@ -267,12 +270,10 @@ void test_Read_Logtest_limit_threads(void **state)
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
 
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
-
     nodes[0]->element = strdup("threads");
     nodes[0]->content = strdup("256");
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(7000): Number of logtest threads too high. Only creates 128 threads");
+    expect_string(__wrap__mwarn, formatted_msg, "(7000): Number of logtest threads too high. Only creates 128 threads");
 
     int ret = Read_Logtest(nodes);
     assert_int_equal(ret, OS_SUCCESS);
@@ -281,7 +282,6 @@ void test_Read_Logtest_limit_threads(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_valid_threads(void **state)
@@ -289,8 +289,6 @@ void test_Read_Logtest_valid_threads(void **state)
     xml_node **nodes;
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
-
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
 
     nodes[0]->element = strdup("threads");
     nodes[0]->content = strdup("64");
@@ -302,7 +300,6 @@ void test_Read_Logtest_valid_threads(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_invalid_max_sessions(void **state)
@@ -311,12 +308,10 @@ void test_Read_Logtest_invalid_max_sessions(void **state)
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
 
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
-
     nodes[0]->element = strdup("max_sessions");
     nodes[0]->content = strdup("test");
 
-    expect_string(__wrap__mwarn, formatted_msg, "(1235): Invalid value for element 'max_sessions': test.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'max_sessions': test.");
 
     int ret = Read_Logtest(nodes);
     assert_int_equal(ret, OS_INVALID);
@@ -325,7 +320,6 @@ void test_Read_Logtest_invalid_max_sessions(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_smaller_max_sessions(void **state)
@@ -334,12 +328,10 @@ void test_Read_Logtest_smaller_max_sessions(void **state)
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
 
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
-
     nodes[0]->element = strdup("max_sessions");
     nodes[0]->content = strdup("-1");
 
-    expect_string(__wrap__mwarn, formatted_msg, "(1235): Invalid value for element 'max_sessions': -1.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'max_sessions': -1.");
 
     int ret = Read_Logtest(nodes);
     assert_int_equal(ret, OS_INVALID);
@@ -348,7 +340,6 @@ void test_Read_Logtest_smaller_max_sessions(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_bigger_max_sessions(void **state)
@@ -357,12 +348,10 @@ void test_Read_Logtest_bigger_max_sessions(void **state)
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
 
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
-
     nodes[0]->element = strdup("max_sessions");
     nodes[0]->content = strdup("1000000");
 
-    expect_string(__wrap__mwarn, formatted_msg, "(1235): Invalid value for element 'max_sessions': 1000000.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'max_sessions': 1000000.");
 
     int ret = Read_Logtest(nodes);
     assert_int_equal(ret, OS_INVALID);
@@ -371,7 +360,6 @@ void test_Read_Logtest_bigger_max_sessions(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_limit_max_sessions(void **state)
@@ -380,12 +368,10 @@ void test_Read_Logtest_limit_max_sessions(void **state)
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
 
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
-
     nodes[0]->element = strdup("max_sessions");
     nodes[0]->content = strdup("700");
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(7001): Number of maximum users connected in logtest too high. Only allows 500 users");
+    expect_string(__wrap__mwarn, formatted_msg, "(7001): Number of maximum users connected in logtest too high. Only allows 500 users");
 
     int ret = Read_Logtest(nodes);
     assert_int_equal(ret, OS_SUCCESS);
@@ -394,7 +380,6 @@ void test_Read_Logtest_limit_max_sessions(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_valid_max_sessions(void **state)
@@ -402,8 +387,6 @@ void test_Read_Logtest_valid_max_sessions(void **state)
     xml_node **nodes;
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
-
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
 
     nodes[0]->element = strdup("max_sessions");
     nodes[0]->content = strdup("200");
@@ -415,7 +398,6 @@ void test_Read_Logtest_valid_max_sessions(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_invalid_session_timeout(void **state)
@@ -424,12 +406,10 @@ void test_Read_Logtest_invalid_session_timeout(void **state)
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
 
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
-
     nodes[0]->element = strdup("session_timeout");
     nodes[0]->content = strdup("test");
 
-    expect_string(__wrap__mwarn, formatted_msg, "(1235): Invalid value for element 'session_timeout': test.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'session_timeout': test.");
 
     int ret = Read_Logtest(nodes);
     assert_int_equal(ret, OS_INVALID);
@@ -438,7 +418,6 @@ void test_Read_Logtest_invalid_session_timeout(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_smaller_session_timeout(void **state)
@@ -447,12 +426,10 @@ void test_Read_Logtest_smaller_session_timeout(void **state)
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
 
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
-
     nodes[0]->element = strdup("session_timeout");
     nodes[0]->content = strdup("-1");
 
-    expect_string(__wrap__mwarn, formatted_msg, "(1235): Invalid value for element 'session_timeout': -1.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'session_timeout': -1.");
 
     int ret = Read_Logtest(nodes);
     assert_int_equal(ret, OS_INVALID);
@@ -461,7 +438,6 @@ void test_Read_Logtest_smaller_session_timeout(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_limit_session_timeout(void **state)
@@ -470,12 +446,10 @@ void test_Read_Logtest_limit_session_timeout(void **state)
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
 
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
-
     nodes[0]->element = strdup("session_timeout");
     nodes[0]->content = strdup("32000000");
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(7002): Number of maximum user timeouts in logtest too high. Only allows 31536000s maximum timeouts");
+    expect_string(__wrap__mwarn, formatted_msg, "(7002): Number of maximum user timeouts in logtest too high. Only allows 31536000s maximum timeouts");
 
     int ret = Read_Logtest(nodes);
     assert_int_equal(ret, OS_SUCCESS);
@@ -484,7 +458,6 @@ void test_Read_Logtest_limit_session_timeout(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_valid_session_timeout(void **state)
@@ -492,8 +465,6 @@ void test_Read_Logtest_valid_session_timeout(void **state)
     xml_node **nodes;
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
-
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
 
     nodes[0]->element = strdup("session_timeout");
     nodes[0]->content = strdup("1000000");
@@ -505,7 +476,6 @@ void test_Read_Logtest_valid_session_timeout(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_Read_Logtest_invalid_element(void **state)
@@ -513,8 +483,6 @@ void test_Read_Logtest_invalid_element(void **state)
     xml_node **nodes;
     nodes = calloc(2, sizeof(xml_node*));
     nodes[0] = calloc(1, sizeof(xml_node));
-
-    os_calloc(4, sizeof(char), w_logtest_conf.enabled);
 
     nodes[0]->element = strdup("test");
     nodes[0]->content = strdup("unit_test");
@@ -528,16 +496,48 @@ void test_Read_Logtest_invalid_element(void **state)
     os_free(nodes[0]->content);
     os_free(nodes[0]);
     os_free(nodes);
-    os_free(w_logtest_conf.enabled);
 }
 
 /* getRuleTestConfig */
-void test_getRuleTestConfig_OK(void **state)
+void test_getRuleTestConfig_disabled(void **state)
 {
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
-    os_strdup("yes", w_logtest_conf.enabled);
+    w_logtest_conf.enabled = false;
+    w_logtest_conf.threads = LOGTEST_LIMIT_THREAD;
+    w_logtest_conf.max_sessions = LOGTEST_LIMIT_MAX_SESSIONS;
+    w_logtest_conf.session_timeout = LOGTEST_LIMIT_SESSION_TIMEOUT;
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "enabled");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "no");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "threads");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 128);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "max_sessions");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 500);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "session_timeout");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 31536000);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddItemToObject, string, "rule_test");
+    expect_value(__wrap_cJSON_AddItemToObject, item, (cJSON *)1);
+
+    cJSON* ret = getRuleTestConfig();
+
+}
+
+void test_getRuleTestConfig_enabled(void **state)
+{
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+
+    w_logtest_conf.enabled = true;
     w_logtest_conf.threads = LOGTEST_LIMIT_THREAD;
     w_logtest_conf.max_sessions = LOGTEST_LIMIT_MAX_SESSIONS;
     w_logtest_conf.session_timeout = LOGTEST_LIMIT_SESSION_TIMEOUT;
@@ -563,7 +563,6 @@ void test_getRuleTestConfig_OK(void **state)
 
     cJSON* ret = getRuleTestConfig();
 
-    os_free(w_logtest_conf.enabled);
 }
 
 int main(void)
@@ -573,6 +572,7 @@ int main(void)
         cmocka_unit_test(test_Read_Logtest_element_NULL),
         cmocka_unit_test(test_Read_Logtest_content_NULL),
         cmocka_unit_test(test_Read_Logtest_invalid_enabled),
+        cmocka_unit_test(test_Read_Logtest_valid_disabled),
         cmocka_unit_test(test_Read_Logtest_valid_enabled),
         cmocka_unit_test(test_Read_Logtest_invalid_threads),
         cmocka_unit_test(test_Read_Logtest_auto_threads),
@@ -591,7 +591,8 @@ int main(void)
         cmocka_unit_test(test_Read_Logtest_valid_session_timeout),
         cmocka_unit_test(test_Read_Logtest_invalid_element),
         // Tests getRuleTestConfig
-        cmocka_unit_test(test_getRuleTestConfig_OK),
+        cmocka_unit_test(test_getRuleTestConfig_disabled),
+        cmocka_unit_test(test_getRuleTestConfig_enabled)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
