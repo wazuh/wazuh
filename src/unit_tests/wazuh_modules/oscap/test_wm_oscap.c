@@ -15,19 +15,13 @@
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 
 #define TEST_MAX_DATES 5
 
 static wmodule *oscap_module;
 static OS_XML *lxml;
 extern int test_mode;
-
-int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
-    // Will wrap this function to check running times in order to check scheduling
-    *exitcode = 0;
-    *output = strdup("TEST_STRING");
-    return 0;
-}
 
 /******* Helpers **********/
 
@@ -120,6 +114,16 @@ void test_interval_execution(void **state) {
     expect_string_count(__wrap_SendMSG, locmsg, xml_rootcheck, TEST_MAX_DATES + 1);
     expect_value_count(__wrap_SendMSG, loc, ROOTCHECK_MQ, TEST_MAX_DATES + 1);
     will_return_count(__wrap_SendMSG, 1, TEST_MAX_DATES + 1);
+
+    for (i = 0; i < TEST_MAX_DATES + 1; i++) {
+        expect_any(__wrap_wm_exec, command);
+        expect_any(__wrap_wm_exec, secs);
+        expect_any(__wrap_wm_exec, add_path);
+
+        will_return(__wrap_wm_exec, strdup("TEST_STRING"));
+        will_return(__wrap_wm_exec, 0);
+        will_return(__wrap_wm_exec, 0);
+    }
 
     expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
     expect_value(__wrap_StartMQ, type, WRITE);

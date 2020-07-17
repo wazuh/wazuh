@@ -7,25 +7,22 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <time.h>
+
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_azure.h"
+
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 
 #define TEST_MAX_DATES 5
 
 static wmodule *azure_module;
 static OS_XML *lxml;
 extern int test_mode;
-
-int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
-    // Will wrap this function to check running times in order to check scheduling
-    *exitcode = 0;
-    return 0;
-}
 
 static void wmodule_cleanup(wmodule *module){
     wm_azure_t* module_data = (wm_azure_t *)module->data;
@@ -122,6 +119,12 @@ void test_interval_execution(void **state) {
     expect_string_count(__wrap_SendMSG, locmsg, xml_rootcheck, (TEST_MAX_DATES + 1) * 2);
     expect_value_count(__wrap_SendMSG, loc, ROOTCHECK_MQ, (TEST_MAX_DATES + 1) * 2);
     will_return_count(__wrap_SendMSG, 1, (TEST_MAX_DATES + 1) * 2);
+
+    expect_any_always(__wrap_wm_exec, command);
+    expect_any_always(__wrap_wm_exec, secs);
+    expect_any_always(__wrap_wm_exec, add_path);
+
+    will_return_always(__wrap_wm_exec, 0);
 
     expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
     expect_value(__wrap_StartMQ, type, WRITE);

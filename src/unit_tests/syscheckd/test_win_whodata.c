@@ -29,6 +29,7 @@
 #include "../wrappers/wazuh/shared/string_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/config_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
+#include "../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 
 #include "syscheckd/syscheck.h"
 
@@ -323,15 +324,6 @@ static int teardown_event_4663_dir(void **state) {
         return -1;
 
     return 0;
-}
-
-int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
-    check_expected(command);
-    if (output) {
-        *output = mock_type(char *);
-    }
-    *exitcode = mock_type(int);
-    return mock();
 }
 
 /**************************************************************************/

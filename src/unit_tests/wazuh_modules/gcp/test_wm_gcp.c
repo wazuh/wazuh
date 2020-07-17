@@ -20,6 +20,7 @@
 #include "../../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/schedule_scan_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 
 void wm_gcp_run(const wm_gcp *data);
 cJSON *wm_gcp_dump(const wm_gcp *data);
@@ -33,18 +34,6 @@ typedef struct __gcp_dump_s {
     cJSON *root;
     cJSON *wm_wd;
 }gcp_dump_t;
-
-/* wrappers */
-int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
-    check_expected(command);
-    check_expected(secs);
-    check_expected(add_path);
-
-    *output = mock_type(char*);
-    *exitcode = mock();
-
-    return mock();
-}
 
 /* setup/teardown */
 static int setup_group(void **state) {

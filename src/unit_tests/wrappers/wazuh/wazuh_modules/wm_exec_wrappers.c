@@ -13,3 +13,17 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
+    check_expected(command);
+    check_expected(secs);
+    check_expected(add_path);
+
+    if (output) {
+        *output = mock_type(char *);
+    }
+
+    *exitcode = mock_type(int);
+
+    return mock();
+}

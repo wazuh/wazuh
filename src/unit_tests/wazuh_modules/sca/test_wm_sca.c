@@ -8,13 +8,16 @@
 #include <cmocka.h>
 #include <time.h>
 #include <stdlib.h>
+
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
 #include "../scheduling/wmodules_scheduling_helpers.h"
+
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/pthreads_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 
 #define TEST_MAX_DATES 3
 
@@ -29,10 +32,6 @@ extern char **last_sha256;
 extern OSHash **cis_db;
 extern struct cis_db_hash_info_t *cis_db_for_hash;
 extern unsigned int policies_count;
-
-int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
-    return 0;
-}
 
 void wm_sca_send_policies_scanned(wm_sca_t * data)
 {

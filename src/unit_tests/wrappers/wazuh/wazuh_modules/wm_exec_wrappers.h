@@ -12,7 +12,6 @@
 #ifndef WM_EXEC_WRAPPERS_H
 #define WM_EXEC_WRAPPERS_H
 
-
-
+int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
 
 #endif
