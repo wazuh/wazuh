@@ -87,6 +87,30 @@ void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
     }
 }
 
+void SQLiteDBEngine::syncTableRowData(const std::string& table,
+                                      const nlohmann::json& data,
+                                      std::tuple<nlohmann::json&, void *> delta)
+{
+    bulkInsert(table, data);
+    {
+        if (0 != loadTableData(table))
+        {
+            std::vector<std::string> primaryKeyList;
+            if (getPrimaryKeysFromTable(table, primaryKeyList))
+            {
+                if (!changeModifiedRows(table, primaryKeyList, delta, false))
+                {
+                    std::cout << "Error during the change of modified rows " << __LINE__ << " - " << __FILE__ << std::endl;
+                }
+                if (!insertNewRows(table, primaryKeyList, delta, false))
+                {
+                    std::cout << "Error during the insert rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
+                }
+            }
+        }
+    }
+}
+
 
 ///
 /// Private functions section
@@ -233,8 +257,10 @@ void SQLiteDBEngine::bindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt
         {
             auto value
             {
-                jsData.is_number() ? jsData.get<int32_t>() : jsData.is_string() && 
-                jsData.get_ref<const std::string&>().size() ? std::stol(jsData.get_ref<const std::string&>()) : 0
+                jsData.is_number() ? jsData.get<int32_t>() : jsData.is_string()
+                && jsData.get_ref<const std::string&>().size()
+                    ? std::stol(jsData.get_ref<const std::string&>())
+                    : 0
             };
             stmt->bind(cid, value);
         }
@@ -292,18 +318,18 @@ void SQLiteDBEngine::deleteTempTable(const std::string& table)
 }
 
 bool SQLiteDBEngine::getTableCreateQuery(const std::string& table,
-                                         std::string& result_query)
+                                         std::string& resultQuery)
 {
     auto ret { false };
-    const std::string sql {"SELECT sql FROM sqlite_master WHERE type='table' AND name=?;"}; 
+    const std::string sql { "SELECT sql FROM sqlite_master WHERE type='table' AND name=?;" };
     if (!table.empty())
     {
         auto const& stmt { getStatement(sql) };
         stmt->bind(1, table);
         while (SQLITE_ROW == stmt->step())
         {
-            result_query.append(std::move(stmt->column(0)->value(std::string{})));
-            result_query.append(";");
+            resultQuery.append(std::move(stmt->column(0)->value(std::string{})));
+            resultQuery.append(";");
             ret = true;
         }
     }
@@ -606,11 +632,13 @@ std::string SQLiteDBEngine::buildLeftOnlyQuery(const std::string& t1,
 
 bool SQLiteDBEngine::insertNewRows(const std::string& table,
                                    const std::vector<std::string>& primaryKeyList,
-                                   const std::tuple<nlohmann::json&, void *> delta)
+                                   const std::tuple<nlohmann::json&, void *> delta,
+                                   const bool tempTable)
 {
     auto ret { true };
+    auto tableName { tempTable ? table+kTempTableSubFix : table };
     std::vector<Row> rowValues;
-    if (getLeftOnly(table+kTempTableSubFix, table, primaryKeyList, rowValues))
+    if (getLeftOnly(tableName, table, primaryKeyList, rowValues))
     {
         bulkInsert(table, rowValues);
         {
@@ -673,11 +701,12 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
 
 int SQLiteDBEngine::changeModifiedRows(const std::string& table, 
                                        const std::vector<std::string>& primaryKeyList, 
-                                       const std::tuple<nlohmann::json&, void *> delta)
+                                       const std::tuple<nlohmann::json&, void *> delta,
+                                       const bool tempTable)
 {
     auto ret { true };
     std::vector<Row> rowKeysValue;
-    if (getRowsToModify(table, primaryKeyList, rowKeysValue))
+    if (getRowsToModify(table, primaryKeyList, rowKeysValue, tempTable))
     {
         if (updateRows(table, primaryKeyList, rowKeysValue))
         {
@@ -816,13 +845,14 @@ std::string SQLiteDBEngine::buildModifiedRowsQuery(const std::string& t1,
     return ret;
 } 
 
-
 bool SQLiteDBEngine::getRowsToModify(const std::string& table,
                                      const std::vector<std::string>& primaryKeyList,
-                                     std::vector<Row>& rowKeysValue)
+                                     std::vector<Row>& rowKeysValue,
+                                     const bool tempTable)
 {
     auto ret { false };
-    auto sql { buildModifiedRowsQuery(table, table+kTempTableSubFix, primaryKeyList) };
+    auto tableName { tempTable ? table+kTempTableSubFix : table };
+    auto sql { buildModifiedRowsQuery(table, tableName, primaryKeyList) };
 
     if(!sql.empty())
     {
@@ -903,24 +933,24 @@ bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::__cxx11::
                                             nlohmann::json& object)
 {
     auto ret { true };
-    const auto row_type { std::get<GenericTupleIndex::GenType>(value.second) };
-    if (ColumnType::BigInt == row_type)
+    const auto rowType { std::get<GenericTupleIndex::GenType>(value.second) };
+    if (ColumnType::BigInt == rowType)
     {
         object[value.first] = std::get<ColumnType::BigInt>(value.second);
     }
-    else if (ColumnType::UnsignedBigInt == row_type)
+    else if (ColumnType::UnsignedBigInt == rowType)
     {
         object[value.first] = std::get<ColumnType::UnsignedBigInt>(value.second);
     }
-    else if (ColumnType::Integer == row_type)
+    else if (ColumnType::Integer == rowType)
     {
         object[value.first] = std::get<ColumnType::Integer>(value.second);
     }
-    else if (ColumnType::Text == row_type)
+    else if (ColumnType::Text == rowType)
     {
         object[value.first] = std::get<ColumnType::Text>(value.second);
     }
-    else if (ColumnType::Double == row_type)
+    else if (ColumnType::Double == rowType)
     {
         object[value.first] = std::get<ColumnType::Double>(value.second);
     }
@@ -938,20 +968,20 @@ bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::__cxx11::
                                             const bool quotationMarks)
 {
     auto ret { true };
-    const auto row_type { std::get<GenericTupleIndex::GenType>(value.second) };
-    if (ColumnType::BigInt == row_type)
+    const auto rowType { std::get<GenericTupleIndex::GenType>(value.second) };
+    if (ColumnType::BigInt == rowType)
     {
         resultValue.append(std::to_string(std::get<ColumnType::BigInt>(value.second)));
     }
-    else if (ColumnType::UnsignedBigInt == row_type)
+    else if (ColumnType::UnsignedBigInt == rowType)
     {
         resultValue.append(std::to_string(std::get<ColumnType::UnsignedBigInt>(value.second)));
     }
-    else if (ColumnType::Integer == row_type)
+    else if (ColumnType::Integer == rowType)
     {
         resultValue.append(std::to_string(std::get<ColumnType::Integer>(value.second)));
     }
-    else if (ColumnType::Text == row_type)
+    else if (ColumnType::Text == rowType)
     {
         if(quotationMarks)
         {
@@ -962,7 +992,7 @@ bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::__cxx11::
             resultValue.append(std::get<ColumnType::Text>(value.second));
         }
     }
-    else if (ColumnType::Double == row_type)
+    else if (ColumnType::Double == rowType)
     {
         resultValue.append(std::to_string(std::get<ColumnType::Double>(value.second)));
     }
