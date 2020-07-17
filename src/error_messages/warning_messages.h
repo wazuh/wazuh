@@ -41,4 +41,9 @@
 #define FIM_WARN_WHODATA_ADD_RULE               "(6926): Unable to add audit rule for '%s'"
 #define FIM_DB_FULL_ALERT                       "(6927): Sending DB 100%% full alert."
 
+/* Wazuh-logtest warning messages*/
+#define LOGTEST_INV_NUM_THREADS             "(7000): Number of logtest threads too high. Only creates %d threads"
+#define LOGTEST_INV_NUM_USERS               "(7001): Number of maximum users connected in logtest too high. Only allows %d users"
+#define LOGTEST_INV_NUM_TIMEOUT             "(7002): Number of maximum user timeouts in logtest too high. Only allows %ds maximum timeouts"
+
 #endif /* WARN_MESSAGES_H */
