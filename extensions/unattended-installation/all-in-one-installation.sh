@@ -227,7 +227,7 @@ installFilebeat() {
         exit 1;
     else
         curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/filebeat/7.x/filebeat_all_in_one.yml --max-time 300  > /dev/null 2>&1
-        curl -so /etc/filebeat/wazuh-template.json curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.13.1/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300 > /dev/null 2>&1
+        curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.13.1/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300 > /dev/null 2>&1
         chmod go+r /etc/filebeat/wazuh-template.json > /dev/null 2>&1
         curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz --max-time 300 | tar -xvz -C /usr/share/filebeat/module > /dev/null 2>&1
         mkdir /etc/filebeat/certs > /dev/null 2>&1
