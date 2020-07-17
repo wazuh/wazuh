@@ -103,7 +103,7 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
         int parsing_retval;
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         int length;
-        switch (length = OS_RecvTCPBuffer(peer, buffer,OS_MAXSTR), length) {
+        switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length) {
         case OS_SOCKTERR:
             mterror(WM_AGENT_UPGRADE_LOGTAG, "OS_RecvSecureTCP(): Too big message size received from an internal component.");
             break;
@@ -120,20 +120,27 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
         }
         if (json_response) {
             cJSON *command_response = NULL;
+            char* message = NULL;
             switch (parsing_retval)
             {
                 case 0:
                     command_response = wm_agent_process_upgrade_command(params, agents);
-                    OS_SendTCP(peer, cJSON_Print(command_response));
+                    message = cJSON_Print(command_response); 
+                    OS_SendSecureTCP(peer, strlen(message),message);
+                    os_free(message);
                     cJSON_Delete(command_response);
                     break;
                 case 1:
                     command_response = wm_agent_process_upgrade_result_command(agents);
-                    OS_SendTCP(peer, cJSON_Print(command_response));
+                    message = cJSON_Print(command_response); 
+                    OS_SendSecureTCP(peer, strlen(message), message);
+                    os_free(message);
                     cJSON_Delete(command_response);
                     break;
                 default:
-                    OS_SendTCP(peer, cJSON_Print(json_response));
+                    message = cJSON_Print(json_response);
+                    OS_SendSecureTCP(peer, strlen(message), message);
+                    os_free(message);
                     break;
             }
             cJSON_Delete(json_response);

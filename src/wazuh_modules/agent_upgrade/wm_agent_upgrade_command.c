@@ -15,7 +15,7 @@
 
 static void wm_agent_create_upgrade_tasks(const cJSON *agents, wm_upgrade_task *task, const char* command, cJSON* response, cJSON* failures);
 static void wm_agent_parse_task_information(cJSON *json_api, const cJSON* json_task_module);
-static cJSON *wm_agent_send_task_information(const cJSON *message);
+static cJSON *wm_agent_send_task_information(const cJSON *message_object);
 
 cJSON *wm_agent_process_upgrade_command(const cJSON* params, const cJSON* agents) {
     cJSON *json_api = NULL;
@@ -112,7 +112,7 @@ static void wm_agent_parse_task_information(cJSON *json_api, const cJSON* json_t
 
 /**
  * Sends the JSON information to the task module and retrieves the answer
- * @param message JSON to be sent. Ezample:
+ * @param message_object JSON to be sent. Ezample:
  *  [{
  *      "module" : "upgrade_module",
  *      "command": "upgrade",
@@ -137,7 +137,7 @@ static void wm_agent_parse_task_information(cJSON *json_api, const cJSON* json_t
  *      "task_id": {{tid2}}
  *  }]
  * */
-static cJSON *wm_agent_send_task_information(const cJSON *message) {
+static cJSON *wm_agent_send_task_information(const cJSON *message_object) {
     cJSON* response = NULL;
     int sock = OS_ConnectUnixDomain(WM_TASK_MODULE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
     if (sock == OS_SOCKTERR) {
@@ -145,9 +145,11 @@ static cJSON *wm_agent_send_task_information(const cJSON *message) {
     } else {
         char *buffer = NULL;
         int length;
-        OS_SendTCP(sock, cJSON_Print(message));
+        char *message = cJSON_Print(message_object);
+        OS_SendSecureTCP(sock, strlen(message), message);
+        os_free(message);
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
-        switch (length = OS_RecvTCPBuffer(sock, buffer, OS_MAXSTR), length) {
+        switch (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length) {
             case OS_SOCKTERR:
                 mterror(WM_AGENT_UPGRADE_LOGTAG, "OS_RecvSecureTCP(): Too big message size received from task manager module.");
                 break;
