@@ -45,10 +45,10 @@ kibana_user:
   hidden: false
   backend_roles:
   - "kibanauser"
-  - "wazuh_user"
-  - "wazuh_admin"
   hosts: []
-  users: []
+  users:
+  - "wazuh_user"
+  - "wazuh_admin"    
   and_backend_roles: []
   description: "Maps kibanauser to kibana_user"
 _meta:
