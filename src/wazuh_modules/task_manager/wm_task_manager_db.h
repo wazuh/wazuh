@@ -25,12 +25,29 @@ typedef enum _task_query {
     VU_GET_MAX_TASK_ID,
 } task_query;
 
-static const char *task_queries[] = {
-    [VU_INSERT_TASK] = "INSERT INTO " TASKS_TABLE " VALUES(NULL,?,?,?,?);",
-    [VU_GET_MAX_TASK_ID] = "SELECT MAX(TASK_ID) FROM " TASKS_TABLE ";"
-};
+typedef enum _task_status {
+    NEW = 0,
+    IN_PROGRESS,
+    DONE,
+    FAILED
+} task_status;
 
 extern char *schema_task_manager_sql;
+
+/**
+ * Create the tasks DB or check that it already exists.
+ * @return 0 when succeed, -1 otherwise.
+ * */
+int wm_task_manager_check_db();
+
+/**
+ * Insert a new task in the tasks DB.
+ * @param agent_id ID of the agent where the task will be executed.
+ * @param module Name of the module where the message comes from.
+ * @param command Command to be executed in the agent.
+ * @return ID of the task recently created when succeed, <=0 otherwise.
+ * */
+int wm_task_manager_insert_task(int agent_id, const char *module, const char *command);
 
 #endif
 #endif

@@ -15,9 +15,12 @@
 #include "wm_task_manager_db.h"
 #include "wazuh_db/wdb.h"
 
-static int wm_task_manager_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail);
-static int wm_task_manager_step(sqlite3_stmt *stmt);
 static int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt);
+
+static const char *task_queries[] = {
+    [VU_INSERT_TASK] = "INSERT INTO " TASKS_TABLE " VALUES(NULL,?,?,?,?);",
+    [VU_GET_MAX_TASK_ID] = "SELECT MAX(TASK_ID) FROM " TASKS_TABLE ";"
+};
 
 static const char *task_statuses[] = {
     [NEW] = "New",
@@ -25,30 +28,6 @@ static const char *task_statuses[] = {
     [DONE] = "Done",
     [FAILED] = "Failed"
 };
-
-int wm_task_manager_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail) {
-    int attempts;
-    int result;
-    for (attempts = 0; (result = sqlite3_prepare_v2(db, zSql, nByte, stmt, pzTail)) == SQLITE_BUSY; attempts++) {
-        if (attempts == MAX_SQL_ATTEMPTS) {
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_ACCESS_DB_ERROR);
-            return OS_INVALID;
-        }
-    }
-    return result;
-}
-
-int wm_task_manager_step(sqlite3_stmt *stmt) {
-    int attempts;
-    int result;
-    for (attempts = 0; (result = sqlite3_step(stmt)) == SQLITE_BUSY; attempts++) {
-        if (attempts == MAX_SQL_ATTEMPTS) {
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_ACCESS_DB_ERROR);
-            return OS_INVALID;
-        }
-    }
-    return result;
-}
 
 int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt) {
     mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_ERROR, sqlite3_errmsg(db));
@@ -73,17 +52,18 @@ int wm_task_manager_check_db() {
 
     // Load the tables schema
     for (sql = schema_task_manager_sql; sql && *sql; sql = tail) {
-        if (wm_task_manager_prepare(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_CREATE_DB_ERROR);
+        if (wdb_prepare(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
             return wm_task_manager_sql_error(db, stmt);
         }
 
-        switch (wm_task_manager_step(stmt)) {
+        switch (wdb_step(stmt)) {
         case SQLITE_MISUSE:
         case SQLITE_ROW:
         case SQLITE_DONE:
             break;
         default:
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
             return wm_task_manager_sql_error(db, stmt);
         }
 
@@ -124,7 +104,7 @@ int wm_task_manager_insert_task(int agent_id, const char *module, const char *co
         return wm_task_manager_sql_error(db, stmt);
     }
 
-    if (wm_task_manager_prepare(db, task_queries[VU_INSERT_TASK], -1, &stmt, NULL) != SQLITE_OK) {
+    if (wdb_prepare(db, task_queries[VU_INSERT_TASK], -1, &stmt, NULL) != SQLITE_OK) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
@@ -134,18 +114,20 @@ int wm_task_manager_insert_task(int agent_id, const char *module, const char *co
     sqlite3_bind_text(stmt, 3, command, -1, NULL);
     sqlite3_bind_text(stmt, 4, task_statuses[NEW], -1, NULL);
 
-    if (result = wm_task_manager_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+    if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
 
     wdb_finalize(stmt);
 
-    if (wm_task_manager_prepare(db, task_queries[VU_GET_MAX_TASK_ID], -1, &stmt, NULL) != SQLITE_OK) {
+    if (wdb_prepare(db, task_queries[VU_GET_MAX_TASK_ID], -1, &stmt, NULL) != SQLITE_OK) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
 
-    if (result = wm_task_manager_step(stmt), result != SQLITE_ROW) {
+    if (result = wdb_step(stmt), result != SQLITE_ROW) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
 

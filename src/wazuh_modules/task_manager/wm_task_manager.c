@@ -12,6 +12,7 @@
 #ifndef WIN32
 
 #include "../wmodules.h"
+#include "wm_task_manager_db.h"
 #include "../os_net/os_net.h"
 
 static int wm_task_manager_init(wm_task_manager *task_config);

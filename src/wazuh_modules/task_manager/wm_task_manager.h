@@ -48,13 +48,6 @@ typedef enum _error_code {
     UNKNOWN_ERROR
 } error_code;
 
-typedef enum _task_status {
-    NEW = 0,
-    IN_PROGRESS,
-    DONE,
-    FAILED
-} task_status;
-
 extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
 
 // Parse XML configuration
@@ -125,21 +118,6 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code);
  * @return JSON object.
  * */
 cJSON* wm_task_manager_build_response(int error_code, int agent_id, int task_id);
-
-/**
- * Create the tasks DB or check that it already exists.
- * @return 0 when succeed, -1 otherwise.
- * */
-int wm_task_manager_check_db();
-
-/**
- * Insert a new task in the tasks DB.
- * @param agent_id ID of the agent where the task will be executed.
- * @param module Name of the module where the message comes from.
- * @param command Command to be executed in the agent.
- * @return ID of the task recently created when succeed, <=0 otherwise.
- * */
-int wm_task_manager_insert_task(int agent_id, const char *module, const char *command);
 
 #endif
 #endif
