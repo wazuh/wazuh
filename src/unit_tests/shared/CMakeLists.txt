@@ -62,7 +62,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wr
                                 -Wl,--wrap=fgets,--wrap=fprintf,--wrap=fseek,--wrap=remove")
 
 list(APPEND shared_tests_names "test_schedule_scan")
-list(APPEND shared_tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=w_time_delay,--wrap=time,--wrap=_mwarn")
+list(APPEND shared_tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=w_time_delay,--wrap=time,--wrap=_mwarn \
+                                -Wl,--wrap=OSRegex_Compile -Wl,--wrap=OSRegex_Execute")
 
 endif()
 

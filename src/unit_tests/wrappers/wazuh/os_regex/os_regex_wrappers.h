@@ -12,7 +12,12 @@
 #ifndef OS_REGEX_WRAPPERS_H
 #define OS_REGEX_WRAPPERS_H
 
+#include "../../../../os_regex/os_regex.h"
 
+int __wrap_OSRegex_Compile(const char *pattern, OSRegex *reg, int flags);
 
+const char *__wrap_OSRegex_Execute(const char *str, OSRegex *reg);
+
+int __wrap_OS_StrIsNum(const char *str);
 
 #endif

@@ -8,10 +8,13 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <time.h>
+
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
+
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/time_op_wrappers.h"
+#include "../wrappers/wazuh/os_regex/os_regex_wrappers.h"
 
 extern time_t current_time;
 
@@ -23,16 +26,10 @@ typedef struct test_structure {
     xml_node **nodes;
     sched_scan_config *scan_config;
 } test_structure;
+
 /*********************************/
 /*       WRAPS                   */
 /*********************************/
-int __wrap_OS_StrIsNum(const char *str) {
-    int retval = mock();
-
-    check_expected(str);
-
-    return retval;
-}
 
 time_t __wrap_time(time_t *_time){
     if(!current_time){
