@@ -726,7 +726,7 @@ async def revoke_all_tokens(request):
     """Revoke all tokens."""
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=security.revoke_tokens,
+    dapi = DistributedAPI(f=security.wrapper_revoke_tokens,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
