@@ -49,7 +49,14 @@ const wm_context WM_AGENT_UPGRADE_CONTEXT = {
 };
 
 void * wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
-    mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Module AgentUpgrade started");
+    
+    // Check if module is enabled
+    if (!upgrade_config->enabled) {
+        mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_DISABLED);
+        pthread_exit(NULL);
+    }
+
+    mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_STARTED);
 
     // Initialize task hashmap
     wm_agent_init_task_map();
@@ -125,20 +132,20 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
             {
                 case WM_UPGRADE_UPGRADE:
                     command_response = wm_agent_process_upgrade_command(params, agents);
-                    message = cJSON_Print(command_response); 
+                    message = cJSON_PrintUnformatted(command_response); 
                     OS_SendSecureTCP(peer, strlen(message),message);
                     os_free(message);
                     cJSON_Delete(command_response);
                     break;
                 case WM_UPGRADE_UPGRADE_RESULTS:
                     command_response = wm_agent_process_upgrade_result_command(agents);
-                    message = cJSON_Print(command_response); 
+                    message = cJSON_PrintUnformatted(command_response); 
                     OS_SendSecureTCP(peer, strlen(message), message);
                     os_free(message);
                     cJSON_Delete(command_response);
                     break;
                 default:
-                    message = cJSON_Print(json_response);
+                    message = cJSON_PrintUnformatted(json_response);
                     OS_SendSecureTCP(peer, strlen(message), message);
                     os_free(message);
                     break;

@@ -53,7 +53,7 @@ cJSON* wm_agent_process_upgrade_result_command(const cJSON* agents) {
         }   
     }
 
-    char *response_string = cJSON_Print(response);
+    char *response_string = cJSON_PrintUnformatted(response);
     mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RESULT_SHOW_RESULTS, response_string);
     os_free(response_string);
 

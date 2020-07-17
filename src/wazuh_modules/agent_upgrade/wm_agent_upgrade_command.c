@@ -63,7 +63,7 @@ static void wm_agent_create_upgrade_tasks(const cJSON *agents, wm_upgrade_task *
         os_strdup(command, agent_task->command);
         agent_task->task = task;
         cJSON* agent_id = cJSON_GetArrayItem(agents, i);
-        int result = wm_agent_create_task_entry(agent_id->valueint, (void *)task);
+        int result = wm_agent_create_task_entry(agent_id->valueint, agent_task);
         if (result == OSHASH_SUCCESS ) {
            cJSON *task_message = wm_agent_parse_task_module_message(agent_task->command, agent_id->valueint);
            cJSON_AddItemToArray(response, task_message);
@@ -148,7 +148,7 @@ static cJSON *wm_agent_send_task_information(const cJSON *message_object) {
     } else {
         char *buffer = NULL;
         int length;
-        char *message = cJSON_Print(message_object);
+        char *message = cJSON_PrintUnformatted(message_object);
         OS_SendSecureTCP(sock, strlen(message), message);
         os_free(message);
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
