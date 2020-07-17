@@ -6496,6 +6496,10 @@ paths:
             $ref: '#/components/responses/ResponseError'
           '401':
             $ref: '#/components/responses/UnauthorizedResponse'
+          '405':
+            $ref: '#/components/responses/InvalidHTTPMethodResponse'
+          '429':
+            $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/outdated:
     get:
