@@ -64,7 +64,7 @@ int __wrap_pthread_mutex_destroy() {
 
 int __wrap_ReadConfig(int modules, const char *cfgfile, void *d1, void *d2) {
     if (!logtest_enabled) {
-        strcpy(w_logtest_conf.enabled,"no");
+        w_logtest_conf.enabled = false;
     }
     return mock();
 }
@@ -110,8 +110,6 @@ void test_w_logtest_init_parameters_invalid(void **state)
 
     int ret = w_logtest_init_parameters();
     assert_int_equal(ret, OS_INVALID);
-
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_w_logtest_init_parameters_done(void **state)
@@ -120,8 +118,6 @@ void test_w_logtest_init_parameters_done(void **state)
 
     int ret = w_logtest_init_parameters();
     assert_int_equal(ret, OS_SUCCESS);
-
-    os_free(w_logtest_conf.enabled);
 }
 
 /* w_logtest_init */
@@ -132,8 +128,6 @@ void test_w_logtest_init_error_parameters(void **state)
     expect_string(__wrap__merror, formatted_msg, "(7304): Invalid wazuh-logtest configuration");
 
     w_logtest_init();
-
-    os_free(w_logtest_conf.enabled);
 }
 
 
@@ -147,7 +141,6 @@ void test_w_logtest_init_logtest_disabled(void **state)
 
     w_logtest_init();
 
-    os_free(w_logtest_conf.enabled);
     logtest_enabled = 1;
 }
 
@@ -160,8 +153,6 @@ void test_w_logtest_init_conection_fail(void **state)
     expect_string(__wrap__merror, formatted_msg, "(7300): Unable to bind to socket '/queue/ossec/logtest'. Errno: (0) Success");
 
     w_logtest_init();
-
-    os_free(w_logtest_conf.enabled);
 }
 
 void test_w_logtest_init_OSHash_create_fail(void **state)
@@ -175,8 +166,6 @@ void test_w_logtest_init_OSHash_create_fail(void **state)
     expect_string(__wrap__merror, formatted_msg, "(7303): Failure to initialize all_sesssions hash");
 
     w_logtest_init();
-
-    os_free(w_logtest_conf.enabled);
 }
 
 // void test_w_logtest_init_done(void **state) -> Needs to implement w_logtest_main
