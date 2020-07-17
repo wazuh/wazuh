@@ -16,7 +16,6 @@ from shutil import copyfile, rmtree
 from time import time, sleep
 
 import requests
-import random
 
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
@@ -1628,13 +1627,13 @@ def expand_group(group_name):
 
     return agents_ids
 
-def send_task_upgrade_module(command=None, agent_list=None, debug=False, time_out=common.upgrade_result_retries, file_path=None, installer=None, 
-                                wpk_repo=None, version=None, use_http=False, force_upgrade=0, rl_timeout=-1, show_progress=False, chunk_size=None):
+def send_task_upgrade_module(command=None, agent_list=None, debug=False, file_path=None, installer=None, 
+                                wpk_repo=None, version=None, use_http=False, force_upgrade=0):
     
     valid_commands = ['upgrade', 'upgrade_result']
 
     if command == None or command not in valid_commands:
-        raise WazuhError(1740) #Change this error to "invalid or null command"
+        raise WazuhError(1002, extra_message="Bad command for upgrade module")
 
     if agent_list == None or "000" in agent_list:
         raise WazuhError(1703)
@@ -1652,23 +1651,23 @@ def send_task_upgrade_module(command=None, agent_list=None, debug=False, time_ou
         if version != None:
             data.get("params").update({"version" : version})
         if use_http != None:
-            data.get("params").update({"use_http" : use_http})
+            data.get("params").update({"use_http" : str(use_http)})
         if force_upgrade != None:
-            data.get("params").update({"force_upgrade" : force_upgrade})
+            data.get("params").update({"force_upgrade" : str(force_upgrade)})
         
     data = str(data).replace("\'", "\"")
     if debug:
         print("MSG SENT TO UPGRADE MODULE: {0}".format(data))
         
     try:
-        sock = OssecSocket(common.UPGRADE_SOCKET)
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.connect(common.UPGRADE_SOCKET)
         sock.send(data.encode())
-        data_rec = sock.receive().decode()
+        data_rec = sock.recv(4096, socket.MSG_WAITALL).decode()
         if debug:
             print("MSG RECV FROM UPGRADE MODULE: {0}".format(data_rec))
     except Exception as msg:
-        print(msg)
-        return str(msg)
+        raise WazuhError(1010, extra_message=str(msg))
     finally:
         sock.close()
     

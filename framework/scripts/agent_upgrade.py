@@ -33,10 +33,6 @@ def signal_handler(n_signal, frame):
     print("")
     exit(1)
 
-def print_progress(value):
-    stdout.write("Sending WPK: [%-25s] %d%%   \r" % ('=' * int(value / 4), value))
-    stdout.flush()
-
 def list_outdated():
     agents = wazuh.agent.get_outdated_agents()
     if agents.total_affected_items == 0:
@@ -75,40 +71,31 @@ def main():
         if not pattern.match(args.version):
             raise WazuhException(1733, "Version received: {0}".format(args.version))
 
-    if args.chunk_size is not None:
-        if args.chunk_size < 1 or args.chunk_size > 64000:
-            raise WazuhException(1744, "Chunk defined: {0}".format(args.chunk_size))
-
-    upgrade_command_result = ""
+    upgrade_command_result = None
     # Custom WPK file
     if args.file:
         upgrade_command_result = send_task_upgrade_module(command='upgrade', file_path=args.file,
                                                             agent_list=agent_list,
                                                             installer=args.execute if args.execute else "upgrade.sh",
-                                                            debug=args.debug,
-                                                            show_progress=print_progress if not args.silent else None,
-                                                            chunk_size=args.chunk_size,
-                                                            rl_timeout=-1 if args.timeout == None else args.timeout)
+                                                            debug=args.debug)
     # WPK upgrade file
     else:
-        #prev_ver = agent.version
         upgrade_command_result = send_task_upgrade_module(command='upgrade', 
                                                             agent_list=agent_list,
                                                             wpk_repo=args.repository,
                                                             debug=args.debug, 
                                                             version=args.version,
-                                                            force_upgrade=args.force,
-                                                            show_progress=print_progress if not args.silent else None,
-                                                            chunk_size=args.chunk_size,
-                                                            rl_timeout=-1 if args.timeout == None else args.timeout, 
+                                                            force_upgrade=args.force, 
                                                             use_http=use_http)
 
-    counter = 0
-    
-    sleep(10)
-
+    if not upgrade_command_result or upgrade_command_result == "":
+        print ("No response from upgrade module")
+        exit()
     #check if any agent start the upgrade
-    agents = json.loads(upgrade_command_result.replace("\'", "\""))
+    try:
+        agents = json.loads(upgrade_command_result.replace("\'", "\""))
+    except Exception as e:
+        raise WazuhException(1003, extra_message=str(e))
 
     id_agents_upgrading = []
     for agent in agents:
@@ -117,8 +104,9 @@ def main():
             
         if agent["error"] == 0:
             id_agents_upgrading.append(agent["agent"])
-    
+    sleep(10)
     if id_agents_upgrading:
+        counter = 0
         #waiting for upgrade task end
         while counter < common.agent_info_retries and id_agents_upgrading:
             sleep(common.agent_info_sleep)
@@ -126,7 +114,16 @@ def main():
             #request state of upgrading tasks
             upgrade_result = send_task_upgrade_module(command='upgrade_result', agent_list=id_agents_upgrading, debug=args.debug)
 
-            agents_results = json.loads(upgrade_result.replace("\'", "\""))
+            if not upgrade_result or upgrade_result == "":
+                print ("No response from upgrade module")
+                continue
+
+            try:
+                agents_results = json.loads(upgrade_result.replace("\'", "\""))
+            except Exception as e:
+                if not args.silent:
+                    print ('Response output not in json: {0}'.format(str(e)))
+                continue
 
             if not args.silent:
                 print("Cheking upgrade status: retrie {}".format(counter))             
@@ -148,7 +145,6 @@ def main():
             if id_agents_upgrading:
                 for a in id_agents_upgrading:
                     print("Agent not finished id: {0}".format(a))
-                raise WazuhException(1716, "Timeout waiting for agent reconnection.")
             else:
                 print("Upgrade process finished")
         
@@ -160,7 +156,7 @@ def main():
 if __name__ == "__main__":
 
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("-a", "--agent", type=str, help="Agent ID to upgrade.")
+    arg_parser.add_argument("-a", "--agent", type=str, help="Agent ID to upgrade or a list in the following format: 001,002,003.")
     arg_parser.add_argument("-r", "--repository", type=str, help="Specify a repository URL. [Default: {0}]".format(
         common.wpk_repo_url))
     arg_parser.add_argument("-v", "--version", type=str, help="Version to upgrade. [Default: latest Wazuh version]")
@@ -168,9 +164,6 @@ if __name__ == "__main__":
     arg_parser.add_argument("-s", "--silent", action="store_true", help="Do not show output.")
     arg_parser.add_argument("-d", "--debug", action="store_true", help="Debug mode.")
     arg_parser.add_argument("-l", "--list_outdated", action="store_true", help="Generates a list with all outdated agents.")
-    arg_parser.add_argument("-c", "--chunk_size", type=int, help="Chunk size sending WPK file. Allowed values: [1 - 64000]. [Default: {0}]".format(
-        common.wpk_chunk_size))
-    arg_parser.add_argument("-t", "--timeout", type=int, help="Timeout until agent restart is unlocked.")
     arg_parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")
     arg_parser.add_argument("-x", "--execute", type=str, help="Executable filename in the WPK custom file. [Default: upgrade.sh]")
     arg_parser.add_argument("--http", action="store_true", help="Uses http protocol instead of https.")
