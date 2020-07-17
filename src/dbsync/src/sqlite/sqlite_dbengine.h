@@ -65,20 +65,15 @@ using TableField =
 using Row = std::map<std::string, TableField>;
 
 
-enum ResponseType {
-  RT_JSON = 0,
-  RT_CALLBACK
-}; 
-
 class SQLiteDBEngine : public DbSync::IDbEngine {
 public:
-  SQLiteDBEngine(std::shared_ptr<ISQLiteFactory> sqlite_factory,const std::string& path, const std::string& table_statement_creation);
+  SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqlite_factory,const std::string& path, const std::string& table_statement_creation);
   ~SQLiteDBEngine();
   
   virtual void execute(const std::string& query) override;
   virtual void select(const std::string& query, nlohmann::json& result) override;
   virtual void bulkInsert(const std::string& table, const nlohmann::json& data) override;
-  virtual void refreshTableData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) override;
+  virtual void refreshTableData(const nlohmann::json& data, const DbSync::ResultCallback callback) override;
 
 private:
   void initialize(const std::string& path, const std::string& table_statement_creation);
@@ -95,8 +90,8 @@ private:
   bool getTableCreateQuery(const std::string& table, std::string& result_query);
   bool getPrimaryKeysFromTable(const std::string& table, std::vector<std::string>& primary_key_list);
 
-  bool removeNotExistsRows(const std::string& table, const std::vector<std::string>& primary_key_list, const std::tuple<nlohmann::json&, void *> delta);
-  bool insertNewRows(const std::string& table, const std::vector<std::string>& primary_key_list, const std::tuple<nlohmann::json&, void *> delta);
+  bool removeNotExistsRows(const std::string& table, const std::vector<std::string>& primary_key_list, const DbSync::ResultCallback callback);
+  bool insertNewRows(const std::string& table, const std::vector<std::string>& primary_key_list, const DbSync::ResultCallback callback);
 
   bool deleteRows(const std::string& table, const std::vector<std::string>& primary_key_list, const std::vector<Row>& rows_to_remove);
   int32_t getTableData(std::unique_ptr<SQLite::IStatement>const & stmt, const int32_t index, const ColumnType& type, const std::string& field_name, Row& row);
@@ -109,7 +104,7 @@ private:
   void deleteTempTable(const std::string& table);
 
   std::string buildModifiedRowsQuery(const std::string& t1,const std::string& t2, const std::vector<std::string>& primary_key_list);
-  int changeModifiedRows(const std::string& table, const std::vector<std::string>& primary_key_list, const std::tuple<nlohmann::json&, void *> delta);
+  int changeModifiedRows(const std::string& table, const std::vector<std::string>& primary_key_list, const DbSync::ResultCallback callback);
   std::string buildUpdateDataSqlQuery(const std::string& table, const std::vector<std::string>& primary_key_list, const Row& row, const std::pair<const std::__cxx11::string, TableField> &field);
 
   bool getRowsToModify(const std::string& table, const std::vector<std::string>& primary_key_list, std::vector<Row>& row_keys_value);

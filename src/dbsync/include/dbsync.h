@@ -228,7 +228,7 @@ EXPORTED int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
  */
   EXPORTED int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
                                               const cJSON*        js_snapshot,
-                                              void*               callback);
+                                              result_callback_t   callback);
 
 /**
  * @brief Deallocate cJSON result data.

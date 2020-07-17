@@ -12,11 +12,14 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <functional>
 #include "typedef.h"
 #include <json.hpp>
 
 namespace DbSync
 {
+    using ResultCallback = std::function<void(ReturnTypeCallback, const nlohmann::json&)>;
+
     class IDbEngine
     {
     public:
@@ -26,7 +29,7 @@ namespace DbSync
         virtual void bulkInsert(const std::string& table,
                                 const nlohmann::json& data) = 0;
         virtual void refreshTableData(const nlohmann::json& data,
-                                      std::tuple<nlohmann::json&, void *> delta) = 0;
+                                      const ResultCallback callback) = 0;
         virtual ~IDbEngine() = default;
     protected:
         IDbEngine() = default;
