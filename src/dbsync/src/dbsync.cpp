@@ -110,7 +110,15 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
         try
         {
             //DbSyncImplementation...-> txnContext
-            txn = PipelineFactory::instance().create(handle, nullptr, thread_number, max_queue_size, callback);
+            const auto callbackWrapper
+            {
+                [callback](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+                {
+                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    callback(result, spJson.get());
+                }
+            };
+            txn = PipelineFactory::instance().create(handle, nullptr, thread_number, max_queue_size, callbackWrapper);
         }
         catch(const DbSync::dbsync_error& ex)
         {
@@ -276,7 +284,15 @@ int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
     {
         try
         {
-            PipelineFactory::instance().pipeline(txn)->getDeleted(callback);
+            const auto callbackWrapper
+            {
+                [callback](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+                {
+                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    callback(result, spJson.get());
+                }
+            };
+            PipelineFactory::instance().pipeline(txn)->getDeleted(callbackWrapper);
             ret_val = 0;
         }
         catch(const DbSync::dbsync_error& ex)

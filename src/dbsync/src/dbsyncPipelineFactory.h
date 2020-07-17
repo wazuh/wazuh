@@ -14,18 +14,18 @@
 #include <mutex>
 #include <memory>
 #include <functional>
+#include "dbengine.h"
 #include "typedef.h"
 
 namespace DbSync
 {
     using TxnContext = void*;
     using PipelineCtxHandle = void*;
-    using ResultCallback = std::function<void(ReturnTypeCallback, cJSON*)>;
     struct IPipeline
     {
         virtual ~IPipeline() = default;
-        virtual void syncRow(const char* syncJson) = 0;
-        virtual void getDeleted(ResultCallback callback) = 0;
+        virtual void syncRow(const nlohmann::json& syncJson) = 0;
+        virtual void getDeleted(const ResultCallback callback) = 0;
     };
 
     class PipelineFactory
@@ -37,7 +37,7 @@ namespace DbSync
                                  const TxnContext txnContext,
                                  const unsigned int threadNumber,
                                  const unsigned int maxQueueSize,
-                                 ResultCallback callback);
+                                 const ResultCallback callback);
         const std::shared_ptr<IPipeline>& pipeline(const PipelineCtxHandle handle);
         void destroy(const PipelineCtxHandle handle);
     private:
