@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_tasks.h"
 #include "os_net/os_net.h"
 #include "shared.h"
@@ -49,6 +50,7 @@ void wm_agent_insert_tasks_id(const int task_id, const int agent_id) {
     char agent_id_string[128];
     sprintf(agent_id_string, "%d", agent_id);
     wm_task *agent_task = (wm_task *)OSHash_Get_ex(task_table_by_agent_id, agent_id_string);
+    assert(agent_task);
     if (agent_task) {
         agent_task->task_id = task_id;
         OSHash_Update_ex(task_table_by_agent_id, agent_id_string, agent_task);
@@ -74,5 +76,5 @@ int wm_agent_task_present(const int agent_id) {
     if (agent_task) {
         return agent_task->task_id;
     }
-    return -1;
+    return OS_INVALID;
 }

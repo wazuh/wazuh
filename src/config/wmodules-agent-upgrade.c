@@ -7,7 +7,7 @@
  * Foundation
 */
 
-#include "wazuh_modules/agent_upgrade/wm_agent_upgrade.h"
+#include "wazuh_modules/wmodules.h"
 
 int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
     if (!module->data) {

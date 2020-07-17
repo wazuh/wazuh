@@ -57,7 +57,7 @@ void wm_agent_remove_entry(const int agent_id);
 /**
  * Check whether an upgrade task for an agent is present or not
  * @param agent_id id of the agent
- * @return task_id if task is present, -1 otherwise
+ * @return task_id if task is present, OS_INVALID otherwise
  * */
 int wm_agent_task_present(const int agent_id);
 #endif

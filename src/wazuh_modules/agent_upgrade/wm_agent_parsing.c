@@ -14,11 +14,11 @@
 #include "wm_agent_upgrade_tasks.h"
 
 int wm_agent_parse_command(const char* buffer, cJSON** json_api, cJSON** params, cJSON** agents) {
-    int retval = -1;
+    int retval = OS_INVALID;
     cJSON * root = cJSON_Parse(buffer);
     if (!root) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_JSON_PARSE_ERROR,  buffer);
-        *json_api = wm_agent_parse_response_mesage(PARSING_ERROR, upgrade_error_codes[PARSING_ERROR], NULL, NULL, NULL);
+        *json_api = wm_agent_parse_response_message(PARSING_ERROR, upgrade_error_codes[PARSING_ERROR], NULL, NULL, NULL);
     } else {
         cJSON *command = cJSON_GetObjectItem(root, "command");
         *params = cJSON_GetObjectItem(root, "params");
@@ -26,17 +26,17 @@ int wm_agent_parse_command(const char* buffer, cJSON** json_api, cJSON** params,
         if (command && *agents) {
             *json_api = root;
             if (strcmp(command->valuestring, WM_AGENT_UPGRADE_COMMAND_NAME) == 0) {
-                retval = 0;
+                retval = UPGRADE;
             } else if (strcmp(command->valuestring, WM_AGENT_UPGRADE_RESULT_COMMAND_NAME) == 0) { 
-                retval = 1;
+                retval = UPGRADE_RESULTS;
             } else {
                 // TODO invalid command
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR,  command->valuestring);
-                json_api = wm_agent_parse_response_mesage(TASK_CONFIGURATIONS, upgrade_error_codes[TASK_CONFIGURATIONS], NULL, NULL, NULL);
+                *json_api = wm_agent_parse_response_message(TASK_CONFIGURATIONS, upgrade_error_codes[TASK_CONFIGURATIONS], NULL, NULL, NULL);
             }
         } else {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUIRED_PARAMETERS);
-            *json_api = wm_agent_parse_response_mesage(PARSING_REQUIRED_PARAMETER, upgrade_error_codes[PARSING_REQUIRED_PARAMETER], NULL, NULL, NULL);
+            *json_api = wm_agent_parse_response_message(PARSING_REQUIRED_PARAMETER, upgrade_error_codes[PARSING_REQUIRED_PARAMETER], NULL, NULL, NULL);
             cJSON_Delete(root);
         }
     }
@@ -47,7 +47,7 @@ wm_upgrade_task* wm_agent_parse_upgrade_command(const cJSON* params, char* outpu
     wm_upgrade_task *task = wm_agent_init_upgrade_task();
     int param_index = 0;
     int error_flag = 0;
-    while(!error_flag && (param_index < cJSON_GetArraySize(params))) {
+    while(!error_flag && params && (param_index < cJSON_GetArraySize(params))) {
         cJSON *item = cJSON_GetArrayItem(params, param_index++);
         if (strcmp(item->string, "file_path") == 0) {
             /* File_path */
@@ -118,7 +118,7 @@ wm_upgrade_task* wm_agent_parse_upgrade_command(const cJSON* params, char* outpu
     }
 }
 
-cJSON*  wm_agent_parse_response_mesage(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
+cJSON*  wm_agent_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
     cJSON * response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", error_id);
     cJSON_AddStringToObject(response, "data", message);

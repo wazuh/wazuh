@@ -10,7 +10,8 @@
  */
 
 #include "wazuh_modules/wmodules.h"
-#include "wm_agent_upgrade.h"
+#include "wm_agent_parsing.h"
+#include "wm_agent_upgrade_tasks.h"
 #include "os_net/os_net.h"
 
 const char* upgrade_error_codes[] = {
@@ -21,7 +22,6 @@ const char* upgrade_error_codes[] = {
     [TASK_MANAGER_COMMUNICATION] ="Could not create task id for upgrade task",
     [TASK_MANAGER_FAILURE] = "", // Data string wil be provded by task manager
     [UPGRADE_ALREADY_ON_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading",
-    [AGENT_ID_ERROR] = "Agent id not present in database",
     [UNKNOWN_ERROR] "Upgrade procedure could not start"
 };
 
@@ -123,14 +123,14 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
             char* message = NULL;
             switch (parsing_retval)
             {
-                case 0:
+                case UPGRADE:
                     command_response = wm_agent_process_upgrade_command(params, agents);
                     message = cJSON_Print(command_response); 
                     OS_SendSecureTCP(peer, strlen(message),message);
                     os_free(message);
                     cJSON_Delete(command_response);
                     break;
-                case 1:
+                case UPGRADE_RESULTS:
                     command_response = wm_agent_process_upgrade_result_command(agents);
                     message = cJSON_Print(command_response); 
                     OS_SendSecureTCP(peer, strlen(message), message);

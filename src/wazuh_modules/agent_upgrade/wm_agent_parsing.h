@@ -14,16 +14,16 @@
 #include "wm_agent_upgrade.h"
 
 /**
- * Parse received upgrade message, separetes it according to agent list
- * Will return response JSON to be returned to the socket
+ * Parse received upgrade message and returns params and agents values and a code
+ * representing a command if it is valid or an error code otherwise
  * @param buffer message to be parsed
  * @param json_api pointer where the parsed message will be allocated
  * @param params on success command params will be stored in this variable
  * @param pagents on success agents list will be stored in this variable
  * @return error code
- * @retval -1 on errors
- * @retval 0 if is and upgrade command
- * @retval 1 if it is and upgrade_result command
+ * @retval OS_INVALID on errors
+ * @retval UPGRADE if is and upgrade command
+ * @retval UPGRADE_RESULT if it is and upgrade_result command
  * */
 int wm_agent_parse_command(const char* buffer, cJSON** json_api, cJSON **params, cJSON **agents);
 
@@ -36,7 +36,7 @@ int wm_agent_parse_command(const char* buffer, cJSON** json_api, cJSON **params,
  * @param status [OPTIONAL] status string
  * @return response json
  * */
-cJSON* wm_agent_parse_response_mesage(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status);
+cJSON* wm_agent_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status);
 
 /**
  * Parses a message to be sent to the request module

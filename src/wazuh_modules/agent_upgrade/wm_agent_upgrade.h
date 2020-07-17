@@ -12,17 +12,26 @@
 #ifndef WM_AGENT_UPGRADE_H
 #define WM_AGENT_UPGRADE_H
 
-#include "wazuh_modules/wmodules.h"
-
 int wm_agent_upgrade_read(xml_node **nodes, wmodule *module);
 
 extern const wm_context WM_AGENT_UPGRADE_CONTEXT;   // Context
 
-cJSON *wm_agent_process_upgrade_command(const cJSON* params, const cJSON* agents);
-cJSON* wm_agent_process_upgrade_result_command(const cJSON* agents);
-/**
- * Module general configuration
+/** 
+ * Process and upgrade command. Create the task for each agent_id, dispatches to task manager and
+ * then starts upgrading process.
+ * @param params cJSON with the task parameters. For more details @see wm_agent_parse_upgrade_command
+ * @param agents cJSON Array with the list of agents id
+ * @return json object with the response
  * */
+cJSON *wm_agent_process_upgrade_command(const cJSON* params, const cJSON* agents);
+
+/**
+ * @WIP
+ * Process and upgrade_result command. 
+ * @param agents cJSON Array with the list of agents id
+ * @return json object with the response
+ * */
+cJSON* wm_agent_process_upgrade_result_command(const cJSON* agents);
 
 typedef enum _wm_upgrade_state {
     NOT_STARTED,
@@ -38,9 +47,13 @@ typedef enum _wm_upgrade_error_codes {
     TASK_MANAGER_COMMUNICATION,
     TASK_MANAGER_FAILURE,
     UPGRADE_ALREADY_ON_PROGRESS,
-    AGENT_ID_ERROR,
     UNKNOWN_ERROR
 } wm_upgrade_error_codes;
+
+typedef enum _wm_commands {
+    UPGRADE = 0,
+    UPGRADE_RESULTS
+} wm_commands;
 
 typedef struct _wm_agent_upgrade {
     int enabled; ///< Indicates if modules is enabled
