@@ -34,25 +34,25 @@ cJSON *wm_agent_process_upgrade_command(const cJSON* params, const cJSON* agents
 cJSON* wm_agent_process_upgrade_result_command(const cJSON* agents);
 
 typedef enum _wm_upgrade_state {
-    NOT_STARTED,
-    STARTED,
-    ERROR
+    WM_UPGRADE_NOT_STARTED,
+    WM_UPGRADE_STARTED,
+    WM_UPGRADE_ERROR
 } wm_upgrade_state;
 
 typedef enum _wm_upgrade_error_codes {
-    SUCCESS = 0,
-    PARSING_ERROR,
-    PARSING_REQUIRED_PARAMETER,
-    TASK_CONFIGURATIONS,
-    TASK_MANAGER_COMMUNICATION,
-    TASK_MANAGER_FAILURE,
-    UPGRADE_ALREADY_ON_PROGRESS,
-    UNKNOWN_ERROR
+    WM_UPGRADE_SUCCESS = 0,
+    WM_UPGRADE_PARSING_ERROR,
+    WM_UPGRADE_PARSING_REQUIRED_PARAMETER,
+    WM_UPGRADE_TASK_CONFIGURATIONS,
+    WM_UPGRADE_TASK_MANAGER_COMMUNICATION,
+    WM_UPGRADE_TASK_MANAGER_FAILURE,
+    WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS,
+    WM_UPGRADE_UNKNOWN_ERROR
 } wm_upgrade_error_codes;
 
 typedef enum _wm_commands {
-    UPGRADE = 0,
-    UPGRADE_RESULTS
+    WM_UPGRADE_UPGRADE = 0,
+    WM_UPGRADE_UPGRADE_RESULTS
 } wm_commands;
 
 typedef struct _wm_agent_upgrade {

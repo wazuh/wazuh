@@ -15,14 +15,14 @@
 #include "os_net/os_net.h"
 
 const char* upgrade_error_codes[] = {
-    [SUCCESS] = "Success",
-    [PARSING_ERROR] = "Could not parse message JSON",
-    [PARSING_REQUIRED_PARAMETER] = "Required parameters in json message where not found",
-    [TASK_CONFIGURATIONS] = "Command not recognized",
-    [TASK_MANAGER_COMMUNICATION] ="Could not create task id for upgrade task",
-    [TASK_MANAGER_FAILURE] = "", // Data string wil be provded by task manager
-    [UPGRADE_ALREADY_ON_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading",
-    [UNKNOWN_ERROR] "Upgrade procedure could not start"
+    [WM_UPGRADE_SUCCESS] = "Success",
+    [WM_UPGRADE_PARSING_ERROR] = "Could not parse message JSON",
+    [WM_UPGRADE_PARSING_REQUIRED_PARAMETER] = "Required parameters in json message where not found",
+    [WM_UPGRADE_TASK_CONFIGURATIONS] = "Command not recognized",
+    [WM_UPGRADE_TASK_MANAGER_COMMUNICATION] ="Could not create task id for upgrade task",
+    [WM_UPGRADE_TASK_MANAGER_FAILURE] = "", // Data string wil be provded by task manager
+    [WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading",
+    [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start"
 };
 
 /**
@@ -123,14 +123,14 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
             char* message = NULL;
             switch (parsing_retval)
             {
-                case UPGRADE:
+                case WM_UPGRADE_UPGRADE:
                     command_response = wm_agent_process_upgrade_command(params, agents);
                     message = cJSON_Print(command_response); 
                     OS_SendSecureTCP(peer, strlen(message),message);
                     os_free(message);
                     cJSON_Delete(command_response);
                     break;
-                case UPGRADE_RESULTS:
+                case WM_UPGRADE_UPGRADE_RESULTS:
                     command_response = wm_agent_process_upgrade_result_command(agents);
                     message = cJSON_Print(command_response); 
                     OS_SendSecureTCP(peer, strlen(message), message);

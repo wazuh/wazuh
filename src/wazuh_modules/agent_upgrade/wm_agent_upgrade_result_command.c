@@ -46,10 +46,10 @@ cJSON* wm_agent_process_upgrade_result_command(const cJSON* agents) {
             //cJSON_AddItemToArray(response, wm_agent_parse_response_message(SUCCESS, "Agent is updated", &agent_id, NULL, "UPDATED"));
             // cJSON_AddItemToArray(response, wm_agent_parse_response_message(AGENT_ID_ERROR, upgrade_error_codes[AGENT_ID_ERROR], &agent_id, NULL, "ERROR"));
             // Agent out of date
-            cJSON_AddItemToArray(response, wm_agent_parse_response_message(SUCCESS, upgrade_results_messages[STATUS_OUTDATED], &agent_id, NULL, upgrade_results_status[STATUS_OUTDATED]));
+            cJSON_AddItemToArray(response, wm_agent_parse_response_message(WM_UPGRADE_SUCCESS, upgrade_results_messages[STATUS_OUTDATED], &agent_id, NULL, upgrade_results_status[STATUS_OUTDATED]));
         } else {
             // Agent on update process
-            cJSON_AddItemToArray(response, wm_agent_parse_response_message(SUCCESS, upgrade_results_messages[STATUS_UPDATING], &agent_id, &task_id, upgrade_results_status[STATUS_UPDATING]));
+            cJSON_AddItemToArray(response, wm_agent_parse_response_message(WM_UPGRADE_SUCCESS, upgrade_results_messages[STATUS_UPDATING], &agent_id, &task_id, upgrade_results_status[STATUS_UPDATING]));
         }   
     }
 

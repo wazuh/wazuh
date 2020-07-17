@@ -18,7 +18,7 @@ int wm_agent_parse_command(const char* buffer, cJSON** json_api, cJSON** params,
     cJSON * root = cJSON_Parse(buffer);
     if (!root) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_JSON_PARSE_ERROR,  buffer);
-        *json_api = wm_agent_parse_response_message(PARSING_ERROR, upgrade_error_codes[PARSING_ERROR], NULL, NULL, NULL);
+        *json_api = wm_agent_parse_response_message(WM_UPGRADE_PARSING_ERROR, upgrade_error_codes[WM_UPGRADE_PARSING_ERROR], NULL, NULL, NULL);
     } else {
         cJSON *command = cJSON_GetObjectItem(root, "command");
         *params = cJSON_GetObjectItem(root, "params");
@@ -26,17 +26,17 @@ int wm_agent_parse_command(const char* buffer, cJSON** json_api, cJSON** params,
         if (command && *agents) {
             *json_api = root;
             if (strcmp(command->valuestring, WM_AGENT_UPGRADE_COMMAND_NAME) == 0) {
-                retval = UPGRADE;
+                retval = WM_UPGRADE_UPGRADE;
             } else if (strcmp(command->valuestring, WM_AGENT_UPGRADE_RESULT_COMMAND_NAME) == 0) { 
-                retval = UPGRADE_RESULTS;
+                retval = WM_UPGRADE_UPGRADE_RESULTS;
             } else {
                 // TODO invalid command
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR,  command->valuestring);
-                *json_api = wm_agent_parse_response_message(TASK_CONFIGURATIONS, upgrade_error_codes[TASK_CONFIGURATIONS], NULL, NULL, NULL);
+                *json_api = wm_agent_parse_response_message(WM_UPGRADE_TASK_CONFIGURATIONS, upgrade_error_codes[WM_UPGRADE_TASK_CONFIGURATIONS], NULL, NULL, NULL);
             }
         } else {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUIRED_PARAMETERS);
-            *json_api = wm_agent_parse_response_message(PARSING_REQUIRED_PARAMETER, upgrade_error_codes[PARSING_REQUIRED_PARAMETER], NULL, NULL, NULL);
+            *json_api = wm_agent_parse_response_message(WM_UPGRADE_PARSING_REQUIRED_PARAMETER, upgrade_error_codes[WM_UPGRADE_PARSING_REQUIRED_PARAMETER], NULL, NULL, NULL);
             cJSON_Delete(root);
         }
     }
@@ -71,7 +71,7 @@ wm_upgrade_task* wm_agent_parse_upgrade_command(const cJSON* params, char* outpu
                 task->wpk_repository = strdup(item->valuestring);
             } else {
                 sprintf(output, "Parameter \"%s\" should be a string", item->string);
-                task->state = ERROR;
+                error_flag = 1;
             }
         } else if(strcmp(item->string, "version") == 0) {
             /* version */

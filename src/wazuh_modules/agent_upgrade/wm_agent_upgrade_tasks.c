@@ -25,7 +25,7 @@ wm_upgrade_task* wm_agent_init_upgrade_task() {
     task->wpk_repository = NULL;
     task->force_upgrade = false;
     task->use_http = false;
-    task->state = NOT_STARTED;
+    task->state = WM_UPGRADE_NOT_STARTED;
     return task;
 }
 
