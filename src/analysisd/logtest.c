@@ -65,7 +65,7 @@ int w_logtest_init_parameters() {
 
     int modules = CLOGTEST;
 
-    w_logtest_conf.enabled = 1;
+    w_logtest_conf.enabled = true;
     w_logtest_conf.threads = LOGTEST_THREAD;
     w_logtest_conf.max_sessions = LOGTEST_MAX_SESSIONS;
     w_logtest_conf.session_timeout = LOGTEST_SESSION_TIMEOUT;
