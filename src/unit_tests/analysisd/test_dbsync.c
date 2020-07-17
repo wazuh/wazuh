@@ -14,6 +14,8 @@
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/read-agents_wrappers.h"
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+
 #include "../analysisd/eventinfo.h"
 #include "../analysisd/decoders/decoder.h"
 #include "../headers/wazuhdb_op.h"
@@ -41,22 +43,6 @@ typedef struct __test_dbsync_s{
 }test_dbsync_t;
 
 /* wrappers */
-
-int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) {
-    check_expected(path);
-    check_expected(type);
-    check_expected(max_msg_size);
-
-    return mock();
-}
-
-int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
-    check_expected(sock);
-    check_expected(size);
-    check_expected(msg);
-
-    return mock();
-}
 
 int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
     check_expected(sock);

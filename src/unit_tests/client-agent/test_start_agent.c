@@ -16,6 +16,8 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/client-agent/start_agent.h"
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+
 #include "../client-agent/agentd.h"
 
 extern void send_msg_on_startup(void);
@@ -87,13 +89,6 @@ ssize_t __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
     return len;
 }
 #endif
-
-int __wrap_OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
-    char* rcv = (char*)mock_ptr_type(char *);
-    int len = strlen(rcv);
-    snprintf(ret, len+1, "%s", rcv);
-    return len;
-}
 
 int __wrap_fseek(FILE *__stream, long __off, int __whence) {
     return 0;
@@ -283,7 +278,10 @@ static void test_agent_handshake_to_server(void **state) {
     expect_value(wrap_closesocket, fd, 21);
     #endif
     will_return(__wrap_wnet_select, 1);
+    expect_any(__wrap_OS_RecvSecureTCP, sock);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
     expect_string(__wrap_send_msg, msg, "#!-agent startup ");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
@@ -301,7 +299,10 @@ static void test_agent_handshake_to_server(void **state) {
     expect_value(wrap_closesocket, fd, 22);
     #endif
     will_return(__wrap_wnet_select, 1);
+    expect_any(__wrap_OS_RecvSecureTCP, sock);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
     expect_string(__wrap_send_msg, msg, "#!-agent startup ");
     expect_string(__wrap_send_msg, msg, "1:ossec:ossec: Agent started: 'agent0->any'.");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);

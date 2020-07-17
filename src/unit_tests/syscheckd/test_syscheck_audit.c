@@ -32,16 +32,11 @@
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../wrappers/wazuh/shared/vector_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+
 #include "external/procps/readproc.h"
 
 extern volatile int audit_health_check_deletion;
-
-/* redefinitons/wrapping */
-
-int __wrap_OS_ConnectUnixDomain()
-{
-    return mock();
-}
 
 /* setup/teardown */
 static int setup_group(void **state) {
@@ -137,23 +132,29 @@ void test_check_auditd_enabled_readproc_error(void **state)
 }
 
 
-void test_init_auditd_socket_success(void **state)
-{
+void test_init_auditd_socket_success(void **state) {
     (void) state;
     int ret;
 
+    expect_any(__wrap_OS_ConnectUnixDomain, path);
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, 124);
+
     ret = init_auditd_socket();
     assert_int_equal(ret, 124);
 }
 
 
-void test_init_auditd_socket_failure(void **state)
-{
+void test_init_auditd_socket_failure(void **state) {
     (void) state;
     int ret;
 
+    expect_any(__wrap_OS_ConnectUnixDomain, path);
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, -5);
+
     expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/ossec/audit'.");
 
     ret = init_auditd_socket();

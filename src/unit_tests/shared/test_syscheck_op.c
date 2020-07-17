@@ -14,12 +14,13 @@
 
 #include "../headers/syscheck_op.h"
 #include "../analysisd/eventinfo.h"
+
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/posix/grp_wrappers.h"
 #include "../wrappers/posix/pwd_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/string_op_wrappers.h"
-
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 
 /* Auxiliar structs */
 
@@ -44,24 +45,6 @@ typedef struct __unescape_syscheck_field_data_s {
     char *input;
     char *output;
 }unescape_syscheck_field_data_t;
-
-/* wrappers */
-
-int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) {
-    check_expected(path);
-    check_expected(type);
-    check_expected(max_msg_size);
-
-    return mock();
-}
-
-int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
-    check_expected(sock);
-    check_expected(size);
-    check_expected(msg);
-
-    return mock();
-}
 
 /* setup/teardown */
 static int teardown_string(void **state) {

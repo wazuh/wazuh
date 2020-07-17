@@ -12,7 +12,13 @@
 #ifndef OS_NET_WRAPPERS_H
 #define OS_NET_WRAPPERS_H
 
+#include <stdint.h>
+#include <string.h>
 
+int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size);
 
+int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
+
+int __wrap_OS_RecvSecureTCP(int sock, char * ret, uint32_t size);
 
 #endif
