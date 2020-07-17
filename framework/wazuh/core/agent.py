@@ -1635,7 +1635,7 @@ def send_task_upgrade_module(command=None, agent_list=None, debug=False, file_pa
     if command == None or command not in valid_commands:
         raise WazuhError(1002, extra_message="Bad command for upgrade module")
 
-    if agent_list == None or "000" in agent_list:
+    if agent_list == None or "000" in agent_list or 0 in agent_list:
         raise WazuhError(1703)
 
     data = { "command" : command, "agents" : agent_list}
@@ -1658,18 +1658,15 @@ def send_task_upgrade_module(command=None, agent_list=None, debug=False, file_pa
     data = str(data).replace("\'", "\"")
     if debug:
         print("MSG SENT TO UPGRADE MODULE: {0}".format(data))
-        
-    try:
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.connect(common.UPGRADE_SOCKET)
-        sock.send(data.encode())
-        data_rec = sock.recv(4096, socket.MSG_WAITALL).decode()
-        if debug:
-            print("MSG RECV FROM UPGRADE MODULE: {0}".format(data_rec))
-    except Exception as msg:
-        raise WazuhError(1010, extra_message=str(msg))
-    finally:
-        sock.close()
     
-    return data_rec
+    data_rec = ""
+    sock = OssecSocket(common.UPGRADE_SOCKET)
+    sock.send(data.encode())
+    data_rec = sock.receive().decode()
+    if debug:
+        print("MSG RECV FROM UPGRADE MODULE: {0}".format(data_rec))
+
+    sock.close()
+    
+    return data_rec.replace("\"", "\'")
     

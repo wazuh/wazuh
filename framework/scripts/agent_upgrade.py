@@ -57,6 +57,7 @@ def main():
         exit(0)
     
     agent_list = args.agent.split(",")
+    agent_list = [int(agent) for agent in agent_list]
 
     if args.silent:
         args.debug = False
@@ -100,16 +101,20 @@ def main():
     id_agents_upgrading = []
     for agent in agents:
         if not args.silent:
-            print("Agent id: {0} | Error code: {1} | Data: {2} | Task id: {3}".format(agent['agent'], agent['error'], agent['data'], agent['task_id']))
+            print("Agent id: {0} | Error code: {1} | Data: {2} | Task id: {3}".format(agent['agent'] if agent.get('agent') else '--', 
+                                                                                        agent['error'] if agent.get('error') else '--', 
+                                                                                        agent['data'] if agent.get('data') else '--', 
+                                                                                        agent['task_id'] if agent.get('task_id') else '--'))
             
         if agent["error"] == 0:
             id_agents_upgrading.append(agent["agent"])
-    sleep(10)
+    
     if id_agents_upgrading:
+        sleep(10)
         counter = 0
         #waiting for upgrade task end
-        while counter < common.agent_info_retries and id_agents_upgrading:
-            sleep(common.agent_info_sleep)
+        while counter < common.upgrade_result_retries and id_agents_upgrading:
+            sleep(common.upgrade_result_sleep)
             
             #request state of upgrading tasks
             upgrade_result = send_task_upgrade_module(command='upgrade_result', agent_list=id_agents_upgrading, debug=args.debug)
