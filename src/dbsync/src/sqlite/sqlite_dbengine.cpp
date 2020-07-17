@@ -63,27 +63,39 @@ void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
     if (createCopyTempTable(table))
     {
         bulkInsert(table + kTempTableSubFix, data["data"]);
+        if (0 != loadTableData(table))
         {
-            if (0 != loadTableData(table))
+            std::vector<std::string> primaryKeyList;
+            if (getPrimaryKeysFromTable(table, primaryKeyList))
             {
-                std::vector<std::string> primaryKeyList;
-                if (getPrimaryKeysFromTable(table, primaryKeyList))
+                if (!removeNotExistsRows(table, primaryKeyList, delta))
                 {
-                    if (!removeNotExistsRows(table, primaryKeyList, delta))
-                    {
-                        std::cout << "Error during the delete rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
-                    }
-                    if (!changeModifiedRows(table, primaryKeyList, delta))
-                    {
-                        std::cout << "Error during the change of modified rows " << __LINE__ << " - " << __FILE__ << std::endl;
-                    }
-                    if (!insertNewRows(table, primaryKeyList, delta))
-                    {
-                        std::cout << "Error during the insert rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
-                    }
+                    std::cout << "Error during the delete rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
+                }
+                if (!changeModifiedRows(table, primaryKeyList, delta))
+                {
+                    std::cout << "Error during the change of modified rows " << __LINE__ << " - " << __FILE__ << std::endl;
+                }
+                if (!insertNewRows(table, primaryKeyList, delta))
+                {
+                    std::cout << "Error during the insert rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
                 }
             }
         }
+    }
+}
+
+bool SQLiteDBEngine::getPKFromTable(const std::string& table)
+{
+    auto ret { false };
+    const std::string table { data["table"].is_string() ? data["table"].get_ref<const std::string&>() : "" };
+
+
+
+    std::get<TableHeader::PK>(value) == true
+
+    for (const auto& jsonValue : data)
+    {
     }
 }
 
@@ -91,23 +103,24 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
                                       const nlohmann::json& data,
                                       std::tuple<nlohmann::json&, void *> delta)
 {
-    bulkInsert(table, data);
+    // 1) SELECT de "data" en "table"
+    // 2) 
+    if (0 != loadTableData(table))
     {
-        if (0 != loadTableData(table))
+        std::string oldValue;
+        // get PK from data -> dataPK
+        const auto pKey { getPKFromTable(table) };
+        if(getValueFromTable(table, data[pkey], pKey, oldValue))
         {
-            std::vector<std::string> primaryKeyList;
-            if (getPrimaryKeysFromTable(table, primaryKeyList))
-            {
-                if (!changeModifiedRows(table, primaryKeyList, delta, false))
-                {
-                    std::cout << "Error during the change of modified rows " << __LINE__ << " - " << __FILE__ << std::endl;
-                }
-                if (!insertNewRows(table, primaryKeyList, delta, false))
-                {
-                    std::cout << "Error during the insert rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
-                }
-            }
+            // modification
+            delta -> modify
         }
+        else
+        {
+            // insertion
+            delta -> insert
+        }
+        bulkInsert();
     }
 }
 
@@ -221,7 +234,8 @@ ColumnType SQLiteDBEngine::columnTypeName(const std::string& type)
 }
 
 void SQLiteDBEngine::bindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt, 
-                                  const ColumnData& cd, const nlohmann::json::value_type& valueType)
+                                  const ColumnData& cd, 
+                                  const nlohmann::json::value_type& valueType)
 {
     const auto type { std::get<TableHeader::Type>(cd) };
     const auto cid  { std::get<TableHeader::CID>(cd) + 1 };
@@ -373,6 +387,28 @@ bool SQLiteDBEngine::removeNotExistsRows(const std::string& table,
         else
         {
             ret = false;
+        }
+    }
+    return ret;
+}
+
+template<typename T>
+bool SQLiteDBEngine::getValueFromTable(const std::string& table,
+                                       const std::string& primaryKey,
+                                       const T& keyValue, 
+                                       std::string& resultQuery)
+{
+    auto ret { false };
+    const std::string sqlStmtString { "SELECT "+primaryKey+" FROM "+table+" WHERE "+primaryKey+" ='?';" };
+    if (!table.empty())
+    {
+        auto const& sqlStmt { getStatement(sqlStmtString) };
+        sqlStmt->bind(1, keyValue);
+        while (SQLITE_ROW == stmt->step())
+        {
+            resultQuery.append(std::move(stmt->column(0)->value(std::string{})));
+            resultQuery.append(";");
+            ret = true;
         }
     }
     return ret;
@@ -629,43 +665,74 @@ std::string SQLiteDBEngine::buildLeftOnlyQuery(const std::string& t1,
     return std::string("SELECT "+fieldsList+" FROM "+t1+" t1 LEFT JOIN "+t2+" t2 ON "+onMatchList+" WHERE "+nullFilterList+";");
 } 
 
+bool SQLiteDBEngine::syncNewRows(const std::string& table,
+                                 const std::vector<std::string>& primaryKeyList,
+                                 const std::tuple<nlohmann::json&, void *> delta)
+{
+    auto ret { true };
+    std::vector<Row> rowValues;
+    if (getLeftOnly(table+kTempTableSubFix, table, primaryKeyList, rowValues))
+    {
+        bulkInsert(table, rowValues);
+        for (const auto& row : rowValues)
+        {
+            nlohmann::json object;
+            for (const auto& value : row)
+            {
+                if(!getFieldValueFromTuple(value, object))
+                {
+                    std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
+                }
+            }
+            auto callback { std::get<ResponseType::RTCallback>(delta) };
+            if (nullptr != callback)
+            {
+                result_callback_t Notify = reinterpret_cast<result_callback_t>(callback);
+                cJSON* jsResult { cJSON_Parse(object.dump().c_str()) };
+                Notify(ReturnTypeCallback::INSERTED, jsResult);
+                cJSON_Delete(jsResult);
+            }
+            else
+            {
+                std::get<ResponseType::RTJson>(delta)["inserted"].push_back(std::move(object));
+            }
+        }
+    }
+    return ret;
+}
 
 bool SQLiteDBEngine::insertNewRows(const std::string& table,
                                    const std::vector<std::string>& primaryKeyList,
-                                   const std::tuple<nlohmann::json&, void *> delta,
-                                   const bool tempTable)
+                                   const std::tuple<nlohmann::json&, void *> delta)
 {
     auto ret { true };
-    auto tableName { tempTable ? table+kTempTableSubFix : table };
     std::vector<Row> rowValues;
-    if (getLeftOnly(tableName, table, primaryKeyList, rowValues))
+    if (getLeftOnly(table+kTempTableSubFix, table, primaryKeyList, rowValues))
     {
         bulkInsert(table, rowValues);
+        for (const auto& row : rowValues)
         {
-            for (const auto& row : rowValues)
+            nlohmann::json object;
+            for (const auto& value : row)
             {
-                nlohmann::json object;
-                for (const auto& value : row)
+                if(!getFieldValueFromTuple(value, object))
                 {
-                    if(!getFieldValueFromTuple(value, object))
-                    {
-                        std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
-                    }
-                }
-                auto callback { std::get<ResponseType::RTCallback>(delta) };
-                if (nullptr != callback)
-                {
-                    result_callback_t Notify = reinterpret_cast<result_callback_t>(callback);
-                    cJSON* jsResult { cJSON_Parse(object.dump().c_str()) };
-                    Notify(ReturnTypeCallback::INSERTED, jsResult);
-                    cJSON_Delete(jsResult);
-                }
-                else
-                {
-                    std::get<ResponseType::RTJson>(delta)["inserted"].push_back(std::move(object));
+                    std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
                 }
             }
-        } 
+            auto callback { std::get<ResponseType::RTCallback>(delta) };
+            if (nullptr != callback)
+            {
+                result_callback_t Notify = reinterpret_cast<result_callback_t>(callback);
+                cJSON* jsResult { cJSON_Parse(object.dump().c_str()) };
+                Notify(ReturnTypeCallback::INSERTED, jsResult);
+                cJSON_Delete(jsResult);
+            }
+            else
+            {
+                std::get<ResponseType::RTJson>(delta)["inserted"].push_back(std::move(object));
+            }
+        }
     }
     return ret;
 }
@@ -701,12 +768,11 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
 
 int SQLiteDBEngine::changeModifiedRows(const std::string& table, 
                                        const std::vector<std::string>& primaryKeyList, 
-                                       const std::tuple<nlohmann::json&, void *> delta,
-                                       const bool tempTable)
+                                       const std::tuple<nlohmann::json&, void *> delta)
 {
     auto ret { true };
     std::vector<Row> rowKeysValue;
-    if (getRowsToModify(table, primaryKeyList, rowKeysValue, tempTable))
+    if (getRowsToModify(table, primaryKeyList, rowKeysValue))
     {
         if (updateRows(table, primaryKeyList, rowKeysValue))
         {
@@ -847,12 +913,10 @@ std::string SQLiteDBEngine::buildModifiedRowsQuery(const std::string& t1,
 
 bool SQLiteDBEngine::getRowsToModify(const std::string& table,
                                      const std::vector<std::string>& primaryKeyList,
-                                     std::vector<Row>& rowKeysValue,
-                                     const bool tempTable)
+                                     std::vector<Row>& rowKeysValue)
 {
     auto ret { false };
-    auto tableName { tempTable ? table+kTempTableSubFix : table };
-    auto sql { buildModifiedRowsQuery(table, tableName, primaryKeyList) };
+    auto sql { buildModifiedRowsQuery(table, table+kTempTableSubFix, primaryKeyList) };
 
     if(!sql.empty())
     {
