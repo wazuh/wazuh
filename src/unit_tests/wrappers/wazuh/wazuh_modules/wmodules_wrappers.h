@@ -14,8 +14,15 @@
 
 #include <stddef.h>
 
-int __wrap_wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc);
+int __wrap_wm_sendmsg(int usec,
+                      int queue,
+                      const char *message,
+                      const char *locmsg,
+                      char loc);
 
-int __wrap_wm_state_io(const char * tag, int op, void *state, size_t size);
+int __wrap_wm_state_io(const char * tag,
+                       int op,
+                       void *state,
+                       size_t size);
 
 #endif
