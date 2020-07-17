@@ -29,31 +29,31 @@ const wm_context WM_TASK_MANAGER_CONTEXT = {
 };
 
 static const char *json_keys[] = {
-    [MODULE] = "module",
-    [COMMAND] = "command",
-    [AGENT_ID] = "agent",
-    [TASK_ID] = "task_id",
-    [ERROR] = "error",
-    [ERROR_DATA] = "data"
+    [WM_TASK_MODULE] = "module",
+    [WM_TASK_COMMAND] = "command",
+    [WM_TASK_AGENT_ID] = "agent",
+    [WM_TASK_TASK_ID] = "task_id",
+    [WM_TASK_ERROR] = "error",
+    [WM_TASK_ERROR_DATA] = "data"
 };
 
 static const char *modules_list[] = {
-    [UPGRADE_MODULE] = "upgrade_module"
+    [WM_TASK_UPGRADE_MODULE] = "upgrade_module"
 };
 
 static const char *commands_list[] = {
-    [UPGRADE] = "upgrade"
+    [WM_TASK_UPGRADE] = "upgrade"
 };
 
 static const char *error_codes[] = {
-    [SUCCESS] = "Success",
-    [INVALID_MESSAGE] = "Invalid message",
-    [INVALID_MODULE] = "Invalid module",
-    [INVALID_COMMAND] = "Invalid command",
-    [INVALID_AGENT_ID] = "Invalid agent ID",
-    [INVALID_TASK_ID] = "Invalid task ID",
-    [DATABASE_ERROR] = "Database error",
-    [UNKNOWN_ERROR] = "Unknown error"
+    [WM_TASK_SUCCESS] = "Success",
+    [WM_TASK_INVALID_MESSAGE] = "Invalid message",
+    [WM_TASK_INVALID_MODULE] = "Invalid module",
+    [WM_TASK_INVALID_COMMAND] = "Invalid command",
+    [WM_TASK_INVALID_AGENT_ID] = "Invalid agent ID",
+    [WM_TASK_INVALID_TASK_ID] = "Invalid task ID",
+    [WM_TASK_DATABASE_ERROR] = "Database error",
+    [WM_TASK_UNKNOWN_ERROR] = "Unknown error"
 };
 
 size_t wm_task_manager_dispatch(const char *msg, char **response) {
@@ -63,13 +63,13 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
     cJSON *task_response = NULL;
     int task = 0;
     int tasks = 0;
-    int error_code = SUCCESS;
+    int error_code = WM_TASK_SUCCESS;
 
     mtdebug1(WM_TASK_MANAGER_LOGTAG, MOD_TASK_INCOMMING_MESSAGE, msg);
 
     // Parse message
     if (event_array = wm_task_manager_parse_message(msg), !event_array) {
-        *response = cJSON_PrintUnformatted(wm_task_manager_build_response(INVALID_MESSAGE, 0, 0));
+        *response = cJSON_PrintUnformatted(wm_task_manager_build_response(WM_TASK_INVALID_MESSAGE, OS_INVALID, OS_INVALID));
         return strlen(*response);
     }
 
@@ -86,23 +86,23 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
         task_response = wm_task_manager_analyze_task(task_object, &error_code);
 
         switch (error_code) {
-        case INVALID_MODULE:
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, json_keys[MODULE], task);
+        case WM_TASK_INVALID_MODULE:
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, json_keys[WM_TASK_MODULE], task);
             break;
-        case INVALID_COMMAND:
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, json_keys[COMMAND], task);
+        case WM_TASK_INVALID_COMMAND:
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, json_keys[WM_TASK_COMMAND], task);
             break;
-        case INVALID_AGENT_ID:
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, json_keys[AGENT_ID], task);
+        case WM_TASK_INVALID_AGENT_ID:
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, json_keys[WM_TASK_AGENT_ID], task);
             break;
-        case INVALID_TASK_ID:
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, json_keys[TASK_ID], task);
+        case WM_TASK_INVALID_TASK_ID:
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, json_keys[WM_TASK_TASK_ID], task);
             break;
-        case DATABASE_ERROR:
+        case WM_TASK_DATABASE_ERROR:
             mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_DB_ERROR, task);
             cJSON_Delete(event_array);
             cJSON_Delete(response_array);
-            *response = cJSON_PrintUnformatted(wm_task_manager_build_response(DATABASE_ERROR, 0, 0));
+            *response = cJSON_PrintUnformatted(wm_task_manager_build_response(WM_TASK_DATABASE_ERROR, OS_INVALID, OS_INVALID));
             return strlen(*response);
         default:
             break;
@@ -111,7 +111,7 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
         if (task_response) {
             cJSON_AddItemToArray(response_array, task_response);
         }
-        error_code = SUCCESS;
+        error_code = WM_TASK_SUCCESS;
     }
 
     *response = cJSON_PrintUnformatted(response_array);
@@ -151,15 +151,15 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
         task_object = cJSON_GetArrayItem(event_array, task);
 
         // Detect module
-        if (module_json = cJSON_GetObjectItem(task_object, json_keys[MODULE]), !module_json || module_json->type != cJSON_String) {
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, json_keys[MODULE], task);
+        if (module_json = cJSON_GetObjectItem(task_object, json_keys[WM_TASK_MODULE]), !module_json || module_json->type != cJSON_String) {
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, json_keys[WM_TASK_MODULE], task);
             cJSON_Delete(event_array);
             return NULL;
         }
 
         // Detect command
-        if (command_json = cJSON_GetObjectItem(task_object, json_keys[COMMAND]), !command_json || command_json->type != cJSON_String) {
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, json_keys[COMMAND], task);
+        if (command_json = cJSON_GetObjectItem(task_object, json_keys[WM_TASK_COMMAND]), !command_json || command_json->type != cJSON_String) {
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, json_keys[WM_TASK_COMMAND], task);
             cJSON_Delete(event_array);
             return NULL;
         }
@@ -172,41 +172,41 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
     cJSON *response = NULL;
     cJSON *tmp = NULL;
 
-    char *module = cJSON_GetObjectItem(task_object, json_keys[MODULE])->valuestring;
-    char *command = cJSON_GetObjectItem(task_object, json_keys[COMMAND])->valuestring;
+    char *module = cJSON_GetObjectItem(task_object, json_keys[WM_TASK_MODULE])->valuestring;
+    char *command = cJSON_GetObjectItem(task_object, json_keys[WM_TASK_COMMAND])->valuestring;
 
-    int agent_id = 0;
-    int task_id = 0;
+    int agent_id = OS_INVALID;
+    int task_id = OS_INVALID;
 
-    if (tmp = cJSON_GetObjectItem(task_object, json_keys[AGENT_ID]), tmp && tmp->type == cJSON_Number) {
+    if (tmp = cJSON_GetObjectItem(task_object, json_keys[WM_TASK_AGENT_ID]), tmp && tmp->type == cJSON_Number) {
         agent_id = tmp->valueint;
     }
-    if (tmp = cJSON_GetObjectItem(task_object, json_keys[TASK_ID]), tmp && tmp->type == cJSON_Number) {
+    if (tmp = cJSON_GetObjectItem(task_object, json_keys[WM_TASK_TASK_ID]), tmp && tmp->type == cJSON_Number) {
         task_id = tmp->valueint;
     }
 
-    if (!strcmp(modules_list[UPGRADE_MODULE], module)) {
+    if (!strcmp(modules_list[WM_TASK_UPGRADE_MODULE], module)) {
 
-        if (!strcmp(commands_list[UPGRADE], command)) {
+        if (!strcmp(commands_list[WM_TASK_UPGRADE], command)) {
 
-            if (agent_id) {
+            if (agent_id != OS_INVALID) {
                 // Insert upgrade task into DB
-                if (task_id = wm_task_manager_insert_task(agent_id, module, command), !task_id) {
-                    *error_code = DATABASE_ERROR;
+                if (task_id = wm_task_manager_insert_task(agent_id, module, command), task_id == OS_INVALID) {
+                    *error_code = WM_TASK_DATABASE_ERROR;
                     return NULL;
                 }
-                response = wm_task_manager_build_response(SUCCESS, agent_id, task_id);
+                response = wm_task_manager_build_response(WM_TASK_SUCCESS, agent_id, task_id);
             } else {
-                *error_code = INVALID_AGENT_ID;
-                response = wm_task_manager_build_response(INVALID_AGENT_ID, agent_id, task_id);
+                *error_code = WM_TASK_INVALID_AGENT_ID;
+                response = wm_task_manager_build_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id);
             }
         } else {
-            *error_code = INVALID_COMMAND;
-            response = wm_task_manager_build_response(INVALID_COMMAND, agent_id, task_id);
+            *error_code = WM_TASK_INVALID_COMMAND;
+            response = wm_task_manager_build_response(WM_TASK_INVALID_COMMAND, agent_id, task_id);
         }
     } else {
-        *error_code = INVALID_MODULE;
-        response = wm_task_manager_build_response(INVALID_MODULE, agent_id, task_id);
+        *error_code = WM_TASK_INVALID_MODULE;
+        response = wm_task_manager_build_response(WM_TASK_INVALID_MODULE, agent_id, task_id);
     }
 
     return response;
@@ -215,13 +215,13 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
 cJSON* wm_task_manager_build_response(int error_code, int agent_id, int task_id) {
     cJSON *response_json = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(response_json, json_keys[ERROR], error_code);
-    cJSON_AddStringToObject(response_json, json_keys[ERROR_DATA], error_codes[error_code]);
-    if (agent_id) {
-        cJSON_AddNumberToObject(response_json, json_keys[AGENT_ID], agent_id);
+    cJSON_AddNumberToObject(response_json, json_keys[WM_TASK_ERROR], error_code);
+    cJSON_AddStringToObject(response_json, json_keys[WM_TASK_ERROR_DATA], error_codes[error_code]);
+    if (agent_id != OS_INVALID) {
+        cJSON_AddNumberToObject(response_json, json_keys[WM_TASK_AGENT_ID], agent_id);
     }
-    if (task_id) {
-        cJSON_AddNumberToObject(response_json, json_keys[TASK_ID], task_id);
+    if (task_id != OS_INVALID) {
+        cJSON_AddNumberToObject(response_json, json_keys[WM_TASK_TASK_ID], task_id);
     }
 
     return response_json;

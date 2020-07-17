@@ -21,31 +21,31 @@ typedef struct _wm_task_manager {
 } wm_task_manager;
 
 typedef enum _json_key {
-    MODULE = 0,
-    COMMAND,
-    AGENT_ID,
-    TASK_ID,
-    ERROR,
-    ERROR_DATA
+    WM_TASK_MODULE = 0,
+    WM_TASK_COMMAND,
+    WM_TASK_AGENT_ID,
+    WM_TASK_TASK_ID,
+    WM_TASK_ERROR,
+    WM_TASK_ERROR_DATA
 } json_key;
 
 typedef enum _module_list {
-    UPGRADE_MODULE = 0
+    WM_TASK_UPGRADE_MODULE = 0
 } module_list;
 
 typedef enum _command_list {
-    UPGRADE = 0
+    WM_TASK_UPGRADE = 0
 } command_list;
 
 typedef enum _error_code {
-    SUCCESS = 0,
-    INVALID_MESSAGE,
-    INVALID_MODULE,
-    INVALID_COMMAND,
-    INVALID_AGENT_ID,
-    INVALID_TASK_ID,
-    DATABASE_ERROR,
-    UNKNOWN_ERROR
+    WM_TASK_SUCCESS = 0,
+    WM_TASK_INVALID_MESSAGE,
+    WM_TASK_INVALID_MODULE,
+    WM_TASK_INVALID_COMMAND,
+    WM_TASK_INVALID_AGENT_ID,
+    WM_TASK_INVALID_TASK_ID,
+    WM_TASK_DATABASE_ERROR,
+    WM_TASK_UNKNOWN_ERROR
 } error_code;
 
 extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
