@@ -32,11 +32,14 @@ int Read_Logtest(XML_NODE node) {
         }
 
         else if (!strcmp(node[i]->element, enabled)) {
-            if (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no")) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            if (strcmp(node[i]->content, "no") == 0) {
+                w_logtest_conf.enabled = 0;
+            } else if (strcmp(node[i]->content, "yes") == 0) {
+                w_logtest_conf.enabled = 1;
+            } else {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
-            strcpy(w_logtest_conf.enabled, node[i]->content);
         }
 
         else if (!strcmp(node[i]->element, threads)) {
@@ -48,11 +51,11 @@ int Read_Logtest(XML_NODE node) {
             char *end;
             long value = strtol(node[i]->content, &end, 10);
 
-            if (value < 0 || value > 65534 || *end) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            if (value < 0 || value > 65534 || *end != '\0') {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             } else if (value > LOGTEST_LIMIT_THREAD) {
-                mdebug2(LOGTEST_INV_NUM_THREADS, LOGTEST_LIMIT_THREAD);
+                mwarn(LOGTEST_INV_NUM_THREADS, LOGTEST_LIMIT_THREAD);
                 w_logtest_conf.threads = LOGTEST_LIMIT_THREAD;
             } else {
                 w_logtest_conf.threads = (unsigned short) value;
@@ -63,11 +66,11 @@ int Read_Logtest(XML_NODE node) {
             char *end;
             long value = strtol(node[i]->content, &end, 10);
 
-            if (value < 0 || value > 65534 || *end) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            if (value < 0 || value > 65534 || *end != '\0') {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             } else if (value > LOGTEST_LIMIT_MAX_SESSIONS) {
-                mdebug2(LOGTEST_INV_NUM_USERS, LOGTEST_LIMIT_MAX_SESSIONS);
+                mwarn(LOGTEST_INV_NUM_USERS, LOGTEST_LIMIT_MAX_SESSIONS);
                 w_logtest_conf.max_sessions = LOGTEST_LIMIT_MAX_SESSIONS;
             } else {
                 w_logtest_conf.max_sessions = (unsigned short) value;
@@ -78,10 +81,10 @@ int Read_Logtest(XML_NODE node) {
             long value = w_parse_time(node[i]->content);
 
             if (value <= 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             } else if (value > LOGTEST_LIMIT_SESSION_TIMEOUT) {
-                mdebug2(LOGTEST_INV_NUM_TIMEOUT, LOGTEST_LIMIT_SESSION_TIMEOUT);
+                mwarn(LOGTEST_INV_NUM_TIMEOUT, LOGTEST_LIMIT_SESSION_TIMEOUT);
                 w_logtest_conf.session_timeout = LOGTEST_LIMIT_SESSION_TIMEOUT;
             } else {
                 w_logtest_conf.session_timeout = value;
@@ -103,7 +106,12 @@ cJSON *getRuleTestConfig() {
     cJSON *root = cJSON_CreateObject();
     cJSON *ruletest = cJSON_CreateObject();
 
-    if (w_logtest_conf.enabled)cJSON_AddStringToObject(ruletest, enabled, w_logtest_conf.enabled);
+    if (w_logtest_conf.enabled) {
+        cJSON_AddStringToObject(ruletest, enabled, "yes");
+    } else {
+        cJSON_AddStringToObject(ruletest, enabled, "no");
+    }
+
     if (w_logtest_conf.threads)cJSON_AddNumberToObject(ruletest, threads, w_logtest_conf.threads);
     if (w_logtest_conf.max_sessions)cJSON_AddNumberToObject(ruletest, max_sessions, w_logtest_conf.max_sessions);
     if (w_logtest_conf.session_timeout)cJSON_AddNumberToObject(ruletest, session_timeout, w_logtest_conf.session_timeout);
