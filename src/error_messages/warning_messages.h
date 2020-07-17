@@ -55,4 +55,9 @@
 #define COMPRESSED_LOG_LONG_PATH                "(7502): The path of the compressed log is too long."
 #define COMPRESSED_JSON_LONG_PATH               "(7503): The path of the compressed json is too long."
 
+/* Wazuh-logtest warning messages*/
+#define LOGTEST_INV_NUM_THREADS             "(7000): Number of logtest threads too high. Only creates %d threads"
+#define LOGTEST_INV_NUM_USERS               "(7001): Number of maximum users connected in logtest too high. Only allows %d users"
+#define LOGTEST_INV_NUM_TIMEOUT             "(7002): Number of maximum user timeouts in logtest too high. Only allows %ds maximum timeouts"
+
 #endif /* WARN_MESSAGES_H */
