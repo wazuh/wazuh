@@ -44,23 +44,11 @@ void DBSyncImplementation::insertBulkData(const DBSYNC_HANDLE handle,
 
 void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE handle,
                                               const char* jsonSnapshot,
-                                              std::string& result)
+                                              const ResultCallback callback)
 {
     const auto ctx{ dbEngineContext(handle) };
     const auto json { nlohmann::json::parse(jsonSnapshot)};
-    nlohmann::json jsonResult;
-    ctx->m_dbEngine->refreshTableData(json[0], std::make_tuple(std::ref(jsonResult), nullptr));
-    result = std::move(jsonResult.dump());
-}
-
-void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE handle,
-                                              const char* jsonSnapshot,
-                                              void* callback)
-{
-    const auto ctx{ dbEngineContext(handle) };
-    const auto json { nlohmann::json::parse(jsonSnapshot)};
-    nlohmann::json fake;
-    ctx->m_dbEngine->refreshTableData(json[0], std::make_tuple(std::ref(fake), callback));
+    ctx->m_dbEngine->refreshTableData(json[0], callback);
 }
 
 std::shared_ptr<DBSyncImplementation::DbEngineContext> DBSyncImplementation::dbEngineContext(const DBSYNC_HANDLE handle)

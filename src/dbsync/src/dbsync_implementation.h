@@ -32,10 +32,7 @@ namespace DbSync
                             const char* jsonRaw);
         void updateSnapshotData(const DBSYNC_HANDLE handle,
                                 const char* jsonSnapshot,
-                                std::string& result);
-        void updateSnapshotData(const DBSYNC_HANDLE handle,
-                                const char* jsonSnapshot,
-                                void* callback);
+                                const ResultCallback callback);
         DBSYNC_HANDLE initialize(const HostType hostType,
                                  const DbEngineType dbType,
                                  const std::string& path,
