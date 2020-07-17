@@ -25,7 +25,7 @@ void *w_logtest_init() {
         return NULL;
     }
 
-    if (!strcmp(w_logtest_conf.enabled, "no")) {
+    if (!w_logtest_conf.enabled) {
         minfo(LOGTEST_DISABLED);
         return NULL;
     }
@@ -65,11 +65,10 @@ int w_logtest_init_parameters() {
 
     int modules = CLOGTEST;
 
+    w_logtest_conf.enabled = 1;
     w_logtest_conf.threads = LOGTEST_THREAD;
     w_logtest_conf.max_sessions = LOGTEST_MAX_SESSIONS;
     w_logtest_conf.session_timeout = LOGTEST_SESSION_TIMEOUT;
-
-    os_strdup("yes", w_logtest_conf.enabled);
 
     if (ReadConfig(modules, OSSECCONF, NULL, NULL) < 0) {
         return OS_INVALID;
