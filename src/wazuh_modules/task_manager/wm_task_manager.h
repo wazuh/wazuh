@@ -85,6 +85,40 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code);
 
 /**
  * Build a JSON object response.
+ * 
+ * Example 1: Success
+ * 
+ * {
+ *     "error":0,
+ *     "data":"Success",
+ *     "agent":4,
+ *     "task_id":2
+ * }
+ * 
+ * Example 2: Invalid message
+ * 
+ * {
+ *     "error":1,
+ *     "data":"Invalid message"
+ * }
+ * 
+ * 
+ * Example 3: Invalid module
+ * 
+ * {
+ *     "error":2,
+ *     "data":"Invalid module",
+ *     "task_id":45
+ * }
+ * 
+ * Example 4: Invalid command
+ * 
+ * {
+ *     "error":3,
+ *     "data":"Invalid command",
+ *     "agent":15
+ * }
+ * 
  * @param error_code Code of the error.
  * @param agent_id ID of the agent when receiving a request for a specific agent.
  * @param task_id ID of the task when receiving a request for a specific task.
