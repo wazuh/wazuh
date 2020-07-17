@@ -42,6 +42,18 @@ void DBSyncImplementation::insertBulkData(const DBSYNC_HANDLE handle,
     ctx->m_dbEngine->bulkInsert(json[0]["table"], json[0]["data"]);
 }
 
+void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE handle,
+                                       const char*         jsonRaw,
+                                       result_callback_t   callback)
+{
+    nlohmann::json jsFake;
+    const auto ctx{ dbEngineContext(handle) };
+    const auto json { nlohmann::json::parse(jsonRaw) };
+    ctx->m_dbEngine->syncTableRowData(json[0]["table"],
+                                      json[0]["data"],
+                                      std::make_tuple(std::ref(jsFake), reinterpret_cast<void*>(callback)));
+}
+
 void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE handle,
                                               const char* jsonSnapshot,
                                               const ResultCallback callback)

@@ -30,6 +30,9 @@ namespace DbSync
         }
         void insertBulkData(const DBSYNC_HANDLE handle,
                             const char* jsonRaw);
+        void syncRowData(const DBSYNC_HANDLE handle,
+                         const char* jsonRaw,
+                         result_callback_t callback);
         void updateSnapshotData(const DBSYNC_HANDLE handle,
                                 const char* jsonSnapshot,
                                 const ResultCallback callback);

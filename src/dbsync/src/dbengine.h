@@ -9,7 +9,9 @@
  * Foundation.
  */
 
-#pragma once
+#ifndef _DBENGINE_H
+#define _DBENGINE_H
+
 #include <string>
 #include <vector>
 #include <functional>
@@ -24,14 +26,25 @@ namespace DbSync
     {
     public:
         virtual void execute(const std::string& query) = 0;
+
         virtual void select(const std::string& query,
                             nlohmann::json& result) = 0;
+
         virtual void bulkInsert(const std::string& table,
                                 const nlohmann::json& data) = 0;
+
         virtual void refreshTableData(const nlohmann::json& data,
-                                      const ResultCallback callback) = 0;
+                                      std::tuple<nlohmann::json&, void *> delta) = 0;
+
+        virtual void syncTableRowData(const std::string& table,
+                                      const nlohmann::json& data,
+                                      std::tuple<nlohmann::json&, void *> delta) = 0;
+
         virtual ~IDbEngine() = default;
+
     protected:
         IDbEngine() = default;
     };
 }// namespace DbSync
+
+#endif // _DBENGINE_H
