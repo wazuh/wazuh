@@ -323,7 +323,7 @@ class DistributedAPI:
             for h in self.logger.handlers or self.logger.parent.handlers:
                 if hasattr(h, 'baseFilename'):
                     log_filename = os.path.join('WAZUH_HOME', os.path.relpath(h.baseFilename, start=common.ossec_path))
-            result.get(self.node_info['node'], result.get('unknown-node'))['logfile'] = log_filename
+            result[node]['logfile'] = log_filename
 
         return result
 
@@ -495,7 +495,7 @@ class DistributedAPI:
                                                             limit=None,
                                                             filters=filters,
                                                             sort={'fields': ['node_name'], 'order': 'desc'})['items']
-            node_name = {k: list(map(operator .itemgetter('id'), g)) for k, g in
+            node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
                          itertools.groupby(system_agents, key=operator.itemgetter('node_name'))}
 
             # Update node_name in case it is empty or a node has no agents
