@@ -55,7 +55,7 @@ conf_sections = {
     },
     'cis-cat': {
         'type': 'merge',
-        'list_options': []
+        'list_options': ['content']
     },
     'syscollector': {
         'type': 'merge',
@@ -90,7 +90,7 @@ conf_sections = {
     },
     'osquery': {
         'type': 'merge',
-        'list_options': []
+        'list_options': ['pack']
     },
     'labels': {
         'type': 'duplicate',
