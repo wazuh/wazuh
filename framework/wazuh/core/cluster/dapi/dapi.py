@@ -332,7 +332,7 @@ class DistributedAPI:
             for h in self.logger.handlers or self.logger.parent.handlers:
                 if hasattr(h, 'baseFilename'):
                     log_filename = os.path.join('WAZUH_HOME', os.path.relpath(h.baseFilename, start=common.ossec_path))
-            result[self.node_info['node']]['logfile'] = log_filename
+            result[node]['logfile'] = log_filename
 
         return result
 

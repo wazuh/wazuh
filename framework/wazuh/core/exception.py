@@ -669,7 +669,7 @@ class WazuhError(WazuhException):
     _default_title = "Bad Request"
 
     def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, ids=None,
-                 title=None, response_type=None):
+                 title=None, response_type=None, type=None):
         """Creates a WazuhError exception.
 
         :param code: Exception code.
