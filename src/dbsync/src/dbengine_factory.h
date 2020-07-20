@@ -31,7 +31,7 @@ namespace DbSync
             }
             throw dbsync_error
             {
-                1, "Unspecified type during factory instantiation"
+                FACTORY_INSTANTATION
             };
         }
     };

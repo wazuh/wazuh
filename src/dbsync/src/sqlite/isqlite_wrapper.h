@@ -20,12 +20,12 @@ namespace SQLite
     class sqlite_error : public DbSync::dbsync_error
     {
     public:
-        sqlite_error(const int id,
-                     const std::string& whatArg)
-        : DbSync::dbsync_error{m_sqliteErrorIndex + id, "sqlite: " + whatArg}
+        sqlite_error(const std::pair<const int32_t, const std::string>& exceptionInfo)
+        : DbSync::dbsync_error
+        {
+            exceptionInfo.first, "sqlite: " + exceptionInfo.second
+        }
         {}
-    private:
-        const int m_sqliteErrorIndex{600};
     };
 
     class IConnection

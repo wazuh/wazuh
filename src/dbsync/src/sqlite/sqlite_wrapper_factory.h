@@ -11,7 +11,7 @@
 
 #pragma once
 #include "sqlite_wrapper.h"
-
+#include "makeUnique.h"
 class ISQLiteFactory
 {
 public:

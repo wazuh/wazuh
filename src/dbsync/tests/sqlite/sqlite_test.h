@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _SQLITE_TEST_H
+#define _SQLITE_TEST_H
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
@@ -12,3 +13,5 @@ protected:
     void SetUp() override;
     void TearDown() override;
 };
+
+#endif //_SQLITE_TEST_H
