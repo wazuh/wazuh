@@ -1,0 +1,442 @@
+/*
+ * Wazuh DBSYNC
+ * Copyright (C) 2015-2020, Wazuh Inc.
+ * July 16, 2020.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include <iostream>
+#include <string>
+#include "dbengine_test.h"
+#include "sqlite_dbengine.h"
+#include "../mocks/sqlitewrapper_mock.h"
+#include "../mocks/sqlitefactory_mock.h"
+
+using ::testing::_;
+using ::testing::Return;
+using ::testing::An;
+using ::testing::ByMove;
+void DBEngineTest::SetUp()
+{
+
+};
+
+void DBEngineTest::TearDown()
+{
+};
+
+TEST_F(DBEngineTest, Initialization)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+    auto mockStatement { std::make_unique<MockStatement>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockStatement, step()).WillOnce(Return(0));
+    EXPECT_CALL(*mockFactory, createStatement(_,_)).WillOnce(Return(ByMove(std::move(mockStatement))));
+    EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+
+    EXPECT_NO_THROW(std::make_unique<SQLiteDBEngine>(
+        mockFactory,
+        "1", 
+        "NNN"));
+}
+
+TEST_F(DBEngineTest, InitializationEmptyQuery)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+
+    EXPECT_NO_THROW(std::make_unique<SQLiteDBEngine>(
+        mockFactory,
+        "1", 
+        ""));
+}
+
+TEST_F(DBEngineTest, InitializationEmptyFileName)
+{
+    EXPECT_THROW(std::make_unique<SQLiteDBEngine>(
+        nullptr,
+        "", 
+        "NNN"), dbengine_error);
+}
+
+
+TEST_F(DBEngineTest, InitializeStatusField)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+    
+    auto mockTransaction { std::make_unique<MockTransaction>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockTransaction, commit()).Times(1);
+    EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::move(mockTransaction))));
+    
+    auto mockStatement_1 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_1, step()).WillOnce(Return(0));
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"NNN"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_1))));
+
+    
+    EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+
+    std::unique_ptr<SQLiteDBEngine> spEngine;
+    EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
+        mockFactory,
+        "1", 
+        "NNN"));
+
+    auto mockColumn_1 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_1, value(An<const int32_t&>()))
+        .WillOnce(Return(0));
+    auto mockColumn_2 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_2, value(An<const std::string&>()))
+        .WillOnce(Return("PID"));
+    auto mockColumn_3 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_3, value(An<const std::string&>()))
+        .WillOnce(Return("INTEGER"));
+    auto mockColumn_4 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_4, value(An<const int32_t&>()))
+        .WillOnce(Return(1));
+
+    auto mockStatement_2 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_2, step())
+        .WillOnce(Return(SQLITE_ROW))
+        .WillOnce(Return(SQLITE_DONE));      
+    EXPECT_CALL(*mockStatement_2, column(0))
+        .WillOnce(Return(ByMove(std::move(mockColumn_1))));
+    EXPECT_CALL(*mockStatement_2, column(1))
+        .WillOnce(Return(ByMove(std::move(mockColumn_2))));
+    EXPECT_CALL(*mockStatement_2, column(2))
+        .WillOnce(Return(ByMove(std::move(mockColumn_3))));
+    EXPECT_CALL(*mockStatement_2, column(5))
+        .WillOnce(Return(ByMove(std::move(mockColumn_4))));
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"PRAGMA table_info(dummy);"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_2))));
+
+    auto mockStatement_3 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_3, 
+        bind(_,An<const std::string&>()))
+        .Times(1);
+    EXPECT_CALL(*mockStatement_3, 
+        step())
+        .WillOnce(Return(0));
+    EXPECT_CALL(*mockStatement_3, 
+        reset())
+        .Times(1);
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"ALTER TABLE ? ADD COLUMN db_status_field_dm INTEGER DEFAULT 1;"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_3))));
+
+    auto mockStatement_4 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_4, 
+        bind(_,An<const std::string&>()))
+        .Times(1);
+    EXPECT_CALL(*mockStatement_4, 
+        step())
+        .WillOnce(Return(0));
+    EXPECT_CALL(*mockStatement_4, 
+        reset())
+        .Times(1);
+        
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"UPDATE ? SET db_status_field_dm=0;"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_4))));
+ 
+
+    EXPECT_NO_THROW(spEngine->initializeStatusField(std::vector<std::string> {"dummy"}));
+}
+
+TEST_F(DBEngineTest, InitializeStatusFieldNoMetadata)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+    
+    auto mockTransaction { std::make_unique<MockTransaction>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::move(mockTransaction))));
+    
+    auto mockStatement_1 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_1, step()).WillOnce(Return(0));
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"NNN"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_1))));
+
+    
+    EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+
+    std::unique_ptr<SQLiteDBEngine> spEngine;
+    EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
+        mockFactory,
+        "1", 
+        "NNN"));
+
+    auto mockStatement_2 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_2, step())
+        .WillOnce(Return(SQLITE_DONE));    
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"PRAGMA table_info(dummy);"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_2))));
+ 
+    auto mockStatement_3 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"ALTER TABLE ? ADD COLUMN db_status_field_dm INTEGER DEFAULT 1;"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_3))));
+
+    auto mockStatement_4 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"UPDATE ? SET db_status_field_dm=0;"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_4))));
+
+    EXPECT_THROW(spEngine->initializeStatusField(std::vector<std::string> {"dummy"}), dbengine_error);
+}
+
+TEST_F(DBEngineTest, InitializeStatusFieldPreExistent)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+    
+    auto mockTransaction { std::make_unique<MockTransaction>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockTransaction, commit()).Times(1);
+    EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::move(mockTransaction))));
+    
+    auto mockStatement_1 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_1, step()).WillOnce(Return(0));
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"NNN"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_1))));
+
+    
+    EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+
+    std::unique_ptr<SQLiteDBEngine> spEngine;
+    EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
+        mockFactory,
+        "1", 
+        "NNN"));
+
+    auto mockColumn_1 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_1, value(An<const int32_t&>()))
+        .WillOnce(Return(0));
+    auto mockColumn_2 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_2, value(An<const std::string&>()))
+        .WillOnce(Return("PID"));
+    auto mockColumn_3 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_3, value(An<const std::string&>()))
+        .WillOnce(Return("INTEGER"));
+    auto mockColumn_4 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_4, value(An<const int32_t&>()))
+        .WillOnce(Return(1));
+
+    auto mockColumn_5 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_5, value(An<const int32_t&>()))
+        .WillOnce(Return(0));
+    auto mockColumn_6 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_6, value(An<const std::string&>()))
+        .WillOnce(Return(STATUS_FIELD_NAME));
+    auto mockColumn_7 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_7, value(An<const std::string&>()))
+        .WillOnce(Return(STATUS_FIELD_TYPE));
+    auto mockColumn_8 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_8, value(An<const int32_t&>()))
+        .WillOnce(Return(1));
+
+    auto mockStatement_2 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_2, step())
+        .WillOnce(Return(SQLITE_ROW))
+        .WillOnce(Return(SQLITE_ROW))
+        .WillOnce(Return(SQLITE_DONE));      
+    EXPECT_CALL(*mockStatement_2, column(0))
+        .WillOnce(Return(ByMove(std::move(mockColumn_1))))
+        .WillOnce(Return(ByMove(std::move(mockColumn_5))));
+    EXPECT_CALL(*mockStatement_2, column(1))
+        .WillOnce(Return(ByMove(std::move(mockColumn_2))))
+        .WillOnce(Return(ByMove(std::move(mockColumn_6))));
+    EXPECT_CALL(*mockStatement_2, column(2))
+        .WillOnce(Return(ByMove(std::move(mockColumn_3))))
+        .WillOnce(Return(ByMove(std::move(mockColumn_7))));
+    EXPECT_CALL(*mockStatement_2, column(5))
+        .WillOnce(Return(ByMove(std::move(mockColumn_4))))
+        .WillOnce(Return(ByMove(std::move(mockColumn_8))));
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"PRAGMA table_info(dummy);"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_2))));
+
+    auto mockStatement_3 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"ALTER TABLE ? ADD COLUMN db_status_field_dm INTEGER DEFAULT 1;"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_3))));
+
+    auto mockStatement_4 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_4, 
+        bind(_,An<const std::string&>()))
+        .Times(1);
+    EXPECT_CALL(*mockStatement_4, 
+        step())
+        .WillOnce(Return(0));
+    EXPECT_CALL(*mockStatement_4, 
+        reset())
+        .Times(1);
+        
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"UPDATE ? SET db_status_field_dm=0;"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_4))));
+ 
+
+    EXPECT_NO_THROW(spEngine->initializeStatusField(std::vector<std::string> {"dummy"}));
+}
+
+
+TEST_F(DBEngineTest, DeleteRowsByStatusField)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+    
+    auto mockTransaction { std::make_unique<MockTransaction>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockTransaction, commit()).Times(1);
+    EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::move(mockTransaction))));
+    
+    auto mockStatement_1 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_1, step()).WillOnce(Return(0));
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"NNN"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_1))));
+
+    
+    EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+
+    std::unique_ptr<SQLiteDBEngine> spEngine;
+    EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
+        mockFactory,
+        "1", 
+        "NNN"));
+
+    auto mockColumn_1 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_1, value(An<const int32_t&>()))
+        .WillOnce(Return(0));
+    auto mockColumn_2 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_2, value(An<const std::string&>()))
+        .WillOnce(Return("PID"));
+    auto mockColumn_3 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_3, value(An<const std::string&>()))
+        .WillOnce(Return("INTEGER"));
+    auto mockColumn_4 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_4, value(An<const int32_t&>()))
+        .WillOnce(Return(1));
+
+    auto mockColumn_5 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_5, value(An<const int32_t&>()))
+        .WillOnce(Return(0));
+    auto mockColumn_6 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_6, value(An<const std::string&>()))
+        .WillOnce(Return(STATUS_FIELD_NAME));
+    auto mockColumn_7 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_7, value(An<const std::string&>()))
+        .WillOnce(Return(STATUS_FIELD_TYPE));
+    auto mockColumn_8 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_8, value(An<const int32_t&>()))
+        .WillOnce(Return(1));
+
+    auto mockStatement_2 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_2, step())
+        .WillOnce(Return(SQLITE_ROW))
+        .WillOnce(Return(SQLITE_ROW))
+        .WillOnce(Return(SQLITE_DONE));      
+    EXPECT_CALL(*mockStatement_2, column(0))
+        .WillOnce(Return(ByMove(std::move(mockColumn_1))))
+        .WillOnce(Return(ByMove(std::move(mockColumn_5))));
+    EXPECT_CALL(*mockStatement_2, column(1))
+        .WillOnce(Return(ByMove(std::move(mockColumn_2))))
+        .WillOnce(Return(ByMove(std::move(mockColumn_6))));
+    EXPECT_CALL(*mockStatement_2, column(2))
+        .WillOnce(Return(ByMove(std::move(mockColumn_3))))
+        .WillOnce(Return(ByMove(std::move(mockColumn_7))));
+    EXPECT_CALL(*mockStatement_2, column(5))
+        .WillOnce(Return(ByMove(std::move(mockColumn_4))))
+        .WillOnce(Return(ByMove(std::move(mockColumn_8))));
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"PRAGMA table_info(dummy);"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_2))));
+
+    auto mockStatement_3 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_3, 
+        bind(_,An<const std::string&>()))
+        .Times(1);
+    EXPECT_CALL(*mockStatement_3, 
+        step())
+        .WillOnce(Return(0));
+    EXPECT_CALL(*mockStatement_3, 
+        reset())
+        .Times(1);
+        
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"DELETE FROM ? WHERE db_status_field_dm=0;"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_3))));
+ 
+
+    EXPECT_NO_THROW(spEngine->deleteRowsByStatusField(std::vector<std::string> {"dummy"}));
+}
+
+TEST_F(DBEngineTest, DeleteRowsByStatusFieldNoMetadata)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+    
+    auto mockTransaction { std::make_unique<MockTransaction>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::move(mockTransaction))));
+    
+    auto mockStatement_1 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_1, step()).WillOnce(Return(0));
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"NNN"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_1))));
+
+    
+    EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+
+    std::unique_ptr<SQLiteDBEngine> spEngine;
+    EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
+        mockFactory,
+        "1", 
+        "NNN"));
+
+    auto mockStatement_2 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_2, step())
+        .WillOnce(Return(SQLITE_DONE));     
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"PRAGMA table_info(dummy);"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_2))));
+
+    auto mockStatement_3 { std::make_unique<MockStatement>() };
+       
+    EXPECT_CALL(*mockFactory, 
+        createStatement(_,"DELETE FROM ? WHERE db_status_field_dm=0;"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_3))));
+ 
+
+    EXPECT_THROW(spEngine->deleteRowsByStatusField(std::vector<std::string> {"dummy"}), dbengine_error);
+}

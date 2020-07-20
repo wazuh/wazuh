@@ -40,6 +40,9 @@ namespace DbSync
                                       const nlohmann::json& data,
                                       const ResultCallback callback) = 0;
 
+        virtual void initializeStatusField(const std::vector<std::string>& tableNames) = 0;
+        
+        virtual void deleteRowsByStatusField(const std::vector<std::string>& tableNames) = 0;
         virtual ~IDbEngine() = default;
 
     protected:

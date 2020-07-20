@@ -1,7 +1,11 @@
 /*
  * Wazuh DBSYNC
  * Copyright (C) 2015-2020, Wazuh Inc.
+<<<<<<< Updated upstream
  * June 11, 2020.
+=======
+ * July 16, 2020.
+>>>>>>> Stashed changes
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

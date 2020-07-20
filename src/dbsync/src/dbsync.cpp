@@ -11,6 +11,7 @@
 
 #include <map>
 #include <mutex>
+#include <bits/stdc++.h>
 #include "dbsync.h"
 #include "dbsync_implementation.h"
 #include "dbsyncPipelineFactory.h"
@@ -99,59 +100,21 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
                              const int           max_queue_size,
                              result_callback_t   callback)
 {
+    TXN_HANDLE ret_val{ nullptr };
     std::string error_message;
-    TXN_HANDLE txn{ nullptr };
-    if (!handle || !tables || !max_queue_size || !callback)
+    if (!tables || !callback)
     {
-        error_message += "Invalid parameters.";
+        error_message += "Invalid tables or callback.";
     }
     else
     {
         try
         {
-            //DbSyncImplementation...-> txnContext
-            const auto callbackWrapper
-            {
-                [callback](ReturnTypeCallback result, const nlohmann::json& jsonResult)
-                {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
-                    callback(result, spJson.get());
-                }
-            };
-            txn = PipelineFactory::instance().create(handle, nullptr, thread_number, max_queue_size, callbackWrapper);
+            ret_val = DBSyncImplementation::instance().createTransaction(handle, tables, thread_number, max_queue_size, callback);
         }
         catch(const DbSync::dbsync_error& ex)
         {
             error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
-        }
-        catch(...)
-        {
-            error_message += "Unrecognized error.";
-        }
-    }
-    log_message(error_message);
-    return txn;
-}
-
-int dbsync_close_txn(const TXN_HANDLE txn)
-{
-    auto ret_val { -1 };
-    std::string error_message;
-    if (!txn)
-    {
-        error_message += "Invalid txn.";
-    }
-    else
-    {
-        try
-        {
-            PipelineFactory::instance().destroy(txn);
-            ret_val = 0;
-        }
-        catch(const DbSync::dbsync_error& ex)
-        {
-            error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
-            ret_val = ex.id();
         }
         catch(...)
         {
@@ -162,8 +125,34 @@ int dbsync_close_txn(const TXN_HANDLE txn)
     return ret_val;
 }
 
-int dbsync_sync_txn_row(const TXN_HANDLE txn,
-                        const cJSON*     js_input)
+int dbsync_close_txn(const DBSYNC_HANDLE handle,
+                     const TXN_HANDLE txn)
+{
+    auto ret_val{ 0l };
+    std::string error_message;
+    
+    try
+    {
+        DBSyncImplementation::instance().closeTransaction(handle, txn);
+    }
+    catch(const DbSync::dbsync_error& ex)
+    {
+        error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+        ret_val = ex.id();
+    }
+    catch(...)
+    {
+        error_message += "Unrecognized error.";
+        ret_val = INT_MAX;
+    }
+    
+    log_message(error_message);
+    return ret_val;
+}
+
+int dbsync_sync_txn_row(const DBSYNC_HANDLE /*handle*/,
+                        const TXN_HANDLE /*txn*/,
+                        const cJSON*     /*js_input*/)
 {
     auto ret_val { -1 };
     std::string error_message;
@@ -308,8 +297,9 @@ int dbsync_delete_rows(const DBSYNC_HANDLE /*handle*/,
     return 0;
 }
 
-int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
-                            result_callback_t callback)
+int dbsync_get_deleted_rows(const DBSYNC_HANDLE /*handle*/,
+                            const TXN_HANDLE  /*txn*/,
+                            result_callback_t /*callback*/)
 {
     auto ret_val { -1 };
     std::string error_message;
