@@ -100,24 +100,31 @@ size_t asyscom_getconfig(const char * section, char ** output);
  * @param rule_match stores the regex of the rule
  * @return the rule information if it matches, otherwise null
  */
-RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, EventList *last_events, ListNode *cdblists, RuleNode *curr_node, regex_matching *rule_match);
+RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, EventList *last_events, ListNode *cdblists, RuleNode *curr_node,
+                              regex_matching *rule_match, OSList **fts_list, OSHash **fts_store);
 
 #define WM_ANALYSISD_LOGTAG ARGV0 "" // Tag for log messages
 
-typedef struct cpu_info {
-    char *cpu_name;
-    int cpu_cores;
-    double cpu_MHz;
-} cpu_info;
-
-/* CPU info */
-cpu_info *get_cpu_info();
-cpu_info *get_cpu_info_bsd();
-cpu_info *get_cpu_info_linux();
-
+/**
+ * @brief Get the number of elements divided by the size of queues
+ * 
+ * Values are save in state's variables
+ */
 void w_get_queues_size();
+
+/**
+ * @brief Obtains analysisd's queues sizes
+ * 
+ * Values are save in state's variables
+ */
 void w_get_initial_queues_size();
+
+/**
+ * @brief Initialize decoded event queues, log writer queues, database
+ * synchronization message queue, and archives writer queue.
+ */
 void w_init_queues();
+
 
 #define OSSEC_SERVER    "ossec-server"
 #define MAX_DECODER_ORDER_SIZE  1024
