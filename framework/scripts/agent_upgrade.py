@@ -57,7 +57,6 @@ def main():
         exit(0)
     
     agent_list = args.agent.split(",")
-    agent_list = [int(agent) for agent in agent_list]
 
     if args.silent:
         args.debug = False
@@ -131,17 +130,18 @@ def main():
                 continue
 
             if not args.silent:
-                print("Cheking upgrade status: retrie {}".format(counter))             
-            
+                stdout.write("Checking upgrade status: retry {0} of {1} \r".format(counter + 1, common.upgrade_result_retries))
+                stdout.flush()
+
             for ag in agents_results:
-                #check one by one if the agent end
-                if ag["status"] == "Outdated":
+                # Check one by one if the agent end
+                if ag["status"] == "OUTDATED":
                     if not args.silent:
-                        print("Agent upgrade failed: id: {0} status: {1}.".format(ag["agent"], ag["status"]))
+                        print ("\nAgent upgrade failed: id: {0} status: {1}.".format(ag["agent"], ag["status"]))
                     id_agents_upgrading.remove(int(ag["agent"]))
-                if ag["status"] == "Upgraded":
+                if ag["status"] == "UPDATED":
                     if not args.silent:
-                        print("Agent upgraded: id: {0} status: {1}.".format(ag["agent"], ag["status"]))
+                        print ("\nAgent upgraded: id: {0} status: {1}.".format(ag["agent"], ag["status"]))
                     id_agents_upgrading.remove(int(ag["agent"]))
             
             counter = counter + 1
@@ -149,9 +149,9 @@ def main():
         if not args.silent:
             if id_agents_upgrading:
                 for a in id_agents_upgrading:
-                    print("Agent not finished id: {0}".format(a))
+                    print("\nAgent not finished id: {0}".format(a))
             else:
-                print("Upgrade process finished")
+                print("\nUpgrade process finished")
         
     else:
         if not args.silent:

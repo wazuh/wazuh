@@ -1638,6 +1638,8 @@ def send_task_upgrade_module(command=None, agent_list=None, debug=False, file_pa
     if agent_list == None or "000" in agent_list or 0 in agent_list:
         raise WazuhError(1703)
 
+    agent_list = [int(agent) for agent in agent_list]
+
     data = { "command" : command, "agents" : agent_list}
 
     if command == 'upgrade':
