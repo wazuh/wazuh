@@ -73,7 +73,6 @@ stages:
       status_code: 400
       json: &error_spec
         detail: !anystr
-        status: !anyint
         title: !anystr
         type: !anystr
 
@@ -175,8 +174,6 @@ stages:
         group_id: group4
     response:
       status_code: 200
-      json:
-        message: !anystr
 
     # POST /groups?group_id=group1
   - name: Try to create a group that already exists

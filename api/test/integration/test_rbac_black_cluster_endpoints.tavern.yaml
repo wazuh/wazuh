@@ -785,7 +785,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 1
         message: !anystr
-    delay_after: 30
+    delay_after: !float "{restart_delay}"
 
   - name: Restart cluster
     request:
@@ -805,4 +805,4 @@ stages:
           total_affected_items: 2
           total_failed_items: 0
         message: !anystr
-    delay_after: 30
+    delay_after: !float "{restart_delay}"

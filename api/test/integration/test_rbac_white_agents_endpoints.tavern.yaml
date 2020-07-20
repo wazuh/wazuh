@@ -1449,7 +1449,7 @@ stages:
                 - "010"
           total_failed_items: 3
         message: "Could not send command to some agents"
-    delay_after: 45
+    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/restart
@@ -1526,7 +1526,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 3
         message: !anystr
-    delay_after: 45
+    delay_after: !float "{restart_delay}"
 
   - name: Try to restart all agents (Partially allowed, user agnostic)
     request:
@@ -1550,7 +1550,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 1
         message: !anystr
-    delay_after: 60
+    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
@@ -1687,7 +1687,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
         message: !anystr
-    delay_after: 45
+    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/{agent_id}/upgrade

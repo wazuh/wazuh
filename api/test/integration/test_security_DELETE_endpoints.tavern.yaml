@@ -45,8 +45,6 @@ stages:
           failed_items:
             - error:
                 code: !anyint
-                message: !anystr
-                remediation: !anything
               id: !anything
           total_affected_items: 0
           total_failed_items: !anyint
@@ -89,12 +87,9 @@ stages:
           failed_items:
             - error:
                 code: 4010
-                message: !anystr
-                remediation: !anystr
               id: !anything
           total_affected_items: 1
           total_failed_items: 1
-        message: !anystr
 
   # DELETE /security/roles/{non-existent role_id}/policies/{non-existent policy_id}
   - name: Try to delete a non-existent role-policy
@@ -277,8 +272,6 @@ stages:
           failed_items:
             - error:
                 code: 4002
-                message: !anystr
-                remediation: !anystr
               id:
                 - '999'
           total_affected_items: 1
@@ -383,13 +376,10 @@ stages:
           failed_items:
             - error:
                 code: 5001
-                message: !anystr
-                remediation: !anystr
               id:
                 - '200'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Delete the current user
     request:
@@ -408,13 +398,10 @@ stages:
           failed_items:
             - error:
                 code: 5008
-                message: !anystr
-                remediation: !anystr
               id:
                 - '99'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Delete an admin user (wazuh-wui)
     request:
@@ -433,13 +420,10 @@ stages:
           failed_items:
             - error:
                 code: 5004
-                message: !anystr
-                remediation: !anystr
               id:
                 - '2'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Delete an existent user (with body)
     request:
@@ -457,7 +441,6 @@ stages:
           affected_items:
             - id: 101
           total_affected_items: 1
-        message: !anystr
 
   - name: Delete an existent user
     request:
@@ -475,7 +458,6 @@ stages:
           affected_items:
             - id: 104
           total_affected_items: 1
-        message: !anystr
 
   - name: Delete all users in the system
     request:
@@ -509,7 +491,6 @@ stages:
           total_affected_items: 4
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: DELETE /security/config

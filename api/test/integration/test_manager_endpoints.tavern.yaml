@@ -39,7 +39,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /manager/info
@@ -71,7 +70,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /manager/configuration?{section}
@@ -157,7 +155,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 
   # GET /manager/configuration
@@ -181,7 +178,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   # GET /manager/configuration
   - name: Request section and field (2)
@@ -204,7 +200,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   # GET /manager/configuration
   - name: Request invalid section
@@ -242,7 +237,6 @@ stages:
                 - !anystr
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
 ---
 test_name: GET /manager/stats
@@ -261,12 +255,6 @@ stages:
         status_code: 400
         json:
           code: 1308
-          dapi_errors: !anything
-          detail: !anystr
-          remediation: !anystr
-          status: 400
-          title: !anystr
-          type: !anystr
 
   - name: Manager stats
     request:
@@ -302,12 +290,6 @@ stages:
       status_code: 400
       json:
         code: 1308
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
 ---
 test_name: GET /manager/stats/hourly
@@ -476,7 +458,6 @@ stages:
             failed_items: []
             total_affected_items: !anyint
             total_failed_items: 0
-          message: !anystr
 
   # GET /manager/logs
   - name: Filters -> limit=4
@@ -504,7 +485,6 @@ stages:
             failed_items: []
             total_affected_items: !anyint
             total_failed_items: 0
-          message: !anystr
 
   # GET /manager/logs
   - name: Filters -> limit=2, sort=-level
@@ -527,7 +507,6 @@ stages:
             failed_items: []
             total_affected_items: !anyint
             total_failed_items: 0
-          message: !anystr
 
   # GET /manager/logs
   - name: Filters -> offset=3, limit=3
@@ -551,7 +530,6 @@ stages:
             failed_items: []
             total_affected_items: !anyint
             total_failed_items: 0
-          message: !anystr
 
   # GET /manager/logs
   - name: Filters -> offset=3, type_log=info, limit=4
@@ -577,7 +555,6 @@ stages:
             failed_items: []
             total_affected_items: !anyint
             total_failed_items: 0
-          message: !anystr
 
   # GET /manager/logs
   - name: Filters -> category=ossec-analysisd, limit=1
@@ -599,7 +576,6 @@ stages:
             failed_items: []
             total_affected_items: !anyint
             total_failed_items: 0
-          message: !anystr
 
   # GET /manager/logs
   - name: Filters -> category=ossec-syscheckd, limit=1
@@ -621,7 +597,6 @@ stages:
             failed_items: []
             total_affected_items: !anyint
             total_failed_items: 0
-          message: !anystr
 
 ---
 test_name: GET /manager/logs/summary
@@ -667,7 +642,6 @@ stages:
           failed_items: []
           total_affected_items: 23
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /manager/files
@@ -814,12 +788,6 @@ stages:
       status_code: 400
       json:
         code: 1906
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   # GET /manager/files
   - name: Get unexisting decoder file with right path
@@ -835,12 +803,6 @@ stages:
       status_code: 400
       json:
         code: 1906
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   # GET /manager/files
   - name: Get unexisting list file with right path
@@ -856,12 +818,6 @@ stages:
       status_code: 400
       json:
         code: 1906
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
 ---
 test_name: PUT /manager/files
@@ -908,7 +864,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   # PUT /manager/files
   - name: Upload new rules
@@ -931,7 +886,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   # PUT /manager/files
   - name: Upload rules (overwrite=false)
@@ -958,7 +912,6 @@ stages:
                 - 'etc/rules/new-rules.xml'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # PUT /manager/files
   - name: Upload rules (overwrite=true)
@@ -982,7 +935,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   # PUT /manager/files
   - name: Upload rules with XML syntax error (overwrite=true)
@@ -1009,7 +961,6 @@ stages:
                 - 'etc/rules/new-rules.xml'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # PUT /manager/files
   - name: Upload new decoder
@@ -1032,7 +983,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   # PUT /manager/files
   - name: Upload decoder (overwrite=false)
@@ -1059,7 +1009,6 @@ stages:
                 - 'etc/decoders/new-decoder.xml'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # PUT /manager/files
   - name: Upload decoder (overwrite=true)
@@ -1083,7 +1032,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   # PUT /manager/files
   - name: Upload decoder with XML syntax error (overwrite=true)
@@ -1110,7 +1058,6 @@ stages:
                 - 'etc/decoders/new-decoder.xml'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # PUT /manager/files
   - name: Upload new CDB list
@@ -1133,7 +1080,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   # PUT /manager/files
   - name: Upload CDB list (overwrite=false)
@@ -1160,7 +1106,6 @@ stages:
                 - 'etc/lists/new-list'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # PUT /manager/files
   - name: Upload CDB list (overwrite=true)
@@ -1184,7 +1129,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   # PUT /manager/files
   - name: Upload CDB list with a syntax error (overwrite=true)
@@ -1211,7 +1155,6 @@ stages:
                 - 'etc/lists/new-list'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
 ---
 test_name: DELETE /manager/files
@@ -1237,7 +1180,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   # DELETE /manager/files
   - name: Delete unexisting rules file
@@ -1261,7 +1203,6 @@ stages:
                 - 'etc/rules/unexisting_rules.xml'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # DELETE /manager/files
   - name: Delete decoder file
@@ -1282,7 +1223,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   # DELETE /manager/files
   - name: Delete unexisting decoder file
@@ -1306,7 +1246,6 @@ stages:
                 - 'etc/decoders/unexisting_decoder.xml'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # DELETE /manager/files
   - name: Delete CDB list file
@@ -1327,7 +1266,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   # DELETE /manager/files
   - name: Delete unexisting CDB list file
@@ -1351,7 +1289,6 @@ stages:
                 - 'etc/lists/unexisting-list'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
 ---
 test_name: GET /manager/configuration/validation (OK)
@@ -1376,7 +1313,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /manager/validation (KO)
@@ -1419,7 +1355,6 @@ stages:
                 - !anystr
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
 ---
 test_name: GET /manager/configuration/{component}/{configuration}
@@ -1442,7 +1377,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of analysis/global in the manager
     request:
@@ -1460,7 +1394,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of analysis/active_response in the manager
     request:
@@ -1496,7 +1429,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of analysis/command in the manager
     request:
@@ -1514,7 +1446,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of analysis/internal in the manager
     request:
@@ -1532,7 +1463,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of auth in the manager
     request:
@@ -1550,7 +1480,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of com/internal in the manager
     request:
@@ -1568,7 +1497,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of csyslog/csyslog in the manager
     request:
@@ -1586,7 +1514,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of integrator/integration in the manager
     request:
@@ -1604,7 +1531,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of logcollector/localfile in the manager
     request:
@@ -1622,7 +1548,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of logcollector/socket in the manager
     request:
@@ -1639,7 +1564,6 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of logcollector/internal in the manager
     request:
@@ -1657,7 +1581,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of mail/global in the manager
     request:
@@ -1675,7 +1598,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of mail/alerts in the manager
     request:
@@ -1693,7 +1615,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of mail/internal in the manager
     request:
@@ -1711,7 +1632,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of monitor/internal in the manager
     request:
@@ -1729,7 +1649,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of request/remote in the manager
     request:
@@ -1747,7 +1666,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of request/internal in the manager
     request:
@@ -1765,7 +1683,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of syscheck/syscheck in the manager
     request:
@@ -1783,7 +1700,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of syscheck/rootcheck in the manager
     request:
@@ -1801,7 +1717,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of syscheck/internal in the manager
     request:
@@ -1819,7 +1734,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of wmodules/wmodules in the manager
     request:
@@ -1837,7 +1751,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /manager/api/config
@@ -1887,7 +1800,6 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: PUT /manager/api/config
@@ -1914,7 +1826,6 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   # PUT /manager/api/config
   - name: Modify API configuration (all allowed fields)
@@ -2000,7 +1911,6 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: DELETE /manager/api/config
@@ -2054,7 +1964,6 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: PUT /manager/restart
@@ -2079,4 +1988,3 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr

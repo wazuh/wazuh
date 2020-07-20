@@ -38,10 +38,9 @@ stages:
       params:
         list_agents: '002,004'
     response:
-      status_code: 400
+      status_code: 403
       json: &permission_denied
         code: 4000
-        detail: !anystr
 
   - name: Get a list of agents (Partially allowed, user aware)
     request:
@@ -68,7 +67,6 @@ stages:
                 - '006'
           total_affected_items: 3
           total_failed_items: 2
-        message: !anystr
 
   - name: Get a list of agents (Allowed)
     request:
@@ -90,7 +88,6 @@ stages:
             - id: '011'
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /agents?list_agents=agent_id
@@ -107,7 +104,7 @@ stages:
       params:
         list_agents: '008'
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -128,7 +125,6 @@ stages:
             - id: '009'
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /agents/{agent_id}/config/{component}/{configuration}
@@ -143,7 +139,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -181,7 +177,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -216,7 +212,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-     status_code: 400
+     status_code: 403
      json:
        <<: *permission_denied
 
@@ -270,7 +266,7 @@ stages:
      params:
        list_groups: 'group1'
    response:
-     status_code: 400
+     status_code: 403
      json:
        <<: *permission_denied
 
@@ -354,7 +350,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-     status_code: 400
+     status_code: 403
      json:
        <<: *permission_denied
 
@@ -387,7 +383,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-     status_code: 400
+     status_code: 403
      json:
        <<: *permission_denied
 
@@ -413,7 +409,6 @@ stages:
          total_affected_items: 3
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
 ---
 test_name: GET /groups/{group_id}/files/{filename}/json
@@ -428,7 +423,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-     status_code: 400
+     status_code: 403
      json:
        <<: *permission_denied
 
@@ -457,7 +452,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-     status_code: 400
+     status_code: 403
      json:
        <<: *permission_denied
 
@@ -630,7 +625,6 @@ stages:
          total_affected_items: 1
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
 ---
 test_name: GET /agents/{agent_id}/upgrade_result
@@ -645,7 +639,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-     status_code: 400
+     status_code: 403
      json:
        <<: *permission_denied
 
@@ -662,7 +656,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -674,7 +668,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -716,7 +710,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -730,7 +724,7 @@ stages:
       params:
         list_groups: 'group2'
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -750,7 +744,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
     delay_after: 1
 
   - name: Try to remove agent 005 from a list of groups (Partially allowed, user aware)
@@ -779,7 +772,6 @@ stages:
                 - 'group3'
           total_affected_items: 0
           total_failed_items: 3
-        message: !anystr
     delay_after: 1
 
 ---
@@ -797,7 +789,7 @@ stages:
       params:
         group_id: group2
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -818,7 +810,6 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        message: !anystr
     delay_after: 1
 
   - name: Remove a list of agents from group1 (Partially allowed, user aware)
@@ -850,7 +841,6 @@ stages:
                 - '999'
           total_affected_items: 0
           total_failed_items: 5
-        message: !anystr
     delay_after: 1
 
 ---
@@ -868,7 +858,7 @@ stages:
       params:
         list_groups: group1
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -894,7 +884,6 @@ stages:
                 - 'group2'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Try to delete group antonio (Allowed)
     request:
@@ -918,7 +907,6 @@ stages:
                 - 'antonio'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
 ---
 test_name: DELETE /groups
@@ -945,7 +933,6 @@ stages:
                 - 'group2'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
     delay_after: 1
 
   - name: Try to delete a list of groups (Partially allowed, indirectly denied to delete group2, user aware)
@@ -981,7 +968,6 @@ stages:
                 - group2
           total_affected_items: 0
           total_failed_items: 6
-        message: !anystr
 
 ---
 test_name: DELETE /agents?list_agents=agent_id
@@ -998,7 +984,7 @@ stages:
       params:
         list_agents: '003'
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1021,7 +1007,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
     delay_after: 1
 
 ---
@@ -1039,7 +1024,7 @@ stages:
       params:
         list_agents: '003,009'
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1065,7 +1050,6 @@ stages:
           older_than: 0s
           total_affected_items: 2
           total_failed_items: 0
-        message: !anystr
     delay_after: 3
 
   - name: Try to delete a list of agents (Partially allowed, user aware)
@@ -1097,7 +1081,6 @@ stages:
           older_than: 0s
           total_affected_items: 1
           total_failed_items: 3
-        message: !anystr
     delay_after: 3
 
   - name: Try to delete all agents (Partially allowed, user agnostic)
@@ -1119,7 +1102,6 @@ stages:
           older_than: 0s
           total_affected_items: 2
           total_failed_items: 0
-        message: !anystr
     delay_after: 3
 
 ---
@@ -1138,7 +1120,7 @@ stages:
         name: "NewAgentPost"
         ip: "any"
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1160,7 +1142,7 @@ stages:
         id: "750"
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1179,7 +1161,7 @@ stages:
       params:
         agent_name: test_agent
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1198,7 +1180,7 @@ stages:
       params:
         group_id: group4
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1217,7 +1199,7 @@ stages:
       params:
         group_id: group2
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1232,7 +1214,7 @@ stages:
         list_agents: '003,008,011'
         group_id: group1
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1260,7 +1242,6 @@ stages:
                 - '002'
           total_affected_items: 1
           total_failed_items: 2
-        message: !anystr
 
   - name: Try to assign all agents to group1 (Partially allowed, user agnostic)
     request:
@@ -1280,7 +1261,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: PUT /groups/{group_id}/configuration
@@ -1299,8 +1279,6 @@ stages:
         "{file_xml:s}"
     response:
       status_code: 200
-      json:
-        message: !anystr
 
   - name: Try to update group3 configuration (Denied)
     request:
@@ -1313,7 +1291,7 @@ stages:
       data:
         "{file_xml:s}"
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1332,9 +1310,8 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: "application/xml"
     response:
-      status_code: 400
+      status_code: 403
       json:
-        status: 400
         code: 4000
 
     # PUT /groups/group2/restart
@@ -1356,7 +1333,7 @@ stages:
           failed_items: []
           total_failed_items: 0
         message: "Restart command sent to all agents"
-    delay_after: 45
+    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/restart
@@ -1373,7 +1350,7 @@ stages:
       params:
         list_agents: "001"
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1401,8 +1378,7 @@ stages:
                 - '002'
           total_affected_items: 1
           total_failed_items: 3
-        message: !anystr
-    delay_after: 45
+    delay_after: !float "{restart_delay}"
 
   - name: Try to restart all agents (Partially allowed, user agnostic)
     request:
@@ -1420,8 +1396,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
-    delay_after: 45
+    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
@@ -1436,7 +1411,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1448,7 +1423,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1471,7 +1446,6 @@ stages:
                 - '005'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
 ---
 test_name: PUT /agents/{agent_id}/restart
@@ -1486,7 +1460,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1506,8 +1480,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
-    delay_after: 45
+    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/{agent_id}/upgrade
@@ -1522,7 +1495,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1539,7 +1512,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 403
       json:
         <<: *permission_denied
 
@@ -1558,7 +1531,7 @@ stages:
       params:
         list_agents: '002'
     response:
-      status_code: 400
+      status_code: 403
       json:
         code: 4000
         dapi_errors:

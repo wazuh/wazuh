@@ -34,7 +34,6 @@ stages:
           failed_items: []
           total_affected_items: 13
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
@@ -57,7 +56,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/ciscat/results
@@ -99,7 +97,6 @@ stages:
           failed_items: []
           total_affected_items: 8
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
@@ -122,7 +119,6 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/hardware
@@ -166,7 +162,6 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
@@ -193,7 +188,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netaddr
@@ -231,7 +225,6 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
@@ -258,7 +251,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netiface
@@ -307,7 +299,6 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
@@ -334,7 +325,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netproto
@@ -371,7 +361,6 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
@@ -398,7 +387,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/os
@@ -444,7 +432,6 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
@@ -471,7 +458,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/packages
@@ -493,7 +479,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
@@ -512,7 +497,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/ports
@@ -561,7 +545,6 @@ stages:
           failed_items: []
           total_affected_items: 12
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
@@ -588,7 +571,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/processes
@@ -610,7 +592,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
@@ -629,7 +610,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/hotfixes
@@ -651,7 +631,6 @@ stages:
           failed_items: []
           total_affected_items: 1 # Only the agent 000 will have results
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
@@ -670,4 +649,3 @@ stages:
           failed_items: []
           total_affected_items: 1 # Only the agent 000 will have results
           total_failed_items: 0
-        message: !anystr

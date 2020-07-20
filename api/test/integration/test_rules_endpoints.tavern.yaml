@@ -171,12 +171,7 @@ stages:
     response:
       status_code: 400
       json: &invalid_select
-        type: !anystr
-        detail: !anystr
-        status: 400
-        remediation: !anystr
         code: 1724
-        dapi_errors: !anything
 
   - name: Show rules of the system using select (one select is invalid)
     request:
@@ -239,11 +234,6 @@ stages:
         noexist: nothing
     response:
       status_code: 400
-      json: &error_null
-        detail: "Extra query parameter(s) noexist not in spec"
-        status: 400
-        title: null
-        type: "about:blank"
 
   - name: Invalid status
     request:
@@ -265,8 +255,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
   - name: Filters status
     request:
@@ -726,7 +714,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
 
   - name: Try to show the rules by requirement pci_dss, limit and offset
     request:
@@ -744,7 +731,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
 
   - name: Try to show the rules by requirement pci_dss, limit = 0
     request:
@@ -771,7 +757,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
       save:
         json:
           affected_items: data.affected_items
@@ -811,8 +796,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/requirement/gdpr
@@ -838,7 +821,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
 
   - name: Try to show the rules by requirement gdpr, limit and offset
     request:
@@ -856,7 +838,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
 
   - name: Try to show the rules by requirement gdpr, limit = 0
     request:
@@ -883,7 +864,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
       save:
         json:
           affected_items: data.affected_items
@@ -924,8 +904,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/requirement/gpg13
@@ -962,7 +940,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
 
   - name: Try to show the rules by requirement gpg13, limit = 0
     request:
@@ -987,7 +964,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
-        message: Selected rules were shown
       save:
         json:
           affected_items: data.affected_items
@@ -1006,7 +982,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
       save:
         json:
           affected_items: data.affected_items
@@ -1046,8 +1021,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/requirement/hipaa
@@ -1135,8 +1108,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/requirement/nist-800-53
@@ -1224,8 +1195,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/requirement/tsc
@@ -1313,8 +1282,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/requirement/mitre
@@ -1402,8 +1369,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/groups
@@ -1491,8 +1456,6 @@ stages:
         noexist: nothing
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/files
@@ -1565,8 +1528,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
   - name: Invalid filter - Extra field
     request:
@@ -1577,8 +1538,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
   - name: Filter status
     request:
@@ -1667,13 +1626,10 @@ stages:
           failed_items:
             - error:
                 code: 1208
-                message: !anystr
-                remediation: !anystr
               id:
                 - 9
           total_affected_items: !anyint
           total_failed_items: 1
-        message: Some rules could not be shown
 
   - name: Try to show a rule with a existent id but with a wrong file in file filter
     request:
@@ -1690,7 +1646,6 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        message: No rule was shown
 
   - name: Try to show a rule with a existent id, limit = 0
     request:
@@ -1746,8 +1701,6 @@ stages:
         rule_ids: 201
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
   - name: No rule
     request:
@@ -1766,10 +1719,7 @@ stages:
           failed_items:
             - error:
                 code: 1208
-                message: !anystr
-                remediation: !anystr
               id:
                 - 9999999999
           total_affected_items: 0
           total_failed_items: 1
-        message: No rule was shown

@@ -163,11 +163,6 @@ stages:
       status_code: 400
       json:
         code: 1405
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
@@ -414,11 +409,6 @@ stages:
       status_code: 400
       json:
         code: 1405
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
@@ -625,11 +615,6 @@ stages:
       status_code: 400
       json:
         code: 1405
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
@@ -876,11 +861,6 @@ stages:
       status_code: 400
       json:
         code: 1405
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
@@ -1087,11 +1067,6 @@ stages:
       status_code: 400
       json:
         code: 1405
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
@@ -1338,11 +1313,6 @@ stages:
       status_code: 400
       json:
         code: 1405
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:

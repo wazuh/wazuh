@@ -103,7 +103,6 @@ stages:
      status_code: 400
      json: &error_spec
        detail: !anystr
-       status: !anyint
        title: !anystr
        type: !anystr
 
@@ -2723,7 +2722,6 @@ stages:
          total_affected_items: !anyint
          total_failed_items: 0
          failed_items: []
-       message: !anystr
      save:
        json:
          filename_saved: data.affected_items[1].filename
@@ -2746,7 +2744,6 @@ stages:
          total_affected_items: !anyint
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
  - name: Try get the files of a group with offset -1
    request:
@@ -2784,7 +2781,6 @@ stages:
          total_affected_items: !anyint
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
  - name: Try get the files of a group with limit 0
    request:
@@ -2838,11 +2834,8 @@ stages:
          failed_items:
            - error:
                code: 1710
-               message: The group does not exist
-               remediation: Please, use `GET /agents/groups` to find all available groups
              id:
                - wrong_group
-       message: No groups files are shown
 
  - name: Try get the files of a bad group name (no alphanumeric)
    request:
@@ -2872,7 +2865,6 @@ stages:
          total_affected_items: !anyint
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
  - name: Try get the files of a group with wrong sort
    request:
@@ -2901,7 +2893,6 @@ stages:
          total_affected_items: 1
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
  - name: Try get the files of a group with wrong search
    request:
@@ -2917,7 +2908,6 @@ stages:
          total_affected_items: 0
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
  - name: Try get the files of a group, filter bad hash
    request:
@@ -2968,7 +2958,6 @@ stages:
          total_affected_items: !anyint
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
 ---
 test_name: GET /groups/{group_id}/files/{filename}/json
@@ -3899,7 +3888,6 @@ stages:
          total_affected_items: 1
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
 ---
 test_name: GET /agents/{agent_id}/upgrade_result
