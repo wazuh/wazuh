@@ -20,6 +20,7 @@ getHelp() {
    echo "Usage: $0 arguments"
    echo -e "\t-i    | --ignore-healthcheck Ignores the healthcheck"
    echo -e "\t-ip   | --elasticsearch-ip <elasticsearch-ip> Indicates the IP of Elasticsearch. Can be added as many as necessary"
+   echo -e "\t-d   | --debug Shows the complete installation output"
    echo -e "\t-h    | --help Shows help"
    exit 1 # Exit script after printing help
 }

@@ -61,6 +61,7 @@ getHelp() {
    echo -e "\t-e   | --install-elasticsearch Install Elasticsearch"
    echo -e "\t-k   | --install-kibana Install Kibana"
    echo -e "\t-c   | --create-certificates Generates the certificates for all the indicated nodes"
+   echo -e "\t-d   | --debug Shows the complete installation output"
    echo -e "\t-i   | --ignore-health-check Ignores the health-check"
    echo -e "\t-h   | --help Shows help"
    exit 1 # Exit script after printing help
@@ -361,7 +362,7 @@ main() {
         then
             debug=""
         fi
-        
+
         if [ -n "$i" ]
         then
             echo "Health-check ignored."    
