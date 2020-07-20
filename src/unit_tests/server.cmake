@@ -13,6 +13,7 @@ set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -fprofile-arcs -ftest-c
 
 add_subdirectory(analysisd)
 add_subdirectory(wazuh_db)
+add_subdirectory(os_auth)
 add_subdirectory(wazuh_modules)
 add_subdirectory(wazuh_modules/gcp)
 add_subdirectory(wazuh_modules/scheduling)
