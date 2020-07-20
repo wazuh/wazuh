@@ -409,9 +409,11 @@ void OS_ReadMSG(char *ut_str)
     currently_rule = NULL;
 
     /* Initiate the FTS list */
-    if (!FTS_Init(1)) {
+    if (!FTS_Init(1, &os_analysisd_fts_list, &os_analysisd_fts_store)) {
         merror_exit(FTS_LIST_ERROR);
     }
+
+    mdebug1("FTSInit completed.");
 
     /* Initialize the Accumulator */
     if (!Accumulate_Init()) {
@@ -520,7 +522,8 @@ void OS_ReadMSG(char *ut_str)
                 }
 
                 /* Check each rule */
-                else if (currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, os_analysisd_cdblists, rulenode_pt, &rule_match), !currently_rule) {
+                else if (currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, os_analysisd_cdblists,
+                         rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store), !currently_rule) {
                     continue;
                 }
 
