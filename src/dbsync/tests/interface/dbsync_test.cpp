@@ -150,14 +150,8 @@ TEST_F(DBSyncTest, UpdateDataWithLessFields)
 TEST_F(DBSyncTest, SetMaxRows)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    // const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
-
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
-
-    // const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
-
-    // EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
     EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 100));
 }
 
