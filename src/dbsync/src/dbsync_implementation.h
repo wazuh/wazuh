@@ -45,11 +45,10 @@ namespace DbSync
                                  const DbEngineType dbType,
                                  const std::string& path,
                                  const std::string& sqlStatement);
-        TXN_HANDLE createTransaction(const DBSYNC_HANDLE handle,
-                                     const char** tables);
-                                     
-        void closeTransaction(const DBSYNC_HANDLE handle,
-                              const TXN_HANDLE txnHandle);
+
+        void setMaxRows(const DBSYNC_HANDLE handle,
+                        const std::string& table,
+                        const unsigned long long maxRows);
         void release();
     private:
 

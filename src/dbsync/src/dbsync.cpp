@@ -234,12 +234,41 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
     return ret_val;
 }
 
-int dbsync_set_table_max_rows(const DBSYNC_HANDLE      /*handle*/,
-                              const char*              /*table*/,
-                              const unsigned long long /*max_rows*/)
+int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
+                              const char*              table,
+                              const unsigned long long max_rows)
 {
-    // Dummy function for now.
-    return 0;
+    auto ret_val { -1 };
+    std::string error_message;
+    if (!handle || !table || !max_rows)
+    {
+        error_message += "Invalid parameters.";
+    }
+    else
+    {
+        try
+        {
+            DBSyncImplementation::instance().setMaxRows(handle, table, max_rows);
+            ret_val = 0;
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            error_message += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
+            ret_val = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+            ret_val = ex.id();
+        }
+        catch(...)
+        {
+            error_message += "Unrecognized error.";
+        }
+    }
+    log_message(error_message);
+
+    return ret_val;
 }
 
 int dbsync_sync_row(const DBSYNC_HANDLE handle,

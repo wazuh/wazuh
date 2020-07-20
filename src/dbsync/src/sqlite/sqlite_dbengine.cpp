@@ -25,6 +25,25 @@ SQLiteDBEngine::SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFact
 SQLiteDBEngine::~SQLiteDBEngine()
 {}
 
+void SQLiteDBEngine::execute(const std::string& /*query*/)
+{}
+
+void SQLiteDBEngine::select(const std::string& /*query*/,
+                            nlohmann::json&    /*result*/)
+{}
+
+void SQLiteDBEngine::setMaxRows(const std::string& table,
+                                const unsigned long long maxRows)
+{
+    const std::string sql
+    {
+        "CREATE TRIGGER " + table + "_row_count BEFORE INSERT ON " + table +
+        " WHEN (SELECT COUNT(*) FROM " + table + ") >= " + std::to_string(maxRows) +
+        " BEGIN SELECT RAISE(FAIL, 'Too many Rows'); END;"
+    };
+    m_sqliteConnection->execute(sql);
+}
+
 void SQLiteDBEngine::bulkInsert(const std::string& table,
                                 const nlohmann::json& data)
 {

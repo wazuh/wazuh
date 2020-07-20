@@ -146,3 +146,72 @@ TEST_F(DBSyncTest, UpdateDataWithLessFields)
     EXPECT_NE(nullptr, json_response);
     EXPECT_NO_THROW(dbsync_free_result(&json_response));
 }
+
+TEST_F(DBSyncTest, SetMaxRows)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    // const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
+
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    // const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+
+    // EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
+    EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 100));
+}
+
+TEST_F(DBSyncTest, TryToInsertMoreThanMaxRows)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System"}, {"pid":3,"name":"cmd"}]})"};
+
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 1));
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+
+    EXPECT_NE(0, dbsync_insert_data(handle, jsInsert.get()));
+}
+
+TEST_F(DBSyncTest, TryToUpdateMaxRowsElements)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System"}, {"pid":3,"name":"cmd"}]})"};
+    const auto updateSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"Cmd"}, {"pid":3,"name":"System"}]})"};
+
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 2));
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
+
+    cJSON * json_response { nullptr };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate{ cJSON_Parse(updateSqlStmt) };
+    EXPECT_EQ(0, dbsync_update_with_snapshot(handle, jsUpdate.get(), &json_response));
+    EXPECT_NE(nullptr, json_response);
+    EXPECT_NO_THROW(dbsync_free_result(&json_response));
+}
+
+TEST_F(DBSyncTest, TryToUpdateMoreThanMaxRowsElements)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System"}, {"pid":3,"name":"cmd"}]})"};
+    const auto updateSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"Cmd"}, {"pid":3,"name":"System"}, {"pid":5,"name":"powershell"}]})"};
+
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 2));
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
+
+    cJSON * json_response { nullptr };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate{ cJSON_Parse(updateSqlStmt) };
+    EXPECT_NE(0, dbsync_update_with_snapshot(handle, jsUpdate.get(), &json_response));
+    EXPECT_EQ(nullptr, json_response);
+}
