@@ -88,7 +88,7 @@ enum ResponseType
 class dbengine_error : public DbSync::dbsync_error
 {
 public:
-    dbengine_error(const std::pair<int32_t, std::string>& exceptionInfo)
+    explicit dbengine_error(const std::pair<int32_t, std::string>& exceptionInfo)
     : DbSync::dbsync_error
     { 
         exceptionInfo.first, "dbEngine: " + exceptionInfo.second
@@ -98,16 +98,11 @@ public:
 class SQLiteDBEngine : public DbSync::IDbEngine 
 {
     public:
-        SQLiteDBEngine(std::shared_ptr<ISQLiteFactory> sqliteFactory,
+        SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFactory,
                        const std::string& path,
                        const std::string& tableStmtCreation);
         ~SQLiteDBEngine();
         
-        virtual void execute(const std::string& query) override;
-
-        virtual void select(const std::string& query,
-                            nlohmann::json& result) override;
-
         virtual void bulkInsert(const std::string& table,
                                 const nlohmann::json& data) override;
 

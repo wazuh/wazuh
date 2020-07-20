@@ -14,7 +14,7 @@
 #include "stringHelper.h"
 #include "typedef.h"
 
-SQLiteDBEngine::SQLiteDBEngine(std::shared_ptr<ISQLiteFactory> sqliteFactory,
+SQLiteDBEngine::SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFactory,
                                const std::string& path,
                                const std::string& tableStmtCreation)
   : m_sqliteFactory(sqliteFactory)
@@ -23,13 +23,6 @@ SQLiteDBEngine::SQLiteDBEngine(std::shared_ptr<ISQLiteFactory> sqliteFactory,
 }
 
 SQLiteDBEngine::~SQLiteDBEngine()
-{}
-
-void SQLiteDBEngine::execute(const std::string& /*query*/)
-{}
-
-void SQLiteDBEngine::select(const std::string& /*query*/,
-                            nlohmann::json&    /*result*/)
 {}
 
 void SQLiteDBEngine::bulkInsert(const std::string& table,
@@ -1044,10 +1037,12 @@ bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::__cxx11::
 
 std::unique_ptr<SQLite::IStatement>const& SQLiteDBEngine::getStatement(const std::string& sql) {
   const auto it = m_statementsCache.find(sql);
-  if(m_statementsCache.end() != it) {
+  if(m_statementsCache.end() != it) 
+  {
     it->second->reset();
     return it->second;
-  } else {
+  } else 
+  {
     m_statementsCache[sql] = m_sqliteFactory->createStatement(m_sqliteConnection, sql);
     return m_statementsCache[sql];
   }
