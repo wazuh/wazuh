@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "remoted.h"
+#include "wazuh_db/wdb.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
 #include "shared_download.h"
@@ -40,6 +41,8 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
 static void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir);
 static void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup);
 static void c_files(void);
+// Get agent's architecture
+static char * wm_get_os_arch(char * os_header);
 
 /*
  *  Read queue/agent-groups and delete this group for all the agents.
@@ -82,18 +85,52 @@ void cleaner(void* data){
     os_free(data);
 }
 
+char * wm_get_os_arch(char * os_header) {
+    const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "ia64", "AIX", "armv6", "armv7", NULL };
+    char * os_arch = NULL;
+    int i;
+
+    for (i = 0; ARCHS[i]; i++) {
+        if (strstr(os_header, ARCHS[i])) {
+            os_strdup(ARCHS[i], os_arch);
+            break;
+        }
+    }
+
+    if (!ARCHS[i]) {
+        os_strdup("", os_arch);
+    }
+
+    mdebug2("Detected architecture from %s: %s", os_header, os_arch);
+    return os_arch;
+}
+
 /* Save a control message received from an agent
  * read_controlmsg (other thread) is going to deal with it
  * (only if message changed)
  */
 void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
 {
-    char msg_ack[OS_FLSIZE + 1];
-    char *end;
-    char *uname = "";
-    pending_data_t *data;
-    FILE * fp;
-    mode_t oldmask;
+    char msg_ack[OS_FLSIZE + 1] = "";
+    char *uname = NULL;
+    char *end = NULL;
+    char *end_line = NULL;
+    char *version = NULL;
+    char *os_name = NULL;
+    char *os_major = NULL;
+    char *os_minor = NULL;
+    char *os_build = NULL;
+    char *os_version = NULL;
+    char *os_codename = NULL;
+    char *os_platform = NULL;
+    char *os_arch = NULL;
+    char *config_sum = NULL;
+    char *merged_sum = NULL;
+    char manager_host[512] = "";
+    char agent_ip[16] = "";
+    regmatch_t match[2] = { 0 };
+    int match_size = 0;
+    pending_data_t *data = NULL;
     int is_startup = 0;
 
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
@@ -145,6 +182,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && strcmp(data->message, uname) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
         utimes(data->keep_alive, NULL);
+        // TODO here we should call Wazuh DB to set the last keepalive
     } else {
         if (!data) {
             os_calloc(1, sizeof(pending_data_t), data);
@@ -161,37 +199,16 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             }
         }
 
-        if (!data->keep_alive) {
-            char agent_file[PATH_MAX];
-
-            /* Write to the agent file */
-            snprintf(agent_file, PATH_MAX, "%s/%s-%s",
-                     AGENTINFO_DIR,
-                     key->name,
-                     key->ip->ip);
-
-            os_strdup(agent_file, data->keep_alive);
-        }
-
         if (is_startup) {
+            /* Unlock mutex */
             w_mutex_unlock(&lastmsg_mutex);
-            oldmask = umask(0006);
-
-            if (fp = fopen(data->keep_alive, "a"), fp) {
-                fclose(fp);
-            } else {
-                merror(FOPEN_ERROR, data->keep_alive, errno, strerror(errno));
-            }
-
-            umask(oldmask);
         } else {
             /* Update message */
-            mdebug2("save_controlmsg(): inserting '%s'", uname);
+            mdebug2("save_controlmsg(): inserting '%s' in global.db", uname);
             free(data->message);
             os_strdup(uname, data->message);
 
             /* Mark data as changed and insert into queue */
-
             if (!data->changed) {
                 if (full(queue_i, queue_j)) {
                     merror("Pending message queue full.");
@@ -209,36 +226,141 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             /* Unlock mutex */
             w_mutex_unlock(&lastmsg_mutex);
 
-            /* Write uname to the file */
+            /* Parsing uname */
+            if (end_line = strstr(uname, "\n"), end_line){
+                *end_line = '\0';
+            } else {
+                mwarn("Corrupt line found parsing uname for '%s' (incomplete). Returning.", data->keep_alive);
+                return;
+            }
 
-            oldmask = umask(0006);
-            fp = fopen(data->keep_alive, "w");
-            umask(oldmask);
+            if (config_sum = strstr(uname, " / "), config_sum){
+                *config_sum = '\0';
+                config_sum += 3;
+            }
 
-            if (fp) {
-                /* Get manager name before chroot */
-                char hostname[HOST_NAME_MAX + 1];
+            if (version = strstr(uname, " - "), version){
+                *version = '\0';
+                version += 3;
+            } else {
+                merror("Corrupt data parsing uname for '%s' (incomplete). Returning.", data->keep_alive);
+                return;
+            }
 
-                fprintf(fp, "%s\n", uname);
+            // [Ver: os_major.os_minor.os_build]
+            if (os_version = strstr(uname, " [Ver: "), os_version){
+                *os_version = '\0';
+                os_version += 7;
+                os_name = uname;
+                *(os_version + strlen(os_version) - 1) = '\0';
 
-                /* Write manager hostname to the file */
+                // Get os_major
 
-                if (gethostname(hostname, HOST_NAME_MAX) < 0){
-                    mwarn("Unable to get hostname due to: '%s'", strerror(errno));
-                } else {
-                    fprintf(fp, "#\"_manager_hostname\":%s\n", hostname);
+                if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_major = malloc(match_size +1 );
+                    snprintf (os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
                 }
 
-                /* Write Cluster's node name to the agent-info file */
-                char nodename[OS_MAXSTR];
+                // Get os_minor
 
-                snprintf(nodename, OS_MAXSTR - 1, "#\"_node_name\":%s\n", node_name);
-                fprintf(fp, "%s", nodename);
+                if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_minor = malloc(match_size +1);
+                    snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
+                }
 
-                fclose(fp);
-            } else {
-                merror(FOPEN_ERROR, data->keep_alive, errno, strerror(errno));
+                // Get os_build
+
+                if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_build = malloc(match_size +1);
+                    snprintf(os_build, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
+                }
+
+                os_platform = "windows";
             }
+            else {
+                if (os_name = strstr(uname, " ["), os_name){
+                    *os_name = '\0';
+                    os_name += 2;
+                    if (os_version = strstr(os_name, ": "), os_version){
+                        *os_version = '\0';
+                        os_version += 2;
+                        *(os_version + strlen(os_version) - 1) = '\0';
+
+                        // os_major.os_minor (os_codename)
+                        if (os_codename = strstr(os_version, " ("), os_codename){
+                            *os_codename = '\0';
+                            os_codename += 2;
+                            *(os_codename + strlen(os_codename) - 1) = '\0';
+                        }
+
+                        // Get os_major
+                        if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
+                            match_size = match[1].rm_eo - match[1].rm_so;
+                            os_major = malloc(match_size +1);
+                            snprintf(os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
+                        }
+
+                        // Get os_minor
+                        if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
+                            match_size = match[1].rm_eo - match[1].rm_so;
+                            os_minor = malloc(match_size +1);
+                            snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
+                        }
+
+                    } else
+                        *(os_name + strlen(os_name) - 1) = '\0';
+
+                    // os_name|os_platform
+                    if (os_platform = strstr(os_name, "|"), os_platform){
+                        *os_platform = '\0';
+                        os_platform ++;
+                    }
+                }
+                os_arch = wm_get_os_arch(uname);
+            }
+
+            // Search for merged.mg sum
+            merged_sum = end_line + 1;
+            if (*merged_sum != '\"' && *merged_sum != '!' && (end = strchr(merged_sum, ' '), end)) {
+                *end = '\0';
+
+                if (strncmp(end + 1, SHAREDCFG_FILENAME "\n", sizeof(SHAREDCFG_FILENAME "\n")-1) != 0) {
+                    merged_sum = NULL;
+                }
+            }
+
+            // Search for the agent ip
+            const char * AGENT_IP = "#\"_agent_ip\":";
+
+            end_line = strchr(end + 1, '\n') + 1;
+            if (!strncmp(end_line, AGENT_IP, strlen(AGENT_IP))) {
+                strncpy(agent_ip, end_line + strlen(AGENT_IP), sizeof(agent_ip) - 1);
+                agent_ip[sizeof(agent_ip) - 1] = '\0';
+
+                if (end = strchr(agent_ip, '\n'), end){
+                    *end = '\0';
+                }
+            }
+
+            /* Get manager name before chroot */
+            if (gethostname(manager_host, HOST_NAME_MAX) < 0){
+                mwarn("Unable to get hostname due to: '%s'", strerror(errno));
+            }
+
+            int result = wdb_update_agent_version(atoi(key->id), os_name, os_version, os_major, os_minor, os_codename, os_platform,
+                                                  os_build, uname, os_arch, version, config_sum, merged_sum, manager_host,
+                                                  node_name, agent_ip[0] != '\0' ? agent_ip : NULL);
+            
+            if (OS_INVALID == result)
+                mwarn("Unable to save agent information in global.db");
+
+            free(os_major);
+            free(os_arch);
+            free(os_minor);
+            free(os_build);
         }
     }
 

@@ -543,8 +543,6 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
     if (os = fgets(header, OS_MAXSTR, fp), !os) {
         mtdebug1(WM_DATABASE_LOGTAG, "Empty file '%s'. Agent is pending.", path);
-
-
     } else {
 
         if (end_line = strstr(os, "\n"), end_line){
