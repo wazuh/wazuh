@@ -20,7 +20,7 @@ namespace SQLite
     class sqlite_error : public DbSync::dbsync_error
     {
     public:
-        explicit sqlite_error(const std::pair<const int32_t, const std::string>& exceptionInfo)
+        explicit sqlite_error(const std::pair<const int, const std::string>& exceptionInfo)
         : DbSync::dbsync_error
         {
             exceptionInfo.first, "sqlite: " + exceptionInfo.second
