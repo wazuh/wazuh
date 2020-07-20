@@ -15,6 +15,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/read-agents_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
 #include "../analysisd/eventinfo.h"
 #include "../analysisd/decoders/decoder.h"
@@ -41,27 +42,6 @@ typedef struct __test_dbsync_s{
     dbsync_context_t *ctx;
     Eventinfo *lf;
 }test_dbsync_t;
-
-/* wrappers */
-
-int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
-    check_expected(sock);
-    check_expected(query);
-    check_expected(len);
-
-    snprintf(response, len, "%s", mock_ptr_type(char*));
-
-    return mock();
-}
-
-int __wrap_wdbc_parse_result(char *result, char **payload) {
-    check_expected(result);
-
-    *payload = mock_type(char*);
-
-    return mock();
-}
-
 
 /* setup/teardowns */
 static int setup_dbsync_context(void **state) {
@@ -458,12 +438,11 @@ static void test_dispatch_check_success(void **state) {
     will_return(__wrap_wdbc_query_ex, 0);
 
     expect_string(__wrap_wdbc_parse_result, result, response);
-    will_return(__wrap_wdbc_parse_result, strstr(response, "-> here <-"));
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     expect_value(__wrap_send_msg_to_agent, msocket, 65555);
     expect_string(__wrap_send_msg_to_agent, msg,
-        "syscheck dbsync -> here <- {\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
+        "syscheck dbsync is a mock response, payload points -> here <- {\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
     expect_string(__wrap_send_msg_to_agent, agt_id, "007");
     expect_value(__wrap_send_msg_to_agent, exec, NULL);
     will_return(__wrap_send_msg_to_agent, 0);
@@ -556,10 +535,9 @@ static void test_dispatch_check_error_parsing_response(void **state) {
     will_return(__wrap_wdbc_query_ex, 0);
 
     expect_string(__wrap_wdbc_parse_result, result, response);
-    will_return(__wrap_wdbc_parse_result, response);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
-    expect_string(__wrap__merror, formatted_msg, "dbsync: Bad response from database: This is a mock response");
+    expect_string(__wrap__merror, formatted_msg, "dbsync: Bad response from database: is a mock response");
 
     dispatch_check(data->ctx, command);
 }
@@ -582,7 +560,6 @@ static void test_dispatch_state_success(void **state) {
     will_return(__wrap_wdbc_query_ex, 0);
 
     expect_string(__wrap_wdbc_parse_result, result, response);
-    will_return(__wrap_wdbc_parse_result, strstr(response, "-> here <-"));
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     // Assertions for this test are done through wrappers
@@ -683,11 +660,10 @@ static void test_dispatch_state_error_parsing_response(void **state) {
     will_return(__wrap_wdbc_query_ex, 0);
 
     expect_string(__wrap_wdbc_parse_result, result, response);
-    will_return(__wrap_wdbc_parse_result, response);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
     expect_string(__wrap__merror, formatted_msg,
-        "dbsync: Bad response from database: This is a mock response, payload points -> here <-");
+        "dbsync: Bad response from database: is a mock response, payload points -> here <-");
 
     // Assertions for this test are done through wrappers
     dispatch_state(data->ctx);
@@ -711,7 +687,6 @@ static void test_dispatch_clear_success(void **state) {
     will_return(__wrap_wdbc_query_ex, 0);
 
     expect_string(__wrap_wdbc_parse_result, result, response);
-    will_return(__wrap_wdbc_parse_result, strstr(response, "-> here <-"));
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     // Assertions for this test are done through wrappers
@@ -811,11 +786,10 @@ static void test_dispatch_clear_error_parsing_response(void **state) {
     will_return(__wrap_wdbc_query_ex, 0);
 
     expect_string(__wrap_wdbc_parse_result, result, response);
-    will_return(__wrap_wdbc_parse_result, response);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
     expect_string(__wrap__merror, formatted_msg,
-        "dbsync: Bad response from database: This is a mock response, payload points -> here <-");
+        "dbsync: Bad response from database: is a mock response, payload points -> here <-");
 
     // Assertions for this test are done through wrappers
     dispatch_clear(data->ctx);
@@ -838,12 +812,11 @@ static void test_DispatchDBSync_integrity_check_success(void **state) {
     will_return(__wrap_wdbc_query_ex, 0);
 
     expect_string(__wrap_wdbc_parse_result, result, response);
-    will_return(__wrap_wdbc_parse_result, strstr(response, "-> here <-"));
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     expect_value(__wrap_send_msg_to_agent, msocket, 65555);
     expect_string(__wrap_send_msg_to_agent, msg,
-        "syscheck dbsync -> here <- {\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
+        "syscheck dbsync is a mock response, payload points -> here <- {\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
     expect_string(__wrap_send_msg_to_agent, agt_id, "007");
     expect_value(__wrap_send_msg_to_agent, exec, NULL);
     will_return(__wrap_send_msg_to_agent, 0);
@@ -877,7 +850,6 @@ static void test_DispatchDBSync_state_success(void **state) {
     will_return(__wrap_wdbc_query_ex, 0);
 
     expect_string(__wrap_wdbc_parse_result, result, response);
-    will_return(__wrap_wdbc_parse_result, strstr(response, "-> here <-"));
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     DispatchDBSync(data->ctx, data->lf);
@@ -909,7 +881,6 @@ static void test_DispatchDBSync_integrity_clear_success(void **state) {
     will_return(__wrap_wdbc_query_ex, 0);
 
     expect_string(__wrap_wdbc_parse_result, result, response);
-    will_return(__wrap_wdbc_parse_result, strstr(response, "-> here <-"));
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     DispatchDBSync(data->ctx, data->lf);

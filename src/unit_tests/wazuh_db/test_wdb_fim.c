@@ -16,8 +16,10 @@
 
 #include "../wazuh_db/wdb.h"
 #include "../headers/shared.h"
+
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
 static const char* VALID_ENTRY = "{"
     "\"path\": \"/test\",\n"
@@ -47,18 +49,6 @@ static int teardown_wdb_t(void **state) {
     }
 
     return 0;
-}
-
-/* redefinitons/wrapping */
-
-int __wrap_wdb_begin2(wdb_t* aux)
-{
-    return mock();
-}
-
-int __wrap_wdb_stmt_cache(wdb_t wdb, int index)
-{
-    return mock();
 }
 
 /* tests */

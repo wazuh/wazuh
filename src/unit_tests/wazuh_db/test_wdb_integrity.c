@@ -13,13 +13,16 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <string.h>
+
 #include "../wazuh_db/wdb.h"
 #include "../headers/shared.h"
 #include "../os_crypto/sha1/sha1_op.h"
 #include "../external/sqlite/sqlite3.h"
+
 #include "../wrappers/externals/openssl/digest_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
 void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
 
@@ -44,12 +47,6 @@ static int teardown_wdb_t(void **state) {
     }
 
     return 0;
-}
-
-/* redefinitons/wrapping */
-int __wrap_wdb_stmt_cache(wdb_t * wdb, int index)
-{
-    return mock();
 }
 
 /* tests */
@@ -637,7 +634,7 @@ void test_wdbi_query_checksum_check_left_ok(void **state)
     expect_value(__wrap_sqlite3_column_text, i, 0);
     will_return(__wrap_sqlite3_column_text, "something");
     expect_string(__wrap_EVP_DigestUpdate, data, "something");
-    expect_value(__wrap_EVP_DigestUpdate, count, 9);    
+    expect_value(__wrap_EVP_DigestUpdate, count, 9);
     will_return(__wrap_EVP_DigestUpdate, 0);
     will_return(__wrap_sqlite3_step, 101);
     will_return(__wrap_wdb_stmt_cache, -1);
