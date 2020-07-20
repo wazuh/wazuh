@@ -13,3 +13,119 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+bool __wrap_c_isdigit(int c) {
+    return mock_type(bool);
+}
+
+#ifndef CLIENT
+
+bool __wrap_pkg_version_relate(const struct pkg_version *a, enum pkg_relation rel, const struct pkg_version *b,
+                               version_type vertype) {
+    check_expected(rel);
+
+    return mock();
+}
+
+int __wrap_wm_checks_package_vulnerability(char *version_a, const char *operation, const char *version_b,
+                                           version_type vertype) {
+    return mock();
+}
+
+int __wrap_wm_vuldet_add_cve_node(cve_vuln_pkg *newPkg, const char *cve, OSHash *cve_table) {
+    if (cve_table) {
+        cve_vuln_pkg *pkg  = (cve_vuln_pkg *) newPkg;
+        cve_vuln_pkg *next = NULL;
+
+        do { // Free each package in the linked list.
+            next = pkg->next;
+            os_free(pkg->bin_name);
+            os_free(pkg->src_name);
+            os_free(pkg->arch);
+            os_free(pkg->version);
+
+            if (pkg->nvd_cond) {
+                os_free(pkg->nvd_cond->operator);
+                os_free(pkg->nvd_cond->end_version);
+                os_free(pkg->nvd_cond->start_version);
+                os_free(pkg->nvd_cond);
+            }
+
+            if (pkg->vuln_cond) {
+                os_free(pkg->vuln_cond->state);
+                os_free(pkg->vuln_cond->operation);
+                os_free(pkg->vuln_cond->operation_value);
+                os_free(pkg->vuln_cond->condition);
+                os_free(pkg->vuln_cond);
+            }
+
+            os_free(pkg);
+
+            pkg = next;
+        } while (pkg);
+    }
+
+    return mock();
+}
+
+void __wrap_wm_vuldet_free_cve_node(cve_vuln_pkg *newPkg) {
+    if (newPkg) {
+        cve_vuln_pkg *pkg  = (cve_vuln_pkg *) newPkg;
+        cve_vuln_pkg *next = NULL;
+
+        do { // Free each package in the linked list.
+            next = pkg->next;
+            os_free(pkg->bin_name);
+            os_free(pkg->src_name);
+            os_free(pkg->arch);
+            os_free(pkg->version);
+
+            if (pkg->nvd_cond) {
+                os_free(pkg->nvd_cond->operator);
+                os_free(pkg->nvd_cond->end_version);
+                os_free(pkg->nvd_cond->start_version);
+                os_free(pkg->nvd_cond);
+            }
+
+            if (pkg->vuln_cond) {
+                os_free(pkg->vuln_cond->state);
+                os_free(pkg->vuln_cond->operation);
+                os_free(pkg->vuln_cond->operation_value);
+                os_free(pkg->vuln_cond->condition);
+                os_free(pkg->vuln_cond);
+            }
+
+            os_free(pkg);
+
+            pkg = next;
+        } while (pkg);
+    }
+
+    return;
+}
+
+int __wrap_wm_vuldet_linux_nvd_vulnerabilities(sqlite3 *db, agent_software *agent, OSHash *cve_table) {
+    return mock();
+}
+
+int __wrap_wm_vuldet_prepare() {
+    return mock();
+}
+
+int __wrap_wm_vuldet_win_nvd_vulnerabilities(sqlite3 *db, agent_software *agent, wm_vuldet_flags *flags) {
+    return mock();
+}
+
+int __wrap_wm_vuldet_json_nvd_parser(char *json_feed, wm_vuldet_db *parsed_vulnerabilities) {
+    return mock();
+}
+
+int __wrap_wm_vuldet_json_wcpe_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities) {
+    return mock();
+}
+
+int __wrap_wm_vuldet_json_msu_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities) {
+    return mock();
+}
+
+#endif  // CLIENT
