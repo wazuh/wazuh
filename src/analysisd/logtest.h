@@ -30,6 +30,8 @@ typedef struct w_logtest_session_t {
     ListRule *cdblistrule;                  ///< List to attach rules and CDB lists
     EventList *eventlist;                   ///< Previous events list
     OSHash *g_rules_hash;                   ///< Hash table of rules
+    OSList *fts_list;                       ///< Save FTS previous events
+    OSHash *fts_store;                      ///< Save FTS values processed
 
 } w_logtest_session_t;
 
