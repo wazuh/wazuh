@@ -516,14 +516,21 @@ class WazuhException(Exception):
                'remediation':
                    'Please check our official documentation to see more details: '
                    'https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'},
-        5006: {'message': 'Operation not allowed, the user does not have permissions to perform this action.',
-               'remediation': 'No user, except administrator users, can change the data of a different user.'},
-        5007: {'message': 'Insecure password provided.',
+        5006: {'message': 'Operation not allowed, the user does not have permissions to perform this action',
+               'remediation': 'No user, except administrator users, can change the data of a different user'},
+        5007: {'message': 'Insecure password provided',
                'remediation': 'The password for users must be at least 8 characters long and must have at least '
-                              'one upper and lower case letter, a number and a symbol. '},
+                              'one upper and lower case letter, a number and a symbol'},
         5008: {'message': 'The current user cannot be deleted',
                'remediation': 'You can delete this user with the administrator user (wazuh) or '
-                              'any other user with the necessary permissions.'}
+                              'any other user with the necessary permissions'},
+
+        # Security issues
+        6000: {'message': 'Limit of login attempts reached. '
+                          'The current IP has been blocked due to a high number of login attempts'},
+        6001: {'message': 'Maximum number of request per minute reached',
+               'remediation': 'This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html'},
+        6002: {'message': 'The body type is not the one specified in the content-type'}
 
         # > 9000: Authd
     }

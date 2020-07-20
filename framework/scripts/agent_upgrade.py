@@ -165,12 +165,14 @@ if __name__ == "__main__":
     arg_parser.add_argument("-r", "--repository", type=str, help="Specify a repository URL. [Default: {0}]".format(
         common.wpk_repo_url))
     arg_parser.add_argument("-v", "--version", type=str, help="Version to upgrade. [Default: latest Wazuh version]")
-    arg_parser.add_argument("-F", "--force", action="store_true", help="Allows reinstall same version and downgrade version.")
+    arg_parser.add_argument("-F", "--force", action="store_true",
+                            help="Allows reinstall same version and downgrade version.")
     arg_parser.add_argument("-s", "--silent", action="store_true", help="Do not show output.")
     arg_parser.add_argument("-d", "--debug", action="store_true", help="Debug mode.")
     arg_parser.add_argument("-l", "--list_outdated", action="store_true", help="Generates a list with all outdated agents.")
     arg_parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")
-    arg_parser.add_argument("-x", "--execute", type=str, help="Executable filename in the WPK custom file. [Default: upgrade.sh]")
+    arg_parser.add_argument("-x", "--execute", type=str,
+                            help="Executable filename in the WPK custom file. [Default: upgrade.sh]")
     arg_parser.add_argument("--http", action="store_true", help="Uses http protocol instead of https.")
     args = arg_parser.parse_args()
 

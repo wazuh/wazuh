@@ -444,6 +444,25 @@ def update_policy(policy_id=None, name=None, policy=None):
     return result
 
 
+def get_username(user_id):
+    """Return the username of the specified user_id
+
+    Parameters
+    ----------
+    user_id : list
+        User ID
+
+    Returns
+    -------
+    username if the user_id exists, unknown in other case
+    """
+    with AuthenticationManager() as am:
+        user = am.get_user_id(user_id=user_id[0])
+        username = user['username'] if user else 'unknown'
+
+    return username
+
+
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}', 'role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4017, 4008, 5001]})
 def set_user_role(user_id, role_ids, position=None):
@@ -451,7 +470,7 @@ def set_user_role(user_id, role_ids, position=None):
 
     Parameters
     ----------
-    user_id : str
+    user_id : list
         User ID
     role_ids : list of int
         List of role ids
@@ -465,9 +484,11 @@ def set_user_role(user_id, role_ids, position=None):
     """
     if position is not None and position < 0:
         raise WazuhError(4018)
-    result = AffectedItemsWazuhResult(none_msg=f'No link created to user {user_id[0]}',
-                                      some_msg=f'Some roles could not be linked to user {user_id[0]}',
-                                      all_msg=f'All roles were linked to user {user_id[0]}')
+
+    username = get_username(user_id=user_id)
+    result = AffectedItemsWazuhResult(none_msg=f'No link created to user {username}',
+                                      some_msg=f'Some roles could not be linked to user {username}',
+                                      all_msg=f'All roles were linked to user {username}')
     success = False
     with UserRolesManager() as urm:
         for role_id in role_ids:
@@ -504,9 +525,10 @@ def remove_user_role(user_id, role_ids):
     :param role_ids: List of role ids
     :return User-Roles information
     """
-    result = AffectedItemsWazuhResult(none_msg=f'No role unlinked from user {user_id[0]}',
-                                      some_msg=f'Some roles could not be unlinked from user {user_id[0]}',
-                                      all_msg=f'All roles were unlinked from user {user_id[0]}')
+    username = get_username(user_id=user_id)
+    result = AffectedItemsWazuhResult(none_msg=f'No role unlinked from user {username}',
+                                      some_msg=f'Some roles could not be unlinked from user {username}',
+                                      all_msg=f'All roles were unlinked from user {username}')
     success = False
     with UserRolesManager() as urm:
         for role_id in role_ids:
@@ -616,6 +638,14 @@ def remove_role_policy(role_id, policy_ids):
             result.affected_items.sort(key=str)
 
     return result
+
+
+def revoke_current_user_tokens():
+    """Revoke all current user's tokens"""
+    with TokenManager() as tm:
+        tm.add_user_rules(users={common.current_user.get()})
+
+    return WazuhResult({'msg': f'User {common.current_user.get()} logout correctly.'})
 
 
 @expose_resources(actions=['security:revoke'], resources=['*:*:*'],
