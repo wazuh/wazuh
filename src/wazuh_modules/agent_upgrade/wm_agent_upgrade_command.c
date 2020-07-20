@@ -149,6 +149,7 @@ static cJSON *wm_agent_send_task_information(const cJSON *message_object) {
         char *buffer = NULL;
         int length;
         char *message = cJSON_PrintUnformatted(message_object);
+        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_SEND_MESSAGE, message);
         OS_SendSecureTCP(sock, strlen(message), message);
         os_free(message);
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
@@ -166,6 +167,8 @@ static cJSON *wm_agent_send_task_information(const cJSON *message_object) {
                 response = cJSON_Parse(buffer);
                 if (!response) {
                     mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_TASK_MAN_JSON);
+                } else {
+                    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_RECEIVE_MESSAGE, buffer);
                 }
                 break;
         }

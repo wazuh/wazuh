@@ -122,6 +122,7 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
             break;
         default:
             /* Correctly received message */
+            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INCOMMING_MESSAGE, buffer);
             parsing_retval = wm_agent_parse_command(&buffer[0], &json_response, &params, &agents);
             break;
         }
@@ -133,23 +134,20 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
                 case WM_UPGRADE_UPGRADE:
                     command_response = wm_agent_process_upgrade_command(params, agents);
                     message = cJSON_PrintUnformatted(command_response); 
-                    OS_SendSecureTCP(peer, strlen(message),message);
-                    os_free(message);
                     cJSON_Delete(command_response);
                     break;
                 case WM_UPGRADE_UPGRADE_RESULTS:
                     command_response = wm_agent_process_upgrade_result_command(agents);
                     message = cJSON_PrintUnformatted(command_response); 
-                    OS_SendSecureTCP(peer, strlen(message), message);
-                    os_free(message);
                     cJSON_Delete(command_response);
                     break;
                 default:
                     message = cJSON_PrintUnformatted(json_response);
-                    OS_SendSecureTCP(peer, strlen(message), message);
-                    os_free(message);
                     break;
             }
+            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RESPONSE_MESSAGE, message);
+            OS_SendSecureTCP(peer, strlen(message), message);
+            os_free(message);
             cJSON_Delete(json_response);
         }
 

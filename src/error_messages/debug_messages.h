@@ -240,4 +240,8 @@
 
 #define WM_UPGRADE_RESULT_AGENT_INFO        "(8151): Agent Information obtained: \n %s"
 #define WM_UPGRADE_RESULT_SHOW_RESULTS      "(8152): Upgrade results response: \n %s"
+#define WM_UPGRADE_INCOMMING_MESSAGE        "(8155): Incomming message: '%s'"
+#define WM_UPGRADE_RESPONSE_MESSAGE         "(8156): Response message: '%s'"
+#define WM_UPGRADE_TASK_SEND_MESSAGE        "(8157): Sending message to task_manager module: '%s'"
+#define WM_UPGRADE_TASK_RECEIVE_MESSAGE     "(8158): Receiving message to task_manager module: '%s'"
 #endif /* DEBUG_MESSAGES_H */
