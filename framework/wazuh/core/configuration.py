@@ -43,8 +43,14 @@ conf_sections = {
     'alerts': {'type': 'merge', 'list_options': []},
     'client': {'type': 'merge', 'list_options': []},
     'database_output': {'type': 'merge', 'list_options': []},
-    'email_alerts': {'type': 'merge', 'list_options': []},
-    'reports': {'type': 'merge', 'list_options': []},
+    'email_alerts': {
+        'type': 'merge',
+        'list_options': ['email_to']
+    },
+    'reports': {
+        'type': 'merge',
+        'list_options': ['email_to']
+    },
     'global': {
         'type': 'merge',
         'list_options': ['white_list']
