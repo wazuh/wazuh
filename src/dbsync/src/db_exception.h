@@ -12,7 +12,6 @@
 #pragma once
 #include <stdexcept>
 #include <string>
-#include <map>
 
 constexpr auto FACTORY_INSTANTATION     { std::make_pair(1, "Unspecified type during factory instantiation") }; 
 constexpr auto INVALID_HANDLE           { std::make_pair(2, "Invalid handle value.") }; 
@@ -40,20 +39,20 @@ namespace DbSync
             return m_id;
         }
 
-        dbsync_error(const int32_t id,
+        dbsync_error(const int id,
                      const std::string& whatArg)
         : m_id{ id }
         , m_error{ whatArg }
         {}
 
-        explicit dbsync_error(const std::pair<int32_t, std::string>& exceptionInfo)
+        explicit dbsync_error(const std::pair<int, std::string>& exceptionInfo)
         : m_id{ exceptionInfo.first }
         , m_error{ exceptionInfo.second }
         {}
 
       private:
         /// an exception object as storage for error messages
-        const int32_t m_id;
+        const int m_id;
         std::runtime_error m_error;
     };
 }

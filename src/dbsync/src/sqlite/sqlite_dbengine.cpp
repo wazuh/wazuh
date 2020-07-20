@@ -88,79 +88,76 @@ void SQLiteDBEngine::syncTableRowData(const std::string& /*table*/,
 
 void SQLiteDBEngine::initializeStatusField(const std::vector<std::string>& tableNames) 
 {
-  const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
-  auto const& stmt_add { getStatement(std::string("ALTER TABLE ? ADD COLUMN ") + 
-                                      STATUS_FIELD_NAME + 
-                                      " " +
-                                      STATUS_FIELD_TYPE +
-                                      " DEFAULT 1;")};
+    const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
+    auto const& stmt_add { getStatement(std::string("ALTER TABLE ? ADD COLUMN ") + 
+                                        STATUS_FIELD_NAME + 
+                                        " " +
+                                        STATUS_FIELD_TYPE +
+                                        " DEFAULT 1;")};
 
-  auto const& stmt_init { getStatement(std::string("UPDATE ? SET ") +
-                                       STATUS_FIELD_NAME +
-                                       "=0;")};
+    auto const& stmt_init { getStatement(std::string("UPDATE ? SET ") +
+                                        STATUS_FIELD_NAME +
+                                        "=0;")};
 
-  for (const auto& table : tableNames)
-  {
-    if (0 != loadTableData(table)) 
+    for (const auto& table : tableNames)
     {
-      const auto& fields { m_tableFields[table] };
-      const auto& it { std::find_if(fields.begin(), 
-                                    fields.end(),
-                                    [](const ColumnData& column)
-      {
-        return 0 == std::get<Name>(column).compare(STATUS_FIELD_NAME);
-      })};
+        if (0 != loadTableData(table)) 
+        {
+            const auto& fields { m_tableFields[table] };
+            const auto& it { std::find_if(fields.begin(), 
+                                        fields.end(),
+                                        [](const ColumnData& column)
+            {
+                return 0 == std::get<Name>(column).compare(STATUS_FIELD_NAME);
+            })};
 
-      const auto& tuple { std::make_tuple(ColumnType::Text,table,0,0,0,0) };
+            const auto& tuple { std::make_tuple(ColumnType::Text,table,0,0,0,0) };
 
-      if (fields.end() == it)
-      {
-        m_tableFields[table].clear();
+            if (fields.end() == it)
+            {
+                m_tableFields[table].clear();
 
-        bindFieldData(stmt_add, 0l, tuple);
-        stmt_add->step();
-        stmt_add->reset();
-      }
+                bindFieldData(stmt_add, 0l, tuple);
+                stmt_add->step();
+                stmt_add->reset();
+            }
 
-      bindFieldData(stmt_init, 0l, tuple);
-      stmt_init->step();
-      stmt_init->reset();
-    } 
-    else
-    {
-      throw dbengine_error
-      {
-          EMPTY_TABLE_METADATA
-      };
+            bindFieldData(stmt_init, 0l, tuple);
+            stmt_init->step();
+            stmt_init->reset();
+        } 
+        else
+        {
+            throw dbengine_error { EMPTY_TABLE_METADATA };
+        }
     }
-  }
-  transaction->commit();
+    transaction->commit();
 }
 
 void SQLiteDBEngine::deleteRowsByStatusField(const std::vector<std::string>& tableNames) 
 {
-  const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
-  
-  auto const& stmt { getStatement(std::string("DELETE FROM ? WHERE ") +
-                                  STATUS_FIELD_NAME +
-                                  "=0;")};
+    const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
 
-  for (const auto& table : tableNames)
-  {
-    if (0 != loadTableData(table)) 
-    {
-      const auto& tuple { std::make_tuple(ColumnType::Text,table,0,0,0,0) };
+    auto const& stmt { getStatement(std::string("DELETE FROM ? WHERE ") +
+                                    STATUS_FIELD_NAME +
+                                    "=0;")};
 
-      bindFieldData(stmt, 0l, tuple);
-      stmt->step();
-      stmt->reset();
-    }
-    else
+    for (const auto& table : tableNames)
     {
-      throw dbengine_error { EMPTY_TABLE_METADATA };
+        if (0 != loadTableData(table)) 
+        {
+            const auto& tuple { std::make_tuple(ColumnType::Text,table,0,0,0,0) };
+
+            bindFieldData(stmt, 0l, tuple);
+            stmt->step();
+            stmt->reset();
+        }
+        else
+        {
+            throw dbengine_error { EMPTY_TABLE_METADATA };
+        }
     }
-  }
-  transaction->commit();
+    transaction->commit();
 }
 
 
@@ -1035,16 +1032,18 @@ bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::__cxx11::
     return ret;
 }
 
-std::unique_ptr<SQLite::IStatement>const& SQLiteDBEngine::getStatement(const std::string& sql) {
-  const auto it = m_statementsCache.find(sql);
-  if(m_statementsCache.end() != it) 
-  {
-    it->second->reset();
-    return it->second;
-  } else 
-  {
-    m_statementsCache[sql] = m_sqliteFactory->createStatement(m_sqliteConnection, sql);
-    return m_statementsCache[sql];
-  }
+std::unique_ptr<SQLite::IStatement>const& SQLiteDBEngine::getStatement(const std::string& sql) 
+{
+    const auto it = m_statementsCache.find(sql);
+    if(m_statementsCache.end() != it) 
+    {
+        it->second->reset();
+        return it->second;
+    } 
+    else 
+    {
+        m_statementsCache[sql] = m_sqliteFactory->createStatement(m_sqliteConnection, sql);
+        return m_statementsCache[sql];
+    }
 }
 

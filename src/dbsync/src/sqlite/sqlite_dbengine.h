@@ -50,12 +50,13 @@ const std::map<ColumnType, std::string> kColumnTypeNames =
     { Blob           , "BLOB"            },
 };
 
-enum TableHeader {
-  CID = 0,
-  Name,
-  Type,
-  PK,
-  TXNStatusField
+enum TableHeader 
+{
+    CID = 0,
+    Name,
+    Type,
+    PK,
+    TXNStatusField
 }; 
 
 using ColumnData = 
@@ -88,7 +89,7 @@ enum ResponseType
 class dbengine_error : public DbSync::dbsync_error
 {
 public:
-    explicit dbengine_error(const std::pair<int32_t, std::string>& exceptionInfo)
+    explicit dbengine_error(const std::pair<int, std::string>& exceptionInfo)
     : DbSync::dbsync_error
     { 
         exceptionInfo.first, "dbEngine: " + exceptionInfo.second
