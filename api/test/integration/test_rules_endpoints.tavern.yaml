@@ -121,11 +121,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json: &error_response
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
 
   - name: Sort without limit
     request:
@@ -243,8 +238,6 @@ stages:
         status: aCtIvE
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Invalid parameters - Extra fields
     request:
@@ -297,8 +290,6 @@ stages:
         status: notexist
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Test q
     request:
@@ -400,8 +391,6 @@ stages:
         level: 2-4-5
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter relative_dirname
     request:
@@ -740,8 +729,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -847,8 +834,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -949,8 +934,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1067,8 +1050,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1154,8 +1135,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1241,8 +1220,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1328,8 +1305,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1415,8 +1390,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1505,8 +1478,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1656,8 +1627,6 @@ stages:
         rule_ids: 1
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:

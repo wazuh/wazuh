@@ -13,11 +13,10 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
-      json: &permission_denied
+    response: &permission_denied
+      status_code: 403
+      json:
         code: 4000
-        detail: !anystr
 
 ---
 test_name: GET /cluster/healthcheck
@@ -48,13 +47,10 @@ stages:
           failed_items:
             - error:
                 code: 4000
-                message: !anystr
-                remediation: !anystr
               id:
                 - 'worker2'
           total_affected_items: 1
           total_failed_items: 1
-        message: !anystr
 
   - name: Get cluster healtcheck
     request:
@@ -78,7 +74,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/local/info
@@ -93,9 +88,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: GET /cluster/nodes
@@ -123,7 +116,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Get cluster nodes
     request:
@@ -140,7 +132,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters (type) -> master
     request:
@@ -156,7 +147,6 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters (type) -> worker
     request:
@@ -175,7 +165,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/nodes/{node_id}
@@ -192,9 +181,7 @@ stages:
       params:
         list_nodes: 'worker2'
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
   - name: Get cluster {worker2} (Allow)
     request:
@@ -215,7 +202,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Get cluster {master-node,worker1,worker2} (Allow, Deny, Allow)
     request:
@@ -243,7 +229,6 @@ stages:
                 - 'worker2'
           total_affected_items: 1
           total_failed_items: 2
-        message: !anystr
 
 ---
 test_name: GET /cluster/status
@@ -258,9 +243,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: GET /cluster/{node_id}/configuration
@@ -297,7 +280,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Request (worker1) (Deny)
     request:
@@ -307,9 +289,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: GET /cluster/configuration/validation
@@ -333,7 +313,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Request cluster validation
     request:
@@ -360,7 +339,6 @@ stages:
                 - worker2
           total_affected_items: 1
           total_failed_items: 1
-        message: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
@@ -375,9 +353,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
   - name: Try to show the config of analisys/global through a worker
     request:
@@ -402,9 +378,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
   - name: Request {node_id}
     request:
@@ -439,9 +413,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: GET /cluster/{node_id}/logs/summary
@@ -466,9 +438,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: GET /cluster/{node_id}/stats
@@ -483,9 +453,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
   - name: Cluster stats {worker1} today (Allow)
     request:
@@ -522,9 +490,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: GET /cluster/{node_id}/files
@@ -579,9 +545,7 @@ stages:
       params:
         path: etc/ossec.conf
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: PUT /cluster/{node_id}/files
@@ -633,9 +597,7 @@ stages:
         overwrite: True
         path: etc/ossec.conf
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: DELETE /cluster/{node_id}/files
@@ -652,7 +614,7 @@ stages:
       params:
         path: ruleset/decoders/0005-wazuh_decoders.xml
     response:
-      status_code: 400
+      <<: *permission_denied
 
   - name: Delete rules file (Allow) (Allow)
     request:
@@ -676,9 +638,7 @@ stages:
       params:
         path: etc/ossec.conf
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: GET /cluster/api/config
@@ -703,13 +663,10 @@ stages:
           failed_items:
             - error:
                 code: 4000
-                message: !anystr
-                remediation: !anystr
               id:
                 - worker2
           total_affected_items: 1
           total_failed_items: 1
-        message: !anystr
 
 ---
 test_name: PUT /cluster/api/config
@@ -736,7 +693,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: DELETE /cluster/api/config
@@ -778,13 +734,10 @@ stages:
           failed_items:
             - error:
                 code: 4000
-                message: !anystr
-                remediation: !anystr
               id:
                 - worker1
           total_affected_items: 1
           total_failed_items: 1
-        message: !anystr
     delay_after: !float "{restart_delay}"
 
   - name: Restart cluster
@@ -804,5 +757,4 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: !anystr
     delay_after: !float "{restart_delay}"

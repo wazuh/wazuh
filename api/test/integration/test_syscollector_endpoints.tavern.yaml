@@ -3944,7 +3944,7 @@ stages:
       status_code: 200
       json:
         data:
-          affected_affected_items: []
+          affected_items: []
           total_affected_items: 0
 
 ---

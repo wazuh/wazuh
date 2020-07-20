@@ -13,8 +13,8 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
+    response: &permission_denied
+      status_code: 403
       json:
         code: 4000
 
@@ -31,9 +31,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/configuration/{component}/{configuration}
@@ -48,9 +46,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: DELETE /manager/files
@@ -79,9 +75,7 @@ stages:
       params:
         path: 'etc/rules/local_rules.xml'
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/files
@@ -98,9 +92,7 @@ stages:
       params:
         path: 'etc/rules/local_rules.xml'
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: PUT /manager/files
@@ -143,9 +135,6 @@ stages:
                 - 'etc/rules/local_rules.xml'
               error:
                 code: 4000
-                message: !anystr
-                remediation: !anystr
-        message: !anystr
 
 ---
 test_name: GET /manager/info
@@ -160,9 +149,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/logs
@@ -177,9 +164,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/logs/summary
@@ -194,9 +179,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: PUT /manager/restart
@@ -211,9 +194,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/stats
@@ -228,9 +209,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/stats/analysisd
@@ -245,9 +224,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/stats/hourly
@@ -262,9 +239,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/stats/remoted
@@ -279,9 +254,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/stats/weekly
@@ -296,9 +269,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/status
@@ -313,9 +284,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 
 ---
@@ -331,9 +300,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: PUT /manager/api/config
@@ -352,9 +319,7 @@ stages:
           enabled: false
           time: 1
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: DELETE /manager/api/config
@@ -369,6 +334,4 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied

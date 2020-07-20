@@ -18,7 +18,7 @@ from api.models.token_response import TokenResponseModel
 from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.exception import WazuhError
+from wazuh.core.exception import WazuhError, WazuhPermissionError
 from wazuh.rbac import preprocessor
 from wazuh.core.results import AffectedItemsWazuhResult
 
@@ -734,7 +734,7 @@ async def revoke_all_tokens(request):
     data = raise_if_exc(await dapi.distribute_function())
     status = 200
     if type(data) == AffectedItemsWazuhResult and len(data.affected_items) == 0:
-        raise_if_exc(WazuhError(4000, data.message))
+        raise_if_exc(WazuhPermissionError(4000, data.message))
 
     return web.json_response(data=data, status=status, dumps=dumps)
 

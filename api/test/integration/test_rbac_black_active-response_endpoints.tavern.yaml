@@ -19,7 +19,7 @@ stages:
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
         list_agents: '001'
-    response:
+    response: &permission_denied
       status_code: 403
       json:
         code: 4000
@@ -46,7 +46,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: Command sent to all agents
 
   - name: Send a message to a list of agents
     request:
@@ -96,9 +95,7 @@ stages:
       params:
         list_agents: '009'
     response:
-      status_code: 403
-      json:
-        code: 4000
+      <<: *permission_denied
 
   - name: Try to send a message to an unexisting agent (Allow)
     request:
