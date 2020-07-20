@@ -15,7 +15,7 @@
 #include <cmocka.h>
 
 char * __wrap_dbsync_check_msg(const char * component, dbsync_msg msg, long id, const char * start, const char * top,
-                                const char * tail, __attribute__((unused))const char * checksum) {
+                                const char * tail, __attribute__((unused)) const char * checksum) {
     check_expected(component);
     check_expected(msg);
     check_expected(id);

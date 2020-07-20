@@ -20,7 +20,8 @@ int wrap_closesocket(int fd) {
     return 0;
 }
 
-ssize_t wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
+ssize_t wrap_recv(__attribute__((unused)) int __fd, __attribute__((unused)) void *__buf,
+                  __attribute__((unused)) size_t __n, __attribute__((unused)) int __flags) {
     char* rcv = (char*) mock_ptr_type(char*);
     int len = strlen(rcv);
     snprintf(__buf, len+1, "%s", rcv);

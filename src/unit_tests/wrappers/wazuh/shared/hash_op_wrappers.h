@@ -32,8 +32,7 @@ void *__wrap_OSHash_Get_ex(const OSHash *self, const char *key);
 
 void *__wrap_OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current);
 
-int __wrap_OSHash_SetFreeDataPointer(__attribute__((unused)) OSHash *self,
-                                     __attribute__((unused)) void (free_data_function)(void *));
+int __wrap_OSHash_SetFreeDataPointer(OSHash *self, void (free_data_function)(void *));
 
 int __wrap_OSHash_setSize(OSHash *self, unsigned int new_size);
 

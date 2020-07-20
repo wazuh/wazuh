@@ -14,6 +14,6 @@
 
 #include "../../../../headers/shared.h"
 
-cJSON * __wrap_json_fread(const char * path, __attribute__((unused)) char retry);
+cJSON * __wrap_json_fread(const char * path, char retry);
 
 #endif
