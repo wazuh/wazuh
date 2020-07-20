@@ -170,12 +170,49 @@ int dbsync_set_table_max_rows(const DBSYNC_HANDLE      /*handle*/,
     return 0;
 }
 
-int dbsync_sync_row(const DBSYNC_HANDLE /*handle*/,
-                    const cJSON*        /*js_input*/,
-                    result_callback_t   /*callback*/)
+int dbsync_sync_row(const DBSYNC_HANDLE handle,
+                    const cJSON*        js_input,
+                    result_callback_t   callback)
 {
-    // Dummy function for now.
-    return 0;
+    auto ret_val { -1 };
+    std::string errorMessage;
+    if (!handle || !js_input || !callback)
+    {
+        errorMessage += "Invalid input parameters.";
+    }
+    else
+    {
+        try
+        {
+            const auto callbackWrapper
+            {
+                [callback](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+                {
+                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    callback(result, spJson.get());
+                }
+            };
+            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_input) };
+            DBSyncImplementation::instance().syncRowData(handle, spJsonBytes.get(), callbackWrapper);
+            ret_val = 0;
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            errorMessage += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
+            ret_val = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+            ret_val = ex.id();
+        }
+        catch(...)
+        {
+            errorMessage += "Unrecognized error.";
+        }
+    }
+    log_message(errorMessage);
+    return ret_val;
 }
 
 int dbsync_select_rows(const DBSYNC_HANDLE /*handle*/,
@@ -221,9 +258,9 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
                 {
                     static std::map<ReturnTypeCallback, std::string> s_opMap
                     {
-                        {MODIFIED, "modified"},
-                        {DELETED,  "deleted"},
-                        {INSERTED,  "inserted"}
+                        { MODIFIED , "modified" },
+                        { DELETED  ,  "deleted" },
+                        { INSERTED , "inserted" }
                     };
                     result[s_opMap.at(resultType)].push_back(jsonResult);
                 }

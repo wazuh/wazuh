@@ -9,7 +9,10 @@
  * Foundation.
  */
 
-#pragma once
+#ifndef _STRING_HELPER_H
+#define _STRING_HELPER_H
+
+#include <vector>
 #include <string>
 #include <sstream>
 
@@ -42,3 +45,5 @@ namespace Utils
         return tokens;
     }
 }
+
+#endif // _STRING_HELPER_H
