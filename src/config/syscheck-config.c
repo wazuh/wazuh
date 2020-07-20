@@ -720,7 +720,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     char **env_variable;
 #ifdef WIN32
     int retvalF;
-    int len_tmp;
 #endif
 
     while (*dir) {
@@ -745,8 +744,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
 #ifdef WIN32
 
-        len_tmp = strlen(tmp_dir);
-
         /* If it's an environment variable, expand it */
         if(env_variable = get_paths_from_env_variable(tmp_dir), env_variable){
 
@@ -756,6 +753,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     if (retvalF = GetFullPathName(env_variable[i], PATH_MAX, real_path, NULL), retvalF == 0) {
                         retvalF = GetLastError();
                         mwarn("Couldn't get full path name '%s' (%d):'%s'\n", env_variable[i], retvalF, win_strerror(retvalF));
+                        os_free(env_variable[i]);
                         continue;
                     }
                     str_lowercase(env_variable[i]);
@@ -794,12 +792,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
 #else
         /* If it's an environment variable, expand it */
-        if (!strncmp("$", tmp_dir, 1)) {
+        if (*tmp_dir == '$') {
             if(env_variable = get_paths_from_env_variable(tmp_dir), env_variable) {
 
                 for(int i = 0; env_variable[i]; i++) {
                     if(strcmp(env_variable[i], "")) {
-                        str_lowercase(env_variable[i]);
                         dump_syscheck_entry(syscheck, env_variable[i], opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
                     }
                     os_free(env_variable[i]);
@@ -813,7 +810,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
         /* Else, check if it's a wildcard, hard/symbolic link or path of file/directory */
         strncpy(real_path, tmp_dir, PATH_MAX);
-        str_lowercase(real_path);
 
         /* Check for glob */
         /* The mingw32 builder used by travis.ci can't find glob.h
@@ -1289,9 +1285,14 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element,xml_ignore) == 0) {
             /* If it is a regex, add it */
             if (node[i]->attributes && node[i]->values && node[i]->attributes[0] && node[i]->values[0]) {
-                int result = process_option_regex("ignore", &syscheck->ignore_regex, node[i]);
-                if (result < 1) {
-                    return result;
+                if (!strcmp(node[i]->attributes[0], "type") && !strcmp(node[i]->values[0], "sregex")) {
+                    int result = process_option_regex("ignore", &syscheck->ignore_regex, node[i]);
+                    if (result < 1) {
+                        return result;
+                    }
+                } else {
+                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
+                    return (OS_INVALID);
                 }
             } else {
                 process_option(&syscheck->ignore, node[i]);
@@ -1352,23 +1353,24 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         } else if (strcmp(node[i]->element,xml_nodiff) == 0) {
             /* Add if regex */
             if (node[i]->attributes && node[i]->values && node[i]->attributes[0] && node[i]->values[0]) {
-                int result = process_option_regex("nodiff", &syscheck->nodiff_regex, node[i]);
-                if (result < 1) {
-                    return result;
+                if (!strcmp(node[i]->attributes[0], "type") && !strcmp(node[i]->values[0], "sregex")) {
+                    int result = process_option_regex("nodiff", &syscheck->nodiff_regex, node[i]);
+                    if (result < 1) {
+                        return result;
+                    }
+                } else {
+                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
+                    return (OS_INVALID);
                 }
             } else {
                 process_option(&syscheck->nodiff, node[i]);
             }
 
-        }
-
-        else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
+        } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
             /* auto_ignore is not read here */
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
             /* alert_new_files option is not read here */
-        }
-
-        else if (strcmp(node[i]->element, xml_prefilter_cmd) == 0) {
+        } else if (strcmp(node[i]->element, xml_prefilter_cmd) == 0) {
             struct stat statbuf;
 
 #ifdef WIN32
@@ -1770,38 +1772,31 @@ static char **get_paths_from_env_variable (char *environment_variable) {
 static int process_option_regex(char *option, OSMatch ***syscheck_option, xml_node *node) {
 
     unsigned int counter_opt = 0;
+    OSMatch *mt_pt;
 
-    if (!strcmp(node->attributes[0], "type") && !strcmp(node->values[0], "sregex")) {
-        OSMatch *mt_pt;
-
-        if (!syscheck_option[0]) {
-            os_calloc(2, sizeof(OSMatch *), syscheck_option[0]);
-            syscheck_option[0][0] = NULL;
-            syscheck_option[0][1] = NULL;
-        } else {
-            while (syscheck_option[0][counter_opt] != NULL) {
-                counter_opt++;
-            }
-            os_realloc(syscheck_option[0], sizeof(OSMatch *) * (counter_opt + 2),
-                        syscheck_option[0]);
-            syscheck_option[0][counter_opt + 1] = NULL;
+    if (!syscheck_option[0]) {
+        os_calloc(2, sizeof(OSMatch *), syscheck_option[0]);
+        syscheck_option[0][0] = NULL;
+        syscheck_option[0][1] = NULL;
+    } else {
+        while (syscheck_option[0][counter_opt] != NULL) {
+            counter_opt++;
         }
-
-        os_calloc(1, sizeof(OSMatch), syscheck_option[0][counter_opt]);
-        mdebug1("Found %s regex node %s", option, node->content);
-
-        if (!OSMatch_Compile(node->content, syscheck_option[0][counter_opt], 0)) {
-            mt_pt = (OSMatch *)syscheck_option[0][counter_opt];
-            merror(REGEX_COMPILE, node->content, mt_pt->error);
-            return (0);
-        }
-        mdebug1("Found %s regex node %s OK?", option, node->content);
-        mdebug1("Found %s regex size %d", option, counter_opt);
+        os_realloc(syscheck_option[0], sizeof(OSMatch *) * (counter_opt + 2),
+                    syscheck_option[0]);
+        syscheck_option[0][counter_opt + 1] = NULL;
     }
-    else {
-        merror(FIM_INVALID_ATTRIBUTE, node->attributes[0], node->element);
-        return (OS_INVALID);
+
+    os_calloc(1, sizeof(OSMatch), syscheck_option[0][counter_opt]);
+    mdebug1("Found %s regex node %s", option, node->content);
+
+    if (!OSMatch_Compile(node->content, syscheck_option[0][counter_opt], 0)) {
+        mt_pt = (OSMatch *)syscheck_option[0][counter_opt];
+        merror(REGEX_COMPILE, node->content, mt_pt->error);
+        return (0);
     }
+    mdebug1("Found %s regex node %s OK?", option, node->content);
+    mdebug1("Found %s regex size %d", option, counter_opt);
 
     return 1;
 }

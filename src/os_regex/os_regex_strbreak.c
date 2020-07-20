@@ -19,17 +19,25 @@
 /* Split a string into multiples pieces, divided by a char "match".
  * Returns a NULL terminated array on success or NULL on error.
  */
-char **OS_StrBreak(char match, const char *str, size_t size)
+char **OS_StrBreak(char match, const char *_str, size_t size)
 {
     size_t count = 0;
     size_t i = 0;
-    const char *tmp_str = str;
+    char *dup_str;
+    char *str;
+    char *tmp_str;
     char **ret;
     char *str_ant = NULL;
     char *aux_str = NULL;
 
     /* We can't do anything if str is null */
-    if (str == NULL) {
+    if (_str == NULL) {
+        return (NULL);
+    }
+
+    dup_str = strdup(_str);
+
+    if(dup_str == NULL) {
         return (NULL);
     }
 
@@ -37,6 +45,7 @@ char **OS_StrBreak(char match, const char *str, size_t size)
 
     if (ret == NULL) {
         /* Memory error. Should provide a better way to detect it */
+        free(dup_str);
         return (NULL);
     }
 
@@ -46,6 +55,7 @@ char **OS_StrBreak(char match, const char *str, size_t size)
         i++;
     }
 
+    tmp_str = str = dup_str;
     i = 0;
 
     while (*str != '\0') {
@@ -104,6 +114,7 @@ char **OS_StrBreak(char match, const char *str, size_t size)
         /* Make sure it is null terminated */
         ret[count] = NULL;
 
+        free(dup_str);
         return (ret);
     }
 
@@ -120,7 +131,7 @@ error:
     }
 
     free(ret);
+    free(dup_str);
     return (NULL);
 
 }
-
