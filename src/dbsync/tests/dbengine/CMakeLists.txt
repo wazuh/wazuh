@@ -2,17 +2,21 @@ cmake_minimum_required(VERSION 3.12)
 
 project(dbengine_unit_test)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g -std=c++11 -fsanitize=address,leak,undefined --coverage")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -std=c++11 --coverage")
 
 include_directories(${CMAKE_SOURCE_DIR}/include/)
 link_directories(${CMAKE_BINARY_DIR}/lib)
 
 
-file(GLOB STRING_HELPER_UNITTEST_SRC
+file(GLOB DBENGINE_UNITTEST_SRC
     "*.cpp")
 
+file(GLOB SQLITE_ENGINE_SRC
+    "${CMAKE_SOURCE_DIR}/src/sqlite/sqlite_dbengine.cpp")
+
 add_executable(dbengine_unit_test 
-    "${STRING_HELPER_UNITTEST_SRC}" )
+    "${DBENGINE_UNITTEST_SRC}" 
+    "${SQLITE_ENGINE_SRC}")
 
 target_link_libraries(dbengine_unit_test 
     debug gtestd

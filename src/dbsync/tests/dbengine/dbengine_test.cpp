@@ -20,14 +20,7 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::An;
 using ::testing::ByMove;
-void DBEngineTest::SetUp()
-{
 
-};
-
-void DBEngineTest::TearDown()
-{
-};
 
 TEST_F(DBEngineTest, Initialization)
 {

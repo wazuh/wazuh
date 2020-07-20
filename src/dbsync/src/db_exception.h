@@ -46,7 +46,7 @@ namespace DbSync
         , m_error{ whatArg }
         {}
 
-        dbsync_error(const std::pair<int32_t, std::string>& exceptionInfo)
+        explicit dbsync_error(const std::pair<int32_t, std::string>& exceptionInfo)
         : m_id{ exceptionInfo.first }
         , m_error{ exceptionInfo.second }
         {}

@@ -57,7 +57,7 @@ namespace DbSync
 
         struct TransactionContext
         {
-            TransactionContext(const char** tables)
+            explicit TransactionContext(const char** tables)
             {
                 auto rawElement { *tables };
                 if (nullptr != rawElement)

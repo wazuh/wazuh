@@ -19,9 +19,6 @@ protected:
 
     DBEngineTest() = default;
     virtual ~DBEngineTest() = default;
-
-    void SetUp() override;
-    void TearDown() override;
 };
 
 #endif //_DBENGINE_TEST_H
