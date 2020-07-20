@@ -45,6 +45,10 @@ namespace DbSync
                                  const DbEngineType dbType,
                                  const std::string& path,
                                  const std::string& sqlStatement);
+
+        void setMaxRows(const DBSYNC_HANDLE handle,
+                        const std::string& table,
+                        const unsigned long long maxRows);
         void release();
     private:
         struct DbEngineContext
