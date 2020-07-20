@@ -1,6 +1,7 @@
 #!/bin/bash
 ## Check if system is based on yum or apt-get
 ips=()
+debug='> /dev/null 2>&1'
 if [ -n "$(command -v yum)" ] 
 then
     sys_type="yum"
@@ -29,17 +30,17 @@ installPrerequisites() {
 
     if [ $sys_type == "yum" ] 
     then
-        yum install curl -y -q > /dev/null 2>&1
+        eval "yum install curl -y -q $debug"
     elif [ $sys_type == "apt-get" ] 
     then
         if [ -n "$(command -v add-apt-repository)" ]
         then
-            add-apt-repository ppa:openjdk-r/ppa -y > /dev/null 2>&1
+            eval "add-apt-repository ppa:openjdk-r/ppa -y $debug"
         else
             echo 'deb http://deb.debian.org/debian stretch-backports main' > /etc/apt/sources.list.d/backports.list
         fi
-        apt-get update -q > /dev/null 2>&1
-        apt-get install apt-transport-https curl -y -q > /dev/null 2>&1
+        eval "apt-get update -q $debug"
+        eval "apt-get install apt-transport-https curl -y -q $debug"
     fi
 
     logger "Done"
@@ -51,13 +52,13 @@ addWazuhrepo() {
 
     if [ $sys_type == "yum" ] 
     then
-        rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH > /dev/null 2>&1
-        echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh_pre.repo > /dev/null 2>&1
+        eval "rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH $debug"
+        eval "echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh_pre.repo $debug"
     elif [ $sys_type == "apt-get" ] 
     then
-        curl -s https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH --max-time 300 | apt-key add - > /dev/null 2>&1
-        echo "deb https://packages-dev.wazuh.com/trash/apt/ unstable main" | tee -a /etc/apt/sources.list.d/wazuh_trash.list > /dev/null 2>&1
-        apt-get update -q > /dev/null 2>&1
+        eval "curl -s https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH --max-time 300 | apt-key add - $debug"
+        eval "echo "deb https://packages-dev.wazuh.com/trash/apt/ unstable main" | tee -a /etc/apt/sources.list.d/wazuh_trash.list $debug"
+        eval "apt-get update -q $debug"
     fi    
 
     logger "Done" 
@@ -69,12 +70,12 @@ installWazuh() {
 
     if [ $sys_type == "yum" ] 
     then
-        curl -sL https://rpm.nodesource.com/setup_10.x --max-time 300 | bash - > /dev/null 2>&1
+        eval "curl -sL https://rpm.nodesource.com/setup_10.x --max-time 300 | bash - $debug"
     elif [ $sys_type == "apt-get" ] 
     then
-        curl -sL https://deb.nodesource.com/setup_10.x --max-time 300 | bash - > /dev/null 2>&1
+        eval "curl -sL https://deb.nodesource.com/setup_10.x --max-time 300 | bash - $debug"
     fi 
-    $sys_type install wazuh-manager nodejs wazuh-api -y -q > /dev/null 2>&1
+    eval "$sys_type install wazuh-manager nodejs wazuh-api -y -q $debug"
 
     logger "Done"
 }
@@ -84,11 +85,11 @@ installFilebeat() {
     
     logger "Installing Filebeat..."
 
-    $sys_type install filebeat -y -q  > /dev/null 2>&1
-    curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/unattended-installation/distributed/templates/filebeat.yml --max-time 300 > /dev/null 2>&1
-    curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.13.1/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300 > /dev/null 2>&1
-    chmod go+r /etc/filebeat/wazuh-template.json > /dev/null 2>&1
-    curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz --max-time 300 | tar -xvz -C /usr/share/filebeat/module > /dev/null 2>&1
+    eval "$sys_type install filebeat -y -q  $debug"
+    eval "curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/unattended-installation/distributed/templates/filebeat.yml --max-time 300 $debug"
+    eval "curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.13.1/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300 $debug"
+    eval "chmod go+r /etc/filebeat/wazuh-template.json $debug"
+    eval "curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz --max-time 300 | tar -xvz -C /usr/share/filebeat/module $debug"
     mkdir /etc/filebeat/certs
 
     logger "Done"
@@ -137,6 +138,10 @@ main() {
                 shift
                 shift
                 ;;
+            "-d"|"--debug") 
+                d=1          
+                shift 1
+                ;;                 
             "-h"|"--help")        
                 getHelp
                 ;;                
@@ -144,7 +149,10 @@ main() {
                 exit 1
             esac
         done
-
+        if [ -n "$d" ]
+        then
+            debug=""
+        fi
         if [ -n "$i" ]
         then
             echo "Health-check ignored."
