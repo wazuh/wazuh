@@ -134,8 +134,11 @@ void test_wdb_global_parse_sql_success(void **state)
     int ret;
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("global sql EXAMPLE QUERY");
-    will_return(__wrap_wdb_open_global2, data->socket);
+    sqlite3 * db;
+    data->socket->db=db;
     
+    will_return(__wrap_wdb_open_global2, data->socket);
+
     cJSON *object = cJSON_CreateString("EXPECTED RESULT FROM EXAMPLE QUERY");
     will_return(__wrap_wdb_exec,object);
 
@@ -152,84 +155,18 @@ void test_wdb_global_parse_sql_fail(void **state)
     int ret;
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("global sql EXAMPLE QUERY");
+    sqlite3 * db;
+    data->socket->db=db;
     will_return(__wrap_wdb_open_global2, data->socket);
     
     will_return(__wrap_wdb_exec,NULL);
 
     ret = wdb_parse(query, data->output);
     
-    assert_string_equal(data->output, "err Cannot execute Global database query; out of memory");
+    assert_string_equal(data->output, "err Cannot execute Global database query; library routine called out of sequence");
     assert_int_equal(ret, -1);
 
     os_free(query);
-}
-
-void test_wdb_global_parse_parse_error(void **state)
-{
-    int ret;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = strdup("global parse");
-    will_return(__wrap_wdb_open_global2, 1);
-    char * expected_output = strdup("err Invalid DB query syntax, near 'parse'") ;
-
-    ret = wdb_parse(query, data->output);
-    
-    assert_string_equal(data->output, expected_output);
-    assert_int_equal(ret, -1);
-
-    os_free(query);
-    os_free(expected_output);
-}
-
-void test_wdb_global_parse_parse_fail(void **state)
-{
-    int ret;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = strdup("global parse ");
-    will_return(__wrap_wdb_open_global2, 1);
-    char * expected_output = strdup("err Invalid DB query syntax, near ''") ;
-
-    ret = wdb_parse(query, data->output);
-    
-    assert_string_equal(data->output, expected_output);
-    assert_int_equal(ret, -1);
-
-    os_free(query);
-    os_free(expected_output);
-}
-
-void test_wdb_global_parse_select_error(void **state)
-{
-    int ret;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = strdup("global parse select");
-    will_return(__wrap_wdb_open_global2, 1);
-    char * expected_output = strdup("err Invalid DB query syntax, near 'select'") ;
-
-    ret = wdb_parse(query, data->output);
-    
-    assert_string_equal(data->output, expected_output);
-    assert_int_equal(ret, -1);
-
-    os_free(query);
-    os_free(expected_output);
-}
-
-void test_wdb_global_parse_select_invalid(void **state)
-{
-    int ret;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = strdup("global parse select invalid_query");
-    will_return(__wrap_wdb_open_global2, 1);
-    char * expected_output = strdup("err Cannot query GLOBAL select statement 'invalid_query'") ;
-
-    ret = wdb_parse(query, data->output);
-    
-    assert_string_equal(data->output, expected_output);
-    assert_int_equal(ret, -1);
-
-    os_free(query);
-    os_free(expected_output);
 }
 
 int main()
@@ -241,11 +178,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_parse_substr_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_parse_sql_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_parse_sql_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_parse_sql_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_parse_parse_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_parse_parse_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_parse_select_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_parse_select_invalid, test_setup, test_teardown)
+        cmocka_unit_test_setup_teardown(test_wdb_global_parse_sql_fail, test_setup, test_teardown)
 
     };
 

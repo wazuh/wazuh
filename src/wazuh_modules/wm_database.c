@@ -15,8 +15,6 @@
 #include "addagent/manage_agents.h" // FILE_SIZE
 #include "external/cJSON/cJSON.h"
 
-#define TEST_GLOBAL_QUERIES 1
-
 #ifndef CLIENT
 
 #ifdef INOTIFY_ENABLED
@@ -209,58 +207,6 @@ void* wm_database_main(wm_database *data) {
     return NULL;
 }
 
-//*************************************
-
-#if TEST_GLOBAL_QUERIES
-
-int wm_sync_get_wdb_socket() {
-    if (wdb_sock < 0) {
-        int i;
-        for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (wdb_sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_PATH, SOCK_STREAM, OS_SIZE_6144)) < 0; i++) {
-            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_SOCKET_RETRY, WDB_LOCAL_SOCK_PATH, i);
-            sleep(i * i);
-            if (i == VU_MAX_WAZUH_DB_ATTEMPS) {
-                mterror(WM_VULNDETECTOR_LOGTAG, VU_SOCKET_RETRY_ERROR, WDB_LOCAL_SOCK_PATH);
-                i = -1;
-            }
-        }
-    }
-
-    return wdb_sock;
-}
-
-void wm_sync_close_wdb() {
-    if (wdb_sock >= 0) {
-        close(wdb_sock);
-        wdb_sock = -1;
-    }
-}
-
-int wm_sync_send_wdb(char *msg) {
-    int res = OS_INVALID;
-    int sock = wm_sync_get_wdb_socket();
-    size_t size = strlen(msg) + 1;
-
-    if (sock < 0 || (res = OS_SendSecureTCP(sock, size, msg))) {
-        wm_sync_close_wdb();
-    }
-    return res;
-}
-
-int wm_sync_recv_wdb(char *msg, size_t size) {
-    int res;
-    int sock = wm_sync_get_wdb_socket();
-    if (sock < 0 || (res = OS_RecvSecureTCP(sock, msg, size)) < 3) {
-        wm_sync_close_wdb();
-        return OS_INVALID;
-    }
-    msg[res] = '\0';
-    return res;
-}
-#endif
-//*************************************
-
-
 // Update manager information
 void wm_sync_manager() {
     char hostname[1024];
@@ -278,33 +224,8 @@ void wm_sync_manager() {
     regmatch_t match[2];
     int match_size;
 
-    if (gethostname(hostname, 1024) == 0){
+    if (gethostname(hostname, 1024) == 0)
         wdb_update_agent_name(0, hostname);
-
-        //*************************************
-        #if TEST_GLOBAL_QUERIES
-            char wdbquery[OS_MAXSTR];
-            char wdboutput[OS_MAXSTR];
-            int wdb_sock=-1;
-
-            minfo("***Testing *Global* Queries*****");
-            //snprintf(request, OS_MAXSTR, "global parse insert agent 101 Test1 192.168.0.200 192.168.0.201 TESTKEY 1595013080 NULL");
-            snprintf(wdbquery, OS_MAXSTR, "global sql INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES ('101', 'Test1' ,'192.168.0.200', '192.168.0.201', 'TESTKEY' ,'1595013080' ,'NULL');");
-             wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-            //wm_sync_send_wdb(request);
-            //wm_sync_recv_wdb(result,OS_MAXSTR);
-            minfo("*Global* Query: %s | Result: %s",wdbquery,wdboutput);
-
-            snprintf(wdbquery, OS_MAXSTR, "global sql SELECT * FROM AGENT;");
-            wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-            minfo("*Global* Query: %s | Result: %s",wdbquery,wdboutput);
-
-           // wdb_close_all();
-        #endif
-        //*************************************
-
-    }
     else
         mterror(WM_DATABASE_LOGTAG, "Couldn't get manager's hostname: %s.", strerror(errno));
 
