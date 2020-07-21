@@ -404,7 +404,7 @@ async def get_log_node(request, node_id, pretty=False, wait_for_complete=False, 
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
-    :param tag: Filter by category of log.
+    :param tag: Filter by category/tag of log.
     :param level: Filters by log level.
     :param q: Query to filter results by.
     """

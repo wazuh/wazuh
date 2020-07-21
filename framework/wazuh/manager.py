@@ -45,12 +45,12 @@ def get_status():
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def ossec_log(level='all', tag='all', offset=0, limit=common.database_limit, sort_by=None,
+def ossec_log(level=None, tag=None, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
     """Gets logs from ossec.log.
 
     :param level: Filters by log level: all, error or info.
-    :param tag: Filters by log category (i.e. ossec-remoted).
+    :param tag: Filters by log category/tag (i.e. ossec-remoted).
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort_by: Fields to sort the items by
@@ -70,12 +70,9 @@ def ossec_log(level='all', tag='all', offset=0, limit=common.database_limit, sor
     logs = get_ossec_logs()
 
     query = []
-    if level != 'all':
-        query.append(f'level={level}')
-    if tag != 'all':
-        query.append(f'tag={tag}')
-    if q != '':
-        query.append(q)
+    level and query.append(f'level={level}')
+    tag and query.append(f'tag={tag}')
+    q and query.append(q)
     query = ';'.join(query)
 
     data = process_array(logs, search_text=search_text, search_in_fields=search_in_fields,

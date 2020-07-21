@@ -12,8 +12,7 @@ from collections import OrderedDict
 from datetime import datetime
 from datetime import timezone
 from os import chmod, remove
-from os.path import exists
-from os.path import join
+from os.path import exists, join
 from pyexpat import ExpatError
 from shutil import Error
 from typing import Dict
@@ -26,8 +25,7 @@ from wazuh import WazuhInternalError, WazuhError
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.results import WazuhResult
-from wazuh.core.utils import load_wazuh_xml, safe_move
-from wazuh.core.utils import tail
+from wazuh.core.utils import load_wazuh_xml, safe_move, tail
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")
