@@ -28,7 +28,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Send a message to an agent (Status=Active) (Deny)
     request:
@@ -43,11 +42,13 @@ stages:
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
         list_agents: '002'
-    response:
-      status_code: 400
+    response: &permission_denied
+      status_code: 403
       json:
         code: 4000
-        detail: !anystr
+        dapi_errors:
+          unknown-node: # No permission to see node
+            error: !anystr
 
   - name: Send a message to a list of agents
     request:
@@ -82,7 +83,6 @@ stages:
                 - '010'
           total_affected_items: 2
           total_failed_items: 4
-        message: !anystr
 
   - name: Try to send a message to an agent (status=disconnected/never_connected) (Allow)
     request:
@@ -109,7 +109,6 @@ stages:
                 - '009'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Try to send a message to an unexisting agent (Deny)
     request:
@@ -125,10 +124,7 @@ stages:
       params:
         list_agents: 251,252
     response:
-      status_code: 400
-      json:
-        code: 4000
-        detail: !anystr
+      <<: *permission_denied
 
 ---
 test_name: PUT /active-response
@@ -164,4 +160,3 @@ stages:
                 - '003'
           total_affected_items: 3
           total_failed_items: 3
-        message: !anystr

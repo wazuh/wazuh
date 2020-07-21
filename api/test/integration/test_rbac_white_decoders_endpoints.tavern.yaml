@@ -34,8 +34,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
-
+        
   - name: Try to show the decoders of the system (try q parameter to bypass a denied resource)
     request:
       verify: False
@@ -53,8 +52,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
-
+        
   - name: Try to show the decoders of the system (list)
     request:
       verify: False
@@ -80,14 +78,11 @@ stages:
           failed_items:
             - error:
                 code: 1504
-                message: !anystr
-                remediation: !anystr
               id:
                 - netinfo
           total_affected_items: !anyint
           total_failed_items: 1
-        message: !anystr
-
+        
 ---
 test_name: GET DECODERS FILES RBAC
 
@@ -114,8 +109,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
-
+        
   - name: Try to show the decoders files of the system (list)
     request:
       verify: False
@@ -139,8 +133,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
-
+        
   - name: Try to show the decoders files of the system (no permissions)
     request:
       verify: False
@@ -150,18 +143,13 @@ stages:
       method: GET
       params:
         filename: 0064-cisco-asa_decoders.xml,0100-fortigate_decoders.xml
-    response:
-      status_code: 400
-      json: &permissions_denied
+    response: &permission_denied
+      status_code: 403
+      json:
         code: 4000
         dapi_errors:
-          unknown-node:
+          unknown-node: # No permission to see node
             error: !anystr
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
 ---
 test_name: GET DECODERS FILES RBAC (Download)
@@ -188,9 +176,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
-      status_code: 400
-      json:
-        <<: *permissions_denied
+      <<: *permission_denied
 
 ---
 test_name: GET DECODERS PARENTS RBAC
@@ -212,4 +198,3 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
