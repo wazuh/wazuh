@@ -22,8 +22,9 @@
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/os_utils_wrappers.h"
-#include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../wrappers/wazuh/shared/string_op_wrappers.h"
+#include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
+#include "../wrappers/wazuh/shared/integrity_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
 
@@ -56,13 +57,6 @@ unsigned long __wrap_time() {
     return __real_time();
 }
 #endif
-
-char *__wrap_dbsync_state_msg(const char * component, cJSON * data) {
-    check_expected(component);
-    check_expected_ptr(data);
-
-    return mock_type(char*);
-}
 
 /*-----------------------------------------*/
 

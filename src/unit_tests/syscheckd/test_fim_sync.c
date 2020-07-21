@@ -17,8 +17,8 @@
 #include "../wrappers/common.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../wrappers/wazuh/shared/integrity_op_wrappers.h"
 #include "../wrappers/wazuh/shared/queue_op_wrappers.h"
+#include "../wrappers/wazuh/shared/integrity_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
@@ -42,13 +42,6 @@ int __wrap_time() {
     return 1572521857;
 }
 #endif
-
-char * __wrap_dbsync_state_msg(const char * component, cJSON * data) {
-    check_expected(component);
-    check_expected_ptr(data);
-
-    return mock_type(char*);
-}
 
 /* setup/teardown */
 static int setup_group(void **state) {

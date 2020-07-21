@@ -25,3 +25,10 @@ char * __wrap_dbsync_check_msg(const char * component, dbsync_msg msg, long id, 
 
     return mock_type(char*);
 }
+
+char * __wrap_dbsync_state_msg(const char * component, cJSON * data) {
+    check_expected(component);
+    check_expected_ptr(data);
+
+    return mock_type(char*);
+}
