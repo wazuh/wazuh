@@ -24,10 +24,20 @@ static void checkSqliteResult(const int result,
 {
     if (SQLITE_OK != result)
     {
-        throw sqlite_error
+        if (SQLITE_CONSTRAINT == result && exceptionString.find("Too many Rows") != std::string::npos)
         {
-            std::make_pair(result, exceptionString)
-        };
+            throw DbSync::max_rows_error
+            {
+                exceptionString
+            };
+        }
+        else
+        {
+            throw sqlite_error
+            {
+                std::make_pair(result, exceptionString)
+            };
+        }
     }
 }
 
@@ -155,10 +165,7 @@ int32_t Statement::step()
     const auto ret { sqlite3_step(m_stmt.get()) };
     if (SQLITE_ROW != ret && SQLITE_DONE != ret)
     {
-        throw sqlite_error
-        {
-            std::make_pair(ret, sqlite3_errmsg(m_connection->db().get()))
-        };
+        checkSqliteResult(ret, sqlite3_errmsg(m_connection->db().get()));
     }
     return ret;
 }
