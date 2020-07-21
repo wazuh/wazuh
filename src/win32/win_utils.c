@@ -46,10 +46,10 @@ int local_start()
         nowDebug();
         debug_level--;
     }
-    
+
     /* Initialize logging module*/
     w_logging_init();
-    
+
     /* Start agent */
     os_calloc(1, sizeof(agent), agt);
 
@@ -216,7 +216,7 @@ int local_start()
     start_agent(1);
     os_delwait();
     update_status(GA_STATUS_ACTIVE);
-    
+
     req_init();
 
     /* Start receiver thread */
@@ -317,7 +317,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 }
 
 /* StartMQ for Windows */
-int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) short int type)
+int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) short int type, __attribute__((unused)) short int n_tries)
 {
     return (0);
 }

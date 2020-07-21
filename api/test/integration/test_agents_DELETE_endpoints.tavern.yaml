@@ -690,7 +690,7 @@ stages:
           total_failed_items: 1
         message: !anystr
 
-    # DELETE /agents?list_agents=004&status=active&older_than=1s
+    # DELETE /agents?list_agents=004&status=active&older_than=0s
   - name: Delete agent with a proper status
     request:
       verify: False
@@ -698,14 +698,14 @@ stages:
       params:
         list_agents: '004'
         status: 'active'
-        older_than: '1s'
+        older_than: '0s'
     response:
       status_code: 200
       json:
         data:
           affected_items:
             - '004'
-          older_than: 1s
+          older_than: 0s
           total_affected_items: 1
         message: !anystr
 
@@ -745,50 +745,50 @@ stages:
           total_failed_items: 1
         message: !anystr
 
-    # DELETE /agents?list_agents=007&older_than=1s
+    # DELETE /agents?list_agents=009&older_than=1s
   - name: Delete agent older_than 1s
     request:
       verify: False
       <<: *delete_agents
       params:
-        list_agents: '007'
+        list_agents: '009'
         older_than: '1s'
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - '007'
+            - '009'
           older_than: '1s'
           total_affected_items: 1
         message: !anystr
 
-    # DELETE /agents?list_agents=008,009&older_than=1s
+    # DELETE /agents?list_agents=001,011&older_than=1s
   - name: Delete several agents
     request:
       verify: False
       <<: *delete_agents
       params:
-        list_agents: '008,009'
-        older_than: '1s'
+        list_agents: '001,011'
+        older_than: '0s'
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - "008"
-            - "009"
-          older_than: '1s'
+            - "001"
+            - "011"
+          older_than: '0s'
           total_affected_items: 2
         message: !anystr
 
-    # DELETE /agents?list_agents=011&older_than=1s&purge=True
+    # DELETE /agents?list_agents=012&older_than=1s&purge=True
   - name: Delete agent older_than 1s with purge
     request:
       verify: False
       <<: *delete_agents
       params:
-        list_agents: '011'
+        list_agents: '012'
         older_than: '1s'
         purge: True
     response:
@@ -796,13 +796,13 @@ stages:
       json:
         data:
           affected_items:
-            - '011'
+            - '012'
           older_than: '1s'
           total_affected_items: 1
         message: !anystr
 
     # DELETE /agents
-  - name: Delete all agents (001,002,003,005,012)
+  - name: Delete all agents (001,002,003,005)
     delay_before: 12
     request:
       verify: False
@@ -817,11 +817,9 @@ stages:
       json:
         data:
           affected_items:
-            - "001"
             - "002"
             - "003"
             - "005"
-            - "012"
           older_than: '0s'
           total_affected_items: 5
         message: !anystr

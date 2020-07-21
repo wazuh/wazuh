@@ -1062,6 +1062,7 @@ class WazuhDBQuery(object):
     def _parse_legacy_filters(self):
         """Parses legacy filters."""
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
+        self.legacy_filters.get('older_than', None) == '0s' and self.legacy_filters.pop('older_than')
         legacy_filters_as_list = {
             name: value if isinstance(value, list) else [value] for name, value in self.legacy_filters.items()
         }
