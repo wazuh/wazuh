@@ -34,8 +34,14 @@ namespace DbSync
         virtual void syncTableRowData(const std::string& table,
                                       const nlohmann::json& data,
                                       const ResultCallback callback) = 0;
+
         virtual void setMaxRows(const std::string& table,
                                 const unsigned long long maxRows) = 0;
+
+        virtual void initializeStatusField(const std::vector<std::string>& tableNames) = 0;
+
+        virtual void deleteRowsByStatusField(const std::vector<std::string>& tableNames) = 0;
+
         virtual ~IDbEngine() = default;
 
     protected:

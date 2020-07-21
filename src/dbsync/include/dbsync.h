@@ -87,7 +87,8 @@ EXPORTED TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
-EXPORTED int dbsync_close_txn(const TXN_HANDLE txn);
+EXPORTED int dbsync_close_txn(const DBSYNC_HANDLE handle,
+                              const TXN_HANDLE txn);
 
 /**
  * @brief Synchronizes the \p js_input data using the \p txn current
@@ -100,7 +101,8 @@ EXPORTED int dbsync_close_txn(const TXN_HANDLE txn);
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
-EXPORTED int dbsync_sync_txn_row(const TXN_HANDLE txn,
+EXPORTED int dbsync_sync_txn_row(const DBSYNC_HANDLE handle,
+                                 const TXN_HANDLE txn,
                                  const cJSON*     js_input);
 
 /**
@@ -199,7 +201,8 @@ EXPORTED int dbsync_delete_rows(const DBSYNC_HANDLE handle,
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
-EXPORTED int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
+EXPORTED int dbsync_get_deleted_rows(const DBSYNC_HANDLE handle,
+                                     const TXN_HANDLE  txn,
                                      result_callback_t callback);
 
 /**

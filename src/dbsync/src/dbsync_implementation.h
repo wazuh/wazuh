@@ -49,6 +49,13 @@ namespace DbSync
         void setMaxRows(const DBSYNC_HANDLE handle,
                         const std::string& table,
                         const unsigned long long maxRows);
+
+        TXN_HANDLE createTransaction(const DBSYNC_HANDLE handle,
+                                     const char** tables);
+
+        void closeTransaction(const DBSYNC_HANDLE handle,
+                              const TXN_HANDLE txnHandle);
+
         void release();
     private:
 

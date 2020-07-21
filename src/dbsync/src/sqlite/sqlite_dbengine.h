@@ -104,22 +104,23 @@ class SQLiteDBEngine : public DbSync::IDbEngine
                        const std::string& tableStmtCreation);
         ~SQLiteDBEngine();
         
-        void execute(const std::string& query) override;
-
-        void select(const std::string& query,
-                            nlohmann::json& result) override;
-
         void bulkInsert(const std::string& table,
-                                const nlohmann::json& data) override;
+                        const nlohmann::json& data) override;
 
         void refreshTableData(const nlohmann::json& data,
                                       const DbSync::ResultCallback callback) override;
 
         void syncTableRowData(const std::string& table,
-                                      const nlohmann::json& data,
-                                      const DbSync::ResultCallback callback) override;
+                              const nlohmann::json& data,
+                              const DbSync::ResultCallback callback) override;
+
         void setMaxRows(const std::string& table,
                         const unsigned long long maxRows) override;
+
+        void initializeStatusField(const std::vector<std::string>& tableNames) override;
+
+        void deleteRowsByStatusField(const std::vector<std::string>& tableNames) override;
+
     private:
         void initialize(const std::string& path,
                         const std::string& tableStmtCreation);

@@ -109,15 +109,7 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
     {
         try
         {
-            const auto callbackWrapper
-            {
-                [callback](ReturnTypeCallback result, const nlohmann::json& jsonResult)
-                {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
-                    callback(result, spJson.get());
-                }
-            };
-            txn = PipelineFactory::instance().create(handle, tables, thread_number, max_queue_size, callbackWrapper);
+            ret_val = DBSyncImplementation::instance().createTransaction(handle, tables);
         }
         catch(const DbSync::dbsync_error& ex)
         {
@@ -152,6 +144,8 @@ int dbsync_close_txn(const DBSYNC_HANDLE handle,
     {
         error_message += "Unrecognized error.";
     }
+    
+    log_message(error_message);
     return ret_val;
 }
 
