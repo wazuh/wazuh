@@ -12,6 +12,7 @@
 #include <tuple>
 #include "db_exception.h"
 #include "dbsyncPipelineFactory.h"
+#include "dbsync_implementation.h"
 #include "pipelineNodesImp.h"
 
 namespace DbSync
@@ -21,14 +22,14 @@ namespace DbSync
     public:
 
         Pipeline(const DBSYNC_HANDLE handle,
-                 const TxnContext txnContext,
+                 const char** tables,
                  const unsigned int threadNumber,
                  const unsigned int maxQueueSize,
                  const ResultCallback callback)
         : m_spDispatchNode{ maxQueueSize ? getDispatchNode(threadNumber) : nullptr }
         , m_spSyncNode{ maxQueueSize ? getSyncNode(threadNumber) : nullptr}
         , m_handle{ handle }
-        , m_txnContext{ txnContext }
+        , m_txnContext{ DBSyncImplementation::instance().createTransaction(handle, tables) }
         , m_maxQueueSize{ maxQueueSize }
         , m_callback{ callback }
         {
@@ -48,6 +49,7 @@ namespace DbSync
                 try
                 {
                     m_spDispatchNode->rundown();
+                    DBSyncImplementation::instance().closeTransaction(m_handle, m_txnContext);
                 }
                 catch(...)
                 {}
@@ -115,7 +117,7 @@ namespace DbSync
         const std::shared_ptr<DispatchCallbackNode> m_spDispatchNode;
         const std::shared_ptr<SyncRowNode> m_spSyncNode;
         const DBSYNC_HANDLE m_handle;
-        const TxnContext m_txnContext;
+        const TXN_HANDLE m_txnContext;
         const unsigned int m_maxQueueSize;
         const ResultCallback m_callback;
     };
@@ -131,7 +133,7 @@ namespace DbSync
         m_contexts.clear();
     }
     PipelineCtxHandle PipelineFactory::create(const DBSYNC_HANDLE handle,
-                                              const TxnContext txnContext,
+                                              const char** tables,
                                               const unsigned int threadNumber,
                                               const unsigned int maxQueueSize,
                                               const ResultCallback callback)
@@ -140,7 +142,7 @@ namespace DbSync
         {
             new Pipeline
             {
-                handle, txnContext, threadNumber, maxQueueSize, callback
+                handle, tables, threadNumber, maxQueueSize, callback
             }
         };
         const auto ret { spContext.get() };

@@ -12,6 +12,9 @@ link_directories(${CMAKE_BINARY_DIR}/lib)
 file(GLOB PIPELINE_FACTORY_UNITTEST_SRC
     "*.cpp")
 
+include_directories(${CMAKE_SOURCE_DIR}/include/)
+link_directories(${CMAKE_BINARY_DIR}/lib)
+
 file(GLOB PIPELINE_FACTORY_SRC
     "${CMAKE_SOURCE_DIR}/src/dbsyncPipelineFactory.cpp")
 
@@ -30,6 +33,7 @@ target_link_libraries(dbsyncPipelineFactory_unit_test
     optimized gmock_main
     pthread
     cjson
+    dbsync
     dl
 )
 

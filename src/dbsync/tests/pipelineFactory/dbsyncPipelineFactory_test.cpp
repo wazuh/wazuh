@@ -10,29 +10,35 @@
  */
 
 #include <iostream>
+#include "dbsync_implementation.h"
 #include "dbsyncPipelineFactory.h"
 #include "dbsyncPipelineFactory_test.h"
 #include "db_exception.h"
 
+constexpr auto DATABASE_TEMP {"TEMP.db"};
+
+using namespace DbSync;
 void DBSyncPipelineFactoryTest::SetUp()
 {
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    m_dbHandle = DBSyncImplementation::instance().initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql);
 };
 
 void DBSyncPipelineFactoryTest::TearDown()
 {
     m_pipelineFactory.release();
+    DBSyncImplementation::instance().release();
 };
 
 TEST_F(DBSyncPipelineFactoryTest, CreatePipelineOk)
 {
-    const DBSYNC_HANDLE handle{ reinterpret_cast<DBSYNC_HANDLE*>(0x100) };
-    const DbSync::TxnContext txnContext{ reinterpret_cast<DBSYNC_HANDLE*>(0x100) };
+    const char* tables[] = { "processes\0", nullptr };
     const int threadNumber{ 1 };
     const int maxQueueSize{ 1000 };
     const auto pipeHandle
     {
-        m_pipelineFactory.create(handle,
-                                 txnContext,
+        m_pipelineFactory.create(m_dbHandle,
+                                 tables,
                                  threadNumber,
                                  maxQueueSize,
                                  [](ReturnTypeCallback, const nlohmann::json&){})
@@ -40,17 +46,16 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineOk)
     ASSERT_NE(nullptr, pipeHandle);
     ASSERT_NE(nullptr, m_pipelineFactory.pipeline(pipeHandle));
 }
-
 TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidHandle)
 {
     const DBSYNC_HANDLE handle{ nullptr };
-    const DbSync::TxnContext txnContext{ reinterpret_cast<DBSYNC_HANDLE*>(0x100) };
+    const char* tables[] = { "processes\0", nullptr };
     const unsigned int threadNumber{ 1 };
     const unsigned int maxQueueSize{ 1000 };
     EXPECT_THROW
     (
         m_pipelineFactory.create(handle,
-                                 txnContext,
+                                 tables,
                                  threadNumber,
                                  maxQueueSize,
                                  [](ReturnTypeCallback, const nlohmann::json&){}),
@@ -60,14 +65,13 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidHandle)
 
 TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidTxnContext)
 {
-    const DBSYNC_HANDLE handle{ reinterpret_cast<DBSYNC_HANDLE*>(0x100) };
-    const DbSync::TxnContext txnContext{ nullptr };
+    const char* tables[] = { "files\0", nullptr };
     const unsigned int threadNumber{ 1 };
     const unsigned int maxQueueSize{ 1000 };
     EXPECT_THROW
     (
-        m_pipelineFactory.create(handle,
-                                 txnContext,
+        m_pipelineFactory.create(m_dbHandle,
+                                 tables,
                                  threadNumber,
                                  maxQueueSize,
                                  [](ReturnTypeCallback, const nlohmann::json&){}),
@@ -77,14 +81,13 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidTxnContext)
 
 TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidCallback)
 {
-    const DBSYNC_HANDLE handle{ reinterpret_cast<DBSYNC_HANDLE*>(0x100) };
-    const DbSync::TxnContext txnContext{ reinterpret_cast<DBSYNC_HANDLE*>(0x100) };
+    const char* tables[] = { "processes\0", nullptr };
     const unsigned int threadNumber{ 1 };
     const unsigned int maxQueueSize{ 1000 };
     EXPECT_THROW
     (
-        m_pipelineFactory.create(handle,
-                                 txnContext,
+        m_pipelineFactory.create(m_dbHandle,
+                                 tables,
                                  threadNumber,
                                  maxQueueSize,
                                  nullptr),
@@ -114,14 +117,13 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRow)
             ASSERT_EQ(expectedResult[0], result);
         }
     };
-    const DBSYNC_HANDLE handle{ reinterpret_cast<DBSYNC_HANDLE*>(0x100) };
-    const DbSync::TxnContext txnContext{ reinterpret_cast<DBSYNC_HANDLE*>(0x100) };
+    const char* tables[] = { "processes\0", nullptr };
     const int threadNumber{ 1 };
     const int maxQueueSize{ 1000 };
     const auto pipeHandle
     {
-        m_pipelineFactory.create(handle,
-                                 txnContext,
+        m_pipelineFactory.create(m_dbHandle,
+                                 tables,
                                  threadNumber,
                                  maxQueueSize,
                                  resultFnc)
@@ -144,14 +146,13 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowMaxQueueSize)
             ASSERT_EQ(expectedResult[0], result);
         }
     };
-    const DBSYNC_HANDLE handle{ reinterpret_cast<DBSYNC_HANDLE*>(0x100) };
-    const DbSync::TxnContext txnContext{ reinterpret_cast<DBSYNC_HANDLE*>(0x100) };
+    const char* tables[] = { "processes\0", nullptr };
     const int threadNumber{ 1 };
     const int maxQueueSize{ 0 };
     const auto pipeHandle
     {
-        m_pipelineFactory.create(handle,
-                                 txnContext,
+        m_pipelineFactory.create(m_dbHandle,
+                                 tables,
                                  threadNumber,
                                  maxQueueSize,
                                  resultFnc)

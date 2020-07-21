@@ -34,7 +34,7 @@ namespace DbSync
         static PipelineFactory& instance();
         void release();
         PipelineCtxHandle create(const DBSYNC_HANDLE handle,
-                                 const TxnContext txnContext,
+                                 const char** tables,
                                  const unsigned int threadNumber,
                                  const unsigned int maxQueueSize,
                                  const ResultCallback callback);
