@@ -89,13 +89,13 @@ void SQLiteDBEngine::syncTableRowData(const std::string& /*table*/,
 void SQLiteDBEngine::initializeStatusField(const std::vector<std::string>& tableNames) 
 {
     const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
-    auto const& stmt_add { getStatement(std::string("ALTER TABLE ? ADD COLUMN ") + 
+    auto const& stmtAdd { getStatement(std::string("ALTER TABLE ? ADD COLUMN ") + 
                                         STATUS_FIELD_NAME + 
                                         " " +
                                         STATUS_FIELD_TYPE +
                                         " DEFAULT 1;")};
 
-    auto const& stmt_init { getStatement(std::string("UPDATE ? SET ") +
+    auto const& stmtInit { getStatement(std::string("UPDATE ? SET ") +
                                         STATUS_FIELD_NAME +
                                         "=0;")};
 
@@ -117,14 +117,14 @@ void SQLiteDBEngine::initializeStatusField(const std::vector<std::string>& table
             {
                 m_tableFields[table].clear();
 
-                bindFieldData(stmt_add, 0l, tuple);
-                stmt_add->step();
-                stmt_add->reset();
+                bindFieldData(stmtAdd, 0l, tuple);
+                stmtAdd->step();
+                stmtAdd->reset();
             }
 
-            bindFieldData(stmt_init, 0l, tuple);
-            stmt_init->step();
-            stmt_init->reset();
+            bindFieldData(stmtInit, 0l, tuple);
+            stmtInit->step();
+            stmtInit->reset();
         } 
         else
         {
@@ -173,10 +173,10 @@ void SQLiteDBEngine::initialize(const std::string& path,
         if (cleanDB(path))
         {
             m_sqliteConnection = m_sqliteFactory->createConnection(path);
-            const auto create_db_querys_list { Utils::split(tableStmtCreation,';') };
+            const auto createDBQueryList { Utils::split(tableStmtCreation,';') };
             m_sqliteConnection->execute("PRAGMA temp_store = memory;");
             m_sqliteConnection->execute("PRAGMA synchronous = OFF;");
-            for (const auto& query : create_db_querys_list)
+            for (const auto& query : createDBQueryList)
             {
                 auto const& stmt { getStatement(query) }; 
                 stmt->step();
