@@ -1029,6 +1029,9 @@ wrappers_wazuh_wazuh_db_o := $(wrappers_wazuh_wazuh_db_c:.c=.o)
 wrappers_wazuh_wazuh_modules_c := $(wildcard unit_tests/wrappers/wazuh/wazuh_modules/*.c)
 wrappers_wazuh_wazuh_modules_o := $(wrappers_wazuh_wazuh_modules_c:.c=.o)
 
+wrappers_wazuh_monitord_c := $(wildcard unit_tests/wrappers/wazuh/monitord/*.c)
+wrappers_wazuh_monitord_o := $(wrappers_wazuh_monitord_c:.c=.o)
+
 wrappers_windows_c := $(wildcard unit_tests/wrappers/windows/*.c)
 wrappers_windows_o := $(wrappers_windows_c:.c=.o)
 
@@ -1059,6 +1062,7 @@ UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_o}
 UNIT_TEST_WRAPPERS+=${wrappers_wazuh_syscheckd_o}
 UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_db_o}
 UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_modules_o}
+UNIT_TEST_WRAPPERS+=${wrappers_wazuh_monitord_o}
 
 ifeq (${TARGET},winagent)
 	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
@@ -1736,6 +1740,9 @@ unit_tests/wrappers/wazuh/wazuh_db/%.o: unit_tests/wrappers/wazuh/wazuh_db/%.c
 unit_tests/wrappers/wazuh/wazuh_modules/%.o: unit_tests/wrappers/wazuh/wazuh_modules/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
+unit_tests/wrappers/wazuh/monitord/%.o: unit_tests/wrappers/wazuh/monitord/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
 unit_tests/wrappers/windows/%.o: unit_tests/wrappers/windows/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
@@ -1963,6 +1970,7 @@ clean-unit-tests:
 	rm -f ${wrappers_wazuh_syscheckd_o}
 	rm -f ${wrappers_wazuh_wazuh_db_o}
 	rm -f ${wrappers_wazuh_wazuh_modules_o}
+	rm -f ${wrappers_wazuh_monitord_o}
 	rm -f ${wrappers_windows_o}
 
 clean-framework:

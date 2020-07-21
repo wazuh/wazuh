@@ -18,16 +18,13 @@
 #include "../wrappers/client-agent/start_agent.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/monitord/monitord_wrappers.h"
 
 #include "../client-agent/agentd.h"
 
 extern void send_msg_on_startup(void);
 extern bool agent_handshake_to_server(int server_id, bool is_startup);
 extern int _s_verify_counter;
-
-void __wrap_w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations) {
-    return;
-}
 
 #ifndef TEST_WINAGENT
 int __wrap_close(int fd) {
