@@ -17,4 +17,6 @@
 SSL_CTX *__wrap_os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, const char *cert, const char *key,
                             const char *ca_cert, int auto_method);
 
+int __wrap_check_x509_cert(const SSL *ssl, const char *manager);
+
 #endif

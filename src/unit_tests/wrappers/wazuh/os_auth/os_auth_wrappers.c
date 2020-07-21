@@ -25,3 +25,9 @@ SSL_CTX *__wrap_os_ssl_keys(int is_server, const char *os_dir, const char *ciphe
     check_expected(auto_method);
     return mock_ptr_type(SSL_CTX *);
 }
+
+int __wrap_check_x509_cert(const SSL *ssl, const char *manager) {
+    check_expected_ptr(ssl);
+    check_expected(manager);
+    return mock_type(int);
+}

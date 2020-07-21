@@ -34,12 +34,6 @@ extern void w_enrollment_load_pass(w_enrollment_cert *cert_cfg);
 
 /*************** WRAPS ************************/
 
-int __wrap_check_x509_cert(const SSL *ssl, const char *manager) {
-    check_expected_ptr(ssl);
-    check_expected(manager);
-    return mock_type(int);
-}
-
 char *__wrap_OS_GetHost(const char *host, unsigned int attempts) {
     check_expected(host);
     return mock_ptr_type(char *);
