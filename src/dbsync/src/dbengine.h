@@ -25,11 +25,6 @@ namespace DbSync
     class IDbEngine
     {
     public:
-        virtual void execute(const std::string& query) = 0;
-
-        virtual void select(const std::string& query,
-                            nlohmann::json& result) = 0;
-
         virtual void bulkInsert(const std::string& table,
                                 const nlohmann::json& data) = 0;
 
@@ -39,8 +34,14 @@ namespace DbSync
         virtual void syncTableRowData(const std::string& table,
                                       const nlohmann::json& data,
                                       const ResultCallback callback) = 0;
+
         virtual void setMaxRows(const std::string& table,
                                 const unsigned long long maxRows) = 0;
+
+        virtual void initializeStatusField(const std::vector<std::string>& tableNames) = 0;
+
+        virtual void deleteRowsByStatusField(const std::vector<std::string>& tableNames) = 0;
+
         virtual ~IDbEngine() = default;
 
     protected:

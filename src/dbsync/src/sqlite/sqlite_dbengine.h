@@ -18,7 +18,15 @@
 #include "sqlite_wrapper_factory.h"
 #include "isqlite_wrapper.h"
 
-constexpr auto kTempTableSubFix {"_TEMP"};
+constexpr auto TEMP_TABLE_SUBFIX {"_TEMP"};
+
+constexpr auto STATUS_FIELD_NAME {"db_status_field_dm"};
+constexpr auto STATUS_FIELD_TYPE {"INTEGER"};
+
+const std::vector<std::string> InternalColumnNames = 
+{
+    { STATUS_FIELD_NAME }
+};
 
 enum ColumnType
 {
@@ -42,16 +50,17 @@ const std::map<ColumnType, std::string> kColumnTypeNames =
     { Blob           , "BLOB"            },
 };
 
-enum TableHeader
+enum TableHeader 
 {
     CID = 0,
     Name,
     Type,
-    PK
+    PK,
+    TXNStatusField
 }; 
 
 using ColumnData = 
-    std::tuple<int32_t, std::string, ColumnType, bool>;
+    std::tuple<int32_t, std::string, ColumnType, bool, bool>;
 
 using TableColumns =
     std::vector<ColumnData>;
@@ -77,30 +86,41 @@ enum ResponseType
     RTCallback
 }; 
 
+class dbengine_error : public DbSync::dbsync_error
+{
+public:
+    explicit dbengine_error(const std::pair<int, std::string>& exceptionInfo)
+    : DbSync::dbsync_error
+    { 
+        exceptionInfo.first, "dbEngine: " + exceptionInfo.second
+    }
+    {}
+};
 class SQLiteDBEngine : public DbSync::IDbEngine 
 {
     public:
-        SQLiteDBEngine(std::shared_ptr<ISQLiteFactory> sqliteFactory,
+        SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFactory,
                        const std::string& path,
                        const std::string& tableStmtCreation);
         ~SQLiteDBEngine();
         
-        void execute(const std::string& query) override;
-
-        void select(const std::string& query,
-                            nlohmann::json& result) override;
-
         void bulkInsert(const std::string& table,
-                                const nlohmann::json& data) override;
+                        const nlohmann::json& data) override;
 
         void refreshTableData(const nlohmann::json& data,
                                       const DbSync::ResultCallback callback) override;
 
         void syncTableRowData(const std::string& table,
-                                      const nlohmann::json& data,
-                                      const DbSync::ResultCallback callback) override;
+                              const nlohmann::json& data,
+                              const DbSync::ResultCallback callback) override;
+
         void setMaxRows(const std::string& table,
                         const unsigned long long maxRows) override;
+
+        void initializeStatusField(const std::vector<std::string>& tableNames) override;
+
+        void deleteRowsByStatusField(const std::vector<std::string>& tableNames) override;
+
     private:
         void initialize(const std::string& path,
                         const std::string& tableStmtCreation);
