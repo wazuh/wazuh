@@ -34,20 +34,7 @@ extern void w_enrollment_load_pass(w_enrollment_cert *cert_cfg);
 
 /*************** WRAPS ************************/
 
-char *__wrap_OS_GetHost(const char *host, unsigned int attempts) {
-    check_expected(host);
-    return mock_ptr_type(char *);
-}
-
 extern SSL *__real_SSL_new(SSL_CTX *ctx);
-
-int __wrap_OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6)
-{
-    check_expected(_port);
-    check_expected(_ip);
-    check_expected(ipv6);
-    return mock_type(int);
-}
 
 extern FILE * __real_fopen ( const char * filename, const char * mode );
 FILE * __wrap_fopen ( const char * filename, const char * mode ) {

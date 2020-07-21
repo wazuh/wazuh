@@ -38,3 +38,33 @@ int __wrap_OS_RecvSecureTCP(int sock, char * ret, uint32_t size) {
 
     return mock();
 }
+
+char *__wrap_OS_GetHost(const char *host, __attribute__((unused)) unsigned int attempts) {
+    check_expected(host);
+    return mock_ptr_type(char *);
+}
+
+int __wrap_OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6) {
+    check_expected(_port);
+    check_expected(_ip);
+    check_expected(ipv6);
+    return mock_type(int);
+}
+
+int __wrap_OS_ConnectUDP(__attribute__((unused)) u_int16_t _port,
+                         __attribute__((unused)) const char *_ip,
+                         __attribute__((unused)) int ipv6) {
+    return mock();
+}
+
+int __wrap_OS_SetRecvTimeout(__attribute__((unused)) int socket,
+                             __attribute__((unused)) long seconds,
+                             __attribute__((unused)) long useconds) {
+    return mock();
+}
+
+
+int __wrap_wnet_select(__attribute__((unused)) int sock,
+                       __attribute__((unused)) int timeout) {
+    return (int)mock();
+}
