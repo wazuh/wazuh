@@ -70,10 +70,31 @@ std::shared_ptr<DBSyncImplementation::DbEngineContext> DBSyncImplementation::dbE
     const auto it{ m_dbSyncContexts.find(handle) };
     if (it == m_dbSyncContexts.end())
     {
-        throw dbsync_error
-        {
-            2, "Invalid handle value."
-        };
+        throw dbsync_error { INVALID_HANDLE };
     }
     return it->second;
+}
+
+TXN_HANDLE DBSyncImplementation::createTransaction(const DBSYNC_HANDLE handle,
+                                                   const char** tables)
+{
+    const auto& ctx{ dbEngineContext(handle) };
+    const auto& spTransactionContext
+    {
+        std::make_shared<TransactionContext>(tables)
+    };
+    ctx->addTransactionContext(spTransactionContext);
+    ctx->m_dbEngine->initializeStatusField(spTransactionContext->m_tables);
+    
+    return spTransactionContext.get();
+}
+
+void DBSyncImplementation::closeTransaction(const DBSYNC_HANDLE handle,
+                                            const TXN_HANDLE txn)
+{
+    const auto& ctx{ dbEngineContext(handle) };
+    const auto& tnxCtx { ctx->transactionContext(txn) };
+    
+    ctx->m_dbEngine->deleteRowsByStatusField(tnxCtx->m_tables);
+    ctx->deleteTransactionContext(txn);
 }
