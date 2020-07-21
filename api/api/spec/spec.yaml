@@ -4135,7 +4135,7 @@ components:
     field:
       in: query
       name: field
-      description: "Indicate a section child, e.g, fields for rule section are include, decoder_dir, etc"
+      description: "Indicate a section child. E.g, fields for *ruleset* section are: decoder_dir, rule_dir, etc"
       schema:
         type: string
         format: names
@@ -4146,10 +4146,10 @@ components:
       schema:
         type: string
         format: date
-    category:
+    tag:
       in: query
-      name: category
-      description: "Filter by category of log"
+      name: tag
+      description: "Wazuh component that logged the event"
       schema:
         type: string
         enum:
@@ -4175,6 +4175,7 @@ components:
         - wazuh-modulesd:aws-s3
         - wazuh-modulesd:azure-logs
         - wazuh-modulesd:ciscat
+        - wazuh-modulesd:control
         - wazuh-modulesd:command
         - wazuh-modulesd:database
         - wazuh-modulesd:docker-listener
@@ -4183,14 +4184,13 @@ components:
         - wazuh-modulesd:osquery
         - wazuh-modulesd:syscollector
         - wazuh-modulesd:vulnerability-detector
-    type_log:
+    log_level:
       in: query
-      name: type_log
+      name: level
       description: "Filter by log level"
       schema:
         type: string
         enum:
-          - all
           - critical
           - debug
           - debug2
@@ -7989,8 +7989,8 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/category'
-        - $ref: '#/components/parameters/type_log'
+        - $ref: '#/components/parameters/tag'
+        - $ref: '#/components/parameters/log_level'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
@@ -9170,8 +9170,8 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/category'
-        - $ref: '#/components/parameters/type_log'
+        - $ref: '#/components/parameters/tag'
+        - $ref: '#/components/parameters/log_level'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
@@ -9506,7 +9506,7 @@ paths:
     delete:
       tags:
         - manager
-      summary: "Restore default API configuration locally"
+      summary: "Restore default API configuration"
       description: "Replace local API configuration with the original one"
       operationId: api.controllers.manager_controller.delete_api_config
       x-rbac-actions:
@@ -9581,7 +9581,7 @@ paths:
       tags:
       - manager
       summary: "Check Wazuh configuration"
-      description: "Return wether the Wazuh configuration is correct"
+      description: "Return whether the Wazuh configuration is correct"
       operationId: api.controllers.manager_controller.get_conf_validation
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:read'
