@@ -97,10 +97,7 @@ namespace DbSync
                     const auto it{ m_transactionContexts.find(handle) };
                     if (m_transactionContexts.end() == it)
                     {
-                        throw dbsync_error
-                        {
-                            INVALID_TRANSACTION
-                        };
+                        throw dbsync_error { INVALID_TRANSACTION };
                     }
                     return it->second;
                 }
