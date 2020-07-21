@@ -745,7 +745,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-            delay_after: 1
+    delay_after: 1
 
   - name: Try to remove agent 005 from all groups (Partially allowed, user agnostic)
     request:
@@ -763,7 +763,7 @@ stages:
             - 'group2'
           total_affected_items: 2
           total_failed_items: 0
-            delay_after: 1
+    delay_after: 1
 
   - name: Try to remove agent 007 from a list of groups (Partially allowed, user aware)
     request:

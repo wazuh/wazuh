@@ -63,10 +63,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
-        detail: !anystr
+      <<: *permission_denied
 
   - name: Request sca for agent 005 (Allowed)
     request:

@@ -45,7 +45,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response: &permission_denied
-      status_code: 400
+      status_code: 403
       json:
         code: 4000
 

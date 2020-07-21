@@ -389,7 +389,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-              save:
+      save:
         json:
           hotfix_filter: data.affected_items[0].hotfix
 
