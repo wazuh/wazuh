@@ -11,7 +11,6 @@
 
 #include <map>
 #include <mutex>
-#include <limits.h>
 #include "dbsync.h"
 #include "dbsync_implementation.h"
 #include "dbsyncPipelineFactory.h"
@@ -128,12 +127,13 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
 int dbsync_close_txn(const DBSYNC_HANDLE handle,
                      const TXN_HANDLE txn)
 {
-    auto ret_val{ 0l };
+    auto ret_val{ -1l };
     std::string error_message;
     
     try
     {
         DBSyncImplementation::instance().closeTransaction(handle, txn);
+        ret_val = 0;
     }
     catch(const DbSync::dbsync_error& ex)
     {
@@ -143,7 +143,6 @@ int dbsync_close_txn(const DBSYNC_HANDLE handle,
     catch(...)
     {
         error_message += "Unrecognized error.";
-        ret_val = INT_MAX;
     }
     
     log_message(error_message);
