@@ -54,4 +54,8 @@
 #define FIM_DB_80_PERCENTAGE_ALERT          "(6039): Sending DB 80%% full alert."
 #define FIM_DB_90_PERCENTAGE_ALERT          "(6039): Sending DB 90%% full alert."
 
+/* Wazuh modules */
+#define WM_UPGRADE_MODULE_DISABLED          "(8153): Module AgentUpgrade disabled. Exiting..."
+#define WM_UPGRADE_MODULE_STARTED           "(8154): Module AgentUpgrade started"
+
 #endif /* INFO_MESSAGES_H */

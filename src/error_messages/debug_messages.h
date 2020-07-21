@@ -237,6 +237,13 @@
 #define FIM_NUM_WATCHES                     "(6345): Folders monitored with real-time engine: %u"
 #define FIM_REALTIME_CALLBACK               "(6346): Realtime watch deleted for '%s'"
 
+#define WM_UPGRADE_RESULT_AGENT_INFO        "(8151): Agent Information obtained: \n %s"
+#define WM_UPGRADE_RESULT_SHOW_RESULTS      "(8152): Upgrade results response: \n %s"
+#define WM_UPGRADE_INCOMMING_MESSAGE        "(8155): Incomming message: '%s'"
+#define WM_UPGRADE_RESPONSE_MESSAGE         "(8156): Response message: '%s'"
+#define WM_UPGRADE_TASK_SEND_MESSAGE        "(8157): Sending message to task_manager module: '%s'"
+#define WM_UPGRADE_TASK_RECEIVE_MESSAGE     "(8158): Receiving message to task_manager module: '%s'"
+
 /* Modules messages */
 #define MOD_TASK_START                      "(8200): Module Task Manager started."
 #define MOD_TASK_FINISH                     "(8201): Module Task Manager finished."

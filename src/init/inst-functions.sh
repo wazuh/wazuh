@@ -35,7 +35,7 @@ CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
 SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.template"
-
+AGENT_UPGRADE_TEMPLATE="./etc/templates/config/generic/wodle-agent-upgrade.manager.template"
 TASK_MANAGER_TEMPLATE="./etc/templates/config/generic/wodle-task-manager.manager.template"
 
 ##########
@@ -501,6 +501,10 @@ WriteManager()
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
+    # Agent upgrade
+    cat ${AGENT_UPGRADE_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # Write syscheck
     WriteSyscheck "manager"
 
@@ -620,6 +624,10 @@ WriteLocal()
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Agent upgrade
+    cat ${AGENT_UPGRADE_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Write syscheck
