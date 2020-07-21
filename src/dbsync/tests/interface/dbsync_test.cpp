@@ -153,6 +153,7 @@ TEST_F(DBSyncTest, SetMaxRows)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
     EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 100));
+    EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 0));
 }
 
 TEST_F(DBSyncTest, TryToInsertMoreThanMaxRows)
@@ -163,10 +164,13 @@ TEST_F(DBSyncTest, TryToInsertMoreThanMaxRows)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 1));
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
+    EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 1));
     EXPECT_NE(0, dbsync_insert_data(handle, jsInsert.get()));
+
+    EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 0));
+    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
 }
 
 TEST_F(DBSyncTest, TryToUpdateMaxRowsElements)
@@ -208,4 +212,10 @@ TEST_F(DBSyncTest, TryToUpdateMoreThanMaxRowsElements)
     const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate{ cJSON_Parse(updateSqlStmt) };
     EXPECT_NE(0, dbsync_update_with_snapshot(handle, jsUpdate.get(), &json_response));
     EXPECT_EQ(nullptr, json_response);
+
+    EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 0));
+    EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 10));
+    EXPECT_EQ(0, dbsync_update_with_snapshot(handle, jsUpdate.get(), &json_response));
+    EXPECT_NE(nullptr, json_response);
+    EXPECT_NO_THROW(dbsync_free_result(&json_response));
 }

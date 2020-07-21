@@ -22,10 +22,8 @@ namespace SQLite
     public:
         sqlite_error(const int id,
                      const std::string& whatArg)
-        : DbSync::dbsync_error{m_sqliteErrorIndex + id, "sqlite: " + whatArg}
+        : DbSync::dbsync_error{600 + id, "sqlite: " + whatArg}
         {}
-    private:
-        const int m_sqliteErrorIndex{600};
     };
 
     class IConnection
