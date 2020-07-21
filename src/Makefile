@@ -1029,6 +1029,10 @@ config/%.o: config/%.c
 wmodules_c := $(wildcard wazuh_modules/wm*.c)
 
 ifneq (${TARGET},agent)
+	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/task_manager/*.c)
+endif
+
+ifneq (${TARGET},agent)
 	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/vulnerability_detector/*.c)
 endif
 

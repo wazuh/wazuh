@@ -36,6 +36,8 @@ VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manag
 
 SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.template"
 
+TASK_MANAGER_TEMPLATE="./etc/templates/config/generic/wodle-task-manager.manager.template"
+
 ##########
 # WriteSyscheck()
 ##########
@@ -491,6 +493,10 @@ WriteManager()
     # Configuration assessment
     WriteConfigurationAssessment
 
+    # Task Manager
+    cat ${TASK_MANAGER_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
@@ -607,6 +613,10 @@ WriteLocal()
 
     # Write osquery
     WriteOsquery "manager"
+
+    # Task Manager
+    cat ${TASK_MANAGER_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
@@ -923,6 +933,9 @@ InstallLocal()
     ${INSTALL} -d -m 0440 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities/dictionaries
     ${INSTALL} -m 0440 -o root -g ${OSSEC_GROUP} wazuh_modules/vulnerability_detector/cpe_helper.json ${PREFIX}/queue/vulnerabilities/dictionaries
     ${INSTALL} -m 0440 -o root -g ${OSSEC_GROUP} wazuh_modules/vulnerability_detector/msu.json.gz ${PREFIX}/queue/vulnerabilities/dictionaries
+
+    # Install Task Manager files
+    ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/tasks
 
     ### Install Python
     ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
