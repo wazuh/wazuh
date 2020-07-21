@@ -17,6 +17,7 @@
 #include "../wrappers/common.h"
 #include "../wrappers/client-agent/start_agent.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 #include "../client-agent/agentd.h"
 
@@ -24,22 +25,6 @@ extern void send_msg_on_startup(void);
 extern bool agent_handshake_to_server(int server_id, bool is_startup);
 extern int _s_verify_counter;
 
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-   return;
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-   return;
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    return;
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
-    return;
-}
 void __wrap_w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations) {
     return;
 }
@@ -198,6 +183,9 @@ static void test_connect_server(void **state) {
     /* Connect to first server (UDP)*/
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 11);
+
+    expect_any_count(__wrap__minfo, formatted_msg, 2);
+
     connected = connect_server(0);
     assert_int_equal(agt->rip_id, 0);
     assert_int_equal(agt->sock, 11);
@@ -211,6 +199,9 @@ static void test_connect_server(void **state) {
     #else
     expect_value(wrap_closesocket, fd, 11);
     #endif
+
+    expect_any_count(__wrap__minfo, formatted_msg, 2);
+
     connected = connect_server(1);
     assert_int_equal(agt->rip_id, 1);
     assert_int_equal(agt->sock, 12);
@@ -224,6 +215,9 @@ static void test_connect_server(void **state) {
     #else
     expect_value(wrap_closesocket, fd, 12);
     #endif
+
+    expect_any_count(__wrap__minfo, formatted_msg, 2);
+
     connected = connect_server(2);
     assert_int_equal(agt->rip_id, 2);
     assert_int_equal(agt->sock, 13);
@@ -236,6 +230,10 @@ static void test_connect_server(void **state) {
     #else
     expect_value(wrap_closesocket, fd, 13);
     #endif
+
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+
     connected = connect_server(3);
     assert_false(connected);
 
@@ -266,6 +264,8 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
+    expect_any_count(__wrap__minfo, formatted_msg, 3);
+
     handshaked = agent_handshake_to_server(0, false);
     assert_true(handshaked);
 
@@ -286,6 +286,8 @@ static void test_agent_handshake_to_server(void **state) {
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_any_count(__wrap__minfo, formatted_msg, 6);
 
     handshaked = agent_handshake_to_server(1, false);
     assert_true(handshaked);
@@ -309,6 +311,8 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
+    expect_any_count(__wrap__minfo, formatted_msg, 3);
+
     handshaked = agent_handshake_to_server(1, true);
     assert_true(handshaked);
 
@@ -321,6 +325,9 @@ static void test_agent_handshake_to_server(void **state) {
     expect_value(wrap_closesocket, fd, 23);
     #endif
 
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+
     handshaked = agent_handshake_to_server(0, false);
     assert_false(handshaked);
 
@@ -329,6 +336,8 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_OS_ConnectUDP, 23);
     will_return(__wrap_wnet_select, 0);
     expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+
+    expect_any(__wrap__mwarn, formatted_msg);
 
     handshaked = agent_handshake_to_server(0, false);
     assert_false(handshaked);

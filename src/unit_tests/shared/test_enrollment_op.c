@@ -9,6 +9,8 @@
 #include "os_auth/check_cert.h"
 #include "os_auth/auth.h"
 
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+
 #ifdef WIN32 
     #include "unit_tests/wrappers/shared/enrollment_op.h"
 #else
@@ -27,51 +29,6 @@ extern char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg);
 extern void w_enrollment_load_pass(w_enrollment_cert *cert_cfg);
 
 /*************** WRAPS ************************/
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror_exit(const char * file, int line, const char * func, const char *msg, ...) 
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-    return;
-}
 
 int __wrap_OS_IsValidIP(const char *ip_address, os_ip *final_ip) {
     check_expected(ip_address);

@@ -19,6 +19,8 @@
 #include "../../headers/sec.h"
 #include "../../addagent/manage_agents.h"
 
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+
 #define EXISTENT_AGENT1 "ExistentAgent1"
 #define EXISTENT_AGENT2 "ExistentAgent2"
 #define EXISTENT_AGENT3 "ExistentAgent3"
@@ -37,42 +39,6 @@
 #define MAX_AGENTS 100000
 
 /* redefinitons/wrapping */
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-int __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    return 1;
-}
 
 void __wrap_OS_RemoveAgentGroup(const char *id) {    
 }

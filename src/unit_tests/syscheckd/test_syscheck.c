@@ -20,9 +20,6 @@
 
 #include "../syscheckd/syscheck.h"
 
-
-/* redefinitons/wrapping */
-
 /* setup/teardowns */
 static int setup_group(void **state) {
     fdb_t *fdb = calloc(1, sizeof(fdb_t));

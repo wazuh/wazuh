@@ -20,23 +20,9 @@
 #include "../../headers/sec.h"
 #include "../../addagent/manage_agents.h"
 
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 /* redefinitons/wrapping */
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-
-}
   
 extern cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id);
 extern cJSON* w_create_agent_remove_payload(const char *id, const int purge);
