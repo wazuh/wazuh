@@ -10,8 +10,9 @@
 #include "os_auth/auth.h"
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/externals/openssl/bio_wrappers.h"
+#include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
 #include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
 
 #ifdef WIN32
@@ -32,12 +33,6 @@ extern char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg);
 extern void w_enrollment_load_pass(w_enrollment_cert *cert_cfg);
 
 /*************** WRAPS ************************/
-
-int __wrap_OS_IsValidIP(const char *ip_address, os_ip *final_ip) {
-    check_expected(ip_address);
-    check_expected(final_ip);
-    return mock_type(int);
-}
 
 int __wrap_check_x509_cert(const SSL *ssl, const char *manager) {
     check_expected_ptr(ssl);

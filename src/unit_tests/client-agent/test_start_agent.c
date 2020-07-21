@@ -18,6 +18,7 @@
 #include "../wrappers/client-agent/start_agent.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/wazuh/monitord/monitord_wrappers.h"
 
 #include "../client-agent/agentd.h"
@@ -52,10 +53,6 @@ void __wrap_resolveHostname(char **hostname, int attempts) {
         free(*hostname);
         os_strdup("INVALID_HOSTNAME/", *hostname);
     }
-}
-
-int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max) {
-    return mock();
 }
 
 int __wrap_send_msg(const char *msg, ssize_t msg_length) {
