@@ -11,6 +11,7 @@
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
+#include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
 
 #ifdef WIN32
     #include "unit_tests/wrappers/shared/enrollment_op.h"
@@ -46,18 +47,6 @@ int __wrap_check_x509_cert(const SSL *ssl, const char *manager) {
 char *__wrap_OS_GetHost(const char *host, unsigned int attempts) {
     check_expected(host);
     return mock_ptr_type(char *);
-}
-
-SSL_CTX *__wrap_os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, const char *cert, const char *key, const char *ca_cert, int auto_method)
-{
-    check_expected(is_server);
-    check_expected(os_dir);
-    check_expected(ciphers);
-    check_expected(cert);
-    check_expected(key);
-    check_expected(ca_cert);
-    check_expected(auto_method);
-    return mock_ptr_type(SSL_CTX *);
 }
 
 extern SSL *__real_SSL_new(SSL_CTX *ctx);
