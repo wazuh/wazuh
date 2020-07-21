@@ -240,7 +240,7 @@ int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
 {
     auto ret_val { -1 };
     std::string error_message;
-    if (!handle || !table || !max_rows)
+    if (!handle || !table)
     {
         error_message += "Invalid parameters.";
     }

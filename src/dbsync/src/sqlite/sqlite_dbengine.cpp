@@ -37,9 +37,12 @@ void SQLiteDBEngine::setMaxRows(const std::string& table,
 {
     const std::string sql
     {
+        maxRows ?
         "CREATE TRIGGER " + table + "_row_count BEFORE INSERT ON " + table +
         " WHEN (SELECT COUNT(*) FROM " + table + ") >= " + std::to_string(maxRows) +
         " BEGIN SELECT RAISE(FAIL, 'Too many Rows'); END;"
+        : "DROP TRIGGER " + table + "_row_count"
+
     };
     m_sqliteConnection->execute(sql);
 }
@@ -747,6 +750,7 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
                 }
             }
             stmt->step();
+
             stmt->reset();
         }
         transaction->commit();
