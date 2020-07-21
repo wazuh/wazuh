@@ -19,11 +19,13 @@ protected:
 
     DBSyncPipelineFactoryTest()
     : m_pipelineFactory{DbSync::PipelineFactory::instance()}
+    , m_dbHandle{ nullptr }
     {}
     virtual ~DBSyncPipelineFactoryTest() = default;
 
     void SetUp() override;
     void TearDown() override;
-   	DbSync::PipelineFactory& m_pipelineFactory;
+    DbSync::PipelineFactory& m_pipelineFactory;
+    DBSYNC_HANDLE m_dbHandle;
 };
 #endif //DBSYNC_PIPELINE_FACTORY_TESTS_H

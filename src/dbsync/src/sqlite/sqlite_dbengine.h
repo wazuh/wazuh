@@ -199,7 +199,7 @@ class SQLiteDBEngine : public DbSync::IDbEngine
         std::string buildUpdateDataSqlQuery(const std::string& table,
                                             const std::vector<std::string>& primaryKeyList,
                                             const Row& row,
-                                            const std::pair<const std::__cxx11::string, TableField> &field);
+                                            const std::pair<const std::string, TableField> &field);
 
         bool getRowsToModify(const std::string& table,
                              const std::vector<std::string>& primaryKeyList,
@@ -209,11 +209,11 @@ class SQLiteDBEngine : public DbSync::IDbEngine
                         const std::vector<std::string>& primaryKeyList,
                         std::vector<Row>& rowKeysValue);
 
-        bool getFieldValueFromTuple(const std::pair<const std::__cxx11::string, TableField> &value,
+        bool getFieldValueFromTuple(const std::pair<const std::string, TableField> &value,
                                     std::string& resultValue,
                                     const bool quotationMarks = false);
 
-        bool getFieldValueFromTuple(const std::pair<const std::__cxx11::string, TableField> &value,
+        bool getFieldValueFromTuple(const std::pair<const std::string, TableField> &value,
                                     nlohmann::json& object);
 
         SQLiteDBEngine(const SQLiteDBEngine&) = delete;

@@ -109,7 +109,6 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
     {
         try
         {
-            const auto txnCtx = DBSyncImplementation::instance().createTransaction(handle, tables);
             const auto callbackWrapper
             {
                 [callback](ReturnTypeCallback result, const nlohmann::json& jsonResult)
@@ -118,7 +117,7 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
                     callback(result, spJson.get());
                 }
             };
-            txn = PipelineFactory::instance().create(handle, txnCtx, thread_number, max_queue_size, callbackWrapper);
+            txn = PipelineFactory::instance().create(handle, tables, thread_number, max_queue_size, callbackWrapper);
         }
         catch(const DbSync::dbsync_error& ex)
         {
