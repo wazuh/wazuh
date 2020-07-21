@@ -19,6 +19,7 @@
 #include "../../headers/sec.h"
 #include "../../addagent/manage_agents.h"
 
+#include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 #define EXISTENT_AGENT1 "ExistentAgent1"
@@ -44,14 +45,6 @@ void __wrap_OS_RemoveAgentGroup(const char *id) {
 }
 
 void __wrap_add_backup(const keyentry *entry) {
-}
-
-int __wrap_opendir() {
-    return mock();
-}
-
-int __wrap_closedir() {
-    return 1;
 }
 
 void keys_init(keystore *keys, int rehash_keys, int save_removed) {
