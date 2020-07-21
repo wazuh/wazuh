@@ -296,15 +296,15 @@ stages:
         code: 1114
 
 ---
-test_name: PUT /groups/{group_id}/restart
+test_name: PUT /agents/group/{group_id}/restart
 
 stages:
 
-    # PUT /groups/group1/restart (This group has no agents assigned)
+    # PUT /agents/group/group1/restart (This group has no agents assigned)
   - name: Restart all agents from group1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/restart"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/group1/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -314,11 +314,11 @@ stages:
       json:
         code: 1755
 
-    # PUT /groups/group2/restart (Agents 009 and 010 are disconnected)
+    # PUT /agents/group/group2/restart (Agents 009 and 010 are disconnected)
   - name: Restart all agents from group2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group2/restart"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/group2/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -351,7 +351,7 @@ stages:
   - name: Restart all agents from a group which does not exist
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/not_exists/restart"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/not_exists/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
