@@ -612,7 +612,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        path: ruleset/decoders/0005-wazuh_decoders.xml
+        path: etc/decoders/0005-wazuh_decoders.xml
     response:
       <<: *permission_denied
 

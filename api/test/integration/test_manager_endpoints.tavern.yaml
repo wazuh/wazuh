@@ -752,7 +752,6 @@ stages:
       status_code: 400
       json:
         detail: !anystr
-        status: 400
         title: !anystr
         type: !anystr
 
@@ -770,7 +769,6 @@ stages:
       status_code: 400
       json:
         detail: !anystr
-        status: 400
         title: !anystr
         type: !anystr
 

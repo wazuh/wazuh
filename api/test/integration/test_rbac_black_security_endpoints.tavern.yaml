@@ -155,7 +155,7 @@ stages:
           failed_items:
             - error:
                 code: 4000
-                                remediation: !anystr
+                remediation: !anystr
               id:
                 - '100'
                 - '101'
@@ -252,7 +252,7 @@ stages:
           failed_items:
             - error:
                 code: 4007
-                                remediation: !anystr
+                remediation: !anystr
               id:
                 - '999'
           total_affected_items: 0
@@ -275,7 +275,7 @@ stages:
           failed_items:
             - error:
                 code: 4007
-                                remediation: !anystr
+                remediation: !anystr
               id:
                 - '999'
           total_affected_items: 2
@@ -432,7 +432,7 @@ stages:
           failed_items:
             - error:
                 code: 4008
-                                remediation: !anything
+                remediation: !anything
               id:
                 - '1'
           total_affected_items: 0

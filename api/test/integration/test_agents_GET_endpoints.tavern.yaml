@@ -3943,7 +3943,6 @@ stages:
        code: !anyint
        dapi_errors: !anything
        detail: !anystr
-       status: !anyint
        title: !anystr
        type: !anystr
 
