@@ -20,6 +20,7 @@
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
+#include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
@@ -46,14 +47,6 @@ typedef struct __fim_data_s {
     struct dirent *entry;       // Used on fim_directory tests, not affected by group setup/teardown
     cJSON *json;
 }fim_data_t;
-
-/* redefinitons/wrapping */
-
-bool __wrap_HasFilesystem(__attribute__((unused))const char * path, __attribute__((unused)) fs_set set) {
-    check_expected(path);
-
-    return mock();
-}
 
 /* setup/teardowns */
 
