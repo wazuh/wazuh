@@ -55,8 +55,8 @@
 #define VU_NO_PACKAGE_SCAN    "(5440): The package inventory of the agent '%.3d' is not available, but a hotfix analysis will be launched."
 #define VU_SOCKET_RETRY       "(5441): Unable to connect to socket '%s'. Waiting '%d' seconds."
 #define VU_NO_HOTFIX_AVAIL    "(5442): It is not possible to perform a hotfix scan on agent '%.3d'"
-#define VU_OSINFO_DISABLED    "(5443): Unable to get the OS release for agent '%.3d'. It may not have the OS inventory enabled. Skipping it."
-#define VU_OSINFOLNX_DISABLED "(5444): Unable to get the OS version and release for agent '%.3d'. It may not have the OS inventory enabled. Skipping it."
+#define VU_OSINFO_DISABLED    "(5443): Unable to get the OS release for agent '%.3d'. It may not have the OS inventory enabled."
+#define VU_OSINFOLNX_DISABLED "(5444): Unable to get the OS version and release for agent '%.3d'. It may not have the OS inventory enabled."
 #define VU_NO_SOFTWARE        "(5445): No changes have been found with respect to the last package inventory or no packages have been indexed for agent '%.3d'"
 #define VU_AGENT_CPE_RECV     "(5446): The CPE '%s' from the agent '%.3d' was indexed."
 #define VU_CPE_GENERATED      "(5447): CPE generated from vendor '%s' and product '%s': '%s'"
@@ -237,11 +237,19 @@
 #define FIM_NUM_WATCHES                     "(6345): Folders monitored with real-time engine: %u"
 #define FIM_REALTIME_CALLBACK               "(6346): Realtime watch deleted for '%s'"
 
-
 #define WM_UPGRADE_RESULT_AGENT_INFO        "(8151): Agent Information obtained: \n %s"
 #define WM_UPGRADE_RESULT_SHOW_RESULTS      "(8152): Upgrade results response: \n %s"
 #define WM_UPGRADE_INCOMMING_MESSAGE        "(8155): Incomming message: '%s'"
 #define WM_UPGRADE_RESPONSE_MESSAGE         "(8156): Response message: '%s'"
 #define WM_UPGRADE_TASK_SEND_MESSAGE        "(8157): Sending message to task_manager module: '%s'"
 #define WM_UPGRADE_TASK_RECEIVE_MESSAGE     "(8158): Receiving message to task_manager module: '%s'"
+
+/* Modules messages */
+#define MOD_TASK_START                      "(8200): Module Task Manager started."
+#define MOD_TASK_FINISH                     "(8201): Module Task Manager finished."
+#define MOD_TASK_DISABLED                   "(8202): Module disabled. Exiting..."
+#define MOD_TASK_EMPTY_MESSAGE              "(8203): Empty message from local client."
+#define MOD_TASK_INCOMMING_MESSAGE          "(8204): Incomming message: '%s'"
+#define MOD_TASK_RESPONSE_MESSAGE           "(8205): Response to message: '%s'"
+
 #endif /* DEBUG_MESSAGES_H */

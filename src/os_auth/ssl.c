@@ -201,3 +201,20 @@ int verify_callback(int ok, X509_STORE_CTX *store)
 
     return ok;
 }
+
+
+int wrap_SSL_read(SSL *ssl, void *buf, int num) {
+    int ret = 0;
+    int offset = 0;
+    ret = SSL_read(ssl, buf, num);
+    while(ret >= MAX_SSL_PACKET_SIZE) {
+        offset += ret;
+        ret = SSL_read(ssl, (void *) buf + offset, num - offset);
+    }
+    if (ret < 0 && offset > 0) {
+        // If we have already read at least once return what was read
+        return offset;
+    } else {
+        return offset + ret;
+    }
+}

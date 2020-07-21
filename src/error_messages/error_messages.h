@@ -254,6 +254,7 @@
 #define AG_MAX_ERROR    "(4110): Maximum number of agents '%d' reached."
 #define AG_AX_AGENTS    "(4111): Maximum number of agents allowed: '%d'."
 #define AG_INV_MNGIP    "(4112): Invalid server address found: '%s'"
+#define AG_ENROLL_FAIL  "(4113): Auto Enrollment configuration failed." 
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."
@@ -497,6 +498,26 @@
 #define WM_UPGRADE_INVALID_TASK_MAN_JSON            "(8105): Response from task manager does not have a valid JSON format"
 #define WM_UPGRADE_EMPTY_MESSAGE                    "(8106): Empty message from task manager module"
 #define WM_UPGRADE_REQUIRED_PARAMETERS              "(8107): Required parameters in message are missing"
+
+/* Modules messages */
+#define MOD_TASK_CHECK_DB_ERROR                     "(8250): DB integrity is invalid. Exiting..."
+#define MOD_TASK_CREATE_SOCK_ERROR                  "(8251): Queue '%s' not accesible: '%s'. Exiting..."
+#define MOD_TASK_SELECT_ERROR                       "(8252): Error in select(): '%s'. Exiting..."
+#define MOD_TASK_ACCEPT_ERROR                       "(8253): Error in accept(): '%s'"
+#define MOD_TASK_RECV_ERROR                         "(8254): Error in recv(): '%s'"
+#define MOD_TASK_SOCKTERR_ERROR                     "(8255): Response size is bigger than expected."
+#define MOD_TASK_LENGTH_ERROR                       "(8256): Received message > '%i'"
+#define MOD_TASK_PARSE_JSON_ERROR                   "(8257): Error parsing JSON event: '%s'"
+#define MOD_TASK_PARSE_EMPTY_ERROR                  "(8258): Invalid message. Array of tasks is empty."
+#define MOD_TASK_PARSE_KEY_ERROR                    "(8259): Invalid message. '%s' not found at index '%d'"
+#define MOD_TASK_DB_ERROR                           "(8260): Database error at index '%d'"
+#define MOD_TASK_UNKNOWN_VALUE_ERROR                "(8261): Invalid '%s' at index '%d'"
+
+#define MOD_TASK_CREATE_DB_ERROR                    "(8275): DB couldn't be checked or created."
+#define MOD_TASK_OPEN_DB_ERROR                      "(8276): DB couldn't be opened."
+#define MOD_TASK_SQL_ERROR                          "(8277): SQL error: '%s'"
+#define MOD_TASK_SQL_PREPARE_ERROR                  "(8278): Couldn't prepare SQL statement."
+#define MOD_TASK_SQL_STEP_ERROR                     "(8279): Couldn't execute SQL statement."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

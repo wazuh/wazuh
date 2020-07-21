@@ -146,6 +146,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
 #define CONTROL_SOCK "/queue/ossec/control"
 
+// Tasks socket
+#define TASK_QUEUE "/queue/tasks/task"
+
 // Absolute path local requests socket
 #define CONTROL_SOCK_PATH DEFAULTDIR CONTROL_SOCK
 

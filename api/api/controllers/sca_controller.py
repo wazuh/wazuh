@@ -46,7 +46,6 @@ async def get_sca_agent(request, agent_id=None, pretty=False, wait_for_complete=
                 'search': parse_api_param(search, 'search'),
                 'q': q,
                 'filters': filters}
-
     dapi = DistributedAPI(f=sca.get_sca_list,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -61,9 +60,9 @@ async def get_sca_agent(request, agent_id=None, pretty=False, wait_for_complete=
 
 
 async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete=False, policy_id=None, title=None,
-                         description=None, rationale=None, remediation=None, file=None, process=None, directory=None,
-                         registry=None, references=None, result=None, condition=None, offset=0, limit=database_limit,
-                         sort=None, search=None, q=None):
+                         description=None, rationale=None, remediation=None, command=None, status=None, reason=None,
+                         file=None, process=None, directory=None, registry=None, references=None, result=None,
+                         condition=None, offset=0, limit=database_limit, sort=None, search=None, q=None):
     """Get policy monitoring alerts for a given policy
 
     :param agent_id: Agent ID. All possible values since 000 onwards
@@ -74,6 +73,9 @@ async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete
     :param description: Filters by policy description
     :param rationale: Filters by rationale
     :param remediation: Filters by remediation
+    :param command: Filters by command
+    :param status: Filters by status
+    :param reason: Filters by reason
     :param file: Filters by file
     :param process: Filters by process
     :param directory: Filters by directory
@@ -93,6 +95,9 @@ async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete
                'description': description,
                'rationale': rationale,
                'remediation': remediation,
+               'command': command,
+               'status': status,
+               'reason': reason,
                'file': file,
                'process': process,
                'directory': directory,
