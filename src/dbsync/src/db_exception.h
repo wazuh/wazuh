@@ -12,6 +12,14 @@
 #pragma once
 #include <stdexcept>
 #include <string>
+
+constexpr auto FACTORY_INSTANTATION     { std::make_pair(1, "Unspecified type during factory instantiation") }; 
+constexpr auto INVALID_HANDLE           { std::make_pair(2, "Invalid handle value.") }; 
+constexpr auto INVALID_TRANSACTION      { std::make_pair(3, "Invalid transaction value.") }; 
+constexpr auto SQLITE_CONNECTION_ERROR  { std::make_pair(4, "No connection available for executions.") }; 
+constexpr auto EMPTY_DATABASE_PATH      { std::make_pair(5, "Empty database store path.") }; 
+constexpr auto EMPTY_TABLE_METADATA     { std::make_pair(6, "Empty table metadata.") }; 
+
 namespace DbSync
 {
     /**
@@ -35,6 +43,11 @@ namespace DbSync
                      const std::string& whatArg)
         : m_id{ id }
         , m_error{ whatArg }
+        {}
+
+        explicit dbsync_error(const std::pair<int, std::string>& exceptionInfo)
+        : m_id{ exceptionInfo.first }
+        , m_error{ exceptionInfo.second }
         {}
 
       private:

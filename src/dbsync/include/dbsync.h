@@ -81,24 +81,28 @@ EXPORTED TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
 /**
  * @brief Closes the \p txn database transaction.
  *
- * @param txn Database transaction to be closed.
+ * @param handle  Handle obtained from the \ref dbsync_create method call.
+ * @param txn     Database transaction to be closed.
  *
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
-EXPORTED int dbsync_close_txn(const TXN_HANDLE txn);
+EXPORTED int dbsync_close_txn(const DBSYNC_HANDLE handle,
+                              const TXN_HANDLE txn);
 
 /**
  * @brief Synchronizes the \p js_input data using the \p txn current
  *  database transaction.
  *
+ * @param handle   Handle obtained from the \ref dbsync_create method call.
  * @param txn      Database transaction to be used for \ref js_input data sync.
  * @param js_input JSON information to be synchronized.
  *
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
-EXPORTED int dbsync_sync_txn_row(const TXN_HANDLE txn,
+EXPORTED int dbsync_sync_txn_row(const DBSYNC_HANDLE handle,
+                                 const TXN_HANDLE txn,
                                  const cJSON*     js_input);
 
 /**
@@ -190,13 +194,15 @@ EXPORTED int dbsync_delete_rows(const DBSYNC_HANDLE handle,
 /**
  * @brief Gets the deleted rows (diff) from the database.
  *
+ * @param handle   Handle obtained from the \ref dbsync_create method call.
  * @param txn      Database transaction to be used.
  * @param callback This callback will be called for each result.
  *
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
-EXPORTED int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
+EXPORTED int dbsync_get_deleted_rows(const DBSYNC_HANDLE handle,
+                                     const TXN_HANDLE  txn,
                                      result_callback_t callback);
 
 /**

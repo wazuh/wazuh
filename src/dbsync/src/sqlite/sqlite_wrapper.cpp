@@ -11,6 +11,7 @@
 
 #include "sqlite_wrapper.h"
 #include "db_exception.h"
+#include "makeUnique.h"
 #include <iostream>
 #include <chrono>
 
@@ -25,8 +26,7 @@ static void checkSqliteResult(const int result,
     {
         throw sqlite_error
         {
-            result,
-            exceptionString
+            std::make_pair(result, exceptionString)
         };
     }
 }
@@ -66,7 +66,7 @@ void Connection::execute(const std::string& query)
     {
         throw sqlite_error
         {
-            SQLITE_ERROR, "No connection available for executions."
+            SQLITE_CONNECTION_ERROR
         };
     }
     const auto result
@@ -157,7 +157,7 @@ int32_t Statement::step()
     {
         throw sqlite_error
         {
-            ret, sqlite3_errmsg(m_connection->db().get())
+            std::make_pair(ret, sqlite3_errmsg(m_connection->db().get()))
         };
     }
     return ret;
