@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * June 13, 2018.
  *
  * This program is free software; you can redistribute it
@@ -573,6 +573,37 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
     return gen_path;
 }
 
+void get_parent_process_info(char *ppid, char ** const parent_name, char ** const parent_cwd) {
+
+    char *slinkexe = NULL;
+    char *slinkcwd = NULL;
+    int tam_slink = strlen(ppid) + 11;
+    int tam_ppname = 0;
+    int tam_pcwd = 0;
+
+    os_malloc(tam_slink, slinkexe);
+    os_malloc(tam_slink, slinkcwd);
+
+    snprintf(slinkexe, tam_slink, "/proc/%s/exe", ppid);
+    snprintf(slinkcwd, tam_slink, "/proc/%s/cwd", ppid);
+
+    if(tam_ppname = readlink(slinkexe, *parent_name, OS_FLSIZE), tam_ppname < 0) {
+        mdebug1("Failure to obtain the name of the process: '%s'. Error: %s", ppid, strerror(errno));
+        parent_name[0][0] = '\0';
+    } else {
+        parent_name[0][tam_ppname] = '\0';
+    }
+
+    if(tam_pcwd = readlink(slinkcwd, *parent_cwd, OS_FLSIZE), tam_pcwd < 0) {
+        mdebug1("Failure to obtain the cwd of the process: '%s'. Error: %s", ppid, strerror(errno));
+        parent_cwd[0][0] = '\0';
+    } else {
+        parent_cwd[0][tam_pcwd] = '\0';
+    }
+
+    os_free(slinkexe);
+    os_free(slinkcwd);
+}
 
 void audit_parse(char *buffer) {
     char *psuccess;
@@ -585,7 +616,6 @@ void audit_parse(char *buffer) {
     char *path2 = NULL;
     char *path3 = NULL;
     char *path4 = NULL;
-    char *cwd = NULL;
     char *file_path = NULL;
     char *dev = NULL;
     whodata_evt *w_evt;
@@ -722,8 +752,11 @@ void audit_parse(char *buffer) {
             if(regexec(&regexCompiled_ppid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 char *ppid = NULL;
+                os_malloc(OS_FLSIZE, w_evt->parent_name);
+                os_malloc(OS_FLSIZE, w_evt->parent_cwd);
                 os_malloc(match_size + 1, ppid);
                 snprintf (ppid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                get_parent_process_info(ppid , &w_evt->parent_name, &w_evt->parent_cwd);
                 w_evt->ppid = atoi(ppid);
                 free(ppid);
             }
@@ -749,15 +782,15 @@ void audit_parse(char *buffer) {
             // cwd
             if(regexec(&regexCompiled_cwd, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
-                os_malloc(match_size + 1, cwd);
-                snprintf (cwd, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                os_malloc(match_size + 1, w_evt->cwd);
+                snprintf (w_evt->cwd, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
             } else if (regexec(&regexCompiled_cwd_hex, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 char *decoded_buffer = decode_hex_buffer_2_ascii_buffer(buffer + match[1].rm_so, match_size);
                 if (decoded_buffer) {
                     const int decoded_length = match_size / 2;
-                    os_malloc(decoded_length + 1, cwd);
-                    snprintf(cwd, decoded_length + 1, "%.*s", decoded_length, decoded_buffer);
+                    os_malloc(decoded_length + 1, w_evt->cwd);
+                    snprintf(w_evt->cwd, decoded_length + 1, "%.*s", decoded_length, decoded_buffer);
                     os_free(decoded_buffer);
                 } else {
                     merror("Error found while decoding HEX bufer: '%.*s'", match_size, buffer + match[1].rm_so);
@@ -832,8 +865,8 @@ void audit_parse(char *buffer) {
             switch(items) {
 
                 case 1:
-                    if (cwd && path0) {
-                        if (file_path = gen_audit_path(cwd, path0, NULL), file_path) {
+                    if (w_evt->cwd && path0) {
+                        if (file_path = gen_audit_path(w_evt->cwd, path0, NULL), file_path) {
                             w_evt->path = file_path;
                             mdebug2(FIM_AUDIT_EVENT
                                 (w_evt->user_name)?w_evt->user_name:"",
@@ -853,8 +886,8 @@ void audit_parse(char *buffer) {
                     }
                     break;
                 case 2:
-                    if (cwd && path0 && path1) {
-                        if (file_path = gen_audit_path(cwd, path0, path1), file_path) {
+                    if (w_evt->cwd && path0 && path1) {
+                        if (file_path = gen_audit_path(w_evt->cwd, path0, path1), file_path) {
                             w_evt->path = file_path;
                             mdebug2(FIM_AUDIT_EVENT
                                 (w_evt->user_name)?w_evt->user_name:"",
@@ -902,8 +935,8 @@ void audit_parse(char *buffer) {
                         }
                     }
 
-                    if (cwd && path1 && path2) {
-                        if (file_path = gen_audit_path(cwd, path1, path2), file_path) {
+                    if (w_evt->cwd && path1 && path2) {
+                        if (file_path = gen_audit_path(w_evt->cwd, path1, path2), file_path) {
                             w_evt->path = file_path;
                             mdebug2(FIM_AUDIT_EVENT
                                 (w_evt->user_name)?w_evt->user_name:"",
@@ -960,10 +993,10 @@ void audit_parse(char *buffer) {
                         }
                     }
 
-                    if (cwd && path0 && path1 && path2 && path3) {
+                    if (w_evt->cwd && path0 && path1 && path2 && path3) {
                         // Send event 1/2
                         char *file_path1;
-                        if (file_path1 = gen_audit_path(cwd, path0, path2), file_path1) {
+                        if (file_path1 = gen_audit_path(w_evt->cwd, path0, path2), file_path1) {
                             w_evt->path = file_path1;
                             mdebug2(FIM_AUDIT_EVENT1
                                 (w_evt->user_name)?w_evt->user_name:"",
@@ -985,7 +1018,7 @@ void audit_parse(char *buffer) {
 
                         // Send event 2/2
                         char *file_path2;
-                        if (file_path2 = gen_audit_path(cwd, path1, path3), file_path2) {
+                        if (file_path2 = gen_audit_path(w_evt->cwd, path1, path3), file_path2) {
                             w_evt->path = file_path2;
                             mdebug2(FIM_AUDIT_EVENT2
                                 (w_evt->user_name)?w_evt->user_name:"",
@@ -1025,9 +1058,9 @@ void audit_parse(char *buffer) {
                         }
                     }
 
-                    if (cwd && path1 && path4) {
+                    if (w_evt->cwd && path1 && path4) {
                         char *file_path;
-                        if (file_path = gen_audit_path(cwd, path1, path4), file_path) {
+                        if (file_path = gen_audit_path(w_evt->cwd, path1, path4), file_path) {
                             w_evt->path = file_path;
                             mdebug2(FIM_AUDIT_EVENT
                                 (w_evt->user_name)?w_evt->user_name:"",
@@ -1048,7 +1081,7 @@ void audit_parse(char *buffer) {
                     free(path4);
                     break;
             }
-            free(cwd);
+
             free(path0);
             free(path1);
             free_whodata_event(w_evt);

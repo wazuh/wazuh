@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * April 22, 2016.
  *
  * This program is free software; you can redistribute it
@@ -17,7 +17,6 @@ static void wm_cleanup();               // Cleanup function, called on exiting.
 static void wm_handler(int signum);     // Action on signal.
 
 static int flag_foreground = 0;         // Running in foreground.
-int wm_debug_level;
 
 // Main function
 
@@ -72,7 +71,7 @@ int main(int argc, char **argv)
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group);
+        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
     /* Privilege separation */
@@ -149,7 +148,7 @@ void wm_setup()
     // Set group
 
     if (gid = Privsep_GetGroup(GROUPGLOBAL), gid == (gid_t) -1) {
-        merror_exit(USER_ERROR, "", GROUPGLOBAL);
+        merror_exit(USER_ERROR, "", GROUPGLOBAL, strerror(errno), errno);
     }
 
     if (Privsep_SetGroup(gid) < 0) {

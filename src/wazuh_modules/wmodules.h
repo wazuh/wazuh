@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * April 22, 2016.
  *
  * This program is free software; you can redistribute it
@@ -37,6 +37,7 @@
 #define AZ_WM_NAME "azure-logs"
 #define KEY_WM_NAME "agent-key-polling"
 #define SCA_WM_NAME "sca"
+#define GCP_WM_NAME "gcp-pubsub"
 #define FLUENT_WM_NAME "fluent-forward"
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
@@ -92,12 +93,14 @@ typedef enum crypto_type {
 #include "wm_sca.h"
 #include "wm_fluent.h"
 #include "wm_control.h"
+#include "wm_gcp.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
 extern int wm_max_eps;          // Maximum events per second sent by OpenScap Wazuh Module
 extern int wm_kill_timeout;     // Time for a process to quit before killing it
 extern int wm_debug_level;
+
 
 // Read XML configuration and internal options
 int wm_config();
@@ -169,15 +172,6 @@ int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, cha
 // Returns 0 if absolute, 1 if relative or -1 on error.
 int wm_relative_path(const char * path);
 
-// Get time in seconds to the specified hour in hh:mm
-int get_time_to_hour(const char * hour);
-
-// Get time to reach a particular day of the week and hour
-int get_time_to_day(int wday, const char * hour);
-
-// Function to look for the correct day of the month to run a wodle
-int check_day_to_scan(int day, const char *hour);
-
 // Get binary full path
 int wm_get_path(const char *binary, char **validated_comm);
 
@@ -196,9 +190,6 @@ void * wmcom_main(void * arg);
 #endif
 size_t wmcom_dispatch(char * command, char ** output);
 size_t wmcom_getconfig(const char * section, char ** output);
-
-// Sleep function for Windows and Unix (milliseconds)
-void wm_delay(unsigned int ms);
 
 #ifdef __MACH__
 void freegate(gateway *gate);

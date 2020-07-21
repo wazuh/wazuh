@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * April 15, 2019.
  *
  * This program is free software; you can redistribute it
@@ -188,4 +188,43 @@ int wdbc_parse_result(char *result, char **payload) {
     }
 
     return retval;
+}
+
+
+/**
+ * @brief Combine wdbc_query_ex and wdbc_parse_result functions and return a JSON item.
+ * 
+ * @param[in] sock Pointer to the client socket descriptor.
+ * @param[in] query Query to be sent to Wazuh-DB.
+ * @param[out] response Char pointer where the response from Wazuh-DB will be stored.
+ * @param[in] len Lenght of the response param.
+ * @return cJSON* on success or NULL on failure.
+ */
+cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, const int len) {
+    int result;
+    char * arg;
+    cJSON * root = NULL;
+
+    result = wdbc_query_ex(sock, query, response, len);
+    switch (result) {
+    case -2:
+        merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
+        return NULL;
+    case -1:
+        merror("No response from wazuh-db.");
+        return NULL;
+    }
+
+    switch (wdbc_parse_result(response, &arg)) {
+    case WDBC_OK:
+        break;
+    case WDBC_ERROR:
+        merror("Bad response from wazuh-db: %s", arg);
+        // Fallthrough
+    default:
+        return NULL;
+    }
+
+    root = cJSON_Parse(arg);
+    return root;
 }

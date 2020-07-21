@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -943,7 +943,7 @@ int connect_to_remoted()
 {
     int arq = -1;
 
-    if ((arq = StartMQ(ARQUEUE, WRITE)) < 0) {
+    if ((arq = StartMQ(ARQUEUE, WRITE, MAX_OPENQ_ATTEMPS)) < 0) {
         merror(ARQ_ERROR);
         return (-1);
     }

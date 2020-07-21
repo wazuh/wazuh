@@ -1,14 +1,14 @@
 <!--
-  -  Windows Event Channel ruleset for the System channel 
+  -  Windows Event Channel ruleset for the System channel
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
   -  ID range: 61100 - 61599
 -->
 
 <var name="MS_FREQ">8</var>
 
-<group name="windows, windows_system">
+<group name="windows,windows_system,">
   <rule id="61100" level="0">
     <if_sid>60002</if_sid>
     <field name="win.system.severityValue">^INFORMATION$</field>
@@ -44,7 +44,7 @@
   <rule id="61104" level="3">
     <if_sid>61100</if_sid>
     <field name="win.system.eventID">^7040$</field>
-    <group>policy_changed,pci_dss_10.6,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>policy_changed,pci_dss_10.6,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <description>Service startup type was changed</description>
     <options>no_full_log</options>
     <info type="text">This does not appear to be logged on Windows 2000</info>
@@ -55,6 +55,9 @@
     <field name="win.system.eventID">^41$</field>
     <field name="win.system.providerName">^Microsoft-Windows-Kernel-Power$</field>
     <description>The system stopped responding, crashed or lost power unexpectedly</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -156,6 +159,10 @@
     <field name="win.system.eventID">^8006$</field>
     <description>The browser has received an illegal datagram from a remote computer</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1203</id>
+      <id>T1499</id>
+    </mitre>
   </rule>
 
   <rule id="61120" level="5">
@@ -205,6 +212,10 @@
     <field name="win.system.eventID">^8016$</field>
     <description>The browser driver has received too many illegal datagrams from the remote computer</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1203</id>
+      <id>T1499</id>
+    </mitre>
   </rule>
 
   <rule id="61127" level="5">
@@ -232,6 +243,10 @@
     <if_sid>61113</if_sid>
     <field name="win.system.eventID">^8023$</field>
     <description>The value for the parameter to the browser service was illegal</description>
+    <mitre>
+      <id>T1203</id>
+      <id>T1503</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -247,6 +262,10 @@
     <field name="win.system.eventID">^8030$</field>
     <description>The browser driver has discarded too many mailslot messages</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1203</id>
+      <id>T1499</id>
+    </mitre>
   </rule>
 
   <rule id="61133" level="5">
@@ -254,6 +273,9 @@
     <field name="win.system.eventID">^8031$</field>
     <description>The browser driver has discarded too many GetBrowserServerList requests</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
   </rule>
 
   <rule id="61134" level="5">
@@ -268,6 +290,9 @@
     <field name="win.system.eventID">^8033$</field>
     <description>The browser has forced an election on network because a master browser was stopped</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
   </rule>
 
   <rule id="61136" level="5">
@@ -283,11 +308,14 @@
     <description>Some errors occur aproximately every three seconds</description>
     <options>no_full_log</options>
   </rule>
-  
+
   <rule id="61138" level="5">
     <if_sid>61100</if_sid>
     <field name="win.system.eventID">^7045$</field>
     <description>New Windows Service Created</description>
+    <mitre>
+      <id>T1050</id>
+    </mitre>
     <options>no_full_log</options>
     <options>no_email_alert</options>
   </rule>

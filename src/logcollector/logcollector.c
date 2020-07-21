@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -43,6 +43,7 @@ int force_reload;
 int reload_interval;
 int reload_delay;
 int free_excluded_files_interval;
+OSHash * msg_queues_table;
 
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
@@ -264,8 +265,9 @@ void LogCollectorStart()
         } else {
             /* On Windows we need to forward the seek for wildcard files */
 #ifdef WIN32
-            set_read(current, i, j);
-            minfo(READING_FILE, current->file);
+            if (current->file) {
+                minfo(READING_FILE, current->file);
+            }
 
             if (current->fp) {
                 current->read(current, &r, 1);
@@ -1812,38 +1814,35 @@ void * w_output_thread(void * args){
 
         if (strcmp(message->log_target->log_socket->name, "agent") == 0) {
             // When dealing with this type of messages we don't want any of them to be lost
-            // Continuously attempt to reconnect to the queue and send the message. 
+            // Continuously attempt to reconnect to the queue and send the message.
 
-            if(SendMSG(logr_queue, message->buffer, message->file, message->queue_mq) != 0) {
+            if(SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) != 0) {
                 #ifdef CLIENT
                 merror("Unable to send message to '%s' (ossec-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
                 #else
                 merror("Unable to send message to '%s' (ossec-analysisd might be down). Attempting to reconnect.", DEFAULTQPATH);
                 #endif
 
-                while(1) {
-                    if(logr_queue = StartMQ(DEFAULTQPATH, WRITE), logr_queue > 0) {
-                        if (SendMSG(logr_queue, message->buffer, message->file, message->queue_mq) == 0) {
-                            minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
-                            break;  //  We sent the message successfully, we can go on.
-                        }
-                    }
+                // Retry to connect infinitely.
+                logr_queue = StartMQ(DEFAULTQPATH, WRITE, MAX_OPENQ_ATTEMPS);
 
-                    sleep(sleep_time);
+                minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
 
-                    // If we failed, we will wait longer before reattempting to connect
-                    if(sleep_time < 300)
-                        sleep_time += 5;
+                if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) != 0) {
+                    // We reconnected but are still unable to send the message, notify it and go on.
+                    #ifdef CLIENT
+                    merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
+                    #else
+                    merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
+                    #endif
                 }
             }
-            
+
         } else {
-            int messageSent = 0;
             const int MAX_RETRIES = 3;
             int retries = 0;
-            while (messageSent <= 0 && retries < MAX_RETRIES) {
-                messageSent = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target);
-                if (messageSent < 0) {
+            while (retries < MAX_RETRIES) {
+                if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
                     merror(QUEUE_SEND);
 
                     sleep(sleep_time);
@@ -1851,6 +1850,8 @@ void * w_output_thread(void * args){
                     // If we failed, we will wait longer before reattempting to connect
                     sleep_time += 5;
                     retries++;
+                } else {
+                    break;
                 }
             }
             if (retries == MAX_RETRIES) {

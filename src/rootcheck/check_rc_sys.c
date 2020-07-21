@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -237,11 +237,6 @@ static int read_sys_dir(const char *dir_name, int do_read)
             snprintf(f_name, PATH_MAX + 1, "%s%c%s", dir_name, PATH_SEP, entry->d_name);
         }
 
-        /* Ignore the /proc and /sys filesystems */
-        if (check_ignore(f_name) || !strcmp(f_name, "/proc") || !strcmp(f_name, "/sys")) {
-            continue;
-        }
-
         /* Check if file is a directory */
         if (lstat(f_name, &statbuf_local) == 0) {
             /* On all the systems except Darwin, the
@@ -261,6 +256,11 @@ static int read_sys_dir(const char *dir_name, int do_read)
             {
                 entry_count++;
             }
+        }
+
+        /* Ignore the /proc and /sys filesystems */
+        if (check_ignore(f_name) || !strcmp(f_name, "/proc") || !strcmp(f_name, "/sys")) {
+            continue;
         }
 
         /* Check every file against the rootkit database */

@@ -2,7 +2,7 @@
 
  ###
  # Integration of Wazuh agent with Microsoft Azure
- # Copyright (C) 2015-2019, Wazuh Inc.
+ # Copyright (C) 2015-2020, Wazuh Inc.
  #
  # This program is free software; you can redistribute it and/or modify
  # it under the terms of the GNU General Public License as published by
@@ -22,11 +22,10 @@ import time
 import sys
 import json
 import os
-import uuid
 import datetime
 import argparse
 import hashlib
-from wazuh import Wazuh, common
+from wazuh.core import common
 
 try:
 	import requests
@@ -40,7 +39,7 @@ except Exception as e:
 	sys.exit(1)
 from os.path import dirname, abspath
 from socket import socket, AF_UNIX, SOCK_DGRAM, SO_SNDBUF, SOL_SOCKET
-from sys import argv
+
 try:
 	from azure.storage.blob import BlockBlobService
 except Exception as e:

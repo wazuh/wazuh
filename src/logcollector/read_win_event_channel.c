@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -269,7 +269,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 {
     DWORD size = 0;
     DWORD count = 0;
-    wchar_t *buffer = NULL;
+    void *buffer = NULL;
     int result = 0;
     int status = 0;
     EVT_HANDLE bookmark = NULL;
@@ -310,7 +310,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
 
-    if ((buffer = calloc(size, sizeof(char))) == NULL) {
+    if (buffer = calloc(size, sizeof(void)), buffer == NULL) {
         merror(
             "Could not calloc() memory to save bookmark (%s) for (%s) which returned [(%d)-(%s)]",
             channel->bookmark_filename,
@@ -639,7 +639,9 @@ cleanup:
     free(filtered_query);
 
     if (status == 0) {
-        free(channel->bookmark_name);
+        if (channel) {
+            os_free(channel->bookmark_name);
+        }
         free(channel);
 
         if (result != NULL) {

@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Configuration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * October 26, 2017.
  *
  * This program is free software; you can redistribute it
@@ -14,7 +14,6 @@
 static const char *XML_DISABLED = "disabled";
 static const char *XML_BUCKET = "bucket";
 static const char *XML_SERVICE = "service";
-static const char *XML_INTERVAL = "interval";
 static const char *XML_ACCESS_KEY = "access_key";
 static const char *XML_SECRET_KEY = "secret_key";
 static const char *XML_RUN_ON_START = "run_on_start";
@@ -65,7 +64,8 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     aws_config->enabled = 1;
     aws_config->run_on_start = 1;
     aws_config->remove_from_bucket = 0;
-    aws_config->interval = WM_AWS_DEFAULT_INTERVAL;
+    sched_scan_init(&(aws_config->scan_config));
+    aws_config->scan_config.interval = WM_AWS_DEFAULT_INTERVAL;
     module->context = &WM_AWS_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = aws_config;
@@ -83,32 +83,6 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 aws_config->enabled = 1;
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_AWS_CONTEXT.name);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            char *endptr;
-            aws_config->interval = strtoul(nodes[i]->content, &endptr, 0);
-
-            if ((aws_config->interval == 0 && endptr == nodes[i]->content) || aws_config->interval == ULONG_MAX) {
-                merror("Invalid interval at module '%s'", WM_AWS_CONTEXT.name);
-                return OS_INVALID;
-            }
-
-            switch (*endptr) {
-            case 'd':
-                aws_config->interval *= 86400;
-                break;
-            case 'h':
-                aws_config->interval *= 3600;
-                break;
-            case 'm':
-                aws_config->interval *= 60;
-                break;
-            case 's':
-            case '\0':
-                break;
-            default:
-                merror("Invalid interval at module '%s'", WM_AWS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
@@ -398,11 +372,19 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             OS_ClearNode(children);
 
+        } else if (is_sched_tag(nodes[i]->element)) {
+            // Do nothing
         } else {
-            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_AWS_CONTEXT.name);
+            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_AWS_CONTEXT.name);	
             return OS_INVALID;
         }
     }
+
+    const int sched_read = sched_scan_read(&(aws_config->scan_config), nodes, module->context->name);
+    if ( sched_read != 0 ) {
+        return OS_INVALID;
+    }
+
 
     // Support legacy config
     if (aws_config->bucket) {

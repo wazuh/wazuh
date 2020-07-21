@@ -34,7 +34,7 @@ int test_tcpv4_local() {
 
     w_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
-    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 0);
+    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 13);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
@@ -69,7 +69,7 @@ int test_tcpv4_inet() {
 
     w_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
-    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 0);
+    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 13);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
@@ -104,7 +104,7 @@ int test_tcpv6() {
 
     w_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
-    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 0);
+    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 13);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
@@ -332,7 +332,7 @@ int main(void) {
     TAP_TEST_MSG(test_get_ip(), "Get primary IP address collection.");
 
     TAP_PLAN;
-    TAP_SUMMARY;
+    int r = tap_summary();
     printf("\n    ENDING TEST  - OS_NET   \n\n");
-    return 0;
+    return r;
 }

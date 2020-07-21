@@ -2,7 +2,7 @@
 
 # Import AWS S3
 #
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Copyright: GPLv3
 #
 # Updated by Jeremy Phillips <jeremy@uranusbytes.com>
@@ -1344,8 +1344,20 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             fieldnames = (
                 "version", "account_id", "interface_id", "srcaddr", "dstaddr", "srcport", "dstport", "protocol",
                 "packets", "bytes", "start", "end", "action", "log_status")
+            unix_fields = ('start', 'end')
+            result = []
+
             tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
-            return [dict(x, source='vpc') for x in tsv_file]
+
+            # Transform UNIX timestamp to ISO8601
+            for row in tsv_file:
+                for key, value in row.items():
+                    if key in unix_fields and value not in unix_fields:
+                        row[key] = datetime.utcfromtimestamp(int(value)).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+                result.append(dict(row, source='vpc'))
+
+            return result
 
     def get_ec2_client(self, access_key, secret_key, region, profile_name=None):
         conn_args = {}

@@ -134,7 +134,7 @@ int main(void) {
     TAP_TEST_MSG(test_fail_uncompress_no_dest_size(), "Try to uncompress using 0 as destination size.");
 
     TAP_PLAN;
-    TAP_SUMMARY;
+    int r = tap_summary();
     printf("\n   ENDING TEST  - OS_ZLIB   \n\n");
-    return 0;
+    return r;
 }

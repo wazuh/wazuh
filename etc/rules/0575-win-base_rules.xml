@@ -1,7 +1,7 @@
 <!--
   -  Windows Event Channel ruleset
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -70,11 +70,18 @@
     <description>Group of Windows rules for the McAfee channel</description>
   </rule>
 
+  <rule id="60017" level="0">
+    <if_sid>60001</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-Eventlog$</field>
+    <options>no_full_log</options>
+    <description>Group of rules for Windows Eventlog from Security channel</description>
+  </rule>
+
   <rule id="60007" level="0">
     <if_sid>60002</if_sid>
-    <field name="win.system.providerName">^Eventlog$</field>
+    <field name="win.system.providerName">^Eventlog$|^Microsoft-Windows-Eventlog$</field>
     <options>no_full_log</options>
-    <description>Group of rules for Windows Eventlog</description>
+    <description>Group of rules for Windows Eventlog from System channel</description>
   </rule>
 
   <rule id="60008" level="0">

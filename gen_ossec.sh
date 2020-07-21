@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Wazuh Configuration & Init Files Generator
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # November 24, 2016.
 #
 # This program is free software; you can redistribute it
@@ -70,7 +70,7 @@ if [ "$1" = "conf" ]; then
   NEWCONFIG="./ossec.conf.temp"
   SYSCHECK="yes"
   ROOTCHECK="yes"
-  OPENSCAP="yes"
+  OPENSCAP="no"
   SYSCOLLECTOR="yes"
   SECURITY_CONFIGURATION_ASSESSMENT="yes"
   ACTIVERESPONSE="yes"

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * Contributed by Dan Parriott (@ddpbsd)
  *
  * This program is free software; you can redistribute it

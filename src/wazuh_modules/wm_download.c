@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for file downloads
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * April 25, 2018.
  *
  * This program is free software; you can redistribute it
@@ -49,7 +49,7 @@ void * wm_download_main(wm_download_t * data) {
     // If module is disabled, exit
 
     if (data->enabled) {
-        minfo("Module started");
+        minfo("Module started.");
     } else {
         minfo("Module disabled. Exiting.");
         pthread_exit(NULL);
@@ -121,6 +121,8 @@ void wm_download_dispatch(char * buffer) {
     char jpath[PATH_MAX];
     char * next;
     char * buffer_cpy;
+    char * timeout_ptr = NULL;
+    long timeout = 0;
 
     // Copy the command buffer for error messages
 
@@ -129,7 +131,7 @@ void wm_download_dispatch(char * buffer) {
     // Get command
 
     if (next = strchr(buffer, ' '), !(next && *next)) {
-        mdebug1("Empty request command: '%s'.", buffer_cpy);
+        mdebug1("Empty request command: '%s'", buffer_cpy);
         snprintf(buffer, OS_MAXSTR, "err empty command");
         goto end;
     }
@@ -139,7 +141,7 @@ void wm_download_dispatch(char * buffer) {
     // Nowadays we only support the "download" command
 
     if (strcmp(command, "download")) {
-        mdebug1("Invalid request command: '%s'.", buffer_cpy);
+        mdebug1("Invalid request command: '%s'", buffer_cpy);
         snprintf(buffer, OS_MAXSTR, "err invalid command");
         goto end;
     }
@@ -148,7 +150,7 @@ void wm_download_dispatch(char * buffer) {
 
     url = next;
     if (next = wstr_chr(next, '|'), !(next && *next)) {
-        mdebug1("Empty request URL: '%s'.", buffer_cpy);
+        mdebug1("Empty request URL: '%s'", buffer_cpy);
         snprintf(buffer, OS_MAXSTR, "err empty url");
         goto end;
     }
@@ -158,7 +160,7 @@ void wm_download_dispatch(char * buffer) {
 
     fpath = next;
     if (next = wstr_chr(next, '|'), !(next && *next)) {
-        mdebug1("Empty request file: '%s'.", buffer_cpy);
+        mdebug1("Empty request file: '%s'", buffer_cpy);
         snprintf(buffer, OS_MAXSTR, "err empty file name");
         goto end;
     }
@@ -169,7 +171,7 @@ void wm_download_dispatch(char * buffer) {
     header = next;
     if (next = wstr_chr(next, '|'), !(next && *next)) {
         header = NULL;
-        mdebug2("Empty request header: '%s'.", buffer_cpy);
+        mdebug2("Empty request header: '%s'", buffer_cpy);
         goto unsc;
     }
     *(next++) = '\0';
@@ -179,10 +181,21 @@ void wm_download_dispatch(char * buffer) {
     data = next;
     if (next = wstr_chr(next, '|'), !(next && *next)) {
         data = NULL;
-        mdebug2("Empty request data: '%s'.", buffer_cpy);
+        mdebug2("Empty request data: '%s'", buffer_cpy);
         goto unsc;
     }
     *(next++) = '\0';
+
+    // Get request timeout (optional)
+
+    timeout_ptr = next;
+    if (next = wstr_chr(next, '|'), !(next && *next)) {
+        timeout = 0;
+        mdebug2("Empty request timeout: '%s'", buffer_cpy);
+        goto unsc;
+    }
+    *(next++) = '\0';
+    timeout = atol(timeout_ptr);
 
 unsc:
     // Unescape
@@ -198,13 +211,13 @@ unsc:
     // Jail path
 
     if (snprintf(jpath, sizeof(jpath), "%s/%s", DEFAULTDIR, unsc_fpath) >= (int)sizeof(jpath)) {
-        mdebug1("Path too long: '%s'.", buffer_cpy);
+        mdebug1("Path too long: '%s'", buffer_cpy);
         snprintf(buffer, OS_MAXSTR, "err path too long");
         goto end;
     }
 
     if (w_ref_parent_folder(jpath)) {
-        mdebug1("Path references parent folder: '%s'.", buffer_cpy);
+        mdebug1("Path references parent folder: '%s'", buffer_cpy);
         snprintf(buffer, OS_MAXSTR, "err parent folder reference");
         goto end;
     }
@@ -212,7 +225,7 @@ unsc:
     // Run download
     mdebug1("Downloading '%s' to '%s'", url, jpath);
 
-    switch (wurl_get(url, jpath, unsc_header, unsc_data)) {
+    switch (wurl_get(url, jpath, unsc_header, unsc_data, timeout)) {
     case OS_CONNERR:
         mdebug1(WURL_DOWNLOAD_FILE_ERROR, jpath, url);
         snprintf(buffer, OS_MAXSTR, "err connecting to url");
@@ -221,6 +234,11 @@ unsc:
     case OS_FILERR:
         mdebug1(WURL_WRITE_FILE_ERROR, unsc_fpath);
         snprintf(buffer, OS_MAXSTR, "err writing file");
+        break;
+
+    case OS_TIMEOUT:
+        mdebug1(WURL_TIMEOUT_ERROR, jpath, url);
+        snprintf(buffer, OS_MAXSTR, "err timeout");
         break;
 
     default:

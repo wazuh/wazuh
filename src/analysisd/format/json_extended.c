@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * All rights reserved.
  *
  */
@@ -159,13 +159,13 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
 {
     cJSON* groups;
     cJSON* rule;
-    int firstPCI, firstCIS, firstGDPR, firstGPG13, firstHIPAA, firstNIST;
+    int firstPCI, firstCIS, firstGDPR, firstGPG13, firstHIPAA, firstNIST, firstTSC;
     char delim[2];
     char buffer[MAX_STRING] = "";
     char* token;
     char* saveptr;
 
-    firstPCI = firstCIS = firstGDPR = firstGPG13 = firstHIPAA = firstNIST = 1;
+    firstPCI = firstCIS = firstGDPR = firstGPG13 = firstHIPAA = firstNIST = firstTSC = 1;
     delim[0] = ',';
     delim[1] = 0;
 
@@ -192,6 +192,8 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
             firstHIPAA = 0;
         } else if (add_groupNIST(rule, token, firstNIST)) {
             firstNIST = 0;
+        } else if (add_groupTSC(rule, token, firstTSC)) {
+            firstTSC = 0;
         } else {
             if (token) cJSON_AddItemToArray(groups, cJSON_CreateString(token));
         }
@@ -372,6 +374,25 @@ int add_groupNIST(cJSON* rule, char* group, int firstNIST)
     return 0;
 }
 
+int add_groupTSC(cJSON* rule, char* group, int firstTSC)
+{
+    cJSON* tsc;
+    char *aux;
+    if((startsWith("tsc_", group)) == 1) {
+        if(firstTSC == 1) {
+            tsc = cJSON_CreateArray();
+            cJSON_AddItemToObject(rule, "tsc", tsc);
+        } else {
+            tsc = cJSON_GetObjectItem(rule, "tsc");
+        }
+        aux = strdup(group);
+        str_cut(aux, 0, 4);
+        cJSON_AddItemToArray(tsc, cJSON_CreateString(aux));
+        free(aux);
+        return 1;
+    }
+    return 0;
+}
 // If hostname being with "(" means that alerts came from an agent, so we will remove the brakets
 void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 {

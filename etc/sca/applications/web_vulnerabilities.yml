@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # Checks for web-related vulnerabilities on Linux systems
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -60,6 +60,7 @@ checks:
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
       - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+      - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
       - 'd:$web_dirs -> ^.yop$'
@@ -69,6 +70,7 @@ checks:
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
       - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+      - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
       - 'd:$web_dirs -> ^id$'
@@ -78,6 +80,7 @@ checks:
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
       - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+      - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
       - 'd:$web_dirs -> ^.ssh$'
@@ -87,6 +90,7 @@ checks:
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
       - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+      - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
       - 'd:$web_dirs -> ^...$'
@@ -96,6 +100,7 @@ checks:
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
       - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+      - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
       - 'd:$web_dirs -> ^.shell$'
@@ -106,6 +111,7 @@ checks:
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
       - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+      - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
       - 'd:$web_dirs -> ^version.php$ -> r:^\.wp_version && r:4.4.2'
@@ -115,6 +121,7 @@ checks:
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
       - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+      - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
       - 'd:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:3.4.8'
@@ -124,6 +131,7 @@ checks:
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
       - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+      - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
       - 'd:$web_dirs -> ^application_top.php$ -> r:osCommerce && r:2.2-'
@@ -134,6 +142,7 @@ checks:
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
       - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+      - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
       - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\(\paWYo'
@@ -143,6 +152,7 @@ checks:
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
       - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+      - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
       - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\(\S_POST'
@@ -152,6 +162,7 @@ checks:
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
       - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+      - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     references:
       - https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
     condition: none
@@ -163,6 +174,7 @@ checks:
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
       - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+      - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     references:
       - https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
     condition: none

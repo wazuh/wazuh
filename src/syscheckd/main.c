@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -86,7 +86,7 @@ int main(int argc, char **argv)
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group);
+        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
     /* Privilege separation */
@@ -106,7 +106,8 @@ int main(int argc, char **argv)
 
     /* Read syscheck config */
     if ((r = Read_Syscheck_Config(cfg)) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        merror(RCONFIG_ERROR, SYSCHECK, cfg);
+        syscheck.disabled = 1;
     } else if ((r == 1) || (syscheck.disabled == 1)) {
         if (!syscheck.dir) {
             if (!test_config) {
@@ -174,22 +175,12 @@ int main(int argc, char **argv)
     }
 
     /* Connect to the queue */
-    if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-        minfo(FIM_WAITING_QUEUE, DEFAULTQPATH, errno, strerror(errno), 5);
 
-        sleep(5);
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            /* more 10 seconds of wait */
-            minfo(FIM_WAITING_QUEUE, DEFAULTQPATH, errno, strerror(errno), 10);
-            sleep(10);
-            if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-            }
-        }
+    if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE, MAX_OPENQ_ATTEMPS)) < 0) {
+        merror_exit(QUEUE_FATAL, DEFAULTQPATH);
     }
 
     if (!syscheck.disabled) {
-
         /* Start up message */
         minfo(STARTUP_MSG, (int)getpid());
 
@@ -238,6 +229,7 @@ int main(int argc, char **argv)
                 mwarn(FIM_WARN_REALTIME_DISABLED, syscheck.dir[r]);
 #endif
             }
+
             r++;
         }
     }

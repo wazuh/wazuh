@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * April 15, 2019.
  *
  * This program is free software; you can redistribute it
@@ -18,3 +18,4 @@ int wdbc_connect();
 int wdbc_query(const int sock, const char *query, char *response, const int len);
 int wdbc_query_ex(int *sock, const char *query, char *response, const int len);
 int wdbc_parse_result(char *result, char **payload);
+cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, const int len);

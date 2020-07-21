@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2015-2019, Wazuh Inc.
+* Copyright (C) 2015-2020, Wazuh Inc.
 * April 18, 2017.
 *
 * This program is free software; you can redistribute it
@@ -255,91 +255,95 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                 break;
 
             case cJSON_Array:
-                os_malloc(OS_MAXSTR, value);
-                *value = '\0';
-                size_t n = 0;
-                size_t z;
-                for (array = logJSON->child; array; array = array->next){
-                    if (array->type == cJSON_String) {
-                        z = strlen(array->valuestring);
+                if (lf->decoder_info->flags & CSV_STRING) {
+                    os_malloc(OS_MAXSTR, value);
+                    *value = '\0';
+                    size_t n = 0;
+                    size_t z;
+                    for (array = logJSON->child; array; array = array->next){
+                        if (array->type == cJSON_String) {
+                            z = strlen(array->valuestring);
+                            if (n + z < OS_MAXSTR) {
+                                strcpy(value + n, array->valuestring);
+                                n += z;
+                            } else {
+                                *value = '\0';
+                                break;
+                            }
+                        }
+                        else if (array->type == cJSON_Number) {
+                            char value_char[64];
+                            z = (double)array->valueint == array->valuedouble ? snprintf(value_char, 64, "%i", array->valueint) : snprintf(value_char, 64, "%f", array->valuedouble);
+
+                            if (n + z < OS_MAXSTR) {
+                                strcpy(value + n, value_char);
+                                n += z;
+                            } else {
+                                *value = '\0';
+                                break;
+                            }
+                        }
+                        else if (array->type == cJSON_NULL) {
+                            z = strlen(VALUE_NULL);
+
+                            if (n + z < OS_MAXSTR) {
+                                strcpy(value + n, VALUE_NULL);
+                                n += z;
+                            } else {
+                                *value = '\0';
+                                break;
+                            }
+                        }
+                        else if (array->type == cJSON_True) {
+                            z = strlen(VALUE_TRUE);
+
+                            if (n + z < OS_MAXSTR) {
+                                strcpy(value + n, VALUE_TRUE);
+                                n += z;
+                            } else {
+                                *value = '\0';
+                                break;
+                            }
+                        }
+                        else if (array->type == cJSON_False) {
+                            z = strlen(VALUE_FALSE);
+
+                            if (n + z < OS_MAXSTR) {
+                                strcpy(value + n, VALUE_FALSE);
+                                n += z;
+                            } else {
+                                *value = '\0';
+                                break;
+                            }
+                        } else {
+                            continue;
+                        }
+
+                        z = strlen(VALUE_COMMA);
+
                         if (n + z < OS_MAXSTR) {
-                            strcpy(value + n, array->valuestring);
+                            strcpy(value + n, VALUE_COMMA);
                             n += z;
                         } else {
                             *value = '\0';
                             break;
                         }
                     }
-                    else if (array->type == cJSON_Number) {
-                        char value_char[64];
-                        z = (double)array->valueint == array->valuedouble ? snprintf(value_char, 64, "%i", array->valueint) : snprintf(value_char, 64, "%f", array->valuedouble);
-
-                        if (n + z < OS_MAXSTR) {
-                            strcpy(value + n, value_char);
-                            n += z;
-                        } else {
-                            *value = '\0';
-                            break;
-                        }
-                    }
-                    else if (array->type == cJSON_NULL) {
-                        z = strlen(VALUE_NULL);
-
-                        if (n + z < OS_MAXSTR) {
-                            strcpy(value + n, VALUE_NULL);
-                            n += z;
-                        } else {
-                            *value = '\0';
-                            break;
-                        }
-                    }
-                    else if (array->type == cJSON_True) {
-                        z = strlen(VALUE_TRUE);
-
-                        if (n + z < OS_MAXSTR) {
-                            strcpy(value + n, VALUE_TRUE);
-                            n += z;
-                        } else {
-                            *value = '\0';
-                            break;
-                        }
-                    }
-                    else if (array->type == cJSON_False) {
-                        z = strlen(VALUE_FALSE);
-
-                        if (n + z < OS_MAXSTR) {
-                            strcpy(value + n, VALUE_FALSE);
-                            n += z;
-                        } else {
-                            *value = '\0';
-                            break;
-                        }
-                    } else {
-                        continue;
-                    }
-
-                    z = strlen(VALUE_COMMA);
-
-                    if (n + z < OS_MAXSTR) {
-                        strcpy(value + n, VALUE_COMMA);
-                        n += z;
-                    } else {
-                        *value = '\0';
-                        break;
-                    }
+                } else if (lf->decoder_info->flags & JSON_ARRAY) {
+                    value = cJSON_Print(logJSON);
                 }
 
-                if (*value) {
+                if (value && *value != '\0') {
                     fillData(lf, key, value);
                 }
 
-                free(value);
+                os_free(value);
                 break;
 
             case cJSON_NULL:
-                if (lf->decoder_info->flags == EMPTY) {
+                if (lf->decoder_info->flags & EMPTY) {
                     fillData(lf, key, VALUE_EMPTY);
-                } else if (lf->decoder_info->flags == SHOW_STRING) {
+                } else if (lf->decoder_info->flags & SHOW_STRING) {
                     fillData(lf, key, VALUE_NULL);
                 }
                 break;

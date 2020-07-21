@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -26,7 +26,13 @@ struct passwd *w_getpwnam(const char *name, struct passwd *pwd, char *buf, size_
     return getpwnam_r(name, pwd, buf, buflen);
 #else
     struct passwd *result = NULL;
-    return (getpwnam_r(name, pwd, buf, buflen, &result) == 0 && result != NULL) ? result : NULL;
+    int retval = getpwnam_r(name, pwd, buf, buflen, &result);
+
+    if (result == NULL) {
+        errno = retval;
+    }
+
+    return result;
 #endif
 }
 
@@ -35,7 +41,13 @@ struct passwd *w_getpwuid(uid_t uid, struct  passwd  *pwd, char *buf, int  bufle
     return getpwuid_r(uid, pwd, buf, buflen);
 #else
     struct passwd *result = NULL;
-    return (getpwuid_r(uid, pwd, buf, buflen, &result) == 0 && result != NULL) ? result : NULL;
+    int retval = getpwuid_r(uid, pwd, buf, buflen, &result);
+
+    if (result == NULL) {
+        errno = retval;
+    }
+
+    return result;
 #endif
 }
 
@@ -44,7 +56,13 @@ struct group *w_getgrnam(const  char  *name,  struct group *grp, char *buf, int 
     return getgrnam_r(name, grp, buf, buflen);
 #else
     struct group *result = NULL;
-    return (getgrnam_r(name, grp, buf, buflen, &result) == 0 && result != NULL) ? result : NULL;
+    int retval = getgrnam_r(name, grp, buf, buflen, &result);
+
+    if (result == NULL) {
+        errno = retval;
+    }
+
+    return result;
 #endif
 }
 
@@ -53,7 +71,13 @@ struct group *w_getgrgid(gid_t gid, struct group *grp,  char *buf, int buflen) {
     return getgrgid_r(gid, grp, buf, buflen);
 #else
     struct group *result = NULL;
-    return (getgrgid_r(gid, grp, buf, buflen, &result) == 0 && result != NULL) ? result : NULL;
+    int retval = getgrgid_r(gid, grp, buf, buflen, &result);
+
+    if (result == NULL) {
+        errno = retval;
+    }
+
+    return result;
 #endif
 }
 
@@ -62,16 +86,16 @@ uid_t Privsep_GetUser(const char *name)
     long int len =  sysconf(_SC_GETGR_R_SIZE_MAX);
     len = len > 0 ? len : 1024;
     struct passwd pw = { .pw_name = NULL };
-    char *buffer;
-    os_malloc(len, buffer);
+    char *buffer = NULL;
     struct passwd *result = NULL;
     uid_t pw_uid;
 
-    if (result = w_getpwnam(name, &pw, buffer, len), result) {
-        pw_uid = result->pw_uid;
-    } else {
-        pw_uid = (uid_t) OS_INVALID;
-    }
+    do {
+        os_realloc(buffer, len, buffer);
+        result = w_getpwnam(name, &pw, buffer, len);
+    } while (result == NULL && errno == ERANGE && (len *= 2) <= OS_MAXSTR);
+
+    pw_uid = result ? result->pw_uid : (uid_t)OS_INVALID;
     os_free(buffer);
 
     return pw_uid;
@@ -83,15 +107,16 @@ gid_t Privsep_GetGroup(const char *name)
     long int len = sysconf(_SC_GETGR_R_SIZE_MAX);
     len = len > 0 ? len : 1024;
     struct group *result = NULL;
-    char *buffer;
-    os_malloc(len, buffer);
+    char *buffer = NULL;
     gid_t gr_gid;
 
-    if (result = w_getgrnam(name, &grp, buffer, len), result) {
-        gr_gid = result->gr_gid;
-    } else {
-        gr_gid = (gid_t) OS_INVALID;
-    }
+
+    do {
+        os_realloc(buffer, len, buffer);
+        result = w_getgrnam(name, &grp, buffer, len);
+    } while (result == NULL && errno == ERANGE && (len *= 2) <= OS_MAXSTR);
+
+    gr_gid = result ? result->gr_gid : (uid_t)OS_INVALID;
     os_free(buffer);
 
     return gr_gid;

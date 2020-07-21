@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -43,7 +43,7 @@ int notify_rk(int rk_type, const char *msg)
     if (SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
         mterror(ARGV0, QUEUE_SEND);
 
-        if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+        if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE, MAX_OPENQ_ATTEMPS)) < 0) {
             mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
         }
 

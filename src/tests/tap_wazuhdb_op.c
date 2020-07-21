@@ -81,9 +81,9 @@ int main(void) {
     TAP_TEST_MSG(test_err_query(&wdb_sock), "Send query and receive a message starting with 'err' (Invalid syscheck query syntax).");
 
     TAP_PLAN;
-    TAP_SUMMARY;
+    int r = tap_summary();
     close(wdb_sock);
     printf("\n   ENDING TEST  - WAZUHDB_OS   \n\n");
-    return 0;
+    return r;
 
 }

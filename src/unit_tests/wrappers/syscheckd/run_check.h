@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -20,6 +20,14 @@ WINBOOL wrap_SetThreadPriority (HANDLE hThread, int nPriority);
 HANDLE wrap_GetCurrentThread (VOID);
 DWORD wrap_GetLastError (VOID);
 VOID wrap_Sleep (DWORD dwMilliseconds);
+HANDLE wrap_run_check_CreateThread(
+    LPSECURITY_ATTRIBUTES   lpThreadAttributes,
+    SIZE_T                  dwStackSize,
+    LPTHREAD_START_ROUTINE  lpStartAddress,
+    PVOID                   lpParameter,
+    DWORD                   dwCreationFlags,
+    LPDWORD                 lpThreadId
+);
 
 extern struct state_t state;
 #endif

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -20,11 +20,13 @@ static int chroot_flag = 0;
 static int daemon_flag = 0;
 static int pid;
 
-struct{
+static struct{
   unsigned int log_plain:1;
   unsigned int log_json:1;
-  unsigned int read:1;
+  unsigned int initialized:1;
 } flags;
+
+static pthread_mutex_t logging_mutex;
 
 static void _log(int level, const char *tag, const char * file, int line, const char * func, const char *msg, va_list args) __attribute__((format(printf, 5, 0))) __attribute__((nonnull));
 
@@ -62,8 +64,9 @@ static void _log(int level, const char *tag, const char * file, int line, const 
     va_copy(args2, args);
     va_copy(args3, args);
 
-    if (!flags.read) {
-      os_logging_config();
+    if (!flags.initialized) {
+        w_logging_init();
+        mdebug1("Logging module auto-initialized");  
     }
 
     if (filename = strrchr(file, '/'), filename) {
@@ -122,13 +125,15 @@ static void _log(int level, const char *tag, const char * file, int line, const 
             cJSON_AddStringToObject(json_log, "description", jsonstr);
 
             output = cJSON_PrintUnformatted(json_log);
-
+            
+            w_mutex_lock(&logging_mutex);
             (void)fprintf(fp, "%s", output);
             (void)fprintf(fp, "\n");
+            fflush(fp);
+            w_mutex_unlock(&logging_mutex);
 
             cJSON_Delete(json_log);
             free(output);
-            fflush(fp);
             fclose(fp);
         }
     }
@@ -169,6 +174,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 
         /* Maybe log to syslog if the log file is not available */
         if (fp) {
+            w_mutex_lock(&logging_mutex);
             (void)fprintf(fp, "%s ", timestamp);
 
             if (dbg_flag > 0) {
@@ -180,8 +186,9 @@ static void _log(int level, const char *tag, const char * file, int line, const 
             (void)fprintf(fp, "%s: ", strlevel[level]);
             (void)vfprintf(fp, msg, args);
             (void)fprintf(fp, "\n");
-
             fflush(fp);
+            w_mutex_unlock(&logging_mutex);
+
             fclose(fp);
         }
     }
@@ -212,6 +219,12 @@ static void _log(int level, const char *tag, const char * file, int line, const 
     va_end(args3);
 }
 
+void w_logging_init(){
+    flags.initialized = 1;
+    w_mutex_init(&logging_mutex, NULL);
+    os_logging_config();    
+}
+
 void os_logging_config(){
   OS_XML xml;
   const char * xmlf[] = {"ossec_config", "logging", "log_format", NULL};
@@ -220,7 +233,6 @@ void os_logging_config(){
   int i;
 
   pid = (int)getpid();
-  flags.read = 1;
 
   if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
     flags.log_plain = 1;

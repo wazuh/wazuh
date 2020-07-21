@@ -1,6 +1,6 @@
 /*
  * Queue (abstract data type)
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * October 2, 2017
  *
  * This program is free software; you can redistribute it
@@ -90,7 +90,6 @@ void * queue_pop(w_queue_t * queue) {
         return NULL;
     } else {
         data = queue->data[queue->end];
-        queue->data[queue->begin] = data;
         queue->end = (queue->end + 1) % queue->size;
         queue->elements--;
         return data;

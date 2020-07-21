@@ -1,7 +1,7 @@
 <!--
   -  Serv-u rules
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -68,7 +68,10 @@ TypeMessage:
         <action>02</action>
         <match>logged in</match>
         <description>Serv-U: User logged in</description>
-        <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
+        <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -93,14 +96,17 @@ TypeMessage:
         <action>02</action>
         <match>Invalid login credentials|Password wrong too many times</match>
         <description>Serv-U: Invalid credentials</description>
-        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <rule id="80506" level="10" frequency="8">
         <if_matched_sid>80505</if_matched_sid>
         <same_user />
         <description>Serv-U: Multiple authentication failures.</description>
-        <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
+        <mitre>
+          <id>T1110</id>
+        </mitre>
+        <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -112,7 +118,7 @@ TypeMessage:
         <action>02</action>
         <match>Session idle time out</match>
         <description>Serv-U: Session timeout</description>
-        <group>pci_dss_8.1.5,gpg13_7.1,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_AC.2,</group>
+        <group>pci_dss_8.1.5,gpg13_7.1,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_AC.2,tsc_CC6.1,</group>
     </rule>
 
     <!--
@@ -136,7 +142,7 @@ TypeMessage:
         <action>02</action>
         <match>Connected to</match>
         <description>Serv-U: Remote host connected</description>
-        <group>pci_dss_10.2.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,</group>
+        <group>pci_dss_10.2.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -186,6 +192,9 @@ TypeMessage:
         <action>12</action>
         <match>File deleted</match>
         <description>Serv-U: File deleted</description>
+        <mitre>
+            <id>T1107</id>
+        </mitre>
         <group>gdpr_II_5.1.f,</group>
     </rule>
 
@@ -210,6 +219,9 @@ TypeMessage:
         <action>15</action>
         <match>Directory deleted</match>
         <description>Serv-U: Directory deleted</description>
+        <mitre>
+            <id>T1107</id>
+        </mitre>
         <group>gdpr_II_5.1.f,</group>
     </rule>
 
@@ -236,6 +248,9 @@ TypeMessage:
         <action>21</action>
         <match>230 User logged in, proceed</match>
         <description>Serv-U: User logged in FTP/FTPS</description>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
         <group>gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
     </rule>
 
@@ -248,6 +263,9 @@ TypeMessage:
         <action>31</action>
         <match>SSH2_MSG_USERAUTH_SUCCESS</match>
         <description>Serv-U: User logged in SFTP (SSH)</description>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
         <group>gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
     </rule>
 
@@ -260,6 +278,9 @@ TypeMessage:
         <action>41</action>
         <match>HTTP_OKAY (200): SESS_OKAY</match>
         <description>Serv-U: User logged in HTTP/HTTPS</description>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
         <group>gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
     </rule>
 
@@ -272,7 +293,7 @@ TypeMessage:
         <action>21</action>
         <match>530 Sorry, no ANONYMOUS access allowed</match>
         <description>Serv-U: Attempt to login using anonymous user</description>
-        <group>authentication_failures,pci_dss_10.2.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <group>authentication_failures,pci_dss_10.2.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
         <group>gpg13_7.1,</group>
     </rule>
 
@@ -287,7 +308,10 @@ TypeMessage:
         <action>21</action>
         <match>Permission denied</match>
         <description>Serv-U: FTP/FTPS Permission denied</description>
-        <group>pci_dss_10.2.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <mitre>
+            <id>T1110</id>
+        </mitre>
+        <group>pci_dss_10.2.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <rule id="80523" level="4">
@@ -295,7 +319,10 @@ TypeMessage:
         <action>31</action>
         <match>Permission denied</match>
         <description>Serv-U: SFTP (SSH) Permission denied</description>
-        <group>pci_dss_10.2.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <mitre>
+            <id>T1110</id>
+        </mitre>
+        <group>pci_dss_10.2.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <rule id="80524" level="4">
@@ -303,7 +330,10 @@ TypeMessage:
         <action>41</action>
         <match>SESS_PERMISSION_DENIED</match>
         <description>Serv-U: HTTP/HTTPS Permission denied</description>
-        <group>pci_dss_10.2.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <mitre>
+            <id>T1110</id>
+        </mitre>
+        <group>pci_dss_10.2.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
 </group>

@@ -1,7 +1,7 @@
 <!--
-  -  Windows Event Channel ruleset for the Application channel 
+  -  Windows Event Channel ruleset for the Application channel
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
   -  ID range: 60600 - 61099
 -->
@@ -317,6 +317,9 @@
     <if_sid>60640</if_sid>
     <field name="win.system.eventID">^903$</field>
     <description>Software Protection service stopped</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -361,6 +364,9 @@
     <field name="win.system.providerName">^Application Hang$</field>
     <field name="win.system.eventID">^1002$</field>
     <description>Application stopped responding, program closed</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -501,6 +507,9 @@
     <if_sid>60648</if_sid>
     <field name="win.system.eventID">^7068$</field>
     <description>Cannot read registry, registry keys missing</description>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -515,6 +524,9 @@
     <if_sid>60648</if_sid>
     <field name="win.system.eventID">^1013$</field>
     <description>The Windows Search Service stopped normally</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -606,11 +618,14 @@
     <description>Safe mode does not support Shadow Copy</description>
     <options>no_full_log</options>
   </rule>
-  
+
   <rule id="60682" level="4">
     <if_sid>60675</if_sid>
     <field name="win.system.eventID">^19$</field>
     <description>The EventSystem service is disabled or attempting to start during Safe Mode</description>
+    <mitre>
+      <id>T1031</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -618,6 +633,9 @@
     <if_sid>60675</if_sid>
     <field name="win.system.eventID">^20$|^21$</field>
     <description>Volume Shadow Copy Service: COM+ database corrupted, writers will not receive events</description>
+    <mitre>
+      <id>T1031</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -660,6 +678,9 @@
     <if_sid>60675</if_sid>
     <field name="win.system.eventID">^4609$</field>
     <description>Bad return code detected during internal processing of the EventSystem service</description>
+    <mitre>
+      <id>T1031</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -930,6 +951,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^10$</field>
     <description>Event filter could not be activated</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -945,6 +969,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^43$</field>
     <description>WMI ADAP failed to connect to namespace</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -952,6 +979,10 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5611$</field>
     <description>Inconsistent system shutdown detected</description>
+    <mitre>
+      <id>T1529</id>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -959,6 +990,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5601$</field>
     <description>The WMI service failed to load the repository files</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -966,6 +1000,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5612$</field>
     <description>A quota reached a warning value, WMI stopped WMIPRVSE.EXE</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -973,6 +1010,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^4$</field>
     <description>Error encountered trying to load MOF</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -980,6 +1020,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^21$</field>
     <description>Event provider attempted to register a syntactically invalid query</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -987,6 +1030,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^22$</field>
     <description>Event provider attempted to register an intrinsic event query</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -994,6 +1040,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^23$|^24$|^25$</field>
     <description>Event provider attempted to register query</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -1001,6 +1050,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^43$</field>
     <description>WMI ADAP failed to connect to namespace</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -1008,6 +1060,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^48$</field>
     <description>WMI ADAP was unable to save object</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -1015,6 +1070,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^58$|^59$</field>
     <description>WMI ADAP was unable to create the Win32_Perf base class</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -1022,6 +1080,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^63$</field>
     <description>The provider has been registered in the WMI namespace</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -1029,6 +1090,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5600$</field>
     <description>The WMI Service detected an inconsistency with the WMI repository</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -1036,6 +1100,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5601$</field>
     <description>The WMI Service failed to load the repository files</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -1043,6 +1110,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5605$</field>
     <description>Access to namespace denied</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -1050,6 +1120,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5606$</field>
     <description>WMI Service could not deliver results asynchronously for the namespace</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -1057,6 +1130,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5612$</field>
     <description>WMI stopped WMIPRVSE.EXE because a quota reached a warning value</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -1064,6 +1140,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5614$</field>
     <description>WMI service was unable to locate the repository files during the service startup</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -1071,6 +1150,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5615$</field>
     <description>WMI Service started successfully</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -1078,6 +1160,9 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5616$</field>
     <description>WMI Core, Provider SubSystem and Event SubSystem initialized sucessfully</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -1289,6 +1374,9 @@
     <if_sid>60774</if_sid>
     <field name="win.system.eventID">^1002$</field>
     <description>The shell stopped unexpectedly</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -1557,6 +1645,9 @@
     <field name="win.system.eventID">^489$</field>
     <description>An attempt to open the file for read only access failed with system error</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
   </rule>
 
   <rule id="60817" level="3">
@@ -1689,21 +1780,21 @@
   <rule id="60835" level="5">
     <if_sid>60824</if_sid>
     <field name="win.system.eventID">^256$</field>
-    <description>The Cryptographic Services service failed to initialize the Catalog Database</description>
+    <description>The Cryptographic Services failed to initialize the Catalog Database</description>
     <options>no_full_log</options>
   </rule>
 
   <rule id="60836" level="5">
     <if_sid>60824</if_sid>
     <field name="win.system.eventID">^257$</field>
-    <description>The Cryptographic Services service failed to initialize the Catalog Database. ESENT error</description>
+    <description>The Cryptographic Services failed to initialize the Catalog Database. ESENT error</description>
     <options>no_full_log</options>
   </rule>
 
   <rule id="60837" level="5">
     <if_sid>60824</if_sid>
     <field name="win.system.eventID">^512$</field>
-    <description>The Cryptographic Services service failed to initialize the VSS backup "System Writer" object</description>
+    <description>The Cryptographic Services failed to initialize the VSS backup "System Writer" object</description>
     <options>no_full_log</options>
   </rule>
 
@@ -1741,7 +1832,7 @@
     <description>The MS DTC has the same unique identity as the local one</description>
     <options>no_full_log</options>
   </rule>
-  
+
   <rule id="60843" level="5">
     <if_sid>60838</if_sid>
     <field name="win.system.eventID">^4102$</field>
@@ -2099,6 +2190,9 @@
     <field name="win.system.eventID">^4209$</field>
     <description>A critical error occurred in an MS DTC component, process terminating</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
   </rule>
 
   <rule id="60894" level="5">
@@ -2967,6 +3061,9 @@
     <field name="win.system.eventID">^1026$</field>
     <description>The process was terminated due to an unhandled exception</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
   </rule>
 
   <rule id="61018" level="5">
@@ -3062,6 +3159,9 @@
     <field name="win.system.eventID">^107$</field>
     <description>The execution of the setup program for an application failed</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
   </rule>
 
   <rule id="61031" level="5">
@@ -3188,6 +3288,9 @@
     <if_sid>61036</if_sid>
     <field name="win.system.eventID">^27$</field>
     <description>The fault tolerant driver detected the system was shutdown dirty</description>
+    <mitre>
+      <id>T1529</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -3294,40 +3397,40 @@
     <description>Group of Microsoft-Windows-SoftwareRestrictionPolicies events</description>
     <options>no_full_log</options>
   </rule>
-  
+
   <rule id="61064" level="5">
     <if_sid>61063</if_sid>
     <field name="win.system.eventID">^865$</field>
     <description>Access restricted by your Administrator by the default software restriction policy level</description>
     <options>no_full_log</options>
   </rule>
-  
+
   <rule id="61065" level="5">
     <if_sid>61063</if_sid>
     <field name="win.system.eventID">^866$</field>
     <description>Access restricted by your Administrator by location with policy rule </description>
     <options>no_full_log</options>
   </rule>
-  
+
   <rule id="61066" level="5">
     <if_sid>61063</if_sid>
     <field name="win.system.eventID">^867$</field>
     <description>Access restricted by your Administrator by software publisher policy</description>
     <options>no_full_log</options>
   </rule>
-  
+
   <rule id="61067" level="5">
     <if_sid>61063</if_sid>
     <field name="win.system.eventID">^868$</field>
     <description>Access restricted by your Administrator by policy rule</description>
     <options>no_full_log</options>
   </rule>
-  
+
   <rule id="61068" level="5">
     <if_sid>61063</if_sid>
     <field name="win.system.eventID">^882$</field>
     <description>Access restricted by your Administrator by policy rule</description>
     <options>no_full_log</options>
   </rule>
-  
+
 </group>

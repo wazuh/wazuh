@@ -1,6 +1,6 @@
 /*
  * Local Authd server
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * May 20, 2017.
  *
  * This program is free software; you can redistribute it
@@ -14,19 +14,23 @@
 #include <sys/wait.h>
 #include "auth.h"
 
-#define EINTERNAL   0
-#define EJSON       1
-#define ENOFUNCTION 2
-#define ENOARGUMENT 3
-#define ENONAME     4
-#define ENOIP       5
-#define EDUPIP      6
-#define EDUPNAME    7
-#define EKEY        8
-#define ENOID       9
-#define ENOAGENT    10
-#define EDUPID      11
-#define EAGLIM      12
+typedef enum auth_local_err {
+    EINTERNAL = 0,
+    EJSON,
+    ENOFUNCTION,
+    ENOARGUMENT,
+    ENONAME,
+    ENOIP,
+    EDUPIP,
+    EDUPNAME,
+    EKEY,
+    ENOID,
+    ENOAGENT,
+    EDUPID,
+    EAGLIM,
+    EINVGROUP
+} auth_local_err;
+
 
 static const struct {
     int code;
@@ -44,20 +48,30 @@ static const struct {
     { 9010, "No such agent ID" },
     { 9011, "Agent ID not found" },
     { 9012, "Duplicated ID" },
-    { 9013, "Maximum number of agents reached" }
+    { 9013, "Maximum number of agents reached" },
+    { 9014, "Invalid Group(s) Name(s)"}
 };
 
 // Dispatch local request
 static char* local_dispatch(const char *input);
 
 // Add a new agent
-static cJSON* local_add(const char *id, const char *name, const char *ip, const char *key, int force);
+static cJSON* local_add(const char *id, const char *name, const char *ip, char *groups, const char *key, int force);
 
 // Remove an agent
 static cJSON* local_remove(const char *id, int purge);
 
 // Get agent data
 static cJSON* local_get(const char *id);
+
+// Generates an agent info json response
+static cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key);
+
+// Generates an agent deleted response
+static cJSON* local_create_agent_delete_response(void);
+
+// Generates an error json response
+static cJSON* local_create_error_response(int code, const char *message);
 
 // Thread for internal server
 void* run_local_server(__attribute__((unused)) void *arg) {
@@ -181,6 +195,7 @@ char* local_dispatch(const char *input) {
             char *id;
             char *name;
             char *ip;
+            char *groups = NULL;
             char *key = NULL;
             int force = 0;
 
@@ -204,9 +219,19 @@ char* local_dispatch(const char *input) {
             }
 
             ip = item->valuestring;
+            
+            if(item = cJSON_GetObjectItem(arguments, "groups"), item) {
+                groups = wstr_delete_repeated_groups(item->valuestring);
+                if (!groups){
+                    ierror = EINVGROUP;
+                    goto fail;
+                }
+            }
+
             key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
             force = (item = cJSON_GetObjectItem(arguments, "force"), item) ? item->valueint : -1;
-            response = local_add(id, name, ip, key, force);
+            response = local_add(id, name, ip, groups, key, force);
+            os_free(groups);
         } else if (!strcmp(function->valuestring, "remove")) {
             cJSON *item;
             int purge;
@@ -261,25 +286,30 @@ char* local_dispatch(const char *input) {
 
 fail:
     merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
-    response = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response, "error", ERRORS[ierror].code);
-    cJSON_AddStringToObject(response, "message", ERRORS[ierror].message);
+    response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
     output = cJSON_PrintUnformatted(response);
     cJSON_Delete(response);
     cJSON_Delete(request);
     return output;
 }
 
-cJSON* local_add(const char *id, const char *name, const char *ip, const char *key, int force) {
+cJSON* local_add(const char *id, const char *name, const char *ip, char *groups, const char *key, int force) {
     int index;
     char *id_exist;
-    cJSON *response;
-    cJSON *data;
+    cJSON *response = NULL;
     int ierror;
     double antiquity;
 
     mdebug2("add(%s)", name);
     w_mutex_lock(&mutex_keys);
+        
+    /* Check if groups are valid to be aggregated */ 
+    if (groups){ 
+        if (OS_SUCCESS != w_auth_validate_groups(groups, NULL)){
+            ierror = EINVGROUP;
+            goto fail;
+        }        
+    }
 
     // Check for duplicated ID
 
@@ -344,18 +374,21 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
         goto fail;
     }
 
+
+    if(groups) {
+        char path[PATH_MAX];
+        if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
+            ierror = EINVGROUP;
+            goto fail;
+        }
+    }
+
     /* Add pending key to write */
-    add_insert(keys.keyentries[index],NULL);
+    add_insert(keys.keyentries[index],groups);
     write_pending = 1;
     w_cond_signal(&cond_pending);
 
-    response = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response, "error", 0);
-    cJSON_AddItemToObject(response, "data", data = cJSON_CreateObject());
-    cJSON_AddStringToObject(data, "id", keys.keyentries[index]->id);
-    cJSON_AddStringToObject(data, "name", name);
-    cJSON_AddStringToObject(data, "ip", ip);
-    cJSON_AddStringToObject(data, "key", keys.keyentries[index]->key);
+    response = local_create_agent_response(keys.keyentries[index]->id, name, ip, keys.keyentries[index]->key);
     w_mutex_unlock(&mutex_keys);
 
     minfo("Agent key generated for agent '%s' (requested locally)", name);
@@ -364,16 +397,14 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
 fail:
     w_mutex_unlock(&mutex_keys);
     merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
-    response = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response, "error", ERRORS[ierror].code);
-    cJSON_AddStringToObject(response, "message", ERRORS[ierror].message);
+    response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
     return response;
 }
 
 // Remove an agent
 cJSON* local_remove(const char *id, int purge) {
     int index;
-    cJSON *response = cJSON_CreateObject();
+    cJSON *response = NULL;
 
     mdebug2("local_remove(id='%s', purge=%d)", id, purge);
 
@@ -381,8 +412,7 @@ cJSON* local_remove(const char *id, int purge) {
 
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
         merror("ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
-        cJSON_AddNumberToObject(response, "error", ERRORS[ENOAGENT].code);
-        cJSON_AddStringToObject(response, "message", ERRORS[ENOAGENT].message);
+        response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
     } else {
         minfo("Agent '%s' (%s) deleted (requested locally)", id, keys.keyentries[index]->name);
         /* Add pending key to write */
@@ -390,9 +420,7 @@ cJSON* local_remove(const char *id, int purge) {
         OS_DeleteKey(&keys, id, purge);
         write_pending = 1;
         w_cond_signal(&cond_pending);
-
-        cJSON_AddNumberToObject(response, "error", 0);
-        cJSON_AddStringToObject(response, "data", "Agent deleted successfully.");
+        response = local_create_agent_delete_response();
     }
 
     w_mutex_unlock(&mutex_keys);
@@ -402,25 +430,57 @@ cJSON* local_remove(const char *id, int purge) {
 // Get agent data
 cJSON* local_get(const char *id) {
     int index;
-    cJSON *data;
-    cJSON *response = cJSON_CreateObject();
+    cJSON *response = NULL;
 
     mdebug2("local_get(%s)", id);
     w_mutex_lock(&mutex_keys);
 
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
         merror("ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
-        cJSON_AddNumberToObject(response, "error", ERRORS[ENOAGENT].code);
-        cJSON_AddStringToObject(response, "message", ERRORS[ENOAGENT].message);
-    } else {
-        cJSON_AddNumberToObject(response, "error", 0);
-        cJSON_AddItemToObject(response, "data", data = cJSON_CreateObject());
-        cJSON_AddStringToObject(data, "id", id);
-        cJSON_AddStringToObject(data, "name", keys.keyentries[index]->name);
-        cJSON_AddStringToObject(data, "ip", keys.keyentries[index]->ip->ip);
-        cJSON_AddStringToObject(data, "key", keys.keyentries[index]->key);
+        response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
+    } 
+    else {
+        response = local_create_agent_response(id, keys.keyentries[index]->name, keys.keyentries[index]->ip->ip, keys.keyentries[index]->key);
     }
 
     w_mutex_unlock(&mutex_keys);
+    return response;
+}
+
+// Generates an agent info json response 
+cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key) {
+    cJSON *response = NULL; 
+    cJSON *data = NULL;
+    
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddItemToObject(response, "data", data = cJSON_CreateObject());
+    cJSON_AddStringToObject(data, "id", id);
+    cJSON_AddStringToObject(data, "name", name);
+    cJSON_AddStringToObject(data, "ip", ip);
+    cJSON_AddStringToObject(data, "key", key);
+
+    return response;
+}
+
+// Generates an agent deleted response
+static cJSON* local_create_agent_delete_response(void) {
+    cJSON *response = NULL; 
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddStringToObject(response, "data", "Agent deleted successfully.");
+
+    return response;
+}
+
+// Generates an error json response
+static cJSON* local_create_error_response(int code, const char *message) {
+    cJSON *response = NULL; 
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", code);
+    cJSON_AddStringToObject(response, "message", message);
+
     return response;
 }

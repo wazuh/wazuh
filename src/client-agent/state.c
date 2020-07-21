@@ -1,7 +1,7 @@
 /* Agent state management functions
  * August 2, 2017
  *
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -132,7 +132,7 @@ int write_state() {
         "\n"
         "# Number of messages (events + control messages) sent to the manager\n"
         "msg_sent='%u'\n"
-        , __local_name, agt->notify_time, agt->notify_time, status, last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
+        , __local_name, agt->notify_time, agt->max_time_reconnect_try, status, last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
 
     fclose(fp);
 

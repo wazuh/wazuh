@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -36,7 +36,7 @@ static int teardown_wdb_t(void **state) {
     wdb_t *data = *state;
 
     if(data) {
-        os_free(data->agent_id);
+        os_free(data->id);
         os_free(data);
     }
 
@@ -139,7 +139,7 @@ static void test_wdbi_checksum_range_begin_null(void **state)
     int ret;
 
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
     os_sha1 test_hex = "";
 
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -155,7 +155,7 @@ static void test_wdbi_checksum_range_end_null(void **state)
     int ret;
 
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
     os_sha1 test_hex = "";
 
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -170,7 +170,7 @@ static void test_wdbi_checksum_range_hexdigest_null(void **state)
 {
 
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
 
     expect_assert_failure(wdbi_checksum_range(data, 0, "test_begin", "test_end", NULL));
 }
@@ -180,7 +180,7 @@ static void test_wdbi_checksum_range_wdb_stmt_cache_fail(void **state)
     int ret;
 
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
     os_sha1 test_hex = "";
 
     will_return(__wrap_wdb_stmt_cache, -1);
@@ -195,7 +195,7 @@ static void test_wdbi_checksum_range_no_row(void **state)
     int ret;
 
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
     os_sha1 test_hex = "";
 
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -211,7 +211,7 @@ static void test_wdbi_checksum_range_success(void **state)
     int ret;
 
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
     os_sha1 test_hex = {5,5,0,8,6,'c','e','f',9,'c',8,7,'d',6,'d',0,3,1,'c','d',5,'d','b',2,9,'c','d',0,3,'a',2,'e','d',0,2,5,2,'b',4,5};
 
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -236,7 +236,7 @@ static void test_wdbi_delete_begin_null(void **state)
     int ret;
 
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 0);
@@ -254,7 +254,7 @@ static void test_wdbi_delete_end_null(void **state)
     int ret;
 
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 0);
@@ -272,7 +272,7 @@ static void test_wdbi_delete_tail_null(void **state)
     int ret;
 
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 0);
@@ -290,7 +290,7 @@ static void test_wdbi_delete_wdb_stmt_cache_fail(void **state)
     int ret;
 
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
     will_return(__wrap_wdb_stmt_cache, -1);
 
     ret = wdbi_delete(data, 0, "test_begin", "test_end","test_tail");
@@ -303,7 +303,7 @@ static void test_wdbi_delete_sql_no_done(void **state)
     int ret;
 
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 0);
@@ -321,7 +321,7 @@ static void test_wdbi_delete_success(void **state)
     int ret;
 
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 101);
@@ -339,7 +339,7 @@ static void test_wdbi_update_attempt_wbs_null(void **state)
 static void test_wdbi_update_attempt_stmt_cache_fail(void **state)
 {
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
@@ -349,7 +349,7 @@ static void test_wdbi_update_attempt_stmt_cache_fail(void **state)
 static void test_wdbi_update_attempt_no_sql_done(void **state)
 {
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 1);
@@ -363,7 +363,7 @@ static void test_wdbi_update_attempt_no_sql_done(void **state)
 static void test_wdbi_update_attempt_success(void **state)
 {
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 101);
@@ -379,7 +379,7 @@ static void test_wdbi_update_completion_wbs_null(void **state)
 static void test_wdbi_update_completion_stmt_cache_fail(void **state)
 {
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
@@ -389,7 +389,7 @@ static void test_wdbi_update_completion_stmt_cache_fail(void **state)
 static void test_wdbi_update_completion_no_sql_done(void **state)
 {
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 1);
@@ -403,7 +403,7 @@ static void test_wdbi_update_completion_no_sql_done(void **state)
 static void test_wdbi_update_completion_success(void **state)
 {
     wdb_t * data = *state;
-    data->agent_id = strdup("000");
+    data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 101);
@@ -415,7 +415,7 @@ void test_wdbi_query_clear_null_payload(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     char * payload = NULL;
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse checksum range payload: '(null)'");
@@ -429,7 +429,7 @@ void test_wdbi_query_clear_invalid_payload(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     char payload[] = "This is some test";
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse checksum range payload: 'This is some test'");
@@ -443,7 +443,7 @@ void test_wdbi_query_clear_no_id(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     char payload[] = "{\"Key\":\"Value\"}";
 
     expect_string(__wrap__mdebug1, formatted_msg, "No such string 'id' in JSON payload.");
@@ -457,7 +457,7 @@ void test_wdbi_query_clear_stmt_cache_error(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     const char *payload = "{\"id\":5678}";
 
     will_return(__wrap_wdb_stmt_cache, -1);
@@ -471,7 +471,7 @@ void test_wdbi_query_clear_sql_step_error(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     const char *payload = "{\"id\":5678}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
@@ -489,7 +489,7 @@ void test_wdbi_query_clear_ok(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     const char *payload = "{\"id\":5678}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
@@ -507,7 +507,7 @@ void test_wdbi_query_checksum_null_payload(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     char * payload = NULL;
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse checksum range payload: '(null)'");
@@ -521,7 +521,7 @@ void test_wdbi_query_checksum_no_begin(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     const char * payload = "{\"Bad\":\"Payload\"}";
 
     expect_string(__wrap__mdebug1, formatted_msg, "No such string 'begin' in JSON payload.");
@@ -535,7 +535,7 @@ void test_wdbi_query_checksum_no_end(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     const char * payload = "{\"begin\":\"something\"}";
 
     expect_string(__wrap__mdebug1, formatted_msg, "No such string 'end' in JSON payload.");
@@ -549,7 +549,7 @@ void test_wdbi_query_checksum_no_checksum(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\"}";
 
     expect_string(__wrap__mdebug1, formatted_msg, "No such string 'checksum' in JSON payload.");
@@ -563,7 +563,7 @@ void test_wdbi_query_checksum_no_id(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\"}";
 
     expect_string(__wrap__mdebug1, formatted_msg, "No such string 'id' in JSON payload.");
@@ -577,7 +577,7 @@ void test_wdbi_query_checksum_range_fail(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\",\"id\":1234}";
 
     will_return(__wrap_wdb_stmt_cache, -1);
@@ -591,7 +591,7 @@ void test_wdbi_query_checksum_range_no_data(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\",\"id\":1234}";
 
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -610,7 +610,7 @@ void test_wdbi_query_checksum_diff_hexdigest(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\",\"id\":1234}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
@@ -634,7 +634,7 @@ void test_wdbi_query_checksum_equal_hexdigest(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"id\":1234}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
@@ -658,7 +658,7 @@ void test_wdbi_query_checksum_bad_command(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\",\"id\":1234}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
@@ -680,7 +680,7 @@ void test_wdbi_query_checksum_check_left_no_tail(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\",\"id\":1234}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
@@ -703,7 +703,7 @@ void test_wdbi_query_checksum_check_left_ok(void **state)
 {
     wdb_t *data = *state;
     int ret;
-    os_strdup("000", data->agent_id);
+    os_strdup("000", data->id);
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\",\"id\":1234,\"tail\":\"something\"}";
 
     will_return(__wrap_wdb_stmt_cache, 0);

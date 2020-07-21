@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -14,10 +14,6 @@
 
 /** Prototypes **/
 
-/* b64 function prototypes */
-char *decode_base64(const char *src);
-char *encode_base64(int size, char *src);
-
 /* Read any input from the user (stdin) */
 char *read_from_user(void);
 
@@ -29,6 +25,14 @@ int remove_agent(int json_output);
 int k_extract(const char *cmdextract, int json_output);
 int k_import(const char *cmdimport);
 int k_bulkload(const char *cmdbulk);
+
+/**
+ * @brief Converts invalid hostnames to valid by eliminating
+ * invalid characters
+ * 
+ * @param u_name name to be converted 
+ * */
+void OS_ConvertToValidAgentName(char *u_name);
 
 /* Validation functions */
 int OS_IsValidName(const char *u_name);
@@ -79,6 +83,7 @@ extern char shost[];
 #define USER_SIZE       514
 #define FILE_SIZE       257
 #define STR_SIZE        66
+#define VALID_AGENT_NAME_CHARS "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_.-"
 
 /* Internal strings */
 #define QUIT                "\\q"

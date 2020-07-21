@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -173,7 +173,49 @@ void _getDecodersListJSON(OSDecoderNode *list, cJSON *array) {
 void _getRulesListJSON(RuleNode *list, cJSON *array) {
 
     RuleNode *node = NULL;
+    u_int32_t same;
+    u_int32_t different;
     int i;
+
+    const char * same_fields[] = {
+        "same_srcip",
+        "same_id",
+        "same_dstip",
+        "same_srcport",
+        "same_dstport",
+        "same_srcuser",
+        "same_user",
+        "same_protocol",
+        "same_action",
+        "same_url",
+        "same_data",
+        "same_extra_data",
+        "same_status",
+        "same_system_name",
+        "same_srcgeoip",
+        "same_dstgeoip",
+        "same_location"
+    };
+
+    const char * different_fields[] = {
+        "different_srcip",
+        "different_id",
+        "different_dstip",
+        "different_srcport",
+        "different_dstport",
+        "different_srcuser",
+        "different_user",
+        "different_protocol",
+        "different_action",
+        "different_url",
+        "different_data",
+        "different_extra_data",
+        "different_status",
+        "different_system_name",
+        "different_srcgeoip",
+        "different_dstgeoip",
+        "different_location"
+    };
 
     for (node=list;node->next;node = node->next) {
         cJSON *rule = cJSON_CreateObject();
@@ -254,6 +296,22 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
                 cJSON_AddItemToArray(_list,cJSON_CreateString(node->ruleinfo->dstip[i]->ip));
             }
             cJSON_AddItemToObject(rule,"dstip",_list);
+        }
+        if (same = node->ruleinfo->same_field, same) {
+            for (i = 0; same != 0; i++) {
+                if ((same & 1) == 1) {
+                    cJSON_AddStringToObject(rule, same_fields[i], "");
+                }
+                same >>= 1;
+            }
+        }
+        if (different = node->ruleinfo->same_field, different) {
+            for (i = 0; different != 0; i++) {
+                if ((different & 1) == 1) {
+                    cJSON_AddStringToObject(rule, different_fields[i], "");
+                }
+                different >>= 1;
+            }
         }
 
         cJSON_AddItemToArray(array,rule);

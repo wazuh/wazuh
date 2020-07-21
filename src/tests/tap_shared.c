@@ -236,7 +236,7 @@ int main(void) {
     TAP_TEST_MSG(test_get_file_content(), "Get the content of a file.");
 
     TAP_PLAN;
-    TAP_SUMMARY;
+    int r = tap_summary();
     printf("\n   ENDING TEST  - OS_SHARED   \n\n");
-    return 0;
+    return r;
 }

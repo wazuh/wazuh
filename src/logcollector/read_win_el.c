@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -256,9 +256,9 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
                          LOAD_LIBRARY_AS_DATAFILE);
     if (hevt) {
         int hr;
-        if (!(hr = FormatMessage(fm_flags, hevt, er->EventID,
-                                 0,
-                                 (LPTSTR) &message, 0, el_sstring))) {
+        if (hr = FormatMessage(fm_flags, hevt, er->EventID,
+                               0,
+                               (LPTSTR) &message, 0, el_sstring), !hr) {
             message = NULL;
         }
         FreeLibrary(hevt);
@@ -298,7 +298,7 @@ void readel(os_el *el, int printit)
     char el_domain[OS_FLSIZE + 1];
     char el_string[OS_MAXSTR + 1];
     char final_msg[OS_MAXSTR + 1];
-    LPSTR el_sstring[OS_FLSIZE + 1];
+    LPSTR el_sstring[OS_FLSIZE + 1] = {0};
 
     /* er must point to the mbuffer */
     el->er = (EVENTLOGRECORD *) &mbuffer;
@@ -308,11 +308,10 @@ void readel(os_el *el, int printit)
     el_user[OS_FLSIZE] = '\0';
     el_domain[OS_FLSIZE] = '\0';
     final_msg[OS_MAXSTR] = '\0';
-    el_sstring[0] = NULL;
-    el_sstring[OS_FLSIZE] = NULL;
 
     /* Event log is not open */
     if (!el->h) {
+        el->er = NULL;
         return;
     }
 
@@ -487,6 +486,7 @@ void readel(os_el *el, int printit)
 
     id = GetLastError();
     if (id == ERROR_HANDLE_EOF) {
+        el->er = NULL;
         return;
     }
 
@@ -532,6 +532,7 @@ void readel(os_el *el, int printit)
 
     else if (id == RPC_S_SERVER_UNAVAILABLE || id == RPC_S_UNKNOWN_IF) {
         /* Prevent message flooding when EventLog is stopped */
+        el->er = NULL;
         if (counter == 0) {
             mwarn("The EventLog service is down. Unable to collect logs from its channels.");
             counter = 1;
@@ -627,7 +628,7 @@ void win_startel(char *evt_log)
     }
 
     /* Start event log -- going to last available record */
-    if ((entries_count = startEL(evt_log, &el[el_last])) < 0) {
+    if (entries_count = startEL(evt_log, &el[el_last]), entries_count < 0) {
         merror(INV_EVTLOG, evt_log);
         return;
     } else {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -22,8 +22,67 @@ int alert_only;
 #define OS_COMMENT_MAX 1024
 
 EventList *last_events_list;
-int num_rule_matching_threads;
 time_t current_time = 0;
+
+size_t field_offset[] = {
+    offsetof(Eventinfo, srcip),
+    offsetof(Eventinfo, id),
+    offsetof(Eventinfo, dstip),
+    offsetof(Eventinfo, srcport),
+    offsetof(Eventinfo, dstport),
+    offsetof(Eventinfo, srcuser),
+    offsetof(Eventinfo, dstuser),
+    offsetof(Eventinfo, protocol),
+    offsetof(Eventinfo, action),
+    offsetof(Eventinfo, url),
+    offsetof(Eventinfo, data),
+    offsetof(Eventinfo, extra_data),
+    offsetof(Eventinfo, status),
+    offsetof(Eventinfo, systemname),
+    offsetof(Eventinfo, srcgeoip),
+    offsetof(Eventinfo, dstgeoip),
+    offsetof(Eventinfo, location)
+};
+
+// Function to check for repetitions from same fields
+
+bool same_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
+    int i;
+    u_int32_t same = rule->same_field >> 2;
+
+    for (i = 2; same != 0; i++) {
+        if ((same & 1) == 1) {
+            char * field1 = *(char **)((void *)lf + field_offset[i]);
+            char * field2 = *(char **)((void *)my_lf + field_offset[i]);
+
+            if (!(field1 && field2 && strcmp(field1, field2) == 0)) {
+                return FALSE;
+            }
+        }
+        same >>= 1;
+    }
+    return TRUE;
+}
+
+// Function to check for repetitions from different fields
+
+bool different_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
+    int i;
+    u_int32_t different = rule->different_field;
+
+    for (i = 0; different != 0; i++) {
+        if ((different & 1) == 1) {
+            char * field1 = *(char **)((void *)lf + field_offset[i]);
+            char * field2 = *(char **)((void *)my_lf + field_offset[i]);
+
+            if (field1 && field2 && strcmp(field1, field2) == 0) {
+                return FALSE;
+            }
+        }
+        different >>= 1;
+    }
+    return TRUE;
+}
 
 /* Search last times a signature fired
  * Will look for only that specific signature.
@@ -74,7 +133,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
             goto end;
         }
 
-        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+        if (!(rule->context_opts & FIELD_GFREQUENCY)) {
             if ((!lf->agent_id) || (!my_lf->agent_id)) {
                 continue;
             }
@@ -85,7 +144,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         }
 
         /* Check for same ID */
-        if (rule->context_opts & SAME_ID) {
+        if (rule->same_field & FIELD_ID) {
             if ((!lf->id) || (!my_lf->id)) {
                 continue;
             }
@@ -96,7 +155,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         }
 
         /* Check for repetitions from same src_ip */
-        if (rule->context_opts & SAME_SRCIP) {
+        if (rule->same_field & FIELD_SRCIP) {
             if ((!lf->srcip) || (!my_lf->srcip)) {
                 continue;
             }
@@ -107,7 +166,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         }
 
         /* Check for repetitions from same dynamic fields */
-        if (rule->context_opts & SAME_FIELD) {
+        if (rule->same_field & FIELD_DYNAMICS) {
             if (my_lf->nfields == 0 || lf->nfields == 0)
                 continue;
 
@@ -129,7 +188,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         }
 
         /* Check for differences from dynamic fields values (not_same_field) */
-        if (rule->context_opts & NOT_SAME_FIELD) {
+        if (rule->different_field & FIELD_DYNAMICS) {
             if (my_lf->nfields == 0 && lf->nfields == 0)
                 continue;
 
@@ -148,72 +207,16 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
                 continue;
             }
         }
-
         /* Grouping of additional data */
         if (rule->alert_opts & SAME_EXTRAINFO) {
-            /* Check for same source port */
-            if (rule->context_opts & SAME_SRCPORT) {
-                if ((!lf->srcport) || (!my_lf->srcport)) {
-                    continue;
-                }
-
-                if (strcmp(lf->srcport, my_lf->srcport) != 0) {
-                    continue;
-                }
+            /* Searching same fields */
+            if (!same_loop(rule, lf, my_lf)) {
+                continue;
             }
-
-            /* Check for same dst port */
-            if (rule->context_opts & SAME_DSTPORT) {
-                if ((!lf->dstport) || (!my_lf->dstport)) {
-                    continue;
-                }
-
-                if (strcmp(lf->dstport, my_lf->dstport) != 0) {
-                    continue;
-                }
+            /* Searching different fields */
+            if (!different_loop(rule, lf, my_lf)) {
+                continue;
             }
-
-            /* Check for repetitions on user error */
-            if (rule->context_opts & SAME_USER) {
-                if ((!lf->dstuser) || (!my_lf->dstuser)) {
-                    continue;
-                }
-
-                if (strcmp(lf->dstuser, my_lf->dstuser) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for same location */
-            if (rule->context_opts & SAME_LOCATION) {
-                if (strcmp(lf->hostname, my_lf->hostname) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different URLs */
-            if (rule->context_opts & DIFFERENT_URL) {
-                if ((!lf->url) || (!my_lf->url)) {
-                    continue;
-                }
-
-                if (strcmp(lf->url, my_lf->url) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different from same srcgeoip */
-            if (rule->context_opts & DIFFERENT_SRCGEOIP) {
-
-                if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
-                    continue;
-                }
-                if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
-                    continue;
-                }
-            }
-
-
         }
 
         /* We avoid multiple triggers for the same rule
@@ -307,7 +310,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
             goto end;
         }
 
-        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+        if (!(rule->context_opts & FIELD_GFREQUENCY)) {
             if ((!lf->agent_id) || (!my_lf->agent_id)) {
                 continue;
             }
@@ -318,7 +321,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         }
 
         /* Check for same ID */
-        if (rule->context_opts & SAME_ID) {
+        if (rule->same_field & FIELD_ID) {
             if ((!lf->id) || (!my_lf->id)) {
                 continue;
             }
@@ -329,7 +332,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         }
 
         /* Check for repetitions from same src_ip */
-        if (rule->context_opts & SAME_SRCIP) {
+        if (rule->same_field & FIELD_SRCIP) {
             if ((!lf->srcip) || (!my_lf->srcip)) {
                 continue;
             }
@@ -340,7 +343,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         }
 
         /* Check for repetitions from same dynamic fields */
-        if (rule->context_opts & SAME_FIELD) {
+        if (rule->same_field & FIELD_DYNAMICS) {
             if (my_lf->nfields == 0 || lf->nfields == 0) {
                 continue;
             }
@@ -363,7 +366,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         }
 
         /* Check for differences from dynamic fields values (not_same_field) */
-        if (rule->context_opts & NOT_SAME_FIELD) {
+        if (rule->different_field & FIELD_DYNAMICS) {
             if (my_lf->nfields == 0 && lf->nfields == 0) {
                 continue;
             }
@@ -386,67 +389,14 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 
         /* Grouping of additional data */
         if (rule->alert_opts & SAME_EXTRAINFO) {
-            /* Check for same source port */
-            if (rule->context_opts & SAME_SRCPORT) {
-                if ((!lf->srcport) || (!my_lf->srcport)) {
-                    continue;
-                }
-
-                if (strcmp(lf->srcport, my_lf->srcport) != 0) {
-                    continue;
-                }
+            /* Searching same fields */
+            if (!same_loop(rule, lf, my_lf)) {
+                continue;
             }
 
-            /* Check for same dst port */
-            if (rule->context_opts & SAME_DSTPORT) {
-                if ((!lf->dstport) || (!my_lf->dstport)) {
-                    continue;
-                }
-
-                if (strcmp(lf->dstport, my_lf->dstport) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for repetitions on user error */
-            if (rule->context_opts & SAME_USER) {
-                if ((!lf->dstuser) || (!my_lf->dstuser)) {
-                    continue;
-                }
-
-                if (strcmp(lf->dstuser, my_lf->dstuser) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for same location */
-            if (rule->context_opts & SAME_LOCATION) {
-                if (strcmp(lf->hostname, my_lf->hostname) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different URLs */
-            if (rule->context_opts & DIFFERENT_URL) {
-                if ((!lf->url) || (!my_lf->url)) {
-                    continue;
-                }
-
-                if (strcmp(lf->url, my_lf->url) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different from same srcgeoip */
-            if (rule->context_opts & DIFFERENT_SRCGEOIP) {
-
-                if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
-                    continue;
-                }
-
-                if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
-                    continue;
-                }
+            /* Searching different fields */
+            if (!different_loop(rule, lf, my_lf)) {
+                continue;
             }
         }
 
@@ -533,7 +483,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             goto end;
         }
 
-        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+        if (!(rule->context_opts & FIELD_GFREQUENCY)) {
             if ((!lf->agent_id) || (!my_lf->agent_id)) {
                 continue;
             }
@@ -556,19 +506,8 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
         }
 
-        /* Check for repetitions on user error */
-        if (rule->context_opts & SAME_USER) {
-            if ((!lf->dstuser) || (!my_lf->dstuser)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->dstuser, my_lf->dstuser) != 0) {
-                goto next_it;
-            }
-        }
-
         /* Check for same ID */
-        if (rule->context_opts & SAME_ID) {
+        if (rule->same_field & FIELD_ID) {
             if ((!lf->id) || (!my_lf->id)) {
                 goto next_it;
             }
@@ -579,7 +518,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         }
 
         /* Check for repetitions from same src_ip */
-        if (rule->context_opts & SAME_SRCIP) {
+        if (rule->same_field & FIELD_SRCIP) {
             if ((!lf->srcip) || (!my_lf->srcip)) {
                 goto next_it;
             }
@@ -589,8 +528,18 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
         }
 
+        /* Searching same fields */
+        if (!same_loop(rule, lf, my_lf)) {
+            goto next_it;
+        }
+
+        /* Searching different fields */
+        if (!different_loop(rule, lf, my_lf)) {
+            goto next_it;
+        }
+
         /* Check for repetitions from same dynamic fields */
-        if (rule->context_opts & SAME_FIELD) {
+        if (rule->same_field & FIELD_DYNAMICS) {
             if (my_lf->nfields == 0 || lf->nfields == 0)
                 goto next_it;
 
@@ -612,7 +561,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         }
 
         /* Check for differences from dynamic fields values (not_same_field) */
-        if (rule->context_opts & NOT_SAME_FIELD) {
+        if (rule->different_field & FIELD_DYNAMICS) {
             if (my_lf->nfields == 0 && lf->nfields == 0)
                 goto next_it;
 
@@ -628,28 +577,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
 
             if (found) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different urls */
-        if (rule->context_opts & DIFFERENT_URL) {
-            if ((!lf->url) || (!my_lf->url)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->url, my_lf->url) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different from same srcgeoip */
-        if (rule->context_opts & DIFFERENT_SRCGEOIP) {
-            if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
                 goto next_it;
             }
         }
@@ -758,6 +685,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->decoder_info = NULL_Decoder;
 
     lf->filename = NULL;
+    lf->mode = NULL;
     lf->perm_before = NULL;
     lf->md5_before = NULL;
     lf->sha1_before = NULL;
@@ -959,6 +887,9 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->filename) {
         free(lf->filename);
     }
+    if (lf->mode) {
+        free(lf->mode);
+    }
     if (lf->sk_tag) {
         free(lf->sk_tag);
     }
@@ -1010,6 +941,9 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->process_name) {
         free(lf->process_name);
     }
+    if (lf->cwd) {
+        free(lf->cwd);
+    }
     if (lf->audit_uid) {
         free(lf->audit_uid);
     }
@@ -1021,6 +955,12 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->effective_name) {
         free(lf->effective_name);
+    }
+    if (lf->parent_name) {
+        free(lf->parent_name);
+    }
+    if (lf->parent_cwd) {
+        free(lf->parent_cwd);
     }
     if (lf->ppid) {
         free(lf->ppid);
@@ -1292,6 +1232,10 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     if(lf->filename){
         os_strdup(lf->filename,lf_cpy->filename);
+    }
+
+    if (lf->mode) {
+        os_strdup(lf->mode, lf_cpy->mode);
     }
 
     if (lf->perm_before) {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -17,7 +17,6 @@
 #define ARGV0 "ossec-agentd"
 #endif
 
-int agent_debug_level;
 
 /* Prototypes */
 static void help_agentd(void) __attribute((noreturn));
@@ -155,20 +154,12 @@ int main(int argc, char **argv)
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
 
-    /* Check auth keys */
-    if (!OS_CheckKeys()) {
-        merror_exit(AG_NOKEYS_EXIT);
-    }
-
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
-
-    /* Check client keys */
-    OS_ReadKeys(&keys, 1, 0, 0);
 
     /* Exit if test config */
     if (test_config) {

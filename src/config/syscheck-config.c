@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -11,6 +11,98 @@
 #include "shared.h"
 #include "syscheck-config.h"
 #include "config.h"
+
+void organize_syscheck_dirs(syscheck_config *syscheck)
+{
+    if (syscheck->dir && syscheck->dir[0]) {
+        char **dir;
+        char **symbolic_links;
+        char **tag;
+        OSMatch **filerestrict;
+        int *opts;
+        int *recursion_level;
+
+        int i;
+        int j;
+        int dirs = 0;
+
+        while (syscheck->dir[dirs] != NULL) {
+            dirs++;
+        }
+
+        os_calloc(dirs + 1, sizeof(char *), dir);
+        os_calloc(dirs + 1, sizeof(char *), symbolic_links);
+        os_calloc(dirs + 1, sizeof(char *), tag);
+        os_calloc(dirs + 1, sizeof(OSMatch *), filerestrict);
+        os_calloc(dirs + 1, sizeof(int), opts);
+        os_calloc(dirs + 1, sizeof(int), recursion_level);
+
+        for (i = 0; i < dirs; ++i) {
+
+            char *current = NULL;
+            int pos = -1;
+
+            for (j = 0; j < dirs; ++j) {
+
+                if (syscheck->dir[j] == NULL) {
+                    continue;
+                }
+
+                if (current == NULL) {
+                    current = syscheck->dir[j];
+                    pos = j;
+                    continue;
+                }
+
+                if (strcmp(current, syscheck->dir[j]) > 0) {
+                    current = syscheck->dir[j];
+                    pos = j;
+                }
+            }
+
+            dir[i] = current;
+            dir[i + 1] = NULL;
+
+            symbolic_links[i] = (syscheck->symbolic_links[pos]) ? syscheck->symbolic_links[pos] : NULL;
+            symbolic_links[i + 1] = NULL;
+
+            tag[i] = (syscheck->tag[pos]) ? syscheck->tag[pos] : NULL;
+            tag[i + 1] = NULL;
+
+            filerestrict[i] = (syscheck->filerestrict[pos]) ? syscheck->filerestrict[pos] : NULL;
+            filerestrict[i + 1] = NULL;
+
+            opts[i] = syscheck->opts[pos];
+            opts[i + 1] = 0;
+
+            recursion_level[i] = syscheck->recursion_level[pos];
+            recursion_level[i + 1] = 0;
+
+            syscheck->dir[pos] = NULL;
+        }
+
+        free(syscheck->dir);
+        syscheck->dir = dir;
+
+        free(syscheck->symbolic_links);
+        syscheck->symbolic_links = symbolic_links;
+
+        free(syscheck->tag);
+        syscheck->tag = tag;
+
+        free(syscheck->filerestrict);
+        syscheck->filerestrict = filerestrict;
+
+        free(syscheck->opts);
+        syscheck->opts = opts;
+
+        free(syscheck->recursion_level);
+        syscheck->recursion_level = recursion_level;
+    }
+    else {
+        mdebug2("No directory entries to organize in syscheck configuration.");
+    }
+}
 
 void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg,
         const char *restrictfile, int recursion_limit, const char *tag, const char *link)
@@ -167,10 +259,6 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
         }
         if (tag) {
             os_strdup(tag, syscheck->tag[pl]);
-        }
-
-        if (vals & WHODATA_ACTIVE) {
-            syscheck->enable_whodata = 1;
         }
     }
 }
@@ -861,6 +949,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_scanday = "scan_day";
     const char *xml_database = "database";
     const char *xml_scantime = "scan_time";
+    const char *xml_file_limit = "file_limit";
+    const char *xml_file_limit_enabled = "enabled";
+    const char *xml_file_limit_entries = "entries";
     const char *xml_ignore = "ignore";
     const char *xml_registry_ignore = "registry_ignore";
     const char *xml_auto_ignore = "auto_ignore"; // TODO: Deprecated since 3.11.0
@@ -1064,6 +1155,47 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+        }
+
+        /* Get file limit */
+        else if (strcmp(node[i]->element, xml_file_limit) == 0) {
+            if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
+                continue;
+            }
+
+            for(j = 0; children[j]; j++) {
+                if (strcmp(children[j]->element, xml_file_limit_enabled) == 0) {
+                    if (strcmp(children[j]->content, "yes") == 0) {
+                        syscheck->file_limit_enabled = true;
+                    }
+                    else if (strcmp(children[j]->content, "no") == 0) {
+                        syscheck->file_limit_enabled = false;
+                    }
+                    else {
+                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        return (OS_INVALID);
+                    }
+                }
+                else if (strcmp(children[j]->element, xml_file_limit_entries) == 0) {
+                    if (!OS_StrIsNum(children[j]->content)) {
+                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        return (OS_INVALID);
+                    }
+
+                    syscheck->file_limit = atoi(children[j]->content);
+
+                    if (syscheck->file_limit > MAX_FILE_LIMIT) {
+                        mdebug2("Maximum value allowed for file_limit is '%d'", MAX_FILE_LIMIT);
+                        syscheck->file_limit = MAX_FILE_LIMIT;
+                    }
+                }
+            }
+
+            if (!syscheck->file_limit_enabled) {
+                syscheck->file_limit = 0;
+            }
+
+            OS_ClearNode(children);
         }
 
         /* Get if xml_scan_on_start */
@@ -1502,6 +1634,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             mwarn(FIM_WARN_ALLOW_PREFILTER, prefilter_cmd, xml_allow_remote_prefilter_cmd);
         }
     }
+
+    organize_syscheck_dirs(syscheck);
 
     return (0);
 }
