@@ -242,11 +242,11 @@ def _create_problem(exc: Exception):
     else:
         ext = None
     if isinstance(exc, (WazuhInternalError, APIException)):
-        raise ProblemException(status=500, type=exc.response_type, title=exc.title, detail=exc.message, ext=ext)
+        raise ProblemException(status=500, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     elif isinstance(exc, WazuhPermissionError):
-        raise ProblemException(status=403, type=exc.response_type, title=exc.title, detail=exc.message, ext=ext)
+        raise ProblemException(status=403, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     elif isinstance(exc, (WazuhError, APIError)):
-        raise ProblemException(status=400, type=exc.response_type, title=exc.title, detail=exc.message, ext=ext)
+        raise ProblemException(status=400, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     raise exc
 
 

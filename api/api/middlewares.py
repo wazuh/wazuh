@@ -1,7 +1,4 @@
-import json
-
 import connexion
-
 from aiohttp import web
 
 from api import configuration
@@ -45,5 +42,5 @@ async def response_postprocessing(request, handler):
         for field in fields_to_remove:
             if field in problem.body:
                 del problem.body[field]
-        problem.body["detail"] = cleanup_str(problem.body["detail"])
+        problem.body['detail'] = cleanup_str(problem.body['detail'])
         return problem

@@ -42,6 +42,7 @@ class WazuhException(Exception):
         1016: {'message': 'Error moving file',
                'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
         1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
+        1018: 'Body request is not a valid JSON',
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
         1101: {'message': 'Requested component does not exist',
@@ -529,7 +530,7 @@ class WazuhException(Exception):
     }
 
     def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, title=None,
-                 response_type=None):
+                 type=None):
         """
         Creates a Wazuh Exception.
 
@@ -543,7 +544,7 @@ class WazuhException(Exception):
                             }
         :param title: Name of the exception to be shown
         """
-        self._response_type = response_type if response_type else 'about:blank'
+        self._type = type if type else 'about:blank'
         self._title = title if title else self.__class__.__name__
         self._code = code
         self._extra_message = extra_message
@@ -580,12 +581,12 @@ class WazuhException(Exception):
     def __eq__(self, other):
         if not isinstance(other, WazuhException):
             return NotImplemented
-        return (self._response_type,
+        return (self._type,
                 self._title,
                 self._code,
                 self._extra_message,
                 self._extra_remediation,
-                self._cmd_error) == (other._response_type,
+                self._cmd_error) == (other._type,
                                      other._title,
                                      other._code,
                                      other._extra_message,
@@ -593,7 +594,7 @@ class WazuhException(Exception):
                                      other._cmd_error)
 
     def __hash__(self):
-        return hash((self._response_type, self._title, self._code, self._extra_message, self._extra_remediation, self._cmd_error))
+        return hash((self._type, self._title, self._code, self._extra_message, self._extra_remediation, self._cmd_error))
 
     def __or__(self, other):
         if isinstance(other, WazuhException):
@@ -609,7 +610,7 @@ class WazuhException(Exception):
         return obj
 
     def to_dict(self):
-        return {'type': self._response_type,
+        return {'type': self._type,
                 'title': self._title,
                 'code': self._code,
                 'extra_message': self._extra_message,
@@ -619,8 +620,8 @@ class WazuhException(Exception):
                 }
 
     @property
-    def response_type(self):
-        return self._response_type
+    def type(self):
+        return self._type
 
     @property
     def title(self):
@@ -669,7 +670,7 @@ class WazuhError(WazuhException):
     _default_title = "Bad Request"
 
     def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, ids=None,
-                 title=None, response_type=None, type=None):
+                 title=None, type=None):
         """Creates a WazuhError exception.
 
         :param code: Exception code.
@@ -688,7 +689,7 @@ class WazuhError(WazuhException):
                          cmd_error=cmd_error,
                          dapi_errors=dapi_errors,
                          title=title if title else self._default_title,
-                         response_type=response_type if response_type else self._default_type
+                         type=type if type else self._default_type
                          )
         self._ids = set() if ids is None else set(ids)
 
