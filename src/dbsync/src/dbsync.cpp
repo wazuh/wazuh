@@ -95,8 +95,8 @@ void dbsync_teardown(void)
 
 TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
                              const char**        tables,
-                             const int           thread_number,
-                             const int           max_queue_size,
+                             const int           /*thread_number*/,
+                             const int           /*max_queue_size*/,
                              result_callback_t   callback)
 {
     TXN_HANDLE ret_val{ nullptr };
@@ -109,7 +109,7 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
     {
         try
         {
-            ret_val = DBSyncImplementation::instance().createTransaction(handle, tables, thread_number, max_queue_size, callback);
+            ret_val = DBSyncImplementation::instance().createTransaction(handle, tables);
         }
         catch(const DbSync::dbsync_error& ex)
         {

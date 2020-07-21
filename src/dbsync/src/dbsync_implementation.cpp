@@ -76,10 +76,7 @@ std::shared_ptr<DBSyncImplementation::DbEngineContext> DBSyncImplementation::dbE
 }
 
 TXN_HANDLE DBSyncImplementation::createTransaction(const DBSYNC_HANDLE handle,
-                                                   const char** tables,
-                                                   const int /*threadNumber*/,
-                                                   const int /*maxQueueSize*/,
-                                                   result_callback_t /*callback*/)
+                                                   const char** tables)
 {
     const auto& ctx{ dbEngineContext(handle) };
     const auto& spTransactionContext
@@ -93,7 +90,7 @@ TXN_HANDLE DBSyncImplementation::createTransaction(const DBSYNC_HANDLE handle,
 }
 
 void DBSyncImplementation::closeTransaction(const DBSYNC_HANDLE handle,
-                                            TXN_HANDLE txn)
+                                            const TXN_HANDLE txn)
 {
     const auto& ctx{ dbEngineContext(handle) };
     const auto& tnxCtx { ctx->transactionContext(txn) };
