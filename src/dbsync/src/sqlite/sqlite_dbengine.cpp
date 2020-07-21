@@ -1034,7 +1034,7 @@ bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::__cxx11::
 
 std::unique_ptr<SQLite::IStatement>const& SQLiteDBEngine::getStatement(const std::string& sql) 
 {
-    const auto it = m_statementsCache.find(sql);
+    const auto it { m_statementsCache.find(sql) };
     if(m_statementsCache.end() != it) 
     {
         it->second->reset();

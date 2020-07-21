@@ -46,12 +46,10 @@ namespace DbSync
                                  const std::string& path,
                                  const std::string& sqlStatement);
         TXN_HANDLE createTransaction(const DBSYNC_HANDLE handle,
-                                     const char** tables,
-                                     const int threadNumber,
-                                     const int maxQueueSize,
-                                     result_callback_t callback);
+                                     const char** tables);
+                                     
         void closeTransaction(const DBSYNC_HANDLE handle,
-                              TXN_HANDLE txnHandle);
+                              const TXN_HANDLE txnHandle);
         void release();
     private:
 
