@@ -34,7 +34,7 @@ namespace DbSync
             return m_error.what();
         }
 
-        int32_t id() const noexcept
+        int id() const noexcept
         {
             return m_id;
         }

@@ -11,7 +11,7 @@
 
 #include <map>
 #include <mutex>
-#include <bits/stdc++.h>
+#include <limits.h>
 #include "dbsync.h"
 #include "dbsync_implementation.h"
 #include "dbsyncPipelineFactory.h"
