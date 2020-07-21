@@ -25,11 +25,13 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
+    response: &permission_denied
+      status_code: 403
       json:
         code: 4000
-        detail: !anystr
+        dapi_errors:
+          unknown-node: # No permission to see node
+            error: !anystr
 
   - name: Request sca for agent 002 (Allowed)
     request:
@@ -51,10 +53,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
-        detail: !anystr
+      <<: *permission_denied
 
   - name: Request sca for agent 003 (Denied)
     request:
@@ -106,7 +105,4 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
-        detail: !anystr
+      <<: *permission_denied
