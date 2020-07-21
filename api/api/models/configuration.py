@@ -291,19 +291,29 @@ class APIConfigurationModel(Body):
 class SecurityConfigurationModel(Body):
     """Security configuration model."""
 
-    def __init__(self, auth_token_exp_timeout: int = None, rbac_mode: str = None):
+    def __init__(self, auth_token_exp_timeout: int = None, rbac_mode: str = None,
+                 max_login_attempts: int = None, block_time: int = None, max_request_per_minute: int = None):
         self.swagger_types = {
             'auth_token_exp_timeout': int,
             'rbac_mode': str,
+            'max_login_attempts': int,
+            'block_time': int,
+            'max_request_per_minute': int
         }
 
         self.attribute_map = {
             'auth_token_exp_timeout': 'auth_token_exp_timeout',
-            'rbac_mode': 'rbac_mode'
+            'rbac_mode': 'rbac_mode',
+            'max_login_attempts': 'max_login_attempts',
+            'block_time': 'block_time',
+            'max_request_per_minute': 'max_request_per_minute'
         }
 
         self._auth_token_exp_timeout = auth_token_exp_timeout
         self._rbac_mode = rbac_mode
+        self._max_login_attempts = max_login_attempts
+        self._block_time = block_time
+        self._max_request_per_minute = max_request_per_minute
 
     @property
     def auth_token_exp_timeout(self):
@@ -320,3 +330,27 @@ class SecurityConfigurationModel(Body):
     @rbac_mode.setter
     def rbac_mode(self, rbac_mode):
         self._rbac_mode = rbac_mode
+
+    @property
+    def max_login_attempts(self):
+        return self._max_login_attempts
+
+    @max_login_attempts.setter
+    def max_login_attempts(self, max_login_attempts):
+        self._max_login_attempts = max_login_attempts
+
+    @property
+    def block_time(self):
+        return self._block_time
+
+    @block_time.setter
+    def block_time(self, block_time):
+        self._block_time = block_time
+
+    @property
+    def max_request_per_minute(self):
+        return self._max_request_per_minute
+
+    @max_request_per_minute.setter
+    def max_request_per_minute(self, max_request_per_minute):
+        self._max_request_per_minute = max_request_per_minute

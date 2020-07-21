@@ -741,7 +741,6 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     :return: list with processed query
     """
-
     def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
         """
         Checks an operation between value1 and value2. 'value1' could be an
@@ -773,7 +772,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             return False
 
     # compile regular expression only one time when function is called
-    re_get_elements = re.compile(r'([\w\-.]+)(=|!=|<|>|~)([\w\-./]+)')  # regex for getting elements in a clause
+    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-]*))(=|!=|<|>|~)([\w\-./]+)') # get elements in a clause
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
@@ -787,16 +786,25 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             for and_clause in and_clauses:
                 # get elements in a clause
                 try:
-                    field_name, op, value = re_get_elements.match(and_clause).groups()
+                    field_name, field_subname, op, value = re_get_elements.match(and_clause).groups()
                 except AttributeError:
                     raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
 
                 # check if a clause is satisfied
-                if field_name in elem and check_clause(elem[field_name], op, value):
-                    continue
+                if field_subname:
+                    if field_name in elem and field_subname in elem[field_name] and \
+                            check_clause(elem[field_name][field_subname], op, value):
+                        continue
+                    else:
+                        match = False
+                        break
                 else:
-                    match = False
-                    break
+                    if field_name in elem and check_clause(elem[field_name], op, value):
+                        continue
+                    else:
+                        match = False
+                        break
+
             # if match = True, add element to output and break the loop
             if match:
                 output_array.append(elem)
@@ -926,6 +934,8 @@ class WazuhDBQuery(object):
         self.min_select_fields = min_select_fields
         self.query_operators = {"=": "=", "!=": "!=", "<": "<", ">": ">", "~": 'LIKE'}
         self.query_separators = {',': 'OR', ';': 'AND', '': ''}
+        self.special_characters = "\'\""
+        self.wildcard_equal_fields = set()
         # To correctly turn a query into SQL, a regex is used. This regex will extract all necessary information:
         # For example, the following regex -> (name!=wazuh;id>5),group=webserver <- would return 3 different matches:
         #   (name != wazuh ;
@@ -946,6 +956,17 @@ class WazuhDBQuery(object):
         self.legacy_filters = filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
         self.backend = backend
+
+    def _clean_filter(self, query_filter):
+        # Replace special characters with wildcards
+        for sp_char in self.special_characters:
+            if isinstance(query_filter['value'], str) and sp_char in query_filter['value']:
+                if query_filter['operator'] != 'LIKE':
+                    # If original operator was not LIKE, do not append % at the beginning and end of the string
+                    self.wildcard_equal_fields.add(query_filter['field'])
+
+                query_filter['value'] = query_filter['value'].replace(sp_char, '_')
+                query_filter['operator'] = 'LIKE'
 
     def _add_limit_to_query(self):
         if self.limit:
@@ -982,7 +1003,7 @@ class WazuhDBQuery(object):
                 f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)' for x in
                 self.fields.values()) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
-            self.request['search'] = "%{0}%".format(self.search['value'])
+            self.request['search'] = "%{0}%".format(re.sub(f"[{self.special_characters}]", '_', self.search['value']))
 
     def _parse_select_filter(self, select_fields):
         if select_fields:
@@ -1042,9 +1063,10 @@ class WazuhDBQuery(object):
     def _parse_legacy_filters(self):
         """Parses legacy filters."""
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
+        self.legacy_filters.get('older_than', None) == '0s' and self.legacy_filters.pop('older_than')
         legacy_filters_as_list = {
-            name: value.split(',') if isinstance(value, str) else (value if isinstance(value, list) else [value])
-            for name, value in self.legacy_filters.items()}
+            name: value if isinstance(value, list) else [value] for name, value in self.legacy_filters.items()
+        }
         # each filter is represented using a dictionary containing the following fields:
         #   * Value     -> Value to filter by
         #   * Field     -> Field to filter by. Since there can be multiple filters over the same field, a numeric ID
@@ -1086,7 +1108,7 @@ class WazuhDBQuery(object):
             if q_filter['value'] is not None:
                 self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
                     r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
-                if q_filter['operator'] == 'LIKE':
+                if q_filter['operator'] == 'LIKE' and q_filter['field'] not in self.wildcard_equal_fields:
                     self.request[field_filter] = "%{}%".format(self.request[field_filter])
                 self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'],
                                                  field_filter)
@@ -1100,6 +1122,7 @@ class WazuhDBQuery(object):
         self._parse_filters()
         curr_level = 0
         for q_filter in self.query_filters:
+            self._clean_filter(q_filter)
             field_name = q_filter['field'].split('$', 1)[0]
             field_filter = q_filter['field'].replace('.', '_')
 

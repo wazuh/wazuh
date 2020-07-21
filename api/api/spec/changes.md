@@ -153,6 +153,9 @@ This agent will use **any** as IP.
 * Added **list_agents** parameter in query to specify which agents must be restarted.
 * Restarts all agents by default or a list of them if **list_agents** parameter is used.
 
+### PUT     /agents/node/{node_id}/restart
+* New endpoint. Restart all agents belonging to a node.
+
 ## Cache
 ### DELETE  /cache 
 ### GET     /cache 
@@ -300,6 +303,7 @@ or a list of them if parameter **list_nodes** is used.
 * New endpoint. Get information about all groups or a list of them. 
 Returns a list containing basic information about each group such as number of agents belonging 
 to the group and the checksums of the configuration and shared files.
+* Removed **q** parameter in query.
 
 ### GET ​   /groups/{group_id}/agents
 * New endpoint. Returns the list of agents that belongs to the specified group.

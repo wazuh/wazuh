@@ -13,7 +13,7 @@ from api.authentication import generate_token
 from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
 from api.models.configuration import SecurityConfigurationModel
-from api.models.security import CreateUserModel, UpdateUserModel
+from api.models.security import CreateUserModel, UpdateUserModel, RoleModel, PolicyModel
 from api.models.token_response import TokenResponseModel
 from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
@@ -21,6 +21,7 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.exception import WazuhError
 from wazuh.rbac import preprocessor
 from wazuh.core.results import AffectedItemsWazuhResult
+from api.models.base_model_ import Body
 
 logger = logging.getLogger('wazuh')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
@@ -85,6 +86,25 @@ async def get_user_me(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+async def logout_user(request):
+    """Invalidate all current user's tokens.
+
+    Returns
+    -------
+    Status
+    """
+
+    dapi = DistributedAPI(f=security.revoke_current_user_tokens,
+                          request_type='local_master',
+                          is_async=False,
+                          current_user=request['token_info']['sub'],
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=dumps)
+
+
 async def get_users(request, user_ids: list = None, pretty=False, wait_for_complete=False,
                     offset=0, limit=None, search=None, sort=None):
     """Returns information from all system roles.
@@ -117,6 +137,7 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None}
+
     dapi = DistributedAPI(f=security.get_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -129,6 +150,7 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
+
 async def create_user(request):
     """Create a new user.
 
@@ -140,7 +162,9 @@ async def create_user(request):
     -------
     User data
     """
+    Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await CreateUserModel.get_kwargs(request)
+
     dapi = DistributedAPI(f=security.create_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -166,7 +190,9 @@ async def update_user(request, user_id: str):
     -------
     User data
     """
+    Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await UpdateUserModel.get_kwargs(request, additional_kwargs={'user_id': user_id})
+
     dapi = DistributedAPI(f=security.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -268,14 +294,9 @@ async def add_role(request, pretty: bool = False, wait_for_complete: bool = Fals
     -------
     Role information
     """
-    # get body parameters
-    role_added_model = dict()
-    try:
-        role_added_model = await request.json()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-
-    f_kwargs = {'name': role_added_model['name'], 'rule': role_added_model['rule']}
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await RoleModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=security.add_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -339,15 +360,9 @@ async def update_role(request, role_id: int, pretty: bool = False, wait_for_comp
     -------
     Role information updated
     """
-    # get body parameters
-    role_added_model = dict()
-    try:
-        role_added_model = await request.json()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-
-    f_kwargs = {'role_id': role_id, 'name': role_added_model.get('name', None),
-                'rule': role_added_model.get('rule', None)}
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await RoleModel.get_kwargs(request, additional_kwargs={'role_id': role_id})
 
     dapi = DistributedAPI(f=security.update_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -424,14 +439,9 @@ async def add_policy(request, pretty: bool = False, wait_for_complete: bool = Fa
     -------
     Policy information
     """
-    # get body parameters
-    policy_added_model = dict()
-    try:
-        policy_added_model = await request.json()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-
-    f_kwargs = {'name': policy_added_model['name'], 'policy': policy_added_model['policy']}
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await PolicyModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=security.add_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -495,16 +505,9 @@ async def update_policy(request, policy_id: int, pretty: bool = False, wait_for_
     -------
     Policy information updated
     """
-    # get body parameters
-    policy_added_model = dict()
-    try:
-        policy_added_model = await request.json()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-
-    f_kwargs = {'policy_id': policy_id,
-                'name': policy_added_model.get('name', None),
-                'policy': policy_added_model.get('policy', None)}
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await PolicyModel.get_kwargs(request, additional_kwargs={'policy_id': policy_id})
 
     dapi = DistributedAPI(f=security.update_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -519,15 +522,15 @@ async def update_policy(request, policy_id: int, pretty: bool = False, wait_for_
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def set_user_role(request, username: str, role_ids: list, position: int = None,
+async def set_user_role(request, user_id: str, role_ids: list, position: int = None,
                         pretty: bool = False, wait_for_complete: bool = False):
     """Add a list of roles to one specified user.
 
     Parameters
     ----------
     request : connexion.request
-    username : str
-        User's username
+    user_id : str
+        User ID
     role_ids : list of int
         List of role ids
     position : int, optional
@@ -542,7 +545,7 @@ async def set_user_role(request, username: str, role_ids: list, position: int = 
     Dict
         User-Role information
     """
-    f_kwargs = {'user_id': username, 'role_ids': role_ids, 'position': position}
+    f_kwargs = {'user_id': user_id, 'role_ids': role_ids, 'position': position}
     dapi = DistributedAPI(f=security.set_user_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -556,14 +559,15 @@ async def set_user_role(request, username: str, role_ids: list, position: int = 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def remove_user_role(request, username: str, role_ids: list, pretty: bool = False,
+async def remove_user_role(request, user_id: str, role_ids: list, pretty: bool = False,
                            wait_for_complete: bool = False):
     """Delete a list of roles of one specified user.
 
     Parameters
     ----------
     request : connexion.request
-    username : str
+    user_id : str
+        User ID
     role_ids : list
         List of roles ids
     pretty : bool, optional
@@ -575,7 +579,7 @@ async def remove_user_role(request, username: str, role_ids: list, pretty: bool 
     -------
     Result of the operation
     """
-    f_kwargs = {'user_id': username, 'role_ids': role_ids}
+    f_kwargs = {'user_id': user_id, 'role_ids': role_ids}
 
     dapi = DistributedAPI(f=security.remove_user_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -771,6 +775,7 @@ async def put_security_config(request, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
+    Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = {'updated_config': await SecurityConfigurationModel.get_kwargs(request)}
 
     dapi = DistributedAPI(f=security.update_security_config,

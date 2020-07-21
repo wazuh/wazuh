@@ -179,6 +179,40 @@ stages:
           total_failed_items: 0
         message: !anystr
 
+  - name: Filter nodes by query
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        q: version>3;type=worker
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *cluster_nodes_response
+            - <<: *cluster_nodes_response
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Filter nodes by query with non-existent values
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        q: version<3
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: !anystr
+
   - name: Retrieve all elements with limit=0
     request:
       verify: False
@@ -1895,15 +1929,17 @@ stages:
         path: etc/rules/new-rules.xml
         overwrite: True
     response:
-      status_code: 400
+      status_code: 200
       json:
-        code: 3022
-        dapi_errors: {}
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - "unexisting-node"
 
   - name: Upload decoder to unexisting node
     request:
@@ -1918,15 +1954,15 @@ stages:
         path: etc/decoders/new-decoder.xml
         overwrite: True
     response:
-      status_code: 400
-      json:
-        code: 3022
-        dapi_errors: {}
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+      status_code: 200
+      json: &unexisting_node
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - "unexisting-node"
 
   - name: Upload CDB list to unexisting node
     request:
@@ -1941,15 +1977,9 @@ stages:
         path: etc/lists/new-list
         overwrite: False
     response:
-      status_code: 400
+      status_code: 200
       json:
-        code: 3022
-        dapi_errors: {}
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        <<: *unexisting_node
 
 ---
 test_name: GET /cluster/{node_id}/info
@@ -2176,6 +2206,24 @@ stages:
           total_failed_items: 0
         message: !anystr
 
+  - name: Filters by query (tag=ossec-syscheckd, level=info)
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        q: tag=ossec-syscheckd;level=info
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "tag"
+            expected_values: "ossec-syscheckd"
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "level"
+            expected_values: "info"
+
 ---
 test_name: GET /cluster/{node_id}/logs/summary
 
@@ -2297,15 +2345,15 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 200
       json:
-        code: 3022
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - "wrong_node"
 
 ---
 test_name: GET /cluster/{node_id}/stats/analysisd
