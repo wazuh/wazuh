@@ -11,6 +11,7 @@
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
+#include "../wrappers/externals/openssl/bio_wrappers.h"
 #include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
 
 #ifdef WIN32
@@ -50,10 +51,6 @@ char *__wrap_OS_GetHost(const char *host, unsigned int attempts) {
 }
 
 extern SSL *__real_SSL_new(SSL_CTX *ctx);
-
-BIO *__wrap_BIO_new_socket(int sock, int close_flag) {
-    return NULL;
-}
 
 int __wrap_OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6)
 {
