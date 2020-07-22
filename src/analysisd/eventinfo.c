@@ -86,7 +86,7 @@ bool different_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
 /* Search last times a signature fired
  * Will look for only that specific signature.
  */
-Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
+Eventinfo *Search_LastSids(Eventinfo *my_lf, __attribute__((unused)) EventList *last_events, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
 {
     Eventinfo *lf = NULL;
     Eventinfo *first_matched = NULL;
@@ -259,7 +259,7 @@ end:
 /* Search last times a group fired
  * Will look for only that specific group on that rule.
  */
-Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
+Eventinfo *Search_LastGroups(Eventinfo *my_lf, __attribute__((unused)) EventList *last_events, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
 {
     Eventinfo *lf = NULL;
     OSListNode *lf_node;
@@ -443,7 +443,7 @@ end:
 /* Look if any of the last events (inside the timeframe)
  * match the specified rule
  */
-Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *rule_match)
+Eventinfo *Search_LastEvents(Eventinfo *my_lf, EventList *last_events, RuleInfo *rule, regex_matching *rule_match)
 {
     EventNode *eventnode_pt = NULL;
     EventNode *first_pt;
@@ -458,7 +458,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
     w_mutex_lock(&rule->mutex);
 
     /* Get the first event */
-    if (first_pt = OS_GetFirstEvent(os_analysisd_last_events), !first_pt) {
+    if (first_pt = OS_GetFirstEvent(last_events), !first_pt) {
         /* Nothing found */
         goto end;
     }
