@@ -32,13 +32,14 @@ void DBSyncPipelineFactoryTest::TearDown()
 
 TEST_F(DBSyncPipelineFactoryTest, CreatePipelineOk)
 {
-    const char* tables[] = { "processes\0", nullptr };
+    const auto json{ nlohmann::json::parse(R"({"tables": ["processes"]})") };
+
     const int threadNumber{ 1 };
     const int maxQueueSize{ 1000 };
     const auto pipeHandle
     {
         m_pipelineFactory.create(m_dbHandle,
-                                 tables,
+                                 json[0]["tables"].dump().c_str(),
                                  threadNumber,
                                  maxQueueSize,
                                  [](ReturnTypeCallback, const nlohmann::json&){})
@@ -49,13 +50,13 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineOk)
 TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidHandle)
 {
     const DBSYNC_HANDLE handle{ nullptr };
-    const char* tables[] = { "processes\0", nullptr };
+    const auto json{ nlohmann::json::parse(R"({"tables": ["processes"]})") };
     const unsigned int threadNumber{ 1 };
     const unsigned int maxQueueSize{ 1000 };
     EXPECT_THROW
     (
         m_pipelineFactory.create(handle,
-                                 tables,
+                                 json[0]["tables"].dump().c_str(),
                                  threadNumber,
                                  maxQueueSize,
                                  [](ReturnTypeCallback, const nlohmann::json&){}),
@@ -65,13 +66,13 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidHandle)
 
 TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidTxnContext)
 {
-    const char* tables[] = { "files\0", nullptr };
+    const auto json{ nlohmann::json::parse(R"({"tables": [""]})") };
     const unsigned int threadNumber{ 1 };
     const unsigned int maxQueueSize{ 1000 };
     EXPECT_THROW
     (
         m_pipelineFactory.create(m_dbHandle,
-                                 tables,
+                                 json[0]["tables"].dump().c_str(),
                                  threadNumber,
                                  maxQueueSize,
                                  [](ReturnTypeCallback, const nlohmann::json&){}),
@@ -81,13 +82,13 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidTxnContext)
 
 TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidCallback)
 {
-    const char* tables[] = { "processes\0", nullptr };
+    const auto json{ nlohmann::json::parse(R"({"tables": ["processes"]})") };
     const unsigned int threadNumber{ 1 };
     const unsigned int maxQueueSize{ 1000 };
     EXPECT_THROW
     (
         m_pipelineFactory.create(m_dbHandle,
-                                 tables,
+                                 json[0]["tables"].dump().c_str(),
                                  threadNumber,
                                  maxQueueSize,
                                  nullptr),
@@ -117,13 +118,13 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRow)
             ASSERT_EQ(expectedResult[0], result);
         }
     };
-    const char* tables[] = { "processes\0", nullptr };
+    const auto json{ nlohmann::json::parse(R"({"tables": ["processes"]})") };
     const int threadNumber{ 1 };
     const int maxQueueSize{ 1000 };
     const auto pipeHandle
     {
         m_pipelineFactory.create(m_dbHandle,
-                                 tables,
+                                 json[0]["tables"].dump().c_str(),
                                  threadNumber,
                                  maxQueueSize,
                                  resultFnc)
@@ -146,13 +147,13 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowMaxQueueSize)
             ASSERT_EQ(expectedResult[0], result);
         }
     };
-    const char* tables[] = { "processes\0", nullptr };
+    const auto json{ nlohmann::json::parse(R"({"tables": ["processes"]})") };
     const int threadNumber{ 1 };
     const int maxQueueSize{ 0 };
     const auto pipeHandle
     {
         m_pipelineFactory.create(m_dbHandle,
-                                 tables,
+                                 json[0]["tables"].dump().c_str(),
                                  threadNumber,
                                  maxQueueSize,
                                  resultFnc)

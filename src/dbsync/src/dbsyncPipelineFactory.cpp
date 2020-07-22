@@ -22,7 +22,7 @@ namespace DbSync
     public:
 
         Pipeline(const DBSYNC_HANDLE handle,
-                 const char** tables,
+                 const char* tables,
                  const unsigned int threadNumber,
                  const unsigned int maxQueueSize,
                  const ResultCallback callback)
@@ -133,7 +133,7 @@ namespace DbSync
         m_contexts.clear();
     }
     PipelineCtxHandle PipelineFactory::create(const DBSYNC_HANDLE handle,
-                                              const char** tables,
+                                              const char* tables,
                                               const unsigned int threadNumber,
                                               const unsigned int maxQueueSize,
                                               const ResultCallback callback)
