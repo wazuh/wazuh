@@ -109,9 +109,9 @@ configureFilebeat() {
 ## Health check
 healthCheck() {
     cores=$(cat /proc/cpuinfo | grep processor | wc -l)
-    ram_gb=$(free -g | awk '/^Mem:/{print $2}')
+    ram_gb=$(free -m | awk '/^Mem:/{print $2}')
 
-    if [[ $cores < "2" ]] || [[ $ram_gb < "4" ]]
+    if [[ $cores < "2" ]] || [[ $ram_gb < "4096" ]]
     then
         echo "The system must have at least 4Gb of RAM and 2 CPUs"
         exit 1;
