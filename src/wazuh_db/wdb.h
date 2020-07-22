@@ -171,6 +171,9 @@ extern OSHash * open_dbs;
 /* Open global database. Returns 0 on success or -1 on failure. */
 int wdb_open_global();
 
+// Opens global database and stores it in DB pool. It returns a locked database or NULL
+wdb_t * wdb_open_global2();
+
 /**
  * @brief Open mitre database and store in DB poll.
  *

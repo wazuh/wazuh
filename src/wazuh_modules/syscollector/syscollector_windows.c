@@ -1833,7 +1833,7 @@ void sys_network_windows(const char* LOCATION){
     if (checkVista()) {
         sys_library = LoadLibrary("syscollector_win_ext.dll");
         if (sys_library != NULL){
-            _get_network_vista = (CallFunc)GetProcAddress(sys_library, "get_network_vista");
+            _get_network_vista = (CallFunc)(void *)GetProcAddress(sys_library, "get_network_vista");
             if (!_get_network_vista){
                 dwRetVal = GetLastError();
                 mterror(WM_SYS_LOGTAG, "Unable to access 'get_network_vista' on syscollector_win_ext.dll.");
