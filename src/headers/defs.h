@@ -201,7 +201,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Agent information location */
 #define AGENTINFO_DIR    "/queue/agent-info"
-#define AGENTINFO_DIR_PATH DEFAULTDIR "/queue/agent-info"
 
 /* Agent groups location */
 #define GROUPS_DIR    "/queue/agent-groups"
@@ -255,7 +254,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WIN32
 #define AGENT_INFO_FILE "/queue/ossec/.agent_info"
 #define AGENT_INFO_FILEP DEFAULTDIR AGENT_INFO_FILE
-#define AGENT_INFO_FILEF DEFAULTDIR AGENTINFO_DIR "/%s-%s"
 #else
 #define AGENT_INFO_FILE ".agent_info"
 #define AGENT_INFO_FILEP AGENT_INFO_FILE
