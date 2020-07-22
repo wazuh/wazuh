@@ -212,7 +212,7 @@ typedef struct _RuleNode {
 
 
 RuleInfoDetail *zeroinfodetails(int type, const char *data);
-int get_info_attributes(char **attributes, char **values);
+int get_info_attributes(char **attributes, char **values, char **msg);
 
 /* RuleInfo functions */
 RuleInfo *zerorulemember(int id,
@@ -250,7 +250,16 @@ RuleNode *OS_GetFirstRule(void);
 
 void Rules_OP_CreateRules(void);
 
-int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node);
+/**
+ * Read the log rules
+ * 
+ * @param [in] rulefile
+ * @param [in] r_node
+ * @param [in] l_node
+ * @param [out] **msg If any error or warning occurs, your 
+ *                  description will be stored in *msg.
+*/ 
+int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, char** msg);
 
 int AddHash_Rule(RuleNode *node);
 

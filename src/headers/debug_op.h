@@ -43,8 +43,10 @@
 #define mtdebug2(tag, msg, ...) _mtdebug2(tag, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define merror(msg, ...) _merror(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mterror(tag, msg, ...) _mterror(tag, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define smerror(msg, format, ...) _serror_join(__FILE__, __LINE__, __func__, msg, format, ##__VA_ARGS__)
 #define mwarn(msg, ...) _mwarn(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mtwarn(tag, msg, ...) _mtwarn(tag, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define smwarn(msg, format, ...) _swarn_join(__FILE__, __LINE__, __func__, msg, format, ##__VA_ARGS__)
 #define minfo(msg, ...) _minfo(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mtinfo(tag, msg, ...) _mtinfo(tag, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mferror(msg, ...) _mferror(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
@@ -67,6 +69,38 @@ void _mferror(const char * file, int line, const char * func, const char *msg, .
 void _mtferror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull));
 void _merror_exit(const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 4, 5))) __attribute__((nonnull)) __attribute__ ((noreturn));
 void _mterror_exit(const char *tag, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull)) __attribute__ ((noreturn));
+/** 
+ * Generate a new error msg and concatenate to *msg
+ * 
+ * If *msg==NULL, alloc the memory and cat the error msg
+ * If in debug mode, then append line number, 
+ * function and file from where the call was made
+ * 
+ * @param [in] file
+ * @param [in] line
+ * @param [in] func
+ * @param [out] msg
+ * @param [in] format includes format specifiers (subsequences beginning with %) for printf
+ * @param [in] ...  additional arguments following format are formatted and inserted in the 
+ *                  resulting string replacing their respective specifiers.
+ */
+void _serror_join(const char * file, int line, const char * func, char** msg, const char *format, ...)  __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull (1, 3, 5)));
+/** 
+ * Generate a new warning msg and concatenate to *msg
+ * 
+ * If *msg==NULL, alloc the memory and cat the warning msg
+ * If in debug mode, then append line number, 
+ * function and file from where the call was made
+ * 
+ * @param [in] file
+ * @param [in] line
+ * @param [in] func
+ * @param [out] msg
+ * @param [in] format includes format specifiers (subsequences beginning with %) for printf
+ * @param [in] ...  additional arguments following format are formatted and inserted in the 
+ *                  resulting string replacing their respective specifiers.
+ */
+void _swarn_join(const char * file, int line, const char * func, char** msg, const char *format, ...)  __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull (1, 3, 5)));
 
 /* Function to read the logging format configuration */
 void os_logging_config(void);

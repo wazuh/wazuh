@@ -513,6 +513,9 @@ int main_analysisd(int argc, char **argv)
      */
     {
         {
+            /* Error and wargning msg */
+            char *msg = NULL;
+
             /* Initialize the decoders list */
             OS_CreateOSDecoderList();
 
@@ -531,7 +534,11 @@ int main_analysisd(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles)) {
+                    if (!ReadDecodeXML(*decodersfiles, &msg)) {
+                        if(msg){
+                            printf("%s", msg);
+                            os_free(msg);
+                        }
                         merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
 
@@ -541,7 +548,11 @@ int main_analysisd(int argc, char **argv)
             }
 
             /* Load decoders */
-            SetDecodeXML();
+            SetDecodeXML(&msg);
+            if(msg){
+                printf("%s", msg);
+                os_free(msg);
+            }
         }
         {
             /* Load Lists */
@@ -579,20 +590,27 @@ int main_analysisd(int argc, char **argv)
 
             /* Read the rules */
             {
+                /* Error and wargning msg */
+                char *msg = NULL;
+
                 char **rulesfiles;
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     if (!test_config) {
                         mdebug1("Reading rules file: '%s'", *rulesfiles);
                     }
-                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists) < 0) {
+                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, 
+                            &os_analysisd_cdblists, &msg) < 0) {
+                        if(msg){
+                            printf("%s", msg);
+                            os_free(msg);
+                        }
                         merror_exit(RULES_ERROR, *rulesfiles);
                     }
 
                     free(*rulesfiles);
                     rulesfiles++;
                 }
-
                 free(Config.includes);
                 Config.includes = NULL;
             }

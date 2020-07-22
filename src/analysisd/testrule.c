@@ -218,6 +218,9 @@ int main(int argc, char **argv)
             /* Initialize the decoders list */
             OS_CreateOSDecoderList();
 
+            /* Error and wargning msg */
+            char* msg = NULL;
+
             if (!Config.decoders) {
                 /* Legacy loading */
                 /* Read decoders */
@@ -230,7 +233,12 @@ int main(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles)) {
+                    if (!ReadDecodeXML(*decodersfiles, &msg)) {
+                        if(msg){
+                            // [wazuh-logtest] This will be sent through the socket
+                            printf("%s", msg);
+                            os_free(msg);
+                        }
                         merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
 
@@ -240,7 +248,12 @@ int main(int argc, char **argv)
 
                 /* Read local ones */
 
-                c = ReadDecodeXML(XML_LDECODER);
+                c = ReadDecodeXML(XML_LDECODER, &msg);
+                if(msg){
+                    // [wazuh-logtest] This will be sent through the socket
+                    printf("%s", msg);
+                    os_free(msg);
+                }
                 if (!c) {
                     if ((c != -2)) {
                         merror_exit(CONFIG_ERROR,  XML_LDECODER);
@@ -258,7 +271,11 @@ int main(int argc, char **argv)
                     if(!quiet) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles)) {
+                    if (!ReadDecodeXML(*decodersfiles, &msg)) {
+                        if(msg){
+                            printf("%s", msg);
+                            os_free(msg);
+                        }
                         merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
 
@@ -268,7 +285,12 @@ int main(int argc, char **argv)
             }
 
             /* Load decoders */
-            SetDecodeXML();
+            SetDecodeXML(&msg);
+            if(msg){
+                // [wazuh-logtest] This will be sent through the socket
+                printf("%s", msg);
+                os_free(msg);
+            }
         }
         {
             /* Load Lists */
@@ -298,11 +320,17 @@ int main(int argc, char **argv)
 
             /* Read the rules */
             {
+                char*  msg = NULL;
                 char **rulesfiles;
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     mdebug1("Reading rules file: '%s'", *rulesfiles);
-                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists) < 0) {
+                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, 
+                                &os_analysisd_cdblists, &msg) < 0) {
+                        if(msg){
+                            printf("%s", msg);
+                            os_free(msg);
+                        }
                         merror_exit(RULES_ERROR, *rulesfiles);
                     }
 
