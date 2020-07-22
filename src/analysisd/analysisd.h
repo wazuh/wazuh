@@ -120,8 +120,9 @@ void w_get_queues_size();
 void w_get_initial_queues_size();
 
 /**
- * @brief Initialize decoded event queues, log writer queues, database
- * synchronization message queue, and archives writer queue.
+ * @brief Initialize queues
+ *
+ * Queues: decoded event, log writer, database synchronization message and archives writer
  */
 void w_init_queues();
 
