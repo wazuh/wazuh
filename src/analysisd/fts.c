@@ -51,11 +51,11 @@ int FTS_Init(int threads, OSList **fts_list, OSHash **fts_store)
     /* Create store data */
     *fts_store = OSHash_Create();
     if (!(*fts_store)) {
-        merror(LIST_ERROR);
+        merror(HASH_ERROR);
         return (0);
     }
     if (!OSHash_setSize(*fts_store, 2048)) {
-        merror(LIST_ERROR);
+        merror(LIST_SIZE_ERROR);
         return (0);
     }
 

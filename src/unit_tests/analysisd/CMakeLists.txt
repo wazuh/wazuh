@@ -41,7 +41,8 @@ LIST(APPEND analysisd_flags "-W")
 LIST(APPEND analysisd_names "test_logtest")
 LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OSHash_Create \
                              -Wl,--wrap,pthread_mutex_init -Wl,--wrap,_minfo -Wl,--wrap,_w_mutex_init -Wl,--wrap,w_create_thread \
-                             -Wl,--wrap,mutex_destroy -Wl,--wrap,close")
+                             -Wl,--wrap,mutex_destroy -Wl,--wrap,close -Wl,--wrap,getDefine_Int -Wl,--wrap,OSList_Create \
+                             -Wl,--wrap,OSList_SetMaxSize -Wl,--wrap,OSHash_setSize")
 
 LIST(APPEND analysisd_names "test_logtest-config")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 -Wl,--wrap,get_nproc -Wl,--wrap,cJSON_CreateObject \
