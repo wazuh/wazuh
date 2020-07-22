@@ -758,7 +758,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     SecurityConfigurationAssessmentInit();
 
     /* Initialize the Accumulator */
-    if (!Accumulate_Init()) {
+    if (!Accumulate_Init(&os_analysisd_acm_store, &os_analysisd_acm_lookups, &os_analysisd_acm_purge_ts)) {
         merror("accumulator: ERROR: Initialization failed");
         exit(1);
     }
@@ -2366,7 +2366,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         /* Run accumulator */
         if ( lf->decoder_info->accumulate == 1 ) {
             w_mutex_lock(&accumulate_mutex);
-            lf = Accumulate(lf);
+            lf = Accumulate(lf, &os_analysisd_acm_store, &os_analysisd_acm_lookups, &os_analysisd_acm_purge_ts);
             w_mutex_unlock(&accumulate_mutex);
         }
 

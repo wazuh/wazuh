@@ -16,12 +16,6 @@
 #include "accumulator.h"
 #include "eventinfo.h"
 
-/* Local variables */
-static OSHash *acm_store = NULL;
-
-/* Counters for Purging */
-static int    acm_lookups = 0;
-static time_t acm_purge_ts = 0;
 
 /* Accumulator Constants */
 #define OS_ACM_EXPIRE_ELM      120
@@ -32,6 +26,9 @@ static time_t acm_purge_ts = 0;
 #define OS_ACM_MAXKEY 256
 #define OS_ACM_MAXELM 81
 
+/**
+ * @brief Struct to save related data by ID
+ */
 typedef struct _OS_ACM_Store {
     time_t timestamp;
     char *dstuser;
@@ -43,37 +40,55 @@ typedef struct _OS_ACM_Store {
     char *data;
 } OS_ACM_Store;
 
-/* Internal Functions */
+/**
+ * @brief Copies the C string pointed by src into the array pointed by dst
+ *
+ * @param dst destination
+ * @param src source
+ */
 static int acm_str_replace(char **dst, const char *src);
+
+/**
+ * @brief Create OS_ACM_Store object
+ */
 static OS_ACM_Store *InitACMStore(void);
+
+/**
+ * @brief Remove OS_ACM_Store objetct
+ *
+ * @param obj object to remove
+ */
 static void FreeACMStore(OS_ACM_Store *obj);
 
+
 /* Start the Accumulator module */
-int Accumulate_Init()
+int Accumulate_Init(OSHash **acm_store, int *acm_lookups, time_t *acm_purge_ts)
 {
     struct timeval tp;
 
+    *acm_lookups = 0;
+
     /* Create store data */
-    acm_store = OSHash_Create();
-    if (!acm_store) {
+    *acm_store = OSHash_Create();
+    if (!(*acm_store)) {
         merror(LIST_ERROR);
         return (0);
     }
-    if (!OSHash_setSize(acm_store, 2048)) {
+    if (!OSHash_setSize(*acm_store, 2048)) {
         merror(LIST_ERROR);
         return (0);
     }
 
     /* Default Expiry */
     gettimeofday(&tp, NULL);
-    acm_purge_ts = tp.tv_sec;
+    *acm_purge_ts = tp.tv_sec;
 
     mdebug1("Accumulator Init completed.");
     return (1);
 }
 
 /* Accumulate data from events sharing the same ID */
-Eventinfo *Accumulate(Eventinfo *lf)
+Eventinfo *Accumulate(Eventinfo *lf, OSHash **acm_store, int *acm_lookups, time_t *acm_purge_ts)
 {
     int result;
     int do_update = 0;
@@ -102,7 +117,7 @@ Eventinfo *Accumulate(Eventinfo *lf)
     }
 
     /* Purge the cache as needed */
-    Accumulate_CleanUp();
+    Accumulate_CleanUp(acm_store, acm_lookups, acm_purge_ts);
 
     gettimeofday(&tp, NULL);
     current_ts = tp.tv_sec;
@@ -119,11 +134,11 @@ Eventinfo *Accumulate(Eventinfo *lf)
     }
 
     /* Check if acm is already present */
-    if ((stored_data = (OS_ACM_Store *)OSHash_Get_ex(acm_store, _key)) != NULL) {
+    if ((stored_data = (OS_ACM_Store *)OSHash_Get_ex(*acm_store, _key)) != NULL) {
         mdebug2("accumulator: DEBUG: Lookup for '%s' found a stored value!", _key);
 
         if ( stored_data->timestamp > 0 && stored_data->timestamp < current_ts - OS_ACM_EXPIRE_ELM ) {
-            if ( OSHash_Delete_ex(acm_store, _key) != NULL ) {
+            if ( OSHash_Delete_ex(*acm_store, _key) != NULL ) {
                 mdebug1("accumulator: DEBUG: Deleted expired hash entry for '%s'", _key);
                 /* Clear this memory */
                 FreeACMStore(stored_data);
@@ -198,13 +213,13 @@ Eventinfo *Accumulate(Eventinfo *lf)
     /* Update or Add to the hash */
     if ( do_update == 1 ) {
         /* Update the hash entry */
-        if ( (result = OSHash_Update_ex(acm_store, _key, stored_data)) != 1) {
+        if ( (result = OSHash_Update_ex(*acm_store, _key, stored_data)) != 1) {
             merror("accumulator: ERROR: Update of stored data for %s failed (%d).", _key, result);
         } else {
             mdebug1("accumulator: DEBUG: Updated stored data for %s", _key);
         }
     } else {
-        if ((result = OSHash_Add_ex(acm_store, _key, stored_data)) != 2 ) {
+        if ((result = OSHash_Add_ex(*acm_store, _key, stored_data)) != 2 ) {
             FreeACMStore(stored_data);
             merror("accumulator: ERROR: Addition of stored data for %s failed (%d).", _key, result);
         } else {
@@ -215,7 +230,7 @@ Eventinfo *Accumulate(Eventinfo *lf)
     return lf;
 }
 
-void Accumulate_CleanUp()
+void Accumulate_CleanUp(OSHash **acm_store, int *acm_lookups, time_t *acm_purge_ts)
 {
     struct timeval tp;
     time_t current_ts = 0;
@@ -227,24 +242,24 @@ void Accumulate_CleanUp()
     unsigned int ti;
 
     /* Keep track of how many times we're called */
-    acm_lookups++;
+    *acm_lookups++;
 
     gettimeofday(&tp, NULL);
     current_ts = tp.tv_sec;
 
     /* Do we really need to purge? */
-    if ( acm_lookups < OS_ACM_PURGE_COUNT && acm_purge_ts < current_ts + OS_ACM_PURGE_INTERVAL ) {
+    if ( *acm_lookups < OS_ACM_PURGE_COUNT && *acm_purge_ts < current_ts + OS_ACM_PURGE_INTERVAL ) {
         return;
     }
     mdebug1("accumulator: DEBUG: Accumulator_CleanUp() running .. ");
 
     /* Yes, we do */
-    acm_lookups = 0;
-    acm_purge_ts = current_ts;
+    *acm_lookups = 0;
+    *acm_purge_ts = current_ts;
 
     /* Loop through the hash */
-    for ( ti = 0; ti < acm_store->rows; ti++ ) {
-        curr = acm_store->table[ti];
+    for ( ti = 0; ti < acm_store[0]->rows; ti++ ) {
+        curr = acm_store[0]->table[ti];
         while ( curr != NULL ) {
             /* Get the Key and Data */
             key  = (char *) curr->key;
@@ -259,7 +274,7 @@ void Accumulate_CleanUp()
                 mdebug2("accumulator: DEBUG: CleanUp() elm:%ld, curr:%ld", (long int)stored_data->timestamp, (long int)current_ts);
                 if ( stored_data->timestamp < current_ts - OS_ACM_EXPIRE_ELM ) {
                     mdebug2("accumulator: DEBUG: CleanUp() Expiring '%s'", key);
-                    if ( OSHash_Delete_ex(acm_store, key) != NULL ) {
+                    if ( OSHash_Delete_ex(*acm_store, key) != NULL ) {
                         FreeACMStore(stored_data);
                         expired++;
                     } else {

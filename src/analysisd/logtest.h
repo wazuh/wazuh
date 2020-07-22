@@ -32,6 +32,9 @@ typedef struct w_logtest_session_t {
     OSHash *g_rules_hash;                   ///< Hash table of rules
     OSList *fts_list;                       ///< Save FTS previous events
     OSHash *fts_store;                      ///< Save FTS values processed
+    OSHash *acm_store;                      ///< Hash where save data which have same id
+    int acm_lookups;                        ///< Counter of the number of times purge accumulate option
+    time_t acm_purge_ts;                    ///< Counter of the number of times purge accumulate option
 
 } w_logtest_session_t;
 
