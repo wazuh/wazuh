@@ -149,8 +149,8 @@ int wdb_open_global() {
 
 // Opens global database and stores it in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_global2() {
-    char path[PATH_MAX + 1];
-    sqlite3 *db;
+    char path[PATH_MAX + 1] = "";
+    sqlite3 *db = NULL;
     wdb_t * wdb = NULL;
 
     // Find BD in pool
