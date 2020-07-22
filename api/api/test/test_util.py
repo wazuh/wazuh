@@ -10,7 +10,7 @@ from connexion import ProblemException
 
 from api import util
 from api.api_exception import APIException, APIError
-from wazuh.core.exception import WazuhException, WazuhError
+from wazuh.core.exception import WazuhException, WazuhError, WazuhPermissionError
 
 
 class TestClass():
@@ -185,10 +185,8 @@ def test_to_relative_path(mock_real_path):
 
 @pytest.mark.parametrize('exception_type, code, extra_fields, returned_code, returned_exception', [
     (ValueError, 100, None, ValueError(100), ValueError),
-    (WazuhError, 1000, ['remediation', 'code', 'dapi_errors'], 400, ProblemException),
-    (WazuhException, 3004, ['remediation', 'code', 'dapi_errors'], 500, ProblemException),
-    (APIException, 2000, ['code'], 500, ProblemException),
-    (APIError, 2000, ['code'], 400, ProblemException),
+    (WazuhError, 1000, ['remediation', 'code'], 400, ProblemException),
+    (WazuhPermissionError, 4000, ['remediation', 'code'], 403, ProblemException)
 ])
 def test_create_problem(exception_type, code, extra_fields, returned_code, returned_exception):
     """Check that _create_problem returns exception with expected data"""

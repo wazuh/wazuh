@@ -18,6 +18,7 @@ from api.api_exception import APIException
 from api.configuration import security_conf
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
+from wazuh import WazuhInternalError
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.rbac.orm import AuthenticationManager, TokenManager
 
@@ -97,7 +98,7 @@ def generate_secret():
             with open(_secret_file_path, mode='r') as secret_file:
                 jwt_secret = secret_file.readline()
     except IOError:
-        raise APIException(2002)
+        raise WazuhInternalError(6003)
 
     return jwt_secret
 

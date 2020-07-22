@@ -256,17 +256,13 @@ def _create_problem(exc: Exception, code=None):
     if isinstance(exc, WazuhException):
         ext = remove_nones_to_dict({'remediation': exc.remediation,
                                     'code': exc.code,
-                                    'dapi_errors': exc.dapi_errors
+                                    'dapi_errors': exc.dapi_errors if exc.dapi_errors != {} else None
                                     })
-    elif isinstance(exc, APIException):
-        ext = remove_nones_to_dict({'code': exc.code})
-    else:
-        ext = None
-    if isinstance(exc, (WazuhInternalError, APIException)):
+    if isinstance(exc, WazuhInternalError):
         raise ProblemException(status=500, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     elif isinstance(exc, WazuhPermissionError):
         raise ProblemException(status=403, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
-    elif isinstance(exc, (WazuhError, APIError)):
+    elif isinstance(exc, WazuhError):
         raise ProblemException(status=400, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     raise exc
 

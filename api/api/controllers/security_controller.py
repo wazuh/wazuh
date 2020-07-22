@@ -4,24 +4,22 @@
 
 import logging
 import re
-from json import JSONDecodeError
 
 from aiohttp import web
 
-from api.api_exception import APIError
 from api.authentication import generate_token
 from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
+from api.models.base_model_ import Body
 from api.models.configuration import SecurityConfigurationModel
 from api.models.security import CreateUserModel, UpdateUserModel, RoleModel, PolicyModel
 from api.models.token_response import TokenResponseModel
 from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.exception import WazuhError, WazuhPermissionError
-from wazuh.rbac import preprocessor
+from wazuh.core.exception import WazuhPermissionError, WazuhException
 from wazuh.core.results import AffectedItemsWazuhResult
-from api.models.base_model_ import Body
+from wazuh.rbac import preprocessor
 
 logger = logging.getLogger('wazuh')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
@@ -54,8 +52,12 @@ async def login_user(request, user: str, auth_context=None):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=TokenResponseModel(token=generate_token(user_id=user, rbac_policies=data.dikt)),
-                             status=200, dumps=dumps)
+    try:
+        token = generate_token(user_id=user, rbac_policies=data.dikt)
+    except WazuhException as e:
+        raise_if_exc(e)
+
+    return web.json_response(data=TokenResponseModel(token=token), status=200, dumps=dumps)
 
 
 async def get_user_me(request, pretty=False, wait_for_complete=False):
