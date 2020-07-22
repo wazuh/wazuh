@@ -24,7 +24,7 @@ static void checkSqliteResult(const int result,
 {
     if (SQLITE_OK != result)
     {
-        if (SQLITE_CONSTRAINT == result && exceptionString.find("Too many Rows") != std::string::npos)
+        if (SQLITE_CONSTRAINT == result && exceptionString.find(MAX_ROWS_ERROR_STRING) != std::string::npos)
         {
             throw DbSync::max_rows_error
             {

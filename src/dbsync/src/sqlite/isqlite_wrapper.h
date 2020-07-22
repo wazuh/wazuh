@@ -17,6 +17,8 @@
 
 namespace SQLite
 {
+    const constexpr auto MAX_ROWS_ERROR_STRING{"Too Many Rows."};
+
     class sqlite_error : public DbSync::dbsync_error
     {
     public:

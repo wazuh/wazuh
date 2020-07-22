@@ -28,13 +28,14 @@ SQLiteDBEngine::~SQLiteDBEngine()
 void SQLiteDBEngine::setMaxRows(const std::string& table,
                                 const unsigned long long maxRows)
 {
+    const constexpr auto ROW_COUNT_POSTFIX{"_row_count"};
     const std::string sql
     {
         maxRows ?
-        "CREATE TRIGGER " + table + "_row_count BEFORE INSERT ON " + table +
+        "CREATE TRIGGER " + table + ROW_COUNT_POSTFIX + " BEFORE INSERT ON " + table +
         " WHEN (SELECT COUNT(*) FROM " + table + ") >= " + std::to_string(maxRows) +
-        " BEGIN SELECT RAISE(FAIL, 'Too many Rows'); END;"
-        : "DROP TRIGGER " + table + "_row_count"
+        " BEGIN SELECT RAISE(FAIL, '" + SQLite::MAX_ROWS_ERROR_STRING + "'); END;"
+        : "DROP TRIGGER " + table + ROW_COUNT_POSTFIX
 
     };
     m_sqliteConnection->execute(sql);
