@@ -102,8 +102,7 @@ struct CloseTransactionAction final : public IAction
     {
         
 
-        const auto retVal { dbsync_close_txn(ctx->handle,
-                                             ctx->txnContext)} ;
+        const auto retVal { dbsync_close_txn(ctx->txnContext)} ;
 
             std::stringstream oFileName;
             oFileName << "action_" << ctx->currentId << ".json";
