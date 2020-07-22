@@ -132,6 +132,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     int match_size = 0;
     pending_data_t *data = NULL;
     int is_startup = 0;
+    int agent_id = 0;
+    time_t keepalive = 0;
+    int result = 0;
 
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
         char * counter = r_msg + strlen(HC_REQUEST);
@@ -181,7 +184,13 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     /* Check if there is a keep alive already for this agent */
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && strcmp(data->message, uname) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
-        // TODO: Here we should call Wazuh DB to set the last keepalive
+
+        agent_id = atoi(key->id);
+        keepalive = time(NULL);
+        result = wdb_update_agent_keepalive(agent_id, keepalive);
+
+        if (OS_SUCCESS != result)
+            mwarn("Unable to save agent information in global.db");
     } else {
         if (!data) {
             os_calloc(1, sizeof(pending_data_t), data);
@@ -254,7 +263,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 *(os_version + strlen(os_version) - 1) = '\0';
 
                 // Get os_major
-
                 if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_major = malloc(match_size +1 );
@@ -262,7 +270,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 }
 
                 // Get os_minor
-
                 if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_minor = malloc(match_size +1);
@@ -270,7 +277,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 }
 
                 // Get os_build
-
                 if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_build = malloc(match_size +1);
@@ -321,7 +327,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 os_arch = wm_get_os_arch(uname);
             }
 
-            // Search for merged.mg sum
+            // Get merged.mg sum
             merged_sum = end_line + 1;
             end_line = NULL;
             if (*merged_sum != '\"' && *merged_sum != '!' && (end_line = strchr(merged_sum, ' '), end_line)) {
@@ -336,7 +342,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 end_line = merged_sum;
             }
 
-            // Search for the agent ip
+            // Get the agent ip
             const char * AGENT_IP_TAG = "#\"_agent_ip\":";
             agent_ip = end_line;
 
@@ -357,13 +363,21 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 mwarn("Unable to get hostname due to: '%s'", strerror(errno));
             }
 
-            // TODO: Modify this call to work with Wazuh DB
-            int result = wdb_update_agent_version(atoi(key->id), os_name, os_version, os_major, os_minor, os_codename, os_platform,
-                                                  os_build, uname, os_arch, version, config_sum, merged_sum, manager_host,
-                                                  node_name, agent_ip ? agent_ip : NULL);
+            agent_id = atoi(key->id);
+            keepalive = time(NULL);
+
+            // Updating version and keepalive in global.db
+            result = wdb_update_agent_version(agent_id, os_name, os_version, os_major, os_minor, os_codename, os_platform,
+                                              os_build, uname, os_arch, version, config_sum, merged_sum, manager_host,
+                                              node_name, agent_ip ? agent_ip : NULL);
             
-            if (OS_INVALID == result)
+            if (OS_SUCCESS != result)
                 mwarn("Unable to save agent information in global.db");
+            
+            result = wdb_update_agent_keepalive(agent_id, keepalive);
+
+            if (OS_SUCCESS != result)
+                mwarn("Unable to save agent last keepalive in global.db");
 
             os_free(os_major);
             os_free(os_arch);
