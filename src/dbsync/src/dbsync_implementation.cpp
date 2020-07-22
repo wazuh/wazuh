@@ -75,6 +75,14 @@ std::shared_ptr<DBSyncImplementation::DbEngineContext> DBSyncImplementation::dbE
     return it->second;
 }
 
+void DBSyncImplementation::setMaxRows(const DBSYNC_HANDLE handle,
+                                      const std::string& table,
+                                      const unsigned long long maxRows)
+{
+    const auto ctx{ dbEngineContext(handle) };
+    ctx->m_dbEngine->setMaxRows(table, maxRows);
+}
+
 TXN_HANDLE DBSyncImplementation::createTransaction(const DBSYNC_HANDLE handle,
                                                    const char* tables)
 {

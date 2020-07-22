@@ -25,6 +25,22 @@ SQLiteDBEngine::SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFact
 SQLiteDBEngine::~SQLiteDBEngine()
 {}
 
+void SQLiteDBEngine::setMaxRows(const std::string& table,
+                                const unsigned long long maxRows)
+{
+    const constexpr auto ROW_COUNT_POSTFIX{"_row_count"};
+    const std::string sql
+    {
+        maxRows ?
+        "CREATE TRIGGER " + table + ROW_COUNT_POSTFIX + " BEFORE INSERT ON " + table +
+        " WHEN (SELECT COUNT(*) FROM " + table + ") >= " + std::to_string(maxRows) +
+        " BEGIN SELECT RAISE(FAIL, '" + SQLite::MAX_ROWS_ERROR_STRING + "'); END;"
+        : "DROP TRIGGER " + table + ROW_COUNT_POSTFIX
+
+    };
+    m_sqliteConnection->execute(sql);
+}
+
 void SQLiteDBEngine::bulkInsert(const std::string& table,
                                 const nlohmann::json& data)
 {
@@ -733,6 +749,7 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
                 }
             }
             stmt->step();
+
             stmt->reset();
         }
         transaction->commit();
@@ -776,7 +793,7 @@ int SQLiteDBEngine::changeModifiedRows(const std::string& table,
 std::string SQLiteDBEngine::buildUpdateDataSqlQuery(const std::string& table, 
                                                     const std::vector<std::string>& primaryKeyList,
                                                     const Row& row,
-                                                    const std::pair<const std::__cxx11::string, TableField> &field)
+                                                    const std::pair<const std::string, TableField> &field)
 {
     std::string sql{ "UPDATE " };
     sql.append(table);
@@ -958,7 +975,7 @@ bool SQLiteDBEngine::updateRows(const std::string& table,
     return true;
 }
 
-bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::__cxx11::string, TableField> &value,
+bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::string, TableField> &value,
                                             nlohmann::json& object)
 {
     auto ret { true };
@@ -992,7 +1009,7 @@ bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::__cxx11::
     return ret;
 }
 
-bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::__cxx11::string, TableField> &value,
+bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::string, TableField> &value,
                                             std::string& resultValue,
                                             const bool quotationMarks)
 {
