@@ -532,7 +532,7 @@ stages:
             total_failed_items: 0
 
   # GET /manager/logs
-  - name: Filters -> offset=3, type_log=info, limit=4
+  - name: Filters -> offset=3, level=info, limit=4
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
@@ -542,7 +542,7 @@ stages:
       params:
         limit: 4
         offset: 3
-        type_log: info
+        level: info
     response:
         status_code: 200
         json:
@@ -557,7 +557,7 @@ stages:
             total_failed_items: 0
 
   # GET /manager/logs
-  - name: Filters -> category=ossec-analysisd, limit=1
+  - name: Filters -> tag=ossec-analysisd, limit=1
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
@@ -565,7 +565,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        category: ossec-analysisd
+        tag: ossec-analysisd
         limit: 1
     response:
         status_code: 200
@@ -578,7 +578,7 @@ stages:
             total_failed_items: 0
 
   # GET /manager/logs
-  - name: Filters -> category=ossec-syscheckd, limit=1
+  - name: Filters -> tag=ossec-syscheckd, limit=1
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
@@ -586,7 +586,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        category: ossec-syscheckd
+        tag: ossec-syscheckd
         limit: 1
     response:
         status_code: 200
@@ -597,6 +597,27 @@ stages:
             failed_items: []
             total_affected_items: !anyint
             total_failed_items: 0
+
+  - name: Filters by query (tag=ossec-syscheckd, level=info)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        q: tag=ossec-syscheckd;level=info
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "tag"
+            expected_values: "ossec-syscheckd"
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "level"
+            expected_values: "info"
 
 ---
 test_name: GET /manager/logs/summary

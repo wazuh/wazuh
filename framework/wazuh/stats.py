@@ -25,7 +25,7 @@ cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def totals(date):
     """
@@ -76,7 +76,7 @@ def totals(date):
     return WazuhResult({'data': response})
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def hourly():
     """
@@ -106,7 +106,7 @@ def hourly():
     return WazuhResult({'averages': averages, 'interactions': interactions})
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def weekly():
     """
@@ -141,7 +141,7 @@ def weekly():
     return WazuhResult(response)
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_daemons_stats(filename):
     """Returns the stats of an input file.

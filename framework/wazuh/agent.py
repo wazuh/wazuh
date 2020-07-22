@@ -11,10 +11,15 @@ from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
     WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup, get_agents_info, get_groups
+from wazuh.core.cluster.cluster import get_node
+from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
 from wazuh.rbac.decorators import expose_resources
+
+cluster_enabled = not read_cluster_config()['disabled']
+node_id = get_node().get('node') if cluster_enabled else None
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -121,6 +126,26 @@ def restart_agents(agent_list=None):
     result.affected_items.sort(key=int)
 
     return result
+
+
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'], post_proc_func=None)
+def restart_agents_by_node(agent_list=None):
+    """Restart all agents belonging to a node.
+
+    Parameters
+    ----------
+    agent_list : list, optional
+        List of agents. Default `None`
+    node_id : str, optional
+        Node name. Only used for RBAC. Default `None`
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+    """
+    '000' in agent_list and agent_list.remove('000')
+
+    return restart_agents(agent_list=agent_list)
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],

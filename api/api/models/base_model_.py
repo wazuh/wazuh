@@ -229,3 +229,8 @@ class Body(Model):
         except AttributeError:
             raise_if_exc(WazuhError(attribute_error))
         return body
+
+    @classmethod
+    def validate_content_type(cls, request, expected_content_type):
+        if request.content_type != expected_content_type:
+            raise_if_exc(WazuhError(6002), code=406)

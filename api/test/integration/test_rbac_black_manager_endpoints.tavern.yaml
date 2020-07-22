@@ -6,24 +6,26 @@ marks:
 
 stages:
 
-  - name: Request manager configuration (Denied)
+  - name: Request manager configuration (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response: &permission_denied
-      status_code: 403
+    response: &permission_allowed
+      status_code: 200
       json:
-        code: 4000
+        data:
+          affected_items: !anything
+          total_failed_items: 0
 
 ---
 test_name: GET /manager/configuration/validation
 
 stages:
 
-  - name: Request manager configuration validation (Denied)
+  - name: Request manager configuration validation (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/validation"
@@ -31,14 +33,14 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_denied
+      <<: *permission_allowed
 
 ---
 test_name: GET /manager/configuration/{component}/{configuration}
 
 stages:
 
-  - name: Request manager component configuration (Denied)
+  - name: Request manager component configuration (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/agentless/agentless"
@@ -46,7 +48,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_denied
+      <<: *permission_allowed
 
 ---
 test_name: DELETE /manager/files
@@ -74,8 +76,10 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         path: 'etc/rules/local_rules.xml'
-    response:
-      <<: *permission_denied
+    response: &permission_denied
+      status_code: 403
+      json:
+        code: 4000
 
 ---
 test_name: GET /manager/files
@@ -141,7 +145,7 @@ test_name: GET /manager/info
 
 stages:
 
-  - name: Request manager info (Denied)
+  - name: Request manager info (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/info"
@@ -149,14 +153,14 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_denied
+      <<: *permission_allowed
 
 ---
 test_name: GET /manager/logs
 
 stages:
 
-  - name: Request manager logs (Denied)
+  - name: Request manager logs (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
@@ -164,14 +168,14 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_denied
+      <<: *permission_allowed
 
 ---
 test_name: GET /manager/logs/summary
 
 stages:
 
-  - name: Request manager logs summary (Denied)
+  - name: Request manager logs summary (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs/summary"
@@ -179,14 +183,14 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_denied
+      <<: *permission_allowed
 
 ---
 test_name: PUT /manager/restart
 
 stages:
 
-  - name: Restart manager (Denied)
+  - name: Restart manager (Allowed) (Allowed)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/restart"
@@ -194,14 +198,15 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_denied
+      <<: *permission_allowed
+    delay_after: !float "{restart_delay}"
 
 ---
 test_name: GET /manager/stats
 
 stages:
 
-  - name: Request manager stats (Denied)
+  - name: Request manager stats (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats"
@@ -209,14 +214,16 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_denied
+      status_code: 400
+      json:
+        code: 1308 # stats file does not exist
 
 ---
 test_name: GET /manager/stats/analysisd
 
 stages:
 
-  - name: Request manager analysisd stats (Denied)
+  - name: Request manager analysisd stats (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/analysisd"
@@ -224,14 +231,14 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_denied
+      status_code: 200
 
 ---
 test_name: GET /manager/stats/hourly
 
 stages:
 
-  - name: Request manager hourly stats (Denied)
+  - name: Request manager hourly stats (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/hourly"
@@ -239,14 +246,14 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_denied
+      status_code: 200
 
 ---
 test_name: GET /manager/stats/remoted
 
 stages:
 
-  - name: Request manager remoted stats (Denied)
+  - name: Request manager remoted stats (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/remoted"
@@ -254,14 +261,14 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_denied
+      status_code: 200
 
 ---
 test_name: GET /manager/stats/weekly
 
 stages:
 
-  - name: Request manager weekly stats (Denied)
+  - name: Request manager weekly stats (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/weekly"
@@ -269,14 +276,14 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_denied
+      status_code: 200
 
 ---
 test_name: GET /manager/status
 
 stages:
 
-  - name: Request manager status (Denied)
+  - name: Request manager status (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/status"
@@ -284,7 +291,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_denied
+      <<: *permission_allowed
 
 
 ---

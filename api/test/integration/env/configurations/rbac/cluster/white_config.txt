@@ -7,8 +7,8 @@
 
 | Actions                  | Resources         | Allow                                                                                                             | Deny                |
 |--------------------------|-------------------|-------------------------------------------------------------------------------------------------------------------|---------------------|
-| cluster:read_config      | node:id           | master-node,worker2                                                                                               | worker1             |
-| cluster:restart          | node:id           | worker1                                                                                                           | master-node,worker2 |
+| cluster:read             | node:id           | master-node,worker2                                                                                               | worker1             |
+| cluster:restart          | node:id           | worker2                                                                                                           | master-node,worker1 |
 | cluster:status           | *:*               | *                                                                                                                 |                     |
 | cluster:read_file        | node:id&file:path | master-node,worker2 | etc/ossec.conf,etc/rules/local_rules.xml,ruleset/rules/0350-amazon_rules.xml                |                     |
 | cluster:upload_file      | node:id           | master-node,worker2                                                                                               |                     |

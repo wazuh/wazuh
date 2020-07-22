@@ -308,6 +308,26 @@ stages:
           total_affected_items: !anyint
           total_failed_items: !anyint
 
+  - name: Test complex q
+    request:
+      verify: False
+      <<: *general_rules_request
+      params:
+        q: 'filename=0010-rules_config.xml;id>3;id<7;details.category=squid'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *rules_response
+              id: !anyint
+              details:
+                category:
+                  'squid'
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
 ---
 test_name: GET /rules filters
 
@@ -698,8 +718,8 @@ stages:
       json:
         data:
           affected_items:
-            - 1.1.1
-            - 1.3.4
+            - !anystr
+            - !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -716,7 +736,7 @@ stages:
       json:
         data:
           affected_items:
-            - 1.1.1
+            - !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -803,8 +823,8 @@ stages:
       json:
         data:
           affected_items:
-            - II_5.1.f
-            - IV_30.1.g
+            - !anystr
+            - !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -821,7 +841,7 @@ stages:
       json:
         data:
           affected_items:
-            - II_5.1.f
+            - !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -920,8 +940,8 @@ stages:
       json:
         data:
           affected_items:
-            - '1.3'
-            - '10.1'
+            - !anystr
+            - !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -1587,7 +1607,7 @@ stages:
       verify: False
       <<: *id_rules_request
       params:
-        rule_ids: 200,9
+        rule_ids: 200,99999999
     response:
       status_code: 200
       json:
@@ -1598,7 +1618,7 @@ stages:
             - error:
                 code: 1208
               id:
-                - 9
+                - 99999999
           total_affected_items: !anyint
           total_failed_items: 1
 

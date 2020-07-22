@@ -64,6 +64,26 @@ stages:
           returned_sha256: data.affected_items[0].sha256
           returned_total: data.total_affected_items
 
+  # GET /syscheck/000?q=file={returned_file};md5~{returned_md5};sha1={returned_sha1};sha256={returned_sha256}
+  - name: Filters by composed query
+    request:
+      verify: False
+      <<: *get_syscheck_agent
+      params:
+        q: file={returned_file};md5~{returned_md5};sha1={returned_sha1};sha256={returned_sha256}
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - file: "{returned_file}"
+              md5: "{returned_md5}"
+              sha1: "{returned_sha1}"
+              sha256: "{returned_sha256}"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
     # GET /syscheck/000?limit=1&summary=True
   - name: Try to get limited syscheck scan results for agent 000 using summarize (date,file,mtime) parameter
     request:

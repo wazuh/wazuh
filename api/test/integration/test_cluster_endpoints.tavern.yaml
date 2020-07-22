@@ -173,6 +173,40 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
 
+  - name: Filter nodes by query
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        q: version>3;type=worker
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *cluster_nodes_response
+            - <<: *cluster_nodes_response
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Filter nodes by query with non-existent values
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        q: version<3
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: !anystr
+
   - name: Retrieve all elements with limit=0
     request:
       verify: False
@@ -1813,10 +1847,18 @@ stages:
       params:
         path: etc/rules/new-rules.xml
         overwrite: True
-    response:
-      status_code: 400
+    response: &unexisting_node
+      status_code: 200
       json:
-        code: 3022
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - "unexisting-node"
 
   - name: Upload decoder to unexisting node
     request:
@@ -1831,9 +1873,7 @@ stages:
         path: etc/decoders/new-decoder.xml
         overwrite: True
     response:
-      status_code: 400
-      json:
-        code: 3022
+      <<: *unexisting_node
 
   - name: Upload CDB list to unexisting node
     request:
@@ -1848,9 +1888,7 @@ stages:
         path: etc/lists/new-list
         overwrite: False
     response:
-      status_code: 400
-      json:
-        code: 3022
+      <<: *unexisting_node
 
 ---
 test_name: GET /cluster/{node_id}/info
@@ -2032,12 +2070,12 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Filters -> category=ossec-analysisd, limit=1 {node_id}
+  - name: Filters -> tag=ossec-analysisd, limit=1 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        category: ossec-analysisd
+        tag: ossec-analysisd
         limit: 1
     response:
       status_code: 200
@@ -2049,12 +2087,12 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Filters -> category=ossec-syscheckd, limit=2 {node_id}
+  - name: Filters -> tag=ossec-syscheckd, limit=2 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        category: ossec-syscheckd
+        tag: ossec-syscheckd
         limit: 2
     response:
       status_code: 200
@@ -2062,10 +2100,48 @@ stages:
         data:
           affected_items:
             - <<: *cluster_log
+              tag: ossec-syscheckd
             - <<: *cluster_log
+              tag: ossec-syscheckd
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
+
+  - name: Filters -> level=info, limit=1 {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        level: info
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *cluster_log
+              level: info
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Filters by query (tag=ossec-syscheckd, level=info)
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        q: tag=ossec-syscheckd;level=info
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "tag"
+            expected_values: "ossec-syscheckd"
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "level"
+            expected_values: "info"
 
 ---
 test_name: GET /cluster/{node_id}/logs/summary
@@ -2167,17 +2243,15 @@ test_name: GET /cluster/wrong_node/stats
 
 stages:
 
-  - name: wrong_node stats
+  - name: unexisting_node stats
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/wrong_node/stats"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/unexisting_node/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 3022
+      <<: *unexisting_node
 
 ---
 test_name: GET /cluster/{node_id}/stats/analysisd

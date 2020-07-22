@@ -563,6 +563,9 @@ stages:
       json:
         auth_token_exp_timeout: !anyint
         rbac_mode: !anystr
+        max_login_attempts: !anyint
+        block_time: !anyint
+        max_request_per_minute: !anyint
 
 ---
 test_name: UPDATE SECURITY CONFIG
@@ -746,7 +749,7 @@ stages:
   - name: Create one specified link between one user and a list of roles (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/103/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -758,7 +761,7 @@ stages:
   - name: Create one specified link between one user and a list of roles (Allow and Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/rbac/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/104/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -807,7 +810,7 @@ stages:
   - name: Create one specified link between one user and a list of roles (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/103/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -819,7 +822,7 @@ stages:
   - name: Create one specified link between one user and a list of roles (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/rbac/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/104/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -836,7 +839,7 @@ stages:
   - name: Delete one specified link between one user and a list of roles (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/103/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -848,7 +851,7 @@ stages:
   - name: Delete one specified link between one user and a list of roles (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/rbac/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/104/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
