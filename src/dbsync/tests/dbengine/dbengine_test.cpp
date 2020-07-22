@@ -122,31 +122,19 @@ TEST_F(DBEngineTest, InitializeStatusField)
 
     auto mockStatement_3 { std::make_unique<MockStatement>() };
     EXPECT_CALL(*mockStatement_3, 
-        bind(_,An<const std::string&>()))
-        .Times(1);
-    EXPECT_CALL(*mockStatement_3, 
         step())
         .WillOnce(Return(0));
-    EXPECT_CALL(*mockStatement_3, 
-        reset())
-        .Times(1);
     EXPECT_CALL(*mockFactory, 
-        createStatement(_,"ALTER TABLE ? ADD COLUMN db_status_field_dm INTEGER DEFAULT 1;"))
+        createStatement(_,"ALTER TABLE dummy ADD COLUMN db_status_field_dm INTEGER DEFAULT 1;"))
         .WillOnce(Return(ByMove(std::move(mockStatement_3))));
 
     auto mockStatement_4 { std::make_unique<MockStatement>() };
     EXPECT_CALL(*mockStatement_4, 
-        bind(_,An<const std::string&>()))
-        .Times(1);
-    EXPECT_CALL(*mockStatement_4, 
         step())
         .WillOnce(Return(0));
-    EXPECT_CALL(*mockStatement_4, 
-        reset())
-        .Times(1);
-        
+
     EXPECT_CALL(*mockFactory, 
-        createStatement(_,"UPDATE ? SET db_status_field_dm=0;"))
+        createStatement(_,"UPDATE dummy SET db_status_field_dm=0;"))
         .WillOnce(Return(ByMove(std::move(mockStatement_4))));
  
 
@@ -186,16 +174,6 @@ TEST_F(DBEngineTest, InitializeStatusFieldNoMetadata)
         createStatement(_,"PRAGMA table_info(dummy);"))
         .WillOnce(Return(ByMove(std::move(mockStatement_2))));
  
-    auto mockStatement_3 { std::make_unique<MockStatement>() };
-    EXPECT_CALL(*mockFactory, 
-        createStatement(_,"ALTER TABLE ? ADD COLUMN db_status_field_dm INTEGER DEFAULT 1;"))
-        .WillOnce(Return(ByMove(std::move(mockStatement_3))));
-
-    auto mockStatement_4 { std::make_unique<MockStatement>() };
-    EXPECT_CALL(*mockFactory, 
-        createStatement(_,"UPDATE ? SET db_status_field_dm=0;"))
-        .WillOnce(Return(ByMove(std::move(mockStatement_4))));
-
     EXPECT_THROW(spEngine->initializeStatusField(std::vector<std::string> {"dummy"}), dbengine_error);
 }
 
@@ -273,24 +251,13 @@ TEST_F(DBEngineTest, InitializeStatusFieldPreExistent)
         createStatement(_,"PRAGMA table_info(dummy);"))
         .WillOnce(Return(ByMove(std::move(mockStatement_2))));
 
-    auto mockStatement_3 { std::make_unique<MockStatement>() };
-    EXPECT_CALL(*mockFactory, 
-        createStatement(_,"ALTER TABLE ? ADD COLUMN db_status_field_dm INTEGER DEFAULT 1;"))
-        .WillOnce(Return(ByMove(std::move(mockStatement_3))));
-
     auto mockStatement_4 { std::make_unique<MockStatement>() };
-    EXPECT_CALL(*mockStatement_4, 
-        bind(_,An<const std::string&>()))
-        .Times(1);
     EXPECT_CALL(*mockStatement_4, 
         step())
         .WillOnce(Return(0));
-    EXPECT_CALL(*mockStatement_4, 
-        reset())
-        .Times(1);
         
     EXPECT_CALL(*mockFactory, 
-        createStatement(_,"UPDATE ? SET db_status_field_dm=0;"))
+        createStatement(_,"UPDATE dummy SET db_status_field_dm=0;"))
         .WillOnce(Return(ByMove(std::move(mockStatement_4))));
  
 
@@ -374,17 +341,12 @@ TEST_F(DBEngineTest, DeleteRowsByStatusField)
 
     auto mockStatement_3 { std::make_unique<MockStatement>() };
     EXPECT_CALL(*mockStatement_3, 
-        bind(_,An<const std::string&>()))
-        .Times(1);
-    EXPECT_CALL(*mockStatement_3, 
         step())
         .WillOnce(Return(0));
-    EXPECT_CALL(*mockStatement_3, 
-        reset())
-        .Times(1);
+
         
     EXPECT_CALL(*mockFactory, 
-        createStatement(_,"DELETE FROM ? WHERE db_status_field_dm=0;"))
+        createStatement(_,"DELETE FROM dummy WHERE db_status_field_dm=0;"))
         .WillOnce(Return(ByMove(std::move(mockStatement_3))));
  
 
@@ -423,13 +385,6 @@ TEST_F(DBEngineTest, DeleteRowsByStatusFieldNoMetadata)
     EXPECT_CALL(*mockFactory, 
         createStatement(_,"PRAGMA table_info(dummy);"))
         .WillOnce(Return(ByMove(std::move(mockStatement_2))));
-
-    auto mockStatement_3 { std::make_unique<MockStatement>() };
-       
-    EXPECT_CALL(*mockFactory, 
-        createStatement(_,"DELETE FROM ? WHERE db_status_field_dm=0;"))
-        .WillOnce(Return(ByMove(std::move(mockStatement_3))));
- 
 
     EXPECT_THROW(spEngine->deleteRowsByStatusField(std::vector<std::string> {"dummy"}), dbengine_error);
 }
