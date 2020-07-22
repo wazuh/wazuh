@@ -54,7 +54,7 @@ typedef struct {
     OSRegex *prematch;
     OSMatch *program_name;
 
-    void (*plugindecoder)(void *lf, void *decoder_match);
+    void (*plugindecoder)(void *lf, void *rule_hash, void *decoder_match);
     void* (**order)(struct _Eventinfo *, char *, const char *);
 } OSDecoderInfo;
 
