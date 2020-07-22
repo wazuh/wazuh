@@ -32,9 +32,9 @@ typedef struct w_logtest_session_t {
     OSHash *g_rules_hash;                   ///< Hash table of rules
     OSList *fts_list;                       ///< Save FTS previous events
     OSHash *fts_store;                      ///< Save FTS values processed
-    OSHash *acm_store;                      ///< Hash where save data which have same id
-    int acm_lookups;                        ///< Counter of the number of times purge accumulate option
-    time_t acm_purge_ts;                    ///< Counter of the number of times purge accumulate option
+    OSHash *acm_store;                      ///< Hash to save data which have the same id
+    int acm_lookups;                        ///< Counter of the number of times purged. Option accumulate
+    time_t acm_purge_ts;                    ///< Counter of the time interval of last purge. Option accumulate
 
 } w_logtest_session_t;
 
@@ -62,6 +62,8 @@ void *w_logtest_init();
 
 /**
  * @brief Initialize logtest configuration. Then, call ReadConfig
+ *
+ * @return OS_SUCCESS on success, otherwise OS_INVALID
  */
 int w_logtest_init_parameters();
 
@@ -99,3 +101,11 @@ void w_logtest_remove_session(int token);
  * for more than 15 minutes, remove it.
  */
 void w_logtest_check_active_sessions();
+
+/**
+ * @brief Initialize FTS engine for a client session
+ * @param fts_list list which save fts previous events
+ * @param fts_store hash table which save fts values processed previously
+ * @return 1 on success, otherwise return 0
+ */
+int w_logtest_fts_init(OSList **fts_list, OSHash **fts_store);
