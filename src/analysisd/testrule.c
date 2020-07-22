@@ -413,7 +413,7 @@ void OS_ReadMSG(char *ut_str)
         merror_exit(FTS_LIST_ERROR);
     }
 
-    mdebug1("FTSInit completed.");
+    mdebug1("FTS_Init completed.");
 
     /* Initialize the Accumulator */
     if (!Accumulate_Init(&os_analysisd_acm_store, &os_analysisd_acm_lookups, &os_analysisd_acm_purge_ts)) {

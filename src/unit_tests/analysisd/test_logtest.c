@@ -73,6 +73,18 @@ OSHash *__wrap_OSHash_Create() {
     return mock_type(OSHash *);
 }
 
+int __wrap_OSHash_setSize() {
+    return mock();
+}
+
+OSList *__wrap_OSList_Create() {
+    return mock_type(OSList *);
+}
+
+int __wrap_OSList_SetMaxSize() {
+    return mock();
+}
+
 void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
@@ -97,6 +109,10 @@ void __wrap_w_create_thread() {
 }
 
 int __wrap_close (int __fd) {
+    return mock();
+}
+
+int __wrap_getDefine_Int() {
     return mock();
 }
 
@@ -171,6 +187,105 @@ void test_w_logtest_init_OSHash_create_fail(void **state)
 // void test_w_logtest_init_done(void **state) -> Needs to implement w_logtest_main
 
 
+/* w_logtest_fts_init */
+void test_w_logtest_fts_init_create_list_failure(void **state)
+{
+    OSList *fts_list;
+    OSHash *fts_store;
+
+    will_return(__wrap_getDefine_Int, 5);
+
+    will_return(__wrap_OSList_Create, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "(1290): Unable to create a new list (calloc).");
+
+    int ret = w_logtest_fts_init(&fts_list, &fts_store);
+    assert_int_equal(ret, 0);
+}
+
+void test_w_logtest_fts_init_SetMaxSize_failure(void **state)
+{
+    OSList *fts_list;
+    OSHash *fts_store;
+    OSList *list = (OSList *) 1;
+
+    will_return(__wrap_getDefine_Int, 5);
+
+    will_return(__wrap_OSList_Create, list);
+
+    will_return(__wrap_OSList_SetMaxSize, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "(1292): Error setting error size.");
+
+    int ret = w_logtest_fts_init(&fts_list, &fts_store);
+    assert_int_equal(ret, 0);
+}
+
+void test_w_logtest_fts_init_create_hash_failure(void **state)
+{
+    OSList *fts_list;
+    OSHash *fts_store;
+    OSList *list = (OSList *) 1;
+
+    will_return(__wrap_getDefine_Int, 5);
+
+    will_return(__wrap_OSList_Create, list);
+
+    will_return(__wrap_OSList_SetMaxSize, 1);
+
+    will_return(__wrap_OSHash_Create, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "(1295): Unable to create a new hash (calloc).");
+
+    int ret = w_logtest_fts_init(&fts_list, &fts_store);
+    assert_int_equal(ret, 0);
+}
+
+void test_w_logtest_fts_init_setSize_failure(void **state)
+{
+    OSList *fts_list;
+    OSHash *fts_store;
+    OSList *list = (OSList *) 1;
+    OSHash *hash = (OSHash *) 1;
+
+    will_return(__wrap_getDefine_Int, 5);
+
+    will_return(__wrap_OSList_Create, list);
+
+    will_return(__wrap_OSList_SetMaxSize, 1);
+
+    will_return(__wrap_OSHash_Create, hash);
+
+    will_return(__wrap_OSHash_setSize, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "(1292): Error setting error size.");
+
+    int ret = w_logtest_fts_init(&fts_list, &fts_store);
+    assert_int_equal(ret, 0);
+}
+
+void test_w_logtest_fts_init_success(void **state)
+{
+    OSList *fts_list;
+    OSHash *fts_store;
+    OSList *list = (OSList *) 1;
+    OSHash *hash = (OSHash *) 1;
+
+    will_return(__wrap_getDefine_Int, 5);
+
+    will_return(__wrap_OSList_Create, list);
+
+    will_return(__wrap_OSList_SetMaxSize, 1);
+
+    will_return(__wrap_OSHash_Create, hash);
+
+    will_return(__wrap_OSHash_setSize, 1);
+
+    int ret = w_logtest_fts_init(&fts_list, &fts_store);
+    assert_int_equal(ret, 1);
+}
+
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -182,6 +297,12 @@ int main(void)
         cmocka_unit_test(test_w_logtest_init_logtest_disabled),
         cmocka_unit_test(test_w_logtest_init_conection_fail),
         cmocka_unit_test(test_w_logtest_init_OSHash_create_fail),
+        // Tests w_logtest_fts_init
+        cmocka_unit_test(test_w_logtest_fts_init_create_list_failure),
+        cmocka_unit_test(test_w_logtest_fts_init_SetMaxSize_failure),
+        cmocka_unit_test(test_w_logtest_fts_init_create_hash_failure),
+        cmocka_unit_test(test_w_logtest_fts_init_setSize_failure),
+        cmocka_unit_test(test_w_logtest_fts_init_success),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
