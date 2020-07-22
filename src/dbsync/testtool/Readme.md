@@ -33,11 +33,11 @@ Where:
   - persistance: Database type of persistance being used. Not implemented yet.
   - sql_statement: Database sql structure to be created. This structure will be associated the other files needed to used the tool.
 
-2) Create the needed amount of json files representing the different snapshots information. These ones need to follow the sql_statement structure created in the step 1.
+2) Create the needed amount of json files representing the different actions information. These ones need to follow the sql_statement structure created in the step 1.
 3) Define an output folder where all resulting data will be located.
 4) Once all the above steps are accomplished the tool will be used like this:
 ```
-./dbsync_test_tool -c config.json -s input1.json,input2.json,input3.json -o ./output
+./dbsync_test_tool -c config.json -a input1.json,input2.json,input3.json -o ./output
 ```
-5) Considering the example above all diff snapshots will be located in ./output folder in the following format: snapshop_1.json, snapshot_2.json ... snapshot_n.json where 'n' will be the number of json files passed as part of the argument "-s".
+5) Considering the example above all diff snapshots will be located in ./output folder in the following format: action_1.json, action_2.json ... action_n.json where 'n' will be the number of json files passed as part of the argument "-a".
 
