@@ -187,9 +187,9 @@ extern int alert_only;
 /** Functions for events **/
 
 /* Search for matches in the last events */
-Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule, regex_matching *rule_match);
-Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule, regex_matching *rule_match);
-Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *currently_rule, regex_matching *rule_match);
+Eventinfo *Search_LastEvents(Eventinfo *my_lf, EventList *last_events, RuleInfo *currently_rule, regex_matching *rule_match);
+Eventinfo *Search_LastSids(Eventinfo *my_lf, EventList *last_events, RuleInfo *currently_rule, regex_matching *rule_match);
+Eventinfo *Search_LastGroups(Eventinfo *my_lf, EventList *last_events, RuleInfo *currently_rule, regex_matching *rule_match);
 
 /* Zero the eventinfo structure */
 void Zero_Eventinfo(Eventinfo *lf);
