@@ -1,7 +1,7 @@
 /*
  * Wazuh DBSYNC
  * Copyright (C) 2015-2020, Wazuh Inc.
- * June 21, 2020.
+ * July 21, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -13,41 +13,41 @@
 #include <json.hpp>
 #include "dbsync.h"
 
-struct CharDeleter
+namespace TestDeleters
 {
-    void operator()(char* json)
+    struct CJsonDeleter final
     {
-        cJSON_free(json);
-    }
-};
+        void operator()(char* json)
+        {
+            cJSON_free(json);
+        }
+        void operator()(cJSON* json)
+        {
+            cJSON_Delete(json);
+        }
+    };
 
-struct CJsonDeleter
-{
-    void operator()(cJSON* json)
+    struct ResultDeleter final
     {
-        cJSON_Delete(json);
-    }
-};
-
-
-struct ResultDeleter
-{
-    void operator()(cJSON* json)
-    {
-        dbsync_free_result(&json);
-    }
+        void operator()(cJSON* json)
+        {
+            dbsync_free_result(&json);
+        }
+    };
 };
 
 struct IAction
 {
     virtual void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& value) = 0;
+
+    virtual ~IAction() = default;
 };
 
-struct UpdateWithSnapshotAction : public IAction
+struct UpdateWithSnapshotAction final : public IAction
 {
-    virtual void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& value) override
+    void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& value) override
     {
-        const std::unique_ptr<cJSON, CJsonDeleter> currentSnapshotPtr
+        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> currentSnapshotPtr
         { 
             cJSON_Parse(value["body"].dump().c_str())
         };
@@ -55,27 +55,26 @@ struct UpdateWithSnapshotAction : public IAction
         if(0 == dbsync_update_with_snapshot(ctx->handle, currentSnapshotPtr.get(), &snapshotLambda))
         {
             // Create and flush snapshot diff data in files like: snapshot_<#idx>.json
-            const std::unique_ptr<cJSON, ResultDeleter> snapshotLambdaPtr(snapshotLambda);
+            const std::unique_ptr<cJSON, TestDeleters::ResultDeleter> snapshotLambdaPtr(snapshotLambda);
             
             std::stringstream oFileName;
             oFileName << "action_" << ctx->currentId << ".json";
             const std::string outputFileName{ ctx->outputPath +"/"+oFileName.str() };
 
             std::ofstream outputFile{ outputFileName };
-            const std::unique_ptr<char, CharDeleter> snapshotDiff{ cJSON_Print(snapshotLambdaPtr.get()) };
+            const std::unique_ptr<char, TestDeleters::CJsonDeleter> snapshotDiff{ cJSON_Print(snapshotLambdaPtr.get()) };
             outputFile << snapshotDiff.get() << std::endl;
-            outputFile.close();
         }
     }
 };
 
 
-struct CreateTransactionAction : public IAction
+struct CreateTransactionAction final : public IAction
 {
-    virtual void execute(std::unique_ptr<TestContext>& ctx, 
-                         const nlohmann::json& value) override
+    void execute(std::unique_ptr<TestContext>& ctx, 
+                 const nlohmann::json& value) override
     {
-        const std::unique_ptr<cJSON, CJsonDeleter> jsonTables
+        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsonTables
         { 
             cJSON_Parse(value["body"]["tables"].dump().c_str())
         };
@@ -91,21 +90,20 @@ struct CreateTransactionAction : public IAction
             const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
 
             std::ofstream outputFile{ outputFileName };
-            const nlohmann::json jsonResult = { {"txn_context", nullptr != ctx->txnContext ? true : false } };
+            const nlohmann::json jsonResult = { {"txn_context", nullptr != ctx->txnContext } };
             outputFile << jsonResult.dump() << std::endl;
-            outputFile.close();
     }
 };
 
-struct CloseTransactionAction : public IAction
+struct CloseTransactionAction final : public IAction
 {
-    virtual void execute(std::unique_ptr<TestContext>& ctx, 
-                         const nlohmann::json& /*value*/) override
+    void execute(std::unique_ptr<TestContext>& ctx, 
+                 const nlohmann::json& /*value*/) override
     {
         
 
         const auto retVal { dbsync_close_txn(ctx->handle,
-                                     ctx->txnContext)} ;
+                                             ctx->txnContext)} ;
 
             std::stringstream oFileName;
             oFileName << "action_" << ctx->currentId << ".json";
@@ -114,7 +112,6 @@ struct CloseTransactionAction : public IAction
             std::ofstream outputFile{ outputFileName };
             const nlohmann::json jsonResult = { {"txn_context", retVal } };
             outputFile << jsonResult.dump() << std::endl;
-            outputFile.close();
     }
 };
 
