@@ -75,13 +75,21 @@ std::shared_ptr<DBSyncImplementation::DbEngineContext> DBSyncImplementation::dbE
     return it->second;
 }
 
+void DBSyncImplementation::setMaxRows(const DBSYNC_HANDLE handle,
+                                      const std::string& table,
+                                      const unsigned long long maxRows)
+{
+    const auto ctx{ dbEngineContext(handle) };
+    ctx->m_dbEngine->setMaxRows(table, maxRows);
+}
+
 TXN_HANDLE DBSyncImplementation::createTransaction(const DBSYNC_HANDLE handle,
-                                                   const char** tables)
+                                                   const char* tables)
 {
     const auto& ctx{ dbEngineContext(handle) };
     const auto& spTransactionContext
     {
-        std::make_shared<TransactionContext>(tables)
+        std::make_shared<TransactionContext>(nlohmann::json::parse(tables))
     };
     ctx->addTransactionContext(spTransactionContext);
     ctx->m_dbEngine->initializeStatusField(spTransactionContext->m_tables);

@@ -39,7 +39,7 @@ enum ColumnType
     Blob,
 };
 
-const std::map<ColumnType, std::string> kColumnTypeNames = 
+const std::map<ColumnType, std::string> ColumnTypeNames = 
 {
     { Unknown        , "UNKNOWN"         },
     { Text           , "TEXT"            },
@@ -104,19 +104,22 @@ class SQLiteDBEngine : public DbSync::IDbEngine
                        const std::string& tableStmtCreation);
         ~SQLiteDBEngine();
         
-        virtual void bulkInsert(const std::string& table,
-                                const nlohmann::json& data) override;
+        void bulkInsert(const std::string& table,
+                        const nlohmann::json& data) override;
 
-        virtual void refreshTableData(const nlohmann::json& data,
+        void refreshTableData(const nlohmann::json& data,
                                       const DbSync::ResultCallback callback) override;
 
-        virtual void syncTableRowData(const std::string& table,
-                                      const nlohmann::json& data,
-                                      const DbSync::ResultCallback callback) override;
+        void syncTableRowData(const std::string& table,
+                              const nlohmann::json& data,
+                              const DbSync::ResultCallback callback) override;
 
-        virtual void initializeStatusField(const std::vector<std::string>& tableNames) override;
+        void setMaxRows(const std::string& table,
+                        const unsigned long long maxRows) override;
 
-        virtual void deleteRowsByStatusField(const std::vector<std::string>& tableNames) override;
+        void initializeStatusField(const nlohmann::json& tableNames) override;
+
+        void deleteRowsByStatusField(const nlohmann::json& tableNames) override;
 
     private:
         void initialize(const std::string& path,
@@ -207,7 +210,7 @@ class SQLiteDBEngine : public DbSync::IDbEngine
 
         bool updateRows(const std::string& table,
                         const std::vector<std::string>& primaryKeyList,
-                        std::vector<Row>& rowKeysValue);
+                        const std::vector<Row>& rowKeysValue);
 
         bool getFieldValueFromTuple(const std::pair<const std::string, TableField> &value,
                                     std::string& resultValue,

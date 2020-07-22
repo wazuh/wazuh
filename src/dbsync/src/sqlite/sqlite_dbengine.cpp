@@ -25,6 +25,22 @@ SQLiteDBEngine::SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFact
 SQLiteDBEngine::~SQLiteDBEngine()
 {}
 
+void SQLiteDBEngine::setMaxRows(const std::string& table,
+                                const unsigned long long maxRows)
+{
+    const constexpr auto ROW_COUNT_POSTFIX{"_row_count"};
+    const std::string sql
+    {
+        maxRows ?
+        "CREATE TRIGGER " + table + ROW_COUNT_POSTFIX + " BEFORE INSERT ON " + table +
+        " WHEN (SELECT COUNT(*) FROM " + table + ") >= " + std::to_string(maxRows) +
+        " BEGIN SELECT RAISE(FAIL, '" + SQLite::MAX_ROWS_ERROR_STRING + "'); END;"
+        : "DROP TRIGGER " + table + ROW_COUNT_POSTFIX
+
+    };
+    m_sqliteConnection->execute(sql);
+}
+
 void SQLiteDBEngine::bulkInsert(const std::string& table,
                                 const nlohmann::json& data)
 {
@@ -86,20 +102,14 @@ void SQLiteDBEngine::syncTableRowData(const std::string& /*table*/,
 }
 
 
-void SQLiteDBEngine::initializeStatusField(const std::vector<std::string>& tableNames) 
+void SQLiteDBEngine::initializeStatusField(const nlohmann::json& tableNames) 
 {
     const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
-
-    for (const auto& table : tableNames)
+    for (const auto& tableValue : tableNames)
     {
+        const auto table { tableValue.get<std::string>() };
         if (0 != loadTableData(table)) 
         {
-            auto const& stmtAdd { getStatement(std::string("ALTER TABLE ") + table + " ADD COLUMN " +
-                                                STATUS_FIELD_NAME +
-                                                " " +
-                                                STATUS_FIELD_TYPE +
-                                                " DEFAULT 1;")};
-
             const auto& fields { m_tableFields[table] };
             const auto& it { std::find_if(fields.begin(), 
                                         fields.end(),
@@ -111,15 +121,21 @@ void SQLiteDBEngine::initializeStatusField(const std::vector<std::string>& table
             if (fields.end() == it)
             {
                 m_tableFields[table].clear();
-
+                auto const& stmtAdd { getStatement(std::string("ALTER TABLE " +
+                                                               table +
+                                                               " ADD COLUMN ") + 
+                                                               STATUS_FIELD_NAME + 
+                                                               " " +
+                                                               STATUS_FIELD_TYPE +
+                                                               " DEFAULT 1;")};
                 stmtAdd->step();
-                stmtAdd->reset();
             }
-            auto const& stmtInit { getStatement(std::string("UPDATE ") + table + " SET " +
-                                                STATUS_FIELD_NAME + "=0;")};
-
+            auto const& stmtInit { getStatement(std::string("UPDATE " +
+                                                            table +
+                                                            " SET ") +
+                                                            STATUS_FIELD_NAME +
+                                                            "=0;")};
             stmtInit->step();
-            stmtInit->reset();
         } 
         else
         {
@@ -129,23 +145,22 @@ void SQLiteDBEngine::initializeStatusField(const std::vector<std::string>& table
     transaction->commit();
 }
 
-void SQLiteDBEngine::deleteRowsByStatusField(const std::vector<std::string>& tableNames) 
+void SQLiteDBEngine::deleteRowsByStatusField(const nlohmann::json& tableNames) 
 {
     const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
 
-    auto const& stmt { getStatement(std::string("DELETE FROM ? WHERE ") +
-                                    STATUS_FIELD_NAME +
-                                    "=0;")};
-
-    for (const auto& table : tableNames)
+    for (const auto& tableValue : tableNames)
     {
+        const auto table { tableValue.get<std::string>() };
+
         if (0 != loadTableData(table)) 
         {
-            const auto& tuple { std::make_tuple(ColumnType::Text,table,0,0,0,0) };
-
-            bindFieldData(stmt, 0l, tuple);
+            auto const& stmt { getStatement(std::string("DELETE FROM " +
+                                                        table +
+                                                        " WHERE ") +
+                                                        STATUS_FIELD_NAME +
+                                                        "=0;")};
             stmt->step();
-            stmt->reset();
         }
         else
         {
@@ -265,14 +280,19 @@ bool SQLiteDBEngine::loadFieldData(const std::string& table)
 
 ColumnType SQLiteDBEngine::columnTypeName(const std::string& type)
 {
-    for (const auto& col : kColumnTypeNames)
+    ColumnType retVal { Unknown };
+    const auto& it { std::find_if(ColumnTypeNames.begin(), 
+                                 ColumnTypeNames.end(),
+                                 [&type] (const std::pair<ColumnType, std::string>& col)
+                                 {
+                                     return 0 == col.second.compare(type);
+                                 }) };
+
+    if (ColumnTypeNames.end() != it)
     {
-        if (col.second == type)
-        {
-            return col.first;
-        }
+        retVal = it->first;
     }
-    return Unknown;
+    return retVal;
 }
 
 void SQLiteDBEngine::bindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt, 
@@ -728,6 +748,7 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
                 }
             }
             stmt->step();
+
             stmt->reset();
         }
         transaction->commit();
@@ -928,7 +949,7 @@ bool SQLiteDBEngine::getRowsToModify(const std::string& table,
 
 bool SQLiteDBEngine::updateRows(const std::string& table,
                                 const std::vector<std::string>& primaryKeyList,
-                                std::vector<Row>& rowKeysValue)
+                                const std::vector<Row>& rowKeysValue)
 {
     auto transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
     

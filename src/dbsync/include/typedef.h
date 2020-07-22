@@ -37,9 +37,10 @@ typedef enum
  */
 typedef enum 
 {
-    MODIFIED = 0,   /*< Database modificaton operation. */
-    DELETED  = 1,   /*< Database deletion operation.    */
-    INSERTED = 2    /*< Database insertion operation.   */
+    MODIFIED = 0,   /*< Database modificaton operation.         */
+    DELETED  = 1,   /*< Database deletion operation.            */
+    INSERTED = 2,   /*< Database insertion operation.           */
+    MAX_ROWS = 3    /*< Database has reached max rows number.   */
 }ReturnTypeCallback;
 
 /**
@@ -60,7 +61,7 @@ typedef void* TXN_HANDLE;
  *
  * @details Callback called for each obtained result, after evaluating changes between two snapshots.
  */
-typedef void((*result_callback_t)(ReturnTypeCallback result_type, cJSON* result_json));
+typedef void((*result_callback_t)(ReturnTypeCallback result_type, const cJSON* result_json));
 
 /**
  * @brief Callback function for user defined logging.
