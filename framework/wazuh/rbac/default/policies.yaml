@@ -198,7 +198,7 @@ default_policies:
       resourceless:
         actions:
           - cluster:status
-          - manager:read_config
+          - manager:read
           - manager:read_api_config
           - manager:update_api_config
           - manager:upload_file
@@ -218,7 +218,7 @@ default_policies:
         actions:
           - cluster:delete_file
           - cluster:read_api_config
-          - cluster:read_config
+          - cluster:read
           - cluster:read_api_config
           - cluster:update_api_config
           - cluster:restart
@@ -240,14 +240,14 @@ default_policies:
       resourceless:
         actions:
           - cluster:status
-          - manager:read_config
+          - manager:read
           - manager:read_api_config
         resources:
           - '*:*:*'
         effect: allow
       files:
         actions:
-          - manager:read_config
+          - manager:read
           - manager:read_api_config
         resources:
           - file:path:*
@@ -255,7 +255,7 @@ default_policies:
       nodes:
         actions:
           - cluster:read_api_config
-          - cluster:read_config
+          - cluster:read
           - cluster:read_api_config
         resources:
           - node:id:*

@@ -668,14 +668,14 @@ stages:
       json:
         data:
           affected_items:
-            - worker1
+            - worker2
           failed_items:
             - error:
                 code: 4000
                 message: !anystr
                 remediation: !anystr
               id:
-                - worker2
+                - worker1
           total_affected_items: 1
           total_failed_items: 1
         message: !anystr
@@ -693,7 +693,7 @@ stages:
       json:
         data:
           affected_items:
-            - 'worker1'
+            - 'worker2'
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
