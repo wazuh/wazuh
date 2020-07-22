@@ -15,10 +15,9 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
-from api.api_exception import APIException
+from api.api_exception import APIError
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh.core import common
-
 
 need_revoke_config = ["auth_token_exp_timeout", "rbac_mode"]
 default_security_configuration = {
@@ -98,7 +97,7 @@ def fill_dict(default: Dict, config: Dict) -> Dict:
     # Check there aren't extra configuration values in user's configuration:
     for k in config.keys():
         if k not in default.keys():
-            raise APIException(2000, details=', '.join(config.keys() - default.keys()))
+            raise APIError(2000, details=', '.join(config.keys() - default.keys()))
 
     for k, val in filter(lambda x: isinstance(x[1], dict), config.items()):
         config[k] = {**default[k], **config[k]}
@@ -194,7 +193,7 @@ def read_yaml_config(config_file=common.api_config_path, default_conf=None) -> D
             with open(config_file) as f:
                 configuration = yaml.safe_load(f)
         except IOError as e:
-            raise APIException(2004, details=e.strerror)
+            raise APIError(2004, details=e.strerror)
     else:
         configuration = None
 

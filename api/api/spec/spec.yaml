@@ -3677,6 +3677,7 @@ components:
         format: int32
         default: 500
         minimum: 1
+        maximum: 500
     list_agents:
       in: query
       name: list_agents

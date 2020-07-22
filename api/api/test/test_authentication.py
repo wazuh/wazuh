@@ -8,7 +8,7 @@ from unittest.mock import patch, MagicMock, ANY, call
 
 from werkzeug.exceptions import Unauthorized
 
-from api.api_exception import APIException
+from api.api_exception import APIError
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
@@ -85,7 +85,7 @@ def test_generate_secret_ko():
     """Verify expected exception is raised when IOError"""
     with patch('builtins.open'):
         with patch('api.authentication.chown', side_effect=PermissionError):
-            with pytest.raises(APIException, match=".* 2002 .*"):
+            with pytest.raises(APIError, match=".* 2002 .*"):
                 authentication.generate_secret()
 
 

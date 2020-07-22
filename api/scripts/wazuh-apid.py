@@ -23,7 +23,7 @@ import wazuh.security
 from api import alogging, configuration, __path__ as api_path
 # noinspection PyUnresolvedReferences
 from api import validator
-from api.api_exception import APIException
+from api.api_exception import APIError
 from api.configuration import generate_self_signed_certificate, generate_private_key
 from api.constants import CONFIG_FILE_PATH, API_LOG_FILE_PATH
 from api.middlewares import set_user_name, prevent_bruteforce_attack, prevent_denial_of_service, response_postprocessing
@@ -86,10 +86,10 @@ def start(foreground, root, config_file):
             ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
                                         keyfile=api_conf['https']['key'])
         except ssl.SSLError as e:
-            raise APIException(2003, details='Private key does not match with the certificate')
+            raise APIError(2003, details='Private key does not match with the certificate')
         except OSError as e:
             if e.errno == 22:
-                raise APIException(2003, details='PEM phrase is not correct')
+                raise APIError(2003, details='PEM phrase is not correct')
 
     # Foreground/Daemon
     if not foreground:
@@ -172,11 +172,11 @@ def start(foreground, root, config_file):
                 ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
                                             keyfile=api_conf['https']['key'])
             except ssl.SSLError:
-                raise APIException(2003, details='Private key does not match with the certificate')
+                raise APIError(2003, details='Private key does not match with the certificate')
             except IOError:
-                raise APIException(2003,
-                                   details='Please, ensure if path to certificates is correct in the configuration '
-                                           f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
+                raise APIError(2003,
+                               details='Please, ensure if path to certificates is correct in the configuration '
+                                       f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
 
     app.run(port=api_conf['port'],
             host=api_conf['host'],
