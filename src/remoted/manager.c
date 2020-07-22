@@ -181,8 +181,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     /* Check if there is a keep alive already for this agent */
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && strcmp(data->message, uname) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
-        utimes(data->keep_alive, NULL);
-        // TODO here we should call Wazuh DB to set the last keepalive
+        // TODO: Here we should call Wazuh DB to set the last keepalive
     } else {
         if (!data) {
             os_calloc(1, sizeof(pending_data_t), data);
@@ -230,7 +229,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             if (end_line = strstr(uname, "\n"), end_line){
                 *end_line = '\0';
             } else {
-                mwarn("Corrupt line found parsing uname for '%s' (incomplete). Returning.", data->keep_alive);
+                mwarn("Corrupt line found parsing uname for '%s' (incomplete). Returning.", key->id);
                 return;
             }
 
@@ -243,7 +242,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 *version = '\0';
                 version += 3;
             } else {
-                merror("Corrupt data parsing uname for '%s' (incomplete). Returning.", data->keep_alive);
+                merror("Corrupt data parsing uname for '%s' (incomplete). Returning.", key->id);
                 return;
             }
 
@@ -358,6 +357,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 mwarn("Unable to get hostname due to: '%s'", strerror(errno));
             }
 
+            // TODO: Modify this call to work with Wazuh DB
             int result = wdb_update_agent_version(atoi(key->id), os_name, os_version, os_major, os_minor, os_codename, os_platform,
                                                   os_build, uname, os_arch, version, config_sum, merged_sum, manager_host,
                                                   node_name, agent_ip ? agent_ip : NULL);
@@ -1377,9 +1377,8 @@ void *update_shared_files(__attribute__((unused)) void *none) {
 
 void free_pending_data(pending_data_t *data) {
     if (!data) return;
-    if (data->message) free(data->message);
-    if (data->keep_alive) free(data->keep_alive);
-    free(data);
+    os_free(data->message);
+    os_free(data);
 }
 
 /*

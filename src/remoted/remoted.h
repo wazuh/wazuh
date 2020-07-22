@@ -31,7 +31,6 @@
 
 typedef struct pending_data_t {
     char *message;
-    char *keep_alive;
     int changed;
 } pending_data_t;
 
