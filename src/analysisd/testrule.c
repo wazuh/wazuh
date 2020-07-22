@@ -33,9 +33,6 @@
 /** Internal Functions **/
 void OS_ReadMSG(char *ut_str);
 
-/* Analysisd function */
-RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match);
-
 void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match, OSDecoderNode *node);
 
 // Cleanup at exit
@@ -523,7 +520,7 @@ void OS_ReadMSG(char *ut_str)
                 }
 
                 /* Check each rule */
-                else if (currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match), !currently_rule) {
+                else if (currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, os_analysisd_cdblists, rulenode_pt, &rule_match), !currently_rule) {
                     continue;
                 }
 
