@@ -42,7 +42,6 @@ namespace DbSync
 
         virtual void deleteRowsByStatusField(const nlohmann::json& tableNames) = 0;
 
-        virtual void deleteRowsByStatusField(const nlohmann::json& tableNames) = 0;
         virtual ~IDbEngine() = default;
 
     protected:
