@@ -126,8 +126,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     char *os_arch = NULL;
     char *config_sum = NULL;
     char *merged_sum = NULL;
+    char *agent_ip = NULL;
     char manager_host[512] = "";
-    char agent_ip[16] = "";
     regmatch_t match[2] = { 0 };
     int match_size = 0;
     pending_data_t *data = NULL;
@@ -135,7 +135,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
 
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
         char * counter = r_msg + strlen(HC_REQUEST);
-        char * payload;
+        char * payload = NULL;
 
         if (payload = strchr(counter, ' '), !payload) {
             merror("Request control format error.");
@@ -170,7 +170,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             *r_msg = '\0';
         } else {
             mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
-            free(clean);
+            os_free(clean);
             return;
         }
     }
@@ -193,8 +193,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 /* Unlock mutex */
                 w_mutex_unlock(&lastmsg_mutex);
 
-                free(data);
-                free(clean);
+                os_free(data);
+                os_free(clean);
                 return;
             }
         }
@@ -205,7 +205,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
         } else {
             /* Update message */
             mdebug2("save_controlmsg(): inserting '%s' in global.db", uname);
-            free(data->message);
+            os_free(data->message);
             os_strdup(uname, data->message);
 
             /* Mark data as changed and insert into queue */
@@ -324,25 +324,33 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
 
             // Search for merged.mg sum
             merged_sum = end_line + 1;
-            if (*merged_sum != '\"' && *merged_sum != '!' && (end = strchr(merged_sum, ' '), end)) {
-                *end = '\0';
+            end_line = NULL;
+            if (*merged_sum != '\"' && *merged_sum != '!' && (end_line = strchr(merged_sum, ' '), end_line)) {
+                *end_line = '\0';
+                end_line++;
 
-                if (strncmp(end + 1, SHAREDCFG_FILENAME "\n", sizeof(SHAREDCFG_FILENAME "\n")-1) != 0) {
+                if (strncmp(end_line, SHAREDCFG_FILENAME "\n", sizeof(SHAREDCFG_FILENAME "\n")-1) != 0) {
                     merged_sum = NULL;
                 }
             }
+            else { // If we didn't find merged.mg we should keep the end line
+                end_line = merged_sum;
+            }
 
             // Search for the agent ip
-            const char * AGENT_IP = "#\"_agent_ip\":";
+            const char * AGENT_IP_TAG = "#\"_agent_ip\":";
+            agent_ip = end_line;
 
-            end_line = strchr(end + 1, '\n') + 1;
-            if (!strncmp(end_line, AGENT_IP, strlen(AGENT_IP))) {
-                strncpy(agent_ip, end_line + strlen(AGENT_IP), sizeof(agent_ip) - 1);
-                agent_ip[sizeof(agent_ip) - 1] = '\0';
+            end_line = strchr(agent_ip, '\n') + 1;
+            if (end_line && !strncmp(end_line, AGENT_IP_TAG, strlen(AGENT_IP_TAG))) {
+                agent_ip = end_line + strlen(AGENT_IP_TAG);
 
-                if (end = strchr(agent_ip, '\n'), end){
-                    *end = '\0';
+                if (end_line = strchr(agent_ip, '\n'), end_line){
+                    *end_line = '\0';
                 }
+            }
+            else {
+                agent_ip = NULL;
             }
 
             /* Get manager name before chroot */
@@ -352,7 +360,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
 
             int result = wdb_update_agent_version(atoi(key->id), os_name, os_version, os_major, os_minor, os_codename, os_platform,
                                                   os_build, uname, os_arch, version, config_sum, merged_sum, manager_host,
-                                                  node_name, agent_ip[0] != '\0' ? agent_ip : NULL);
+                                                  node_name, agent_ip ? agent_ip : NULL);
             
             if (OS_INVALID == result)
                 mwarn("Unable to save agent information in global.db");
