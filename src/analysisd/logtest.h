@@ -29,6 +29,7 @@ typedef struct w_logtest_session_t {
     ListNode *cdblistnode;                  ///< List of CDB lists
     ListRule *cdblistrule;                  ///< List to attach rules and CDB lists
     EventList *eventlist;                   ///< Previous events list
+    OSHash *g_rules_hash;                   ///< Hash table of rules
 
 } w_logtest_session_t;
 
