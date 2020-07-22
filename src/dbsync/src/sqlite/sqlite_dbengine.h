@@ -117,9 +117,9 @@ class SQLiteDBEngine : public DbSync::IDbEngine
         void setMaxRows(const std::string& table,
                         const unsigned long long maxRows) override;
 
-        virtual void initializeStatusField(const nlohmann::json& tableNames) override;
+        void initializeStatusField(const nlohmann::json& tableNames) override;
 
-        virtual void deleteRowsByStatusField(const nlohmann::json& tableNames) override;
+        void deleteRowsByStatusField(const nlohmann::json& tableNames) override;
 
     private:
         void initialize(const std::string& path,
