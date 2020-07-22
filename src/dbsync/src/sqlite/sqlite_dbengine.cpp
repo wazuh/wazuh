@@ -281,14 +281,19 @@ bool SQLiteDBEngine::loadFieldData(const std::string& table)
 
 ColumnType SQLiteDBEngine::columnTypeName(const std::string& type)
 {
-    for (const auto& col : kColumnTypeNames)
+    ColumnType retVal { Unknown };
+    const auto& it { std::find_if(ColumnTypeNames.begin(), 
+                                 ColumnTypeNames.end(),
+                                 [&type] (const std::pair<ColumnType, std::string>& col)
+                                 {
+                                     return 0 == col.second.compare(type);
+                                 }) };
+
+    if (ColumnTypeNames.end() != it)
     {
-        if (col.second == type)
-        {
-            return col.first;
-        }
+        retVal = it->first;
     }
-    return Unknown;
+    return retVal;
 }
 
 void SQLiteDBEngine::bindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt, 
@@ -945,7 +950,7 @@ bool SQLiteDBEngine::getRowsToModify(const std::string& table,
 
 bool SQLiteDBEngine::updateRows(const std::string& table,
                                 const std::vector<std::string>& primaryKeyList,
-                                std::vector<Row>& rowKeysValue)
+                                const std::vector<Row>& rowKeysValue)
 {
     auto transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
     
