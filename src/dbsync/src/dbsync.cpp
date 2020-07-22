@@ -94,7 +94,7 @@ void dbsync_teardown(void)
 }
 
 TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
-                             const char**        tables,
+                             const cJSON*        tables,
                              const int           /*thread_number*/,
                              const int           /*max_queue_size*/,
                              result_callback_t   callback)
@@ -109,7 +109,8 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
     {
         try
         {
-            ret_val = DBSyncImplementation::instance().createTransaction(handle, tables);
+            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(tables)};
+            ret_val = DBSyncImplementation::instance().createTransaction(handle, spJsonBytes.get());
         }
         catch(const DbSync::dbsync_error& ex)
         {

@@ -23,7 +23,7 @@ public:
     CmdLineArgs(const int argc, const char* argv[])
     : m_configFile{ paramValueOf(argc, argv, "-c") }
     , m_outputFolder{ paramValueOf(argc, argv, "-o") }
-    , m_snapshots{ splitSnapshots(paramValueOf(argc, argv, "-s")) }
+    , m_actions{ splitActions(paramValueOf(argc, argv, "-a")) }
     {}
 
     const std::string& configFile() const
@@ -31,9 +31,9 @@ public:
         return m_configFile;
     }
 
-    const std::vector<std::string>& snapshots() const
+    const std::vector<std::string>& actions() const
     {
-        return m_snapshots;
+        return m_actions;
     }
 
     const std::string& outputFolder() const
@@ -47,7 +47,7 @@ public:
                   << "Options:\n"
                   << "\t-h \t\t\tShow this help message\n"
                   << "\t-c JSON_CONFIG_FILE\tSpecifies the json config file to initialize the database.\n"
-                  << "\t-s SNAPSHOT_LIST\tSpecifies the list of snapshots to exercise the dabase.\n"
+                  << "\t-a ACTION_LIST\tSpecifies the list of actions to exercise the database.\n"
                   << "\t-o OUTPUT_FOLDER\tSpecifies the output folder path where the results will be generated.\n"         
                   << "\nExample:"
                   << "\n\t./dbsync_test_tool -c config.json -s input1.json,input2.json,input3.json -o ./output\n"
@@ -75,22 +75,22 @@ private:
         };
     }
 
-    static std::vector<std::string> splitSnapshots(const std::string& values)
+    static std::vector<std::string> splitActions(const std::string& values)
     {
-        std::vector<std::string> snapshots;
+        std::vector<std::string> actions;
         std::stringstream ss{ values };
         while (ss.good())
         {
             std::string substr;
             getline(ss, substr, ','); // Getting each string between ',' character
-            snapshots.push_back(std::move(substr));
+            actions.push_back(std::move(substr));
         }
-        return snapshots;
+        return actions;
     }
 
     const std::string m_configFile;
     const std::string m_outputFolder;
-    const std::vector<std::string> m_snapshots;
+    const std::vector<std::string> m_actions;
 };
 
 #endif // _CMD_LINE_ARGS_HELPER_H_
