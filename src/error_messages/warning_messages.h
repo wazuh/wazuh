@@ -41,4 +41,10 @@
 #define FIM_WARN_WHODATA_ADD_RULE               "(6926): Unable to add audit rule for '%s'"
 #define FIM_DB_FULL_ALERT                       "(6927): Sending DB 100%% full alert."
 
+/* Monitord warning messages */
+#define ROTATE_LOG_LONG_PATH                    "(6928): The path of the rotated log is too long."
+#define ROTATE_JSON_LONG_PATH                   "(6929): The path of the rotated json is too long."
+#define COMPRESSED_LOG_LONG_PATH                "(6930): The path of the compressed log is too long."
+#define COMPRESSED_JSON_LONG_PATH               "(6931): The path of the compressed json is too long."
+
 #endif /* WARN_MESSAGES_H */
