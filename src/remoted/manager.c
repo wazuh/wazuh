@@ -365,14 +365,14 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             if (OS_INVALID == result)
                 mwarn("Unable to save agent information in global.db");
 
-            free(os_major);
-            free(os_arch);
-            free(os_minor);
-            free(os_build);
+            os_free(os_major);
+            os_free(os_arch);
+            os_free(os_minor);
+            os_free(os_build);
         }
     }
 
-    free(clean);
+    os_free(clean);
 }
 
 void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir) {
