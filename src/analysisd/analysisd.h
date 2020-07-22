@@ -79,6 +79,7 @@ void * asyscom_main(__attribute__((unused)) void * arg) ;
  * @brief Check that request is to get a configuration
  * @param command message received from api
  * @param output the configuration to send
+ * @return the size of the string "output" containing the configuration
  */
 size_t asyscom_dispatch(char * command, char ** output);
 
@@ -86,9 +87,20 @@ size_t asyscom_dispatch(char * command, char ** output);
  * @brief Process the message received to send the configuration requested
  * @param section contains the name of configuration requested
  * @param output the configuration to send
+ * @return the size of the string "output" containing the configuration
  */
 size_t asyscom_getconfig(const char * section, char ** output);
 
+/**
+ * @brief Check if a rule matches the event
+ * @param lf event to be processed
+ * @param last_events list of previous events processed
+ * @param cdblists list of cdbs
+ * @param curr_node rule to compare with the event "lf"
+ * @param rule_match stores the regex of the rule
+ * @return the rule information if it matches, otherwise null
+ */
+RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, EventList *last_events, ListNode *cdblists, RuleNode *curr_node, regex_matching *rule_match);
 
 #define WM_ANALYSISD_LOGTAG ARGV0 "" // Tag for log messages
 
