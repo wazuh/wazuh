@@ -31,6 +31,10 @@ public:
         {
             return std::make_unique<CloseTransactionAction>();
         }
+        else if (0 == actionCode.compare("dbsync_set_table_max_rows"))
+        {
+            return std::make_unique<SetMaxRowsAction>();
+        }
         else
         {
             throw std::runtime_error { "Invalid action: " + actionCode };

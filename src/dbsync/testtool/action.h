@@ -118,4 +118,28 @@ struct CloseTransactionAction final : public IAction
     }
 };
 
+struct SetMaxRowsAction final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        const auto table{value["body"]["table"].get<std::string>()};
+        const auto maxRows{value["body"]["max_rows"].get<unsigned int>()};
+        const auto retVal
+        {
+            dbsync_set_table_max_rows(ctx->handle,
+                                      table.c_str(),
+                                      maxRows)
+        };
+
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"dbsync_set_table_max_rows", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
+
 #endif //_ACTION_H
