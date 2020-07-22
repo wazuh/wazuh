@@ -33,7 +33,7 @@
 /** Internal Functions **/
 void OS_ReadMSG(char *ut_str);
 
-void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match, OSDecoderNode *node);
+void DecodeEvent(Eventinfo *lf, OSHash *rules_hash, regex_matching *decoder_match, OSDecoderNode *node);
 
 // Cleanup at exit
 static void onexit();
@@ -483,7 +483,7 @@ void OS_ReadMSG(char *ut_str)
 
             /* Decode event */
             node = OS_GetFirstOSDecoder(lf->program_name);
-            DecodeEvent(lf, &decoder_match, node);
+            DecodeEvent(lf, Config.g_rules_hash, &decoder_match, node);
 
             /* Run accumulator */
             if ( lf->decoder_info->accumulate == 1 ) {
