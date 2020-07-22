@@ -81,7 +81,6 @@ EXPORTED TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
 /**
  * @brief Closes the \p txn database transaction.
  *
- * @param handle  Handle obtained from the \ref dbsync_create method call.
  * @param txn     Database transaction to be closed.
  *
  * @return 0 if succeeded,
@@ -94,7 +93,6 @@ EXPORTED int dbsync_close_txn(const DBSYNC_HANDLE handle,
  * @brief Synchronizes the \p js_input data using the \p txn current
  *  database transaction.
  *
- * @param handle   Handle obtained from the \ref dbsync_create method call.
  * @param txn      Database transaction to be used for \ref js_input data sync.
  * @param js_input JSON information to be synchronized.
  *
@@ -194,7 +192,6 @@ EXPORTED int dbsync_delete_rows(const DBSYNC_HANDLE handle,
 /**
  * @brief Gets the deleted rows (diff) from the database.
  *
- * @param handle   Handle obtained from the \ref dbsync_create method call.
  * @param txn      Database transaction to be used.
  * @param callback This callback will be called for each result.
  *

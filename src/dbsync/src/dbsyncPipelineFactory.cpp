@@ -87,7 +87,7 @@ namespace DbSync
             return std::make_shared<DispatchCallbackNode>
             (
                 std::bind(&Pipeline::dispatchResult, this, std::placeholders::_1),
-                threadNumber
+                threadNumber ? threadNumber : std::thread::hardware_concurrency()
             );
         }
         std::shared_ptr<SyncRowNode> getSyncNode(const int threadNumber)
@@ -95,15 +95,26 @@ namespace DbSync
             return std::make_shared<SyncRowNode>
             (
                 std::bind(&Pipeline::processSyncRow, this, std::placeholders::_1),
-                threadNumber
+                threadNumber ? threadNumber : std::thread::hardware_concurrency()
             );
         }
 
         SyncResult processSyncRow(const nlohmann::json& value)
         {
-            ReturnTypeCallback type{ MODIFIED };
-            const nlohmann::json result{ value };
-            // DBSyncImplementation::instance().syncTxRow(m_handle, m_txnContext, value, type, result);
+            ReturnTypeCallback type{ DB_ERROR };
+            nlohmann::json result{ value };
+            try
+            {
+                // DBSyncImplementation::instance().syncTxRow(m_handle, m_txnContext, value, type, result);
+            }
+            catch(const DbSync::max_rows_error& /*ex*/)
+            {
+                result = MAX_ROWS;
+            }
+            catch(...)
+            {
+                //we'll notify with DB_ERROR.
+            }
             return std::make_tuple<ReturnTypeCallback, std::string>(std::move(type), result[0]);
         }
         void dispatchResult(const SyncResult& result)

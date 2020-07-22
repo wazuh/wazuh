@@ -90,6 +90,7 @@ DBSYNC_HANDLE dbsync_create(const HostType     host_type,
 
 void dbsync_teardown(void)
 {
+    PipelineFactory::instance().release();
     DBSyncImplementation::instance().release();
 }
 
