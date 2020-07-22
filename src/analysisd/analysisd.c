@@ -56,7 +56,7 @@ void OS_ReadMSG(int m_queue);
 static void LoopRule(RuleNode *curr_node, FILE *flog);
 
 /* For decoders */
-void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match, OSDecoderNode *node);
+void DecodeEvent(Eventinfo *lf, OSHash *rules_hash, regex_matching *decoder_match, OSDecoderNode *node);
 int DecodeSyscheck(Eventinfo *lf, _sdb *sdb);
 // Decode events in json format
 int decode_fim_event(_sdb *sdb, Eventinfo *lf);
@@ -1507,7 +1507,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, EventList *last_events, ListNode *c
 #endif
 
         while (child_node) {
-            child_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, os_analysisd_cdblists, child_node, rule_match);
+            child_rule = OS_CheckIfRuleMatch(lf, last_events, cdblists, child_node, rule_match);
             if (child_rule != NULL) {
                 if (!child_rule->prev_rule) {
                     child_rule->prev_rule = rule;
@@ -2227,7 +2227,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
                 }
             } else {
                 node = OS_GetFirstOSDecoder(lf->program_name);
-                DecodeEvent(lf, &decoder_match, node);
+                DecodeEvent(lf, Config.g_rules_hash, &decoder_match, node);
             }
 
             free(msg);
@@ -2451,7 +2451,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             }
 
             /* Check each rule */
-            else if ((t_currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, os_analysisd_cdblists,rulenode_pt, &rule_match))
+            else if ((t_currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, os_analysisd_cdblists, rulenode_pt, &rule_match))
                         == NULL) {
                 continue;
             }
