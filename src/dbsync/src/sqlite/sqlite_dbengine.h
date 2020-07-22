@@ -114,9 +114,9 @@ class SQLiteDBEngine : public DbSync::IDbEngine
                                       const nlohmann::json& data,
                                       const DbSync::ResultCallback callback) override;
 
-        virtual void initializeStatusField(const std::vector<std::string>& tableNames) override;
+        virtual void initializeStatusField(const nlohmann::json& tableNames) override;
 
-        virtual void deleteRowsByStatusField(const std::vector<std::string>& tableNames) override;
+        virtual void deleteRowsByStatusField(const nlohmann::json& tableNames) override;
 
     private:
         void initialize(const std::string& path,
