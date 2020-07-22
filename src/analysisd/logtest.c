@@ -120,3 +120,30 @@ void w_logtest_remove_session(int token) {
 void w_logtest_check_active_sessions() {
 
 }
+
+
+int w_logtest_fts_init(OSList **fts_list, OSHash **fts_store) {
+
+    int list_size = getDefine_Int("analysisd", "fts_list_size", 12, 512);
+
+    if (*fts_list = OSList_Create(), *fts_list == NULL) {
+        merror(LIST_ERROR);
+        return 0;
+    }
+
+    if (!OSList_SetMaxSize(*fts_list, list_size)) {
+        merror(LIST_SIZE_ERROR);
+        return 0;
+    }
+
+    if (*fts_store = OSHash_Create(), *fts_store == NULL) {
+        merror(HASH_ERROR);
+        return 0;
+    }
+    if (!OSHash_setSize(*fts_store, 2048)) {
+        merror(LIST_SIZE_ERROR);
+        return 0;
+    }
+
+    return 1;
+}
