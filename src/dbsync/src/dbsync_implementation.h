@@ -51,8 +51,8 @@ namespace DbSync
                         const unsigned long long maxRows);
 
         TXN_HANDLE createTransaction(const DBSYNC_HANDLE handle,
-                                     const char** tables);
-
+                                     const char* tables);
+                                     
         void closeTransaction(const DBSYNC_HANDLE handle,
                               const TXN_HANDLE txnHandle);
 
@@ -61,26 +61,10 @@ namespace DbSync
 
         struct TransactionContext
         {
-            explicit TransactionContext(const char** tables)
-            {
-                auto rawElement { *tables };
-                if (nullptr != rawElement)
-                {
-                    while ('\0' != *rawElement)
-                    {
-                        m_tables.push_back(std::string(rawElement));
-                        rawElement += m_tables.back().size() + 1;
-                    }
-                } 
-                else 
-                {
-                    throw dbsync_error
-                    {
-                        INVALID_TRANSACTION
-                    };
-                }
-            }
-            std::vector<std::string> m_tables;
+            explicit TransactionContext(const nlohmann::json& tables) 
+            : m_tables(std::move(tables))
+            {}
+            nlohmann::json m_tables;
         };
         class DbEngineContext
         {

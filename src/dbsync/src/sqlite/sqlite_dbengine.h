@@ -39,7 +39,7 @@ enum ColumnType
     Blob,
 };
 
-const std::map<ColumnType, std::string> kColumnTypeNames = 
+const std::map<ColumnType, std::string> ColumnTypeNames = 
 {
     { Unknown        , "UNKNOWN"         },
     { Text           , "TEXT"            },
@@ -117,9 +117,9 @@ class SQLiteDBEngine : public DbSync::IDbEngine
         void setMaxRows(const std::string& table,
                         const unsigned long long maxRows) override;
 
-        void initializeStatusField(const std::vector<std::string>& tableNames) override;
+        void initializeStatusField(const nlohmann::json& tableNames) override;
 
-        void deleteRowsByStatusField(const std::vector<std::string>& tableNames) override;
+        void deleteRowsByStatusField(const nlohmann::json& tableNames) override;
 
     private:
         void initialize(const std::string& path,
@@ -210,7 +210,7 @@ class SQLiteDBEngine : public DbSync::IDbEngine
 
         bool updateRows(const std::string& table,
                         const std::vector<std::string>& primaryKeyList,
-                        std::vector<Row>& rowKeysValue);
+                        const std::vector<Row>& rowKeysValue);
 
         bool getFieldValueFromTuple(const std::pair<const std::string, TableField> &value,
                                     std::string& resultValue,
