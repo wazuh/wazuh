@@ -30,7 +30,7 @@ void *OSSECAlert_Decoder_Init()
  * Examples:
  *
  */
-void *OSSECAlert_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *decoder_match)
+void *OSSECAlert_Decoder_Exec(Eventinfo *lf, OSHash *rules_hash, __attribute__((unused)) regex_matching *decoder_match)
 {
     char *oa_id = 0;
     char *oa_location;
@@ -66,7 +66,7 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_match
     *tmp_str = '\0';
 
     /* Get rule structure */
-    rule_pointer = (RuleInfo *) OSHash_Get(Config.g_rules_hash, oa_id);
+    rule_pointer = (RuleInfo *) OSHash_Get(rules_hash, oa_id);
     if (!rule_pointer) {
         mwarn("Rule id '%s' not found internally: %s", oa_id, lf->log);
         *tmp_str = ' ';
