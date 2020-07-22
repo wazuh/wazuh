@@ -68,6 +68,10 @@ struct UpdateWithSnapshotAction final : public IAction
     }
 };
 
+static void dummyCallback(ReturnTypeCallback, const cJSON*)
+{
+}
+
 
 struct CreateTransactionAction final : public IAction
 {
@@ -82,16 +86,16 @@ struct CreateTransactionAction final : public IAction
         ctx->txnContext = dbsync_create_txn(ctx->handle,
                                      jsonTables.get(),
                                      0,
-                                     0,
-                                     (result_callback_t)0x1);
+                                     100,
+                                     dummyCallback);
 
-            std::stringstream oFileName;
-            oFileName << "action_" << ctx->currentId << ".json";
-            const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
 
-            std::ofstream outputFile{ outputFileName };
-            const nlohmann::json jsonResult = { {"txn_context", nullptr != ctx->txnContext } };
-            outputFile << jsonResult.dump() << std::endl;
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"txn_context", nullptr != ctx->txnContext } };
+        outputFile << jsonResult.dump() << std::endl;
     }
 };
 
