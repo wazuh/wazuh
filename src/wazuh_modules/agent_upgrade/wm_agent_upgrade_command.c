@@ -17,6 +17,8 @@
 static void wm_agent_create_upgrade_tasks(const cJSON *agents, wm_upgrade_task *task, const char* command, cJSON* response, cJSON* failures);
 static void wm_agent_parse_task_information(cJSON *json_api, const cJSON* json_task_module);
 static cJSON *wm_agent_send_task_information(const cJSON *message_object);
+static cJSON *wm_agent_send_task_information_master(const cJSON *message_object);
+static cJSON *wm_agent_send_task_information_worker(const cJSON *message_object);
 
 cJSON *wm_agent_process_upgrade_command(const cJSON* params, const cJSON* agents) {
     cJSON *json_api = NULL;
@@ -141,6 +143,17 @@ static void wm_agent_parse_task_information(cJSON *json_api, const cJSON* json_t
  *  }]
  * */
 static cJSON *wm_agent_send_task_information(const cJSON *message_object) {
+    if (w_is_worker()) {
+        return wm_agent_send_task_information_worker(message_object);
+    } else {
+        return wm_agent_send_task_information_master(message_object);
+    }
+}
+
+/**
+ * Sends the task information locally to the task module queue
+ * */
+static cJSON *wm_agent_send_task_information_master(const cJSON *message_object) {
     cJSON* response = NULL;
     int sock = OS_ConnectUnixDomain(WM_TASK_MODULE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
     if (sock == OS_SOCKTERR) {
@@ -175,4 +188,14 @@ static cJSON *wm_agent_send_task_information(const cJSON *message_object) {
         os_free(buffer);
     }
     return response;
+}
+
+/**
+ * Sends a `send_sync` message into clusterd that will be received by the master node
+ * */
+static cJSON *wm_agent_send_task_information_worker(const cJSON *message_object) {
+    char response[OS_MAXSTR];
+    cJSON* payload = w_create_send_sync_payload("task_manager", cJSON_Duplicate(message_object, 0));
+    w_send_clustered_message("send_sync", cJSON_PrintUnformatted(payload), response);      
+    return cJSON_Parse(response);  
 }

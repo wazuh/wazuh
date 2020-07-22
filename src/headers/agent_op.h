@@ -11,6 +11,8 @@
 #ifndef AGENT_OP_H
 #define AGENT_OP_H
 
+#include "external/cJSON/cJSON.h"
+
 /**
  * @brief Check if syscheck is to be executed/restarted
  * @return 1 on success or 0 on failure (shouldn't be executed now).
@@ -96,7 +98,13 @@ int w_request_agent_add_clustered(char *err_response, const char *name, const ch
 
 // Send a clustered agent remove request.
 int w_request_agent_remove_clustered(char *err_response, const char* agent_id, int purge);
+
+//Sends message thru the cluster
+int w_send_clustered_message(const char* command, const char* payload, char* response);
 #endif
+
+//Alloc and create send_sync command payload
+cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message);
 
 // Get the agent id
 char * get_agent_id_from_name(const char *agent_name);

@@ -24,14 +24,6 @@ static struct {
     unsigned rootcheck:1;
 } os_restart;
 
-#ifndef WIN32
-//Sends message thru the cluster
-static int w_send_clustered_message(const char* command, const char* payload, char* response);
-#endif
-
-//Alloc and create send_sync command payload
-static cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message);
-
 //Alloc and create an agent addition command payload
 static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id);
 
@@ -644,7 +636,7 @@ int auth_close(int sock) {
     return (sock >= 0) ? close(sock) : 0;
 }
 
-static cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message) {
+cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message) {
     cJSON * request = cJSON_CreateObject();
     cJSON * arguments = cJSON_CreateObject();
     
@@ -864,7 +856,7 @@ int w_request_agent_add_local(int sock, char *id, const char *name, const char *
     return result; 
 }
 #ifndef WIN32
-static int w_send_clustered_message(const char* command, const char* payload, char* response) {
+int w_send_clustered_message(const char* command, const char* payload, char* response) {
     char sockname[PATH_MAX + 1] = {0};
     int sock = -1;
     int result = 0;
