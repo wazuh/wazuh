@@ -160,15 +160,21 @@ cJSON* wm_agent_upgrade_create_agent_tasks(const cJSON *agents, void *task, wm_u
         } else if (result == OSHASH_DUPLICATED) {
             cJSON *task_message = wm_agent_upgrade_parse_response_message(WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS, upgrade_error_codes[WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS], &(agent_id->valueint), NULL, NULL);
             cJSON_AddItemToArray(json_api, task_message);
+            os_free(agent_task);
         } else {
             cJSON *task_message = wm_agent_upgrade_parse_response_message(WM_UPGRADE_UNKNOWN_ERROR, upgrade_error_codes[WM_UPGRADE_UNKNOWN_ERROR], &(agent_id->valueint), NULL, NULL);
             cJSON_AddItemToArray(json_api, task_message);
+            os_free(agent_task);
         }
     }
 
     // Update tasks with task module infomation
     if (cJSON_GetArraySize(json_task_module)) {
         wm_agent_upgrade_parse_create_tasks_information(json_api, json_task_module);
+    } else if (WM_UPGRADE_UPGRADE == command) {
+        wm_agent_upgrade_free_upgrade_task((wm_upgrade_task *)task);
+    } else if (WM_UPGRADE_UPGRADE_CUSTOM == command) {
+        wm_agent_upgrade_free_upgrade_custom_task((wm_upgrade_custom_task *)task);
     }
 
     cJSON_Delete(json_task_module);
@@ -207,6 +213,8 @@ void wm_agent_upgrade_parse_create_tasks_information(cJSON *json_api, const cJSO
             cJSON_AddItemToArray(json_api, json_message);
         }
     }
+
+    cJSON_Delete(task_module_response);
 }
 
 cJSON *wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
