@@ -74,8 +74,8 @@ EXPORTED void dbsync_teardown(void);
  */
 EXPORTED TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
                                       const cJSON*        tables,
-                                      const int           thread_number,
-                                      const int           max_queue_size,
+                                      const unsigned int  thread_number,
+                                      const unsigned int  max_queue_size,
                                       result_callback_t   callback);
 
 /**
