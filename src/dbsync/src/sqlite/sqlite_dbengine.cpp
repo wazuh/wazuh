@@ -105,7 +105,6 @@ void SQLiteDBEngine::syncTableRowData(const std::string& /*table*/,
 void SQLiteDBEngine::initializeStatusField(const nlohmann::json& tableNames) 
 {
     const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
- 
     for (const auto& tableValue : tableNames)
     {
         const auto table { tableValue.get<std::string>() };

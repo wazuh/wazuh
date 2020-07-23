@@ -13,6 +13,7 @@
 #include <mutex>
 #include "dbsync.h"
 #include "dbsync_implementation.h"
+#include "dbsyncPipelineFactory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -89,27 +90,36 @@ DBSYNC_HANDLE dbsync_create(const HostType     host_type,
 
 void dbsync_teardown(void)
 {
+    PipelineFactory::instance().release();
     DBSyncImplementation::instance().release();
 }
 
 TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
                              const cJSON*        tables,
-                             const int           /*thread_number*/,
-                             const int           /*max_queue_size*/,
+                             const unsigned int  thread_number,
+                             const unsigned int  max_queue_size,
                              result_callback_t   callback)
 {
-    TXN_HANDLE ret_val{ nullptr };
     std::string errorMessage;
-    if (!tables || !callback)
+    TXN_HANDLE txn{ nullptr };
+    if (!handle || !tables || !max_queue_size || !callback)
     {
-        errorMessage += "Invalid tables or callback.";
+        errorMessage += "Invalid parameters.";
     }
     else
     {
         try
         {
+            const auto callbackWrapper
+            {
+                [callback](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+                {
+                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    callback(result, spJson.get());
+                }
+            };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(tables)};
-            ret_val = DBSyncImplementation::instance().createTransaction(handle, spJsonBytes.get());
+            txn = PipelineFactory::instance().create(handle, spJsonBytes.get(), thread_number, max_queue_size, callbackWrapper);
         }
         catch(const DbSync::dbsync_error& ex)
         {
@@ -121,40 +131,67 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
         }
     }
     log_message(errorMessage);
-    return ret_val;
+    return txn;
 }
 
-int dbsync_close_txn(const DBSYNC_HANDLE handle,
-                     const TXN_HANDLE txn)
+int dbsync_close_txn(const TXN_HANDLE txn)
 {
-    auto ret_val{ -1l };
+    auto ret_val { -1 };
     std::string errorMessage;
-    
-    try
+    if (!txn)
     {
-        DBSyncImplementation::instance().closeTransaction(handle, txn);
-        ret_val = 0;
+        errorMessage += "Invalid txn.";
     }
-    catch(const DbSync::dbsync_error& ex)
+    else
     {
-        errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
-        ret_val = ex.id();
+        try
+        {
+            PipelineFactory::instance().destroy(txn);
+            ret_val = 0;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+            ret_val = ex.id();
+        }
+        catch(...)
+        {
+            errorMessage += "Unrecognized error.";
+        }
     }
-    catch(...)
-    {
-        errorMessage += "Unrecognized error.";
-    }
-    
     log_message(errorMessage);
     return ret_val;
 }
 
-int dbsync_sync_txn_row(const DBSYNC_HANDLE /*handle*/,
-                        const TXN_HANDLE /*txn*/,
-                        const cJSON*     /*js_input*/)
+int dbsync_sync_txn_row(const TXN_HANDLE txn,
+                        const cJSON*     js_input)
 {
-    // Dummy function for now.
-    return 0;
+    auto ret_val { -1 };
+    std::string error_message;
+    if (!txn || !js_input)
+    {
+        error_message += "Invalid txn or json.";
+    }
+    else
+    {
+        try
+        {
+            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(js_input)};
+            PipelineFactory::instance().pipeline(txn)->syncRow(spJsonBytes.get());
+            ret_val = 0;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+            ret_val = ex.id();
+        }
+        catch(...)
+        {
+            error_message += "Unrecognized error.";
+        }
+    }
+    log_message(error_message);
+    return ret_val;
 }
 
 int dbsync_add_table_relationship(const DBSYNC_HANDLE /*handle*/,
@@ -312,12 +349,43 @@ int dbsync_delete_rows(const DBSYNC_HANDLE /*handle*/,
     return 0;
 }
 
-int dbsync_get_deleted_rows(const DBSYNC_HANDLE /*handle*/,
-                            const TXN_HANDLE  /*txn*/,
-                            result_callback_t /*callback*/)
+int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
+                            result_callback_t callback)
 {
-    // Dummy function for now.
-    return 0;
+    auto ret_val { -1 };
+    std::string error_message;
+    if (!txn || !callback)
+    {
+        error_message += "Invalid txn or callback.";
+    }
+    else
+    {
+        try
+        {
+            const auto callbackWrapper
+            {
+                [callback](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+                {
+                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    callback(result, spJson.get());
+                }
+            };
+            PipelineFactory::instance().pipeline(txn)->getDeleted(callbackWrapper);
+            ret_val = 0;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+            ret_val = ex.id();
+        }
+        catch(...)
+        {
+            error_message += "Unrecognized error.";
+        }
+    }
+    log_message(error_message);
+
+    return ret_val;
 }
 
 int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
