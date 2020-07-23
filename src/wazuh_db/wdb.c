@@ -153,49 +153,52 @@ wdb_t * wdb_open_global2() {
     sqlite3 *db = NULL;
     wdb_t * wdb = NULL;
 
-    // Find BD in pool
-
     w_mutex_lock(&pool_mutex);
 
+    // Finds DB in pool
     if (wdb = (wdb_t *)OSHash_Get(open_dbs, WDB2_GLOB_NAME), wdb) {
-        goto success;
-    }
-
-    // Try to open DB
-
-    snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+        // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
+        w_mutex_lock(&wdb->mutex); 
+        wdb->refcount++;
+        w_mutex_unlock(&pool_mutex);
+        return wdb;
     
-    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-        mdebug1("Global database not found, creating.");
-        sqlite3_close_v2(db);
-
-        if (wdb_create_global(path) < 0) {
-            merror("Couldn't create SQLite database '%s'", path);
-            goto end;
-        }
-
-        // Retry to open
-
+    } else {
+        // Try to open DB
+        snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+        
         if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-            merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
+            mdebug1("Global database not found, creating.");
             sqlite3_close_v2(db);
-            goto end;
+
+            // Creating database
+            if (wdb_create_global(path) < 0) {
+                merror("Couldn't create SQLite database '%s'", path);
+                w_mutex_unlock(&pool_mutex);
+                return wdb;
+
+            // Retry to open
+            } if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+                merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
+                sqlite3_close_v2(db);
+                w_mutex_unlock(&pool_mutex);
+                return wdb;    
+            } 
+
+            wdb = wdb_init(db, WDB2_GLOB_NAME);
+            wdb_pool_append(wdb);
+
+        } 
+        else {
+            wdb = wdb_init(db, WDB2_GLOB_NAME);
+            wdb_pool_append(wdb);
         }
-
-        wdb = wdb_init(db, WDB2_GLOB_NAME);
-        wdb_pool_append(wdb);
-
-    } 
-    else {
-        wdb = wdb_init(db, WDB2_GLOB_NAME);
-        wdb_pool_append(wdb);
     }
 
-success:
-    w_mutex_lock(&wdb->mutex);
+    // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
+    w_mutex_lock(&wdb->mutex); 
     wdb->refcount++;
 
-end:
     w_mutex_unlock(&pool_mutex);
     return wdb;
 }
