@@ -213,8 +213,6 @@ void wm_agent_upgrade_parse_create_tasks_information(cJSON *json_api, const cJSO
             cJSON_AddItemToArray(json_api, json_message);
         }
     }
-
-    cJSON_Delete(task_module_response);
 }
 
 cJSON *wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
