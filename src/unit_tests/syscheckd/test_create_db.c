@@ -4038,7 +4038,9 @@ int main(void) {
         cmocka_unit_test(test_fim_checker_fim_regular_ignore),
         cmocka_unit_test(test_fim_checker_fim_regular_restrict),
         cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory, setup_struct_dirent, teardown_struct_dirent),
+        #ifndef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory_on_max_recursion_level, setup_struct_dirent, teardown_struct_dirent),
+        #endif
 
         /* fim_directory */
         cmocka_unit_test_setup_teardown(test_fim_directory, setup_struct_dirent, teardown_struct_dirent),
