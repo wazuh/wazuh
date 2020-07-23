@@ -10,7 +10,7 @@
  */
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_tasks.h"
-#include "wm_agent_parsing.h"
+#include "wm_agent_upgrade_parsing.h"
 #include "os_net/os_net.h"
 #include "shared.h"
 
@@ -33,13 +33,6 @@ static int wm_agent_upgrade_create_task_entry(const int agent_id, wm_task*  agen
  * @param agent_id id of the agent
  * */
 static void wm_agent_upgrade_remove_entry(const int agent_id);
-
-/**
- * Check whether an upgrade task for an agent is present or not
- * @param agent_id id of the agent
- * @return task_id if task is present, OS_INVALID otherwise
- * */
-static int wm_agent_upgrade_task_present(const int agent_id);
 
 /**
  * Sends json with task information to the task module and parses the response
@@ -140,16 +133,6 @@ void wm_agent_upgrade_remove_entry(const int agent_id) {
     char agent_id_string[128];
     sprintf(agent_id_string, "%d", agent_id);
     OSHash_Delete_ex(task_table_by_agent_id, agent_id_string);
-}
-
-int wm_agent_upgrade_task_present(const int agent_id) {
-    char agent_id_string[128];
-    sprintf(agent_id_string, "%d", agent_id);
-    wm_task *agent_task = (wm_task *)OSHash_Get_ex(task_table_by_agent_id, agent_id_string);
-    if (agent_task) {
-        return agent_task->task_id;
-    }
-    return OS_INVALID;
 }
 
 cJSON* wm_agent_upgrade_create_agent_tasks(const cJSON *agents, void *task, wm_upgrade_command command) {

@@ -10,7 +10,7 @@
  */
 
 #include "wazuh_modules/wmodules.h"
-#include "wm_agent_parsing.h"
+#include "wm_agent_upgrade_parsing.h"
 #include "wm_agent_upgrade_tasks.h"
 #include "os_net/os_net.h"
 
