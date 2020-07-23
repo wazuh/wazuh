@@ -56,7 +56,7 @@ def get_ciscat_results(agent_list=None, offset=0, limit=common.database_limit, s
                     item['agent_id'] = agent
                     result.affected_items.append(item)
                 result.total_affected_items += data['totalItems']
-        except WazuhError as e:
+        except WazuhResourceNotFound as e:
             result.add_failed_item(id_=agent, error=e)
 
     result.affected_items = merge(*[[res] for res in result.affected_items],

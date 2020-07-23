@@ -212,11 +212,11 @@ def test_agent_get_agent_by_name(sqlite_mock, name, expected_id):
         agent_by_name = get_agent_by_name(name=name, select=['id'])
         assert next(iter(agent_by_name.affected_items[0].values())) == expected_id
     elif not expected_id:
-        with pytest.raises(WazuhError, match='.* 1754 .*'):
+        with pytest.raises(WazuhResourceNotFound, match='.* 1754 .*'):
             get_agent_by_name(name=name)
     else:
         with patch('wazuh.agent.get_agents', side_effect=WazuhError(expected_id)):
-            with pytest.raises(WazuhError, match=f'.* (1754|{expected_id}) .*'):
+            with pytest.raises(WazuhException, match=f'.* (1754|{expected_id}) .*'):
                 get_agent_by_name(name=name)
 
 
@@ -253,7 +253,7 @@ def test_agent_get_agents_in_group(sqlite_mock, mock_get_groups, mock_get_agents
             assert expected_agent == next(iter(affected_agent.values()))
     else:
         # If not `group_exists`, expect an error
-        with pytest.raises(WazuhError, match='.* 1710 .*'):
+        with pytest.raises(WazuhResourceNotFound, match='.* 1710 .*'):
             get_agents_in_group(group_list=[group])
 
 
@@ -759,7 +759,7 @@ def test_agent_remove_agent_from_group_exceptions(group_mock, agents_info_mock, 
     try:
         remove_agent_from_group(group_list=[group_id], agent_list=[agent_id])
         pytest.fail('An exception should be raised for the given configuration.')
-    except WazuhError as error:
+    except (WazuhError, WazuhResourceNotFound) as error:
         assert error == expected_error
 
 
@@ -838,7 +838,7 @@ def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_get_age
             f' - The "failed_items" received is: "{set(result.failed_items.keys())}"\n' \
             f' - The "failed_items" expected was "{set([expected_error])}"\n' \
             f' - The difference between them is "{set(result.failed_items.keys()).difference(set([expected_error]))}"\n'
-    except WazuhError as error:
+    except (WazuhError, WazuhResourceNotFound) as error:
         assert catch_exception, \
             f'No exception should be raised at this point. An AffectedItemsWazuhResult object with at least one ' \
             f'failed item was expected instead.'
@@ -908,7 +908,7 @@ def test_agent_remove_agents_from_group_exceptions(group_mock, agents_info_mock,
         assert result.total_failed_items == len(group_list)
         assert result.total_failed_items == len(result.failed_items)
         assert set(result.failed_items.keys()).difference(set([expected_error])) == set()
-    except WazuhError as error:
+    except (WazuhError, WazuhResourceNotFound) as error:
         assert catch_exception
         assert error == expected_error
 
