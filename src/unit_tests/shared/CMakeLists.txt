@@ -21,6 +21,9 @@ list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mut
 list(APPEND shared_tests_names "test_agent_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,_merror")
 
+list(APPEND shared_tests_names "test_remoted_op")
+list(APPEND shared_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn -Wl,--wrap,_merror")
+
 list(APPEND shared_tests_names "test_enrollment_op")
 set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwarn,--wrap=check_x509_cert \
                                 -Wl,--wrap=_minfo,--wrap=OS_GetHost,--wrap=os_ssl_keys,--wrap=OS_ConnectTCP \

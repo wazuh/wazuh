@@ -11,6 +11,7 @@
 
 #include "wmodules.h"
 #include "sec.h"
+#include "remoted_op.h"
 #include "wazuh_db/wdb.h"
 #include "addagent/manage_agents.h" // FILE_SIZE
 #include "external/cJSON/cJSON.h"
@@ -70,8 +71,6 @@ static void* wm_database_destroy(wm_database *data);
 cJSON *wm_database_dump(const wm_database *data);
 // Update manager information
 static void wm_sync_manager();
-// Get agent's architecture
-static char * wm_get_os_arch(char * os_header);
 
 #ifndef LOCAL
 
@@ -245,7 +244,7 @@ void wm_sync_manager() {
     OS_ClearXML(&xml);
 
     if ((os_uname = strdup(getuname()))) {
-        os_arch = wm_get_os_arch(os_uname);
+        os_arch = get_os_arch(os_uname);
         char *ptr;
 
         if ((ptr = strstr(os_uname, " - ")))
@@ -483,27 +482,6 @@ void wm_sync_multi_groups(const char *dirname) {
 
 #endif // LOCAL
 
-char * wm_get_os_arch(char * os_header) {
-    const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "ia64", "AIX", "armv6", "armv7", NULL };
-    char * os_arch = NULL;
-    int i;
-
-    for (i = 0; ARCHS[i]; i++) {
-        if (strstr(os_header, ARCHS[i])) {
-            os_strdup(ARCHS[i], os_arch);
-            break;
-        }
-    }
-
-    if (!ARCHS[i]) {
-        os_strdup("", os_arch);
-    }
-
-    mtdebug2(WM_DATABASE_LOGTAG, "Detected architecture from %s: %s", os_header, os_arch);
-    return os_arch;
-}
-
-
 int wm_sync_agentinfo(int id_agent, const char *path) {
     char header[OS_MAXSTR];
     char files[OS_MAXSTR];
@@ -639,7 +617,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
                     os_platform ++;
                 }
             }
-            os_arch = wm_get_os_arch(os);
+            os_arch = get_os_arch(os);
         }
 
         // Search for merged.mg sum

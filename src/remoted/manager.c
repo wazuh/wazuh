@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "remoted.h"
+#include "remoted_op.h"
 #include "wazuh_db/wdb.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
@@ -41,8 +42,6 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
 static void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir);
 static void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup);
 static void c_files(void);
-// Get agent's architecture
-static char * wm_get_os_arch(char * os_header);
 
 /*
  *  Read queue/agent-groups and delete this group for all the agents.
@@ -85,26 +84,6 @@ void cleaner(void* data){
     os_free(data);
 }
 
-char * wm_get_os_arch(char * os_header) {
-    const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "ia64", "AIX", "armv6", "armv7", NULL };
-    char * os_arch = NULL;
-    int i;
-
-    for (i = 0; ARCHS[i]; i++) {
-        if (strstr(os_header, ARCHS[i])) {
-            os_strdup(ARCHS[i], os_arch);
-            break;
-        }
-    }
-
-    if (!ARCHS[i]) {
-        os_strdup("", os_arch);
-    }
-
-    mdebug2("Detected architecture from %s: %s", os_header, os_arch);
-    return os_arch;
-}
-
 /* Save a control message received from an agent
  * read_controlmsg (other thread) is going to deal with it
  * (only if message changed)
@@ -112,9 +91,8 @@ char * wm_get_os_arch(char * os_header) {
 void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
 {
     char msg_ack[OS_FLSIZE + 1] = "";
-    char *uname = NULL;
+    char *msg = NULL;
     char *end = NULL;
-    char *end_line = NULL;
     char *version = NULL;
     char *os_name = NULL;
     char *os_major = NULL;
@@ -124,12 +102,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     char *os_codename = NULL;
     char *os_platform = NULL;
     char *os_arch = NULL;
+    char *uname = NULL;
     char *config_sum = NULL;
     char *merged_sum = NULL;
     char *agent_ip = NULL;
     char manager_host[512] = "";
-    regmatch_t match[2] = { 0 };
-    int match_size = 0;
     pending_data_t *data = NULL;
     int is_startup = 0;
     int agent_id = 0;
@@ -164,8 +141,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
         mdebug1("Agent %s sent HC_STARTUP from %s.", key->name, inet_ntoa(key->peer_info.sin_addr));
         is_startup = 1;
     } else {
-        /* Clean uname and shared files (remove random string) */
-        uname = r_msg;
+        /* Clean msg and shared files (remove random string) */
+        msg = r_msg;
 
         if ((r_msg = strchr(r_msg, '\n'))) {
             /* Forward to random string (pass shared files) */
@@ -182,7 +159,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     w_mutex_lock(&lastmsg_mutex)
 
     /* Check if there is a keep alive already for this agent */
-    if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && strcmp(data->message, uname) == 0) {
+    if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && strcmp(data->message, msg) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
 
         agent_id = atoi(key->id);
@@ -212,9 +189,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             w_mutex_unlock(&lastmsg_mutex);
         } else {
             /* Update message */
-            mdebug2("save_controlmsg(): inserting '%s' in global.db", uname);
+            mdebug2("save_controlmsg(): inserting '%s'", msg);
             os_free(data->message);
-            os_strdup(uname, data->message);
+            os_strdup(msg, data->message);
 
             /* Mark data as changed and insert into queue */
             if (!data->changed) {
@@ -234,128 +211,13 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             /* Unlock mutex */
             w_mutex_unlock(&lastmsg_mutex);
 
-            /* Parsing uname */
-            if (end_line = strstr(uname, "\n"), end_line){
-                *end_line = '\0';
-            } else {
-                mwarn("Corrupt line found parsing uname for '%s' (incomplete). Returning.", key->id);
+            /* Parsing msg */
+            result = parse_agent_update_msg(msg, &version, &os_name, &os_major, &os_minor, &os_build, &os_version, &os_codename,
+                                            &os_platform, &os_arch, &uname, &config_sum, &merged_sum, &agent_ip);
+            
+            if (OS_SUCCESS != result) {
+                merror("Error parsing message for agent %s.", key->id);
                 return;
-            }
-
-            if (config_sum = strstr(uname, " / "), config_sum){
-                *config_sum = '\0';
-                config_sum += 3;
-            }
-
-            if (version = strstr(uname, " - "), version){
-                *version = '\0';
-                version += 3;
-            } else {
-                merror("Corrupt data parsing uname for '%s' (incomplete). Returning.", key->id);
-                return;
-            }
-
-            // [Ver: os_major.os_minor.os_build]
-            if (os_version = strstr(uname, " [Ver: "), os_version){
-                *os_version = '\0';
-                os_version += 7;
-                os_name = uname;
-                *(os_version + strlen(os_version) - 1) = '\0';
-
-                // Get os_major
-                if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
-                    match_size = match[1].rm_eo - match[1].rm_so;
-                    os_major = malloc(match_size +1 );
-                    snprintf (os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
-                }
-
-                // Get os_minor
-                if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
-                    match_size = match[1].rm_eo - match[1].rm_so;
-                    os_minor = malloc(match_size +1);
-                    snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
-                }
-
-                // Get os_build
-                if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
-                    match_size = match[1].rm_eo - match[1].rm_so;
-                    os_build = malloc(match_size +1);
-                    snprintf(os_build, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
-                }
-
-                os_platform = "windows";
-            }
-            else {
-                if (os_name = strstr(uname, " ["), os_name){
-                    *os_name = '\0';
-                    os_name += 2;
-                    if (os_version = strstr(os_name, ": "), os_version){
-                        *os_version = '\0';
-                        os_version += 2;
-                        *(os_version + strlen(os_version) - 1) = '\0';
-
-                        // os_major.os_minor (os_codename)
-                        if (os_codename = strstr(os_version, " ("), os_codename){
-                            *os_codename = '\0';
-                            os_codename += 2;
-                            *(os_codename + strlen(os_codename) - 1) = '\0';
-                        }
-
-                        // Get os_major
-                        if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
-                            match_size = match[1].rm_eo - match[1].rm_so;
-                            os_major = malloc(match_size +1);
-                            snprintf(os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
-                        }
-
-                        // Get os_minor
-                        if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
-                            match_size = match[1].rm_eo - match[1].rm_so;
-                            os_minor = malloc(match_size +1);
-                            snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
-                        }
-
-                    } else
-                        *(os_name + strlen(os_name) - 1) = '\0';
-
-                    // os_name|os_platform
-                    if (os_platform = strstr(os_name, "|"), os_platform){
-                        *os_platform = '\0';
-                        os_platform ++;
-                    }
-                }
-                os_arch = wm_get_os_arch(uname);
-            }
-
-            // Get merged.mg sum
-            merged_sum = end_line + 1;
-            end_line = NULL;
-            if (*merged_sum != '\"' && *merged_sum != '!' && (end_line = strchr(merged_sum, ' '), end_line)) {
-                *end_line = '\0';
-                end_line++;
-
-                if (strncmp(end_line, SHAREDCFG_FILENAME "\n", sizeof(SHAREDCFG_FILENAME "\n")-1) != 0) {
-                    merged_sum = NULL;
-                }
-            }
-            else { // If we didn't find merged.mg we should keep the end line
-                end_line = merged_sum;
-            }
-
-            // Get the agent ip
-            const char * AGENT_IP_TAG = "#\"_agent_ip\":";
-            agent_ip = end_line;
-
-            end_line = strchr(agent_ip, '\n') + 1;
-            if (end_line && !strncmp(end_line, AGENT_IP_TAG, strlen(AGENT_IP_TAG))) {
-                agent_ip = end_line + strlen(AGENT_IP_TAG);
-
-                if (end_line = strchr(agent_ip, '\n'), end_line){
-                    *end_line = '\0';
-                }
-            }
-            else {
-                agent_ip = NULL;
             }
 
             /* Get manager name before chroot */
@@ -369,7 +231,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             // Updating version and keepalive in global.db
             result = wdb_update_agent_version(agent_id, os_name, os_version, os_major, os_minor, os_codename, os_platform,
                                               os_build, uname, os_arch, version, config_sum, merged_sum, manager_host,
-                                              node_name, agent_ip ? agent_ip : NULL);
+                                              node_name, agent_ip);
             
             if (OS_SUCCESS != result)
                 mwarn("Unable to save agent information in global.db");
@@ -379,10 +241,19 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             if (OS_SUCCESS != result)
                 mwarn("Unable to save agent last keepalive in global.db");
 
+            os_free(version);
+            os_free(os_name);
             os_free(os_major);
-            os_free(os_arch);
             os_free(os_minor);
             os_free(os_build);
+            os_free(os_version);
+            os_free(os_codename);
+            os_free(os_platform);
+            os_free(os_arch);
+            os_free(uname);
+            os_free(config_sum);
+            os_free(merged_sum);
+            os_free(agent_ip);
         }
     }
 
