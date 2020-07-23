@@ -25,6 +25,8 @@ namespace DbSync
     class IDbEngine
     {
     public:
+        virtual ~IDbEngine() = default;
+    
         virtual void bulkInsert(const std::string& table,
                                 const nlohmann::json& data) = 0;
 
@@ -41,8 +43,6 @@ namespace DbSync
         virtual void initializeStatusField(const nlohmann::json& tableNames) = 0;
 
         virtual void deleteRowsByStatusField(const nlohmann::json& tableNames) = 0;
-
-        virtual ~IDbEngine() = default;
 
     protected:
         IDbEngine() = default;
