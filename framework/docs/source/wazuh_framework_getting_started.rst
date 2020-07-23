@@ -68,7 +68,7 @@ The next code snnipet adds an agent to OSSEC with name 'WazuhTestAgent' and IP '
     import json
     from sys import exit
     from wazuh.agent import Agent
-    from wazuh.exception import WazuhException
+    from wazuh.core.exception import WazuhException
 
     agent = Agent()
 

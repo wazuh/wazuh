@@ -943,7 +943,7 @@ int connect_to_remoted()
 {
     int arq = -1;
 
-    if ((arq = StartMQ(ARQUEUE, WRITE)) < 0) {
+    if ((arq = StartMQ(ARQUEUE, WRITE, MAX_OPENQ_ATTEMPS)) < 0) {
         merror(ARQ_ERROR);
         return (-1);
     }

@@ -806,7 +806,7 @@ $(EXTERNAL_CURL)Makefile:
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
 ifeq (${uname_S},Linux)
-	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2 --without-libpsl --without-brotli
 else
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --disable-ldap --without-libidn2
 endif
@@ -870,9 +870,7 @@ endif
 TAR := tar -xf
 GUNZIP := gunzip
 CURL := curl -so
-space =
-space +=
-VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
+VERSION = $(subst $() $(),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
 CPYTHON := cpython
 ifeq (${PREFIX},/var/ossec)
@@ -1540,7 +1538,7 @@ ifneq (,$(filter ${OPTIMIZE_CPYTHON},YES yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
 endif
 
-wpython: install_dependencies install_framework install_mitre
+wpython: install_dependencies install_framework install_api install_mitre
 
 ifeq (${uname_S},Darwin)
 WLIBPYTHON=libpython3.8.dylib
@@ -1586,8 +1584,12 @@ install_framework: install_python
 	chown -R root:${OSSEC_GROUP} ${WPYTHON_DIR}
 	chmod -R o=- ${WPYTHON_DIR}
 
+install_api: install_python
+	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
+
 install_mitre: install_python
 	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db
+
 
 ####################
 #### test ##########
@@ -1730,7 +1732,7 @@ win32/ui_resource.o: win32/ui/win32ui.rc
 win32/auth_resource.o: win32/agent-auth.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
-win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o} addagent/b64.o
+win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
 	${OSSEC_CCBIN} -DARGV0=\"ossec-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -mwindows -o $@
 
 win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o ${WINDOWS_UNIT_TEST_WRAPPERS}
