@@ -23,6 +23,8 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
         module->data = data;
     }
 
+    data = module->data;
+
     if (!nodes) {
         return 0;
     }
