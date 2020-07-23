@@ -14,7 +14,6 @@ from time import time
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
-from api.api_exception import APIException
 from api.configuration import security_conf
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
