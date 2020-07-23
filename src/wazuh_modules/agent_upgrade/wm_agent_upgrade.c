@@ -14,23 +14,12 @@
 #include "wm_agent_upgrade_tasks.h"
 #include "os_net/os_net.h"
 
-const char* upgrade_error_codes[] = {
-    [WM_UPGRADE_SUCCESS] = "Success",
-    [WM_UPGRADE_PARSING_ERROR] = "Could not parse message JSON",
-    [WM_UPGRADE_PARSING_REQUIRED_PARAMETER] = "Required parameters in json message where not found",
-    [WM_UPGRADE_TASK_CONFIGURATIONS] = "Command not recognized",
-    [WM_UPGRADE_TASK_MANAGER_COMMUNICATION] ="Could not create task id for upgrade task",
-    [WM_UPGRADE_TASK_MANAGER_FAILURE] = "", // Data string wil be provded by task manager
-    [WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading",
-    [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start"
-};
-
 /**
  * Module main function. It won't return
  * */
 static void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);    
 static void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);  
-cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
+static cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
 
 /**
  * Start listening loop, exits only on error 
@@ -38,7 +27,7 @@ cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
  * @param timeout_sec timeout in seconds
  * @return only on errors, socket will be closed
  * */
-static void wm_agent_listen_messages(int sock, int timeout_sec);
+static void wm_agent_upgrade_listen_messages(int sock, int timeout_sec);
 
 /* Context definition */
 const wm_context WM_AGENT_UPGRADE_CONTEXT = {
@@ -48,30 +37,18 @@ const wm_context WM_AGENT_UPGRADE_CONTEXT = {
     (cJSON * (*)(const void *))wm_agent_upgrade_dump
 };
 
-void * wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
-    
-    // Check if module is enabled
-    if (!upgrade_config->enabled) {
-        mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_DISABLED);
-        pthread_exit(NULL);
-    }
+const char* upgrade_error_codes[] = {
+    [WM_UPGRADE_SUCCESS] = "Success",
+    [WM_UPGRADE_PARSING_ERROR] = "Could not parse message JSON",
+    [WM_UPGRADE_PARSING_REQUIRED_PARAMETER] = "Required parameters in json message where not found",
+    [WM_UPGRADE_TASK_CONFIGURATIONS] = "Command not recognized",
+    [WM_UPGRADE_TASK_MANAGER_COMMUNICATION] ="Could not create task id for upgrade task",
+    [WM_UPGRADE_TASK_MANAGER_FAILURE] = "", // Data string will be provided by task manager
+    [WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading",
+    [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start"
+};
 
-    mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_STARTED);
-
-    // Initialize task hashmap
-    wm_agent_init_task_map();
-
-    int sock = OS_BindUnixDomain(WM_UPGRADE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
-    if (sock < 0) {
-        merror("Unable to bind to socket '%s': %s", WM_UPGRADE_SOCK_PATH, strerror(errno));
-        return NULL;
-    }
-
-    wm_agent_listen_messages(sock, 5);
-    return NULL;
-}
-
-void wm_agent_listen_messages(int sock, int timeout_sec) {
+void wm_agent_upgrade_listen_messages(int sock, int timeout_sec) {
     struct timeval timeout = { timeout_sec, 0 };
 
     while(1) {
@@ -102,7 +79,6 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
         }
         
         // Get request string
-        
         char *buffer = NULL;
         cJSON* json_response = NULL;
         cJSON* params = NULL;
@@ -123,21 +99,27 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
         default:
             /* Correctly received message */
             mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INCOMMING_MESSAGE, buffer);
-            parsing_retval = wm_agent_parse_command(&buffer[0], &json_response, &params, &agents);
+            parsing_retval = wm_agent_upgrade_parse_command(&buffer[0], &json_response, &params, &agents);
             break;
         }
+
         if (json_response) {
             cJSON *command_response = NULL;
             char* message = NULL;
             switch (parsing_retval)
             {
                 case WM_UPGRADE_UPGRADE:
-                    command_response = wm_agent_process_upgrade_command(params, agents);
+                    command_response = wm_agent_upgrade_process_upgrade_command(params, agents);
                     message = cJSON_PrintUnformatted(command_response); 
                     cJSON_Delete(command_response);
                     break;
-                case WM_UPGRADE_UPGRADE_RESULTS:
-                    command_response = wm_agent_process_upgrade_result_command(agents);
+                case WM_UPGRADE_UPGRADE_CUSTOM:
+                    command_response = wm_agent_upgrade_process_upgrade_custom_command(params, agents);
+                    message = cJSON_PrintUnformatted(command_response);
+                    cJSON_Delete(command_response);
+                    break;
+                case WM_UPGRADE_UPGRADE_RESULT:
+                    command_response = wm_agent_upgrade_process_upgrade_result_command(agents);
                     message = cJSON_PrintUnformatted(command_response); 
                     cJSON_Delete(command_response);
                     break;
@@ -156,11 +138,34 @@ void wm_agent_listen_messages(int sock, int timeout_sec) {
     }
 }
 
+void * wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
+
+    // Check if module is enabled
+    if (!upgrade_config->enabled) {
+        mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_DISABLED);
+        pthread_exit(NULL);
+    }
+
+    mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_STARTED);
+
+    // Initialize task hashmap
+    wm_agent_upgrade_init_task_map();
+
+    int sock = OS_BindUnixDomain(WM_UPGRADE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
+    if (sock < 0) {
+        merror("Unable to bind to socket '%s': %s", WM_UPGRADE_SOCK_PATH, strerror(errno));
+        return NULL;
+    }
+
+    wm_agent_upgrade_listen_messages(sock, 5);
+    return NULL;
+}
+
 void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config) {
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Module AgentUpgrade finished");
     os_free(upgrade_config);
 
-    wm_agent_destroy_task_map();
+    wm_agent_upgrade_destroy_task_map();
 }
 
 cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){

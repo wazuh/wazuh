@@ -14,50 +14,46 @@
 #include "wm_agent_upgrade.h"
 
 /**
- * Initialization of upgrade task
+ * Initialization of upgrade_task
  * @param return an initialized upgrade task structure
  * */
-wm_upgrade_task* wm_agent_init_upgrade_task();
+wm_upgrade_task* wm_agent_upgrade_init_upgrade_task();
+
+/**
+ * Initialization of upgrade_custom_task
+ * @param return an initialized upgrade_custom task structure
+ * */
+wm_upgrade_custom_task* wm_agent_upgrade_init_upgrade_custom_task();
+
 /**
  * Deallocate wm_upgrade_task structure
- * @param task  task to be deallocated
+ * @param task task to be deallocated
  * */
-void wm_agent_free_upgrade_task(wm_upgrade_task* task);
+void wm_agent_upgrade_free_upgrade_task(wm_upgrade_task* task);
+
+/**
+ * Deallocate wm_upgrade_custom_task structure
+ * @param task task to be deallocated
+ * */
+void wm_agent_upgrade_free_upgrade_custom_task(wm_upgrade_custom_task* task);
 
 /**
  * Tasks hashmap initialization
  * */
-void wm_agent_init_task_map();
+void wm_agent_upgrade_init_task_map();
 
 /**
  * Tasks hashmap destructor
  * */
-void wm_agent_destroy_task_map();
+void wm_agent_upgrade_destroy_task_map();
 
 /**
- * Inserts a task_id into an already existent agent entry
- * @param task_id id of the task
- * @param agent_id id of the agent
+ * Receives the cJSON with the agents_id and creates the tasks structure for each agent
+ * @param agents cJSON array with the agents_id
+ * @param task pointer to a task structure
+ * @param command command corresponding to the task
+ * @return cJSON array where the responses for each agent will be stored
  * */
-void wm_agent_insert_tasks_id(const int task_id, const int agent_id);
+cJSON* wm_agent_upgrade_create_agent_tasks(const cJSON *agents, void *task, wm_upgrade_command command);
 
-/**
- * Creates an new entry into the table with the agent_id and task
- * @param agent_id id of the agent
- * @param agent_task pointer to the task
- * */
-int wm_agent_create_task_entry(const int agent_id, wm_task*  agent_task);
-
-/**
- * Remoes a entry based on the agent_id
- * @param agent_id id of the agent
- * */
-void wm_agent_remove_entry(const int agent_id);
-
-/**
- * Check whether an upgrade task for an agent is present or not
- * @param agent_id id of the agent
- * @return task_id if task is present, OS_INVALID otherwise
- * */
-int wm_agent_task_present(const int agent_id);
 #endif

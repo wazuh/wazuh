@@ -35,22 +35,12 @@ static const char* upgrade_results_messages[] = {
     [STATUS_ERROR]    = "Agent upgrade process failed"
 };
 
-cJSON* wm_agent_process_upgrade_result_command(const cJSON* agents) {
+cJSON* wm_agent_upgrade_process_upgrade_result_command(const cJSON* agents) {
     cJSON* response = cJSON_CreateArray();
     for(int i = 0; i < cJSON_GetArraySize(agents); i++) {
-        int agent_id = cJSON_GetArrayItem(agents, i)->valueint;
 
-        int task_id = wm_agent_task_present(agent_id);
-        if(task_id == -1) {
-            // TODO: Agent could be updated, we need to ask the task manager, or there could be some error @WIP
-            //cJSON_AddItemToArray(response, wm_agent_parse_response_message(SUCCESS, "Agent is updated", &agent_id, NULL, "UPDATED"));
-            // cJSON_AddItemToArray(response, wm_agent_parse_response_message(AGENT_ID_ERROR, upgrade_error_codes[AGENT_ID_ERROR], &agent_id, NULL, "ERROR"));
-            // Agent out of date
-            cJSON_AddItemToArray(response, wm_agent_parse_response_message(WM_UPGRADE_SUCCESS, upgrade_results_messages[STATUS_OUTDATED], &agent_id, NULL, upgrade_results_status[STATUS_OUTDATED]));
-        } else {
-            // Agent on update process
-            cJSON_AddItemToArray(response, wm_agent_parse_response_message(WM_UPGRADE_SUCCESS, upgrade_results_messages[STATUS_UPDATING], &agent_id, &task_id, upgrade_results_status[STATUS_UPDATING]));
-        }   
+        // TODO
+
     }
 
     char *response_string = cJSON_PrintUnformatted(response);
