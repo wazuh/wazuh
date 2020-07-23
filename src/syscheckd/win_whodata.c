@@ -519,13 +519,13 @@ PEVT_VARIANT whodata_event_render(EVT_HANDLE event) {
     memset(buffer, 0, used_size);
 
     if (!EvtRender(context, event, EvtRenderEventValues, used_size, buffer, &used_size, &property_count)) {
-        merror(FIM_ERROR_WHODATA_RENDER_EVENT, GetLastError());
+        mwarn(FIM_WHODATA_RENDER_EVENT, GetLastError());
         os_free(buffer);
         return buffer;
     }
 
     if (property_count != fields_number) {
-        merror(FIM_ERROR_WHODATA_RENDER_PARAM);
+        mwarn(FIM_WHODATA_RENDER_PARAM);
         os_free(buffer);
     }
 
@@ -539,7 +539,7 @@ int whodata_get_event_id(const PEVT_VARIANT raw_data, short *event_id) {
 
     // EventID
     if (raw_data[RENDERED_EVENT_ID].Type != EvtVarTypeUInt16) {
-        merror(FIM_WHODATA_PARAMETER, raw_data[RENDERED_EVENT_ID].Type, "event_id");
+        mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_EVENT_ID].Type, "event_id");
         return -1;
     }
     *event_id = raw_data[RENDERED_EVENT_ID].Int16Val;
@@ -560,7 +560,7 @@ int whodata_get_handle_id(const PEVT_VARIANT raw_data, unsigned __int64 *handle_
         } else if (raw_data[RENDERED_HANDLE_ID].Type == EvtVarTypeHexInt32) {
             *handle_id = (unsigned __int64) raw_data[RENDERED_HANDLE_ID].UInt32Val;
         } else {
-            merror(FIM_WHODATA_PARAMETER, raw_data[RENDERED_HANDLE_ID].Type, "handle_id");
+            mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_HANDLE_ID].Type, "handle_id");
             return -1;
         }
     } else {
@@ -576,7 +576,7 @@ int whodata_get_access_mask(const PEVT_VARIANT raw_data, unsigned long *mask) {
 
     // AccessMask
     if (raw_data[RENDERED_ACCESS_MASK].Type != EvtVarTypeHexInt32) {
-        merror(FIM_WHODATA_PARAMETER, raw_data[RENDERED_ACCESS_MASK].Type, "mask");
+        mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_ACCESS_MASK].Type, "mask");
         return -1;
     }
     *mask = raw_data[RENDERED_ACCESS_MASK].UInt32Val;
@@ -591,7 +591,7 @@ int whodata_event_parse(const PEVT_VARIANT raw_data, whodata_evt *event_data) {
 
     // ObjectName
     if (raw_data[RENDERED_PATH].Type != EvtVarTypeString) {
-        merror(FIM_WHODATA_PARAMETER, raw_data[RENDERED_PATH].Type, "path");
+        mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_PATH].Type, "path");
         return -1;
     }  else {
         if (event_data->path = get_whodata_path(raw_data[RENDERED_PATH].XmlVal), !event_data->path) {
@@ -690,11 +690,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                 os_calloc(1, sizeof(whodata_evt), w_evt);
                 if (whodata_event_parse(buffer, w_evt) != 0) {
-                    free_whodata_event(w_evt);
-                    goto clean;
-                }
-
-                if (!w_evt->path) {
                     free_whodata_event(w_evt);
                     goto clean;
                 }
@@ -798,7 +793,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                 // Get the event time
                 if (buffer[RENDERED_TIMESTAMP].Type != EvtVarTypeFileTime) {
-                    merror(FIM_WHODATA_PARAMETER, buffer[RENDERED_TIMESTAMP].Type, "event_time");
+                    mwarn(FIM_WHODATA_PARAMETER, buffer[RENDERED_TIMESTAMP].Type, "event_time");
                     w_evt->scan_directory = 2;
                     goto clean;
                 }

@@ -40,5 +40,10 @@
 #define FIM_INVALID_OPTION_SKIP                 "(6925): Invalid option '%s' for attribute '%s'. The paths '%s' not be monitored."
 #define FIM_WARN_WHODATA_ADD_RULE               "(6926): Unable to add audit rule for '%s'"
 #define FIM_DB_FULL_ALERT                       "(6927): Sending DB 100%% full alert."
+#define FIM_WHODATA_PARAMETER                   "(6928): Invalid parameter type (%ld) for '%s'."
+#define FIM_WHODATA_RENDER_EVENT                "(6929): Error rendering the event. Error %lu."
+#define FIM_WHODATA_RENDER_PARAM                "(6930): Invalid number of rendered parameters."
+
+
 
 #endif /* WARN_MESSAGES_H */
