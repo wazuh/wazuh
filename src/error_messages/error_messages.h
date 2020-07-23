@@ -490,16 +490,20 @@
 #define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files."
 #define FIM_ERROR_WHODATA_INIT                      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode"
 
-/* Wazuh Modules */
+/* Modules messages */
 #define WM_UPGRADE_JSON_PARSE_ERROR                 "(8101): Cannot parse JSON: '%s'"
 #define WM_UPGRADE_UNDEFINED_ACTION_ERRROR          "(8102): No action defined for command: '%s'"
 #define WM_UPGRADE_COMMAND_PARSE_ERROR              "(8103): Error parsing command: '%s'"
 #define WM_UPGRADE_UNREACHEABLE_TASK_MANAGER        "(8104): Cannot connect to '%s'. Could not reach task manager module"
 #define WM_UPGRADE_INVALID_TASK_MAN_JSON            "(8105): Response from task manager does not have a valid JSON format"
-#define WM_UPGRADE_EMPTY_MESSAGE                    "(8106): Empty message from task manager module"
+#define WM_UPGRADE_TASK_EMPTY_MESSAGE               "(8106): Empty message from task manager module"
 #define WM_UPGRADE_REQUIRED_PARAMETERS              "(8107): Required parameters in message are missing"
+#define WM_UPGRADE_BIND_SOCK_ERROR                  "(8108): Unable to bind to socket '%s': '%s'"
+#define WM_UPGRADE_SELECT_ERROR                     "(8109): Error in select(): '%s'. Exiting..."
+#define WM_UPGRADE_ACCEPT_ERROR                     "(8110): Error in accept(): '%s'"
+#define WM_UPGRADE_RECV_ERROR                       "(8111): Error in recv(): '%s'"
+#define WM_UPGRADE_SOCKTERR_ERROR                   "(8112): Response size is bigger than expected."
 
-/* Modules messages */
 #define MOD_TASK_CHECK_DB_ERROR                     "(8250): DB integrity is invalid. Exiting..."
 #define MOD_TASK_CREATE_SOCK_ERROR                  "(8251): Queue '%s' not accesible: '%s'. Exiting..."
 #define MOD_TASK_SELECT_ERROR                       "(8252): Error in select(): '%s'. Exiting..."

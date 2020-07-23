@@ -60,7 +60,7 @@ void wm_agent_upgrade_listen_messages(int sock, int timeout_sec) {
         switch (select(sock + 1, &fdset, NULL, NULL, &timeout)) {
         case -1:
             if (errno != EINTR) {
-                merror("select(): %s", strerror(errno));
+                merror(WM_UPGRADE_SELECT_ERROR, strerror(errno));
                 close(sock);
                 return;
             }
@@ -73,7 +73,7 @@ void wm_agent_upgrade_listen_messages(int sock, int timeout_sec) {
         int peer;
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
-                merror("accept(): %s", strerror(errno));
+                merror(WM_UPGRADE_ACCEPT_ERROR, strerror(errno));
             }
             continue;
         }
@@ -88,13 +88,13 @@ void wm_agent_upgrade_listen_messages(int sock, int timeout_sec) {
         int length;
         switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length) {
         case OS_SOCKTERR:
-            mterror(WM_AGENT_UPGRADE_LOGTAG, "OS_RecvSecureTCP(): Too big message size received from an internal component.");
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SOCKTERR_ERROR);
             break;
         case -1:
-            mterror(WM_AGENT_UPGRADE_LOGTAG, "OS_RecvSecureTCP(): %s", strerror(errno));
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RECV_ERROR, strerror(errno));
             break;
         case 0:
-            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, "Empty message from local client.");
+            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_EMPTY_MESSAGE);
             break;
         default:
             /* Correctly received message */
@@ -153,7 +153,7 @@ void * wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 
     int sock = OS_BindUnixDomain(WM_UPGRADE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
     if (sock < 0) {
-        merror("Unable to bind to socket '%s': %s", WM_UPGRADE_SOCK_PATH, strerror(errno));
+        merror(WM_UPGRADE_BIND_SOCK_ERROR, WM_UPGRADE_SOCK_PATH, strerror(errno));
         return NULL;
     }
 
@@ -162,7 +162,7 @@ void * wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 }
 
 void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config) {
-    mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Module AgentUpgrade finished");
+    mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_FINISHED);
     os_free(upgrade_config);
 
     wm_agent_upgrade_destroy_task_map();

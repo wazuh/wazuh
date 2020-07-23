@@ -237,14 +237,18 @@
 #define FIM_NUM_WATCHES                     "(6345): Folders monitored with real-time engine: %u"
 #define FIM_REALTIME_CALLBACK               "(6346): Realtime watch deleted for '%s'"
 
+/* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO        "(8151): Agent Information obtained: \n %s"
 #define WM_UPGRADE_RESULT_SHOW_RESULTS      "(8152): Upgrade results response: \n %s"
-#define WM_UPGRADE_INCOMMING_MESSAGE        "(8155): Incomming message: '%s'"
-#define WM_UPGRADE_RESPONSE_MESSAGE         "(8156): Response message: '%s'"
-#define WM_UPGRADE_TASK_SEND_MESSAGE        "(8157): Sending message to task_manager module: '%s'"
-#define WM_UPGRADE_TASK_RECEIVE_MESSAGE     "(8158): Receiving message to task_manager module: '%s'"
+#define WM_UPGRADE_MODULE_DISABLED          "(8153): Module Agent Upgrade disabled. Exiting..."
+#define WM_UPGRADE_MODULE_STARTED           "(8154): Module Agent Upgrade started."
+#define WM_UPGRADE_MODULE_FINISHED          "(8155): Module Agent Upgrade finished."
+#define WM_UPGRADE_INCOMMING_MESSAGE        "(8156): Incomming message: '%s'"
+#define WM_UPGRADE_RESPONSE_MESSAGE         "(8157): Response message: '%s'"
+#define WM_UPGRADE_TASK_SEND_MESSAGE        "(8158): Sending message to task_manager module: '%s'"
+#define WM_UPGRADE_TASK_RECEIVE_MESSAGE     "(8159): Receiving message to task_manager module: '%s'"
+#define WM_UPGRADE_EMPTY_MESSAGE            "(8160): Empty message from local client."
 
-/* Modules messages */
 #define MOD_TASK_START                      "(8200): Module Task Manager started."
 #define MOD_TASK_FINISH                     "(8201): Module Task Manager finished."
 #define MOD_TASK_DISABLED                   "(8202): Module disabled. Exiting..."

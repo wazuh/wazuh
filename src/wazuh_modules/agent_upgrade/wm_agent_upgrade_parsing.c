@@ -42,7 +42,7 @@ int wm_agent_upgrade_parse_command(const char* buffer, cJSON** json_api, cJSON**
                 }
             }
             if (WM_UPGRADE_INVALID_COMMAND == i) {
-                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR,  command->valuestring);
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR, command->valuestring);
                 error = WM_UPGRADE_TASK_CONFIGURATIONS;
             }
         } else {

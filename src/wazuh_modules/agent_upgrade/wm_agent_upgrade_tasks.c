@@ -228,13 +228,13 @@ cJSON *wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
 
         switch (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length) {
             case OS_SOCKTERR:
-                mterror(WM_AGENT_UPGRADE_LOGTAG, "OS_RecvSecureTCP(): Too big message size received from task manager module.");
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SOCKTERR_ERROR);
                 break;
             case -1:
-                mterror(WM_AGENT_UPGRADE_LOGTAG, "OS_RecvSecureTCP(): %s", strerror(errno));
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RECV_ERROR, strerror(errno));
                 break;
             case 0:
-                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_EMPTY_MESSAGE);
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_EMPTY_MESSAGE);
                 break;
             default:
                 response = cJSON_Parse(buffer);
