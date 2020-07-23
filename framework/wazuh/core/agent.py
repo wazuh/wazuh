@@ -354,7 +354,7 @@ class Agent:
         # Check if agent has active-response enabled
         agent_conf = self.getconfig('com', 'active-response')
         if agent_conf['active-response']['disabled'] == 'yes':
-            raise WazuhException(1750)
+            raise WazuhError(1750)
 
         return send_restart_command(self.id)
 
@@ -1150,7 +1150,7 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhException(1715, data.replace("err ", ""))
+            raise WazuhInternalError(1715, data.replace("err ", ""))
 
         # Open file on agent
         s = OssecSocket(common.REQUEST_SOCKET)
@@ -1438,7 +1438,7 @@ class Agent:
                 data = s.receive().decode()
                 s.close()
                 if not data.startswith('ok'):
-                    raise WazuhException(1715, data.replace("err ", ""))
+                    raise WazuhInternalError(1715, data.replace("err ", ""))
                 bytes_read = file.read(chunk_size)
                 file_sha1.update(bytes_read)
                 if show_progress:
@@ -1493,7 +1493,7 @@ class Agent:
 
         # Check if agent is active.
         if self.status.lower() != 'active':
-            raise WazuhException(1720)
+            raise WazuhError(1720)
 
         # Send file to agent
         sending_result = self._send_custom_wpk_file(file_path, debug, show_progress, chunk_size, rl_timeout)
