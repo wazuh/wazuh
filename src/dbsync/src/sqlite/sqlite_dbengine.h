@@ -59,12 +59,6 @@ enum TableHeader
     TXNStatusField
 }; 
 
-using ColumnData = 
-    std::tuple<int32_t, std::string, ColumnType, bool, bool>;
-
-using TableColumns =
-    std::vector<ColumnData>;
-
 enum GenericTupleIndex
 {
     GenType = 0,
@@ -75,7 +69,17 @@ enum GenericTupleIndex
     GenDouble
 }; 
 
-using TableField = 
+
+using ColumnData =
+    std::tuple<int32_t, std::string, ColumnType, bool, bool>;
+
+using TableColumns =
+    std::vector<ColumnData>;
+
+using CallbackAction =
+    std::pair<ReturnTypeCallback, nlohmann::json>;
+
+using TableField =
     std::tuple<int32_t, std::string, int32_t, int64_t, uint64_t, double_t>;
 
 using Row = std::map<std::string, TableField>;
@@ -154,6 +158,10 @@ class SQLiteDBEngine : public DbSync::IDbEngine
                                  const std::vector<std::string>& primaryKeyList,
                                  const DbSync::ResultCallback callback);
 
+        void insertSingleRow(const std::string& table,
+                             const nlohmann::json& jsData,
+                             std::vector<CallbackAction>& callbackList);
+
         bool insertNewRows(const std::string& table,
                            const std::vector<std::string>& primaryKeyList,
                            const DbSync::ResultCallback callback);
@@ -162,11 +170,11 @@ class SQLiteDBEngine : public DbSync::IDbEngine
                         const std::vector<std::string>& primaryKeyList,
                         const std::vector<Row>& rowsToRemove);
 
-        int32_t getTableData(std::unique_ptr<SQLite::IStatement>const & stmt,
-                             const int32_t index,
-                             const ColumnType& type,
-                             const std::string& fieldName,
-                             Row& row);
+        void getTableData(std::unique_ptr<SQLite::IStatement>const & stmt,
+                          const int32_t index,
+                          const ColumnType& type,
+                          const std::string& fieldName,
+                          Row& row);
 
         int32_t bindFieldData(std::unique_ptr<SQLite::IStatement>const & stmt,
                               const int32_t index,
@@ -187,6 +195,8 @@ class SQLiteDBEngine : public DbSync::IDbEngine
                                const std::vector<std::string>& primaryKeyList,
                                std::vector<Row>& returnRows);
 
+        void bulkInsert(const std::string& table, const Row& data);
+
         void bulkInsert(const std::string& table, const std::vector<Row>& data);
 
         void deleteTempTable(const std::string& table);
@@ -198,6 +208,9 @@ class SQLiteDBEngine : public DbSync::IDbEngine
         int changeModifiedRows(const std::string& table,
                                const std::vector<std::string>& primaryKeyList,
                                const DbSync::ResultCallback callback);
+
+        std::string buildSelectMatchingPKsSqlQuery(const std::string& table,
+                                                   const std::vector<std::string>& primaryKeyList);
 
         std::string buildUpdateDataSqlQuery(const std::string& table,
                                             const std::vector<std::string>& primaryKeyList,

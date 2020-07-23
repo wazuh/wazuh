@@ -1,7 +1,7 @@
 /*
  * Wazuh DBSYNC
  * Copyright (C) 2015-2020, Wazuh Inc.
- * July 11, 2020.
+ * June 11, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -14,6 +14,19 @@
 #include "dbsync.h"
 
 constexpr auto DATABASE_TEMP {"TEMP.db"};
+
+void callback(const ReturnTypeCallback value, const cJSON* json) {
+  if (ReturnTypeCallback::DELETED == value) {
+    std::cout << "deleted event: " << std::endl;
+  } else if (ReturnTypeCallback::MODIFIED == value) {
+    std::cout << "modified event: " << std::endl;
+  } else if (ReturnTypeCallback::INSERTED == value) {
+    std::cout << "inserted event: " << std::endl;
+  }
+  char * result_json = cJSON_Print(json);
+  std::cout << result_json <<std::endl;
+  cJSON_free(result_json);
+}
 
 struct smartDeleterJson
 {
@@ -218,4 +231,28 @@ TEST_F(DBSyncTest, TryToUpdateMoreThanMaxRowsElements)
     EXPECT_EQ(0, dbsync_update_with_snapshot(handle, jsUpdate.get(), &json_response));
     EXPECT_NE(nullptr, json_response);
     EXPECT_NO_THROW(dbsync_free_result(&json_response));
+}
+
+TEST_F(DBSyncTest, syncRow)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto insertionSqlStmt1{ R"({"table":"processes","data":[{"pid":4,"name":"System"}, {"pid":5,"name":"System"}, {"pid":6,"name":"System"}]})"};    // Insert
+    const auto insertionSqlStmt2{ R"({"table":"processes","data":[{"pid":5,"name":"System"}]})"};    // Insert
+    const auto updateSqlStmt1{ R"({"table":"processes","data":[{"pid":4,"name":"Systemmmm"}]})"};    // Update
+    const auto updateSqlStmt2{ R"({"table":"processes","data":[{"pid":5,"name":"Systemmmm"}]})"};    // Update
+    
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1{ cJSON_Parse(insertionSqlStmt1) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert2{ cJSON_Parse(insertionSqlStmt2) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate1{ cJSON_Parse(updateSqlStmt1) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate2{ cJSON_Parse(updateSqlStmt2) };    
+    
+    result_callback_t notifyCb = reinterpret_cast<result_callback_t>(callback);
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), notifyCb));
+    /*EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert2.get(), notifyCb));
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), notifyCb));
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate2.get(), notifyCb));*/   
 }
