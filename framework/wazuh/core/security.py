@@ -30,7 +30,7 @@ def update_security_conf(new_config):
     new_config : dict
         Dictionary with the new configuration.
     """
-    configuration.api_conf.update(new_config)
+    configuration.security_conf.update(new_config)
 
     if new_config:
         try:
