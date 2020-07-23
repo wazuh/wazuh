@@ -10,7 +10,7 @@ from shutil import copyfile
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
-    WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup, get_agents_info, get_groups
+    WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup, get_agents_info, get_groups, send_task_upgrade_module
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
@@ -696,12 +696,10 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, ch
     :param use_http: False for HTTPS protocol, True for HTTP protocol.
     :return: Upgrade message.
     """
-    # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
-    # agents
-    agent_id = agent_list[0]
 
-    return Agent(agent_id).upgrade(wpk_repo=wpk_repo, version=version, force=True if int(force) == 1 else False,
-                                   chunk_size=chunk_size, use_http=use_http)
+    return send_task_upgrade_module(command='upgrade', agent_list=agent_list, wpk_repo=wpk_repo, version=version, 
+                                        force_upgrade=1 if force == True else 0, use_http=use_http)
+    
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -712,11 +710,8 @@ def get_upgrade_result(agent_list=None, timeout=3):
     :param timeout: Maximum time for the call to be considered failed.
     :return: Upgrade result.
     """
-    # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
-    # agents
-    agent_id = agent_list[0]
-
-    return Agent(agent_id).upgrade_result(timeout=int(timeout))
+    
+    return send_task_upgrade_module(command='upgrade_result', agent_list=agent_list)
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -728,11 +723,8 @@ def upgrade_agents_custom(agent_list=None, file_path=None, installer=None):
     :param installer: Selected installer.
     :return: Upgrade message.
     """
-    # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
-    # agents
-    agent_id = agent_list[0]
-
-    return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
+    
+    return send_task_upgrade_module(command='upgrade', agent_list=agent_list, file_path=file_path, installer=installer)
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
