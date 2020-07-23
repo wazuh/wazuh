@@ -83,7 +83,7 @@ INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_
 -- Never connected agent
 INSERT INTO agent (id, name, register_ip, internal_key, date_add, `group`) VALUES (3,'nc-agent','any',
                    'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d',
-                   strftime('%s','now','-3 days'), NULL);
+                   strftime('%s','now','-4 days'), NULL);
 
 -- Pending agent
 INSERT INTO agent (id, name, register_ip, internal_key, manager_host, date_add, last_keepalive, `group`) VALUES
