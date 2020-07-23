@@ -10,8 +10,6 @@
 #include "shared.h"
 #include "remoted_op.h"
 
-#ifndef WIN32
-
 /* wraps */
 
 void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
@@ -60,6 +58,8 @@ int teardown_remoted_op(void **state) {
 /* tests */
 
 /* Tests get_os_arch */
+
+#ifndef WIN32
 
 void test_get_os_arch_x86_64(void **state)
 {
@@ -343,10 +343,13 @@ merged.mg\n#\"_agent_ip\":192.168.0.164\n";
     os_free(agent_ip);
 }
 
+#endif
+
 int main()
 {
     const struct CMUnitTest tests[] = 
     {
+#ifndef WIN32
         // Tests get_os_arch
         cmocka_unit_test_setup_teardown(test_get_os_arch_x86_64, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_get_os_arch_i386, setup_remoted_op, teardown_remoted_op),
@@ -361,10 +364,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_debian, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_ubuntu, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_windows, setup_remoted_op, teardown_remoted_op)
+#endif
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 
 }
-
-#endif
