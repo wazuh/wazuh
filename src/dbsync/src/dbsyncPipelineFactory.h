@@ -28,11 +28,11 @@ namespace DbSync
         virtual void getDeleted(const ResultCallback callback) = 0;
     };
 
-    class PipelineFactory
+    class PipelineFactory final
     {
     public:
-        static PipelineFactory& instance();
-        void release();
+        static PipelineFactory& instance() noexcept;
+        void release() noexcept;
         PipelineCtxHandle create(const DBSYNC_HANDLE handle,
                                  const char* tables,
                                  const unsigned int threadNumber,
