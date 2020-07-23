@@ -164,7 +164,7 @@ void SQLiteDBEngine::deleteRowsByStatusField(const nlohmann::json& tableNames)
         }
         else
         {
-            // throw dbengine_error { EMPTY_TABLE_METADATA };
+            throw dbengine_error { EMPTY_TABLE_METADATA };
         }
     }
     transaction->commit();

@@ -37,7 +37,7 @@ namespace DbSync
             {
                 throw dbsync_error
                 {
-                    3, "PipelineFactory, Invalid parameters."
+                    INVALID_PARAMETERS
                 };
             }
             Utils::connect(m_spSyncNode, m_spDispatchNode);
@@ -172,7 +172,7 @@ namespace DbSync
         {
             throw dbsync_error
             {
-                2, "PipelineFactory, Invalid handle value."
+                INVALID_HANDLE
             };
         }
         return it->second;
@@ -188,7 +188,7 @@ namespace DbSync
         {
             throw dbsync_error
             {
-                2, "PipelineFactory, Invalid handle value."
+                INVALID_HANDLE
             };
         }
         m_contexts.erase(it);   
