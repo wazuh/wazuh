@@ -10,6 +10,8 @@
 #include "shared.h"
 #include "remoted_op.h"
 
+#ifndef WIN32
+
 /* wraps */
 
 void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
@@ -364,3 +366,5 @@ int main()
     return cmocka_run_group_tests(tests, NULL, NULL);
 
 }
+
+#endif
