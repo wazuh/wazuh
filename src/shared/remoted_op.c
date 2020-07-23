@@ -10,6 +10,7 @@
 
 #include "remoted_op.h"
 
+#ifndef WIN32
 
 /**
  * @brief Looks for the OS architecture in a string. Possibles architectures
@@ -231,3 +232,5 @@ int parse_agent_update_msg (char *msg,
 
     return OS_SUCCESS;
 }
+
+#endif
