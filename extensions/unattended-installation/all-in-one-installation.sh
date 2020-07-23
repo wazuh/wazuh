@@ -365,7 +365,14 @@ main() {
         installKibana
         checkInstallation    
     else
-        getHelp
+        healthCheck   
+        installPrerequisites
+        addWazuhrepo
+        installWazuh
+        installElasticsearch
+        installFilebeat
+        installKibana
+        checkInstallation  
     fi 
 }
 
