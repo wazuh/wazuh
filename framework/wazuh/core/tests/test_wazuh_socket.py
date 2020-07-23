@@ -3,10 +3,11 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest.mock import patch, MagicMock
+
 import pytest
 
-from wazuh.core.wazuh_socket import OssecSocket, OssecSocketJSON
 from wazuh.core.exception import WazuhException
+from wazuh.core.wazuh_socket import OssecSocket, OssecSocketJSON
 
 
 @patch('wazuh.core.wazuh_socket.OssecSocket._connect')
