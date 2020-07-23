@@ -661,7 +661,7 @@ stages:
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
+    response: &resource_not_found
       status_code: 400
       json:
         code: 1701
@@ -807,7 +807,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         group_id: 'wrong_group'
-    response:
+    response: &resource_not_found
       status_code: 400
       json:
         code: 1710
@@ -1238,9 +1238,7 @@ stages:
       params:
         group_id: 'wrong_group'
     response:
-      status_code: 400
-      json:
-        code: 1710
+      <<: *resource_not_found
 
   - name: Try to assign all agents to group1 (Group denied)
     request:
@@ -1508,9 +1506,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 1710
+      <<: *resource_not_found
 
   - name: Try to assign agent 001 to group2 (Allowed)
     request:

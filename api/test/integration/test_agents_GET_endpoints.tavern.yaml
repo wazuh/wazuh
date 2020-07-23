@@ -1713,7 +1713,7 @@ stages:
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-   response:
+   response: &resource_not_found
      status_code: 400
      json:
        code: 1701
@@ -2301,9 +2301,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-     status_code: 400
-     json:
-       code: 1710
+     <<: *resource_not_found
 
  - name: Params, invalid group name (not alphanumeric)
    request:
@@ -2632,9 +2630,7 @@ stages:
      params:
        limit: 1
    response:
-     status_code: 400
-     json:
-       code: 1710
+      <<: *resource_not_found
 
  - name: Try get the configuration of a bad group (not alphanumeric)
    request:
@@ -3019,9 +3015,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-     status_code: 400
-     json:
-       code: 1710
+      <<: *resource_not_found
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
    request:
@@ -3061,9 +3055,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-     status_code: 400
-     json:
-       code: 1710
+      <<: *resource_not_found
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
    request:
@@ -3985,9 +3977,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-     status_code: 400
-     json:
-       code: 1701
+      <<: *resource_not_found
 
  - name: Try get upgrade result agent by name
    request:

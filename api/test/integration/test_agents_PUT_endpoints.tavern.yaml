@@ -16,8 +16,8 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         group_id: wrong_group
-    response:
-      status_code: 400
+    response: &resource_not_found
+      status_code: 404
       json:
         code: 1710
 
@@ -236,9 +236,7 @@ stages:
       data:
         "{file_xml:s}"
     response:
-      status_code: 400
-      json:
-        code: 1710
+      <<: *resource_not_found
 
     # PUT /groups/group1/configuration
   - name: Try to update configuration using an empty file
@@ -347,9 +345,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: "application/xml"
     response:
-      status_code: 400
-      json:
-        code: 1710
+      <<: *resource_not_found
 
 ---
 test_name: PUT /agents/restart
@@ -682,7 +678,7 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
+    response: &resource_not_found
       status_code: 400
       json:
         code: 1701
@@ -817,9 +813,7 @@ stages:
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
     response:
-      status_code: 400
-      json:
-        code: 1701
+      <<: *resource_not_found
 
     # PUT /agents/000/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade agent 000 (manager)
