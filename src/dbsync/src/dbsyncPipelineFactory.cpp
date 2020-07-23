@@ -17,7 +17,7 @@
 
 namespace DbSync
 {
-    class Pipeline : public IPipeline
+    class Pipeline final : public IPipeline
     {
     public:
 
@@ -133,12 +133,12 @@ namespace DbSync
         const ResultCallback m_callback;
     };
 //----------------------------------------------------------------------------------------
-    PipelineFactory& PipelineFactory::instance()
+    PipelineFactory& PipelineFactory::instance() noexcept
     {
         static PipelineFactory s_instance;
         return s_instance;
     }
-    void PipelineFactory::release()
+    void PipelineFactory::release() noexcept
     {
         std::lock_guard<std::mutex> lock{ m_contextsMutex };
         m_contexts.clear();
@@ -149,12 +149,9 @@ namespace DbSync
                                               const unsigned int maxQueueSize,
                                               const ResultCallback callback)
     {
-        std::shared_ptr<IPipeline> spContext
+        const auto spContext
         {
-            new Pipeline
-            {
-                handle, tables, threadNumber, maxQueueSize, callback
-            }
+            std::make_shared<Pipeline>(handle, tables, threadNumber, maxQueueSize, callback)
         };
         const auto ret { spContext.get() };
         std::lock_guard<std::mutex> lock{ m_contextsMutex };
@@ -164,7 +161,7 @@ namespace DbSync
     const std::shared_ptr<IPipeline>& PipelineFactory::pipeline(const PipelineCtxHandle handle)
     {
         std::lock_guard<std::mutex> lock{ m_contextsMutex };
-        const auto it
+        const auto& it
         {
             m_contexts.find(handle)
         };
@@ -180,7 +177,7 @@ namespace DbSync
     void PipelineFactory::destroy(const PipelineCtxHandle handle)
     {
         std::lock_guard<std::mutex> lock{ m_contextsMutex };
-        const auto it
+        const auto& it
         {
             m_contexts.find(handle)
         };
