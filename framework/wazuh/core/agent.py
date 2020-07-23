@@ -104,7 +104,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         return super()._format_data_into_dictionary()
 
     def _parse_legacy_filters(self):
-        if 'older_than' in self.legacy_filters:
+        if 'older_than' in self.legacy_filters and self.legacy_filters['older_than'] != '0s':
             if self.legacy_filters['older_than']:
                 self.q = (self.q + ';' if self.q else '') + \
                           "(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)".format(

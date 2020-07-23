@@ -1929,15 +1929,17 @@ stages:
         path: etc/rules/new-rules.xml
         overwrite: True
     response:
-      status_code: 400
+      status_code: 200
       json:
-        code: 3022
-        dapi_errors: {}
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - "unexisting-node"
 
   - name: Upload decoder to unexisting node
     request:
@@ -1952,15 +1954,15 @@ stages:
         path: etc/decoders/new-decoder.xml
         overwrite: True
     response:
-      status_code: 400
-      json:
-        code: 3022
-        dapi_errors: {}
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+      status_code: 200
+      json: &unexisting_node
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - "unexisting-node"
 
   - name: Upload CDB list to unexisting node
     request:
@@ -1975,15 +1977,9 @@ stages:
         path: etc/lists/new-list
         overwrite: False
     response:
-      status_code: 400
+      status_code: 200
       json:
-        code: 3022
-        dapi_errors: {}
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        <<: *unexisting_node
 
 ---
 test_name: GET /cluster/{node_id}/info
@@ -2173,12 +2169,12 @@ stages:
           total_failed_items: 0
         message: !anystr
 
-  - name: Filters -> category=ossec-analysisd, limit=1 {node_id}
+  - name: Filters -> tag=ossec-analysisd, limit=1 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        category: ossec-analysisd
+        tag: ossec-analysisd
         limit: 1
     response:
       status_code: 200
@@ -2191,12 +2187,12 @@ stages:
           total_failed_items: 0
         message: !anystr
 
-  - name: Filters -> category=ossec-syscheckd, limit=2 {node_id}
+  - name: Filters -> tag=ossec-syscheckd, limit=2 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        category: ossec-syscheckd
+        tag: ossec-syscheckd
         limit: 2
     response:
       status_code: 200
@@ -2204,7 +2200,28 @@ stages:
         data:
           affected_items:
             - <<: *cluster_log
+              tag: ossec-syscheckd
             - <<: *cluster_log
+              tag: ossec-syscheckd
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Filters -> level=info, limit=1 {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        level: info
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *cluster_log
+              level: info
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -2349,15 +2366,15 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 200
       json:
-        code: 3022
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - "wrong_node"
 
 ---
 test_name: GET /cluster/{node_id}/stats/analysisd
