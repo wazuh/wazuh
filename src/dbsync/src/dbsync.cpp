@@ -134,8 +134,7 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
     return txn;
 }
 
-int dbsync_close_txn(const DBSYNC_HANDLE handle,
-                     const TXN_HANDLE txn)
+int dbsync_close_txn(const TXN_HANDLE txn)
 {
     auto ret_val { -1 };
     std::string errorMessage;
@@ -143,7 +142,7 @@ int dbsync_close_txn(const DBSYNC_HANDLE handle,
     {
         errorMessage += "Invalid txn.";
     }
-    catch(const DbSync::dbsync_error& ex)
+    else
     {
         try
         {
@@ -164,9 +163,8 @@ int dbsync_close_txn(const DBSYNC_HANDLE handle,
     return ret_val;
 }
 
-int dbsync_sync_txn_row(const DBSYNC_HANDLE /*handle*/,
-                        const TXN_HANDLE /*txn*/,
-                        const cJSON*     /*js_input*/)
+int dbsync_sync_txn_row(const TXN_HANDLE txn,
+                        const cJSON*     js_input)
 {
     auto ret_val { -1 };
     std::string error_message;
@@ -351,9 +349,8 @@ int dbsync_delete_rows(const DBSYNC_HANDLE /*handle*/,
     return 0;
 }
 
-int dbsync_get_deleted_rows(const DBSYNC_HANDLE /*handle*/,
-                            const TXN_HANDLE  /*txn*/,
-                            result_callback_t /*callback*/)
+int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
+                            result_callback_t callback)
 {
     auto ret_val { -1 };
     std::string error_message;
