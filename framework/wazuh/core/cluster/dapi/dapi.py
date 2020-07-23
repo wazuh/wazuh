@@ -241,7 +241,7 @@ class DistributedAPI:
             after = time.time()
             self.logger.debug("Time calculating request result: {}s".format(after - before))
             return data
-        except exception.WazuhError as e:
+        except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
             e.dapi_errors = self.get_error_info(e)
             if self.debug:
                 raise

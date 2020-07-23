@@ -671,6 +671,30 @@ class WazuhInternalError(WazuhException):
     _default_type = "about:blank"
     _default_title = "Wazuh Internal Error"
 
+    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, ids=None,
+                 title=None, type=None):
+        """Creates a WazuhInternalError exception.
+
+        :param code: Exception code.
+        :param extra_message: Adds an extra message to the error description.
+        :param extra_remediation: Adds an extra description to remediation
+        :param cmd_error: If it is a custom error code (i.e. ossec commands), the error description will be the message.
+        :param dapi_errors: dict with details about node and logfile. I.e.:
+                            {'master-node': {'error': 'Wazuh Internal error',
+                                             'logfile': WAZUH_HOME/logs/api.log}
+                            }
+        :param ids: List or set with the ids involved in the exception
+        """
+
+        super().__init__(code, extra_message=extra_message,
+                         extra_remediation=extra_remediation,
+                         cmd_error=cmd_error,
+                         dapi_errors=dapi_errors,
+                         title=title if title else self._default_title,
+                         type=type if type else self._default_type
+                         )
+        self._ids = set() if ids is None else set(ids)
+
 
 class WazuhError(WazuhException):
     """
@@ -730,7 +754,7 @@ class WazuhPermissionError(WazuhError):
     _default_title = "Permission Denied"
 
 
-class WazuhClusterError(WazuhException):
+class WazuhClusterError(WazuhError):
     """
     This type of exception is raised inside the cluster.
     """
@@ -738,7 +762,7 @@ class WazuhClusterError(WazuhException):
     _default_title = "Wazuh Cluster Error"
 
 
-class WazuhResourceNotFound(WazuhException):
+class WazuhResourceNotFound(WazuhError):
     """
     This type of exception is raised as a controlled response to a not found resource.
     """
