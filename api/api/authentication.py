@@ -110,6 +110,11 @@ def change_secret():
         jwt_secret.write(new_secret)
 
 
+def get_api_conf():
+    reload(configuration)
+    return copy.deepcopy(configuration.api_conf)
+
+
 def get_security_conf():
     reload(configuration)
     return copy.deepcopy(configuration.security_conf)
@@ -195,6 +200,7 @@ def decode_token(token):
         if not data.to_dict()['result']['valid']:
             raise Unauthorized
 
+        # Detect local changes
         dapi = DistributedAPI(f=get_security_conf,
                               request_type='local_master',
                               is_async=False,

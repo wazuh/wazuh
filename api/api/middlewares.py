@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import concurrent.futures
 from base64 import b64decode
 from json import loads
@@ -11,9 +10,8 @@ from time import time
 
 from aiohttp import web
 
-from api.authentication import get_security_conf
+from api.authentication import get_api_conf
 from api.util import raise_if_exc
-from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.exception import WazuhError
 
 logger = getLogger('wazuh')
@@ -86,16 +84,10 @@ async def prevent_denial_of_service(request, max_requests=300):
 
 @web.middleware
 async def security_middleware(request, handler):
-    dapi = DistributedAPI(f=get_security_conf,
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=True,
-                          logger=getLogger('wazuh')
-                          )
-    security_conf = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
-    await prevent_bruteforce_attack(request, block_time=security_conf['block_time'],
-                                    attempts=security_conf['max_login_attempts'])
-    await prevent_denial_of_service(request, max_requests=security_conf['max_request_per_minute'])
+    access_conf = get_api_conf()['access']
+    await prevent_bruteforce_attack(request, block_time=access_conf['block_time'],
+                                    attempts=access_conf['max_login_attempts'])
+    await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
 
     response = await handler(request)
 

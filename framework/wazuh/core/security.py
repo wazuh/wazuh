@@ -11,7 +11,7 @@ import api.configuration as configuration
 import api.middlewares as middlewares
 from api import __path__ as api_path
 from api.authentication import change_secret
-from api.constants import SECURITY_CONFIG_PATH
+from api.constants import CONFIG_FILE_PATH
 from wazuh import WazuhInternalError, WazuhError
 from wazuh.rbac.orm import RolesManager, TokenManager
 
@@ -30,12 +30,12 @@ def update_security_conf(new_config):
     new_config : dict
         Dictionary with the new configuration.
     """
-    configuration.security_conf.update(new_config)
+    configuration.api_conf.update(new_config)
 
     if new_config:
         try:
-            with open(SECURITY_CONFIG_PATH, 'w+') as f:
-                yaml.dump(configuration.security_conf, f)
+            with open(CONFIG_FILE_PATH, 'w+') as f:
+                yaml.dump(configuration.api_conf, f)
         except IOError:
             raise WazuhInternalError(1005)
     else:
