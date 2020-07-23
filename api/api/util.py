@@ -9,10 +9,9 @@ import typing
 import six
 from connexion import ProblemException
 
-from api.api_exception import APIException, APIError
 from wazuh.core.common import ossec_path as WAZUH_PATH
-from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError, WazuhPermissionError
-from api.api_exception import APIException, APIError
+from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError, WazuhPermissionError, \
+    WazuhResourceNotFound
 
 
 def serialize(item):
@@ -262,6 +261,8 @@ def _create_problem(exc: Exception, code=None):
         raise ProblemException(status=500, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     elif isinstance(exc, WazuhPermissionError):
         raise ProblemException(status=403, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
+    elif isinstance(exc, WazuhResourceNotFound):
+        raise ProblemException(status=404, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     elif isinstance(exc, WazuhError):
         raise ProblemException(status=400, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     raise exc

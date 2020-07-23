@@ -190,13 +190,15 @@ class AbstractServer:
         Return all connected nodes, including the master node
         :return: A dictionary containing data from each node
         """
+
         def return_node(node_info: Dict) -> bool:
             """
             Returns whether the node must be added to the result or not
             :param node_info: Node information
             :return: A boolean
             """
-            return (filter_node is None or node_info['name'] in filter_node) and (filter_type == 'all' or node_info['type'] == filter_type)
+            return (filter_node is None or node_info['name'] in filter_node) and (
+                        filter_type == 'all' or node_info['type'] == filter_type)
 
         default_fields = self.to_dict()['info'].keys()
         if select is None:
@@ -212,7 +214,7 @@ class AbstractServer:
         if filter_node is not None:
             filter_node = set(filter_node) if isinstance(filter_node, list) else {filter_node}
             if not filter_node.issubset(set(itertools.chain(self.clients.keys(), [self.configuration['node_name']]))):
-                raise exception.WazuhError(1730)
+                raise exception.WazuhResourceNotFound(1730)
 
         res = [val.to_dict()['info'] for val in itertools.chain([self], self.clients.values())
                if return_node(val.to_dict()['info'])]
@@ -298,10 +300,10 @@ class AbstractServer:
 
         try:
             server = await self.loop.create_server(
-                    protocol_factory=lambda: self.handler_class(server=self, loop=self.loop, logger=self.logger,
-                                                                fernet_key=self.configuration['key'],
-                                                                cluster_items=self.cluster_items),
-                    host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
+                protocol_factory=lambda: self.handler_class(server=self, loop=self.loop, logger=self.logger,
+                                                            fernet_key=self.configuration['key'],
+                                                            cluster_items=self.cluster_items),
+                host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
         except OSError as e:
             self.logger.error("Could not start master: {}".format(e))
             raise KeyboardInterrupt

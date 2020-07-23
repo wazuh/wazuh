@@ -5,7 +5,6 @@
 
 from copy import deepcopy
 
-
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 
 
@@ -49,17 +48,17 @@ class WazuhException(Exception):
                'remediation': 'Run `WAZUH_PATH/bin/ossec-logtest -t` to check your configuration'},
         1102: {'message': 'Invalid section',
                'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
-               'to get more information about configuration sections'},
+                              'to get more information about configuration sections'},
         1103: {'message': 'Invalid field in section',
                'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
-               'to get more information about configuration sections'},
+                              'to get more information about configuration sections'},
         1104: {'message': 'Invalid type',
                'remediation': 'Insert a valid type'},
         1105: 'Error reading API configuration',
         1106: {'message': 'Requested section not present in configuration',
                'remediation': 'Please, check your configuration file. '
-               'You can visit the official documentation (https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
-               'to get more information about configuration sections'},
+                              'You can visit the official documentation (https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
+                              'to get more information about configuration sections'},
         1107: 'Internal options file not found',
         1108: 'Value not found in internal_options.conf',
         1109: 'Option must be a digit',
@@ -81,9 +80,10 @@ class WazuhException(Exception):
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
         1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
-        1120: {'message': "Error adding agent. HTTP header 'X-Forwarded-For' not present in a behind_proxy_server API configuration",
-               'remediation': "Please, make sure your proxy is setting 'X-Forwarded-For' HTTP header"
-               },
+        1120: {
+            'message': "Error adding agent. HTTP header 'X-Forwarded-For' not present in a behind_proxy_server API configuration",
+            'remediation': "Please, make sure your proxy is setting 'X-Forwarded-For' HTTP header"
+            },
         1121: {'message': "Error connecting with socket"},
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
@@ -198,8 +198,8 @@ class WazuhException(Exception):
         1655: 'Active response - Command not available',
         1656: {'message': 'No parameters provided for request',
                'remediation': 'Please, visit the official documentation '
-               '(https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response) '
-               'to get more information about `active-response` API call'},
+                              '(https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response) '
+                              'to get more information about `active-response` API call'},
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
@@ -284,13 +284,14 @@ class WazuhException(Exception):
                },
         1728: {'message': 'Invalid node type',
                'remediation': 'Valid types are `master` and `worker`. Please, visit https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html '
-                          'to get more information about cluster configuration'},
-        1729: {'message': 'Agent status not valid. Valid statuses are active, disconnected, pending and never_connected',
-               'remediation': 'Please check used status and try again.'
-               },
+                              'to get more information about cluster configuration'},
+        1729: {
+            'message': 'Agent status not valid. Valid statuses are active, disconnected, pending and never_connected',
+            'remediation': 'Please check used status and try again.'
+            },
         1730: {'message': 'Node does not exist',
                'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
-                          '`cluster_control -l` (https://documentation.wazuh.com/current/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
+                              '`cluster_control -l` (https://documentation.wazuh.com/current/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
         1731: {'message': 'Agent is not eligible for removal',
                'remediation': "Please check the agent's status official documentation (https://documentation.wazuh.com/3.x/user-manual/agents/restful-api/remove.html)"
                },
@@ -603,7 +604,8 @@ class WazuhException(Exception):
                                      other._cmd_error)
 
     def __hash__(self):
-        return hash((self._type, self._title, self._code, self._extra_message, self._extra_remediation, self._cmd_error))
+        return hash(
+            (self._type, self._title, self._code, self._extra_message, self._extra_remediation, self._cmd_error))
 
     def __or__(self, other):
         if isinstance(other, WazuhException):
@@ -722,7 +724,7 @@ class WazuhError(WazuhException):
 
 class WazuhPermissionError(WazuhError):
     """
-    This type of exception is raised as a controlled response to a permission denied from user
+    This type of exception is raised as a controlled response to a permission denied accessing a resource.
     """
     _default_type = "about:blank"
     _default_title = "Permission Denied"
@@ -734,3 +736,11 @@ class WazuhClusterError(WazuhException):
     """
     _default_type = "about:blank"
     _default_title = "Wazuh Cluster Error"
+
+
+class WazuhResourceNotFound(WazuhException):
+    """
+    This type of exception is raised as a controlled response to a not found resource.
+    """
+    _default_type = "about:blank"
+    _default_title = "Resource Not Found"

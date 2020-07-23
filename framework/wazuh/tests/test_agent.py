@@ -12,6 +12,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from wazuh.core.exception import WazuhResourceNotFound
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
 
 with patch('wazuh.common.ossec_uid'):
@@ -438,7 +440,7 @@ def test_agent_get_group_files(group_list):
 
 
 @pytest.mark.parametrize('shared_path, group_list, group_exists, side_effect, expected_exception', [
-    (test_shared_path, ['none'], False, None, WazuhError(1710)),
+    (test_shared_path, ['none'], False, None, WazuhResourceNotFound(1710)),
     ('invalid-path', ['default'], True, None, WazuhError(1006)),
     (test_shared_path, ['default'], True, WazuhError(1405), WazuhError(1405)),
     (test_shared_path, ['default'], True, WazuhException(1400), WazuhInternalError(1727))
@@ -497,7 +499,7 @@ def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
         assert len(result.dikt) == 1, \
             f'Result dikt lenght is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
         assert result.dikt['message'] == expected_msg, \
-            f'The "result.dikt[\'message\']" received is not the expected.\n'\
+            f'The "result.dikt[\'message\']" received is not the expected.\n' \
             f'Expected: "{expected_msg}"\n' \
             f'Received: "{result.dikt["message"]}"'
         assert os.path.exists(path_to_group), \
@@ -552,8 +554,10 @@ def test_agent_delete_groups(mock_delete, mock_remove_agent, mock_get_groups, gr
     group_list : List of str
         List of groups to be deleted.
     """
+
     def groups():
         return set(group_list)
+
     mock_get_groups.side_effect = groups
     result = delete_groups(group_list)
     # Check typing
@@ -578,10 +582,12 @@ def test_agent_delete_groups_permission_exception(mock_get_groups, mock_remove_a
     group_name : str
         Name of the group to be deleted.
     """
+
     def remove(agent_list=None, group_list=None):
         result = AffectedItemsWazuhResult()
         result.add_failed_item()
         return result
+
     mock_remove_agents.side_effect = remove
     mock_get_groups.side_effect = {group_name}
     result = delete_groups([group_name])
@@ -594,10 +600,10 @@ def test_agent_delete_groups_permission_exception(mock_get_groups, mock_remove_a
 
 
 @pytest.mark.parametrize('group_list, expected_errors', [
-    (['none-1'], [WazuhError(1710)]),
+    (['none-1'], [WazuhResourceNotFound(1710)]),
     (['default'], [WazuhError(1712)]),
-    (['none-1', 'none-2'], [WazuhError(1710)]),
-    (['default', 'none-1'], [WazuhError(1712), WazuhError(1710)]),
+    (['none-1', 'none-2'], [WazuhResourceNotFound(1710)]),
+    (['default', 'none-1'], [WazuhError(1712), WazuhResourceNotFound(1710)]),
 ])
 @patch('wazuh.common.shared_path', new=test_shared_path)
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
@@ -655,8 +661,8 @@ def test_assign_agents_to_group(add_group_mock, group_list, agent_list, num_fail
 
 
 @pytest.mark.parametrize('group_list, agent_list, expected_error, catch_exception', [
-    (['none-1'],  ['001'], WazuhError(1710), True),
-    (['group-1'], ['100'], WazuhError(1701), False),
+    (['none-1'], ['001'], WazuhResourceNotFound(1710), True),
+    (['group-1'], ['100'], WazuhResourceNotFound(1701), False),
     (['default'], ['000'], WazuhError(1703), False)
 ])
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
@@ -678,11 +684,13 @@ def test_agent_assign_agents_to_group_exceptions(mock_add_group, mock_group_exis
         True if the exception will be raised by the function and must be caught. False if the function must return an
         `AffectedItemsWazuhResult` containing the exceptions in its 'failed_items'.
     """
+
     def group_exists(group_id):
         return group_id != 'none-1'
 
     def add_group_to_agent(group_id, agent_id, force=False, replace=False, replace_list=None):
         return f"Agent {agent_id} assigned to {group_id}"
+
     mock_group_exists.side_effect = group_exists
     mock_add_group.side_effect = add_group_to_agent
     try:
@@ -729,9 +737,9 @@ def test_agent_remove_agent_from_group(mock_get_agents, mock_get_groups, mock_un
 
 
 @pytest.mark.parametrize('group_id, agent_id, expected_error', [
-    ('any-group', '100', WazuhError(1701)),
+    ('any-group', '100', WazuhResourceNotFound(1701)),
     ('any-group', '000', WazuhError(1703)),
-    ('group-1', '005', WazuhError(1710)),
+    ('group-1', '005', WazuhResourceNotFound(1710)),
 ])
 @patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('wazuh.agent.get_groups', side_effect={'default'})
@@ -785,9 +793,9 @@ def test_agent_remove_agent_from_groups(mock_get_groups, mock_get_agents, mock_u
 
 
 @pytest.mark.parametrize('group_list, agent_list, expected_error, catch_exception', [
-    (['any-group'], ['100'], WazuhError(1701), True),
+    (['any-group'], ['100'], WazuhResourceNotFound(1701), True),
     (['any-group'], ['000'], WazuhError(1703), True),
-    (['any-group'],   ['005'], WazuhError(1710), False),
+    (['any-group'], ['005'], WazuhResourceNotFound(1710), False),
 ])
 @patch('wazuh.core.agent.Agent.unset_single_group_agent')
 @patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
@@ -867,9 +875,9 @@ def test_agent_remove_agents_from_group(mock_get_groups, mock_get_agents, mock_u
 
 
 @pytest.mark.parametrize('group_list, agent_list, expected_error, catch_exception', [
-    (['non-group'], ['000'], WazuhError(1710), True),
+    (['non-group'], ['000'], WazuhResourceNotFound(1710), True),
     (['group-1'], ['000'], WazuhError(1703), False),
-    (['group-1'], ['100'], WazuhError(1701), False),
+    (['group-1'], ['100'], WazuhResourceNotFound(1701), False),
 ])
 @patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
@@ -1074,7 +1082,7 @@ def test_agent_get_agent_config_exceptions(sqlite_mock, agent_list):
 
 
 @pytest.mark.parametrize('agent_list', [
-     full_agent_list[1:]
+    full_agent_list[1:]
 ])
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.common.shared_path', new=test_shared_path)
@@ -1098,7 +1106,7 @@ def test_agent_get_agents_sync_group(sqlite_mock, get_agent_mock, agent_list):
 
 @pytest.mark.parametrize('agent_list, expected_error', [
     (['000'], WazuhError(1703)),
-    (['100'], WazuhError(1701))
+    (['100'], WazuhResourceNotFound(1701))
 ])
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
@@ -1229,6 +1237,7 @@ def test_agent_get_full_overview(sqlite_mock, get_mock, summary_mock, group_mock
             raise IndexError()
         else:
             return get_agents(agent_list=agent_list, limit=limit, sort=sort, q=q)
+
     distinct_mock.side_effect = mocked_get_distinct_agents
     group_mock.side_effect = mocked_get_agent_groups
     summary_mock.side_effect = mocked_get_agents_summary_status
