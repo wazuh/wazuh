@@ -20,7 +20,7 @@ import wazuh.syscollector as syscollector
 import wazuh.ciscat as ciscat
 import wazuh.active_response as active_response
 import wazuh.cdb_list as cdb_list
-import wazuh.wazuh_socket as wazuh_socket
+import wazuh.core.wazuh_socket as wazuh_socket
 
 # Requests types:
 #   * local_master       -> requests that must be executed in the master node.
