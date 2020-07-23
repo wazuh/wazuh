@@ -649,7 +649,6 @@ int wdb_insert_info(const char *key, const char *value) {
 
     if (wdb_prepare(wdb_global, SQL_INSERT_INFO, -1, &stmt, NULL)) {
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
         return -1;
     }
 
