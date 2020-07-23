@@ -56,7 +56,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *resource_not_found
+      status_code: 404
+      json:
+        code: 1710
 
     # DELETE /agents/001/group/group2
   - name: Try to remove agent 001 from a group where it is not assigned (group2)
@@ -218,7 +220,9 @@ stages:
         list_agents: 001,002
         group_id: wrong_group
     response:
-      <<: *resource_not_found
+      status_code: 404
+      json:
+        code: 1710
 
     # DELETE /agents/group?group_id=group1&list_agents=000,002
   - name: Try to remove agents 000 and 002(not assigned to group1) from group1

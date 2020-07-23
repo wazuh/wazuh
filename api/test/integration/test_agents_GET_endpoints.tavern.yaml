@@ -158,8 +158,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
  - name: Sort
    request:
@@ -1714,7 +1712,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response: &resource_not_found
-     status_code: 400
+     status_code: 404
      json:
        code: 1701
 
@@ -2056,8 +2054,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
  - name: Sort
    request:
@@ -2290,8 +2286,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
  - name: Params, bad group name
    request:
@@ -2300,8 +2294,10 @@ stages:
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-   response:
-     <<: *resource_not_found
+   response: &resource_not_found_group
+     status_code: 404
+     json:
+       code: 1710
 
  - name: Params, invalid group name (not alphanumeric)
    request:
@@ -2630,7 +2626,7 @@ stages:
      params:
        limit: 1
    response:
-      <<: *resource_not_found
+     <<: *resource_not_found_group
 
  - name: Try get the configuration of a bad group (not alphanumeric)
    request:
@@ -2723,8 +2719,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
 ---
 test_name: GET /groups/{group_id}/files
@@ -2843,8 +2837,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
  - name: Try get the files of a bad group name
    request:
@@ -3015,7 +3007,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-      <<: *resource_not_found
+      <<: *resource_not_found_group
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
    request:
@@ -3055,7 +3047,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-      <<: *resource_not_found
+      <<: *resource_not_found_group
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
    request:
@@ -3256,8 +3248,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
  - name: Sort
    request:
@@ -3500,8 +3490,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
  - name: Try show agents with wrong sort
    request:
@@ -3766,8 +3754,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
  - name: Sort
    request:

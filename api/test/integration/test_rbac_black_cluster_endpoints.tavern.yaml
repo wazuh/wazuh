@@ -533,9 +533,7 @@ stages:
       params:
         path: ruleset/decoders/0005-wazuh_decoders.xml
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
   - name: Get file {worker2} (Deny) (Deny)
     request:
@@ -728,9 +726,7 @@ stages:
       params:
         list_nodes: 'worker1,worker2'
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
   - name: Restart cluster
     request:

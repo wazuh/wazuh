@@ -16,7 +16,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         group_id: wrong_group
-    response: &resource_not_found
+    response: &resource_not_found_group
       status_code: 404
       json:
         code: 1710
@@ -236,7 +236,7 @@ stages:
       data:
         "{file_xml:s}"
     response:
-      <<: *resource_not_found
+      <<: *resource_not_found_group
 
     # PUT /groups/group1/configuration
   - name: Try to update configuration using an empty file
@@ -345,7 +345,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: "application/xml"
     response:
-      <<: *resource_not_found
+      <<: *resource_not_found_group
 
 ---
 test_name: PUT /agents/restart
@@ -679,7 +679,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response: &resource_not_found
-      status_code: 400
+      status_code: 404
       json:
         code: 1701
 

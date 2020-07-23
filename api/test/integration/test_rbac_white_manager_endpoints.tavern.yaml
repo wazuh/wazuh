@@ -14,7 +14,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response: &permission_denied
-      status_code: 400
+      status_code: 403
       json:
         code: 4000
 
@@ -62,10 +62,8 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         path: 'etc/decoders/local_decoder.xml'
-    response: &permission_denied
-      status_code: 403
-      json:
-        code: 4000
+    response:
+      <<: *permission_denied
 
   - name: Delete a file (Denied)
     request:

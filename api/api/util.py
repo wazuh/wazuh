@@ -258,13 +258,15 @@ def _create_problem(exc: Exception, code=None):
                                     'dapi_errors': exc.dapi_errors if exc.dapi_errors != {} else None
                                     })
     if isinstance(exc, WazuhInternalError):
-        raise ProblemException(status=500, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
+        raise ProblemException(status=500 if not code else code, type=exc.type, title=exc.title, detail=exc.message,
+                               ext=ext)
     elif isinstance(exc, WazuhPermissionError):
         raise ProblemException(status=403, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     elif isinstance(exc, WazuhResourceNotFound):
         raise ProblemException(status=404, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     elif isinstance(exc, WazuhError):
-        raise ProblemException(status=400, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
+        raise ProblemException(status=400 if not code else code, type=exc.type, title=exc.title, detail=exc.message,
+                               ext=ext)
     raise exc
 
 
