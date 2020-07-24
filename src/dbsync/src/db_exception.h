@@ -20,6 +20,7 @@ constexpr auto SQLITE_CONNECTION_ERROR  { std::make_pair(4, "No connection avail
 constexpr auto EMPTY_DATABASE_PATH      { std::make_pair(5, "Empty database store path.") };
 constexpr auto EMPTY_TABLE_METADATA     { std::make_pair(6, "Empty table metadata.") };
 constexpr auto INVALID_PARAMETERS       { std::make_pair(7, "Invalid parameters.") };
+constexpr auto INVALID_TABLE            { std::make_pair(8, "Invalid table.") };
 
 namespace DbSync
 {

@@ -55,7 +55,7 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
             {
                 for (const auto& value : m_tableFields[table])
                 {
-                    bindJsonData(stmt, value, jsonValue);
+                    bindJsonData(stmt, value, jsonValue, std::get<TableHeader::CID>(value) + 1);
                 }
                 stmt->step();
                 stmt->reset();
@@ -297,10 +297,10 @@ ColumnType SQLiteDBEngine::columnTypeName(const std::string& type)
 
 void SQLiteDBEngine::bindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt, 
                                   const ColumnData& cd, 
-                                  const nlohmann::json::value_type& valueType)
+                                  const nlohmann::json::value_type& valueType,
+                                  const unsigned int cid)
 {
     const auto type { std::get<TableHeader::Type>(cd) };
-    const auto cid  { std::get<TableHeader::CID>(cd) + 1 };
     const auto name { std::get<TableHeader::Name>(cd) };
     const auto& it  { valueType.find(name) };
 
@@ -1062,4 +1062,11 @@ std::unique_ptr<SQLite::IStatement>const& SQLiteDBEngine::getStatement(const std
         return m_statementsCache[sql];
     }
 }
+
+const ColumnData& getColumData(const string& table, const string& colunName)
+{
+
+}
+
+
 
