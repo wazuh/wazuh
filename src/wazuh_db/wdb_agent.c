@@ -41,32 +41,8 @@ static const char *global_db_queries[] = {
     [SQL_DELETE_AGENT_BELONG] = "global sql DELETE FROM belongs WHERE id_agent = %d",
     [SQL_DELETE_GROUP_BELONG] = "global sql DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = '%s' );", 
     [SQL_DELETE_GROUP] = "global sql DELETE FROM `group` WHERE name = '%s';",
+    [SQL_SELECT_GROUPS] = "global sql SELECT name FROM `group`;"
  };
-
-//static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?, ?);";
-//static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
-//static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? WHERE id = ?;";
-//static const char *SQL_UPDATE_AGENT_VERSION_IP = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? , ip = ? WHERE id = ?;";
-//static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = ? WHERE id = ?;";
-//static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
-//static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
-//static const char *SQL_UPDATE_AGENT_GROUP = "UPDATE agent SET `group` = ? WHERE id = ?;";
-//static const char *SQL_INSERT_AGENT_GROUP = "INSERT INTO `group` (name) VALUES(?)";
-//static const char *SQL_SELECT_AGENT_GROUP = "SELECT `group` FROM agent WHERE id = ?;";
-//static const char *SQL_INSERT_AGENT_BELONG = "INSERT INTO belongs (id_group, id_agent) VALUES(?, ?)";
-//static const char *SQL_DELETE_AGENT_BELONG = "DELETE FROM belongs WHERE id_agent = ?";
-//static const char *SQL_DELETE_GROUP_BELONG = "DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ? );";
-//static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ?;";
-//static const char *SQL_SELECT_REG_OFFSET = "SELECT reg_offset FROM agent WHERE id = ?;";
-//static const char *SQL_UPDATE_FIM_OFFSET = "UPDATE agent SET fim_offset = ? WHERE id = ?;";
-//static const char *SQL_UPDATE_REG_OFFSET = "UPDATE agent SET reg_offset = ? WHERE id = ?;";
-//static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
-//static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
-//static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
-//static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ?2 || '/_%');";
-//static const char *SQL_FIND_GROUP = "SELECT id FROM `group` WHERE name = ?;"; 
-static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
-//static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date) {
@@ -681,48 +657,47 @@ int wdb_delete_agent_belongs(int id_agent) {
 
 int wdb_update_groups(const char *dirname) {
     int result =  0;
-    int i;
-    int n = 1;
-    char **array;
-    sqlite3_stmt *stmt = NULL;
+    int i = 0;
+    int n = 0;
+    char **array = NULL;
+    char *json_string = NULL;
+    cJSON *elem = NULL;
+    cJSON *name = NULL;
+    cJSON *root = NULL;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
 
-    if (!(array = (char**) calloc(1, sizeof(char*)))) {
-        merror("wdb_update_groups(): memory error");
+    snprintf(wdbquery, OS_BUFFER_SIZE,"%s", global_db_queries[SQL_SELECT_GROUPS]);
+    wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if(json_string = wstr_chr(wdboutput, ' '), json_string ){
+        *json_string='\0';
+        json_string++;
+
+    } else{
+        mdebug1("SQLite result has no space. Query: %s",wdbquery);
+        os_free(array);
         return -1;
     }
 
-    if (wdb_open_global() < 0) {
-        free(array);
-        return -1;
-    }
-
-    if (wdb_prepare(wdb_global, SQL_SELECT_GROUPS, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
-        free(array);
-        return -1;
-    }
-
-    for (i = 0; wdb_step(stmt) == SQLITE_ROW; i++) {
-        if (i + 1 == n) {
-            char **newarray;
-
-            if (!(newarray = (char **)realloc(array, sizeof(char *) * (n *= 2)))) {
-                merror("wdb_update_groups(): memory error");
-                sqlite3_finalize(stmt);
-                wdb_close_global();
-                free(array);
-                return -1;
+    if(strcmp(wdboutput,"ok") == 0 && strcmp(json_string,"[]") != 0){
+        root = cJSON_Parse(json_string);
+        n = cJSON_GetArraySize(root);
+        os_calloc(n+1, sizeof(char *),array);        
+        
+        for (i = 0; i < n; i++) {
+            elem = cJSON_GetArrayItem(root, i);
+            name = cJSON_GetObjectItem(elem, "name");
+            os_strdup(name->valuestring,array[i]);
             }
+        array[i] = NULL;
 
-            array = newarray;
-        }
-        os_strdup((char*)sqlite3_column_text(stmt, 0),array[i]);
+    } else{
+        mdebug1("SQLite Query failed: %s", wdbquery);
+        os_free(array);
+        return -1;
     }
-
-    array[i] = NULL;
-
-    sqlite3_finalize(stmt);
 
     for(i=0;array[i];i++){
         /* Check if the group exists in dir */

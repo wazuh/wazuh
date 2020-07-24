@@ -150,6 +150,7 @@ typedef enum global_db_query {
     SQL_DELETE_AGENT_BELONG,
     SQL_DELETE_GROUP_BELONG,
     SQL_DELETE_GROUP,
+    SQL_SELECT_GROUPS
 } global_db_query;
 
 typedef struct wdb_t {
