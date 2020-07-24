@@ -21,10 +21,8 @@ static int _AddtoRule(int sid, int level, int none, const char *group,
 
 
 /* Create the RuleList */
-void OS_CreateRuleList()
-{
+void OS_CreateRuleList() {
     os_analysisd_rulelist = NULL;
-    return;
 }
 
 /* Get first node from rule */
@@ -347,7 +345,6 @@ int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule)
                 if (!r_node->ruleinfo->sid_prev_matched) {
                     merror_exit(MEM_ERROR, errno, strerror(errno));
                 }
-                //OSList_SetFreeDataPointer(r_node->ruleinfo->sid_prev_matched, (void (*)(void *)) Free_Eventinfo);
             }
 
             /* Assign the parent pointer to it */
@@ -407,4 +404,229 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
     }
 
     return (0);
+}
+
+void os_remove_rules_list(RuleNode *node) {
+
+    RuleInfo **rules;
+    int pos = 0;
+    int num_rules = 0;
+
+    os_count_rules(node, &num_rules);
+
+    os_calloc(num_rules + 1, sizeof(RuleInfo *), rules);
+
+    os_remove_rulenode(node, rules, &pos, &num_rules);
+
+    for (int i = 0; i <= pos; i++) {
+        os_remove_ruleinfo(rules[i]);
+    }
+
+    os_free(rules);
+}
+
+void os_remove_rulenode(RuleNode *node, RuleInfo **rules, int *pos, int *max_size) {
+
+    RuleNode *tmp;
+
+    while (node) {
+
+        if (node->child) {
+            os_remove_rulenode(node->child, rules, pos, max_size);
+        }
+
+        tmp = node;
+        node = node->next;
+
+        if (tmp->ruleinfo->internal_saving == false && *pos <= *max_size) {
+
+            tmp->ruleinfo->internal_saving = true;
+            rules[*pos] = tmp->ruleinfo;
+            (*pos)++;
+        }
+
+        os_free(tmp);
+    }
+}
+
+void os_remove_ruleinfo(RuleInfo *ruleinfo) {
+
+    if (!ruleinfo) {
+        return;
+    }
+
+    if (ruleinfo->ignore_fields) {
+        for (int i = 0; ruleinfo->ignore_fields[i]; i++) {
+            os_free(ruleinfo->ignore_fields[i]);
+        }
+    }
+
+    if (ruleinfo->ckignore_fields) {
+        for (int i = 0; ruleinfo->ckignore_fields[i]; i++) {
+            os_free(ruleinfo->ckignore_fields[i]);
+        }
+    }
+
+    if (ruleinfo->srcip) {
+        for (int i = 0; ruleinfo->srcip[i]; i++) {
+            os_free(ruleinfo->srcip[i]->ip);
+            os_free(ruleinfo->srcip[i]);
+        }
+    }
+
+    if (ruleinfo->dstip) {
+        for (int i = 0; ruleinfo->dstip[i]; i++) {
+            os_free(ruleinfo->dstip[i]->ip);
+            os_free(ruleinfo->dstip[i]);
+        }
+    }
+
+    if (ruleinfo->fields) {
+        for (int i = 0; ruleinfo->fields[i]; i++) {
+            os_free(ruleinfo->fields[i]->name);
+            OSRegex_FreePattern(ruleinfo->fields[i]->regex);
+            os_free(ruleinfo->fields[i]->regex);
+            os_free(ruleinfo->fields[i]);
+        }
+    }
+
+    if (ruleinfo->info_details) {
+        RuleInfoDetail *tmp;
+        while (ruleinfo->info_details) {
+            tmp = ruleinfo->info_details;
+            ruleinfo->info_details = ruleinfo->info_details->next;
+            os_free(tmp->data);
+            os_free(tmp);
+        }
+    }
+
+    if (ruleinfo->ar) {
+        for (int i = 0; ruleinfo->ar[i]; i++) {
+            os_free(ruleinfo->ar[i]->name);
+            os_free(ruleinfo->ar[i]->command);
+            os_free(ruleinfo->ar[i]->agent_id);
+            os_free(ruleinfo->ar[i]->rules_id);
+            os_free(ruleinfo->ar[i]->rules_group);
+            os_free(ruleinfo->ar[i]->ar_cmd->name);
+            os_free(ruleinfo->ar[i]->ar_cmd->executable);
+            os_free(ruleinfo->ar[i]->ar_cmd->extra_args);
+            os_free(ruleinfo->ar[i]);
+        }
+    }
+
+    if (ruleinfo->lists) {
+        os_remove_cdbrules(&ruleinfo->lists);
+    }
+
+    if (ruleinfo->same_fields) {
+        for (int i = 0; ruleinfo->same_fields[i]; i++) {
+            os_free(ruleinfo->same_fields[i]);
+        }
+    }
+
+    if (ruleinfo->not_same_fields) {
+        for (int i = 0; ruleinfo->not_same_fields[i]; i++) {
+            os_free(ruleinfo->not_same_fields[i]);
+        }
+    }
+
+    if (ruleinfo->mitre_id) {
+        for (int i = 0; ruleinfo->mitre_id[i]; i++) {
+            os_free(ruleinfo->mitre_id[i]);
+        }
+    }
+
+    if (ruleinfo->match) OSMatch_FreePattern(ruleinfo->match);
+    os_free(ruleinfo->match);
+
+    if (ruleinfo->regex) OSRegex_FreePattern(ruleinfo->regex);
+    os_free(ruleinfo->regex);
+
+    if (ruleinfo->srcgeoip) OSMatch_FreePattern(ruleinfo->srcgeoip);
+    os_free(ruleinfo->srcgeoip);
+
+    if (ruleinfo->dstgeoip) OSMatch_FreePattern(ruleinfo->dstgeoip);
+    os_free(ruleinfo->dstgeoip);
+
+    if (ruleinfo->srcport) OSMatch_FreePattern(ruleinfo->srcport);
+    os_free(ruleinfo->srcport);
+
+    if (ruleinfo->dstport) OSMatch_FreePattern(ruleinfo->dstport);
+    os_free(ruleinfo->dstport);
+
+    if (ruleinfo->user) OSMatch_FreePattern(ruleinfo->user);
+    os_free(ruleinfo->user);
+
+    if (ruleinfo->url) OSMatch_FreePattern(ruleinfo->url);
+    os_free(ruleinfo->url);
+    
+    if (ruleinfo->id) OSMatch_FreePattern(ruleinfo->id);
+    os_free(ruleinfo->id);
+    
+    if (ruleinfo->status) OSMatch_FreePattern(ruleinfo->status);
+    os_free(ruleinfo->status);
+    
+    if (ruleinfo->hostname) OSMatch_FreePattern(ruleinfo->hostname);
+    os_free(ruleinfo->hostname);
+    
+    if (ruleinfo->program_name) OSMatch_FreePattern(ruleinfo->program_name);
+    os_free(ruleinfo->program_name);
+    
+    if (ruleinfo->data) OSMatch_FreePattern(ruleinfo->data);
+    os_free(ruleinfo->data);
+
+    if (ruleinfo->extra_data) OSMatch_FreePattern(ruleinfo->extra_data);
+    os_free(ruleinfo->extra_data);
+
+    if (ruleinfo->location) OSMatch_FreePattern(ruleinfo->location);
+    os_free(ruleinfo->location);
+
+    if (ruleinfo->system_name) OSMatch_FreePattern(ruleinfo->system_name);
+    os_free(ruleinfo->system_name);
+
+    if (ruleinfo->protocol) OSMatch_FreePattern(ruleinfo->protocol);
+    os_free(ruleinfo->protocol);
+
+    if (ruleinfo->if_matched_regex) OSRegex_FreePattern(ruleinfo->if_matched_regex);
+    os_free(ruleinfo->if_matched_regex);
+
+    if (ruleinfo->if_matched_group) OSMatch_FreePattern(ruleinfo->if_matched_group);
+    os_free(ruleinfo->if_matched_group);
+
+    os_free(ruleinfo->ignore_fields);
+    os_free(ruleinfo->ckignore_fields);
+    os_free(ruleinfo->srcip);
+    os_free(ruleinfo->dstip);
+    os_free(ruleinfo->fields);
+    os_free(ruleinfo->group);
+    os_free(ruleinfo->day_time);
+    os_free(ruleinfo->week_day);
+    os_free(ruleinfo->action);
+    os_free(ruleinfo->comment);
+    os_free(ruleinfo->info);
+    os_free(ruleinfo->cve);
+    os_free(ruleinfo->if_sid);
+    os_free(ruleinfo->if_level);
+    os_free(ruleinfo->if_group);
+    os_free(ruleinfo->ar);
+    os_free(ruleinfo->file);
+    os_free(ruleinfo->same_fields);
+    os_free(ruleinfo->not_same_fields);
+    os_free(ruleinfo->mitre_id);
+
+    os_free(ruleinfo);
+}
+
+void os_count_rules(RuleNode *node, int *num_rules) {
+
+    while (node) {
+
+        if (node->child) {
+            os_count_rules(node->child, num_rules);
+        }
+
+        (*num_rules)++;
+
+        node = node->next;
+    }
 }

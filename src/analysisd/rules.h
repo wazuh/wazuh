@@ -82,6 +82,8 @@
 
 #define MAX_RULEINFODETAIL  32
 
+typedef struct EventList EventList;
+
 typedef struct _RuleInfoDetail {
     int type;
     char *data;
@@ -201,6 +203,8 @@ typedef struct _RuleInfo {
     char ** not_same_fields;
 
     char ** mitre_id;
+
+    bool internal_saving;      ///< Used to free RuleInfo structure in wazuh-logtest
 } RuleInfo;
 
 
@@ -214,20 +218,26 @@ typedef struct _RuleNode {
 RuleInfoDetail *zeroinfodetails(int type, const char *data);
 int get_info_attributes(char **attributes, char **values);
 
-/* RuleInfo functions */
-RuleInfo *zerorulemember(int id,
-                         int level,
-                         int maxsize,
-                         int frequency,
-                         int timeframe,
-                         int noalert,
-                         int ignore_time,
-                         int overwrite);
+/**
+ * @brief Allocate memory and initialize attributes with default values
+ * @param id rule's identifier
+ * @param level rule's level
+ * @param maxsize rule's maxsize
+ * @param frequency rule's frequency
+ * @param timeframe rule's timeframe
+ * @param noalert determine if the rule generates alerts
+ * @param ignore_time rule's ignore_time
+ * @param overwrite determine if it overwrites the rule
+ * @param last_event_list list of previous events
+ * @return rule information's structure
+ */
+RuleInfo *zerorulemember(int id, int level, int maxsize, int frequency,
+                         int timeframe, int noalert, int ignore_time,
+                         int overwrite, EventList **last_event_list);
 
-
-/** Rule_list Functions **/
-
-/* create the rule list */
+/**
+ * @brief Set os_analysisd_rulelist to null
+ */
 void OS_CreateRuleList(void);
 
 /* Add rule information to the list */
@@ -245,12 +255,54 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule);
 /* Mark IDs (if_matched_sid) */
 int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule);
 
-/* Get first rule */
+/**
+ * @brief Get rules list
+ *
+ * Only used for analysisd
+ * @return first node of os_analysisd_rulelist
+ */
 RuleNode *OS_GetFirstRule(void);
 
+/**
+ * @brief Remove rules list
+ * @param node rule list to remove
+ */
+void os_remove_rules_list(RuleNode *node);
+
+/**
+ * @brief Remove a rule node
+ * @param node rule node to remove
+ * @param rules hash where save the reference to rule information
+ */
+void os_remove_rulenode(RuleNode *node, RuleInfo **rules, int *pos, int *max_size);
+
+/**
+ * @brief Remove a rule information
+ * @param ruleinfo rule to remove
+ */
+void os_remove_ruleinfo(RuleInfo *ruleinfo);
+
+/**
+ * @brief
+ * @param node
+ * @param num_rules
+ */
+void os_count_rules(RuleNode *node, int *num_rules);
+
+/**
+ * @brief Call OS_CreateRuleList function
+ */
 void Rules_OP_CreateRules(void);
 
-int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node);
+/**
+ * @brief Read a rules file and save them in r_node
+ * @param rulefile file name to read
+ * @param r_node reference to the rule list
+ * @param l_node reference to the first list of the cdb lists
+ * @param last_event_list reference to first node to the previous events list
+ * @return 0 on success, otherwise -1
+ */
+int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, EventList **last_event_list);
 
 int AddHash_Rule(RuleNode *node);
 

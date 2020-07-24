@@ -19,14 +19,13 @@
 #include "lists_make.h"
 
 
-void Lists_OP_MakeAll(int force, int show_message)
-{
-    ListNode *lnode = OS_GetFirstList();
-    while (lnode) {
-        Lists_OP_MakeCDB(lnode->txt_filename,
-                         lnode->cdb_filename,
-                         force, show_message);
-        lnode = lnode->next;
+void Lists_OP_MakeAll(int force, int show_message, ListNode **lnode) {
+
+    ListNode *tmp = *lnode;
+
+    while (tmp) {
+        Lists_OP_MakeCDB(tmp->txt_filename, tmp->cdb_filename, force, show_message);
+        tmp = tmp->next;
     }
 }
 
