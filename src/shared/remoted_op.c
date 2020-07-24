@@ -10,7 +10,7 @@
 
 #include "remoted_op.h"
 
-#ifndef CLIENT
+#ifndef WIN32
 
 /**
  * @brief Looks for the OS architecture in a string. Possibles architectures

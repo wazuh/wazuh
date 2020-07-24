@@ -59,7 +59,7 @@ int teardown_remoted_op(void **state) {
 
 /* Tests get_os_arch */
 
-#ifndef CLIENT
+#ifndef WIN32
 
 void test_get_os_arch_x86_64(void **state)
 {
@@ -349,7 +349,7 @@ int main()
 {
     const struct CMUnitTest tests[] = 
     {
-#ifndef CLIENT
+#ifndef WIN32
         // Tests get_os_arch
         cmocka_unit_test_setup_teardown(test_get_os_arch_x86_64, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_get_os_arch_i386, setup_remoted_op, teardown_remoted_op),
