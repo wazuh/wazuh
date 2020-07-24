@@ -8,8 +8,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef WM_AGENT_PARSING_H
-#define WM_AGENT_PARSING_H
+#ifndef WM_AGENT_UPGRADE_PARSING_H
+#define WM_AGENT_UPGRADE_PARSING_H
 
 #include "wm_agent_upgrade.h"
 
