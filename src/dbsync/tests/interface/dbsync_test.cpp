@@ -237,9 +237,9 @@ TEST_F(DBSyncTest, syncRow)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
     const auto insertionSqlStmt1{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":100}, {"pid":5,"name":"System", "tid":100}, {"pid":6,"name":"System", "tid":100}]})"};   // Insert
-    const auto insertionSqlStmt2{ R"({"table":"processes","data":[{"pid":5,"name":"System"}]})"};    // Insert
     const auto updateSqlStmt1{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":101}]})"};    // Update
-    const auto updateSqlStmt2{ R"({"table":"processes","data":[{"pid":4,"name":"Systemmm", "tid":105}]})"};    // Update
+    const auto updateSqlStmt2{ R"({"table":"processes","data":[{"pid":4,"name":"Systemmm", "tid":105}]})"};  // Update
+    const auto insertSqlStmt3{ R"({"table":"processes","data":[{"pid":7,"name":"Guake"}]})"};                // Insert    
     
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
@@ -247,13 +247,12 @@ TEST_F(DBSyncTest, syncRow)
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1{ cJSON_Parse(insertionSqlStmt1) };
     const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate1{ cJSON_Parse(updateSqlStmt1) };
     const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate2{ cJSON_Parse(updateSqlStmt2) };    
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert2{ cJSON_Parse(insertSqlStmt3) }; 
     
     result_callback_t notifyCb = reinterpret_cast<result_callback_t>(callback);
 
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), notifyCb));
     EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), notifyCb));
     EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate2.get(), notifyCb));
-    /*EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert2.get(), notifyCb));
-    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), notifyCb));
-    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate2.get(), notifyCb));*/   
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert2.get(), notifyCb));
 }
