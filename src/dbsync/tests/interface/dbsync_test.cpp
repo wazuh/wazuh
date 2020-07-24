@@ -239,7 +239,7 @@ TEST_F(DBSyncTest, syncRow)
     const auto insertionSqlStmt1{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":100}, {"pid":5,"name":"System", "tid":100}, {"pid":6,"name":"System", "tid":100}]})"};   // Insert
     const auto insertionSqlStmt2{ R"({"table":"processes","data":[{"pid":5,"name":"System"}]})"};    // Insert
     const auto updateSqlStmt1{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":101}]})"};    // Update
-    const auto updateSqlStmt2{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":105}]})"};    // Update
+    const auto updateSqlStmt2{ R"({"table":"processes","data":[{"pid":4,"name":"Systemmm", "tid":105}]})"};    // Update
     
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
