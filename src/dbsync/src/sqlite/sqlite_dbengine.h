@@ -163,11 +163,6 @@ class SQLiteDBEngine : public DbSync::IDbEngine
                              const nlohmann::json& jsData,
                              std::vector<CallbackAction>& callbackList);
 
-        void processInputData(const std::string& table,
-                              const nlohmann::json& data,
-                              const std::vector<std::string>& primaryKeyList,
-                              std::vector<CallbackAction>& callbackList);
-
         void getRowDiff(const std::string& table,
                         const nlohmann::json& data,
                         nlohmann::json& jsResult);                              
