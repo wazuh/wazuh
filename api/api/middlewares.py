@@ -7,7 +7,7 @@ from json import loads
 from logging import getLogger
 from time import time
 from connexion.problem import problem as connexion_problem
-from connexion.exceptions import ProblemException
+from connexion.exceptions import ProblemException, ExtraParameterProblem
 
 from aiohttp import web
 
@@ -75,6 +75,12 @@ async def response_postprocessing(request, handler):
     try:
         return await handler(request)
     except ProblemException as ex:
+        if isinstance(ex, ExtraParameterProblem):
+            del ex.__dict__['extra_formdata']
+            del ex.__dict__['extra_query']
+            ex.__dict__['type'] = 'about:blank'
+            ex.__dict__['title'] = 'Bad Request'
+
         problem = connexion_problem(**ex.__dict__)
         for field in fields_to_remove:
             if field in problem.body:
