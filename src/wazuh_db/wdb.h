@@ -126,6 +126,18 @@ typedef enum wdb_stmt {
     WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
 
+typedef enum global_db_query {
+    SQL_INSERT_AGENT,
+    SQL_UPDATE_AGENT_NAME,
+    SQL_UPDATE_AGENT_VERSION,
+    SQL_UPDATE_AGENT_VERSION_IP,
+    SQL_UPDATE_AGENT_KEEPALIVE,
+    SQL_DELETE_AGENT,
+    SQL_SELECT_AGENT,
+    SQL_SELECT_AGENT_GROUP,
+ //   SQL_SELECT_AGENTS,
+} global_db_query;
+
 typedef struct wdb_t {
     sqlite3 * db;
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
