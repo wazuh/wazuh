@@ -30,7 +30,11 @@
 
 struct _Eventinfo;
 
-/* Decoder structure */
+/**
+ * @brief Decoder structure
+ *
+ * Allow saving the decoders information
+ */
 typedef struct {
     u_int8_t  get_next;
     u_int8_t  type;
@@ -56,6 +60,8 @@ typedef struct {
 
     void (*plugindecoder)(void *lf, void *rule_hash, void *decoder_match);
     void* (**order)(struct _Eventinfo *, char *, const char *);
+
+    bool internal_saving;      ///< Used to free decoderinfo structure in wazuh-logtest
 } OSDecoderInfo;
 
 /* List structure */
@@ -75,11 +81,22 @@ typedef struct dbsync_context_t {
     cJSON * data;
 } dbsync_context_t;
 
-/* Functions to Create the list, add a osdecoder to the
- * list and to get the first osdecoder
+/**
+ * @brief Initialize decoder lists to NULL
+ *
+ * Only used for analysisd decoder lists (os_analysisd_decoderlist_pn and os_analysisd_decoderlist_nopn)
  */
 void OS_CreateOSDecoderList(void);
+
+/**
+ * @brief Add decoders to decoder lists
+ * @param pi decoder to add in decoder list
+ * @param pn_osdecodernode decoder list for events with program name
+ * @param npn_osdecodernode decoder list for events without program name
+ * @return 1 on success, otherwise 0
+ */
 int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode, OSDecoderNode **npn_osdecodernode);
+
 OSDecoderNode *OS_GetFirstOSDecoder(const char *pname);
 int getDecoderfromlist(const char *name);
 char *GetGeoInfobyIP(char *ip_addr);
@@ -91,6 +108,34 @@ void SyscollectorInit(void);
 void CiscatInit(void);
 void WinevtInit(void);
 void SecurityConfigurationAssessmentInit(void);
-int ReadDecodeXML(const char *file);
+int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn, OSDecoderNode **decoderlist_nopn);
+
+/**
+ * @brief Remove decoder information
+ * @param pi OSDecoderInfo struct to remove
+ */
+void FreeDecoderInfo(OSDecoderInfo *pi);
+
+/**
+ * @brief Remove decoder list
+ * @param decoderlist_pn list of decoders which have program_name
+ * @param decoderlist_npn ist of decoders which haven't program_name
+ * @param num_decoders number of decoder nodes on memory
+ */
+void os_remove_decoders_list(OSDecoderNode *decoderlist_pn, OSDecoderNode *decoderlist_npn);
+
+/**
+ * @brief Remove a decoder node
+ * @param node OSDecoderNode node to remove
+ * @param decoders hash to save the reference to decoder information
+ */
+void os_remove_decodernode(OSDecoderNode *node, OSDecoderInfo **decoders, int *pos, int *max_size);
+
+/**
+ * @brief Count the number of decoders in a list
+ * @param node the first node of the list
+ * @param num_decoders the number of decoders
+ */
+void os_count_decoders(OSDecoderNode *node, int *num_decoders);
 
 #endif /* DECODER_H */

@@ -9,10 +9,16 @@
 
 #include "shared.h"
 #include "rules.h"
+#include "config.h"
 #include "decoders/decoder.h"
 #include "eventinfo.h"
+#include "lists.h"
+#include "lists_make.h"
+#include "fts.h"
+#include "accumulator.h"
 #include "../config/logtest-config.h"
 #include "../os_net/os_net.h"
+#include <time.h>
 
 
 /**
@@ -77,22 +83,22 @@ int w_logtest_init_parameters();
 void *w_logtest_main(w_logtest_connection_t * connection);
 
 /**
- * @brief Create resources necessary to service client
- * @param fd File descriptor which represents the client
- */
-void w_logtest_initialize_session(const char * token);
-
-/**
  * @brief Process client's request
  * @param fd File descriptor which represents the client
  */
-void w_logtest_process_log(const char * token);
+void w_logtest_process_log(char * token);
+
+/**
+ * @brief Create resources necessary to service client
+ * @param fd File descriptor which represents the client
+ */
+w_logtest_session_t *w_logtest_initialize_session(char * token, char ** msg_error);
 
 /**
  * @brief Free resources after client closes connection
  * @param fd File descriptor which represents the client
  */
-void w_logtest_remove_session(const char * token);
+void w_logtest_remove_session(char * token);
 
 /**
  * @brief Check the inactive logtest sessions
