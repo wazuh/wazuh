@@ -207,6 +207,11 @@ void Statement::bind(const int32_t index, const double value)
     checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
 }
 
+std::string Statement::expand()
+{
+    return sqlite3_sql(m_stmt.get());
+}
+
 std::unique_ptr<IColumn> Statement::column(const int32_t index)
 {
     return std::make_unique<SQLite::Column>(m_stmt, index);

@@ -52,7 +52,7 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
         {
             for (const auto& value : m_tableFields[table])
             {
-                bindJsonData(stmt, value, jsonValue);
+                bindJsonData(stmt, value, jsonValue, std::get<TableHeader::CID>(value) + 1);
             }
             stmt->step();
             stmt->reset();
@@ -96,72 +96,138 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
 {
     if (0 != loadTableData(table))
     {
+        ReturnTypeCallback resultCbType;
+        nlohmann::json jsResult;
+        
+        const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
+        getRowDiff(table, data[0], jsResult);
+        transaction->commit();
+        std::cout << "DIFF " << jsResult.dump() << std::endl;
+        
+#if 0        
+        /*auto transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
+        
+        if(jsResult != nullptr)
+        {
+            updateSingleRow(table, jsResult);
+            resultCbType = MODIFIED;
+        }
+        else
+        {
+            jsResult = data;
+            insertSingleRow(table, data);
+            resultCbType = INSERTED;
+        }
+
+        transaction->commit();
+
+        if(callback)
+        {
+            callback(resultCbType, jsResult);
+        }
+        
         std::vector<std::string> primaryKeyList;
         if (getPrimaryKeysFromTable(table, primaryKeyList))
         {
             std::vector<CallbackAction> callbackActionsList;
             auto transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
-            const auto& stmt 
-            { 
-                getStatement(buildSelectMatchingPKsSqlQuery(table, primaryKeyList))
-            };
-            const auto& tableFields { m_tableFields[table] };
-
-            for (const auto& jsonRow : data)
-            {
-                for (const auto& pkValue : primaryKeyList)
-                {
-                    const auto& it
-                    {
-                        std::find_if(tableFields.begin(), tableFields.end(),
-                                     [&pkValue](const ColumnData& column)
-                                        {
-                                            return 0 == std::get<Name>(column).compare(pkValue);
-                                        })
-                    };
-                    if(it == tableFields.end())
-                    {
-                        throw dbengine_error { INVALID_PK_DATA };
-                    }
-                    bindJsonData(stmt, *it, jsonRow);
-                }
-
-                if(SQLITE_ROW == stmt->step())
-                {
-                    // Update
-                    Row regitryFields;
-                    for(const auto& field : tableFields)
-                    {
-                        getTableData(stmt, 
-                                     std::get<TableHeader::CID>(field), 
-                                     std::get<TableHeader::Type>(field),
-                                     std::get<TableHeader::Name>(field), 
-                                     regitryFields);
-                    }
-                    if(regitryFields.empty())
-                    {
-                    }
-                }
-                else
-                {
-                    // Insertion
-                    insertSingleRow(table, jsonRow, callbackActionsList);
-                }
-
-                stmt->reset();
-            }
+            processInputData(table, data, primaryKeyList, callbackActionsList);
             // Commit when every single row was processed
             transaction->commit();
+            
             if(callback)
             {
+                // Callbacks processing
                 for(const auto& cbAction : callbackActionsList)
                 {
                     callback(cbAction.first, cbAction.second);
                 }
             }
+        }*/
+#endif 
+    }
+
+}
+
+void SQLiteDBEngine::getRowDiff(const std::string& table,
+                                const nlohmann::json& data,
+                                nlohmann::json& jsResult)
+{
+    std::vector<std::string> primaryKeyList;
+    if (getPrimaryKeysFromTable(table, primaryKeyList))
+    {
+        const auto& stmt
+        { 
+            getStatement(buildSelectMatchingPKsSqlQuery(table, primaryKeyList))
+        };
+
+        const auto& tableFields { m_tableFields[table] };
+
+        for (const auto& pkValue : primaryKeyList)
+        {
+            const auto& it
+            {
+                std::find_if(tableFields.begin(), tableFields.end(),
+                                [&pkValue](const ColumnData& column)
+                                {
+                                    return 0 == std::get<Name>(column).compare(pkValue);
+                                })
+            };
+
+            if(it != tableFields.end())
+            {
+                bindJsonData(stmt, *it, data, 1);
+                //pkColumnData = *it;
+                break;
+                //throw dbengine_error { INVALID_PK_DATA };
+            }
         }
+        stmt->step();
+
+        std::cout << "DATA: " << data.dump() << std::endl;
+        std::cout << "STMT: " << stmt->expand() << std::endl;
+
+
+        Row regitryFields;
+        for(const auto& field : tableFields)
+        {
+            getTableData(stmt, 
+                        std::get<TableHeader::CID>(field), 
+                        std::get<TableHeader::Type>(field),
+                        std::get<TableHeader::Name>(field), 
+                        regitryFields);
+        }
+
+        if(!regitryFields.empty())
+        {
+            for (const auto& value : regitryFields)
+            {
+                nlohmann::json object;
+                if(getFieldValueFromTuple(value, object))
+                {
+                    if(data[value.first] != object[value.first])
+                    {
+                        jsResult.push_back({{value.first, data[value.first]}});
+                    }
+                }
+            }
+        }
+
+
+        /*if(SQLITE_ROW == stmt->step())
+        {
+            nlohmann::json jsResult;
+            // Row matching the SELECT query, proceeding with the table update
+            updateSingleRow(table, tableFields, pkColumnData, stmt, jsonRow, jsResult);
+        }
+        else
+        {
+            // Insertion
+            insertSingleRow(table, tableFields, jsonRow, callbackActionsList);
+        }*/
     }
 }
+
 
 // -----------------------------------------------------------------
 
@@ -381,6 +447,7 @@ void SQLiteDBEngine::bindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt
                    ? std::stoll(jsData.get_ref<const std::string&>()) 
                    : 0
             };
+            std::cout << "BIGINT BIND value: " << value << std::endl;
             stmt->bind(cid, value);
         }
         else if (ColumnType::UnsignedBigInt == type)
@@ -429,6 +496,7 @@ void SQLiteDBEngine::bindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt
             throw dbengine_error { INVALID_COLUMN_TYPE };
         }
     }
+    std::cout << "stmt bind: " << stmt->expand() << std::endl;
 }
 
 bool SQLiteDBEngine::createCopyTempTable(const std::string& table)
@@ -717,7 +785,6 @@ int32_t SQLiteDBEngine::bindFieldData(std::unique_ptr<SQLite::IStatement>const &
     {
         const auto value { std::get<GenericTupleIndex::GenDouble>(fieldData) };
         stmt->bind(index, value);
-
     }
     else
     {
@@ -760,6 +827,59 @@ std::string SQLiteDBEngine::buildLeftOnlyQuery(const std::string& t1,
     return std::string("SELECT "+fieldsList+" FROM "+t1+" t1 LEFT JOIN "+t2+" t2 ON "+onMatchList+" WHERE "+nullFilterList+";");
 } 
 
+void SQLiteDBEngine::processInputData(const std::string& table,
+                                      const nlohmann::json& data,
+                                      const std::vector<std::string>& primaryKeyList,
+                                      std::vector<CallbackAction>& callbackActionsList)
+{
+    const auto& stmt 
+    { 
+        getStatement(buildSelectMatchingPKsSqlQuery(table, primaryKeyList))
+    };
+    const auto& tableFields { m_tableFields[table] };
+
+    ColumnData pkColumnData = {};
+
+    for (const auto& jsonRow : data)
+    {
+        // {pid, name, path}
+        // {pid, name, path}
+        // {pid, name, path}
+        for (const auto& pkValue : primaryKeyList)
+        {
+            const auto& it
+            {
+                std::find_if(tableFields.begin(), tableFields.end(),
+                                [&pkValue](const ColumnData& column)
+                                {
+                                    return 0 == std::get<Name>(column).compare(pkValue);
+                                })
+            };
+
+            if(it != tableFields.end())
+            {
+                bindJsonData(stmt, *it, jsonRow, std::get<TableHeader::CID>(*it) + 1);
+                pkColumnData = *it;
+                break;
+                //throw dbengine_error { INVALID_PK_DATA };
+            }
+        }
+
+        if(SQLITE_ROW == stmt->step())
+        {
+            nlohmann::json jsResult;
+            // Row matching the SELECT query, proceeding with the table update
+            updateSingleRow(table, tableFields, pkColumnData, stmt, jsonRow, jsResult);
+        }
+        else
+        {
+            // Insertion
+            insertSingleRow(table, tableFields, jsonRow, callbackActionsList);
+        }
+        stmt->reset();
+    }
+}
+
 bool SQLiteDBEngine::insertNewRows(const std::string& table,
                                    const std::vector<std::string>& primaryKeyList,
                                    const DbSync::ResultCallback callback)
@@ -789,29 +909,29 @@ bool SQLiteDBEngine::insertNewRows(const std::string& table,
 }
 
 void SQLiteDBEngine::insertSingleRow(const std::string& table,
+                                     const TableColumns& tableFields,
                                      const nlohmann::json& jsData,
                                      std::vector<CallbackAction>& callbackList)
 {
     auto const& stmt { getStatement(buildInsertBulkDataSqlQuery(table)) };
-    auto const& tableRef { m_tableFields[table] };
     for (auto it = jsData.begin(); it != jsData.end(); ++it)
     {
         const auto& elemFound
         {
-            std::find_if(tableRef.begin(), tableRef.end(),
+            std::find_if(tableFields.begin(), tableFields.end(),
                     [&it] (const ColumnData& cd)
                     {
                         return std::get<TableHeader::Name>(cd).compare(it.key()) == 0;
                     })
         };
-        if (elemFound != tableRef.end())
+        if (elemFound != tableFields.end())
         {
-            bindJsonData(stmt, *elemFound, jsData);
+            bindJsonData(stmt, *elemFound, jsData, std::get<TableHeader::CID>(*elemFound) + 1);
             const auto& callbackPair
             {
                 std::make_pair(ReturnTypeCallback::INSERTED, jsData)
             };
-            callbackList.push_back(callbackPair);
+            callbackList.push_back(std::move(callbackPair));
         }
     }
     stmt->step();
@@ -1084,6 +1204,73 @@ bool SQLiteDBEngine::getRowsToModify(const std::string& table,
     return ret;
 }
 
+void SQLiteDBEngine::updateSingleRow(const std::string& table,
+                                     const TableColumns& tableFields,
+                                     const ColumnData& pKeyData,
+                                     const std::unique_ptr<SQLite::IStatement>& stmt,
+                                     const nlohmann::json& jsData,
+                                     nlohmann::json& jsResult)
+{
+    Row regitryFields;
+    for(const auto& field : tableFields)
+    {
+        getTableData(stmt, 
+                     std::get<TableHeader::CID>(field), 
+                     std::get<TableHeader::Type>(field),
+                     std::get<TableHeader::Name>(field), 
+                     regitryFields);
+    }
+
+    if(!regitryFields.empty())
+    {
+        for (const auto& value : regitryFields)
+        {
+            nlohmann::json object;
+            if(getFieldValueFromTuple(value, object))
+            {
+                if(jsData[value.first] != object[value.first])
+                {
+                    jsResult["modified"].push_back({{value.first, jsData[value.first]}});
+                    auto newValue { value };
+                    const auto& updateStmt { getStatement("UPDATE "+table+" SET "+value.first+"=? WHERE "+std::get<TableHeader::Name>(pKeyData)+"=?;") };
+
+                    const ColumnData column1
+                    {
+                        0, value.first, (ColumnType)std::get<TableHeader::Type>(value.second), false, false
+                    };
+
+                    /*std::tie(index, name, colType, std::ignore, std::ignore) = column;
+                    name = value.first;
+                    colType = (ColumnType)std::get<TableHeader::Type>(value.second);*/
+                    //bindJsonData(updateStmt, column1, jsData);
+                    std::cout << "statement 1: " << updateStmt->expand() << std::endl;
+
+
+                    const ColumnData column2
+                    {
+                        1, std::get<TableHeader::Name>(pKeyData), (ColumnType)std::get<TableHeader::Type>(pKeyData), false, false
+                    };                   
+                    /*name = std::get<TableHeader::Name>(pKeyData);
+                    colType = (ColumnType)std::get<TableHeader::Type>(pKeyData);
+                    index += 1;*/
+                    bindJsonData(updateStmt, column2, jsData, 1);
+
+                    std::cout << "JSDATA: " << jsData.dump() << std::endl;
+                    std::cout << "statement 2: " << updateStmt->expand() << std::endl;
+
+                    updateStmt->step();
+                    updateStmt->reset();
+
+                    std::cout << "Json Results: " << jsResult.dump() << std::endl;
+                    std::cout << "Value changed: " << value.first << std::endl;                 
+                    std::cout << "Old Value : "<< object[value.first] << std::endl;
+                    std::cout << "New value: " << jsData[value.first] << std::endl;
+                }
+            }
+        }         
+    }
+}
+
 bool SQLiteDBEngine::updateRows(const std::string& table,
                                 const std::vector<std::string>& primaryKeyList,
                                 const std::vector<Row>& rowKeysValue)
@@ -1185,6 +1372,8 @@ bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::string, T
     }
     return ret;
 }
+
+
 
 std::unique_ptr<SQLite::IStatement>const& SQLiteDBEngine::getStatement(const std::string& sql) 
 {
