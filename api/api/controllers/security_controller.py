@@ -16,6 +16,7 @@ from api.models.security import CreateUserModel, UpdateUserModel, RoleModel, Pol
 from api.models.token_response import TokenResponseModel
 from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
+from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.exception import WazuhPermissionError, WazuhException
 from wazuh.core.results import AffectedItemsWazuhResult
@@ -727,6 +728,7 @@ async def get_rbac_actions(pretty: bool = False, endpoint: str = None):
 async def revoke_all_tokens(request):
     """Revoke all tokens."""
     f_kwargs = {}
+    nodes = await get_system_nodes()
 
     dapi = DistributedAPI(f=security.revoke_tokens,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -735,6 +737,7 @@ async def revoke_all_tokens(request):
                           broadcasting=True,
                           wait_for_complete=True,
                           logger=logger,
+                          nodes=nodes,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
