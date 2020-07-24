@@ -194,7 +194,10 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, EventList *last_events, RuleInfo 
 /* Zero the eventinfo structure */
 void Zero_Eventinfo(Eventinfo *lf);
 
-/* Free the eventinfo structure */
+/**
+ * @brief Free the eventinfo structure
+ * @param lf event to remove
+ */
 void Free_Eventinfo(Eventinfo *lf);
 
 /* Add and event to the list of previous events */
@@ -202,6 +205,12 @@ void OS_AddEvent(Eventinfo *lf, EventList *list);
 
 /* Return the last event from the Event list */
 EventNode *OS_GetFirstEvent(EventList *list);
+
+/**
+ * @brief Free a events list
+ * @param list EventList to remove
+ */
+void os_remove_eventlist(EventList *list);
 
 /* Create the event list. Maxsize must be specified */
 void OS_CreateEventList(int maxsize, EventList *list);

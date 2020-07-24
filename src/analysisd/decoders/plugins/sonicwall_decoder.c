@@ -29,10 +29,15 @@
 static OSRegex *__sonic_regex_prid = NULL;
 static OSRegex *__sonic_regex_sdip = NULL;
 static OSRegex *__sonic_regex_prox = NULL;
+static bool __sonic_plugin_initialized = false;
 
 
 void *SonicWall_Decoder_Init()
 {
+    if (__sonic_plugin_initialized) {
+        return NULL;
+    }
+
     mdebug1("Initializing SonicWall decoder..");
 
     /* Allocate memory */
@@ -69,6 +74,7 @@ void *SonicWall_Decoder_Init()
     }
 
     /* There is nothing else to do over here */
+    __sonic_plugin_initialized = true;
     return (NULL);
 }
 
