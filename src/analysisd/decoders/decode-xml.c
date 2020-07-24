@@ -18,8 +18,20 @@
 #include "config.h"
 
 /* Internal functions */
+
+/**
+ * @brief Appends a copy of *str to the *at string and return the new string
+ * @details Allocate memory at "*at" and copy *str to it
+ *          If *at already exist, realloc the memory and cat str on it
+ * @param[in] at original string (Null an acceptable Value)
+ * @param[in] str source string to append at
+ * @param[out] msg If any error or warning occurs, your description will be stored in *smsg
+ * @return char* The new string
+ * @warning This function assumes that "at" reserved memory is `OS_SIZE_1024`
+ */
 static char *_loadmemory(char *at, char* str, char **smsg);
-static int addDecoder2list(const char *name, char **msg);
+
+static int addDecoder2list(const char *name);
 static int os_setdecoderids(const char *p_name);
 static int ReadDecodeAttrs(char *const *names, char *const *values);
 static OSStore *os_decoder_store = NULL;
@@ -35,7 +47,7 @@ int getDecoderfromlist(const char *name)
     return (0);
 }
 
-static int addDecoder2list(const char *name, char **msg)
+static int addDecoder2list(const char *name)
 {
     if (os_decoder_store == NULL) {
         os_decoder_store = OSStore_Create();
@@ -47,7 +59,7 @@ static int addDecoder2list(const char *name, char **msg)
 
     /* Store data */
     if (!OSStore_Put(os_decoder_store, name, NULL)) {
-        smerror(msg, LIST_ADD_ERROR);
+        merror(LIST_ADD_ERROR);
         return (0);
     }
 
@@ -199,7 +211,7 @@ int ReadDecodeXML(const char *file, char **msg)
     }
 
     /* Check if the file is empty */
-    if(FileSize(file) == 0){
+    if (FileSize(file) == 0) {
         if (strcmp(file, XML_LDECODER) != 0) {
             goto cleanup;
         }
@@ -245,7 +257,6 @@ int ReadDecodeXML(const char *file, char **msg)
         if ((!node[i]->attributes) || (!node[i]->values) 
                 ||(!node[i]->values[0])  || (!node[i]->attributes[0]) 
                 ||(strcasecmp(node[i]->attributes[0], xml_decoder_name) != 0)) {
-           
             smerror(&errmsg, XML_INVELEM, node[i]->element);
             goto cleanup;
         }
@@ -301,12 +312,12 @@ int ReadDecodeXML(const char *file, char **msg)
 
         /* Check if strdup worked */
         if (!pi->name) {
-             merror(MEM_ERROR, errno, strerror(errno));
+            merror(MEM_ERROR, errno, strerror(errno));
             goto cleanup;
         }
 
         /* Add decoder */
-        if (!addDecoder2list(pi->name, &errmsg)) {
+        if (!addDecoder2list(pi->name)) {
             merror(MEM_ERROR, errno, strerror(errno));
             goto cleanup;
         }
@@ -333,13 +344,13 @@ int ReadDecodeXML(const char *file, char **msg)
                                            elements[j]->values);
 
                 if (r_offset & AFTER_ERROR) {
-                    if(r_offset & AFTER_ERR_VAL){
-                        smerror(&errmsg, 
-                            INV_OFFSET, elements[j]->values[0]);
+
+                    if (r_offset & AFTER_ERR_VAL) {
+                        smerror(&errmsg, INV_OFFSET, elements[j]->values[0]);
                     } else if (r_offset & AFTER_ERR_NAME) {
-                        smerror(&errmsg,
-                            INV_ATTR, elements[j]->attributes[0]);
+                        smerror(&errmsg, INV_ATTR, elements[j]->attributes[0]);
                     }
+
                     smerror(&errmsg, DEC_REGEX_ERROR, pi->name);
 
                     goto cleanup;
@@ -370,13 +381,15 @@ int ReadDecodeXML(const char *file, char **msg)
                                elements[j]->values);
 
                 if (r_offset & AFTER_ERROR) {
-                    merror_exit(DEC_REGEX_ERROR, pi->name);
+                    smerror(&errmsg, DEC_REGEX_ERROR, pi->name);
+                    goto cleanup;
                 }
 
                 /* Only the first prematch entry may have an offset */
                 if (prematch && r_offset) {
-                    merror(DUP_REGEX, pi->name); // not possible send through the socket
-                    merror_exit(DEC_REGEX_ERROR, pi->name);
+                    smerror(&errmsg, DUP_REGEX, pi->name);
+                    smerror(&errmsg, DEC_REGEX_ERROR, pi->name);
+                    goto cleanup;
                 }
 
                 if (r_offset) {
@@ -418,15 +431,15 @@ int ReadDecodeXML(const char *file, char **msg)
 
                 /* Decoder not found */
                 if (pi->plugindecoder == NULL) {
-                    smerror(&errmsg, INV_DECOPTION, 
-                        elements[j]->element, elements[j]->content);
+                    smerror(&errmsg, INV_DECOPTION, elements[j]->element, elements[j]->content);
                     goto cleanup;
                 }
 
                 pi->plugin_offset = ReadDecodeAttrs(elements[j]->attributes, elements[j]->values);
 
                 if (pi->plugin_offset & AFTER_ERROR) {
-                    merror_exit(DEC_REGEX_ERROR, pi->name);
+                    smerror(&errmsg, DEC_REGEX_ERROR, pi->name);
+                    goto cleanup;
                 }
             }
 
@@ -438,8 +451,7 @@ int ReadDecodeXML(const char *file, char **msg)
                 } else if (strcmp(elements[j]->content, "string") == 0) {
                     pi->flags |= SHOW_STRING;
                 } else {
-                    smerror(&errmsg, INVALID_ELEMENT, 
-                        elements[j]->element, elements[j]->content);
+                    smerror(&errmsg, INVALID_ELEMENT, elements[j]->element, elements[j]->content);
                     goto cleanup;
                 }
             }
@@ -450,8 +462,7 @@ int ReadDecodeXML(const char *file, char **msg)
                 } else if (strcmp(elements[j]->content, "array") == 0) {
                     pi->flags |= JSON_ARRAY;
                 } else {
-                    smerror(&errmsg, INVALID_ELEMENT, 
-                        elements[j]->element, elements[j]->content);
+                    smerror(&errmsg, INVALID_ELEMENT, elements[j]->element, elements[j]->content);
                     goto cleanup;
                 }
             }
@@ -475,8 +486,7 @@ int ReadDecodeXML(const char *file, char **msg)
                 } else if (strcmp(elements[j]->content, "ossec") == 0) {
                     pi->type = OSSEC_RL;
                 } else {
-                    smerror(&errmsg, 
-                        "Invalid decoder type '%s'.", elements[j]->content);
+                    smerror(&errmsg, "Invalid decoder type '%s'.", elements[j]->content);
                     goto cleanup;
                 }
             }
@@ -489,7 +499,8 @@ int ReadDecodeXML(const char *file, char **msg)
                 /* Maximum number for the order is limited by decoder_order_size */
 
                 if (os_strcnt(elements[j]->content, ',') >= (size_t)Config.decoder_order_size) {
-                    merror_exit("Order has too many fields.");
+                    smerror(&errmsg, "Order has too many fields.");
+                    goto cleanup;
                 }
 
                 norder = OS_StrBreak(',', elements[j]->content, Config.decoder_order_size);
@@ -503,8 +514,9 @@ int ReadDecodeXML(const char *file, char **msg)
                     word[strcspn(word, " ")] = '\0';
 
                     if (strlen(word) == 0) {
-                        merror_exit("decode-xml: Wrong field '%s' in the order"
+                        smerror(&errmsg, "decode-xml: Wrong field '%s' in the order"
                                   " of decoder '%s'", *norder, pi->name);
+                        goto cleanup;
                     }
 
                     if (!strcmp(word, "dstuser")) {
@@ -580,8 +592,9 @@ int ReadDecodeXML(const char *file, char **msg)
                     word[strcspn(word, " ")] = '\0';
 
                     if (strlen(word) == 0) {
-                        merror_exit("decode-xml: Wrong field '%s' in the fts"
+                        smerror(&errmsg, "decode-xml: Wrong field '%s' in the fts"
                                   " decoder '%s'", *norder, pi->name);
+                        goto cleanup;
                     }
 
                     if (!strcmp(word, "dstuser")) {
@@ -614,9 +627,11 @@ int ReadDecodeXML(const char *file, char **msg)
                                     break;
 
 
-                            if (!pi->fields[i])
-                                merror_exit("decode-xml: Wrong field '%s' in the fts"
+                            if (!pi->fields[i]) {
+                                smerror(&errmsg, "decode-xml: Wrong field '%s' in the fts"
                                         " decoder '%s'", *norder, pi->name);
+                                goto cleanup;
+                            }
 
                             pi->fts |= FTS_DYNAMIC;
                             pi->fts_fields[i] = 1;
@@ -630,8 +645,7 @@ int ReadDecodeXML(const char *file, char **msg)
                 /* Clear memory here */
                 free(s_norder);
             } else {
-                smerror(&errmsg, "Invalid element '%s' for decoder '%s'", 
-                    elements[j]->element, node[i]->element);
+                smerror(&errmsg, "Invalid element '%s' for decoder '%s'", elements[j]->element, node[i]->element);
                 goto cleanup;
             }
 
@@ -719,8 +733,7 @@ int ReadDecodeXML(const char *file, char **msg)
         if (prematch) {
             os_calloc(1, sizeof(OSRegex), pi->prematch);
             if (!OSRegex_Compile(prematch, pi->prematch, 0)) {
-                smerror(&errmsg, REGEX_COMPILE, 
-                    prematch, pi->prematch->error);
+                smerror(&errmsg, REGEX_COMPILE, prematch, pi->prematch->error);
                 goto cleanup;
             }
 
@@ -732,8 +745,7 @@ int ReadDecodeXML(const char *file, char **msg)
         if (p_name) {
             os_calloc(1, sizeof(OSMatch), pi->program_name);
             if (!OSMatch_Compile(p_name, pi->program_name, 0)) {
-                smerror(&errmsg, REGEX_COMPILE, 
-                    p_name, pi->program_name->error);
+                smerror(&errmsg, REGEX_COMPILE, p_name, pi->program_name->error);
                 goto cleanup;
             }
 
@@ -766,8 +778,7 @@ int ReadDecodeXML(const char *file, char **msg)
         }
 
         /* Add osdecoder to the list */
-        if (!OS_AddOSDecoder(pi, &os_analysisd_decoderlist_pn, 
-                            &os_analysisd_decoderlist_nopn, &errmsg)) {
+        if (!OS_AddOSDecoder(pi, &os_analysisd_decoderlist_pn, &os_analysisd_decoderlist_nopn, &errmsg)) {
             smerror(&errmsg, DECODER_ERROR);
             goto cleanup;
         }
@@ -780,7 +791,7 @@ int ReadDecodeXML(const char *file, char **msg)
 
 cleanup:
 
-    if(errmsg){
+    if (errmsg) {
         os_free(*msg);
         *msg = errmsg;
     }
@@ -803,61 +814,21 @@ int SetDecodeXML(char **msg)
 {
     char* tmp_msg = NULL;
     /* Add rootcheck decoder to list */
-    addDecoder2list(ROOTCHECK_MOD, &tmp_msg);
-    if(tmp_msg){
-        wm_strcat(msg, tmp_msg, 0);
-        os_free(tmp_msg);
-    }
-    addDecoder2list(SYSCHECK_MOD, &tmp_msg);
-    if(tmp_msg){
-        wm_strcat(msg, tmp_msg, 0);
-        os_free(tmp_msg);
-    }
-    addDecoder2list(SYSCHECK_NEW, &tmp_msg);
-    if(tmp_msg){
-        wm_strcat(msg, tmp_msg, 0);
-        os_free(tmp_msg);
-    }
-    addDecoder2list(SYSCHECK_DEL, &tmp_msg);
-    if(tmp_msg){
-        wm_strcat(msg, tmp_msg, 0);
-        os_free(tmp_msg);
-    }
-    addDecoder2list(HOSTINFO_NEW, &tmp_msg);
-    if(tmp_msg){
-        wm_strcat(msg, tmp_msg, 0);
-        os_free(tmp_msg);
-    }
-    addDecoder2list(HOSTINFO_MOD, &tmp_msg);
-    if(tmp_msg){
-        wm_strcat(msg, tmp_msg, 0);
-        os_free(tmp_msg);
-    }
-    addDecoder2list(SYSCOLLECTOR_MOD, &tmp_msg);
-    if(tmp_msg){
-        wm_strcat(msg, tmp_msg, 0);
-        os_free(tmp_msg);
-    }
-    addDecoder2list(CISCAT_MOD, &tmp_msg);
-    if(tmp_msg){
-        wm_strcat(msg, tmp_msg, 0);
-        os_free(tmp_msg);
-    }
-    addDecoder2list(WINEVT_MOD, &tmp_msg);
-    if(tmp_msg){
-        wm_strcat(msg, tmp_msg, 0);
-        os_free(tmp_msg);
-    }
-    addDecoder2list(SCA_MOD, &tmp_msg);
-    if(tmp_msg){
-        wm_strcat(msg, tmp_msg, 0);
-        os_free(tmp_msg);
-    }
+    addDecoder2list(ROOTCHECK_MOD);
+    addDecoder2list(SYSCHECK_MOD);
+    addDecoder2list(SYSCHECK_NEW);
+    addDecoder2list(SYSCHECK_DEL);
+    addDecoder2list(HOSTINFO_NEW);
+    addDecoder2list(HOSTINFO_MOD);
+    addDecoder2list(SYSCOLLECTOR_MOD);
+    addDecoder2list(CISCAT_MOD);
+    addDecoder2list(WINEVT_MOD);
+    addDecoder2list(SCA_MOD);
 
     /* Set ids - for our two lists */
     if (!os_setdecoderids(NULL)) {
         smerror(&tmp_msg, DECODER_ERROR);
-        if(tmp_msg){
+        if (tmp_msg) {
             wm_strcat(msg, tmp_msg, 0);
             os_free(tmp_msg);
         }
@@ -865,7 +836,7 @@ int SetDecodeXML(char **msg)
     }
     if (!os_setdecoderids(ARGV0)) {
         smerror(&tmp_msg, DECODER_ERROR);
-        if(tmp_msg){
+        if (tmp_msg) {
             wm_strcat(msg, tmp_msg, 0);
             os_free(tmp_msg);
         }
@@ -875,11 +846,6 @@ int SetDecodeXML(char **msg)
     return (1);
 }
 
-/* Allocate memory at "*at" and copy *str to it
- * If *at already exist, realloc the memory and cat str on it
- * Returns the new string
- * If any error or warning occurs, your description will be stored in *smsg
- */
 char *_loadmemory(char *at, char *str, char **msg)
 {
     if (at == NULL) {
@@ -899,12 +865,12 @@ char *_loadmemory(char *at, char *str, char **msg)
         size_t atsize = strlen(at);
         size_t finalsize = atsize + strsize + 1;
         if (finalsize > OS_SIZE_1024) {
-            smerror(msg,SIZE_ERROR, str);
+            smerror(msg, SIZE_ERROR, str);
             return (NULL);
         }
         at = (char *) realloc(at, (finalsize + 1) * sizeof(char));
         if (at == NULL) {
-            smerror(msg, MEM_ERROR, errno, strerror(errno));
+            merror(MEM_ERROR, errno, strerror(errno));
             return (NULL);
         }
         strncat(at, str, strsize);

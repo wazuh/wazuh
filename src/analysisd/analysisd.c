@@ -535,7 +535,7 @@ int main_analysisd(int argc, char **argv)
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
                     if (!ReadDecodeXML(*decodersfiles, &msg)) {
-                        if(msg){
+                        if (msg) {
                             printf("%s", msg);
                             os_free(msg);
                         }
@@ -549,7 +549,7 @@ int main_analysisd(int argc, char **argv)
 
             /* Load decoders */
             SetDecodeXML(&msg);
-            if(msg){
+            if (msg) {
                 printf("%s", msg);
                 os_free(msg);
             }
@@ -599,9 +599,8 @@ int main_analysisd(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading rules file: '%s'", *rulesfiles);
                     }
-                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, 
-                            &os_analysisd_cdblists, &msg) < 0) {
-                        if(msg){
+                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists, &msg) < 0) {
+                        if (msg) {
                             printf("%s", msg);
                             os_free(msg);
                         }

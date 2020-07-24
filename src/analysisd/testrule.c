@@ -234,7 +234,7 @@ int main(int argc, char **argv)
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
                     if (!ReadDecodeXML(*decodersfiles, &msg)) {
-                        if(msg){
+                        if (msg) {
                             // [wazuh-logtest] This will be sent through the socket
                             printf("%s", msg);
                             os_free(msg);
@@ -249,14 +249,14 @@ int main(int argc, char **argv)
                 /* Read local ones */
 
                 c = ReadDecodeXML(XML_LDECODER, &msg);
-                if(msg){
+                if (msg) {
                     // [wazuh-logtest] This will be sent through the socket
                     printf("%s", msg);
                     os_free(msg);
                 }
                 if (!c) {
                     if ((c != -2)) {
-                        merror_exit(CONFIG_ERROR,  XML_LDECODER);
+                        merror_exit(CONFIG_ERROR, XML_LDECODER);
                     }
                 } else {
                     minfo("Reading local decoder file.");
@@ -272,7 +272,7 @@ int main(int argc, char **argv)
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
                     if (!ReadDecodeXML(*decodersfiles, &msg)) {
-                        if(msg){
+                        if (msg) {
                             printf("%s", msg);
                             os_free(msg);
                         }
@@ -286,7 +286,7 @@ int main(int argc, char **argv)
 
             /* Load decoders */
             SetDecodeXML(&msg);
-            if(msg){
+            if (msg) {
                 // [wazuh-logtest] This will be sent through the socket
                 printf("%s", msg);
                 os_free(msg);
@@ -327,7 +327,7 @@ int main(int argc, char **argv)
                     mdebug1("Reading rules file: '%s'", *rulesfiles);
                     if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, 
                                 &os_analysisd_cdblists, &msg) < 0) {
-                        if(msg){
+                        if (msg) {
                             printf("%s", msg);
                             os_free(msg);
                         }

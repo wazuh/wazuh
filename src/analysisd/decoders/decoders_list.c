@@ -72,7 +72,8 @@ static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi,
                     goto error;
                 }
 
-                if ((tmp_node->osdecoder->regex || tmp_node->osdecoder->plugindecoder) && (pi->regex || pi->plugindecoder)) {
+                if ((tmp_node->osdecoder->regex || tmp_node->osdecoder->plugindecoder) 
+                    && (pi->regex || pi->plugindecoder)) {
                     tmp_node->osdecoder->get_next = 1;
                 } else {
                     smerror(msg, DUP_INV, pi->name);

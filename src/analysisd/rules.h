@@ -251,13 +251,13 @@ RuleNode *OS_GetFirstRule(void);
 void Rules_OP_CreateRules(void);
 
 /**
- * Read the log rules
- * 
- * @param [in] rulefile
- * @param [in] r_node
- * @param [in] l_node
- * @param [out] **msg If any error or warning occurs, your 
- *                  description will be stored in *msg.
+ * @brief Read the log rules of `rulefile` and add the `ruleNode` if the bdb list (l_node) allowed
+ * @param[in]  rulefile path of the rule configuration xml file.
+ * @param[in]  r_node Rules node to add
+ * @param[in]  l_node CDB list
+ * @param[out] **msg If any error or warning occurs, your description are stored in *msg.
+ *                   If *msg==null, memory are allocate for messages, otherwise memory
+ *                   are reallocate and error messages are stored here, replacing the original content.
 */ 
 int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, char** msg);
 

@@ -324,7 +324,7 @@ int OS_ReadXMLRules(const char *rulefile,
                         OS_IsValidDay(rule_opt[k]->content, &err_msg);
 
                     if (!config_ruleinfo->week_day) {
-                        if(err_msg){
+                        if (err_msg) {
                             merror(INVALID_DAY, node[i]->content);
                             os_free(err_msg);
                         }
