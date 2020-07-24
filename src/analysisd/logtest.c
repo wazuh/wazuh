@@ -108,17 +108,124 @@ void *w_logtest_main(w_logtest_connection_t *connection) {
 }
 
 
-void w_logtest_initialize_session(const char *token) {
+void w_logtest_process_log(char *token) {
 
 }
 
 
-void w_logtest_process_log(const char *token) {
+w_logtest_session_t *w_logtest_initialize_session(char *token, char **msg_error) {
 
+    w_logtest_session_t *session;
+
+    char **files;
+
+    os_calloc(1, sizeof(w_logtest_session_t), session);
+
+    session->token = token;
+    session->last_connection = time(NULL);
+
+    /* Create list to save previous events */
+    os_calloc(1, sizeof(EventList), session->eventlist);
+    OS_CreateEventList(Config.memorysize, session->eventlist);
+
+    /* Load decoders */
+    session->decoderlist_forpname = NULL;
+    session->decoderlist_nopname = NULL;
+
+    files = Config.decoders;
+
+    while (files && *files) {
+        if (!ReadDecodeXML(*files, &session->decoderlist_forpname, &session->decoderlist_nopname)) {
+            return NULL;
+        }
+        files++;
+    }
+
+    /* Load CDB list */
+    session->cdblistnode = NULL;
+    session->cdblistrule = NULL;
+
+    files = Config.lists;
+
+    while (files && *files) {
+        if (Lists_OP_LoadList(*files, &session->cdblistnode) < 0) {
+            return NULL;
+        }
+        files++;
+    }
+
+    Lists_OP_MakeAll(0, 0, &session->cdblistnode);
+
+    /* Load rules */
+    session->rule_list = NULL;
+
+    files = Config.includes;
+
+    while (files && *files) {
+        if (Rules_OP_ReadRules(*files, &session->rule_list, &session->cdblistnode, &session->eventlist) < 0) {
+            return NULL;
+        }
+        files++;
+    }
+
+    /* Associate rules and CDB lists */
+    OS_ListLoadRules(&session->cdblistnode, &session->cdblistrule);
+
+    /* _setlevels */
+    _setlevels(session->rule_list, 0);
+
+    /* Creating rule hash */
+    if (session->g_rules_hash = OSHash_Create(), !session->g_rules_hash) {
+        return NULL;
+    }
+
+    AddHash_Rule(session->rule_list);
+
+    /* Initiate the FTS list */
+    if (!w_logtest_fts_init(&session->fts_list, &session->fts_store)) {
+        return NULL;
+    }
+
+    /* Initialize the Accumulator */
+    if (!Accumulate_Init(&session->acm_store, &session->acm_lookups, &session->acm_purge_ts)) {
+        return NULL;
+    }
+
+    return session;
 }
 
-void w_logtest_remove_session(const char *token) {
 
+void w_logtest_remove_session(char *token) {
+
+    w_logtest_session_t *session;
+
+    /* Remove session from hash */
+    if (session = OSHash_Delete_ex(w_logtest_sessions, token), !session) {
+        return;
+    }
+
+    /* Remove rule list and rule hash */
+    os_remove_rules_list(session->rule_list);
+    OSHash_Free(session->g_rules_hash);
+
+    /* Remove decoder list */
+    os_remove_decoders_list(session->decoderlist_forpname, session->decoderlist_nopname);
+
+    /* Remove cdblistnode and cdblistrule */
+    os_remove_cdblist(&session->cdblistnode);
+    os_remove_cdbrules(&session->cdblistrule);
+
+    /* Remove list of previous events */
+    os_remove_eventlist(session->eventlist);
+
+    /* Remove fts list and hash */
+    OSHash_Free(session->fts_store);
+    os_free(session->fts_list);
+
+    /* Remove accumulator hash */
+    OSHash_Free(session->acm_store);
+
+    os_free(session);
 }
 
 
@@ -171,6 +278,7 @@ int w_logtest_fts_init(OSList **fts_list, OSHash **fts_store) {
         merror(HASH_ERROR);
         return 0;
     }
+
     if (!OSHash_setSize(*fts_store, 2048)) {
         merror(LIST_SIZE_ERROR);
         return 0;

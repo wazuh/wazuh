@@ -37,16 +37,14 @@ static char *loadmemory(char *at, const char *str);
 static void printRuleinfo(const RuleInfo *rule, int node);
 
 /* Will initialize the rules list */
-void Rules_OP_CreateRules()
-{
+void Rules_OP_CreateRules() {
     /* Initialize the rule list */
     OS_CreateRuleList();
 
-    return;
 }
 
 /* Read the log rules */
-int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node)
+int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, EventList **last_event_list)
 {
     OS_XML xml;
     XML_NODE node = NULL;
@@ -331,7 +329,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     goto cleanup;
                 }
 
-                if (overwrite != 1 && doesRuleExist(id, os_analysisd_rulelist)) {
+                if (overwrite != 1 && doesRuleExist(id, *r_node)) {
                     merror("Duplicate rule ID:%d", id);
                     goto cleanup;
                 }
@@ -339,7 +337,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 /* Allocate memory and initialize structure */
                 config_ruleinfo = zerorulemember(id, level, maxsize,
                                                  frequency, timeframe,
-                                                 noalert, ignore_time, overwrite);
+                                                 noalert, ignore_time, overwrite, last_event_list);
 
                 /* If rule is 0, set it to level 99 to have high priority.
                  * Set it to 0 again later.
@@ -818,7 +816,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                                                     rule_dfield,
                                                                     rule_opt[k]->content,
                                                                     matcher,
-                                                                    *l_node);
+                                                                    l_node);
                             if (config_ruleinfo->lists == NULL) {
                                 merror("List error: Could not load %s", rule_opt[k]->content);
                                 goto cleanup;
@@ -1882,11 +1880,10 @@ RuleInfoDetail *zeroinfodetails(int type, const char *data)
     return (info_details_pt);
 }
 
-RuleInfo *zerorulemember(int id, int level,
-                         int maxsize, int frequency,
-                         int timeframe, int noalert,
-                         int ignore_time, int overwrite)
-{
+RuleInfo *zerorulemember(int id, int level, int maxsize, int frequency,
+                         int timeframe, int noalert, int ignore_time,
+                         int overwrite, EventList **last_event_list) {
+
     RuleInfo *ruleinfo_pt = NULL;
 
     /* Allocate memory for structure */
@@ -1910,8 +1907,8 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->firedtimes = 0;
     ruleinfo_pt->maxsize = maxsize;
     ruleinfo_pt->frequency = frequency;
-    if (ruleinfo_pt->frequency > os_analysisd_last_events->_max_freq) {
-        os_analysisd_last_events->_max_freq = ruleinfo_pt->frequency;
+    if (ruleinfo_pt->frequency > (*last_event_list)->_max_freq) {
+        (*last_event_list)->_max_freq = ruleinfo_pt->frequency;
     }
     ruleinfo_pt->ignore_time = ignore_time;
     ruleinfo_pt->timeframe = timeframe;
@@ -1991,6 +1988,8 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->lists = NULL;
 
     ruleinfo_pt->prev_rule = NULL;
+
+    ruleinfo_pt->internal_saving = false;
 
     return (ruleinfo_pt);
 }
@@ -2362,11 +2361,6 @@ int _setlevels(RuleNode *node, int nnode)
  */
 static int doesRuleExist(int sid, RuleNode *r_node)
 {
-    /* Start from the beginning of the list by default */
-    if (!r_node) {
-        r_node = OS_GetFirstRule();
-    }
-
     while (r_node) {
         /* Check if the sigid matches */
         if (r_node->ruleinfo->sigid == sid) {
