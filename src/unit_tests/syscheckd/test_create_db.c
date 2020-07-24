@@ -339,10 +339,8 @@ int __wrap_pthread_mutex_unlock (pthread_mutex_t *__mutex) {
 
 /* setup/teardowns */
 
-static int setup_group(void **state) {
+static int setup_fim_data(void **state) {
     fim_data_t *fim_data = calloc(1, sizeof(fim_data_t));
-
-    unit_testing = false;
 
     if(fim_data == NULL)
         return -1;
@@ -424,6 +422,27 @@ static int setup_group(void **state) {
 
     *state = fim_data;
 
+    return 0;
+}
+
+static int teardown_fim_data(void **state) {
+    fim_data_t *fim_data = *state;
+
+    free(fim_data->item);
+    free_whodata_event(fim_data->w_evt);
+    free_entry_data(fim_data->new_data);
+    free_entry_data(fim_data->old_data);
+    free(fim_data);
+
+    return 0;
+}
+
+static int setup_group(void **state) {
+    if(setup_fim_data(state) != 0)
+        return -1;
+
+    unit_testing = false;
+
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck.conf");
 
@@ -436,18 +455,38 @@ static int setup_group(void **state) {
     return 0;
 }
 
-static int teardown_group(void **state) {
-    fim_data_t *fim_data = *state;
+static int setup_root_group(void **state) {
+    if(setup_fim_data(state) != 0)
+        return -1;
 
     unit_testing = false;
 
-    free(fim_data->item);
-    free_whodata_event(fim_data->w_evt);
-    free_entry_data(fim_data->new_data);
-    free_entry_data(fim_data->old_data);
-    free(fim_data);
+    // Read and setup global values.
+    Read_Syscheck_Config("test_syscheck_top_level.conf");
+
+    syscheck.rt_delay = 1;
+    syscheck.max_depth = 256;
+    syscheck.file_max_size = 1024;
+
+    unit_testing = true;
+
+    return 0;
+}
+
+static int teardown_group(void **state) {
+    unit_testing = false;
+
+    if(teardown_fim_data(state) != 0)
+        return -1;
 
     Free_Syscheck(&syscheck);
+
+    syscheck.audit_key = NULL;
+
+    #ifdef TEST_WINAGENT
+    syscheck.registry_ignore = NULL;
+    syscheck.registry_ignore_regex = NULL;
+    #endif
 
     return 0;
 }
@@ -1937,6 +1976,61 @@ static void test_fim_checker_fim_directory(void **state) {
     fim_checker(path, fim_data->item, NULL, 1);
 }
 
+static void test_fim_checker_root_ignore_file_under_recursion_level(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char * path = "/media/test.file";
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 0;
+    fim_data->item->statbuf = buf;
+    fim_data->item->mode = FIM_REALTIME;
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '/media/test.file'");
+
+    fim_checker(path, fim_data->item, NULL, 1);
+}
+
+static void test_fim_checker_root_file_within_recursion_level(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char * path = "/test.file";
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 0;
+    fim_data->item->statbuf = buf;
+    fim_data->item->mode = FIM_REALTIME;
+
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/test.file");
+    will_return(__wrap_HasFilesystem, 0);
+    // Inside fim_file
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("user"));
+
+    expect_value(__wrap_get_group, gid, 0);
+    will_return(__wrap_get_group, "group");
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "/test.file");
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert, file_path, "/test.file");
+    will_return(__wrap_fim_db_insert, 0);
+
+    expect_value(__wrap_fim_db_set_scanned, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_set_scanned, path, "/test.file");
+    will_return(__wrap_fim_db_set_scanned, 0);
+
+    fim_checker(path, fim_data->item, fim_data->w_evt, 1);
+
+    assert_int_equal(fim_data->item->configuration, 33279);
+    assert_int_equal(fim_data->item->index, 0);
+}
+
 static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -2584,6 +2678,70 @@ static void test_fim_checker_fim_directory(void **state) {
     will_return(__wrap_readdir, NULL);
 
     fim_checker(expanded_path, fim_data->item, NULL, 1);
+}
+
+
+static void test_fim_checker_root_ignore_file_under_recursion_level(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char * path = "c:\\windows\\test.file";
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 0;
+    fim_data->item->statbuf = buf;
+    fim_data->item->mode = FIM_REALTIME;
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 'c:\\windows\\test.file'");
+
+    fim_checker(path, fim_data->item, NULL, 1);
+}
+
+static void test_fim_checker_root_file_within_recursion_level(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char * path = "c:\\test.file";
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 0;
+    fim_data->item->statbuf = buf;
+    fim_data->item->mode = FIM_REALTIME;
+
+    // Inside fim_file
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("user"));
+
+    expect_string(__wrap_w_get_file_permissions, file_path, "c:\\test.file");
+    will_return(__wrap_w_get_file_permissions, "permissions");
+    will_return(__wrap_w_get_file_permissions, 0);
+
+    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
+    will_return(__wrap_decode_win_permissions, "decoded_perms");
+
+    expect_string(__wrap_w_get_file_attrs, file_path, "c:\\test.file");
+    will_return(__wrap_w_get_file_attrs, 123456);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "c:\\test.file");
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert, file_path, "c:\\test.file");
+    will_return(__wrap_fim_db_insert, 0);
+
+    expect_value(__wrap_fim_db_set_scanned, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_set_scanned, path, "c:\\test.file");
+    will_return(__wrap_fim_db_set_scanned, 0);
+
+    will_return(__wrap_stat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "c:\\test.file");
+    will_return(__wrap_HasFilesystem, 0);
+
+    fim_checker(path, fim_data->item, fim_data->w_evt, 1);
+
+    assert_int_equal(fim_data->item->configuration, 37375);
+    assert_int_equal(fim_data->item->index, 0);
 }
 
 static void test_fim_scan_db_full_double_scan(void **state) {
@@ -4040,6 +4198,14 @@ int main(void) {
         cmocka_unit_test_setup(test_fim_registry_event_already_scanned, setup_fim_entry),
         #endif
     };
+    const struct CMUnitTest root_monitor_tests[] = {
+        cmocka_unit_test(test_fim_checker_root_ignore_file_under_recursion_level),
+        cmocka_unit_test(test_fim_checker_root_file_within_recursion_level),
+    };
+    int retval;
 
-    return cmocka_run_group_tests(tests, setup_group, teardown_group);
+    retval = cmocka_run_group_tests(tests, setup_group, teardown_group);
+    retval += cmocka_run_group_tests(root_monitor_tests, setup_root_group, teardown_group);
+
+    return retval;
 }
