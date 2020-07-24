@@ -188,20 +188,21 @@ void wm_agent_upgrade_parse_create_tasks_information(cJSON *json_api, const cJSO
 
     if (task_module_response && (task_module_response->type == cJSON_Array)) {
         // Parse task module responses into API
-        for(int i=0; i < cJSON_GetArraySize(task_module_response); i++) {
-            cJSON *task_response = cJSON_GetArrayItem(task_module_response, i);
+        while(cJSON_GetArraySize(task_module_response)) {
+            cJSON *task_response = cJSON_DetachItemFromArray(task_module_response, 0);
             int agent_id = cJSON_GetObjectItem(task_response, "agent")->valueint;
 
             if (cJSON_HasObjectItem(task_response, "task_id")) {
                 // Store task_id
                 int task_id = cJSON_GetObjectItem(task_response, "task_id")->valueint;
                 wm_agent_upgrade_insert_tasks_id(task_id, agent_id);
-                cJSON_AddItemReferenceToArray(json_api, task_response);
+                cJSON_AddItemToArray(json_api, task_response);
             } else {
                 // Remove from table since upgrade will not be started
                 wm_agent_upgrade_remove_entry(agent_id);
                 cJSON *json_message = wm_agent_upgrade_parse_response_message(WM_UPGRADE_TASK_MANAGER_FAILURE, cJSON_GetObjectItem(task_response, "data")->valuestring, &agent_id, NULL, NULL);
                 cJSON_AddItemToArray(json_api, json_message);
+                cJSON_Delete(task_response);
             }
         }
     } else {
@@ -213,6 +214,8 @@ void wm_agent_upgrade_parse_create_tasks_information(cJSON *json_api, const cJSO
             cJSON_AddItemToArray(json_api, json_message);
         }
     }
+
+    cJSON_Delete(task_module_response);
 }
 
 cJSON *wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
