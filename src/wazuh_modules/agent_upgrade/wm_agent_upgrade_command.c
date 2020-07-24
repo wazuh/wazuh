@@ -195,7 +195,13 @@ static cJSON *wm_agent_send_task_information_master(const cJSON *message_object)
  * */
 static cJSON *wm_agent_send_task_information_worker(const cJSON *message_object) {
     char response[OS_MAXSTR];
-    cJSON* payload = w_create_send_sync_payload("task_manager", cJSON_Duplicate(message_object, 0));
-    w_send_clustered_message("send_sync", cJSON_PrintUnformatted(payload), response);      
+    cJSON* payload = w_create_send_sync_payload("task_manager", cJSON_Duplicate(message_object, 1));
+    char *message = cJSON_PrintUnformatted(payload);
+    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_SEND_CLUSTER_MESSAGE, message);
+    w_send_clustered_message("send_sync", message, response);      
+    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_RECEIVE_MESSAGE, response);
+
+    os_free(message);
+    cJSON_Delete(payload);
     return cJSON_Parse(response);  
 }

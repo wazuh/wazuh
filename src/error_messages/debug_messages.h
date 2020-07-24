@@ -242,7 +242,9 @@
 #define WM_UPGRADE_INCOMMING_MESSAGE        "(8155): Incomming message: '%s'"
 #define WM_UPGRADE_RESPONSE_MESSAGE         "(8156): Response message: '%s'"
 #define WM_UPGRADE_TASK_SEND_MESSAGE        "(8157): Sending message to task_manager module: '%s'"
-#define WM_UPGRADE_TASK_RECEIVE_MESSAGE     "(8158): Receiving message to task_manager module: '%s'"
+#define WM_UPGRADE_TASK_RECEIVE_MESSAGE     "(8158): Receiving message from task_manager module: '%s'"
+#define WM_UPGRADE_TASK_SEND_CLUSTER_MESSAGE "(8159): Sending send_sync message to task manager in master node: '%s'"
+
 
 /* Modules messages */
 #define MOD_TASK_START                      "(8200): Module Task Manager started."
