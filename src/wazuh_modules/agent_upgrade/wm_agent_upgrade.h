@@ -30,28 +30,12 @@ typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_UNKNOWN_ERROR
 } wm_upgrade_error_code;
 
-typedef enum _wm_upgrade_state {
-    WM_UPGRADE_NOT_STARTED,
-    WM_UPGRADE_STARTED,
-    WM_UPGRADE_ERROR
-} wm_upgrade_state;
-
 typedef enum _wm_upgrade_command {
     WM_UPGRADE_UPGRADE = 0,
     WM_UPGRADE_UPGRADE_CUSTOM,
     WM_UPGRADE_UPGRADE_RESULT,
     WM_UPGRADE_INVALID_COMMAND
 } wm_upgrade_command;
-
-/**
- * Definition of the structure that will represent a certain task
- * */
-typedef struct _wm_task {
-    int task_id;                 ///> task_id associated with the task
-    wm_upgrade_state state;      ///> current state of the task
-    wm_upgrade_command command;  ///> command that has been requested
-    void *task;                  ///> pointer to a task structure (depends on command)
-} wm_task;
 
 /**
  * Definition of upgrade task to be run
@@ -71,6 +55,35 @@ typedef struct _wm_upgrade_custom_task {
     char *custom_installer;      ///> sets a custom installer script. Should be available in all worker nodes
 } wm_upgrade_custom_task;
 
+/**
+ * Definition of the structure that will represent a certain task
+ * */
+typedef struct _wm_task_info {
+    int task_id;                 ///> task_id associated with the task
+    wm_upgrade_error_code error; ///> error code of the task
+    wm_upgrade_command command;  ///> command that has been requested
+    void *task;                  ///> pointer to a task structure (depends on command)
+} wm_task_info;
+
+/**
+ * Definition of the structure with the information of a certain agent
+ * */
+typedef struct _wm_agent_info {
+    int agent_id;                ///> agent_id of the agent
+    char *platform;              ///> platform of the agent
+    char *major_version;         ///> major version of the agent
+    char *minor_version;         ///> minor version of the agent
+    char *architecture;          ///> architecture of the agent
+} wm_agent_info;
+
+/**
+ * Definition of the structure that will represent an agent executing a certain task
+ * */
+typedef struct _wm_agent_task {
+    wm_agent_info *agent_info;    ///> pointer to agent_info structure
+    wm_task_info *task_info;      ///> pointer to task_info structure
+} wm_agent_task;
+
 extern const char* upgrade_error_codes[];
 extern const wm_context WM_AGENT_UPGRADE_CONTEXT;   // Context
 
@@ -80,20 +93,20 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module);
 /**
  * Process and upgrade command. Create the task for each agent_id, dispatches to task manager and
  * then starts upgrading process.
- * @param params cJSON with the task parameters. For more details @see wm_agent_upgrade_parse_upgrade_command
  * @param agents cJSON Array with the list of agents id
+ * @param task pointer to a wm_upgrade_task structure
  * @return json object with the response
  * */
-cJSON *wm_agent_upgrade_process_upgrade_command(const cJSON* params, const cJSON* agents);
+cJSON* wm_agent_upgrade_process_upgrade_command(const cJSON* agents, wm_upgrade_task* task);
 
 /**
  * Process and upgrade custom command. Create the task for each agent_id, dispatches to task manager and
  * then starts upgrading process.
- * @param params cJSON with the task parameters. For more details @see wm_agent_upgrade_parse_upgrade_custom_command
  * @param agents cJSON Array with the list of agents id
+ * @param task pointer to a wm_upgrade_custom_task structure
  * @return json object with the response
  * */
-cJSON *wm_agent_upgrade_process_upgrade_custom_command(const cJSON* params, const cJSON* agents);
+cJSON* wm_agent_upgrade_process_upgrade_custom_command(const cJSON* agents, wm_upgrade_custom_task* task);
 
 /**
  * @WIP

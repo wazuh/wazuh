@@ -61,9 +61,12 @@ int wm_agent_upgrade_parse_command(const char* buffer, cJSON** json_api, cJSON**
     return retval;
 }
 
-wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char* output) {
+wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char** error_message) {
+    char *output = NULL;
     int param_index = 0;
     int error_flag = 0;
+
+    os_calloc(OS_MAXSTR, sizeof(char), output);
 
     wm_upgrade_task *task = wm_agent_upgrade_init_upgrade_task();
 
@@ -109,16 +112,22 @@ wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, cha
 
     if (error_flag) {
         // We will reject this task since the parameters are incorrect
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, output);
         wm_agent_upgrade_free_upgrade_task(task);
-        return NULL;
-    } else {
-        return task;
+        *error_message = cJSON_PrintUnformatted(wm_agent_upgrade_parse_response_message(WM_UPGRADE_TASK_CONFIGURATIONS, output, NULL, NULL, NULL));
     }
+
+    os_free(output);
+
+    return task;
 }
 
-wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char* output) {
+wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message) {
+    char *output = NULL;
     int param_index = 0;
     int error_flag = 0;
+
+    os_calloc(OS_MAXSTR, sizeof(char), output);
 
     wm_upgrade_custom_task *task = wm_agent_upgrade_init_upgrade_custom_task();
 
@@ -145,14 +154,17 @@ wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSO
 
     if (error_flag) {
         // We will reject this task since the parameters are incorrect
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, output);
         wm_agent_upgrade_free_upgrade_custom_task(task);
-        return NULL;
-    } else {
-        return task;
+        *error_message = cJSON_PrintUnformatted(wm_agent_upgrade_parse_response_message(WM_UPGRADE_TASK_CONFIGURATIONS, output, NULL, NULL, NULL));
     }
+
+    os_free(output);
+
+    return task;
 }
 
-cJSON*  wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
+cJSON* wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
     cJSON * response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", error_id);
     cJSON_AddStringToObject(response, "data", message);

@@ -57,10 +57,10 @@ cJSON* wm_agent_upgrade_parse_task_module_message(wm_upgrade_command command, co
  *      "force_upgrade" : "0"
  * }
  * @param params JSON where the task parameters are 
- * @param output message in case of error
+ * @param error_message message in case of error
  * @return upgrade task if there is no error, NULL otherwise
  * */
-wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char* output);
+wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char** error_message);
 
 /**
  * Parses upgrade custom command and returns an upgrade task from the information
@@ -71,9 +71,9 @@ wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, cha
  *      "installer" : "installer.sh"
  * }
  * @param params JSON where the task parameters are
- * @param output message in case of error
+ * @param error_message message in case of error
  * @return upgrade task if there is no error, NULL otherwise
  * */
-wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char* output);
+wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message);
 
 #endif
