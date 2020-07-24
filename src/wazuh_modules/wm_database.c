@@ -957,15 +957,8 @@ int wm_extract_agent(const char *fname, char *name, char *addr, int *registry) {
         return 1;
 
     default:
-        // agent-info files
-
-        if (!(c = strrchr(fname, '-')))
-            return -1;
-
-        z_name = c - fname;
-        _name = fname;
-        _addr = c + 1;
-        z_addr = strlen(_addr);
+        // Ignore the file
+        return 1;
     }
 
     memcpy(name, _name, z_name);
@@ -1116,7 +1109,7 @@ void wm_inotify_setup(wm_database * data) {
     // Run thread
     w_create_thread(wm_inotify_start, NULL);
 
-    // First synchronization and add watch for client.keys, Agent info, Syscheck and Rootcheck directories
+    // First synchronization and add watch for client.keys, Syscheck and Rootcheck directories
 
 #ifndef LOCAL
 
