@@ -81,6 +81,8 @@ namespace SQLite
         void bind(const int32_t index, const std::string& value) override;
         void bind(const int32_t index, const double value) override;
 
+        std::string expand() override;
+
         std::unique_ptr<IColumn> column(const int32_t index) override;
 
     private:
