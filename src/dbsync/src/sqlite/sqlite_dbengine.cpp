@@ -104,6 +104,8 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
         transaction->commit();
         std::cout << "DIFF " << jsResult.dump() << std::endl;
         
+
+
 #if 0        
         /*auto transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
         
