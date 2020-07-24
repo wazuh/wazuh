@@ -203,26 +203,6 @@ void* wm_database_main(wm_database *data) {
     return NULL;
 }
 
-char * wm_get_os_arch(char * os_header) {
-    const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "ia64", "AIX", "armv6", "armv7", NULL };
-    char * os_arch = NULL;
-    int i;
-
-    for (i = 0; ARCHS[i]; i++) {
-        if (strstr(os_header, ARCHS[i])) {
-            os_strdup(ARCHS[i], os_arch);
-            break;
-        }
-    }
-
-    if (!ARCHS[i]) {
-        os_strdup("", os_arch);
-    }
-
-    mtdebug2(WM_DATABASE_LOGTAG, "Detected architecture from %s: %s", os_header, os_arch);
-    return os_arch;
-}
-
 // Update manager information
 void wm_sync_manager() {
     char hostname[1024];
