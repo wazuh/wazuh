@@ -107,7 +107,7 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
         }
         else
         {
-            // std::cout << "MODIFIED: " << jsResult.dump() << std::endl;
+            updateSingleRow(table, jsResult);
         }
 
         if (callback)
@@ -155,7 +155,7 @@ void SQLiteDBEngine::getRowDiff(const std::string& table,
 
 
         const auto& tableFields { m_tableFields[table] };
-
+        unsigned int index = 1;
         for (const auto& pkValue : primaryKeyList)
         {
             const auto& it
@@ -169,8 +169,8 @@ void SQLiteDBEngine::getRowDiff(const std::string& table,
 
             if(it != tableFields.end())
             {
-                bindJsonData(stmt, *it, data, 1);
-                break;
+                bindJsonData(stmt, *it, data, index);
+                ++index;
             }
         }
 
@@ -405,11 +405,10 @@ ColumnType SQLiteDBEngine::columnTypeName(const std::string& type)
 void SQLiteDBEngine::bindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt, 
                                   const ColumnData& cd, 
                                   const nlohmann::json::value_type& valueType,
-                                  const unsigned int/* cid*/)
+                                  const unsigned int cid)
 {
     const auto type { std::get<TableHeader::Type>(cd) };
     const auto name { std::get<TableHeader::Name>(cd) };
-    const auto cid  { std::get<TableHeader::CID>(cd) + 1 };
     const auto& it  { valueType.find(name) };
 
     if (valueType.end() != it)
@@ -802,58 +801,58 @@ std::string SQLiteDBEngine::buildLeftOnlyQuery(const std::string& t1,
     return std::string("SELECT "+fieldsList+" FROM "+t1+" t1 LEFT JOIN "+t2+" t2 ON "+onMatchList+" WHERE "+nullFilterList+";");
 } 
 
-void SQLiteDBEngine::processInputData(const std::string& table,
-                                      const nlohmann::json& data,
-                                      const std::vector<std::string>& primaryKeyList,
-                                      std::vector<CallbackAction>& callbackActionsList)
-{
-    const auto& stmt 
-    { 
-        getStatement(buildSelectMatchingPKsSqlQuery(table, primaryKeyList))
-    };
-    const auto& tableFields { m_tableFields[table] };
+// void SQLiteDBEngine::processInputData(const std::string& table,
+//                                       const nlohmann::json& data,
+//                                       const std::vector<std::string>& primaryKeyList,
+//                                       std::vector<CallbackAction>& callbackActionsList)
+// {
+//     const auto& stmt 
+//     { 
+//         getStatement(buildSelectMatchingPKsSqlQuery(table, primaryKeyList))
+//     };
+//     const auto& tableFields { m_tableFields[table] };
 
-    ColumnData pkColumnData = {};
+//     ColumnData pkColumnData = {};
 
-    for (const auto& jsonRow : data)
-    {
-        // {pid, name, path}
-        // {pid, name, path}
-        // {pid, name, path}
-        for (const auto& pkValue : primaryKeyList)
-        {
-            const auto& it
-            {
-                std::find_if(tableFields.begin(), tableFields.end(),
-                                [&pkValue](const ColumnData& column)
-                                {
-                                    return 0 == std::get<Name>(column).compare(pkValue);
-                                })
-            };
+//     for (const auto& jsonRow : data)
+//     {
+//         // {pid, name, path}
+//         // {pid, name, path}
+//         // {pid, name, path}
+//         for (const auto& pkValue : primaryKeyList)
+//         {
+//             const auto& it
+//             {
+//                 std::find_if(tableFields.begin(), tableFields.end(),
+//                                 [&pkValue](const ColumnData& column)
+//                                 {
+//                                     return 0 == std::get<Name>(column).compare(pkValue);
+//                                 })
+//             };
 
-            if(it != tableFields.end())
-            {
-                bindJsonData(stmt, *it, jsonRow, std::get<TableHeader::CID>(*it) + 1);
-                pkColumnData = *it;
-                break;
-                //throw dbengine_error { INVALID_PK_DATA };
-            }
-        }
+//             if(it != tableFields.end())
+//             {
+//                 bindJsonData(stmt, *it, jsonRow, std::get<TableHeader::CID>(*it) + 1);
+//                 pkColumnData = *it;
+//                 break;
+//                 //throw dbengine_error { INVALID_PK_DATA };
+//             }
+//         }
 
-        if(SQLITE_ROW == stmt->step())
-        {
-            nlohmann::json jsResult;
-            // Row matching the SELECT query, proceeding with the table update
-            updateSingleRow(table, tableFields, pkColumnData, stmt, jsonRow, jsResult);
-        }
-        else
-        {
-            // Insertion
-            insertSingleRow(table, tableFields, jsonRow, callbackActionsList);
-        }
-        stmt->reset();
-    }
-}
+//         if(SQLITE_ROW == stmt->step())
+//         {
+//             nlohmann::json jsResult;
+//             // Row matching the SELECT query, proceeding with the table update
+//             updateSingleRow(table, tableFields, pkColumnData, stmt, jsonRow, jsResult);
+//         }
+//         else
+//         {
+//             // Insertion
+//             insertSingleRow(table, tableFields, jsonRow, callbackActionsList);
+//         }
+//         stmt->reset();
+//     }
+// }
 
 bool SQLiteDBEngine::insertNewRows(const std::string& table,
                                    const std::vector<std::string>& primaryKeyList,
@@ -990,6 +989,41 @@ int SQLiteDBEngine::changeModifiedRows(const std::string& table,
         }
     }
     return ret;
+}
+
+std::string SQLiteDBEngine::buildUpdatePartialDataSqlQuery(const std::string& table,
+                                                           const nlohmann::json& data,
+                                                           const std::vector<std::string>& primaryKeyList)
+                  
+{
+    std::string sql{ "UPDATE " + table + " SET "};
+    if (0 != primaryKeyList.size())
+    {
+        for (const auto &dataValue : data)
+        {
+            for (auto it = dataValue.begin(); it != dataValue.end(); ++it)
+            {
+                if (std::find(primaryKeyList.begin(), primaryKeyList.end(), it.key()) == primaryKeyList.end())
+                {
+                    sql += it.key() + "=?,";
+                }
+            }
+        }
+        sql = sql.substr(0, sql.size()-1);  // Remove the last " AND "
+        sql.append(" WHERE ");
+        for (const auto& value : primaryKeyList)
+        {
+            sql.append(value);
+            sql.append("=? AND ");
+        }
+        sql = sql.substr(0, sql.size()-5);  // Remove the last " AND "
+        sql.append(";");
+    }
+    else
+    {
+        throw dbengine_error{ SQL_STMT_ERROR };
+    }
+    return sql;
 }
 
 std::string SQLiteDBEngine::buildSelectMatchingPKsSqlQuery(const std::string& table,
@@ -1180,66 +1214,86 @@ bool SQLiteDBEngine::getRowsToModify(const std::string& table,
 }
 
 void SQLiteDBEngine::updateSingleRow(const std::string& table,
-                                     const TableColumns& tableFields,
-                                     const ColumnData& pKeyData,
-                                     const std::unique_ptr<SQLite::IStatement>& stmt,
-                                     const nlohmann::json& jsData,
-                                     nlohmann::json& jsResult)
+                                     const nlohmann::json& jsData)
 {
-    Row regitryFields;
-    for(const auto& field : tableFields)
+    std::vector<std::string> primaryKeyList;
+    if (getPrimaryKeysFromTable(table, primaryKeyList))
     {
-        getTableData(stmt, 
-                     std::get<TableHeader::CID>(field), 
-                     std::get<TableHeader::Type>(field),
-                     std::get<TableHeader::Name>(field), 
-                     regitryFields);
+        std::cout << "UPDATE query: " << buildUpdatePartialDataSqlQuery(table, jsData, primaryKeyList) << std::endl;
+        //create rows;
+        //crear un row con PK_
+        // updateRows(table, primaryKeyList, rowKeysValue)
+    }
+    /*
+    {
+        "pid":100,
+        "name":"system",
+        "tid":200
     }
 
-    if(!regitryFields.empty())
+    where->pkey (pid:100)
+    
     {
-        for (const auto& value : regitryFields)
-        {
-            nlohmann::json object;
-            if(getFieldValueFromTuple(value, object))
-            {
-                if(jsData[value.first] != object[value.first])
-                {
-                    jsResult["modified"].push_back({{value.first, jsData[value.first]}});
-                    auto newValue { value };
-                    const auto& updateStmt { getStatement("UPDATE "+table+" SET "+value.first+"=? WHERE "+std::get<TableHeader::Name>(pKeyData)+"=?;") };
-
-                    const ColumnData column1
-                    {
-                        0, value.first, (ColumnType)std::get<TableHeader::Type>(value.second), false, false
-                    };
-
-                    /*std::tie(index, name, colType, std::ignore, std::ignore) = column;
-                    name = value.first;
-                    colType = (ColumnType)std::get<TableHeader::Type>(value.second);*/
-                    //bindJsonData(updateStmt, column1, jsData);
-
-                    const ColumnData column2
-                    {
-                        1, std::get<TableHeader::Name>(pKeyData), (ColumnType)std::get<TableHeader::Type>(pKeyData), false, false
-                    };                   
-                    /*name = std::get<TableHeader::Name>(pKeyData);
-                    colType = (ColumnType)std::get<TableHeader::Type>(pKeyData);
-                    index += 1;*/
-                    bindJsonData(updateStmt, column2, jsData, 1);
-
-                    std::cout << "JSDATA: " << jsData.dump() << std::endl;
-                    updateStmt->step();
-                    updateStmt->reset();
-
-                    std::cout << "Json Results: " << jsResult.dump() << std::endl;
-                    std::cout << "Value changed: " << value.first << std::endl;                 
-                    std::cout << "Old Value : "<< object[value.first] << std::endl;
-                    std::cout << "New value: " << jsData[value.first] << std::endl;
-                }
-            }
-        }         
+        "name":"system",
+        "tid":200
     }
+    for(elementos)
+
+    */
+    // Row regitryFields;
+    // for(const auto& field : tableFields)
+    // {
+    //     getTableData(stmt, 
+    //                  std::get<TableHeader::CID>(field), 
+    //                  std::get<TableHeader::Type>(field),
+    //                  std::get<TableHeader::Name>(field), 
+    //                  regitryFields);
+    // }
+
+    // if(!regitryFields.empty())
+    // {
+    //     for (const auto& value : regitryFields)
+    //     {
+    //         nlohmann::json object;
+    //         if(getFieldValueFromTuple(value, object))
+    //         {
+    //             if(jsData[value.first] != object[value.first])
+    //             {
+    //                 jsResult["modified"].push_back({{value.first, jsData[value.first]}});
+    //                 auto newValue { value };
+    //                 const auto& updateStmt { getStatement("UPDATE "+table+" SET "+value.first+"=? WHERE "+std::get<TableHeader::Name>(pKeyData)+"=?;") };
+
+    //                 const ColumnData column1
+    //                 {
+    //                     0, value.first, (ColumnType)std::get<TableHeader::Type>(value.second), false, false
+    //                 };
+
+    //                 std::tie(index, name, colType, std::ignore, std::ignore) = column;
+    //                 name = value.first;
+    //                 colType = (ColumnType)std::get<TableHeader::Type>(value.second);
+    //                 //bindJsonData(updateStmt, column1, jsData);
+
+    //                 const ColumnData column2
+    //                 {
+    //                     1, std::get<TableHeader::Name>(pKeyData), (ColumnType)std::get<TableHeader::Type>(pKeyData), false, false
+    //                 };                   
+    //                 /*name = std::get<TableHeader::Name>(pKeyData);
+    //                 colType = (ColumnType)std::get<TableHeader::Type>(pKeyData);
+    //                 index += 1;*/
+    //                 bindJsonData(updateStmt, column2, jsData, 1);
+
+    //                 std::cout << "JSDATA: " << jsData.dump() << std::endl;
+    //                 updateStmt->step();
+    //                 updateStmt->reset();
+
+    //                 std::cout << "Json Results: " << jsResult.dump() << std::endl;
+    //                 std::cout << "Value changed: " << value.first << std::endl;                 
+    //                 std::cout << "Old Value : "<< object[value.first] << std::endl;
+    //                 std::cout << "New value: " << jsData[value.first] << std::endl;
+    //             }
+    //         }
+    //     }         
+    // }
 }
 
 bool SQLiteDBEngine::updateRows(const std::string& table,

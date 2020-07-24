@@ -227,16 +227,16 @@ class SQLiteDBEngine : public DbSync::IDbEngine
                                             const Row& row,
                                             const std::pair<const std::string, TableField> &field);
 
+        std::string buildUpdatePartialDataSqlQuery(const std::string& table,
+                                                   const nlohmann::json& data,
+                                                   const std::vector<std::string>& primaryKeyList);
+
         bool getRowsToModify(const std::string& table,
                              const std::vector<std::string>& primaryKeyList,
                              std::vector<Row>& rowKeysValue);
 
         void updateSingleRow(const std::string& table,
-                             const TableColumns& tableFields,
-                             const ColumnData& pKeyData,
-                             const std::unique_ptr<SQLite::IStatement>& stmt,
-                             const nlohmann::json& jsData,
-                             nlohmann::json& jsResult);
+                             const nlohmann::json& jsData);
 
         bool updateRows(const std::string& table,
                         const std::vector<std::string>& primaryKeyList,
