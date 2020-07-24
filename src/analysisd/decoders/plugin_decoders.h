@@ -11,7 +11,7 @@
 #ifndef PLUGINDECODER_H
 #define PLUGINDECODER_H
 
-#include "eventinfo.h"
+#include "../eventinfo.h"
 
 /* Plugin decoder for OpenBSD PF */
 void *PF_Decoder_Init(void);

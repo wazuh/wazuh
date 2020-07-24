@@ -21,12 +21,10 @@
 static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi);
 
 /* Create the Event List */
-void OS_CreateOSDecoderList()
-{
+void OS_CreateOSDecoderList() {
+
     os_analysisd_decoderlist_pn = NULL;
     os_analysisd_decoderlist_nopn = NULL;
-
-    return;
 }
 
 /* Get first osdecoder */
@@ -195,4 +193,63 @@ int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode, OSDecod
         }
     }
     return (1);
+}
+
+void os_remove_decoders_list(OSDecoderNode *decoderlist_pn, OSDecoderNode *decoderlist_npn) {
+
+    OSDecoderInfo **decoders;
+    int pos = 0;
+    int num_decoders = 0;
+
+    os_count_decoders(decoderlist_pn, &num_decoders);
+    os_count_decoders(decoderlist_npn, &num_decoders);
+
+    os_calloc(num_decoders + 1, sizeof(OSDecoderInfo *), decoders);
+
+    os_remove_decodernode(decoderlist_pn, decoders, &pos, &num_decoders);
+    os_remove_decodernode(decoderlist_npn, decoders, &pos, &num_decoders);
+
+    for (int i = 0; i <= pos; i++) {
+        FreeDecoderInfo(decoders[i]);
+    }
+
+    os_free(decoders);
+}
+
+void os_remove_decodernode(OSDecoderNode *node, OSDecoderInfo **decoders, int *pos, int *max_size) {
+
+    OSDecoderNode *tmp_node;
+
+    while (node) {
+
+        if (node->child) {
+            os_remove_decodernode(node->child, decoders, pos, max_size);
+        }
+
+        tmp_node = node;
+        node = node->next;
+
+        if (tmp_node->osdecoder->internal_saving == false && *pos <= *max_size) {
+
+            tmp_node->osdecoder->internal_saving = true;
+            decoders[*pos] = tmp_node->osdecoder;
+            (*pos)++;
+        }
+
+        os_free(tmp_node);
+    }
+}
+
+void os_count_decoders(OSDecoderNode *node, int *num_decoders) {
+
+    while(node) {
+
+        if (node->child) {
+            os_count_decoders(node->child, num_decoders);
+        }
+
+        (*num_decoders)++;
+
+        node = node->next;
+    }
 }

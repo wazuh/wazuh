@@ -227,7 +227,7 @@ int main(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles)) {
+                    if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn, &os_analysisd_decoderlist_nopn)) {
                         merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
 
@@ -237,7 +237,7 @@ int main(int argc, char **argv)
 
                 /* Read local ones */
 
-                c = ReadDecodeXML(XML_LDECODER);
+                c = ReadDecodeXML(XML_LDECODER, &os_analysisd_decoderlist_pn, &os_analysisd_decoderlist_nopn);
                 if (!c) {
                     if ((c != -2)) {
                         merror_exit(CONFIG_ERROR,  XML_LDECODER);
@@ -255,7 +255,7 @@ int main(int argc, char **argv)
                     if(!quiet) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles)) {
+                    if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn, &os_analysisd_decoderlist_nopn)) {
                         merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
 
@@ -277,7 +277,7 @@ int main(int argc, char **argv)
                 listfiles = Config.lists;
                 while (listfiles && *listfiles) {
                     mdebug1("Reading the lists file: '%s'", *listfiles);
-                    if (Lists_OP_LoadList(*listfiles) < 0) {
+                    if (Lists_OP_LoadList(*listfiles, &os_analysisd_cdblists) < 0) {
                         merror_exit(LISTS_ERROR, *listfiles);
                     }
                     free(*listfiles);
@@ -286,7 +286,7 @@ int main(int argc, char **argv)
                 free(Config.lists);
                 Config.lists = NULL;
             }
-            Lists_OP_MakeAll(0, 0);
+            Lists_OP_MakeAll(0, 0, &os_analysisd_cdblists);
         }
         {
             /* Load Rules */
@@ -299,7 +299,7 @@ int main(int argc, char **argv)
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     mdebug1("Reading rules file: '%s'", *rulesfiles);
-                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists) < 0) {
+                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists, &os_analysisd_last_events) < 0) {
                         merror_exit(RULES_ERROR, *rulesfiles);
                     }
 
@@ -316,7 +316,7 @@ int main(int argc, char **argv)
              * having to search thought the list of lists for the correct file
              * during rule evaluation.
              */
-            OS_ListLoadRules(&os_analysisd_cdblists);
+            OS_ListLoadRules(&os_analysisd_cdblists, &os_analysisd_cdbrules);
         }
     }
 
@@ -522,7 +522,7 @@ void OS_ReadMSG(char *ut_str)
                 }
 
                 /* Check each rule */
-                else if (currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, os_analysisd_cdblists,
+                else if (currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, &os_analysisd_cdblists,
                          rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store), !currently_rule) {
                     continue;
                 }

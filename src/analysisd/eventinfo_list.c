@@ -109,3 +109,19 @@ void OS_AddEvent(Eventinfo *lf, EventList *list)
 
     return;
 }
+
+void os_remove_eventlist(EventList *list) {
+
+    EventNode *tmp;
+
+    while (list->first_node) {
+
+        tmp = list->first_node;
+        list->first_node = list->first_node->next;
+
+        Free_Eventinfo(tmp->event);
+        os_free(tmp);
+    }
+
+    os_free(list);
+}
