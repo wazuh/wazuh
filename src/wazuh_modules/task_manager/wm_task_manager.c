@@ -42,7 +42,8 @@ static const char *modules_list[] = {
 };
 
 static const char *commands_list[] = {
-    [WM_TASK_UPGRADE] = "upgrade"
+    [WM_TASK_UPGRADE] = "upgrade",
+    [WM_TASK_UPGRADE_CUSTOM] = "upgrade_custom"
 };
 
 static const char *error_codes[] = {
@@ -187,7 +188,7 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
 
     if (!strcmp(modules_list[WM_TASK_UPGRADE_MODULE], module)) {
 
-        if (!strcmp(commands_list[WM_TASK_UPGRADE], command)) {
+        if (!strcmp(commands_list[WM_TASK_UPGRADE], command) || !strcmp(commands_list[WM_TASK_UPGRADE_CUSTOM], command)) {
 
             if (agent_id != OS_INVALID) {
                 // Insert upgrade task into DB
