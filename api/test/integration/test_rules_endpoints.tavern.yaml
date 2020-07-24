@@ -755,7 +755,7 @@ stages:
       verify: False
       <<: *pci_dss_rules_request
       params:
-        limit: 1000
+        limit: 500
     response:
       status_code: 200
       json:
@@ -860,7 +860,7 @@ stages:
       verify: False
       <<: *gdpr_rules_request
       params:
-        limit: 1000
+        limit: 500
     response:
       status_code: 200
       json:
@@ -878,7 +878,7 @@ stages:
       verify: False
       <<: *gdpr_rules_request
       params:
-        limit: 1000
+        limit: 500
         sort: "-"
     response:
       verify_response_with:
@@ -976,7 +976,7 @@ stages:
       verify: False
       <<: *gpg13_rules_request
       params:
-        limit: 1000
+        limit: 500
     response:
       status_code: 200
       json:

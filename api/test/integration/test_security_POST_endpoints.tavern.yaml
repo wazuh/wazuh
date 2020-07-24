@@ -537,8 +537,6 @@ stages:
         pass: "extra"
     response:
       status_code: 400
-      json:
-        code: 5005
 
   - name: Create a new user (extra parameters)
     request:
@@ -557,8 +555,6 @@ stages:
         pass7: "extra"
     response:
       status_code: 400
-      json:
-        code: 5005
 
   - name: Create a new user (missing password parameter)
     request:

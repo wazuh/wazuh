@@ -50,17 +50,9 @@ stages:
       params:
         select: wrongParam
     response: &error_response_1724
-      status_code: 200
+      status_code: 400
       json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1724
-              id:
-                - '000'
-          total_affected_items: 0
-          total_failed_items: 1
+        code: 1724
 
 ---
 test_name: GET /syscollector/{agent_id}/os?{select}
@@ -383,19 +375,11 @@ stages:
       verify: False
       <<: *packages_request_000
       params:
-        sort: wronParam
+        sort: wrongParam
     response: &error_response_1403
-      status_code: 200
+      status_code: 400
       json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1403
-              id:
-                - '000'
-          total_affected_items: 0
-          total_failed_items: 1
+        code: 1403
 
   - name: Search an expected name
     request:
@@ -2654,18 +2638,8 @@ stages:
       <<: *os_request
       params:
         select: wrongParam
-    response: &error_response_1724_002
-      status_code: 200
-      json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1724
-              id:
-                - '002'
-          total_affected_items: 0
-          total_failed_items: 1
+    response:
+       <<: *error_response_1724
 
 ---
 test_name: GET /syscollector/{agent_id}/os?{select}
@@ -2748,7 +2722,7 @@ stages:
       params:
         select: wrongParam
     response:
-      <<: *error_response_1724_002
+      <<: *error_response_1724
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware?{select}
@@ -3029,7 +3003,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      <<: *error_response_1724_002
+      <<: *error_response_1724
 
   - name: Pagination
     request:
@@ -3083,18 +3057,8 @@ stages:
       <<: *netaddr_request
       params:
         sort: -wrong
-    response: &error_response_1403_002
-      status_code: 200
-      json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1403
-              id:
-                - '002'
-          total_affected_items: 0
-          total_failed_items: 1
+    response:
+      <<: *error_response_1403
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
@@ -3381,7 +3345,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      <<: *error_response_1724_002
+      <<: *error_response_1724
 
   - name: Wrong limit
     request:
@@ -3422,7 +3386,7 @@ stages:
       params:
         sort: -wrong
     response:
-      <<: *error_response_1403_002
+      <<: *error_response_1403
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
@@ -3609,7 +3573,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      <<: *error_response_1724_002
+      <<: *error_response_1724
 
   - name: Wrong limit
     request:
@@ -3650,7 +3614,7 @@ stages:
       params:
         sort: -wrong
     response:
-      <<: *error_response_1403_002
+      <<: *error_response_1403
 
   - name: Offset and limit
     request:

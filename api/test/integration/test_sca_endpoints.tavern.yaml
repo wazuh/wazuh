@@ -161,8 +161,6 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      json:
-        code: 1405
 
   - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
@@ -407,8 +405,6 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      json:
-        code: 1405
 
   - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
@@ -806,8 +802,6 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      json:
-        code: 1405
 
   - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
@@ -1052,8 +1046,6 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      json:
-        code: 1405
 
   - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
@@ -1357,8 +1349,6 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      json:
-        code: 1405
 
   - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
@@ -1623,8 +1613,6 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      json:
-        code: 1405
 
   - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
