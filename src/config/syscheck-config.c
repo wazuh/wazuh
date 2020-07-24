@@ -787,9 +787,15 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
         // Remove any trailling path separators
         int path_length = strlen(real_path);
-        tmp_str = real_path + path_length - 1;
-        if (*tmp_str == PATH_SEP && path_length != 1) {
-            *tmp_str = '\0';
+#ifdef WIN32
+        if (path_length != 3) { // Drives need :\ attached in order to work properly
+#else
+        if (path_length != 1) {
+#endif
+            tmp_str = real_path + path_length - 1;
+            if (*tmp_str == PATH_SEP) {
+                *tmp_str = '\0';
+            }
         }
 
         /* Check for glob */
