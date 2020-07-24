@@ -32,7 +32,15 @@ static const char *global_db_queries[] = {
     [SQL_SELECT_REG_OFFSET] = "global sql SELECT reg_offset FROM agent WHERE id = %d;",
     [SQL_UPDATE_FIM_OFFSET] = "global sql UPDATE agent SET fim_offset = %lu WHERE id = %d;",
     [SQL_UPDATE_REG_OFFSET] = "globL sql UPDATE agent SET reg_offset = %lu WHERE id = %d;",
-    [SQL_SELECT_AGENT_STATUS] = "global sql SELECT status FROM agent WHERE id = %d;"
+    [SQL_SELECT_AGENT_STATUS] = "global sql SELECT status FROM agent WHERE id = %d;",
+    [SQL_UPDATE_AGENT_STATUS] = "global sql UPDATE agent SET status = '%s' WHERE id = %d;",
+    [SQL_UPDATE_AGENT_GROUP] = "global sql UPDATE agent SET `group` = '%s' WHERE id = %d;",
+    [SQL_FIND_GROUP] = "global sql SELECT id FROM `group` WHERE name = '%s';",
+    [SQL_INSERT_AGENT_GROUP] = "global sql INSERT INTO `group` (name) VALUES('%s');",
+    [SQL_INSERT_AGENT_BELONG] = "global sql INSERT INTO belongs (id_group, id_agent) VALUES(%d, %d);",
+    [SQL_DELETE_AGENT_BELONG] = "global sql DELETE FROM belongs WHERE id_agent = %d",
+    [SQL_DELETE_GROUP_BELONG] = "global sql DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = '%s' );", 
+    [SQL_DELETE_GROUP] = "global sql DELETE FROM `group` WHERE name = '%s';",
  };
 
 //static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?, ?);";
@@ -41,13 +49,13 @@ static const char *global_db_queries[] = {
 //static const char *SQL_UPDATE_AGENT_VERSION_IP = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? , ip = ? WHERE id = ?;";
 //static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = ? WHERE id = ?;";
 //static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_GROUP = "UPDATE agent SET `group` = ? WHERE id = ?;";
-static const char *SQL_INSERT_AGENT_GROUP = "INSERT INTO `group` (name) VALUES(?)";
+//static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
+//static const char *SQL_UPDATE_AGENT_GROUP = "UPDATE agent SET `group` = ? WHERE id = ?;";
+//static const char *SQL_INSERT_AGENT_GROUP = "INSERT INTO `group` (name) VALUES(?)";
 //static const char *SQL_SELECT_AGENT_GROUP = "SELECT `group` FROM agent WHERE id = ?;";
-static const char *SQL_INSERT_AGENT_BELONG = "INSERT INTO belongs (id_group, id_agent) VALUES(?, ?)";
-static const char *SQL_DELETE_AGENT_BELONG = "DELETE FROM belongs WHERE id_agent = ?";
-static const char *SQL_DELETE_GROUP_BELONG = "DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ? );";
+//static const char *SQL_INSERT_AGENT_BELONG = "INSERT INTO belongs (id_group, id_agent) VALUES(?, ?)";
+//static const char *SQL_DELETE_AGENT_BELONG = "DELETE FROM belongs WHERE id_agent = ?";
+//static const char *SQL_DELETE_GROUP_BELONG = "DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ? );";
 //static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ?;";
 //static const char *SQL_SELECT_REG_OFFSET = "SELECT reg_offset FROM agent WHERE id = ?;";
 //static const char *SQL_UPDATE_FIM_OFFSET = "UPDATE agent SET fim_offset = ? WHERE id = ?;";
@@ -56,9 +64,9 @@ static const char *SQL_DELETE_GROUP_BELONG = "DELETE FROM belongs WHERE id_group
 //static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
 //static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
 //static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ?2 || '/_%');";
-static const char *SQL_FIND_GROUP = "SELECT id FROM `group` WHERE name = ?;";
+//static const char *SQL_FIND_GROUP = "SELECT id FROM `group` WHERE name = ?;"; 
 static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
-static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
+//static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date) {
@@ -88,9 +96,8 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
     
     snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_INSERT_AGENT], id, name, ip, register_ip, key, date, group);
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-    //mwarn("*Global* Query: %s | Result: %s | %d",wdbquery,wdboutput, result);
 
-    if( result == SQLITE_DONE ){
+    if( result == 0 ){
         result = wdb_create_agent_db(id, name);
     } else {
         mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
@@ -111,7 +118,7 @@ int wdb_update_agent_name(int id, const char *name) {
     snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_UPDATE_AGENT_NAME], name, id);
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
-    return result == SQLITE_DONE ? 0 : -1;
+    return result == 0 ? 0 : -1;
 }
 
 /* Update agent version. It opens and closes the DB. Returns 1 or -1 on error. */
@@ -128,7 +135,7 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
     }
 
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-    return result == SQLITE_DONE ? 1 : -1;
+    return result == 0 ? 1 : -1;
 }
 
 /* Update agent's last keepalive time. It opens and closes the DB. Returns 1 or -1 on error. */
@@ -141,7 +148,7 @@ int wdb_update_agent_keepalive(int id, long keepalive) {
     snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_UPDATE_AGENT_KEEPALIVE], keepalive, id);
     
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-    return result == SQLITE_DONE ? 1 : -1;
+    return result == 0 ? 1 : -1;
 }
 
 /* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
@@ -154,7 +161,7 @@ int wdb_remove_agent(int id) {
 
     name = wdb_agent_name(id);
     snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_DELETE_AGENT], id);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput)) == SQLITE_DONE;
+    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0;
     wdb_delete_agent_belongs(id);
 
     result = result && name ? wdb_remove_agent_db(id, name) : -1;
@@ -173,11 +180,8 @@ char* wdb_agent_name(int id) {
     snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_SELECT_AGENT], id);
 
     switch (wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput))) {
-    case SQLITE_ROW:
+    case 0:
         os_strdup(wdboutput,result);
-        break;
-    case SQLITE_DONE:
-        result = NULL;
         break;
     default:
         mdebug1("SQLite error. Query: %s", wdbquery);
@@ -197,11 +201,8 @@ char* wdb_agent_group(int id) {
     snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_SELECT_AGENT_GROUP], id);
 
     switch (wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput))) {
-    case SQLITE_ROW:
+    case 0:
         os_strdup(wdboutput,result);
-        break;
-    case SQLITE_DONE:
-        result = NULL;
         break;
     default:
         mdebug1("SQLite error. Query: %s", wdbquery);
@@ -457,13 +458,13 @@ int wdb_set_agent_offset(int id_agent, int type, long offset) {
     }
 
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-    return result == SQLITE_DONE ? 1 : -1;
+    return result == 0 ? 1 : -1;
 }
 
 /* Set agent updating status. Returns WDB_AGENT_*, or -1 on error. */
 int wdb_get_agent_status(int id_agent) {
     int result = 0;
-    const char *status;
+    const char *status = NULL;
     char wdbquery[OS_BUFFER_SIZE] = "";
     char wdboutput[OS_BUFFER_SIZE] = "";
     int wdb_sock = -1;
@@ -497,12 +498,14 @@ int wdb_get_agent_status(int id_agent) {
     return result;
 }
 
-/* Set agent updating status. Returns number of affected rows, or -1 on error. */
+/* Set agent updating status. Returns 1, or -1 on error. */
 int wdb_set_agent_status(int id_agent, int status) {
-    int result;
-    const char *str_status;
-    sqlite3_stmt *stmt;
-
+    int result = 0;
+    const char *str_status = NULL;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
+ 
     switch (status) {
     case WDB_AGENT_EMPTY:
         str_status = "empty";
@@ -517,41 +520,21 @@ int wdb_set_agent_status(int id_agent, int status) {
         return -1;
     }
 
-    if (wdb_open_global() < 0)
-        return -1;
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_UPDATE_AGENT_STATUS], str_status, id_agent);
+    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_STATUS, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, str_status, -1, NULL);
-    sqlite3_bind_int(stmt, 2, id_agent);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
+    return result == 0 ? 1 : -1;
 }
 
-/* Update agent group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+/* Update agent group. It opens and closes the DB. Returns 1 or -1 on error. */
 int wdb_update_agent_group(int id, char *group) {
     int result = 0;
-    sqlite3_stmt *stmt;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
 
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_GROUP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, group, -1, NULL);
-    sqlite3_bind_int(stmt, 2, id);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_UPDATE_AGENT_GROUP], group, id);
+    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if(wdb_update_agent_multi_group(id,group) < 0){
         return -1;
@@ -617,93 +600,83 @@ int wdb_update_agent_multi_group(int id, char *group) {
 
 /* Find group by name. Returns id if success or -1 on failure. */
 int wdb_find_group(const char *name) {
-    sqlite3_stmt *stmt = NULL;
-    int result;
+    int result = 0;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
+    char *json_string = NULL;
+    cJSON *root = NULL;
+    cJSON *elem = NULL;
+    cJSON *json_name = NULL;
 
-    if (wdb_open_global() < 0)
-        return -1;
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_FIND_GROUP], name);
+    wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
-    if (wdb_prepare(wdb_global, SQL_FIND_GROUP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
+    if(json_string = wstr_chr(wdboutput, ' '), json_string ){
+        *json_string='\0';
+        json_string++;
+    } else{
+        mdebug1("SQLite result has no space. Query: %s",wdbquery);
         return -1;
     }
 
-    sqlite3_bind_text(stmt, 1, name, -1, NULL);
-
-    result = wdb_step(stmt) == SQLITE_ROW ? sqlite3_column_int(stmt, 0) : -1;
-    sqlite3_finalize(stmt);
+    if(strcmp(wdboutput,"ok") == 0 && strcmp(json_string,"[]") != 0){
+        root = cJSON_Parse(json_string);    
+        elem = cJSON_GetArrayItem(root, 0);
+        json_name = cJSON_GetObjectItem(elem, "id");
+        result = json_name->valueint;
+    } else{
+        mdebug1("SQLite Query failed: %s", wdbquery);
+        return -1;
+    }
+        
     return result;
 }
 
 /* Insert a new group. Returns id if success or -1 on failure. */
 int wdb_insert_group(const char *name) {
-    sqlite3_stmt *stmt = NULL;
-    int result;
+    int result = 0;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
 
-    if (wdb_open_global() < 0)
-        return -1;
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_INSERT_AGENT_GROUP], name);
+    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
-    if (wdb_prepare(wdb_global, SQL_INSERT_AGENT_GROUP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, name, -1, NULL);
-
-    if (wdb_step(stmt) == SQLITE_DONE)
-        result = (int)sqlite3_last_insert_rowid(wdb_global);
+    if (result == 0)
+        result = wdb_find_group(name);
     else {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        mdebug1("SQLite query error: %s", wdbquery);
         result = -1;
     }
 
-    sqlite3_finalize(stmt);
     return result;
 }
 
-/* Update agent belongs table. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+/* Update agent belongs table. It opens and closes the DB. Returns 1 or -1 on error. */
 int wdb_update_agent_belongs(int id_group, int id_agent) {
     int result = 0;
-    sqlite3_stmt *stmt;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
 
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_INSERT_AGENT_BELONG, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_int(stmt, 1, id_group);
-    sqlite3_bind_int(stmt, 2, id_agent);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_INSERT_AGENT_BELONG], id_group, id_agent);
+    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+  
+    return result == 0 ? 1 : -1;
 }
 
-/* Delete agent belongs table. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+/* Delete agent belongs table. It opens and closes the DB. Returns 1 or -1 on error. */
 int wdb_delete_agent_belongs(int id_agent) {
     int result = 0;
-    sqlite3_stmt *stmt;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
 
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_DELETE_AGENT_BELONG, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_int(stmt, 1, id_agent);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_DELETE_AGENT_BELONG], id_agent);
+    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+ 
+    return result == 0 ? 1 : -1;
 }
 
 int wdb_update_groups(const char *dirname) {
@@ -804,25 +777,15 @@ int wdb_update_groups(const char *dirname) {
 
 /* Delete group from belongs table. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_group_from_belongs_db(const char *name) {
+    int result = 0;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
 
-    int result;
-    sqlite3_stmt *stmt;
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    // Delete from belongs
-    if (wdb_prepare(wdb_global, SQL_DELETE_GROUP_BELONG, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, name, -1, NULL);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_DELETE_GROUP_BELONG], name);
+    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+  
+    return result == 0 ? 0 : -1;
 }
 
 /* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
@@ -833,23 +796,15 @@ int wdb_remove_group_db(const char *name) {
         return -1;
     }
 
-    int result;
-    sqlite3_stmt *stmt;
+    int result = 0;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
 
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_DELETE_GROUP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, name, -1, NULL);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_DELETE_GROUP], name);
+    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+  
+    return result == 0 ? 0 : -1;
 }
 
 int wdb_agent_belongs_first_time(){
