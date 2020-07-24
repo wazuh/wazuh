@@ -52,9 +52,14 @@ namespace DbSync
 
         TXN_HANDLE createTransaction(const DBSYNC_HANDLE handle,
                                      const char* tables);
-                                     
+
         void closeTransaction(const DBSYNC_HANDLE handle,
                               const TXN_HANDLE txnHandle);
+
+        void syncRowData(const DBSYNC_HANDLE  handle,
+                         const TXN_HANDLE     txnHandle,
+                         const char*          jsonRaw,
+                         const ResultCallback callback);
 
         void release();
     private:
