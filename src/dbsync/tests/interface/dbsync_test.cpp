@@ -250,7 +250,7 @@ TEST_F(DBSyncTest, syncRow)
     
     result_callback_t notifyCb = reinterpret_cast<result_callback_t>(callback);
 
-    // EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert1.get()));
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), notifyCb));
     EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), notifyCb));
     EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate2.get(), notifyCb));
     /*EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert2.get(), notifyCb));
