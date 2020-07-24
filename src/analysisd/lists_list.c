@@ -20,43 +20,38 @@
 
 
 /* Create the ListRule */
-void OS_CreateListsList()
-{
+void OS_CreateListsList() {
     os_analysisd_cdblists = NULL;
     os_analysisd_cdbrules = NULL;
-
-    return;
 }
 
 /* Get first listnode  */
-ListNode *OS_GetFirstList()
-{
-    ListNode *listnode_pt = os_analysisd_cdblists;
-
-    return (listnode_pt);
+ListNode *OS_GetFirstList() {
+    return os_analysisd_cdblists;
 }
 
-void OS_ListLoadRules(ListNode **l_node)
-{
-    ListRule *lrule = os_analysisd_cdbrules;
-    while (lrule != NULL) {
-        if (!lrule->loaded) {
-            lrule->db = OS_FindList(lrule->filename, *l_node);
-            lrule->loaded = 1;
+void OS_ListLoadRules(ListNode **l_node, ListRule **lrule) {
+
+    while (*lrule != NULL) {
+
+        if (!(*lrule)->loaded) {
+            (*lrule)->db = OS_FindList((*lrule)->filename, l_node);
+            (*lrule)->loaded = 1;
         }
-        lrule = lrule->next;
+
+        *lrule = (*lrule)->next;
     }
 }
 
 /* External AddList */
-int OS_AddList(ListNode *new_listnode)
-{
-    if (os_analysisd_cdblists == NULL) {
+void OS_AddList(ListNode *new_listnode, ListNode **cdblists) {
+
+    if (*cdblists == NULL) {
         /* First list */
-        os_analysisd_cdblists = new_listnode;
+        *cdblists = new_listnode;
     } else {
         /* Add new list to the end */
-        ListNode *last_list_node = os_analysisd_cdblists;
+        ListNode *last_list_node = *cdblists;
 
         while (last_list_node->next != NULL) {
             last_list_node = last_list_node->next;
@@ -64,12 +59,11 @@ int OS_AddList(ListNode *new_listnode)
         last_list_node->next = new_listnode;
 
     }
-    return 0;
 }
 
-ListNode *OS_FindList(const char *listname, ListNode *l_node)
-{
-    ListNode *last_list_node = l_node;
+ListNode *OS_FindList(const char *listname, ListNode **l_node) {
+
+    ListNode *last_list_node = *l_node;
     if (last_list_node != NULL) {
         do {
             if (strcmp(last_list_node->txt_filename, listname) == 0 ||
@@ -83,14 +77,10 @@ ListNode *OS_FindList(const char *listname, ListNode *l_node)
     return (NULL);
 }
 
-ListRule *OS_AddListRule(ListRule *first_rule_list,
-                         int lookup_type,
-                         int field,
-                         const char *dfield,
-                         char *listname,
-                         OSMatch *matcher,
-                         ListNode *l_node)
-{
+ListRule *OS_AddListRule(ListRule *first_rule_list, int lookup_type, int field,
+                         const char *dfield, char *listname, OSMatch *matcher,
+                         ListNode **l_node) {
+
     ListRule *new_rulelist_pt = NULL;
     new_rulelist_pt = (ListRule *)calloc(1, sizeof(ListRule));
     if (!new_rulelist_pt) {
@@ -282,7 +272,7 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
     return 0;
 }
 
-int OS_DBSearch(ListRule *lrule, char *key, ListNode *l_node)
+int OS_DBSearch(ListRule *lrule, char *key, ListNode **l_node)
 {
     //XXX - god damn hack!!! Jeremy Rossi
     w_mutex_lock(&lrule->mutex);
@@ -324,4 +314,40 @@ int OS_DBSearch(ListRule *lrule, char *key, ListNode *l_node)
             mdebug1("lists_list.c::OS_DBSearch should never hit default");
             return 0;
     }
+}
+
+void os_remove_cdblist(ListNode **l_node) {
+
+    ListNode *tmp;
+
+    while (*l_node) {
+
+        tmp = *l_node;
+        *l_node = (*l_node)->next;
+
+        os_free(tmp->cdb_filename);
+        os_free(tmp->txt_filename);
+        os_free(tmp);
+    }
+
+    os_free(*l_node);
+}
+
+void os_remove_cdbrules(ListRule **l_rule) {
+
+    ListRule *tmp;
+
+    while (*l_rule) {
+
+        tmp = *l_rule;
+        *l_rule = (*l_rule)->next;
+
+        if (tmp->matcher) OSMatch_FreePattern(tmp->matcher);
+        os_free(tmp->matcher);
+        os_free(tmp->dfield);
+        os_free(tmp->filename);
+        os_free(tmp);
+    }
+
+    os_free(*l_rule);
 }
