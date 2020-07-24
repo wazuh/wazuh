@@ -116,9 +116,10 @@ int OS_IsAfterTime(const char *time_str, const char *ossec_time) __attribute__((
  *      monday,tuesday
  *      mon,tue wed
  * @param day_str Day to be validated.
+ * @param msg If an error occurs the msg will be stored in *msg
  * @return Returns 0 if doesn't match or a valid string in success.
  */
-char *OS_IsValidDay(const char *day_str);
+char *OS_IsValidDay(const char *day_str, char **msg);
 
 
 /**

@@ -494,7 +494,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         }
                     } else if (strcasecmp(rule_opt[k]->element, xml_week_day) == 0) {
                         config_ruleinfo->week_day =
-                            OS_IsValidDay(rule_opt[k]->content);
+                            OS_IsValidDay(rule_opt[k]->content, &tmp_msg);
 
                         if (!config_ruleinfo->week_day) {
                             smerror(&tmp_msg, INVALID_CONFIG,

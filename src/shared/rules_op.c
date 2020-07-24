@@ -319,10 +319,15 @@ int OS_ReadXMLRules(const char *rulefile,
                         config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                     }
                 } else if (strcasecmp(rule_opt[k]->element, xml_week_day) == 0) {
+                    char *err_msg = NULL;
                     config_ruleinfo->week_day =
-                        OS_IsValidDay(rule_opt[k]->content);
+                        OS_IsValidDay(rule_opt[k]->content, &err_msg);
 
                     if (!config_ruleinfo->week_day) {
+                        if(err_msg){
+                            merror(INVALID_DAY, node[i]->content);
+                            os_free(err_msg);
+                        }
                         merror(INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
                         retval = -1;
                         goto cleanup;
