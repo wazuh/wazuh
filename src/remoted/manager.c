@@ -167,7 +167,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
         result = wdb_update_agent_keepalive(agent_id, keepalive);
 
         if (OS_SUCCESS != result)
-            mwarn("Unable to save agent information in global.db");
+            mwarn("Unable to save agent last keepalive in global.db");
     } else {
         if (!data) {
             os_calloc(1, sizeof(pending_data_t), data);
@@ -233,13 +233,13 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                                               os_build, uname, os_arch, version, config_sum, merged_sum, manager_host,
                                               node_name, agent_ip);
             
-            if (OS_SUCCESS != result)
-                mwarn("Unable to save agent information in global.db");
+            if (OS_INVALID == result)
+                mwarn("Unable to update information in global.db for agent: %s", key->id);
             
             result = wdb_update_agent_keepalive(agent_id, keepalive);
 
-            if (OS_SUCCESS != result)
-                mwarn("Unable to save agent last keepalive in global.db");
+            if (OS_INVALID == result)
+                mwarn("Unable to save last keepalive in global.db for agent: %s", key->id);
 
             os_free(version);
             os_free(os_name);
