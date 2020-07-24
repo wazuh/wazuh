@@ -1,5 +1,6 @@
 server.host: 0.0.0.0
-elasticsearch.hosts: https://localhost:9200
+server.port: 443
+elasticsearch.hosts: https://127.0.0.1:9200
 elasticsearch.password: <elasticsearch_password>
 
 # Elasticsearch from/to Kibana
