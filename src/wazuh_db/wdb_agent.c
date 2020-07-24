@@ -26,7 +26,8 @@ static const char *global_db_queries[] = {
     [SQL_DELETE_AGENT] = "global sql DELETE FROM agent WHERE id = %d;",
     [SQL_SELECT_AGENT] = "global sql SELECT name FROM agent WHERE id = %d;",
     [SQL_SELECT_AGENT_GROUP] = "global sql SELECT `group` FROM agent WHERE id = %d;",
- //   [SQL_SELECT_AGENTS] = "global sql SELECT id FROM agent WHERE id != 0;"
+    [SQL_SELECT_AGENTS] = "global sql SELECT id FROM agent WHERE id != 0;",
+    [SQL_FIND_AGENT] = "global sql SELECT id FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');",
 };
 
 //static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?, ?);";
@@ -48,8 +49,8 @@ static const char *SQL_UPDATE_FIM_OFFSET = "UPDATE agent SET fim_offset = ? WHER
 static const char *SQL_UPDATE_REG_OFFSET = "UPDATE agent SET reg_offset = ? WHERE id = ?;";
 //static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 //static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
-static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
-static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ?2 || '/_%');";
+//static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
+//static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ?2 || '/_%');";
 static const char *SQL_FIND_GROUP = "SELECT id FROM `group` WHERE name = ?;";
 static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
 static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
@@ -58,8 +59,8 @@ static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date) {
     int result = 0;
     time_t date = 0;
-    char wdbquery[OS_SIZE_128] = "";
-    char wdboutput[OS_SIZE_128] = "";
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
     int wdb_sock = -1;
 
     if(keep_date) {
@@ -80,7 +81,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
     if (!key)
         key=NULL;
     
-    snprintf(wdbquery, OS_SIZE_128, global_db_queries[SQL_INSERT_AGENT], id, name, ip, register_ip, key, date, group);
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_INSERT_AGENT], id, name, ip, register_ip, key, date, group);
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
     //mwarn("*Global* Query: %s | Result: %s | %d",wdbquery,wdboutput, result);
 
@@ -98,11 +99,11 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
 /* Update agent name. It doesn't rename agent DB file. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_name(int id, const char *name) {
     int result = 0;
-    char wdbquery[OS_SIZE_128] = "";
-    char wdboutput[OS_SIZE_128] = "";
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
     int wdb_sock = -1;
 
-    snprintf(wdbquery, OS_SIZE_128, global_db_queries[SQL_UPDATE_AGENT_NAME], name, id);
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_UPDATE_AGENT_NAME], name, id);
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     return result == SQLITE_DONE ? 0 : -1;
@@ -111,14 +112,14 @@ int wdb_update_agent_name(int id, const char *name) {
 /* Update agent version. It opens and closes the DB. Returns 1 or -1 on error. */
 int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name, const char *agent_ip) {
     int result = 0;
-    char wdbquery[OS_SIZE_128] = "";
-    char wdboutput[OS_SIZE_128] = "";
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
     int wdb_sock = -1;
   
     if(agent_ip) {
-        snprintf(wdbquery, OS_SIZE_128, global_db_queries[SQL_UPDATE_AGENT_VERSION_IP], os_name, os_version, os_major, os_minor,os_codename, os_platform, os_build, os_uname, os_arch, version, config_sum,merged_sum, manager_host, node_name, agent_ip , id );
+        snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_UPDATE_AGENT_VERSION_IP], os_name, os_version, os_major, os_minor,os_codename, os_platform, os_build, os_uname, os_arch, version, config_sum,merged_sum, manager_host, node_name, agent_ip , id );
     } else {
-        snprintf(wdbquery, OS_SIZE_128, global_db_queries[SQL_UPDATE_AGENT_VERSION],  os_name, os_version, os_major, os_minor,os_codename, os_platform, os_build, os_uname, os_arch, version, config_sum,merged_sum, manager_host, node_name , id );
+        snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_UPDATE_AGENT_VERSION],  os_name, os_version, os_major, os_minor,os_codename, os_platform, os_build, os_uname, os_arch, version, config_sum,merged_sum, manager_host, node_name , id );
     }
 
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
@@ -128,11 +129,11 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
 /* Update agent's last keepalive time. It opens and closes the DB. Returns 1 or -1 on error. */
 int wdb_update_agent_keepalive(int id, long keepalive) {
     int result = 0;
-    char wdbquery[OS_SIZE_128] = "";
-    char wdboutput[OS_SIZE_128] = "";
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
     int wdb_sock = -1;
 
-    snprintf(wdbquery, OS_SIZE_128, global_db_queries[SQL_UPDATE_AGENT_KEEPALIVE], keepalive, id);
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_UPDATE_AGENT_KEEPALIVE], keepalive, id);
     
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
     return result == SQLITE_DONE ? 1 : -1;
@@ -141,13 +142,13 @@ int wdb_update_agent_keepalive(int id, long keepalive) {
 /* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_agent(int id) {
     int result = 0 ;
-    char wdbquery[OS_SIZE_128] = "";
-    char wdboutput[OS_SIZE_128] = "";
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
     int wdb_sock = -1;
     char * name = "";
 
     name = wdb_agent_name(id);
-    snprintf(wdbquery, OS_SIZE_128, global_db_queries[SQL_DELETE_AGENT], id);
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_DELETE_AGENT], id);
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput)) == SQLITE_DONE;
     wdb_delete_agent_belongs(id);
 
@@ -160,11 +161,11 @@ int wdb_remove_agent(int id) {
 /* Get name from agent. The string must be freed after using. Returns NULL on error. */
 char* wdb_agent_name(int id) {
     char *result = NULL;
-    char wdbquery[OS_SIZE_128] = "";
-    char wdboutput[OS_SIZE_128] = "";
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
     int wdb_sock = -1;
 
-    snprintf(wdbquery, OS_SIZE_128, global_db_queries[SQL_SELECT_AGENT], id);
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_SELECT_AGENT], id);
 
     switch (wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput))) {
     case SQLITE_ROW:
@@ -184,11 +185,11 @@ char* wdb_agent_name(int id) {
 /* Get group from agent. The string must be freed after using. Returns NULL on error. */
 char* wdb_agent_group(int id) {
     char *result = NULL;
-    char wdbquery[OS_SIZE_128] = "";
-    char wdboutput[OS_SIZE_128] = "";
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
     int wdb_sock = -1;
 
-    snprintf(wdbquery, OS_SIZE_128, global_db_queries[SQL_SELECT_AGENT_GROUP], id);
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_SELECT_AGENT_GROUP], id);
 
     switch (wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput))) {
     case SQLITE_ROW:
@@ -304,79 +305,83 @@ int wdb_remove_agent_db(int id, const char * name) {
 
 /* Get an array containing the ID of every agent (except 0), ended with -1 */
 int* wdb_get_all_agents() {
-    int i;
-    int n = 1;
-    int *array;
-    sqlite3_stmt *stmt = NULL;
+    int i = 0;
+    int n = 0;
+    int *array = NULL;
+    char *json_string = NULL;
+    cJSON *elem = NULL;
+    cJSON *name = NULL;
+    cJSON *root = NULL;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
 
-    if (!(array = malloc(sizeof(int)))) {
-        merror("wdb_get_all_agents(): memory error");
+    snprintf(wdbquery, OS_BUFFER_SIZE,"%s", global_db_queries[SQL_SELECT_AGENTS]);
+    wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if(json_string = wstr_chr(wdboutput, ' '), json_string ){
+        *json_string='\0';
+        json_string++;
+
+    } else{
+        mdebug1("SQLite result has no space. Query: %s",wdbquery);
+        os_free(array);
         return NULL;
     }
 
-    if (wdb_open_global() < 0) {
-        free(array);
-        return NULL;
-    }
-
-    if (wdb_prepare(wdb_global, SQL_SELECT_AGENTS, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
-        free(array);
-        return NULL;
-    }
-
-    for (i = 0; wdb_step(stmt) == SQLITE_ROW; i++) {
-        if (i + 1 == n) {
-            int *newarray;
-
-            if (!(newarray = realloc(array, sizeof(int) * (n *= 2)))) {
-                merror("wdb_get_all_agents(): memory error");
-                free(array);
-                sqlite3_finalize(stmt);
-                wdb_close_global();
-                return NULL;
+    if(strcmp(wdboutput,"ok") == 0){
+        root = cJSON_Parse(json_string);
+        n = cJSON_GetArraySize(root);
+        os_calloc(n+1, sizeof(int),array);        
+        
+        for (i = 0; i < n; i++) {
+            elem = cJSON_GetArrayItem(root, i);
+            name = cJSON_GetObjectItem(elem, "id");
+            array[i]=name->valueint;
             }
+        array[i] = -1;
 
-            array = newarray;
-        }
-
-        array[i] = sqlite3_column_int(stmt, 0);
+    } else{
+        mdebug1("SQLite Query failed: %s", wdbquery);
+        os_free(array);
+        return NULL;
     }
-
-    array[i] = -1;
-
-    sqlite3_finalize(stmt);
 
     return array;
 }
 
-/* Find agent by name and address. Returns id if success, -1 on failure or -2 if it has not been found. */
+/* Find agent by name and address. Returns id if success, -1 on failure */
 int wdb_find_agent(const char *name, const char *ip) {
-    sqlite3_stmt *stmt = NULL;
-    int result;
+    int result = 0;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
+    char *json_string = NULL;
+    cJSON *root = NULL;
+    cJSON *elem = NULL;
+    cJSON *json_name = NULL;
 
-    if (wdb_open_global() < 0)
-        return -1;
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_FIND_AGENT], name, ip, ip);
+    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
-    if (wdb_prepare(wdb_global, SQL_FIND_AGENT, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
+    if(json_string = wstr_chr(wdboutput, ' '), json_string ){
+        *json_string='\0';
+        json_string++;
+    } else{
+        mdebug1("SQLite result has no space. Query: %s",wdbquery);
         return -1;
     }
 
-    sqlite3_bind_text(stmt, 1, name, -1, NULL);
-    sqlite3_bind_text(stmt, 2, ip, -1, NULL);
-
-    if (result = wdb_step(stmt), result == SQLITE_ROW) {
-        result = sqlite3_column_int(stmt, 0);
-    } else if (result == SQLITE_DONE) {
-        result = -2;
-    } else {
-        result = -1;
+    if(strcmp(wdboutput,"ok") == 0){
+        root = cJSON_Parse(json_string);    
+        elem = cJSON_GetArrayItem(root, 0);
+        json_name = cJSON_GetObjectItem(elem, "id");
+        result = json_name->valueint;
+    } else{
+        mdebug1("SQLite Query failed: %s", wdbquery);
+        return -1;
     }
-
-    sqlite3_finalize(stmt);
+        
     return result;
 }
 
