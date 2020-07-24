@@ -69,7 +69,6 @@ enum GenericTupleIndex
     GenDouble
 }; 
 
-
 using ColumnData =
     std::tuple<int32_t, std::string, ColumnType, bool, bool>;
 
@@ -144,7 +143,8 @@ class SQLiteDBEngine : public DbSync::IDbEngine
 
         void bindJsonData(std::unique_ptr<SQLite::IStatement>const & stmt, 
                           const ColumnData& cd,
-                          const nlohmann::json::value_type& valueType);
+                          const nlohmann::json::value_type& valueType,
+                          const unsigned int cid);
 
         bool createCopyTempTable(const std::string& table);
 
@@ -159,8 +159,18 @@ class SQLiteDBEngine : public DbSync::IDbEngine
                                  const DbSync::ResultCallback callback);
 
         void insertSingleRow(const std::string& table,
+                             const TableColumns& tableFields,
                              const nlohmann::json& jsData,
                              std::vector<CallbackAction>& callbackList);
+
+        void processInputData(const std::string& table,
+                              const nlohmann::json& data,
+                              const std::vector<std::string>& primaryKeyList,
+                              std::vector<CallbackAction>& callbackList);
+
+        void getRowDiff(const std::string& table,
+                        const nlohmann::json& data,
+                        nlohmann::json& jsResult);                              
 
         bool insertNewRows(const std::string& table,
                            const std::vector<std::string>& primaryKeyList,
@@ -220,6 +230,13 @@ class SQLiteDBEngine : public DbSync::IDbEngine
         bool getRowsToModify(const std::string& table,
                              const std::vector<std::string>& primaryKeyList,
                              std::vector<Row>& rowKeysValue);
+
+        void updateSingleRow(const std::string& table,
+                             const TableColumns& tableFields,
+                             const ColumnData& pKeyData,
+                             const std::unique_ptr<SQLite::IStatement>& stmt,
+                             const nlohmann::json& jsData,
+                             nlohmann::json& jsResult);
 
         bool updateRows(const std::string& table,
                         const std::vector<std::string>& primaryKeyList,
