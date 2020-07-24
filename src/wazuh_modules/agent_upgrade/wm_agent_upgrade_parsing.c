@@ -62,9 +62,11 @@ int wm_agent_upgrade_parse_command(const char* buffer, cJSON** json_api, cJSON**
 }
 
 wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char* output) {
-    wm_upgrade_task *task = wm_agent_upgrade_init_upgrade_task();
     int param_index = 0;
     int error_flag = 0;
+
+    wm_upgrade_task *task = wm_agent_upgrade_init_upgrade_task();
+
     while(!error_flag && params && (param_index < cJSON_GetArraySize(params))) {
         cJSON *item = cJSON_GetArrayItem(params, param_index++);
         if(strcmp(item->string, "wpk_repo") == 0) {
@@ -115,9 +117,11 @@ wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, cha
 }
 
 wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char* output) {
-    wm_upgrade_custom_task *task = wm_agent_upgrade_init_upgrade_custom_task();
     int param_index = 0;
     int error_flag = 0;
+
+    wm_upgrade_custom_task *task = wm_agent_upgrade_init_upgrade_custom_task();
+
     while(!error_flag && params && (param_index < cJSON_GetArraySize(params))) {
         cJSON *item = cJSON_GetArrayItem(params, param_index++);
         if (strcmp(item->string, "file_path") == 0) {
