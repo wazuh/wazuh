@@ -18,6 +18,8 @@ typedef struct vu_os_feed {
     time_t interval;
     char *url;
     char *path;
+    char *debian_json_path;
+    char *debian_json_url;
     char *allow;
     int port;
     struct vu_os_feed *next;
@@ -45,7 +47,7 @@ static int wm_vuldet_read_deprecated_multifeed_tag(xml_node *node, update_node *
 static int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **updates, wm_vuldet_flags *flags);
 static int wm_vuldet_provider_enable(xml_node **node);
 static char *wm_vuldet_provider_name(xml_node *node);
-static int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds);
+static int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char *pr_name);
 static void wm_vuldet_set_port_to_url(char **url, int port);
 static int wm_vuldet_add_allow_os(update_node *update, char *os_tags, char old_config);
 static int wm_vuldet_add_multi_allow_os(update_node *update, char **src_os, char **dst_os);
@@ -602,6 +604,8 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
         return 0;
     }
 
+    assert(updates[os_index] != NULL);
+
     updates[os_index]->old_config = 1;
     // Deprecated config don't support new option download_timeout
     updates[os_index]->timeout = 300;
@@ -700,7 +704,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
     }
 
     if (!multi_provider) {
-        if(wm_vuldet_provider_os_list(chld_node, &os_list)) {
+        if(wm_vuldet_provider_os_list(chld_node, &os_list, pr_name)) {
             goto end;
         }
     }
@@ -737,7 +741,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                 goto end;
             } else if (os_index == OS_DEPRECATED) {
                 os_list = os_list->next;
-                wm_vuldet_remove_os_feed(rem, 0);
+                wm_vuldet_remove_os_feed(rem, 1);
                 continue;
             }
 
@@ -755,6 +759,8 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             updates[os_index]->url = os_list->url;
             updates[os_index]->path = os_list->path;
             updates[os_index]->port = os_list->port;
+            updates[os_index]->multi_path = os_list->debian_json_path;
+            updates[os_index]->multi_url = os_list->debian_json_url;
 
             mdebug1("Added %s (%s) feed. Interval: %lus | Path: '%s' | Url: '%s' | Timeout: %lds",
                         pr_name,
@@ -877,10 +883,11 @@ char *wm_vuldet_provider_name(xml_node *node) {
     return NULL;
 }
 
-int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds) {
+int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char *pr_name) {
     int i;
     int j;
     vu_os_feed *feeds_it = *feeds;
+    int8_t debian_provider = (strcasestr(pr_name, vu_feed_tag[FEED_DEBIAN])) ? 1 : 0;
 
     for (i = 0; node[i]; i++) {
         if (!strcmp(node[i]->element, XML_OS)) {
@@ -919,7 +926,33 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds) {
             if (feeds_it->url) {
                 wm_vuldet_set_port_to_url(&feeds_it->url, feeds_it->port);
             }
+        }
+    }
 
+    if (debian_provider && feeds_it) {
+        // A second iteration to check for a custom location for the JSON Security Tracker
+        // If found, we assign the new location to all Debian nodes read above
+        for (i = 0; node[i]; i++) {
+            if (!strcmp(node[i]->element, XML_PATH)) {
+                feeds_it = *feeds;
+                while (feeds_it) {
+                    os_strdup(node[i]->content, feeds_it->debian_json_path);
+                    feeds_it = feeds_it->next;
+                }
+            } else if (!strcmp(node[i]->element, XML_URL)) {
+                feeds_it = *feeds;
+                while (feeds_it) {
+                    os_strdup(node[i]->content, feeds_it->debian_json_url);
+                    for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
+                        if (!strcmp(node[i]->attributes[j],  XML_PORT)) {
+                            int port;
+                            port = strtol(node[i]->values[j], NULL, 10);
+                            wm_vuldet_set_port_to_url(&feeds_it->debian_json_url, port);
+                        }
+                    }
+                    feeds_it = feeds_it->next;
+                }
+            }
         }
     }
 
@@ -1111,8 +1144,6 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
             if (multi_provider || rhel_enabled) {
                 os_free(options->multi_path);
                 os_strdup(node[i]->content, options->multi_path);
-            } else {
-                mwarn("'%s' option can only be used in a multi-provider.", node[i]->element);
             }
         } else if (!strcmp(node[i]->element, XML_URL)) {
             if (multi_provider || rhel_enabled) {
@@ -1135,8 +1166,6 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
                     merror("Invalid use of the '%s' option.", node[i]->element);
                     return OS_INVALID;
                 }
-            } else {
-                mwarn("'%s' option can only be used in a multi-provider.", node[i]->element);
             }
         } else if (!strcmp(node[i]->element, XML_ALLOW)) {
             if (multi_provider || rhel_enabled) {
@@ -1182,12 +1211,14 @@ char wm_vuldet_provider_type(char *pr_name) {
 
 void wm_vuldet_remove_os_feed(vu_os_feed *feed, char full_r) {
     if (full_r) {
-        free(feed->url);
-        free(feed->path);
+        os_free(feed->url);
+        os_free(feed->path);
+        os_free(feed->debian_json_path);
+        os_free(feed->debian_json_url);
     }
-    free(feed->version);
-    free(feed->allow);
-    free(feed);
+    os_free(feed->version);
+    os_free(feed->allow);
+    os_free(feed);
 }
 
 void wm_vuldet_remove_os_feed_list(vu_os_feed *feeds) {

@@ -32,7 +32,7 @@
 #define VU_INS_CPES_DIC       "(5417): Inserting Wazuh's CPE dictonary."
 #define VU_INS_MSU            "(5418): Inserting Microsoft Security Update dictonary."
 #define VU_INS_VUL_SEC        "(5419): Inserting %s vulnerabilities section."
-/* ID 5420 is available */
+#define VU_DEB_STATUS_FEED    "(5420): Indexing vulnerabilities from the Debian Security Tracker."
 #define VU_INDEX_TIME         "(5421): It took '%ld' seconds to '%s' vulnerabilities."
 #define VU_INS_TEST_SEC       "(5422): Inserting '%s' vulnerabilities references."
 #define VU_UPDATE_VU_CO       "(5423): Inserting '%s' vulnerabilities conditions."
@@ -48,7 +48,7 @@
 #define VU_AGENT_UNSOPPORTED  "(5433): Agent '%.3d' has an unsupported Wazuh version: '%s'"
 #define VU_UNS_OS_VERSION     "(5434): Agent '%.3d' has an unsupported OS version: '%s'"
 #define VU_AG_NO_TARGET       "(5435): The analysis can not be launched because there are no target agents."
-/* ID 5436 is available */
+#define VU_DEB_STATUS_FETCH   "(5436): Fetching Debian Security Tracker from '%s'"
 #define VU_AGENT_SOFTWARE_REQ "(5437): Collecting agent '%.3d' software."
 #define VU_AG_FULL_SCAN       "(5438): A full scan will be run on agent '%.3d'"
 #define VU_AG_PART_SCAN       "(5439): A partial scan will be run on agent '%.3d'"
