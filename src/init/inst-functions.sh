@@ -880,8 +880,6 @@ InstallLocal()
         LIB_FLAG="no"
     fi
 
-    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
-
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
         ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
     fi
@@ -927,7 +925,17 @@ InstallLocal()
     ${INSTALL} -m 0440 -o root -g ${OSSEC_GROUP} wazuh_modules/vulnerability_detector/msu.json.gz ${PREFIX}/queue/vulnerabilities/dictionaries
 
     ### Install Python
-    ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE} || exit 1
+    ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
+
+    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
+
+    ### Install API
+    ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
+
+    ### Install API service
+    if [ "X${INSTALL_API_DAEMON}" = "X" ] || [ "X${INSTALL_API_DAEMON}" = "Xy" ]; then
+        ${MAKEBIN} --quiet -C ../api service PREFIX=${PREFIX}
+    fi
 }
 
 TransferShared()
@@ -1053,6 +1061,7 @@ InstallAgent()
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/docker
         ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/docker-listener/DockerListener.py ${PREFIX}/wodles/docker/DockerListener
     fi
+
 }
 
 InstallWazuh()

@@ -41,7 +41,7 @@ void test_save_controlmsg(void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        // Tests wm_vuldet_get_oslinux
+        // Tests save_controlmsg
         cmocka_unit_test_setup_teardown(test_save_controlmsg, setup_remoted, teardown_remoted)
         };
     return cmocka_run_group_tests(tests, NULL, NULL);

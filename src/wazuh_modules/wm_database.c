@@ -11,6 +11,7 @@
 
 #include "wmodules.h"
 #include "sec.h"
+#include "remoted_op.h"
 #include "wazuh_db/wdb.h"
 #include "addagent/manage_agents.h" // FILE_SIZE
 #include "external/cJSON/cJSON.h"
@@ -67,8 +68,6 @@ static void* wm_database_main(wm_database *data);
 static void* wm_database_destroy(wm_database *data);
 // Read config
 cJSON *wm_database_dump(const wm_database *data);
-// Get agent's architecture
-static char * wm_get_os_arch(char * os_header);
 // Update manager information
 static void wm_sync_manager();
 
@@ -262,7 +261,7 @@ void wm_sync_manager() {
     OS_ClearXML(&xml);
 
     if ((os_uname = strdup(getuname()))) {
-        os_arch = wm_get_os_arch(os_uname);
+        os_arch = get_os_arch(os_uname);
         char *ptr;
 
         if ((ptr = strstr(os_uname, " - ")))

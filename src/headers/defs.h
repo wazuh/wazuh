@@ -65,7 +65,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.14.0"
+#define __ossec_version "v4.0.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -221,6 +221,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WDB_DIR         "var/db"
 #define WDB2_DIR        "queue/db"
 #define WDB_GLOB_NAME   "global.db"
+#define WDB2_GLOB_NAME   "global"
 #define WDB_MITRE_NAME  "mitre"
 #define WDB_PROF_NAME   ".template.db"
 

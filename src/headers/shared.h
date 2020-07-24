@@ -266,6 +266,7 @@ extern const char *__local_name;
 #include "os_utils.h"
 #include "schedule_scan.h"
 #include "bzip2_op.h"
+#include "enrollment_op.h"
 
 
 #endif /* SHARED_H */

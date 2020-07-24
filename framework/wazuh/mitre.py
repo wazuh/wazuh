@@ -7,9 +7,11 @@ from typing import Dict
 
 import more_itertools
 
-from wazuh.common import database_limit
-from wazuh.exception import WazuhException
-from wazuh.utils import WazuhDBBackend, WazuhDBQuery, sort_array
+from wazuh.core.common import database_limit
+from wazuh.core.exception import WazuhException
+from wazuh.rbac.decorators import expose_resources
+from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.utils import WazuhDBBackend, WazuhDBQuery, sort_array
 
 mitre_fields = {'id': 'id', 'json': 'json', 'phase_name': 'phase_name', 'platform_name': 'platform_name'}
 from_fields = "attack LEFT JOIN has_phase ON attack.id = has_phase.attack_id" \
@@ -71,7 +73,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
     def _execute_data_query(self):
         self.query = self.query.format(inner_select)
         self.query = self._final_query().format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
-                                                             self.select['fields'] | self.min_select_fields)))
+                                                             self.select | self.min_select_fields)))
 
         self._data = self.backend.execute(self.query, self.request)
 
@@ -94,11 +96,12 @@ class WazuhDBQueryMitre(WazuhDBQuery):
         return super()._format_data_into_dictionary()
 
 
-def get_attack(id: str = None, phase_name: str = None, platform_name: str = None, select: dict = None, search: dict = None,
+@expose_resources(actions=["mitre:read"], resources=["*:*:*"])
+def get_attack(id_: str = None, phase_name: str = None, platform_name: str = None, select: dict = None, search: dict = None,
                offset: int = 0, limit: int = None, sort: dict = None, q: str = None, ) -> Dict:
     """Get information from Mitre database.
 
-    :param id: Filters by attack ID
+    :param id_: Filters by attack ID
     :param phase_name: Filters by phase
     :param platform_name: Filters by platform
     :param search: Search if the string is contained in the db
@@ -107,15 +110,19 @@ def get_attack(id: str = None, phase_name: str = None, platform_name: str = None
     :param sort: Sort the items. Format: {'fields': ['field1', 'field2'], 'order': 'asc|desc'}
     :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
     :param q: Query to filter by
-    :return: Dictionary with the data of the query from Mitre database
+    :return: AffectedItemsWazuhResult with the data of the query from Mitre database
     """
+    result = AffectedItemsWazuhResult(all_msg='All selected MITRE information is shown',
+                                      none_msg='No MITRE information is shown'
+                                      )
+
     # Set default limit to 500 if json is not selected and 10 otherwise in order to avoid congesting wdb socket
-    default_limit = 10 if select is None or 'json' in select['fields'] else 500
+    default_limit = 10 if select is None or 'json' in select else 500
     limit = min(limit, default_limit) if limit is not None else default_limit
 
     # Add regular field filters to q
-    if id:
-        q = f'{q};id={id}' if q else f'id={id}'
+    if id_:
+        q = f'{q};id={id_}' if q else f'id={id_}'
     if phase_name:
         q = f'{q};phase_name={phase_name}' if q else f'phase_name={phase_name}'
     if platform_name:
@@ -123,9 +130,12 @@ def get_attack(id: str = None, phase_name: str = None, platform_name: str = None
 
     # Execute query
     db_query = WazuhDBQueryMitre(offset=offset, limit=limit, query=q, sort=sort, search=search, select=select)
-    result = db_query.run()
+    data = db_query.run()
 
+    # Sort result array
     if sort and 'json' not in sort['fields']:
-        result['items'] = sort_array(result['items'], sort_by=sort['fields'], order=sort['order'])
+        data['items'] = sort_array(data['items'], sort_by=sort['fields'], sort_ascending=sort['order'] == 'asc')
 
+    result.affected_items.extend(data['items'])
+    result.total_affected_items = data['totalItems']
     return result

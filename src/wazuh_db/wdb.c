@@ -147,6 +147,59 @@ int wdb_open_global() {
     return 0;
 }
 
+// Opens global database and stores it in DB pool. It returns a locked database or NULL
+wdb_t * wdb_open_global2() {
+    char path[PATH_MAX + 1] = "";
+    sqlite3 *db = NULL;
+    wdb_t * wdb = NULL;
+
+    // Find BD in pool
+
+    w_mutex_lock(&pool_mutex);
+
+    if (wdb = (wdb_t *)OSHash_Get(open_dbs, WDB2_GLOB_NAME), wdb) {
+        goto success;
+    }
+
+    // Try to open DB
+
+    snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+    
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+        mdebug1("Global database not found, creating.");
+        sqlite3_close_v2(db);
+
+        if (wdb_create_global(path) < 0) {
+            merror("Couldn't create SQLite database '%s'", path);
+            goto end;
+        }
+
+        // Retry to open
+
+        if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+            merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
+            sqlite3_close_v2(db);
+            goto end;
+        }
+
+        wdb = wdb_init(db, WDB2_GLOB_NAME);
+        wdb_pool_append(wdb);
+
+    } 
+    else {
+        wdb = wdb_init(db, WDB2_GLOB_NAME);
+        wdb_pool_append(wdb);
+    }
+
+success:
+    w_mutex_lock(&wdb->mutex);
+    wdb->refcount++;
+
+end:
+    w_mutex_unlock(&pool_mutex);
+    return wdb;
+}
+
 wdb_t * wdb_open_mitre() {
     char path[PATH_MAX + 1];
     sqlite3 *db;
@@ -596,7 +649,6 @@ int wdb_insert_info(const char *key, const char *value) {
 
     if (wdb_prepare(wdb_global, SQL_INSERT_INFO, -1, &stmt, NULL)) {
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
         return -1;
     }
 

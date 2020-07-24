@@ -1,0 +1,46 @@
+---
+- actions:
+  - cluster:read
+  resources:
+  - node:id:master-node
+  - node:id:worker2
+  effect: allow
+
+- actions:
+  - cluster:restart
+  resources:
+  - node:id:worker2
+  effect: allow
+
+- actions:
+  - cluster:status
+  resources:
+  - "*:*:*"
+  effect: allow
+
+- actions:
+  - cluster:read_file
+  resources:
+  - node:id:master-node&file:path:etc/ossec.conf
+  - node:id:worker2&file:path:etc/ossec.conf
+  - node:id:master-node&file:path:etc/rules/local_rules.xml
+  - node:id:worker2&file:path:etc/rules/local_rules.xml
+  - node:id:master-node&file:path:ruleset/rules/0350-amazon_rules.xml
+  - node:id:worker2&file:path:ruleset/rules/0350-amazon_rules.xml
+  effect: allow
+
+- actions:
+  - cluster:upload_file
+  - cluster:read_api_config
+  - cluster:update_api_config
+  resources:
+  - node:id:master-node
+  - node:id:worker2
+  effect: allow
+
+- actions:
+  - cluster:delete_file
+  resources:
+  - node:id:master-node&file:path:ruleset/decoders/0005-wazuh_decoders.xml
+  - node:id:worker2&file:path:etc/ossec.conf
+  effect: allow
