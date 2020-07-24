@@ -28,14 +28,19 @@ static const char *global_db_queries[] = {
     [SQL_SELECT_AGENT_GROUP] = "global sql SELECT `group` FROM agent WHERE id = %d;",
     [SQL_SELECT_AGENTS] = "global sql SELECT id FROM agent WHERE id != 0;",
     [SQL_FIND_AGENT] = "global sql SELECT id FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');",
-};
+    [SQL_SELECT_FIM_OFFSET] = "global sql SELECT fim_offset FROM agent WHERE id = %d;",
+    [SQL_SELECT_REG_OFFSET] = "global sql SELECT reg_offset FROM agent WHERE id = %d;",
+    [SQL_UPDATE_FIM_OFFSET] = "global sql UPDATE agent SET fim_offset = %lu WHERE id = %d;",
+    [SQL_UPDATE_REG_OFFSET] = "globL sql UPDATE agent SET reg_offset = %lu WHERE id = %d;",
+    [SQL_SELECT_AGENT_STATUS] = "global sql SELECT status FROM agent WHERE id = %d;"
+ };
 
 //static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?, ?);";
 //static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
 //static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? WHERE id = ?;";
 //static const char *SQL_UPDATE_AGENT_VERSION_IP = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? , ip = ? WHERE id = ?;";
 //static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = ? WHERE id = ?;";
-static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
+//static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_GROUP = "UPDATE agent SET `group` = ? WHERE id = ?;";
 static const char *SQL_INSERT_AGENT_GROUP = "INSERT INTO `group` (name) VALUES(?)";
@@ -43,10 +48,10 @@ static const char *SQL_INSERT_AGENT_GROUP = "INSERT INTO `group` (name) VALUES(?
 static const char *SQL_INSERT_AGENT_BELONG = "INSERT INTO belongs (id_group, id_agent) VALUES(?, ?)";
 static const char *SQL_DELETE_AGENT_BELONG = "DELETE FROM belongs WHERE id_agent = ?";
 static const char *SQL_DELETE_GROUP_BELONG = "DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ? );";
-static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ?;";
-static const char *SQL_SELECT_REG_OFFSET = "SELECT reg_offset FROM agent WHERE id = ?;";
-static const char *SQL_UPDATE_FIM_OFFSET = "UPDATE agent SET fim_offset = ? WHERE id = ?;";
-static const char *SQL_UPDATE_REG_OFFSET = "UPDATE agent SET reg_offset = ? WHERE id = ?;";
+//static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ?;";
+//static const char *SQL_SELECT_REG_OFFSET = "SELECT reg_offset FROM agent WHERE id = ?;";
+//static const char *SQL_UPDATE_FIM_OFFSET = "UPDATE agent SET fim_offset = ? WHERE id = ?;";
+//static const char *SQL_UPDATE_REG_OFFSET = "UPDATE agent SET reg_offset = ? WHERE id = ?;";
 //static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 //static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
 //static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
@@ -329,7 +334,7 @@ int* wdb_get_all_agents() {
         return NULL;
     }
 
-    if(strcmp(wdboutput,"ok") == 0){
+    if(strcmp(wdboutput,"ok") == 0 && strcmp(json_string,"[]") != 0){
         root = cJSON_Parse(json_string);
         n = cJSON_GetArraySize(root);
         os_calloc(n+1, sizeof(int),array);        
@@ -362,7 +367,7 @@ int wdb_find_agent(const char *name, const char *ip) {
     cJSON *json_name = NULL;
 
     snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_FIND_AGENT], name, ip, ip);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if(json_string = wstr_chr(wdboutput, ' '), json_string ){
         *json_string='\0';
@@ -372,7 +377,7 @@ int wdb_find_agent(const char *name, const char *ip) {
         return -1;
     }
 
-    if(strcmp(wdboutput,"ok") == 0){
+    if(strcmp(wdboutput,"ok") == 0 && strcmp(json_string,"[]") != 0){
         root = cJSON_Parse(json_string);    
         elem = cJSON_GetArrayItem(root, 0);
         json_name = cJSON_GetObjectItem(elem, "id");
@@ -387,94 +392,108 @@ int wdb_find_agent(const char *name, const char *ip) {
 
 /* Get the file offset. Returns -1 on error or NULL. */
 long wdb_get_agent_offset(int id_agent, int type) {
-    int result;
-    const char *sql;
-    sqlite3_stmt *stmt;
+    long int result = 0;
+    bool is_FIM = FALSE;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
+    char *json_string = NULL;
+    cJSON *root = NULL;
+    cJSON *elem = NULL;
+    cJSON *json_name = NULL;
 
     switch (type) {
     case WDB_SYSCHECK:
-        sql = SQL_SELECT_FIM_OFFSET;
+        snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_SELECT_FIM_OFFSET], id_agent);
+        is_FIM = TRUE;
         break;
     case WDB_SYSCHECK_REGISTRY:
-        sql = SQL_SELECT_REG_OFFSET;
+        snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_SELECT_REG_OFFSET],id_agent);
+        is_FIM = FALSE;
         break;
     default:
         return -1;
     }
 
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+ 
+    if(json_string = wstr_chr(wdboutput, ' '), json_string ){
+        *json_string='\0';
+        json_string++;
+    } else{
+        mdebug1("SQLite result has no space. Query: %s",wdbquery);
         return -1;
     }
 
-    sqlite3_bind_int(stmt, 1, id_agent);
-    result = wdb_step(stmt) == SQLITE_ROW ? sqlite3_column_int64(stmt, 0) : -1;
-    sqlite3_finalize(stmt);
+    if(strcmp(wdboutput,"ok") == 0 && strcmp(json_string,"[]") != 0){
+        root = cJSON_Parse(json_string);    
+        elem = cJSON_GetArrayItem(root, 0);
+        json_name = is_FIM == TRUE ? cJSON_GetObjectItem(elem, "fim_offset") : cJSON_GetObjectItem(elem, "reg_offset");
+        result = json_name->valueint;
+    } else{
+        mdebug1("SQLite Query failed: %s", wdbquery);
+        return -1;
+    }
 
     return result;
 }
 
-/* Set the file offset. Returns number of affected rows, or -1 on failure. */
+/* Set the file offset. Returns 1, or -1 on failure. */
 int wdb_set_agent_offset(int id_agent, int type, long offset) {
-    int result;
-    const char *sql;
-    sqlite3_stmt *stmt;
+    int result = 0;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
 
     switch (type) {
     case WDB_SYSCHECK:
-        sql = SQL_UPDATE_FIM_OFFSET;
+        snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_UPDATE_FIM_OFFSET], offset, id_agent);
         break;
     case WDB_SYSCHECK_REGISTRY:
-        sql = SQL_UPDATE_REG_OFFSET;
+        snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_UPDATE_REG_OFFSET], offset, id_agent);
         break;
     default:
         return -1;
     }
 
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_int64(stmt, 1, offset);
-    sqlite3_bind_int(stmt, 2, id_agent);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
+    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    return result == SQLITE_DONE ? 1 : -1;
 }
 
 /* Set agent updating status. Returns WDB_AGENT_*, or -1 on error. */
 int wdb_get_agent_status(int id_agent) {
-    int result;
+    int result = 0;
     const char *status;
-    sqlite3_stmt *stmt;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
+    char *json_string = NULL;
+    cJSON *root = NULL;
+    cJSON *elem = NULL;
+    cJSON *json_name = NULL;
 
-    if (wdb_open_global() < 0)
-        return -1;
+    snprintf(wdbquery, OS_BUFFER_SIZE, global_db_queries[SQL_SELECT_AGENT_STATUS], id_agent);
+    wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
-    if (wdb_prepare(wdb_global, SQL_SELECT_AGENT_STATUS, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+    if(json_string = wstr_chr(wdboutput, ' '), json_string ){
+        *json_string='\0';
+        json_string++;
+    } else{
+        mdebug1("SQLite result has no space. Query: %s",wdbquery);
         return -1;
     }
 
-    sqlite3_bind_int(stmt, 1, id_agent);
-
-    if (wdb_step(stmt) == SQLITE_ROW) {
-        status = (const char*)sqlite3_column_text(stmt, 0);
+    if(strcmp(wdboutput,"ok") == 0 && strcmp(json_string,"[]") != 0 ){
+        root = cJSON_Parse(json_string);    
+        elem = cJSON_GetArrayItem(root, 0);
+        json_name = cJSON_GetObjectItem(elem, "status");
+        status = json_name->valuestring;
         result = !strcmp(status, "empty") ? WDB_AGENT_EMPTY : !strcmp(status, "pending") ? WDB_AGENT_PENDING : WDB_AGENT_UPDATED;
-    } else
-        result = -1;
-
-    sqlite3_finalize(stmt);
-
+    } else{
+        mdebug1("SQLite Query failed: %s", wdbquery);
+        return -1;
+    }
+     
     return result;
 }
 

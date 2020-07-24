@@ -137,6 +137,11 @@ typedef enum global_db_query {
     SQL_SELECT_AGENT_GROUP,
     SQL_SELECT_AGENTS,
     SQL_FIND_AGENT,
+    SQL_SELECT_FIM_OFFSET,
+    SQL_SELECT_REG_OFFSET,
+    SQL_UPDATE_FIM_OFFSET,
+    SQL_UPDATE_REG_OFFSET,
+    SQL_SELECT_AGENT_STATUS,
 } global_db_query;
 
 typedef struct wdb_t {
