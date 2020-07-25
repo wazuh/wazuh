@@ -808,36 +808,6 @@ bool SQLiteDBEngine::insertNewRows(const std::string& table,
     return ret;
 }
 
-void SQLiteDBEngine::insertSingleRow(const std::string& table,
-                                     const TableColumns& tableFields,
-                                     const nlohmann::json& jsData,
-                                     std::vector<CallbackAction>& callbackList)
-{
-    auto const& stmt { getStatement(buildInsertBulkDataSqlQuery(table)) };
-    for (auto it = jsData.begin(); it != jsData.end(); ++it)
-    {
-        const auto& elemFound
-        {
-            std::find_if(tableFields.begin(), tableFields.end(),
-                    [&it] (const ColumnData& cd)
-                    {
-                        return std::get<TableHeader::Name>(cd).compare(it.key()) == 0;
-                    })
-        };
-        if (elemFound != tableFields.end())
-        {
-            bindJsonData(stmt, *elemFound, jsData, std::get<TableHeader::CID>(*elemFound) + 1);
-            const auto& callbackPair
-            {
-                std::make_pair(ReturnTypeCallback::INSERTED, jsData)
-            };
-            callbackList.push_back(std::move(callbackPair));
-        }
-    }
-    stmt->step();
-    stmt->reset();
-}
-
 void SQLiteDBEngine::bulkInsert(const std::string& table,
                                 const Row& rowData)
 {

@@ -155,11 +155,6 @@ class SQLiteDBEngine : public DbSync::IDbEngine
                                  const std::vector<std::string>& primaryKeyList,
                                  const DbSync::ResultCallback callback);
 
-        void insertSingleRow(const std::string& table,
-                             const TableColumns& tableFields,
-                             const nlohmann::json& jsData,
-                             std::vector<CallbackAction>& callbackList);
-
         void getRowDiff(const std::string& table,
                         const nlohmann::json& data,
                         nlohmann::json& jsResult);                              
