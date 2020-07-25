@@ -15,17 +15,27 @@
 
 constexpr auto DATABASE_TEMP {"TEMP.db"};
 
-void callback(const ReturnTypeCallback value, const cJSON* json) {
-  if (ReturnTypeCallback::DELETED == value) {
-    std::cout << "deleted event: " << std::endl;
-  } else if (ReturnTypeCallback::MODIFIED == value) {
-    std::cout << "modified event: " << std::endl;
-  } else if (ReturnTypeCallback::INSERTED == value) {
-    std::cout << "inserted event: " << std::endl;
-  }
-  char * result_json = cJSON_Print(json);
-  std::cout << result_json <<std::endl;
-  cJSON_free(result_json);
+struct CJsonDeleter final
+{
+    void operator()(char* json)
+    {
+        cJSON_free(json);
+    }
+};
+
+static void callback(const ReturnTypeCallback value, 
+                     const cJSON* json)
+{
+    if (ReturnTypeCallback::INSERTED == value)
+    {
+        std::cout << "inserted event: " << std::endl;
+    } 
+    else
+    {
+        std::cout << "modified event: " << std::endl;        
+    }
+    const std::unique_ptr<char, CJsonDeleter> jsonResult{ cJSON_Print(json) };
+    std::cout << jsonResult.get() << std::endl;
 }
 
 struct smartDeleterJson
