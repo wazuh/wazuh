@@ -20,11 +20,7 @@ constexpr auto SQLITE_CONNECTION_ERROR  { std::make_pair(4, "No connection avail
 constexpr auto EMPTY_DATABASE_PATH      { std::make_pair(5, "Empty database store path.") };
 constexpr auto EMPTY_TABLE_METADATA     { std::make_pair(6, "Empty table metadata.") };
 constexpr auto INVALID_PARAMETERS       { std::make_pair(7, "Invalid parameters.") };
-constexpr auto INVALID_TABLE            { std::make_pair(8, "Invalid table.") };
-constexpr auto SQL_STMT_ERROR           { std::make_pair(9, "Invalid SQL statement.") };
-constexpr auto INVALID_PK_DATA          { std::make_pair(10, "Primary key not found.") };
-constexpr auto INVALID_COLUMN_TYPE      { std::make_pair(11, "Invalid column field type.") };
-
+constexpr auto DATATYPE_NOT_IMPLEMENTED { std::make_pair(8, "Datatype not implemented.") };
 
 namespace DbSync
 {

@@ -123,3 +123,13 @@ void DBSyncImplementation::closeTransaction(const DBSYNC_HANDLE handle,
     ctx->m_dbEngine->deleteRowsByStatusField(tnxCtx->m_tables);
     ctx->deleteTransactionContext(txn);
 }
+
+void DBSyncImplementation::getDeleted(const DBSYNC_HANDLE   handle, 
+                                      const TXN_HANDLE      txnHandle,
+                                      const ResultCallback  callback)
+{
+    const auto& ctx{ dbEngineContext(handle) };
+    const auto& tnxCtx { ctx->transactionContext(txnHandle) };
+
+    ctx->m_dbEngine->returnRowsMarkedForDelete(tnxCtx->m_tables, callback);
+}

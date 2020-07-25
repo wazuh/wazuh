@@ -21,7 +21,7 @@
 
 namespace DbSync
 {
-    class DBSyncImplementation
+    class DBSyncImplementation final
     {
     public:
         static DBSyncImplementation& instance()
@@ -56,22 +56,21 @@ namespace DbSync
         void closeTransaction(const DBSYNC_HANDLE handle,
                               const TXN_HANDLE txnHandle);
 
-        void syncRowData(const DBSYNC_HANDLE  handle,
-                         const TXN_HANDLE     txnHandle,
-                         const char*          jsonRaw,
-                         const ResultCallback callback);
+        void getDeleted(const DBSYNC_HANDLE   handle, 
+                        const TXN_HANDLE      txnHandle,
+                        const ResultCallback  callback);
 
         void release();
     private:
 
-        struct TransactionContext
+        struct TransactionContext final
         {
             explicit TransactionContext(const nlohmann::json& tables) 
             : m_tables(std::move(tables))
             {}
             nlohmann::json m_tables;
         };
-        class DbEngineContext
+        class DbEngineContext final
         {
             public:
                 DbEngineContext(std::unique_ptr<IDbEngine>& dbEngine,

@@ -80,6 +80,8 @@ using TableField =
 
 using Row = std::map<std::string, TableField>;
 
+using Field = std::pair<const std::string, TableField>;
+
 enum ResponseType
 {
     RTJson = 0,
@@ -96,7 +98,7 @@ public:
     }
     {}
 };
-class SQLiteDBEngine : public DbSync::IDbEngine 
+class SQLiteDBEngine final : public DbSync::IDbEngine 
 {
     public:
         SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFactory,
@@ -120,6 +122,9 @@ class SQLiteDBEngine : public DbSync::IDbEngine
         void initializeStatusField(const nlohmann::json& tableNames) override;
 
         void deleteRowsByStatusField(const nlohmann::json& tableNames) override;
+
+        void returnRowsMarkedForDelete(const nlohmann::json& tableNames, 
+                                       const DbSync::ResultCallback callback) override;
 
     private:
         void initialize(const std::string& path,
@@ -229,11 +234,11 @@ class SQLiteDBEngine : public DbSync::IDbEngine
                         const std::vector<std::string>& primaryKeyList,
                         const std::vector<Row>& rowKeysValue);
 
-        bool getFieldValueFromTuple(const std::pair<const std::string, TableField> &value,
+        void getFieldValueFromTuple(const Field &value,
                                     std::string& resultValue,
                                     const bool quotationMarks = false);
 
-        bool getFieldValueFromTuple(const std::pair<const std::string, TableField> &value,
+        void getFieldValueFromTuple(const Field &value,
                                     nlohmann::json& object);
 
         SQLiteDBEngine(const SQLiteDBEngine&) = delete;
@@ -241,6 +246,9 @@ class SQLiteDBEngine : public DbSync::IDbEngine
         SQLiteDBEngine& operator=(const SQLiteDBEngine&) = delete;
 
         std::unique_ptr<SQLite::IStatement>const& getStatement(const std::string& sql);
+
+        std::string getSelectAllQuery(const std::string& table, 
+                                      const TableColumns& tableFields) const;
 
         std::map<std::string, TableColumns> m_tableFields;
         std::map<std::string, std::unique_ptr<SQLite::IStatement>> m_statementsCache;
