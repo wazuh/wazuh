@@ -75,9 +75,6 @@ using ColumnData =
 using TableColumns =
     std::vector<ColumnData>;
 
-using CallbackAction =
-    std::pair<ReturnTypeCallback, nlohmann::json>;
-
 using TableField =
     std::tuple<int32_t, std::string, int32_t, int64_t, uint64_t, double_t>;
 
