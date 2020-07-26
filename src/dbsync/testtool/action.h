@@ -70,6 +70,7 @@ struct UpdateWithSnapshotAction final : public IAction
 
 static void dummyCallback(ReturnTypeCallback, const cJSON*)
 {
+
 }
 
 
@@ -138,6 +139,33 @@ struct SetMaxRowsAction final : public IAction
 
         std::ofstream outputFile{ outputFileName };
         const nlohmann::json jsonResult = { {"dbsync_set_table_max_rows", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
+
+struct SyncRowAction final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsInput
+        {
+            cJSON_Parse(value["body"].dump().c_str())
+        };
+
+        const auto retVal
+        {
+            dbsync_sync_row(ctx->handle,
+                            jsInput.get(),
+                            dummyCallback)
+        };
+
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"dbsync_sync_row", retVal } };
         outputFile << jsonResult.dump() << std::endl;
     }
 };
