@@ -47,7 +47,7 @@ public:
                   << "Options:\n"
                   << "\t-h \t\t\tShow this help message\n"
                   << "\t-c JSON_CONFIG_FILE\tSpecifies the json config file to initialize the database.\n"
-                  << "\t-a ACTION_LIST\tSpecifies the list of actions to exercise the database.\n"
+                  << "\t-a ACTION_LIST\t\tSpecifies the list of actions to exercise the database.\n"
                   << "\t-o OUTPUT_FOLDER\tSpecifies the output folder path where the results will be generated.\n"         
                   << "\nExample:"
                   << "\n\t./dbsync_test_tool -c config.json -a input1.json,input2.json,input3.json -o ./output\n"
