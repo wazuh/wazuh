@@ -10,6 +10,8 @@
 
 #include "shared.h"
 #include "remoted.h"
+#include "remoted_op.h"
+#include "wazuh_db/wdb.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
 #include "shared_download.h"
@@ -88,17 +90,32 @@ void cleaner(void* data){
  */
 void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
 {
-    char msg_ack[OS_FLSIZE + 1];
-    char *end;
-    char *uname = "";
-    pending_data_t *data;
-    FILE * fp;
-    mode_t oldmask;
+    char msg_ack[OS_FLSIZE + 1] = "";
+    char *msg = NULL;
+    char *end = NULL;
+    char *version = NULL;
+    char *os_name = NULL;
+    char *os_major = NULL;
+    char *os_minor = NULL;
+    char *os_build = NULL;
+    char *os_version = NULL;
+    char *os_codename = NULL;
+    char *os_platform = NULL;
+    char *os_arch = NULL;
+    char *uname = NULL;
+    char *config_sum = NULL;
+    char *merged_sum = NULL;
+    char *agent_ip = NULL;
+    char manager_host[512] = "";
+    pending_data_t *data = NULL;
     int is_startup = 0;
+    int agent_id = 0;
+    time_t keepalive = 0;
+    int result = 0;
 
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
         char * counter = r_msg + strlen(HC_REQUEST);
-        char * payload;
+        char * payload = NULL;
 
         if (payload = strchr(counter, ' '), !payload) {
             merror("Request control format error.");
@@ -124,8 +141,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
         mdebug1("Agent %s sent HC_STARTUP from %s.", key->name, inet_ntoa(key->peer_info.sin_addr));
         is_startup = 1;
     } else {
-        /* Clean uname and shared files (remove random string) */
-        uname = r_msg;
+        /* Clean msg and shared files (remove random string) */
+        msg = r_msg;
 
         if ((r_msg = strchr(r_msg, '\n'))) {
             /* Forward to random string (pass shared files) */
@@ -133,7 +150,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             *r_msg = '\0';
         } else {
             mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
-            free(clean);
+            os_free(clean);
             return;
         }
     }
@@ -142,9 +159,15 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     w_mutex_lock(&lastmsg_mutex)
 
     /* Check if there is a keep alive already for this agent */
-    if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && strcmp(data->message, uname) == 0) {
+    if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && strcmp(data->message, msg) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
-        utimes(data->keep_alive, NULL);
+
+        agent_id = atoi(key->id);
+        keepalive = time(NULL);
+        result = wdb_update_agent_keepalive(agent_id, keepalive);
+
+        if (OS_SUCCESS != result)
+            mwarn("Unable to save agent last keepalive in global.db");
     } else {
         if (!data) {
             os_calloc(1, sizeof(pending_data_t), data);
@@ -155,43 +178,22 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 /* Unlock mutex */
                 w_mutex_unlock(&lastmsg_mutex);
 
-                free(data);
-                free(clean);
+                os_free(data);
+                os_free(clean);
                 return;
             }
         }
 
-        if (!data->keep_alive) {
-            char agent_file[PATH_MAX];
-
-            /* Write to the agent file */
-            snprintf(agent_file, PATH_MAX, "%s/%s-%s",
-                     AGENTINFO_DIR,
-                     key->name,
-                     key->ip->ip);
-
-            os_strdup(agent_file, data->keep_alive);
-        }
-
         if (is_startup) {
+            /* Unlock mutex */
             w_mutex_unlock(&lastmsg_mutex);
-            oldmask = umask(0006);
-
-            if (fp = fopen(data->keep_alive, "a"), fp) {
-                fclose(fp);
-            } else {
-                merror(FOPEN_ERROR, data->keep_alive, errno, strerror(errno));
-            }
-
-            umask(oldmask);
         } else {
             /* Update message */
-            mdebug2("save_controlmsg(): inserting '%s'", uname);
-            free(data->message);
-            os_strdup(uname, data->message);
+            mdebug2("save_controlmsg(): inserting '%s'", msg);
+            os_free(data->message);
+            os_strdup(msg, data->message);
 
             /* Mark data as changed and insert into queue */
-
             if (!data->changed) {
                 if (full(queue_i, queue_j)) {
                     merror("Pending message queue full.");
@@ -209,40 +211,53 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             /* Unlock mutex */
             w_mutex_unlock(&lastmsg_mutex);
 
-            /* Write uname to the file */
-
-            oldmask = umask(0006);
-            fp = fopen(data->keep_alive, "w");
-            umask(oldmask);
-
-            if (fp) {
-                /* Get manager name before chroot */
-                char hostname[HOST_NAME_MAX + 1];
-
-                fprintf(fp, "%s\n", uname);
-
-                /* Write manager hostname to the file */
-
-                if (gethostname(hostname, HOST_NAME_MAX) < 0){
-                    mwarn("Unable to get hostname due to: '%s'", strerror(errno));
-                } else {
-                    fprintf(fp, "#\"_manager_hostname\":%s\n", hostname);
-                }
-
-                /* Write Cluster's node name to the agent-info file */
-                char nodename[OS_MAXSTR];
-
-                snprintf(nodename, OS_MAXSTR - 1, "#\"_node_name\":%s\n", node_name);
-                fprintf(fp, "%s", nodename);
-
-                fclose(fp);
-            } else {
-                merror(FOPEN_ERROR, data->keep_alive, errno, strerror(errno));
+            /* Parsing msg */
+            result = parse_agent_update_msg(msg, &version, &os_name, &os_major, &os_minor, &os_build, &os_version, &os_codename,
+                                            &os_platform, &os_arch, &uname, &config_sum, &merged_sum, &agent_ip);
+            
+            if (OS_SUCCESS != result) {
+                merror("Error parsing message for agent %s.", key->id);
+                return;
             }
+
+            /* Get manager name before chroot */
+            if (gethostname(manager_host, HOST_NAME_MAX) < 0){
+                mwarn("Unable to get hostname due to: '%s'", strerror(errno));
+            }
+
+            agent_id = atoi(key->id);
+            keepalive = time(NULL);
+
+            // Updating version and keepalive in global.db
+            result = wdb_update_agent_version(agent_id, os_name, os_version, os_major, os_minor, os_codename, os_platform,
+                                              os_build, uname, os_arch, version, config_sum, merged_sum, manager_host,
+                                              node_name, agent_ip);
+            
+            if (OS_INVALID == result)
+                mwarn("Unable to update information in global.db for agent: %s", key->id);
+            
+            result = wdb_update_agent_keepalive(agent_id, keepalive);
+
+            if (OS_INVALID == result)
+                mwarn("Unable to save last keepalive in global.db for agent: %s", key->id);
+
+            os_free(version);
+            os_free(os_name);
+            os_free(os_major);
+            os_free(os_minor);
+            os_free(os_build);
+            os_free(os_version);
+            os_free(os_codename);
+            os_free(os_platform);
+            os_free(os_arch);
+            os_free(uname);
+            os_free(config_sum);
+            os_free(merged_sum);
+            os_free(agent_ip);
         }
     }
 
-    free(clean);
+    os_free(clean);
 }
 
 void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir) {
@@ -1247,9 +1262,8 @@ void *update_shared_files(__attribute__((unused)) void *none) {
 
 void free_pending_data(pending_data_t *data) {
     if (!data) return;
-    if (data->message) free(data->message);
-    if (data->keep_alive) free(data->keep_alive);
-    free(data);
+    os_free(data->message);
+    os_free(data);
 }
 
 /*
