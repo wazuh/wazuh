@@ -1210,7 +1210,6 @@ bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::string, T
     }
     else
     {
-        ret = false;
         throw dbengine_error { INVALID_COLUMN_TYPE };
     }
 
@@ -1252,7 +1251,6 @@ bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::string, T
     }
     else
     {
-        ret = false;
         throw dbengine_error { INVALID_COLUMN_TYPE };
     }
     return ret;
