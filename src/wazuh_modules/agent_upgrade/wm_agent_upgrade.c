@@ -80,10 +80,7 @@ void wm_agent_upgrade_listen_messages(int sock, int timeout_sec) {
         
         // Get request string
         char *buffer = NULL;
-        cJSON* json_response = NULL;
-        cJSON* params = NULL;
-        cJSON* agents = NULL;
-        int parsing_retval;
+
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         int length;
         switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length) {
@@ -99,49 +96,51 @@ void wm_agent_upgrade_listen_messages(int sock, int timeout_sec) {
         default:
             /* Correctly received message */
             mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INCOMMING_MESSAGE, buffer);
-            parsing_retval = wm_agent_upgrade_parse_command(&buffer[0], &json_response, &params, &agents);
-            break;
-        }
 
-        if (json_response) {
-            wm_upgrade_task *upgrade_task = NULL;
-            wm_upgrade_custom_task *upgrade_custom_task = NULL;
-            cJSON *command_response = NULL;
+            void* task = NULL;
+            int* agent_ids = NULL;
             char* message = NULL;
-            switch (parsing_retval)
-            {
-                case WM_UPGRADE_UPGRADE:
-                    upgrade_task = wm_agent_upgrade_parse_upgrade_command(params, &message);
-                    if (!message) {
-                        // Parameters of upgrade command are OK
-                        command_response = wm_agent_upgrade_process_upgrade_command(agents, upgrade_task);
-                        message = cJSON_PrintUnformatted(command_response); 
-                        cJSON_Delete(command_response);
-                    }
-                    break;
-                case WM_UPGRADE_UPGRADE_CUSTOM:
-                    upgrade_custom_task = wm_agent_upgrade_parse_upgrade_custom_command(params, &message);
-                    if (!message) {
-                        // Parameters of upgrade_custom command are OK
-                        command_response = wm_agent_upgrade_process_upgrade_custom_command(agents, upgrade_custom_task);
-                        message = cJSON_PrintUnformatted(command_response); 
-                        cJSON_Delete(command_response);
-                    }
-                    break;
-                case WM_UPGRADE_UPGRADE_RESULT:
-                    command_response = wm_agent_upgrade_process_upgrade_result_command(agents);
-                    message = cJSON_PrintUnformatted(command_response); 
-                    cJSON_Delete(command_response);
-                    break;
-                default:
-                    // Parsing error
-                    message = cJSON_PrintUnformatted(json_response);
-                    break;
+            int parsing_retval;
+
+            // Parse incomming message
+            parsing_retval = wm_agent_upgrade_parse_message(&buffer[0], &task, &agent_ids, &message);
+
+            switch (parsing_retval) {
+            case WM_UPGRADE_UPGRADE:
+                // Upgrade command
+                if (task && agent_ids) {
+                    message = wm_agent_upgrade_process_upgrade_command(agent_ids, (wm_upgrade_task *)task);
+                    wm_agent_upgrade_free_upgrade_task(task);
+                    os_free(agent_ids);
+                }
+                break;
+            case WM_UPGRADE_UPGRADE_CUSTOM:
+                // Upgrade custom command
+                if (task && agent_ids) {
+                    message = wm_agent_upgrade_process_upgrade_custom_command(agent_ids, (wm_upgrade_custom_task *)task);
+                    wm_agent_upgrade_free_upgrade_custom_task(task);
+                    os_free(agent_ids);
+                }
+                break;
+            case WM_UPGRADE_UPGRADE_RESULT:
+                // Upgrade result command
+                if (agent_ids) {
+                    message = wm_agent_upgrade_process_upgrade_result_command(agent_ids);
+                    os_free(agent_ids);
+                }
+                break;
+            default:
+                // Parsing error
+                if (!message) {
+                    os_strdup(upgrade_error_codes[WM_UPGRADE_UNKNOWN_ERROR], message);
+                }
+                break;
             }
+
             mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RESPONSE_MESSAGE, message);
             OS_SendSecureTCP(peer, strlen(message), message);
             os_free(message);
-            cJSON_Delete(json_response);
+            break;
         }
 
         free(buffer);

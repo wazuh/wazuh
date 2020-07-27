@@ -34,53 +34,52 @@ static const char* upgrade_results_messages[] = {
     [STATUS_ERROR]    = "Agent upgrade process failed"
 };
 
-cJSON* wm_agent_upgrade_process_upgrade_command(const cJSON* agents, wm_upgrade_task* task) {
-    cJSON *json_api = NULL;
-    wm_agent_task *agent_task = NULL;
+char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task) {
+    char* response = NULL;
+    cJSON* json_response = cJSON_CreateArray();
 
-    agent_task = wm_agent_upgrade_init_agent_task();
-    agent_task->agent_info = wm_agent_upgrade_init_agent_info();
-    agent_task->task_info = wm_agent_upgrade_init_task_info();
+    // TODO
 
-    agent_task->task_info->command = WM_UPGRADE_UPGRADE;
-    agent_task->task_info->task = task;
+    wm_agent_upgrade_create_agents_tasks(json_response, agent_ids, WM_UPGRADE_UPGRADE, (void *)task);
 
-    json_api = wm_agent_upgrade_create_agents_tasks(agents, agent_task->task_info);
+    // TODO
 
-    wm_agent_upgrade_free_agent_task(agent_task);
+    response = cJSON_PrintUnformatted(json_response);
+    cJSON_Delete(json_response);
 
-    return json_api;
+    return response;
 }
 
-cJSON* wm_agent_upgrade_process_upgrade_custom_command(const cJSON* agents, wm_upgrade_custom_task* task) {
-    cJSON *json_api = NULL;
-    wm_agent_task *agent_task = NULL;
+char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task) {
+    char* response = NULL;
+    cJSON* json_response = cJSON_CreateArray();
 
-    agent_task = wm_agent_upgrade_init_agent_task();
-    agent_task->agent_info = wm_agent_upgrade_init_agent_info();
-    agent_task->task_info = wm_agent_upgrade_init_task_info();
+    // TODO
 
-    agent_task->task_info->command = WM_UPGRADE_UPGRADE_CUSTOM;
-    agent_task->task_info->task = task;
+    wm_agent_upgrade_create_agents_tasks(json_response, agent_ids, WM_UPGRADE_UPGRADE_CUSTOM, (void *)task);
 
-    json_api = wm_agent_upgrade_create_agents_tasks(agents, agent_task->task_info);
+    // TODO
 
-    wm_agent_upgrade_free_agent_task(agent_task);
+    response = cJSON_PrintUnformatted(json_response);
+    cJSON_Delete(json_response);
 
-    return json_api;
+    return response;
 }
 
-cJSON* wm_agent_upgrade_process_upgrade_result_command(const cJSON* agents) {
-    cJSON* response = cJSON_CreateArray();
-    for(int i = 0; i < cJSON_GetArraySize(agents); i++) {
-        int agent_id = cJSON_GetArrayItem(agents, i)->valueint;
+char* wm_agent_upgrade_process_upgrade_result_command(const int* agent_ids) {
+    char* response = NULL;
+    cJSON* json_response = cJSON_CreateArray();
+    int agent = 0;
+    int agent_id = 0;
+
+    while (agent_id = agent_ids[agent++], agent_id) {
 
         // TODO: implement upgrade_result command
-        cJSON_AddItemToArray(response, wm_agent_upgrade_parse_response_message(WM_UPGRADE_SUCCESS, upgrade_results_messages[STATUS_OUTDATED], &agent_id, NULL, upgrade_results_status[STATUS_OUTDATED]));
+        cJSON_AddItemToArray(json_response, wm_agent_upgrade_parse_response_message(WM_UPGRADE_SUCCESS, upgrade_results_messages[STATUS_OUTDATED], &agent_id, NULL, upgrade_results_status[STATUS_OUTDATED]));
     }
-    char *response_string = cJSON_PrintUnformatted(response);
-    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RESULT_SHOW_RESULTS, response_string);
-    os_free(response_string);
+
+    response = cJSON_PrintUnformatted(json_response);
+    cJSON_Delete(json_response);
 
     return response;
 }
