@@ -204,9 +204,11 @@ void wm_agent_upgrade_create_agents_tasks(cJSON* json_response, const int* agent
         } else if (result == OSHASH_DUPLICATED) {
             task_message = wm_agent_upgrade_parse_response_message(WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS, upgrade_error_codes[WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS], &(agent_id), NULL, NULL);
             cJSON_AddItemToArray(json_response, task_message);
+            os_free(task_info);
         } else {
             task_message = wm_agent_upgrade_parse_response_message(WM_UPGRADE_UNKNOWN_ERROR, upgrade_error_codes[WM_UPGRADE_UNKNOWN_ERROR], &(agent_id), NULL, NULL);
             cJSON_AddItemToArray(json_response, task_message);
+            os_free(task_info);
         }
     }
 
