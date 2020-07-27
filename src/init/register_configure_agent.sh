@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Copyright (C) 2015-2020, Wazuh Inc.
 # March 6, 2019.
@@ -8,12 +8,15 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
+# Load ossec-init variables
 . /etc/ossec-init.conf
 
+# Set default sed alias
 sed="sed -ri"
 # By default, use gnu sed (gsed).
 use_unix_sed="False"
 
+# Special function to use generic sed
 unix_sed() {
     sed_expression="$1"
     target_file="$2"
@@ -23,8 +26,10 @@ unix_sed() {
     rm "${target_file}.tmp"
 }
 
+# Update the value of a XML tag inside the ossec.conf
 edit_value_tag() {
-    if [ "$#" == "2" ] && [ ! -z "$2" ]; then
+
+    if [ ! -z "$1" ] && [ ! -z "$2" ]; then
         if [ "${use_unix_sed}" = "False" ] ; then
             ${sed} "s#<$1>.*</$1>#<$1>$2</$1>#g" "${DIRECTORY}/etc/ossec.conf"
         else
@@ -32,14 +37,15 @@ edit_value_tag() {
         fi
     fi
 
-    if [ "$?" != "0" ]; then
+    if [ $? != 0 ] ; then
         echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: Error updating $2 with variable $1." >> ${DIRECTORY}/logs/ossec.log
     fi
 }
 
+# Change address block of the ossec.conf
 add_adress_block() {
-
-    SET_ADDRESSES=("$@")
+    # Getting function parameters on new variable
+    SET_ADDRESSES="$@"
 
     # Remove the server configuration
     if [ "${use_unix_sed}" = "False" ] ; then
@@ -65,7 +71,7 @@ add_adress_block() {
     # Write the client configuration block
     echo "<ossec_config>" >> ${DIRECTORY}/etc/ossec.conf
     echo "  <client>" >> ${DIRECTORY}/etc/ossec.conf
-    for i in "${SET_ADDRESSES[@]}";
+    for i in ${SET_ADDRESSES};
     do
         echo "    <server>" >> ${DIRECTORY}/etc/ossec.conf
         echo "      <address>$i</address>" >> ${DIRECTORY}/etc/ossec.conf
@@ -79,6 +85,7 @@ add_adress_block() {
     echo "</ossec_config>" >> ${DIRECTORY}/etc/ossec.conf
 }
 
+# Add new parameter to the list of options
 add_parameter () {
     if [ ! -z "$3" ]; then
         OPTIONS="$1 $2 $3"
@@ -86,6 +93,7 @@ add_parameter () {
     echo ${OPTIONS}
 }
 
+# Get variables that we changed in new develop
 get_deprecated_vars () {
     if [ ! -z "${WAZUH_MANAGER_IP}" ] && [ -z "${WAZUH_MANAGER}" ]; then
         WAZUH_MANAGER=${WAZUH_MANAGER_IP}
@@ -116,6 +124,7 @@ get_deprecated_vars () {
     fi
 }
 
+# Set all defined variables from environment
 set_vars () {
     export WAZUH_MANAGER=$(launchctl getenv WAZUH_MANAGER)
     export WAZUH_MANAGER_PORT=$(launchctl getenv WAZUH_MANAGER_PORT)
@@ -143,19 +152,20 @@ set_vars () {
     export WAZUH_PEM=$(launchctl getenv WAZUH_PEM)
 }
 
+# Remove all defined variables from environment
 unset_vars() {
 
     OS=$1
-
-    vars=(WAZUH_MANAGER_IP WAZUH_PROTOCOL WAZUH_MANAGER_PORT WAZUH_NOTIFY_TIME \
+    # String of variables that we could use
+    vars="WAZUH_MANAGER_IP WAZUH_PROTOCOL WAZUH_MANAGER_PORT WAZUH_NOTIFY_TIME \
           WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
           WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM \
           WAZUH_MANAGER WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
           WAZUH_REGISTRATION_PASSWORD WAZUH_KEEP_ALIVE_INTERVAL WAZUH_REGISTRATION_CA \
-          WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_GROUP)
+          WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_GROUP"
 
 
-    for var in "${vars[@]}"; do
+    for var in ${vars}; do
         if [ "${OS}" = "Darwin" ]; then
             launchctl unsetenv ${var}
         fi
@@ -163,14 +173,17 @@ unset_vars() {
     done
 }
 
+# Function to convert strings to lower version
 tolower () {
    echo $1 | tr '[:upper:]' '[:lower:]'
 }
 
+# Main function the script begin here
 main () {
 
     uname_s=$(uname -s)
 
+    # Check what kind of system we are working with
     if [ "${uname_s}" = "Darwin" ]; then
         sed="sed -ire"
         set_vars
@@ -180,27 +193,27 @@ main () {
 
     get_deprecated_vars
 
-    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER} ]; then
+    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z "${WAZUH_MANAGER}" ]; then
         if [ ! -f ${DIRECTORY}/logs/ossec.log ]; then
             touch -f ${DIRECTORY}/logs/ossec.log
             chmod 660 ${DIRECTORY}/logs/ossec.log
             chown root:ossec ${DIRECTORY}/logs/ossec.log
         fi
 
-        # Check if multiples IPs are defined in variable WAZUH_MANAGER
+        # Check if multiples IPs are defined in variable WAZUH_MANAGER_IP
         WAZUH_MANAGER=$(echo ${WAZUH_MANAGER} | sed "s#,#;#g")
-        ADDRESSES=(${WAZUH_MANAGER//;/ })
-        if [ ${#ADDRESSES[@]} -gt 1 ]; then
+        ADDRESSES="$(echo ${WAZUH_MANAGER} | awk '{split($0,a,",")} END{ for (i in a) { print a[i] } }' |  tr '\n' ' ')"
+        if echo ${ADDRESSES} | grep ' ' > /dev/null 2>&1 ; then
             # Get uniques values
-            ADDRESSES=($(echo "${ADDRESSES[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-            add_adress_block "${ADDRESSES[@]}"
-            if [ -z ${WAZUH_REGISTRATION_SERVER} ]; then
-                WAZUH_REGISTRATION_SERVER=${ADDRESSES[0]}
+            ADDRESSES=$(echo "${ADDRESSES}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+            add_adress_block "${ADDRESSES}"
+            if [ -z "${WAZUH_REGISTRATION_SERVER}" ]; then
+                WAZUH_REGISTRATION_SERVER=$(echo ${WAZUH_MANAGER} | cut -d' ' -f 1)
             fi
         else
             # Single address
             edit_value_tag "address" ${WAZUH_MANAGER}
-            if [ -z ${WAZUH_REGISTRATION_SERVER} ]; then
+            if [ -z "${WAZUH_REGISTRATION_SERVER}" ]; then
                 WAZUH_REGISTRATION_SERVER=${WAZUH_MANAGER}
             fi
         fi
@@ -211,12 +224,13 @@ main () {
         edit_value_tag "notify_time" ${WAZUH_KEEP_ALIVE_INTERVAL}
         edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
 
-    elif [ -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER} ]; then
+    # Throw error if agent is already registered (client keys with key).
+    elif [ -s ${DIRECTORY}/etc/client.keys ] && [ ! -z "${WAZUH_MANAGER}" ]; then
         echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: ERROR: The agent is already registered." >> ${DIRECTORY}/logs/ossec.log
     fi
 
-    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_REGISTRATION_SERVER} ]; then
-        # Options to be used in register time.
+    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z "${WAZUH_REGISTRATION_SERVER}" ]; then
+        # Options to be used at register time.
         OPTIONS="-m ${WAZUH_REGISTRATION_SERVER}"
         OPTIONS=$(add_parameter "${OPTIONS}" "-p" "${WAZUH_REGISTRATION_PORT}")
         OPTIONS=$(add_parameter "${OPTIONS}" "-P" "${WAZUH_REGISTRATION_PASSWORD}")
@@ -231,4 +245,5 @@ main () {
     unset_vars ${uname_s}
 }
 
+# Start script execution
 main
