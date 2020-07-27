@@ -62,6 +62,8 @@ class OssecSocketJSON(OssecSocket):
     def receive(self, header_format="<I", header_size=4):
         response = loads(OssecSocket.receive(self, header_format=header_format, header_size=header_size).decode())
 
+        if isinstance(response, list):
+            return response
         if 'error' in response.keys():
             if response['error'] != 0:
                 raise WazuhException(response['error'], response['message'], cmd_error=True)
