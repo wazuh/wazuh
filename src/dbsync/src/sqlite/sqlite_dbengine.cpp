@@ -98,21 +98,24 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
     {
         ReturnTypeCallback resultCbType{ MODIFIED };
         nlohmann::json jsResult;
-        getRowDiff(table, data[0], jsResult);
-        if (jsResult.empty())
+        const bool diffExist { getRowDiff(table, data[0], jsResult) };
+        if (diffExist)
+        {
+            if (!jsResult.empty())
+            {
+                const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
+                updateSingleRow(table, jsResult);
+                transaction->commit();
+            }
+        }
+        else
         {
             resultCbType = INSERTED;
             jsResult = data;
             bulkInsert(table, data);
         }
-        else
-        {
-            const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
-            updateSingleRow(table, jsResult);
-            transaction->commit();
-        }
 
-        if (callback)
+        if (callback && !jsResult.empty())
         {
             callback(resultCbType, jsResult);
         }
@@ -290,7 +293,7 @@ bool SQLiteDBEngine::loadFieldData(const std::string& table)
                                            columnTypeName(stmt->column(2)->value(std::string{})),
                                            1 == stmt->column(5)->value(int32_t{}),
                                            InternalColumnNames.end() != std::find(InternalColumnNames.begin(), 
-                                                InternalColumnNames.end(), fieldName)));
+                                           InternalColumnNames.end(), fieldName)));
         }
     }
     return ret;
@@ -712,13 +715,15 @@ std::string SQLiteDBEngine::buildLeftOnlyQuery(const std::string& t1,
     return std::string("SELECT "+fieldsList+" FROM "+t1+" t1 LEFT JOIN "+t2+" t2 ON "+onMatchList+" WHERE "+nullFilterList+";");
 } 
 
-void SQLiteDBEngine::getRowDiff(const std::string& table,
+bool SQLiteDBEngine::getRowDiff(const std::string& table,
                                 const nlohmann::json& data,
                                 nlohmann::json& jsResult)
 {
+    bool diffExist { false };
     std::vector<std::string> primaryKeyList;
     if (getPrimaryKeysFromTable(table, primaryKeyList))
     {
+        bool isModified { false };
         const auto& stmt
         {
             getStatement(buildSelectMatchingPKsSqlQuery(table, primaryKeyList))
@@ -745,39 +750,50 @@ void SQLiteDBEngine::getRowDiff(const std::string& table,
             }
         }
 
-        if (stmt->step() == SQLITE_ROW)
+        diffExist = SQLITE_ROW == stmt->step();
+        if (diffExist)
         {
             // The row exist, so lets generate the diff
-            Row regitryFields;
+            Row registryFields;
             for(const auto& field : tableFields)
             {
                 getTableData(stmt,
                             std::get<TableHeader::CID>(field),
                             std::get<TableHeader::Type>(field),
                             std::get<TableHeader::Name>(field),
-                            regitryFields);
+                            registryFields);
             }
 
-            if(!regitryFields.empty())
+            if(!registryFields.empty())
             {
-                for (const auto& value : regitryFields)
+                for (const auto& value : registryFields)
                 {
                     nlohmann::json object;
                     if(getFieldValueFromTuple(value, object))
                     {
-                        if(data[value.first] != object[value.first])
+                        const auto& it
                         {
-                            jsResult.push_back({{value.first, data[value.first]}});
+                            data.find(value.first)
+                        };
+                        if (data.end() != it)
+                        {
+                            if(*it != object[value.first])
+                            {
+                                // Diff found
+                                isModified = true;
+                                jsResult.push_back({{value.first, *it}});    
+                            }
                         }
                     }
                 }
             }
         }
-        else
+        if(!isModified)
         {
             jsResult.clear();
         }
     }
+    return diffExist;
 }
 
 bool SQLiteDBEngine::insertNewRows(const std::string& table,
@@ -1115,41 +1131,27 @@ void SQLiteDBEngine::updateSingleRow(const std::string& table,
     std::vector<std::string> primaryKeyList;
     if (getPrimaryKeysFromTable(table, primaryKeyList))
     {
-        const auto sql { buildUpdatePartialDataSqlQuery(table, jsData, primaryKeyList) };
-        const auto& stmt { getStatement(sql) };
-        const auto tableFields { m_tableFields[table] };
-
+        const auto& stmt { getStatement(buildUpdatePartialDataSqlQuery(table, jsData, primaryKeyList)) };
+        auto tableFields { m_tableFields[table] };
         int32_t index { 1l };
-        for (const auto& dataValue : jsData)
-        {
-            for (auto it = dataValue.begin(); it != dataValue.end(); ++it)
-            {
-                for (const auto& field : tableFields)
-                {
-                    const auto& fieldName { std::get<TableHeader::Name>(field) };
-
-                    if (fieldName == it.key() && !std::get<TableHeader::PK>(field))
+        std::sort(tableFields.begin(),
+                  tableFields.end(),
+                  [jsData](const ColumnData& data1, const ColumnData& data2)
+                  {
+                    const auto pk1{std::get<TableHeader::PK>(data1)};
+                    const auto pk2{std::get<TableHeader::PK>(data2)};
+                    if (pk1 != pk2)
                     {
-                        bindJsonData(stmt, field, *it, index);
-                        ++index;
+                        return !pk1;
                     }
-                }        
-            }
-        }
-        for (const auto& dataValue : jsData)
+                    const auto it1{jsData.find(std::get<TableHeader::Name>(data1))};
+                    const auto it2{jsData.find(std::get<TableHeader::Name>(data2))};
+                    return it1 < it2;
+                  });
+        for (const auto& field : tableFields)
         {
-            for (auto it = dataValue.begin(); it != dataValue.end(); ++it)
-            {
-                for (const auto& field : tableFields)
-                {
-                    const auto& fieldName { std::get<TableHeader::Name>(field) };
-                    if (fieldName == it.key() && std::get<TableHeader::PK>(field))
-                    {
-                        bindJsonData(stmt, field, *it, index);
-                        ++index;
-                    }
-                }        
-            }
+            bindJsonData(stmt, field, jsData, index);
+            ++index;
         }
         stmt->step();
         stmt->reset();
