@@ -193,7 +193,7 @@ main () {
 
     get_deprecated_vars
 
-    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z "${WAZUH_MANAGER}" ]; then
+    if [ ! -z ${WAZUH_MANAGER} ]; then
         if [ ! -f ${DIRECTORY}/logs/ossec.log ]; then
             touch -f ${DIRECTORY}/logs/ossec.log
             chmod 660 ${DIRECTORY}/logs/ossec.log
@@ -224,13 +224,11 @@ main () {
         edit_value_tag "notify_time" ${WAZUH_KEEP_ALIVE_INTERVAL}
         edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
 
-    # Throw error if agent is already registered (client keys with key).
-    elif [ -s ${DIRECTORY}/etc/client.keys ] && [ ! -z "${WAZUH_MANAGER}" ]; then
-        echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: ERROR: The agent is already registered." >> ${DIRECTORY}/logs/ossec.log
     fi
 
-    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z "${WAZUH_REGISTRATION_SERVER}" ]; then
-        # Options to be used at register time.
+    if [ ! -z ${WAZUH_REGISTRATION_SERVER} ]; then
+
+        # Options to be used in register time.
         OPTIONS="-m ${WAZUH_REGISTRATION_SERVER}"
         OPTIONS=$(add_parameter "${OPTIONS}" "-p" "${WAZUH_REGISTRATION_PORT}")
         OPTIONS=$(add_parameter "${OPTIONS}" "-P" "${WAZUH_REGISTRATION_PASSWORD}")
