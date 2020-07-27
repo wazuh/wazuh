@@ -40,6 +40,7 @@ static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND (re
 static const char *SQL_FIND_GROUP = "SELECT id FROM `group` WHERE name = ?;";
 static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
 static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
+static const char *SQL_SELECT_VERSION = "SELECT version FROM agent WHERE id = ?;";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date) {
@@ -218,6 +219,38 @@ char* wdb_agent_name(int id) {
         return NULL;
 
     if (wdb_prepare(wdb_global, SQL_SELECT_AGENT, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        return NULL;
+    }
+
+    sqlite3_bind_int(stmt, 1, id);
+
+    switch (wdb_step(stmt)) {
+    case SQLITE_ROW:
+        result = strdup((char*)sqlite3_column_text(stmt, 0));
+        break;
+    case SQLITE_DONE:
+        result = NULL;
+        break;
+    default:
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        result = NULL;
+    }
+
+    sqlite3_finalize(stmt);
+
+    return result;
+}
+
+/* Get wazuh version from agent. The string must be freed after using. Returns NULL on error. */
+char* wdb_agent_version(int id) {
+    sqlite3_stmt *stmt = NULL;
+    char *result = NULL;
+
+    if (wdb_open_global() < 0)
+        return NULL;
+
+    if (wdb_prepare(wdb_global, SQL_SELECT_VERSION, -1, &stmt, NULL)) {
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
         return NULL;
     }

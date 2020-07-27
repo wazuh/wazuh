@@ -332,6 +332,9 @@ int wdb_remove_group_db(const char *name);
 /* Get name from agent. The string must be freed after using. Returns NULL on error. */
 char* wdb_agent_name(int id);
 
+/* Get version from agent. The string must be freed after using. Returns NULL on error. */
+char* wdb_agent_version(int id);
+
 /* Get group from agent. The string must be freed after using. Returns NULL on error. */
 char* wdb_agent_group(int id);
 

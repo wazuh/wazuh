@@ -45,7 +45,12 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_TASK_MANAGER_COMMUNICATION] ="Could not create task id for upgrade task",
     [WM_UPGRADE_TASK_MANAGER_FAILURE] = "", // Data string will be provided by task manager
     [WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading",
-    [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start"
+    [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start",
+    [WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED] = "Remote upgrade is not available for this agent version.",
+    [WM_UPGRADE_VERSION_SAME_MANAGER] = "Agent and manager have the same version. No need upgrade.",
+    [WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT] = "Current agent version is greater or equal.",
+    [WM_UPGRADE_NEW_VERSION_GREATER_MASTER] = "Upgrading an agent to a version higher than the manager requires the force flag.",
+    [WM_UPGRADE_NOT_AGENT_IN_DB] = "Not agent id found in database."
 };
 
 void wm_agent_upgrade_listen_messages(int sock, int timeout_sec) {
