@@ -33,8 +33,7 @@ typedef enum _wm_upgrade_error_code {
 typedef enum _wm_upgrade_command {
     WM_UPGRADE_UPGRADE = 0,
     WM_UPGRADE_UPGRADE_CUSTOM,
-    WM_UPGRADE_UPGRADE_RESULT,
-    WM_UPGRADE_INVALID_COMMAND
+    WM_UPGRADE_UPGRADE_RESULT
 } wm_upgrade_command;
 
 /**
@@ -60,7 +59,6 @@ typedef struct _wm_upgrade_custom_task {
  * */
 typedef struct _wm_task_info {
     int task_id;                 ///> task_id associated with the task
-    wm_upgrade_error_code error; ///> error code of the task
     wm_upgrade_command command;  ///> command that has been requested
     void *task;                  ///> pointer to a task structure (depends on command)
 } wm_task_info;
@@ -76,14 +74,6 @@ typedef struct _wm_agent_info {
     char *architecture;          ///> architecture of the agent
 } wm_agent_info;
 
-/**
- * Definition of the structure that will represent an agent executing a certain task
- * */
-typedef struct _wm_agent_task {
-    wm_agent_info *agent_info;    ///> pointer to agent_info structure
-    wm_task_info *task_info;      ///> pointer to task_info structure
-} wm_agent_task;
-
 extern const char* upgrade_error_codes[];
 extern const wm_context WM_AGENT_UPGRADE_CONTEXT;   // Context
 
@@ -93,27 +83,27 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module);
 /**
  * Process and upgrade command. Create the task for each agent_id, dispatches to task manager and
  * then starts upgrading process.
- * @param agents cJSON Array with the list of agents id
+ * @param agent_ids array with the list of agents id
  * @param task pointer to a wm_upgrade_task structure
- * @return json object with the response
+ * @return string with the response
  * */
-cJSON* wm_agent_upgrade_process_upgrade_command(const cJSON* agents, wm_upgrade_task* task);
+char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task);
 
 /**
  * Process and upgrade custom command. Create the task for each agent_id, dispatches to task manager and
  * then starts upgrading process.
- * @param agents cJSON Array with the list of agents id
+ * @param agent_ids array with the list of agents id
  * @param task pointer to a wm_upgrade_custom_task structure
- * @return json object with the response
+ * @return string with the response
  * */
-cJSON* wm_agent_upgrade_process_upgrade_custom_command(const cJSON* agents, wm_upgrade_custom_task* task);
+char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task);
 
 /**
  * @WIP
  * Process and upgrade_result command.
- * @param agents cJSON Array with the list of agents id
- * @return json object with the response
+ * @param agent_ids array with the list of agents id
+ * @return string with the response
  * */
-cJSON* wm_agent_upgrade_process_upgrade_result_command(const cJSON* agents);
+char* wm_agent_upgrade_process_upgrade_result_command(const int* agent_ids);
 
 #endif

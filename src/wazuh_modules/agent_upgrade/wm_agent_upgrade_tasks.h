@@ -38,12 +38,6 @@ wm_task_info* wm_agent_upgrade_init_task_info();
 wm_agent_info* wm_agent_upgrade_init_agent_info();
 
 /**
- * Initialization of wm_agent_task
- * @param return an initialized wm_agent_task structure
- * */
-wm_agent_task* wm_agent_upgrade_init_agent_task();
-
-/**
  * Deallocate wm_upgrade_task structure
  * @param task wm_upgrade_task structure to be deallocated
  * */
@@ -68,12 +62,6 @@ void wm_agent_upgrade_free_task_info(wm_task_info* task_info);
 void wm_agent_upgrade_free_agent_info(wm_agent_info* agent_info);
 
 /**
- * Deallocate wm_agent_task structure
- * @param agent wm_agent_task structure to be deallocated
- * */
-void wm_agent_upgrade_free_agent_task(wm_agent_task* agent_task);
-
-/**
  * Tasks hashmap initialization
  * */
 void wm_agent_upgrade_init_task_map();
@@ -85,10 +73,11 @@ void wm_agent_upgrade_destroy_task_map();
 
 /**
  * Receives the cJSON with the agents_id and creates the tasks structure for each agent
- * @param agents cJSON array with the agents_id
- * @param task pointer to a task_info structure
- * @return cJSON array where the responses for each agent will be stored
+ * @param json_response cJSON array where the task responses will be stored
+ * @param agent_ids array with the list of agents id
+ * @param command command related to the task
+ * @param task pointer to a task structure
  * */
-cJSON* wm_agent_upgrade_create_agents_tasks(const cJSON *agents, wm_task_info *task);
+void wm_agent_upgrade_create_agents_tasks(cJSON* json_response, const int* agent_ids, int command, void *task);
 
 #endif

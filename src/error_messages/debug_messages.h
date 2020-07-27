@@ -239,7 +239,6 @@
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO        "(8151): Agent Information obtained: '%s'"
-#define WM_UPGRADE_RESULT_SHOW_RESULTS      "(8152): Upgrade results response: '%s'"
 #define WM_UPGRADE_MODULE_DISABLED          "(8153): Module Agent Upgrade disabled. Exiting..."
 #define WM_UPGRADE_MODULE_STARTED           "(8154): Module Agent Upgrade started."
 #define WM_UPGRADE_MODULE_FINISHED          "(8155): Module Agent Upgrade finished."
