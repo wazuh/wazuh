@@ -70,28 +70,26 @@ installPrerequisites() {
 
     if [ $sys_type == "yum" ] 
     then
-        eval "yum install java-11-openjdk-devel -y -q $debug"
-        if [  "$?" != 0  ]
-        then
-            eval "yum install java-1.8.0-openjdk-devel -y -q $debug"
-            export JAVA_HOME=/usr/
-            eval "yum install unzip wget curl libcap -y -q $debug"
-        else
-            export JAVA_HOME=/usr/
-            eval "yum install unzip wget curl libcap -y -q $debug"
-        fi        
+        eval "yum install curl unzip wget libcap -y -q $debug"   
+cat <<'EOF' > /etc/yum.repos.d/adoptopenjdk.repo
+[AdoptOpenJDK]
+name=AdoptOpenJDK
+baseurl=http://adoptopenjdk.jfrog.io/adoptopenjdk/rpm/centos/$releasever/$basearch
+enabled=1
+gpgcheck=1
+gpgkey=https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public
+EOF
+        eval "yum install adoptopenjdk-11-hotspot -y -q $debug"
+        export JAVA_HOME=/usr/   
     elif [ $sys_type == "apt-get" ] 
     then
-        if [ -n "$(command -v add-apt-repository)" ]
-        then
-            eval "add-apt-repository ppa:openjdk-r/ppa -y $debug"
-        else
-            echo 'deb http://deb.debian.org/debian stretch-backports main' > /etc/apt/sources.list.d/backports.list
-        fi
+        eval "apt-get install apt-transport-https curl unzip wget libcap2-bin software-properties-common -y -q $debug"
+        eval "wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | sudo apt-key add - $debug"
+        eval "add-apt-repository --yes https://adoptopenjdk.jfrog.io/adoptopenjdk/deb/ $debug"
         eval "apt-get update -q $debug"
-        eval "apt-get install openjdk-11-jdk -y -q $debug" 
+        eval "apt-get install adoptopenjdk-11-hotspot -y -q $debug" 
         export JAVA_HOME=/usr/ 
-        eval "apt-get install apt-transport-https curl unzip wget libcap2-bin -y -q $debug"
+        
     fi
 
     if [  "$?" != 0  ]
