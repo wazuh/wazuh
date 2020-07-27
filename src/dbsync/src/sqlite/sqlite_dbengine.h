@@ -198,8 +198,6 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                                const std::vector<std::string>& primaryKeyList,
                                std::vector<Row>& returnRows);
 
-        void bulkInsert(const std::string& table, const Row& data);
-
         void bulkInsert(const std::string& table, const std::vector<Row>& data);
 
         void deleteTempTable(const std::string& table);

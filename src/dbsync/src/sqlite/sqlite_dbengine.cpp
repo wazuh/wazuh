@@ -59,6 +59,10 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
         }
         transaction->commit();
     }
+    else
+    {
+        throw dbengine_error { EMPTY_TABLE_METADATA };
+    }
 }
 
 void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
@@ -86,6 +90,10 @@ void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
                     std::cout << "Error during the insert rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
                 }
             }
+        }
+        else
+        {
+            throw dbengine_error { EMPTY_TABLE_METADATA };
         }
     }
 }
@@ -119,6 +127,10 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
         {
             callback(resultCbType, jsResult);
         }
+    }
+    else
+    {
+        throw dbengine_error { EMPTY_TABLE_METADATA };
     }
 }
 
@@ -664,7 +676,7 @@ bool SQLiteDBEngine::deleteRows(const std::string& table,
             {
                 if (!bindFieldData(stmt, index, row.at(value)))
                 {
-                    std::cout << "bind error: " <<  index << std::endl;
+                    throw dbengine_error { EMPTY_TABLE_METADATA };
                 }
                 ++index;
             }
@@ -824,7 +836,7 @@ bool SQLiteDBEngine::getRowDiff(const std::string& table,
                 }
             }
         }
-        if(isModified)
+        if(!isModified)
         {
             jsResult.clear();
         }
@@ -855,26 +867,6 @@ bool SQLiteDBEngine::insertNewRows(const std::string& table,
         }
     }
     return ret;
-}
-
-void SQLiteDBEngine::bulkInsert(const std::string& table,
-                                const Row& rowData)
-{
-    auto const& stmt { getStatement(buildInsertBulkDataSqlQuery(table)) };
-
-    for (const auto& value : m_tableFields[table])
-    {
-        auto it { rowData.find(std::get<TableHeader::Name>(value))};
-        if (rowData.end() != it)
-        {
-            if (!bindFieldData(stmt, std::get<TableHeader::CID>(value) + 1, (*it).second ))
-            {
-                std::cout << "bind error: " <<  std::get<TableHeader::CID>(value) << std::endl;
-            }
-        }
-    }
-    stmt->step();
-    stmt->reset();
 }
 
 void SQLiteDBEngine::bulkInsert(const std::string& table,
