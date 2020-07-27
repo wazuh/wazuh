@@ -25,6 +25,7 @@ from wazuh.cluster import get_node_wrapper, get_nodes_info
 from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
+from wazuh.core.wazuh_socket import wazuh_sendsync
 
 
 class DistributedAPI:
@@ -542,18 +543,35 @@ class DistributedAPI:
             return node_name
 
 
-class APIRequestQueue:
+class WazuhRequestQueue:
+
+    def __init__(self, server):
+        self.request_queue = asyncio.Queue()
+        self.server = server
+        self.pending_requests = {}
+
+    def add_request(self, request: bytes):
+        """Add a request to the queue.
+
+        Parameters
+        ----------
+        request : bytes
+            Request to add.
+        """
+        self.logger.debug("Received request: {}".format(request))
+        self.request_queue.put_nowait(request.decode())
+
+
+class APIRequestQueue(WazuhRequestQueue):
     """
     Represents a queue of API requests. This thread will be always in background, it will remain blocked until a
     request is pushed into its request_queue. Then, it will answer the request and get blocked again.
     """
 
     def __init__(self, server):
-        self.request_queue = asyncio.Queue()
-        self.server = server
+        super().__init__(server)
         self.logger = logging.getLogger('wazuh').getChild('dapi')
         self.logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag='Cluster', subtag='D API'))
-        self.pending_requests = {}
 
     async def run(self):
         while True:
@@ -589,13 +607,41 @@ class APIRequestQueue:
             else:
                 self.logger.error(result.message)
 
-    def add_request(self, request: bytes):
-        """Add a request to the queue.
 
-        Parameters
-        ----------
-        request : bytes
-            Request to add.
-        """
-        self.logger.debug("Received request: {}".format(request))
-        self.request_queue.put_nowait(request.decode())
+class SendSyncRequestQueue(WazuhRequestQueue):
+    """
+    Represents a queue of SSync requests. This thread will be always in background, it will remain blocked until a
+    request is pushed into its request_queue. Then, it will answer the request and get blocked again.
+    """
+
+    def __init__(self, server):
+        super().__init__(server)
+        self.logger = logging.getLogger('wazuh').getChild('sendsync')
+        self.logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag='Cluster', subtag='SendSync'))
+
+    async def run(self):
+        while True:
+            names, request = (await self.request_queue.get()).split(' ', 1)
+            names = names.split('*', 1)
+            # name    -> node name the request must be sent to. None if called from a worker node.
+            # id      -> id of the request.
+            # request -> JSON containing request's necessary information
+            name_2 = '' if len(names) == 1 else names[1] + ' '
+
+            node = self.server.clients[names[0]]
+            try:
+                request = json.loads(request, object_hook=c_common.as_wazuh_object)
+                self.logger.info("Receiving SendSync request from {}".format(names[0]))
+                result = await wazuh_sendsync(**request)
+                task_id = await node.send_string(json.dumps(result, cls=c_common.WazuhJSONEncoder).encode())
+            except Exception as e:
+                self.logger.error("Error in SendSync: {}".format(e), exc_info=True)
+                task_id = b'Error in SendSync: ' + str(e).encode()
+
+            if task_id.startswith(b'Error'):
+                self.logger.error(task_id.decode())
+                result = await node.send_request(b'sendsync_err', name_2.encode() + task_id)
+            else:
+                result = await node.send_request(b'sendsync_res', name_2.encode() + task_id)
+            if isinstance(result, WazuhException):
+                self.logger.error(result.message)
