@@ -2,18 +2,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
-import concurrent.futures
-import concurrent.futures
 import re
 from copy import deepcopy
 from functools import lru_cache
-from logging import getLogger
 
 import api.configuration as configuration
-from api.util import raise_if_exc
 from wazuh.core import common
-from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import check_relationships, invalid_users_tokens, revoke_tokens
@@ -749,9 +743,6 @@ def get_security_config():
     return configuration.security_conf
 
 
-pool = concurrent.futures.ThreadPoolExecutor()
-
-
 @expose_resources(actions=['security:update_config'], resources=['*:*:*'])
 def update_security_config(updated_config=None):
     """Update or restore current security configuration.
@@ -771,13 +762,6 @@ def update_security_config(updated_config=None):
     """
     try:
         update_security_conf(updated_config)
-        dapi = DistributedAPI(f=revoke_tokens,
-                              request_type='distributed_master',
-                              is_async=False,
-                              wait_for_complete=True,
-                              logger=getLogger('wazuh')
-                              )
-        raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
         result = 'Configuration successfully updated'
     except WazuhError as e:
         result = f'Configuration could not be updated. Error: {e}'

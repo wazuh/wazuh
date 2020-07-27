@@ -20,6 +20,7 @@ from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.security import revoke_tokens
 from wazuh.rbac import preprocessor
 
 logger = logging.getLogger('wazuh')
@@ -770,6 +771,20 @@ async def get_security_config(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+async def security_revoke_tokens():
+    """Revokes all tokens on all nodes after a change in security configuration."""
+    nodes = await get_system_nodes()
+    dapi = DistributedAPI(f=revoke_tokens,
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=True,
+                          broadcasting=True,
+                          logger=logger,
+                          nodes=nodes
+                          )
+    raise_if_exc(await dapi.distribute_function())
+
+
 async def put_security_config(request, pretty=False, wait_for_complete=False):
     """Update current security configuration with the given one.
 
@@ -788,6 +803,7 @@ async def put_security_config(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
+    await security_revoke_tokens()
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
@@ -809,5 +825,6 @@ async def delete_security_config(request, pretty=False, wait_for_complete=False)
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
+    await security_revoke_tokens()
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

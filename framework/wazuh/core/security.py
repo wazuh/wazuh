@@ -87,7 +87,7 @@ def invalid_users_tokens(roles: list = None, users: list = None):
 
 
 def revoke_tokens():
-    """Revoke all tokens in all nodes."""
+    """Revoke all tokens in current node."""
     change_secret()
     with TokenManager() as tm:
         tm.delete_all_rules()

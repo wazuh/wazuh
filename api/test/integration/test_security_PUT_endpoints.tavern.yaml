@@ -299,7 +299,7 @@ stages:
       status_code: 401
 
 ---
-test_name: PUT /security/user/authenticate
+test_name: DELETE /security/user/authenticate
 
 stages:
 
