@@ -544,7 +544,7 @@ class DistributedAPI:
 
 
 class WazuhRequestQueue:
-
+    """Represents a queue of Wazuh requests"""
     def __init__(self, server):
         self.request_queue = asyncio.Queue()
         self.server = server

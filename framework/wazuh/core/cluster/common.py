@@ -342,7 +342,7 @@ class Handler(asyncio.Protocol):
         Forwards a distributed API response from master node.
 
         :param data: Bytes containing local client name and string id separated by ' '
-        :return: sucess/error message
+        :return: success/error message
         """
         client, string_id = data.split(b' ', 1)
         client = client.decode()
@@ -363,7 +363,7 @@ class Handler(asyncio.Protocol):
         Forwards a sendsync response from master node.
 
         :param data: Bytes containing local client name and string id separated by ' '
-        :return: sucess/error message
+        :return: success/error message
         """
         client, string_id = data.split(b' ', 1)
         client = client.decode()
