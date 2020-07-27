@@ -260,6 +260,10 @@ void* wm_task_manager_main(wm_task_manager* task_config) {
     ssize_t length;
     fd_set fdset;
 
+    if (w_is_worker()) {
+        mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_DISABLED_WORKER);
+        return NULL;
+    }
     // Initial configuration
     sock = wm_task_manager_init(task_config);
 

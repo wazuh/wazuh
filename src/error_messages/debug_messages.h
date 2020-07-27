@@ -258,5 +258,6 @@
 #define MOD_TASK_EMPTY_MESSAGE              "(8203): Empty message from local client."
 #define MOD_TASK_INCOMMING_MESSAGE          "(8204): Incomming message: '%s'"
 #define MOD_TASK_RESPONSE_MESSAGE           "(8205): Response to message: '%s'"
+#define MOD_TASK_DISABLED_WORKER            "(8206): Module Task Manager only runs on Master nodes in cluster configuration."
 
 #endif /* DEBUG_MESSAGES_H */
