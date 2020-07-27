@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.core.exception import WazuhException
+from wazuh.core.exception import WazuhException, WazuhInternalError
 from wazuh import common
 import socket
 from json import dumps, loads
@@ -230,7 +230,7 @@ daemons = {
     "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4}}
 
 
-async def wazuh_send_sync(daemon_name, message=None):
+async def wazuh_sendasync(daemon_name, message=None):
     """Send a message to the specified daemon's socket and wait for its response.
 
     Parameters
@@ -249,7 +249,7 @@ async def wazuh_send_sync(daemon_name, message=None):
     return data
 
 
-def send_sync(daemon_name, message=None):
+async def wazuh_sendsync(daemon_name=None, message=None):
     """Send a message to the specified daemon's socket and wait for its response.
 
     Parameters
@@ -259,9 +259,14 @@ def send_sync(daemon_name, message=None):
     message : str, optional
         Message in JSON format to be sent to the daemon's socket.
     """
-    sock = OssecSocketJSON(daemons[daemon_name]['path'])
-    sock.send(msg=message, header_format=daemons[daemon_name]['header_format'])
-    data = sock.receive(header_format=daemons[daemon_name]['header_format'], header_size=daemons[daemon_name]['size'])
-    sock.close()
+    try:
+        sock = OssecSocketJSON(daemons[daemon_name]['path'])
+        sock.send(msg=message, header_format=daemons[daemon_name]['header_format'])
+        data = sock.receive(header_format=daemons[daemon_name]['header_format'], header_size=daemons[daemon_name]['size'])
+        sock.close()
+    except WazuhException as e:
+        raise e
+    except Exception as e:
+        raise WazuhInternalError(1014, extra_message=e)
 
     return data
