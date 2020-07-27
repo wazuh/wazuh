@@ -137,7 +137,7 @@ int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message) {
     *agent_ids = 0;
 
     while(!error_flag && (agent_index < cJSON_GetArraySize(agents))) {
-        cJSON *agent = cJSON_GetArrayItem(agents, agent_index++);
+        cJSON *agent = cJSON_GetArrayItem(agents, agent_index);
         if (agent->type == cJSON_Number) {
             os_realloc(agent_ids, sizeof(int) * (agent_index + 2), agent_ids);
             agent_ids[agent_index] = agent->valueint;
@@ -146,6 +146,7 @@ int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message) {
             sprintf(output, "Agent id not recognized");
             error_flag = 1;
         }
+        agent_index++;
     }
 
     if (error_flag) {
