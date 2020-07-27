@@ -93,37 +93,6 @@ add_parameter () {
     echo ${OPTIONS}
 }
 
-# Get variables that we changed in new develop
-get_deprecated_vars () {
-    if [ ! -z "${WAZUH_MANAGER_IP}" ] && [ -z "${WAZUH_MANAGER}" ]; then
-        WAZUH_MANAGER=${WAZUH_MANAGER_IP}
-    fi
-    if [ ! -z "${WAZUH_AUTHD_SERVER}" ] && [ -z "${WAZUH_REGISTRATION_SERVER}" ]; then
-        WAZUH_REGISTRATION_SERVER=${WAZUH_AUTHD_SERVER}
-    fi
-    if [ ! -z "${WAZUH_AUTHD_PORT}" ] && [ -z "${WAZUH_REGISTRATION_PORT}" ]; then
-        WAZUH_REGISTRATION_PORT=${WAZUH_AUTHD_PORT}
-    fi
-    if [ ! -z "${WAZUH_PASSWORD}" ] && [ -z "${WAZUH_REGISTRATION_PASSWORD}" ]; then
-        WAZUH_REGISTRATION_PASSWORD=${WAZUH_PASSWORD}
-    fi
-    if [ ! -z "${WAZUH_NOTIFY_TIME}" ] && [ -z "${WAZUH_KEEP_ALIVE_INTERVAL}" ]; then
-        WAZUH_KEEP_ALIVE_INTERVAL=${WAZUH_NOTIFY_TIME}
-    fi
-    if [ ! -z "${WAZUH_CERTIFICATE}" ] && [ -z "${WAZUH_REGISTRATION_CA}" ]; then
-        WAZUH_REGISTRATION_CA=${WAZUH_CERTIFICATE}
-    fi
-    if [ ! -z "${WAZUH_PEM}" ] && [ -z "${WAZUH_REGISTRATION_CERTIFICATE}" ]; then
-        WAZUH_REGISTRATION_CERTIFICATE=${WAZUH_PEM}
-    fi
-    if [ ! -z "${WAZUH_KEY}" ] && [ -z "${WAZUH_REGISTRATION_KEY}" ]; then
-        WAZUH_REGISTRATION_KEY=${WAZUH_KEY}
-    fi
-    if [ ! -z "${WAZUH_GROUP}" ] && [ -z "${WAZUH_AGENT_GROUP}" ]; then
-        WAZUH_AGENT_GROUP=${WAZUH_GROUP}
-    fi
-}
-
 # Set all defined variables from environment
 set_vars () {
     export WAZUH_MANAGER=$(launchctl getenv WAZUH_MANAGER)
@@ -139,17 +108,6 @@ set_vars () {
     export WAZUH_REGISTRATION_KEY=$(launchctl getenv WAZUH_REGISTRATION_KEY)
     export WAZUH_AGENT_NAME=$(launchctl getenv WAZUH_AGENT_NAME)
     export WAZUH_AGENT_GROUP=$(launchctl getenv WAZUH_AGENT_GROUP)
-
-    # The following variables are yet supported but all of them are deprecated
-    export WAZUH_MANAGER_IP=$(launchctl getenv WAZUH_MANAGER_IP)
-    export WAZUH_NOTIFY_TIME=$(launchctl getenv WAZUH_NOTIFY_TIME)
-    export WAZUH_AUTHD_SERVER=$(launchctl getenv WAZUH_AUTHD_SERVER)
-    export WAZUH_AUTHD_PORT=$(launchctl getenv WAZUH_AUTHD_PORT)
-    export WAZUH_PASSWORD=$(launchctl getenv WAZUH_PASSWORD)
-    export WAZUH_GROUP=$(launchctl getenv WAZUH_GROUP)
-    export WAZUH_CERTIFICATE=$(launchctl getenv WAZUH_CERTIFICATE)
-    export WAZUH_KEY=$(launchctl getenv WAZUH_KEY)
-    export WAZUH_PEM=$(launchctl getenv WAZUH_PEM)
 }
 
 # Remove all defined variables from environment
@@ -157,13 +115,10 @@ unset_vars() {
 
     OS=$1
     # String of variables that we could use
-    vars="WAZUH_MANAGER_IP WAZUH_PROTOCOL WAZUH_MANAGER_PORT WAZUH_NOTIFY_TIME \
-          WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
-          WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM \
-          WAZUH_MANAGER WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
+    vars="WAZUH_PROTOCOL WAZUH_MANAGER_PORT WAZUH_TIME_RECONNECT \
+          WAZUH_AGENT_NAME  WAZUH_MANAGER WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
           WAZUH_REGISTRATION_PASSWORD WAZUH_KEEP_ALIVE_INTERVAL WAZUH_REGISTRATION_CA \
           WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_GROUP"
-
 
     for var in ${vars}; do
         if [ "${OS}" = "Darwin" ]; then
@@ -200,7 +155,7 @@ main () {
             chown root:ossec ${DIRECTORY}/logs/ossec.log
         fi
 
-        # Check if multiples IPs are defined in variable WAZUH_MANAGER_IP
+        # Check if multiples IPs are defined in variable WAZUH_MANAGER
         WAZUH_MANAGER=$(echo ${WAZUH_MANAGER} | sed "s#,#;#g")
         ADDRESSES="$(echo ${WAZUH_MANAGER} | awk '{split($0,a,",")} END{ for (i in a) { print a[i] } }' |  tr '\n' ' ')"
         if echo ${ADDRESSES} | grep ' ' > /dev/null 2>&1 ; then
