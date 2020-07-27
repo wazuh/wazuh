@@ -246,7 +246,7 @@
 #define WM_UPGRADE_INCOMMING_MESSAGE        "(8156): Incomming message: '%s'"
 #define WM_UPGRADE_RESPONSE_MESSAGE         "(8157): Response message: '%s'"
 #define WM_UPGRADE_TASK_SEND_MESSAGE        "(8158): Sending message to task_manager module: '%s'"
-#define WM_UPGRADE_TASK_RECEIVE_MESSAGE     "(8159): Receiving message to task_manager module: '%s'"
+#define WM_UPGRADE_TASK_RECEIVE_MESSAGE     "(8159): Receiving message from task_manager module: '%s'"
 #define WM_UPGRADE_EMPTY_MESSAGE            "(8160): Empty message from local client."
 
 #define MOD_TASK_START                      "(8200): Module Task Manager started."
