@@ -154,13 +154,25 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         elif command == b'dapi_res':
             asyncio.create_task(self.forward_dapi_response(data))
             return b'ok', b'Response forwarded to worker'
+        elif command == b'sendsync_res':
+            asyncio.create_task(self.forward_sendsync_response(data))
+            return b'ok', b'Response forwarded to worker'
         elif command == b'dapi_err':
             dapi_client, error_msg = data.split(b' ', 1)
             try:
-                asyncio.create_task(self.manager.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
+                asyncio.create_task(
+                    self.manager.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
             except WazuhClusterError as e:
                 raise WazuhClusterError(3025)
             return b'ok', b'DAPI error forwarded to worker'
+        elif command == b'sendsync_err':
+            sendsync_client, error_msg = data.split(b' ', 1)
+            try:
+                asyncio.create_task(
+                    self.manager.local_server.clients[sendsync_client.decode()].send_request(command, error_msg))
+            except WazuhClusterError as e:
+                raise WazuhClusterError(3025)
+            return b'ok', b'SendSync error forwarded to worker'
         elif command == b'dapi':
             self.manager.dapi.add_request(b'master*' + data)
             return b'ok', b'Added request to API requests queue'

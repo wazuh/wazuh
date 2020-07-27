@@ -79,6 +79,9 @@ class LocalClientHandler(client.AbstractClient):
     def connection_lost(self, exc):
         self.on_con_lost.set_result(True)
 
+    def connection_lost(self, exc):
+        self.on_con_lost.set_result(True)
+
 
 class LocalClient(client.AbstractClientManager):
     """

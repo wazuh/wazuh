@@ -490,7 +490,7 @@ int w_validate_group_name(const char *group, char *response){
         free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Group length is 0");
         if(response) {
-            snprintf(response, 2048, "ERROR: Invalid group name: Empty Group\n\n");
+            snprintf(response, 2048, "ERROR: Invalid group name: Empty Group");
         }
         return -8;
     }
@@ -499,7 +499,7 @@ int w_validate_group_name(const char *group, char *response){
         free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Group length is over %d characters",MAX_GROUP_NAME);
         if(response) {
-            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", group);
+            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large", group);
         }
         return -2;
     }
@@ -507,7 +507,7 @@ int w_validate_group_name(const char *group, char *response){
         free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Multigroup length is over %d characters",OS_SIZE_65536);
         if(response) {
-            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large \n\n", group);    
+            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large", group);    
         }
         return -3;
     }
@@ -538,7 +538,7 @@ int w_validate_group_name(const char *group, char *response){
             {
                 free(multi_group_cpy);
                 if(response) {
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed \n\n", group);
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed", group);
                 }
                 return -4;
             }
@@ -547,7 +547,7 @@ int w_validate_group_name(const char *group, char *response){
             if (strlen(individual_group) > MAX_GROUP_NAME) {
                 free(multi_group_cpy);
                 if (response){
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", individual_group); 
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large", individual_group); 
                 } 
                 return -7;   
             }
@@ -559,7 +559,7 @@ int w_validate_group_name(const char *group, char *response){
         if(strstr(group,",,")){
             free(multi_group_cpy);
             if(response) {
-                snprintf(response, 2048, "ERROR: Invalid group name: %.255s... consecutive ',' are not allowed \n\n, ", group);
+                snprintf(response, 2048, "ERROR: Invalid group name: %.255s... consecutive ',' are not allowed", group);
             }
             return -5;
         }
@@ -569,7 +569,7 @@ int w_validate_group_name(const char *group, char *response){
     if(comas == strlen(group)){
         free(multi_group_cpy);
         if(response) {
-            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", group);    
+            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited", group);    
         }
         return -1;
     }
@@ -578,7 +578,7 @@ int w_validate_group_name(const char *group, char *response){
     if(group[0] == ',' || group[strlen(group) - 1] == ',' ){
         free(multi_group_cpy);
         if(response) {
-            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','\n\n", group);    
+            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','", group);    
         }
         return -6;
     }
@@ -586,7 +586,7 @@ int w_validate_group_name(const char *group, char *response){
     if(strspn(group,valid_chars) != strlen(group)){
         free(multi_group_cpy);
         if(response) {
-            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", group);    
+            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited", group);    
         }
         return -1;
     }
@@ -722,10 +722,10 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
         if (json_format) {
             printf("%s", buffer);
         } else {            
-            merror("ERROR %d: %s", error->valueint, message ? message->valuestring : "(undefined)");
+            merror("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
         }
         if(err_response) { 
-            snprintf(err_response, 2048, "ERROR: %s\n\n", message ? message->valuestring : "(undefined)");
+            snprintf(err_response, 2048, "ERROR: %s", message ? message->valuestring : "(undefined)");
         } 
         result = -1;
 
@@ -799,10 +799,10 @@ static int w_parse_agent_remove_response(const char* buffer, char *err_response,
         if (json_format) {
             printf("%s", buffer);
         } else {            
-            merror("ERROR %d: %s", error->valueint, message ? message->valuestring : "(undefined)");
+            merror("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
         }
         if(err_response) { 
-            snprintf(err_response, 2048, "ERROR: %s\n\n", message ? message->valuestring : "(undefined)");
+            snprintf(err_response, 2048, "ERROR: %s", message ? message->valuestring : "(undefined)");
         } 
         result = -1;
 
@@ -873,7 +873,7 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
             if(response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
                 switch (response_length) {
                 case -1:
-                    merror("At w_send_clustered_message(): OS_RecvSecureClusterTCP(): %s", strerror(errno));  
+                    merror("OS_RecvSecureClusterTCP(): %s", strerror(errno));  
                     break;                 
 
                 case 0:
@@ -895,7 +895,7 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
         close(sock);
     }
     else { 
-        merror("At w_send_clustered_message(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+        merror("Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
         result = -2;            
     }    
 
@@ -918,7 +918,7 @@ int w_request_agent_add_clustered(char *err_response, const char *name, const ch
         result = w_parse_agent_add_response(response, err_response, new_id, new_key, FALSE, FALSE);
     }
     else if(err_response) { 
-        snprintf(err_response, 2048, "ERROR: Cannot comunicate with master\n\n");         
+        snprintf(err_response, 2048, "ERROR: Cannot comunicate with master");         
     }
     
     free(output);
@@ -945,7 +945,7 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
         result = w_parse_agent_remove_response(response, err_response, FALSE, FALSE);
     }
     else if(err_response) { 
-        snprintf(err_response, 2048, "ERROR: Cannot comunicate with master\n\n");
+        snprintf(err_response, 2048, "ERROR: Cannot comunicate with master");
     }
 
     free(output);

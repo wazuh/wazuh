@@ -782,7 +782,7 @@ void test_w_enrollment_process_agent_key_invalid_format(void **state) {
 }
 
 void test_w_enrollment_process_agent_key_invalid_key(void **state) {
-    char key[] = "OSSEC K:'006 ubuntu1610 NOT_AN_IP 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'\n\n";
+    char key[] = "OSSEC K:'006 ubuntu1610 NOT_AN_IP 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
     expect_string(__wrap_OS_IsValidIP, ip_address, "NOT_AN_IP");
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 0);
@@ -792,7 +792,7 @@ void test_w_enrollment_process_agent_key_invalid_key(void **state) {
 }
 
 void test_w_enrollment_process_agent_key_valid_key(void **state) {
-    char key[] = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'\n\n";
+    char key[] = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
     expect_string(__wrap_OS_IsValidIP, ip_address, "192.168.1.1");
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
@@ -845,9 +845,9 @@ void test_w_enrollment_process_response_message_error(void **state) {
     SSL *ssl = *state;
     expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
     expect_value(__wrap_SSL_read, ssl, ssl);
-    will_return(__wrap_SSL_read, "ERROR: Unable to add agent.\n\n");
-    will_return(__wrap_SSL_read, strlen("ERROR: Unable to add agent.\n\n"));
-    expect_string(__wrap__merror, formatted_msg, "Unable to add agent.\n\n (from manager)");
+    will_return(__wrap_SSL_read, "ERROR: Unable to add agent.");
+    will_return(__wrap_SSL_read, strlen("ERROR: Unable to add agent."));
+    expect_string(__wrap__merror, formatted_msg, "Unable to add agent. (from manager)");
     expect_value(__wrap_SSL_read, ssl, ssl);
     will_return(__wrap_SSL_read, "");
     will_return(__wrap_SSL_read, 0);
@@ -859,7 +859,7 @@ void test_w_enrollment_process_response_message_error(void **state) {
 }
 
 void test_w_enrollment_process_response_success(void **state) { 
-    const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'\n\n";
+    const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
     SSL *ssl = *state;
     expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
     expect_value(__wrap_SSL_read, ssl, ssl);
@@ -960,7 +960,7 @@ void test_w_enrollment_request_key(void **state) {
     }
     // w_enrollment_process_repsonse
     {
-        const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'\n\n";
+        const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
         expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
         expect_value(__wrap_SSL_read, ssl, cfg->ssl);
         will_return(__wrap_SSL_read, string);
