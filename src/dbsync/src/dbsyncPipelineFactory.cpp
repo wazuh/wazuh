@@ -69,13 +69,13 @@ namespace DbSync
                 dispatchResult(result);
             }
         }
-        void getDeleted(ResultCallback /*callback*/) override
+        void getDeleted(ResultCallback callback) override
         {
             if (m_spSyncNode)
             {
                 m_spSyncNode->rundown();
             }
-            // DBSyncImplementation::instance().getDeleted(m_handle, m_txnContext, calback);
+            DBSyncImplementation::instance().getDeleted(m_handle, m_txnContext, callback);
         }
     private:
         using SyncResult = std::tuple<ReturnTypeCallback, nlohmann::json>;
