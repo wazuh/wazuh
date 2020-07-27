@@ -358,6 +358,26 @@ class Handler(asyncio.Protocol):
                                   cls=WazuhJSONEncoder).encode()
             res = await self.send_request(b'dapi_err', exc_info)
 
+    async def forward_sendsync_response(self, data: bytes):
+        """
+        Forwards a sendsync response from master node.
+
+        :param data: Bytes containing local client name and string id separated by ' '
+        :return: sucess/error message
+        """
+        client, string_id = data.split(b' ', 1)
+        client = client.decode()
+        try:
+            await self.get_manager().local_server.clients[client].send_request(b'ok', self.in_str[string_id].payload)
+        except exception.WazuhException as e:
+            self.logger.error(f"Error sending send sync response to local client: {e}")
+            await self.send_request(b'sendsync_err', json.dumps(e, cls=WazuhJSONEncoder).encode())
+        except Exception as e:
+            self.logger.error(f"Error sending send sync response to local client: {e}")
+            exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
+                                  cls=WazuhJSONEncoder).encode()
+            await self.send_request(b'sendsync_err', exc_info)
+
     def data_received(self, message: bytes) -> None:
         """
         Handles received data from other peer.
