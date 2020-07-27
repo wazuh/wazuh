@@ -12,6 +12,8 @@
 /* Taken from isocpp.org/files/papers/N3656.txt
  * Stephan T. Lavavej <stl@microsoft.com>
  */ 
+#ifndef _MAKE_UNIQUE_H
+#define _MAKE_UNIQUE_H
 
 #if __cplusplus < 201402L
 #include <cstddef>
@@ -50,3 +52,4 @@ namespace std {
         make_unique(Args&&...) = delete;
 }
 #endif
+#endif //_MAKE_UNIQUE_H

@@ -66,7 +66,8 @@ EXPORTED void dbsync_teardown(void);
  * @param thread_number  Number of worker threads for processing data. If 0 hardware concurrency
  *                       value will be used.
  * @param max_queue_size Max data number to hold/queue to be processed.
- * @param callback       This callback will be called for each result.
+ * @param callback_data  This struct contain the result callback will be called for each result
+ *                       and user data space returned in each callback call.
  *
  * @return Handle instance to be used in transacted operations.
  *
@@ -76,7 +77,7 @@ EXPORTED TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
                                       const cJSON*        tables,
                                       const unsigned int  thread_number,
                                       const unsigned int  max_queue_size,
-                                      result_callback_t   callback);
+                                      callback_data_t     callback_data);
 
 /**
  * @brief Closes the \p txn database transaction.
@@ -150,30 +151,32 @@ EXPORTED int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
 /**
  * @brief Inserts (or modifies) a database record.
  *
- * @param handle    Handle instance assigned as part of the \ref dbsync_create method().
- * @param input     JSON information used to add/modified a database record.
- * @param callback  This callback will be called for each result.
+ * @param handle         Handle instance assigned as part of the \ref dbsync_create method().
+ * @param input          JSON information used to add/modified a database record.
+ * @param callback_data  This struct contain the result callback will be called for each result
+ *                       and user data space returned in each callback call.
  *
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
 EXPORTED int dbsync_sync_row(const DBSYNC_HANDLE handle,
                              const cJSON*        js_input,
-                             result_callback_t   callback);
+                             callback_data_t     callback_data);
 
 /**
  * @brief Select data, based in \p json_data_input data, from the database table.
  *
- * @param handle        Handle assigned as part of the \ref dbsync_create method().
- * @param js_data_input JSON with table name, fields and filters to apply in the query.
- * @param callback      This callback will be called for each result.
+ * @param handle          Handle assigned as part of the \ref dbsync_create method().
+ * @param js_data_input   JSON with table name, fields and filters to apply in the query.
+ * @param callback_data   This struct contain the result callback will be called for each result
+ *                        and user data space returned in each callback call.
  *
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
 EXPORTED int dbsync_select_rows(const DBSYNC_HANDLE handle,
                                 const cJSON*        js_data_input,
-                                result_callback_t   callback);
+                                callback_data_t     callback_data);
 
 /**
  * @brief Deletes a database table record and its relationships based on \p js_key_values value.
@@ -190,14 +193,15 @@ EXPORTED int dbsync_delete_rows(const DBSYNC_HANDLE handle,
 /**
  * @brief Gets the deleted rows (diff) from the database.
  *
- * @param txn      Database transaction to be used.
- * @param callback This callback will be called for each result.
+ * @param txn             Database transaction to be used.
+ * @param callback_data   This struct contain the result callback will be called for each result
+ *                        and user data space returned in each callback call.
  *
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
 EXPORTED int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
-                                     result_callback_t callback);
+                                     callback_data_t   callback_data);
 
 /**
  * @brief Updates data table with \p js_snapshot information. \p js_result value will
@@ -219,16 +223,17 @@ EXPORTED int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
 /**
  * @brief Update data table, based on json_raw_snapshot bulk data based on json string.
  *
- * @param handle      Handle assigned as part of the \ref dbsync_create method().
- * @param js_snapshot JSON with snapshot values.
- * @param callback    This callback will be called for each result.
+ * @param handle          Handle assigned as part of the \ref dbsync_create method().
+ * @param js_snapshot     JSON with snapshot values.
+ * @param callback_data   This struct contain the result callback will be called for each result
+ *                        and user data space returned in each callback call.
  *
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
   EXPORTED int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
                                               const cJSON*        js_snapshot,
-                                              result_callback_t   callback);
+                                              callback_data_t     callback_data);
 
 /**
  * @brief Deallocate cJSON result data.

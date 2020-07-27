@@ -35,6 +35,10 @@ public:
         {
             return std::make_unique<SetMaxRowsAction>();
         }
+        else if (0 == actionCode.compare("dbsync_get_deleted_rows"))
+        {
+            return std::make_unique<GetDeletedRowsAction>();
+        }
         else
         {
             throw std::runtime_error { "Invalid action: " + actionCode };

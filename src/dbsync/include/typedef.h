@@ -62,7 +62,20 @@ typedef void* TXN_HANDLE;
  *
  * @details Callback called for each obtained result, after evaluating changes between two snapshots.
  */
-typedef void((*result_callback_t)(ReturnTypeCallback result_type, const cJSON* result_json));
+typedef void((*result_callback_t)(ReturnTypeCallback result_type, const cJSON* result_json, void* user_data));
+
+/** @struct CallbackData
+ *  This struct contain the result callback will be called for each result
+ *  and user data space returned in each callback call.
+ *  The instance of this structure lives in the library's consumer ecosystem.
+ */
+typedef struct 
+{
+    /*@{*/
+    result_callback_t callback;     /**< Result callback. */
+    void* user_data;                /**< User data space returned in each callback. */
+    /*@}*/
+} CallbackData, *callback_data_t;
 
 /**
  * @brief Callback function for user defined logging.
