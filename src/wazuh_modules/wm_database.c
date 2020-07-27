@@ -34,7 +34,6 @@ int inotify_fd;
 
 #ifndef LOCAL
 int wd_agents = -2;
-int wd_agentinfo = -2;
 int wd_groups = -2;
 int wd_shared_groups = -2;
 #endif // !LOCAL
@@ -86,7 +85,6 @@ static void wm_sync_multi_groups(const char *dirname);
 
 #endif // LOCAL
 
-static int wm_sync_agentinfo(int id_agent, const char *path);
 static int wm_sync_agent_group(int id_agent, const char *fname);
 static int wm_sync_shared_group(const char *fname);
 static void wm_scan_directory(const char *dirname);
@@ -176,7 +174,6 @@ void* wm_database_main(wm_database *data) {
 #ifndef LOCAL
             if (data->sync_agents) {
                 wm_check_agents();
-                wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
                 wm_scan_directory(DEFAULTDIR GROUPS_DIR);
                 wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
             }
@@ -482,203 +479,6 @@ void wm_sync_multi_groups(const char *dirname) {
 
 #endif // LOCAL
 
-int wm_sync_agentinfo(int id_agent, const char *path) {
-    char header[OS_MAXSTR];
-    char files[OS_MAXSTR];
-    char file[OS_MAXSTR];
-    char *os = NULL;
-    char *version = NULL;
-    char *os_name = NULL;
-    char *os_major = NULL;
-    char *os_minor = NULL;
-    char *os_build = NULL;
-    char *os_version = NULL;
-    char *os_codename = NULL;
-    char *os_platform = NULL;
-    char *os_arch = NULL;
-    char *config_sum = NULL;
-    char *merged_sum = NULL;
-    char manager_host[512] = "";
-    char node_name[512] = "";
-    char agent_ip[16] = "";
-    char *end;
-    char *end_manager;
-    char *end_node;
-    char *end_ip;
-    char *end_line;
-    FILE *fp;
-    int result;
-    clock_t clock0 = clock();
-    regmatch_t match[2];
-    int match_size;
-
-    strncpy(node_name, "unknown", sizeof(node_name) - 1);
-
-    if (!(fp = fopen(path, "r"))) {
-        mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, path, errno, strerror(errno));
-        return -1;
-    }
-
-    if (os = fgets(header, OS_MAXSTR, fp), !os) {
-        mtdebug1(WM_DATABASE_LOGTAG, "Empty file '%s'. Agent is pending.", path);
-    } else {
-
-        if (end_line = strstr(os, "\n"), end_line){
-            *end_line = '\0';
-        } else {
-            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s' (incomplete). Returning.", path);
-            fclose(fp);
-            return -1;
-        }
-
-        if (config_sum = strstr(os, " / "), config_sum){
-            *config_sum = '\0';
-            config_sum += 3;
-        }
-
-        if (version = strstr(os, " - "), version){
-            *version = '\0';
-            version += 3;
-        } else {
-            mterror(WM_DATABASE_LOGTAG, "Corrupt file '%s'.", path);
-            fclose(fp);
-            return -1;
-        }
-
-        // [Ver: os_major.os_minor.os_build]
-        if (os_version = strstr(os, " [Ver: "), os_version){
-            *os_version = '\0';
-            os_version += 7;
-            os_name = os;
-            *(os_version + strlen(os_version) - 1) = '\0';
-
-            // Get os_major
-
-            if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                os_major = malloc(match_size +1 );
-                snprintf (os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
-            }
-
-            // Get os_minor
-
-            if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                os_minor = malloc(match_size +1);
-                snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
-            }
-
-            // Get os_build
-
-            if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                os_build = malloc(match_size +1);
-                snprintf(os_build, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
-            }
-
-            os_platform = "windows";
-        }
-        else {
-            if (os_name = strstr(os, " ["), os_name){
-                *os_name = '\0';
-                os_name += 2;
-                if (os_version = strstr(os_name, ": "), os_version){
-                    *os_version = '\0';
-                    os_version += 2;
-                    *(os_version + strlen(os_version) - 1) = '\0';
-
-                    // os_major.os_minor (os_codename)
-                    if (os_codename = strstr(os_version, " ("), os_codename){
-                        *os_codename = '\0';
-                        os_codename += 2;
-                        *(os_codename + strlen(os_codename) - 1) = '\0';
-                    }
-
-                    // Get os_major
-                    if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
-                        match_size = match[1].rm_eo - match[1].rm_so;
-                        os_major = malloc(match_size +1);
-                        snprintf(os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
-                    }
-
-                    // Get os_minor
-                    if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
-                        match_size = match[1].rm_eo - match[1].rm_so;
-                        os_minor = malloc(match_size +1);
-                        snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
-                    }
-
-                } else
-                    *(os_name + strlen(os_name) - 1) = '\0';
-
-                // os_name|os_platform
-                if (os_platform = strstr(os_name, "|"), os_platform){
-                    *os_platform = '\0';
-                    os_platform ++;
-                }
-            }
-            os_arch = get_os_arch(os);
-        }
-
-        // Search for merged.mg sum
-
-        while (end = NULL, merged_sum = fgets(files, OS_MAXSTR, fp), merged_sum) {
-            if (*merged_sum != '\"' && *merged_sum != '!' && (end = strchr(merged_sum, ' '), end)) {
-                *end = '\0';
-
-                if (strcmp(end + 1, SHAREDCFG_FILENAME "\n") == 0) {
-                    break;
-                }
-            }
-
-            merged_sum = NULL;
-        }
-
-        // Search for manager hostname connected to the agent and the node name of the cluster
-
-        const char * AGENT_IP = "#\"_agent_ip\":";
-        const char * MANAGER_HOST = "#\"_manager_hostname\":";
-        const char * NODE_NAME = "#\"_node_name\":";
-
-        while (fgets(file, OS_MAXSTR, fp)) {
-            if (!strncmp(file, AGENT_IP, strlen(AGENT_IP))) {
-                strncpy(agent_ip, file + strlen(AGENT_IP), sizeof(agent_ip) - 1);
-                agent_ip[sizeof(agent_ip) - 1] = '\0';
-
-                if (end_ip = strchr(agent_ip, '\n'), end_ip){
-                    *end_ip = '\0';
-                }
-            }
-            if (!strncmp(file, MANAGER_HOST, strlen(MANAGER_HOST))) {
-                strncpy(manager_host, file + strlen(MANAGER_HOST), sizeof(manager_host) - 1);
-                manager_host[sizeof(manager_host) - 1] = '\0';
-
-                if (end_manager = strchr(manager_host, '\n'), end_manager){
-                    *end_manager = '\0';
-                }
-            }
-            if (!strncmp(file, NODE_NAME, strlen(NODE_NAME))) {
-                strncpy(node_name, file + strlen(NODE_NAME), sizeof(node_name) - 1);
-                node_name[sizeof(node_name) - 1] = '\0';
-
-                if (end_node = strchr(node_name, '\n'), end_node){
-                    *end_node = '\0';
-                }
-            }
-        }
-    }
-
-    result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, os_arch, version, config_sum, merged_sum, manager_host, node_name, agent_ip[0] != '\0' ? agent_ip : NULL);
-    mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agentinfo(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
-
-    free(os_major);
-    free(os_arch);
-    free(os_minor);
-    free(os_build);
-    fclose(fp);
-    return result;
-}
-
 int wm_sync_agent_group(int id_agent, const char *fname) {
     int result = 0;
     char *group;
@@ -770,9 +570,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         return -1;
     }
 
-    if (!strcmp(dirname, DEFAULTDIR AGENTINFO_DIR))
-        type = WDB_AGENTINFO;
-    else if (!strcmp(dirname, DEFAULTDIR SYSCHECK_DIR)) {
+    if (!strcmp(dirname, DEFAULTDIR SYSCHECK_DIR)) {
         type = WDB_SYSCHECK;
 
         if (!strcmp(fname, "syscheck")) {
@@ -944,10 +742,6 @@ int wm_sync_file(const char *dirname, const char *fname) {
             return -1;
         }
 
-        break;
-
-    case WDB_AGENTINFO:
-        result = wm_sync_agentinfo(id_agent, path) < 0 || wdb_update_agent_keepalive(id_agent, buffer.st_mtime) < 0 ? -1 : 0;
         break;
 
     case WDB_GROUPS:
@@ -1163,15 +957,8 @@ int wm_extract_agent(const char *fname, char *name, char *addr, int *registry) {
         return 1;
 
     default:
-        // agent-info files
-
-        if (!(c = strrchr(fname, '-')))
-            return -1;
-
-        z_name = c - fname;
-        _name = fname;
-        _addr = c + 1;
-        z_addr = strlen(_addr);
+        // Ignore the file
+        return 1;
     }
 
     memcpy(name, _name, z_name);
@@ -1322,7 +1109,7 @@ void wm_inotify_setup(wm_database * data) {
     // Run thread
     w_create_thread(wm_inotify_start, NULL);
 
-    // First synchronization and add watch for client.keys, Agent info, Syscheck and Rootcheck directories
+    // First synchronization and add watch for client.keys, Syscheck and Rootcheck directories
 
 #ifndef LOCAL
 
@@ -1334,11 +1121,6 @@ void wm_inotify_setup(wm_database * data) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch client.keys file: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_agents='%d'", wd_agents);
-
-        if ((wd_agentinfo = inotify_add_watch(inotify_fd, DEFAULTDIR AGENTINFO_DIR, IN_CLOSE_WRITE | IN_ATTRIB | IN_MOVED_TO)) < 0)
-            mterror(WM_DATABASE_LOGTAG, "Couldn't watch the agent info directory: %s.", strerror(errno));
-
-        mtdebug2(WM_DATABASE_LOGTAG, "wd_agentinfo='%d'", wd_agentinfo);
 
         if ((wd_groups = inotify_add_watch(inotify_fd, DEFAULTDIR GROUPS_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the agent groups directory: %s.", strerror(errno));
@@ -1353,7 +1135,6 @@ void wm_inotify_setup(wm_database * data) {
         wm_sync_agents();
         wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
         wdb_agent_belongs_first_time();
-        wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
     }
 
 #endif
@@ -1426,8 +1207,6 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                     } else {
                         continue;
                     }
-                } else if (event->wd == wd_agentinfo) {
-                    dirname = DEFAULTDIR AGENTINFO_DIR;
                 } else if (event->wd == wd_groups) {
                     dirname = DEFAULTDIR GROUPS_DIR;
                 } else if (event->wd == wd_shared_groups) {
