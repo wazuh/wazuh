@@ -98,6 +98,7 @@ public:
     }
     {}
 };
+
 class SQLiteDBEngine final : public DbSync::IDbEngine 
 {
     public:
@@ -234,11 +235,11 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                         const std::vector<std::string>& primaryKeyList,
                         const std::vector<Row>& rowKeysValue);
 
-        void getFieldValueFromTuple(const Field &value,
+        void getFieldValueFromTuple(const Field& value,
                                     std::string& resultValue,
                                     const bool quotationMarks = false);
 
-        void getFieldValueFromTuple(const Field &value,
+        void getFieldValueFromTuple(const Field& value,
                                     nlohmann::json& object);
 
         SQLiteDBEngine(const SQLiteDBEngine&) = delete;

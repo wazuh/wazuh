@@ -201,7 +201,7 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
         {
             const auto& tableFields { m_tableFields[table] };
             auto const& stmt { getStatement(getSelectAllQuery(table, tableFields)) };
-            
+
             while (SQLITE_ROW == stmt->step())
             {
                 Row registerFields;
@@ -216,7 +216,7 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
                                  registerFields);
                     }
                 }
-                
+
                 nlohmann::json object {};
                 for (const auto& value : registerFields)
                 {
@@ -231,7 +231,6 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
         }
     }
 }
-
 
 ///
 /// Private functions section
@@ -808,26 +807,24 @@ bool SQLiteDBEngine::getRowDiff(const std::string& table,
                 for (const auto& value : registryFields)
                 {
                     nlohmann::json object;
-                    if(getFieldValueFromTuple(value, object))
+                    getFieldValueFromTuple(value, object);
+                    const auto& it
                     {
-                        const auto& it
+                        data.find(value.first)
+                    };
+                    if (data.end() != it)
+                    {
+                        if(*it != object[value.first])
                         {
-                            data.find(value.first)
-                        };
-                        if (data.end() != it)
-                        {
-                            if(*it != object[value.first])
-                            {
-                                // Diff found
-                                isModified = true;
-                                jsResult.push_back({{value.first, *it}});    
-                            }
+                            // Diff found
+                            isModified = true;
+                            jsResult.push_back({{value.first, *it}});    
                         }
                     }
                 }
             }
         }
-        if(!isModified)
+        if(isModified)
         {
             jsResult.clear();
         }
@@ -1005,7 +1002,6 @@ std::string SQLiteDBEngine::buildUpdateDataSqlQuery(const std::string& table,
     sql.append(" SET ");
     sql.append(field.first);
     sql.append("=");
- 
     getFieldValueFromTuple(field, sql, true);
     sql.append(" WHERE ");
     if (0 != primaryKeyList.size())
@@ -1236,7 +1232,7 @@ void SQLiteDBEngine::getFieldValueFromTuple(const Field& value,
     }
     else
     {
-        throw DATATYPE_NOT_IMPLEMENTED;
+        throw dbengine_error { DATATYPE_NOT_IMPLEMENTED };
     }
 }
 
@@ -1274,11 +1270,9 @@ void SQLiteDBEngine::getFieldValueFromTuple(const Field& value,
     }
     else
     {
-        throw DATATYPE_NOT_IMPLEMENTED;
+        throw dbengine_error { DATATYPE_NOT_IMPLEMENTED };
     }
 }
-
-
 
 std::unique_ptr<SQLite::IStatement>const& SQLiteDBEngine::getStatement(const std::string& sql) 
 {
@@ -1299,7 +1293,7 @@ std::string SQLiteDBEngine::getSelectAllQuery(const std::string& table,
                                               const TableColumns& tableFields) const
 {
     std::string retVal { "SELECT " };
-    
+
     if (!tableFields.empty() && !table.empty())
     {
         for(const auto& field : tableFields)
@@ -1309,7 +1303,7 @@ std::string SQLiteDBEngine::getSelectAllQuery(const std::string& table,
                 retVal.append(std::get<TableHeader::Name>(field));
                 retVal.append(",");
             }
-            
+
         }
         retVal = retVal.substr(0, retVal.size()-1);
         retVal.append(" FROM ");
@@ -1320,8 +1314,8 @@ std::string SQLiteDBEngine::getSelectAllQuery(const std::string& table,
     }
     else 
     {
-        throw EMPTY_TABLE_METADATA;
+        throw dbengine_error { EMPTY_TABLE_METADATA };
     }
-    
+
     return retVal;
-}
+} 

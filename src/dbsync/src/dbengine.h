@@ -46,9 +46,6 @@ namespace DbSync
 
         virtual void returnRowsMarkedForDelete(const nlohmann::json& tableNames, 
                                                const DbSync::ResultCallback callback) = 0;
-
-        virtual ~IDbEngine() = default;
-
     protected:
         IDbEngine() = default;
     };
