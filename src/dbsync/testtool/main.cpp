@@ -72,7 +72,7 @@ int main(int argc, const char* argv[])
     }
     catch(const std::exception& ex)
     {
-        std::cerr << ex.what() << '\n';
+        std::cerr << ex.what() << std::endl;
         CmdLineArgs::showHelp();
     }        
 

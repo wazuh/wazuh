@@ -1,7 +1,7 @@
 /*
  * Wazuh DBSYNC
  * Copyright (C) 2015-2020, Wazuh Inc.
- * June 11, 2020.
+ * July 11, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -15,17 +15,27 @@
 
 constexpr auto DATABASE_TEMP {"TEMP.db"};
 
-void callback(const ReturnTypeCallback value, const cJSON* json) {
-  if (ReturnTypeCallback::DELETED == value) {
-    std::cout << "deleted event: " << std::endl;
-  } else if (ReturnTypeCallback::MODIFIED == value) {
-    std::cout << "modified event: " << std::endl;
-  } else if (ReturnTypeCallback::INSERTED == value) {
-    std::cout << "inserted event: " << std::endl;
-  }
-  char * result_json = cJSON_Print(json);
-  std::cout << result_json <<std::endl;
-  cJSON_free(result_json);
+struct CJsonDeleter final
+{
+    void operator()(char* json)
+    {
+        cJSON_free(json);
+    }
+};
+
+static void callback(const ReturnTypeCallback value, 
+                     const cJSON* json)
+{
+    if (ReturnTypeCallback::INSERTED == value)
+    {
+        std::cout << "inserted event: " << std::endl;
+    } 
+    else
+    {
+        std::cout << "modified event: " << std::endl;        
+    }
+    const std::unique_ptr<char, CJsonDeleter> jsonResult{ cJSON_Print(json) };
+    std::cout << jsonResult.get() << std::endl;
 }
 
 struct smartDeleterJson

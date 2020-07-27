@@ -75,9 +75,6 @@ using ColumnData =
 using TableColumns =
     std::vector<ColumnData>;
 
-using CallbackAction =
-    std::pair<ReturnTypeCallback, nlohmann::json>;
-
 using TableField =
     std::tuple<int32_t, std::string, int32_t, int64_t, uint64_t, double_t>;
 
@@ -158,12 +155,7 @@ class SQLiteDBEngine : public DbSync::IDbEngine
                                  const std::vector<std::string>& primaryKeyList,
                                  const DbSync::ResultCallback callback);
 
-        void insertSingleRow(const std::string& table,
-                             const TableColumns& tableFields,
-                             const nlohmann::json& jsData,
-                             std::vector<CallbackAction>& callbackList);
-
-        void getRowDiff(const std::string& table,
+        bool getRowDiff(const std::string& table,
                         const nlohmann::json& data,
                         nlohmann::json& jsResult);                              
 
