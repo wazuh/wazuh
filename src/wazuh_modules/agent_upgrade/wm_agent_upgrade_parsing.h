@@ -8,8 +8,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef WM_AGENT_PARSING_H
-#define WM_AGENT_PARSING_H
+#ifndef WM_AGENT_UPGRADE_PARSING_H
+#define WM_AGENT_UPGRADE_PARSING_H
 
 #include "wm_agent_upgrade.h"
 
@@ -25,7 +25,7 @@
  * @retval UPGRADE if is and upgrade command
  * @retval UPGRADE_RESULT if it is and upgrade_result command
  * */
-int wm_agent_parse_command(const char* buffer, cJSON** json_api, cJSON **params, cJSON **agents);
+int wm_agent_upgrade_parse_command(const char* buffer, cJSON** json_api, cJSON **params, cJSON **agents);
 
 /**
  * Parses a response message based on state 
@@ -36,7 +36,7 @@ int wm_agent_parse_command(const char* buffer, cJSON** json_api, cJSON **params,
  * @param status [OPTIONAL] status string
  * @return response json
  * */
-cJSON* wm_agent_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status);
+cJSON* wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status);
 
 /**
  * Parses a message to be sent to the request module
@@ -44,26 +44,36 @@ cJSON* wm_agent_parse_response_message(int error_id, const char* message, const 
  * @param agent_id agent id
  * @return json to be sent
  * */
-cJSON* wm_agent_parse_task_module_message(const char* command, const int agent_id);
+cJSON* wm_agent_upgrade_parse_task_module_message(wm_upgrade_command command, const int agent_id);
 
 /**
  * Parses upgrade command and returns an upgrade task from the information
- * Example: 
+ * Example:
  * WPK Repository
  * { 
- *      "version"   : "3.12",
- *      "use_http"  : "false",
+ *      "repository" : "wazuh.packages.com"
+ *      "version"    : "3.12",
+ *      "use_http"   : "false",
  *      "force_upgrade" : "0"
- * }
- * Custom WPK Package
- * { 
- *      "file_path" : "./wazuh_wpk"
- *      "installer" : "installer.sh"
  * }
  * @param params JSON where the task parameters are 
  * @param output message in case of error
  * @return upgrade task if there is no error, NULL otherwise
  * */
-wm_upgrade_task* wm_agent_parse_upgrade_command(const cJSON* params, char* output);
+wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char* output);
+
+/**
+ * Parses upgrade custom command and returns an upgrade task from the information
+ * Example:
+ * Custom WPK Package
+ * { 
+ *      "file_path" : "./wazuh_wpk"
+ *      "installer" : "installer.sh"
+ * }
+ * @param params JSON where the task parameters are
+ * @param output message in case of error
+ * @return upgrade task if there is no error, NULL otherwise
+ * */
+wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char* output);
 
 #endif

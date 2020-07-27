@@ -34,7 +34,8 @@ typedef enum _module_list {
 } module_list;
 
 typedef enum _command_list {
-    WM_TASK_UPGRADE = 0
+    WM_TASK_UPGRADE = 0,
+    WM_TASK_UPGRADE_CUSTOM
 } command_list;
 
 typedef enum _error_code {
