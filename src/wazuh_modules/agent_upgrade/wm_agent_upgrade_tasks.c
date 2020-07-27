@@ -175,8 +175,6 @@ cJSON* wm_agent_upgrade_create_agent_tasks(const cJSON *agents, void *task, wm_u
             cJSON_AddItemToArray(json_api, task_message);
             continue;
         }
-        
-        
 
         // Save task entry for agent
         int result = wm_agent_upgrade_create_task_entry(agent_id->valueint, agent_task);

@@ -55,7 +55,6 @@ int wm_agent_upgrade_validate_agent_version(int agent_id, void *task, wm_upgrade
     return return_code;
 }
 
-
 static int wm_agent_upgrade_validate_non_custom_version(char *agent_version, wm_upgrade_task *task){
     char *master_version = NULL;
     char *tmp_master_version = NULL;
@@ -72,8 +71,3 @@ static int wm_agent_upgrade_validate_non_custom_version(char *agent_version, wm_
     free(master_version);
     return return_code;
 }
-
-
-            
-
-        
