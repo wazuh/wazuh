@@ -638,14 +638,8 @@ int auth_close(int sock) {
 
 cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message) {
     cJSON * request = cJSON_CreateObject();
-    cJSON * arguments = cJSON_CreateObject();
-    
-    cJSON_AddItemToObject(request, "arguments", arguments);
-    cJSON_AddStringToObject(request, "function", "send_sync");
-
-    cJSON_AddStringToObject(arguments, "daemon_name", daemon_name);
-    cJSON_AddItemToObject(arguments, "message", message);
-    
+    cJSON_AddStringToObject(request, "daemon_name", daemon_name);
+    cJSON_AddItemToObject(request, "message", message);
     return request;
 }
 

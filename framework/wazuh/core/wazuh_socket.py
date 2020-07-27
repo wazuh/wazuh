@@ -227,7 +227,9 @@ class WazuhSocketJSON(WazuhAsyncSocket):
 
 
 daemons = {
-    "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4}}
+    "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4},
+    "task-manager": {"protocol" : "TCP", "path": common.TASKS_SOCKET, "header_format": "<I", "size": 4}
+}
 
 
 async def wazuh_sendasync(daemon_name, message=None):
