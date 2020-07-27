@@ -104,19 +104,29 @@ void wm_agent_upgrade_listen_messages(int sock, int timeout_sec) {
         }
 
         if (json_response) {
+            wm_upgrade_task *upgrade_task = NULL;
+            wm_upgrade_custom_task *upgrade_custom_task = NULL;
             cJSON *command_response = NULL;
             char* message = NULL;
             switch (parsing_retval)
             {
                 case WM_UPGRADE_UPGRADE:
-                    command_response = wm_agent_upgrade_process_upgrade_command(params, agents);
-                    message = cJSON_PrintUnformatted(command_response); 
-                    cJSON_Delete(command_response);
+                    upgrade_task = wm_agent_upgrade_parse_upgrade_command(params, &message);
+                    if (!message) {
+                        // Parameters of upgrade command are OK
+                        command_response = wm_agent_upgrade_process_upgrade_command(agents, upgrade_task);
+                        message = cJSON_PrintUnformatted(command_response); 
+                        cJSON_Delete(command_response);
+                    }
                     break;
                 case WM_UPGRADE_UPGRADE_CUSTOM:
-                    command_response = wm_agent_upgrade_process_upgrade_custom_command(params, agents);
-                    message = cJSON_PrintUnformatted(command_response);
-                    cJSON_Delete(command_response);
+                    upgrade_custom_task = wm_agent_upgrade_parse_upgrade_custom_command(params, &message);
+                    if (!message) {
+                        // Parameters of upgrade_custom command are OK
+                        command_response = wm_agent_upgrade_process_upgrade_custom_command(agents, upgrade_custom_task);
+                        message = cJSON_PrintUnformatted(command_response); 
+                        cJSON_Delete(command_response);
+                    }
                     break;
                 case WM_UPGRADE_UPGRADE_RESULT:
                     command_response = wm_agent_upgrade_process_upgrade_result_command(agents);
@@ -124,6 +134,7 @@ void wm_agent_upgrade_listen_messages(int sock, int timeout_sec) {
                     cJSON_Delete(command_response);
                     break;
                 default:
+                    // Parsing error
                     message = cJSON_PrintUnformatted(json_response);
                     break;
             }
