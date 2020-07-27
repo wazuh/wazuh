@@ -24,6 +24,7 @@ constexpr auto DATATYPE_NOT_IMPLEMENTED { std::make_pair(8, "Datatype not implem
 constexpr auto SQL_STMT_ERROR           { std::make_pair(9, "Invalid SQL statement.") };
 constexpr auto INVALID_PK_DATA          { std::make_pair(10, "Primary key not found.") };
 constexpr auto INVALID_COLUMN_TYPE      { std::make_pair(11, "Invalid column field type.") };
+constexpr auto INVALID_DATA_BIND        { std::make_pair(12, "Invalid data to bind.") };
 
 
 namespace DbSync
