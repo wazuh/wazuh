@@ -218,7 +218,7 @@ int main(int argc, char **argv)
             /* Initialize the decoders list */
             OS_CreateOSDecoderList();
 
-            /* Error and wargning msg */
+            /* Error and warning msg */
             char* msg = NULL;
 
             if (!Config.decoders) {
@@ -236,7 +236,7 @@ int main(int argc, char **argv)
                     if (!ReadDecodeXML(*decodersfiles, &msg)) {
                         if (msg) {
                             // [wazuh-logtest] This will be sent through the socket
-                            printf("%s", msg);
+                            minfo("Call ReadDecodeXML result in the following errors/warning:\n %s", msg);
                             os_free(msg);
                         }
                         merror_exit(CONFIG_ERROR, *decodersfiles);
@@ -251,7 +251,7 @@ int main(int argc, char **argv)
                 c = ReadDecodeXML(XML_LDECODER, &msg);
                 if (msg) {
                     // [wazuh-logtest] This will be sent through the socket
-                    printf("%s", msg);
+                    minfo("Call ReadDecodeXML result in the following errors/warning:\n %s", msg);
                     os_free(msg);
                 }
                 if (!c) {
@@ -273,7 +273,7 @@ int main(int argc, char **argv)
                     }
                     if (!ReadDecodeXML(*decodersfiles, &msg)) {
                         if (msg) {
-                            printf("%s", msg);
+                            minfo("Call ReadDecodeXML result in the following errors/warning:\n %s", msg);
                             os_free(msg);
                         }
                         merror_exit(CONFIG_ERROR, *decodersfiles);
@@ -288,7 +288,7 @@ int main(int argc, char **argv)
             SetDecodeXML(&msg);
             if (msg) {
                 // [wazuh-logtest] This will be sent through the socket
-                printf("%s", msg);
+                minfo("Call SetDecodeXML result in the following errors/warning:\n %s", msg);
                 os_free(msg);
             }
         }
@@ -325,10 +325,9 @@ int main(int argc, char **argv)
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     mdebug1("Reading rules file: '%s'", *rulesfiles);
-                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, 
-                                &os_analysisd_cdblists, &msg) < 0) {
+                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists, &msg) < 0) {
                         if (msg) {
-                            printf("%s", msg);
+                            minfo("Call Rules_OP_ReadRules result in the following errors/warning:\n %s", msg);
                             os_free(msg);
                         }
                         merror_exit(RULES_ERROR, *rulesfiles);

@@ -114,10 +114,10 @@ static int _AddtoRule(int sid, int level, int none, const char *group,
 }
 
 /* Add a child */
-int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node)
+int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, char** msg)
 {
     if (!read_rule) {
-        merror("rules_list: Passing a NULL rule. Inconsistent state");
+        smerror(msg, "rules_list: Passing a NULL rule. Inconsistent state");
         return (1);
     }
 
@@ -138,14 +138,14 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node)
                 if (val == 0) {
                     rule_id = atoi(sid);
                     if (!_AddtoRule(rule_id, 0, 0, NULL, *r_node, read_rule)) {
-                        merror_exit("rules_list: Signature ID '%d' not "
-                                  "found. Invalid 'if_sid'.", rule_id);
+                        smerror(msg, "rules_list: Signature ID '%d' not found. Invalid 'if_sid'.", rule_id);
+                        return -1;
                     }
                     val = 1;
                 }
             } else {
-                merror_exit("rules_list: Signature ID must be an integer. "
-                          "Exiting...");
+                smerror(msg, "rules_list: Signature ID must be an integer. Exiting...");
+                return -1;
             }
         } while (*sid++ != '\0');
     }
@@ -156,31 +156,31 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node)
 
         ilevel = atoi(read_rule->if_level);
         if (ilevel == 0) {
-            merror("Invalid level (atoi)");
+            smerror(msg, "Invalid level (atoi)");
             return (1);
         }
 
         ilevel *= 100;
 
         if (!_AddtoRule(0, ilevel, 0, NULL, *r_node, read_rule)) {
-            merror_exit("rules_list: Level ID '%d' not "
-                      "found. Invalid 'if_level'.", ilevel);
+            smerror(msg, "rules_list: Level ID '%d' not found. Invalid 'if_level'.", ilevel);
+            return -1;
         }
     }
 
     /* Adding for if_group */
     else if (read_rule->if_group) {
         if (!_AddtoRule(0, 0, 0, read_rule->if_group, *r_node, read_rule)) {
-            merror_exit("rules_list: Group '%s' not "
-                      "found. Invalid 'if_group'.", read_rule->if_group);
+            smerror(msg, "rules_list: Group '%s' not found. Invalid 'if_group'.", read_rule->if_group);
+            return -1;
         }
     }
 
     /* Just add based on the category */
     else {
         if (!_AddtoRule(0, 0, 0, NULL, *r_node, read_rule)) {
-            merror_exit("rules_list: Category '%d' not "
-                      "found. Invalid 'category'.", read_rule->category);
+            smerror(msg, "rules_list: Category '%d' not found. Invalid 'category'.", read_rule->category);
+            return -1;
         }
     }
 

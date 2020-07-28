@@ -1153,7 +1153,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             char *err_msg = NULL;
             syscheck->scan_day = OS_IsValidDay(node[i]->content, &err_msg);
             if (!syscheck->scan_day) {
-                if(err_msg){
+                if (err_msg) {
                     merror(INVALID_DAY, node[i]->content);
                     os_free(err_msg);
                 }

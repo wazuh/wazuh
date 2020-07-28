@@ -110,7 +110,7 @@ void SecurityConfigurationAssessmentInit(void);
  * @return  1 Decoder was added to the list.
  *          0 in case of error.
  *         -2 File XML_LDECODER (localdecoderfile) not found or can't get root element of xmlfile.
- * @note If *msg==null, memory are allocate, otherwise memory are reallocate.
+ * @note If *msg==null, memory are allocate, otherwise memory are reallocate and concatenate the original content
 */
 int ReadDecodeXML(const char *file, char **msg);
 

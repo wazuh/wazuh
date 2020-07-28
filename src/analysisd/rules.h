@@ -233,8 +233,15 @@ void OS_CreateRuleList(void);
 /* Add rule information to the list */
 int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node);
 
-/* Add rule information as a child */
-int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node);
+/**
+ * @brief  Add rule information as a child.
+ * @param[in]  read_rule rule information.
+ * @param[in]  r_node node to add as a child rule information.
+ * @param[out] msg Store error as result of call.
+ * @return int -1 for critical errors, 1 for errors, 0 otherwise.
+ * @note If *msg==null, memory are allocate, otherwise memory are reallocate and error are concatenate.
+ */
+int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, char** msg);
 
 /* Add an overwrite rule */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid);
@@ -251,7 +258,7 @@ RuleNode *OS_GetFirstRule(void);
 void Rules_OP_CreateRules(void);
 
 /**
- * @brief Read the log rules of `rulefile` and add the `ruleNode` if the bdb list (l_node) allowed
+ * @brief Read the log rules of `rulefile` and add the `ruleNode` if the CDB list (l_node) allowed
  * @param[in]  rulefile path of the rule configuration xml file.
  * @param[in]  r_node Rules node to add
  * @param[in]  l_node CDB list

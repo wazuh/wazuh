@@ -354,11 +354,9 @@ static char* _smsg(int level, const char * file, int line, const char * func, co
       "CRITICAL",
     };
 
-    if (isDebug())
-    {
+    if (isDebug()) {
         (void) snprintf(str, OS_BUFFER_SIZE, "%s:%d at %s(): %s: ", file, line, func, strlevel[level]);
-    } else
-    {
+    } else {
         (void) snprintf(str, OS_BUFFER_SIZE, "%s: ", strlevel[level]);
     }
     

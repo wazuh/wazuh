@@ -1667,7 +1667,9 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     goto cleanup;
                 }
             } else {
-                OS_AddChild(config_ruleinfo, r_node);
+                if (OS_AddChild(config_ruleinfo, r_node, &tmp_msg) == -1) {
+                    goto cleanup;
+                }
             }
 
             /* Clean what we do not need */
@@ -1678,8 +1680,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
             /* Set the event_search pointer */
             if (config_ruleinfo->if_matched_sid) {
-                config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
-                    Search_LastSids;
+                config_ruleinfo->event_search = (void *(*)(void *, void *, void *, void *)) Search_LastSids;
 
                 /* Mark rules that match this id */
                 OS_MarkID(NULL, config_ruleinfo);

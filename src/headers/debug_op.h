@@ -74,13 +74,13 @@ void _mterror_exit(const char *tag, const char * file, int line, const char * fu
  * @brief Generate a new error string and concatenate to *msg
  * @details If in debug mode, then append line number,
  * function and file from where the call was made to msg
- * @param [in] file file name from where the function was called. the __FILE__ macro should be used
- * @param [in] line line number from where the function was called. the __LINE__ macro should be used
- * @param [in] func function name from where the function was called. the __func__ macro should be used
- * @param [out] msg Destination of error string, if *msg==null, memory are allocate, otherwise
+ * @param[in] file The file name which calls the function. Should use __FILE__ macro.
+ * @param[in] line line number from where the function was called. Should use __LINE__ macro.
+ * @param[in] func function name from where the function was called. Should use __func__ macro.
+ * @param[out] msg Destination of error string, if *msg==null, memory are allocate, otherwise
  *                  memory are reallocate and error messages are concatenated to the *msg string.
- * @param [in] format includes format specifiers (subsequences beginning with %) for printf
- * @param [in] ...  additional arguments following format are formatted and inserted in the
+ * @param[in] format includes format specifiers (subsequences beginning with %) for printf
+ * @param[in] ...  additional arguments following format are formatted and inserted in the
  *                  resulting string replacing their respective specifiers.
  */
 void _serror_join(const char * file, int line, const char * func, char** msg, const char *format, ...)  __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull (1, 3, 5)));
@@ -89,13 +89,13 @@ void _serror_join(const char * file, int line, const char * func, char** msg, co
  * @brief Generate a new warning string and concatenate to *msg
  * @details If in debug mode, then append line number,
  * function and file from where the call was made to msg
- * @param [in] file file name from where the function was called. the __FILE__ macro should be used
- * @param [in] line line number from where the function was called. the __LINE__ macro should be used
- * @param [in] func function name from where the function was called. the __func__ macro should be used
- * @param [out] msg Destination of error string, if *msg==null, memory are allocate, otherwise
+ * @param[in] file file name from where the function was called. the __FILE__ macro should be used
+ * @param[in] line line number from where the function was called. the __LINE__ macro should be used
+ * @param[in] func function name from where the function was called. the __func__ macro should be used
+ * @param[out] msg Destination of error string, if *msg==null, memory are allocate, otherwise
  *                  memory are reallocate and error messages are concatenated to the *msg string.
- * @param [in] format includes format specifiers (subsequences beginning with %) for printf
- * @param [in] ...  additional arguments following format are formatted and inserted in the
+ * @param[in] format includes format specifiers (subsequences beginning with %) for printf
+ * @param[in] ...  additional arguments following format are formatted and inserted in the
  *                  resulting string replacing their respective specifiers.
  */
 void _swarn_join(const char * file, int line, const char * func, char** msg, const char *format, ...)  __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull (1, 3, 5)));
