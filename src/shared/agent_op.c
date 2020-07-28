@@ -29,8 +29,8 @@ static struct {
 static int w_send_clustered_message(const char* command, const char* payload, char* response);
 #endif
 
-//Alloc and create send_sync command payload
-static cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message);
+//Alloc and create sendsync command payload
+static cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 
 //Alloc and create an agent addition command payload
 static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id);
@@ -644,15 +644,11 @@ int auth_close(int sock) {
     return (sock >= 0) ? close(sock) : 0;
 }
 
-static cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message) {
+static cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message) {
     cJSON * request = cJSON_CreateObject();
-    cJSON * arguments = cJSON_CreateObject();
-    
-    cJSON_AddItemToObject(request, "arguments", arguments);
-    cJSON_AddStringToObject(request, "function", "send_sync");
 
-    cJSON_AddStringToObject(arguments, "daemon_name", daemon_name);
-    cJSON_AddItemToObject(arguments, "message", message);
+    cJSON_AddStringToObject(request, "daemon_name", daemon_name);
+    cJSON_AddItemToObject(request, "message", message);
     
     return request;
 }
@@ -863,6 +859,7 @@ int w_request_agent_add_local(int sock, char *id, const char *name, const char *
 
     return result; 
 }
+
 #ifndef WIN32
 static int w_send_clustered_message(const char* command, const char* payload, char* response) {
     char sockname[PATH_MAX + 1] = {0};
@@ -880,6 +877,9 @@ static int w_send_clustered_message(const char* command, const char* payload, ch
         if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0) {
             if(response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
                 switch (response_length) {
+                case -2:
+                    merror("Cluster error detected");
+                    break;
                 case -1:
                     merror("OS_RecvSecureClusterTCP(): %s", strerror(errno));  
                     break;                 
@@ -918,11 +918,11 @@ int w_request_agent_add_clustered(char *err_response, const char *name, const ch
     char new_key[KEYSIZE+1] = { '\0' };
 
     cJSON* message = w_create_agent_add_payload(name, ip, groups, *key, force, agent_id);  
-    cJSON* payload = w_create_send_sync_payload("authd", message); 
+    cJSON* payload = w_create_sendsync_payload("authd", message); 
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload); 
     
-    if(result = w_send_clustered_message("send_sync", output, response), result == 0) {
+    if(result = w_send_clustered_message("sendsync", output, response), result == 0) {
         result = w_parse_agent_add_response(response, err_response, new_id, new_key, FALSE, FALSE);
     }
     else if(err_response) { 
@@ -945,11 +945,11 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
     char response[OS_MAXSTR + 1];
 
     cJSON* message = w_create_agent_remove_payload(agent_id, purge);  
-    cJSON* payload = w_create_send_sync_payload("authd", message); 
+    cJSON* payload = w_create_sendsync_payload("authd", message); 
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload); 
 
-    if(result = w_send_clustered_message("send_sync", output, response), result == 0) {
+    if(result = w_send_clustered_message("sendsync", output, response), result == 0) {
         result = w_parse_agent_remove_response(response, err_response, FALSE, FALSE);
     }
     else if(err_response) { 
