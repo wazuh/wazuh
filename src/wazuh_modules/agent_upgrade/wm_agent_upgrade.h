@@ -32,7 +32,8 @@ typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_VERSION_SAME_MANAGER,
     WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT,
     WM_UPGRADE_NEW_VERSION_GREATER_MASTER,
-    WM_UPGRADE_NOT_AGENT_IN_DB
+    WM_UPGRADE_NOT_AGENT_IN_DB,
+    WM_UPGRADE_AGENT_IS_NOT_ACTIVE
 } wm_upgrade_error_code;
 
 typedef enum _wm_upgrade_state {
@@ -124,5 +125,7 @@ int wm_agent_upgrade_validate_id(int agent_id);
  *                                      WM_UPGRADE_NEW_VERSION_GREATER_MASTER)
  * */
 int wm_agent_upgrade_validate_agent_version(int agent_id, void *task, wm_upgrade_command command);
+
+int wm_agent_upgrade_validate_status(int agent_id);
 
 #endif

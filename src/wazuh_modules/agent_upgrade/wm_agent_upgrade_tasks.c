@@ -151,27 +151,23 @@ cJSON* wm_agent_upgrade_create_agent_tasks(const cJSON *agents, void *task, wm_u
         agent_task->command = command;
         agent_task->task = task;
 
-        if (wm_agent_upgrade_validate_id(agent_id->valueint) < 0){
-            cJSON *task_message = wm_agent_upgrade_parse_response_message(WM_UPGRADE_NOT_AGENT_IN_DB, upgrade_error_codes[WM_UPGRADE_NOT_AGENT_IN_DB], &(agent_id->valueint), NULL, NULL);
+        int validate_result = wm_agent_upgrade_validate_id(agent_id->valueint);
+        if ( validate_result != WM_UPGRADE_SUCCESS){
+            cJSON *task_message = wm_agent_upgrade_parse_response_message(validate_result, upgrade_error_codes[validate_result], &(agent_id->valueint), NULL, NULL);
+            cJSON_AddItemToArray(json_api, task_message);
+            continue;
+        }
+
+        validate_result = wm_agent_upgrade_validate_status(agent_id->valueint);
+        if ( validate_result != WM_UPGRADE_SUCCESS){
+            cJSON *task_message = wm_agent_upgrade_parse_response_message(validate_result, upgrade_error_codes[validate_result], &(agent_id->valueint), NULL, NULL);
             cJSON_AddItemToArray(json_api, task_message);
             continue;
         }
         
-        int validate_ver_result = wm_agent_upgrade_validate_agent_version(agent_id->valueint, task, command);
-        if ( validate_ver_result == WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED){
-            cJSON *task_message = wm_agent_upgrade_parse_response_message(WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED, upgrade_error_codes[WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED], &(agent_id->valueint), NULL, NULL);
-            cJSON_AddItemToArray(json_api, task_message);
-            continue;
-        }else if ( validate_ver_result == WM_UPGRADE_NEW_VERSION_GREATER_MASTER){
-            cJSON *task_message = wm_agent_upgrade_parse_response_message(WM_UPGRADE_NEW_VERSION_GREATER_MASTER, upgrade_error_codes[WM_UPGRADE_NEW_VERSION_GREATER_MASTER], &(agent_id->valueint), NULL, NULL);
-            cJSON_AddItemToArray(json_api, task_message);
-            continue;
-        }else if ( validate_ver_result == WM_UPGRADE_VERSION_SAME_MANAGER){
-            cJSON *task_message = wm_agent_upgrade_parse_response_message(WM_UPGRADE_VERSION_SAME_MANAGER, upgrade_error_codes[WM_UPGRADE_VERSION_SAME_MANAGER], &(agent_id->valueint), NULL, NULL);
-            cJSON_AddItemToArray(json_api, task_message);
-            continue;
-        }else if ( validate_ver_result == WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT){
-            cJSON *task_message = wm_agent_upgrade_parse_response_message(WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT, upgrade_error_codes[WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT], &(agent_id->valueint), NULL, NULL);
+        validate_result = wm_agent_upgrade_validate_agent_version(agent_id->valueint, task, command);
+        if ( validate_result != WM_UPGRADE_SUCCESS){
+            cJSON *task_message = wm_agent_upgrade_parse_response_message(validate_result, upgrade_error_codes[validate_result], &(agent_id->valueint), NULL, NULL);
             cJSON_AddItemToArray(json_api, task_message);
             continue;
         }

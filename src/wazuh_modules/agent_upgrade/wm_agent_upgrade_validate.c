@@ -21,12 +21,23 @@ static int wm_agent_upgrade_validate_non_custom_version(char *agent_version, wm_
  * */
 int wm_agent_upgrade_validate_id(int agent_id){
     char *name = NULL;
+    int return_code = WM_UPGRADE_SUCCESS;
     if (name = wdb_agent_name(agent_id), name) {
         // Agent found: OK
         free(name);
-        return 0;
+    } else {
+        return_code = WM_UPGRADE_NOT_AGENT_IN_DB;
     }
-    return -1;
+    return return_code;
+}
+
+int wm_agent_upgrade_validate_status(int agent_id){
+    int return_code = WM_UPGRADE_SUCCESS;
+    int last_keepalive = wdb_agent_last_keepalive(agent_id);
+    if (last_keepalive < 0 || last_keepalive < (time(0) - DISCON_TIME)) {
+        return_code = WM_UPGRADE_AGENT_IS_NOT_ACTIVE;
+    }
+    return return_code;
 }
 
 /**
@@ -40,7 +51,7 @@ int wm_agent_upgrade_validate_id(int agent_id){
 int wm_agent_upgrade_validate_agent_version(int agent_id, void *task, wm_upgrade_command command){
     char *agent_version = NULL;
     char *tmp_agent_version = NULL;
-    int return_code = 0;
+    int return_code = WM_UPGRADE_SUCCESS;
     if (agent_version = wdb_agent_version(agent_id), agent_version) {
         tmp_agent_version = strchr(agent_version, 'v');
         
@@ -60,7 +71,7 @@ static int wm_agent_upgrade_validate_non_custom_version(char *agent_version, wm_
     char *tmp_master_version = NULL;
     master_version = wdb_agent_version(0);
     tmp_master_version = strchr(master_version, 'v');
-    int return_code = 0;
+    int return_code = WM_UPGRADE_SUCCESS;
     if (task->custom_version && strcmp(agent_version, task->custom_version) >= 0 && task->force_upgrade == false){
         return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
     }else if (task->custom_version && strcmp(task->custom_version, tmp_master_version) > 0 && task->force_upgrade == false){
