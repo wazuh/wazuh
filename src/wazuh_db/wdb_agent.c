@@ -127,8 +127,10 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
     }
 
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
     switch (result){
         case OS_SUCCESS:
+            result = 1;
             break;
         case OS_INVALID:
             mdebug1("GLobal DB Error in the response from socket");
@@ -143,7 +145,7 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
     return result;
 }
 
-/* Update agent's last keepalive time. It opens and closes the DB. Returns 1 or -1 on error. */
+/* Update agent's last keepalive time. It opens and closes the DB. Returns OS_SUCCESS or -1 on error. */
 int wdb_update_agent_keepalive(int id, long keepalive) {
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
@@ -153,7 +155,7 @@ int wdb_update_agent_keepalive(int id, long keepalive) {
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_KEEPALIVE], keepalive, id);
     
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-    
+
     switch (result){
         case OS_SUCCESS:
             break;
@@ -597,6 +599,7 @@ int wdb_set_agent_offset(int id_agent, int type, long offset) {
 
     switch (result){
         case OS_SUCCESS:
+            result = 1;
             break;
         case OS_INVALID:
             mdebug1("GLobal DB Error in the response from socket");
@@ -687,6 +690,7 @@ int wdb_set_agent_status(int id_agent, int status) {
 
     switch (result){
         case OS_SUCCESS:
+            result = 1;
             break;
         case OS_INVALID:
             mdebug1("GLobal DB Error in the response from socket");
@@ -697,6 +701,7 @@ int wdb_set_agent_status(int id_agent, int status) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
     }
+
     return result;
 }
 
@@ -715,6 +720,7 @@ int wdb_update_agent_group(int id, char *group) {
             if(wdb_update_agent_multi_group(id,group) < 0){
                 return OS_INVALID;
              }
+            result = 1;
             break;
         case OS_INVALID:
             mdebug1("GLobal DB Error in the response from socket");
@@ -871,6 +877,7 @@ int wdb_update_agent_belongs(int id_group, int id_agent) {
 
     switch (result){
         case OS_SUCCESS:
+            result = 1;
             break;
         case OS_INVALID:
             mdebug1("GLobal DB Error in the response from socket");
@@ -897,6 +904,7 @@ int wdb_delete_agent_belongs(int id_agent) {
  
     switch (result){
         case OS_SUCCESS:
+            result = 1;
             break;
         case OS_INVALID:
             mdebug1("GLobal DB Error in the response from socket");
