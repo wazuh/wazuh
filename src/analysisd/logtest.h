@@ -13,6 +13,32 @@
 #include "eventinfo.h"
 #include "../config/logtest-config.h"
 #include "../os_net/os_net.h"
+#include "../os_crypto/sha256/sha256_op.h"
+
+/* JSON REQUEST / RESPONSE fields names */
+#define W_LOGTEST_JSON_TOKEN            "token"   //< Token field name of json input/output
+#define W_LOGTEST_JSON_EVENT            "event"   //< Event field name of json input
+#define W_LOGTEST_JSON_LOGFORMAT   "log_format"   //< Log format field name of json input
+#define W_LOGTEST_JSON_LOCATION      "location"   //< Location field name of json input
+#define W_LOGTEST_JSON_ALERT            "alert"   //< Alert field name of json output (true/false)
+#define W_LOGTEST_JSON_MESSAGE        "message"   //< Message format field name of json output
+#define W_LOGTEST_JSON_CODE           "codemsg"   //< Code of message field name of json output (int)
+#define W_LOGTEST_JSON_OUTPUT          "output"   //< Output field name of json output
+
+#define W_LOGTEST_TOKEN_LENGH                 8   //< Lenght of token 
+
+/* Error messages */
+#define LOGTEST_ERROR_JSON_PARSE              "(0000) Error parsing JSON"
+#define LOGTEST_ERROR_JSON_PARSE_POS          "(0000) Error in position %i, ... %.20s ..."
+#define LOGTEST_ERROR_JSON_REQUIRED_SFIELD    "(0000)\"%s\" JSON field is required and must be a string"
+#define LOGTEST_ERROR_TOKEN_INVALID           "(0000) \"%s\" is not a valid token"
+#define LOGTEST_ERROR_RESPONSE                "(0000) Error seding response to client %s [%i] %s."
+
+/* Warning messages */
+#define LOGTEST_WARN_TOKEN_EXPIRED            "(0000) \"%s\" token expires."
+
+/* Info messages */
+#define LOGTEST_INFO_TOKEN_NEW                "(0000) \"%s\" New token"
 
 
 /**
@@ -55,6 +81,18 @@ typedef struct w_logtest_connection_t {
 
 
 /**
+ * @brief A w_logtest_request instance represents a client requeset
+ */
+typedef struct w_logtest_request {
+
+    char* token;             ///< Client ID
+    char* event;             ///< Log to be processed
+    char* log_format;        ///< Type of log. Syslog, syscheck_event, eventchannel, eventlog, etc
+    char* location;          ///< The origin of the log. User, agent, IP and file (if collected by Logcollector).
+
+} w_logtest_request;
+
+/**
  * @brief Initialize Wazuh Logtest. Initialize the listener and create threads
  * Then, call function w_logtest_main
  */
@@ -78,15 +116,18 @@ void *w_logtest_main(w_logtest_connection_t * connection);
 
 /**
  * @brief Create resources necessary to service client
- * @param fd File descriptor which represents the client
+ * @param token Token which represents the client
  */
-void w_logtest_initialize_session(const char * token);
+w_logtest_session_t *w_logtest_initialize_session(char *token);
 
 /**
  * @brief Process client's request
- * @param fd File descriptor which represents the client
+ * 
+ * @param req 
+ * @param session 
+ * @return cJSON* 
  */
-void w_logtest_process_log(const char * token);
+cJSON* w_logtest_process_log(w_logtest_request* req, w_logtest_session_t* session);
 
 /**
  * @brief Free resources after client closes connection
@@ -109,3 +150,35 @@ void * w_logtest_check_inactive_sessions(__attribute__((unused)) void * arg);
  * @return 1 on success, otherwise return 0
  */
 int w_logtest_fts_init(OSList **fts_list, OSHash **fts_store);
+
+/**
+ * @brief Check if input_json its valid and generate a client request.
+ * 
+ * @param req Client request information.
+ * @param input_json Raw JSON input of requeset.
+ * @return int OS_SUCCESS on success, otherwise OS_INVALID
+ * @warning  \ref w_logtest_free_request should be called before to avoid memory leaks
+ */
+int w_logtest_check_input(char* input_json, w_logtest_request* req);
+
+/**
+ * @brief Free internal memory of a request.
+ * @param req request to free.
+ */
+void w_logtest_free_request(w_logtest_request* req);
+
+/**
+ * @brief Generate a new hexa-token.
+ * @return char* new token string.
+ */
+char* w_logtest_generate_token();
+
+/**
+ * @brief Get a session for a request.
+ * 
+ * Search for an active session based on the request token. If session expires 
+ * or the token is invalid, returns a new session and set the new token.
+ * @param req request for a session.
+ * @return w_logtest_session_t* 
+ */
+w_logtest_session_t* w_logtest_get_session(w_logtest_request* req);
