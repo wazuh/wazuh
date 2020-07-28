@@ -75,6 +75,27 @@ static void dummyCallback(ReturnTypeCallback, const cJSON*, void*)
 
 }
 
+static void txnCallback(ReturnTypeCallback type, const cJSON* json, void* user_data)
+{
+    if (user_data && json)
+    {
+        static std::mutex s_mutex;
+        std::lock_guard<std::mutex> lock{ s_mutex };
+        TestContext* ctx{ reinterpret_cast<TestContext*>(user_data) };
+        std::stringstream oFileName;
+        oFileName << "txn_" << reinterpret_cast<size_t>(ctx->txnContext) << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+        const std::unique_ptr<char, TestDeleters::CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json)};
+        const auto newJson{nlohmann::json::parse(spJsonBytes.get())};
+        nlohmann::json jsonResult;
+        jsonResult.push_back(newJson[0]);
+        jsonResult.push_back({{"result", type}});
+
+        std::ofstream outputFile{ outputFileName, std::ofstream::app};
+        outputFile << jsonResult.dump() << std::endl;
+    }
+}
+
 struct CreateTransactionAction final : public IAction
 {
     void execute(std::unique_ptr<TestContext>& ctx, 
@@ -85,13 +106,13 @@ struct CreateTransactionAction final : public IAction
             cJSON_Parse(value["body"]["tables"].dump().c_str())
         };
         
-        CallbackData callbackData { dummyCallback, nullptr };
+        callback_data_t callbackData { txnCallback, ctx.get() };
 
         ctx->txnContext = dbsync_create_txn(ctx->handle,
                                      jsonTables.get(),
                                      0,
                                      100,
-                                     &callbackData);
+                                     callbackData);
 
         std::stringstream oFileName;
         oFileName << "action_" << ctx->currentId << ".json";
@@ -189,12 +210,12 @@ struct GetDeletedRowsAction final : public IAction
         const auto& outputFileNameCallback{ ctx->outputPath + "/" + "callback." + oFileName.str() };
 
         const auto& loggerContext { std::make_unique<GetDeleteTxnCallbackLogger>(outputFileNameCallback) };
-        CallbackData callbackData { getDeleteTxnCallback, loggerContext.get() } ;
+        callback_data_t callbackData { getDeleteTxnCallback, loggerContext.get() } ;
         
         const auto retVal
         {
             dbsync_get_deleted_rows(ctx->txnContext,
-                                    &callbackData)
+                                    callbackData)
         };
         
         std::ofstream outputFile{ outputFileName };
@@ -213,13 +234,13 @@ struct SyncRowAction final : public IAction
             cJSON_Parse(value["body"].dump().c_str())
         };
 
-        CallbackData callbackData { dummyCallback, nullptr };
+        callback_data_t callbackData { dummyCallback, nullptr };
 
         const auto retVal
         {
             dbsync_sync_row(ctx->handle,
                             jsInput.get(),
-                            &callbackData)
+                            callbackData)
         };
 
         std::stringstream oFileName;
@@ -231,5 +252,32 @@ struct SyncRowAction final : public IAction
         outputFile << jsonResult.dump() << std::endl;
     }
 };
+
+struct SyncTxnRowsAction final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsInput
+        {
+            cJSON_Parse(value["body"].dump().c_str())
+        };
+
+        const auto retVal
+        {
+            dbsync_sync_txn_row(ctx->txnContext,
+                                jsInput.get())
+        };
+
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"dbsync_sync_txn_row", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
+
 
 #endif //_ACTION_H

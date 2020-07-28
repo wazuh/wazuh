@@ -273,11 +273,11 @@ TEST_F(DBSyncTest, syncRowInsertAndModified)
     const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate2{ cJSON_Parse(updateSqlStmt2) };    
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert2{ cJSON_Parse(insertSqlStmt3) }; 
     
-    CallbackData callbackData { callback, &wrapper };
+    callback_data_t callbackData { callback, &wrapper };
 
-    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), &callbackData));  // Expect an insert event
-    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), &callbackData));  // Expect a modified event
-    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate2.get(), &callbackData));  // Expect a modified event
-    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert2.get(), &callbackData));  // Expect an insert event
-    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert2.get(), &callbackData));  // Same as above but EXPECT_CALL Times is 1
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), callbackData));  // Expect an insert event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), callbackData));  // Expect a modified event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate2.get(), callbackData));  // Expect a modified event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert2.get(), callbackData));  // Expect an insert event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert2.get(), callbackData));  // Same as above but EXPECT_CALL Times is 1
 }

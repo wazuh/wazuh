@@ -114,6 +114,11 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
                 const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
                 updateSingleRow(table, jsResult);
                 transaction->commit();
+                const auto& it{ jsResult.find(STATUS_FIELD_NAME) };
+                if (it != jsResult.end())
+                {
+                    jsResult.erase(it);
+                }
             }
         }
         else
