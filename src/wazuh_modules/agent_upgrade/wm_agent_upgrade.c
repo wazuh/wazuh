@@ -44,7 +44,7 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_TASK_CONFIGURATIONS] = "Command not recognized",
     [WM_UPGRADE_TASK_MANAGER_COMMUNICATION] ="Could not create task id for upgrade task",
     [WM_UPGRADE_TASK_MANAGER_FAILURE] = "", // Data string will be provided by task manager
-    [WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading",
+    [WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading",
     [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start"
 };
 

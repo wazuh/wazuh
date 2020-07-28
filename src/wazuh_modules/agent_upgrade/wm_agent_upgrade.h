@@ -26,7 +26,7 @@ typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_TASK_CONFIGURATIONS,
     WM_UPGRADE_TASK_MANAGER_COMMUNICATION,
     WM_UPGRADE_TASK_MANAGER_FAILURE,
-    WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS,
+    WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS,
     WM_UPGRADE_UNKNOWN_ERROR
 } wm_upgrade_error_code;
 
@@ -73,6 +73,14 @@ typedef struct _wm_agent_info {
     char *minor_version;         ///> minor version of the agent
     char *architecture;          ///> architecture of the agent
 } wm_agent_info;
+
+/**
+ * Definition of the structure that will represent an agent executing a certain task
+ * */
+typedef struct _wm_agent_task {
+    wm_agent_info *agent_info;   ///> pointer to agent_info structure
+    wm_task_info *task_info;     ///> pointer to task_info structure
+} wm_agent_task;
 
 extern const char* upgrade_error_codes[];
 extern const wm_context WM_AGENT_UPGRADE_CONTEXT;   // Context

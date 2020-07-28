@@ -38,28 +38,40 @@ wm_task_info* wm_agent_upgrade_init_task_info();
 wm_agent_info* wm_agent_upgrade_init_agent_info();
 
 /**
+ * Initialization of wm_agent_task
+ * @param return an initialized wm_agent_task structure
+ * */
+wm_agent_task* wm_agent_upgrade_init_agent_task();
+
+/**
  * Deallocate wm_upgrade_task structure
- * @param task wm_upgrade_task structure to be deallocated
+ * @param upgrade_task wm_upgrade_task structure to be deallocated
  * */
 void wm_agent_upgrade_free_upgrade_task(wm_upgrade_task* upgrade_task);
 
 /**
  * Deallocate wm_upgrade_custom_task structure
- * @param task wm_upgrade_custom_task structure to be deallocated
+ * @param upgrade_custom_task wm_upgrade_custom_task structure to be deallocated
  * */
 void wm_agent_upgrade_free_upgrade_custom_task(wm_upgrade_custom_task* upgrade_custom_task);
 
 /**
  * Deallocate wm_task_info structure
- * @param task wm_task_info structure to be deallocated
+ * @param task_info wm_task_info structure to be deallocated
  * */
 void wm_agent_upgrade_free_task_info(wm_task_info* task_info);
 
 /**
  * Deallocate wm_agent_info structure
- * @param agent wm_agent_info structure to be deallocated
+ * @param agent_info wm_agent_info structure to be deallocated
  * */
 void wm_agent_upgrade_free_agent_info(wm_agent_info* agent_info);
+
+/**
+ * Deallocate wm_upgrade_task structure
+ * @param agent_task wm_upgrade_task structure to be deallocated
+ * */
+void wm_agent_upgrade_free_agent_task(wm_agent_task* agent_task);
 
 /**
  * Tasks hashmap initialization
@@ -72,12 +84,52 @@ void wm_agent_upgrade_init_task_map();
 void wm_agent_upgrade_destroy_task_map();
 
 /**
- * Receives the cJSON with the agents_id and creates the tasks structure for each agent
- * @param json_response cJSON array where the task responses will be stored
- * @param agent_ids array with the list of agents id
- * @param command command related to the task
- * @param task pointer to a task structure
+ * Creates an new entry into the table with the agent_id and task
+ * @param agent_id id of the agent
+ * @param task pointer to the task
  * */
-void wm_agent_upgrade_create_agents_tasks(cJSON* json_response, const int* agent_ids, int command, void *task);
+int wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* agent_task);
+
+/**
+ * Inserts a task_id into an already existent agent entry
+ * @param agent_id id of the agent
+ * @param task_id id of the task
+ * */
+void wm_agent_upgrade_insert_task_id(int agent_id, int task_id);
+
+/**
+ * Remoes a entry based on the agent_id
+ * @param agent_id id of the agent
+ * */
+void wm_agent_upgrade_remove_entry(int agent_id);
+
+/**
+ * Sends the JSON information to the task module and retrieves the answer
+ * @param message_object JSON to be sent. Example:
+ *  [{
+ *       "module" : "upgrade_module",
+ *       "command": "upgrade",
+ *       "agent" : 1
+ *   }, {
+ *       "module" : "upgrade_module",
+ *       "command": "upgrade",
+ *       "agent" : 2
+ *  }]
+ * @return json response
+ * @retval NULL if connection problem or incorrect response format
+ * @retval JSON with the task information. Example:
+ *  [{
+ *       "error": 0,
+ *       "data": "Task created successfully",
+ *       "agent": 1,
+ *       "task_id": {{tid1}}
+ *   }, {
+ *       "error": 0,
+ *       "data": "Task created successfully",
+ *       "agent": 2,
+ *       "task_id": {{tid2}}
+ *  }]
+ * */
+cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object);
 
 #endif
