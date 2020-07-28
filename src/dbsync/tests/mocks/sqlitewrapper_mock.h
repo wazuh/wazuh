@@ -108,6 +108,11 @@ class MockStatement : public SQLite::IStatement
                     (const int32_t index, const double value),
                     (override));
 
+        MOCK_METHOD(std::string,
+                    expand,
+                    (),
+                    (override));
+
         MOCK_METHOD(std::unique_ptr<SQLite::IColumn>,
                     column,
                     (const int32_t index),

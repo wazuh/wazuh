@@ -72,8 +72,8 @@ struct UpdateWithSnapshotAction final : public IAction
 
 static void dummyCallback(ReturnTypeCallback, const cJSON*, void*)
 {
-}
 
+}
 
 struct CreateTransactionAction final : public IAction
 {
@@ -85,13 +85,13 @@ struct CreateTransactionAction final : public IAction
             cJSON_Parse(value["body"]["tables"].dump().c_str())
         };
         
-        CallbackData callback_data { dummyCallback, nullptr };
+        CallbackData callbackData { dummyCallback, nullptr };
 
         ctx->txnContext = dbsync_create_txn(ctx->handle,
                                      jsonTables.get(),
                                      0,
                                      100,
-                                     &callback_data);
+                                     &callbackData);
 
         std::stringstream oFileName;
         oFileName << "action_" << ctx->currentId << ".json";
@@ -189,16 +189,45 @@ struct GetDeletedRowsAction final : public IAction
         const auto& outputFileNameCallback{ ctx->outputPath + "/" + "callback." + oFileName.str() };
 
         const auto& loggerContext { std::make_unique<GetDeleteTxnCallbackLogger>(outputFileNameCallback) };
-        CallbackData callback_data { getDeleteTxnCallback, loggerContext.get() } ;
+        CallbackData callbackData { getDeleteTxnCallback, loggerContext.get() } ;
         
         const auto retVal
         {
             dbsync_get_deleted_rows(ctx->txnContext,
-                                    &callback_data)
+                                    &callbackData)
         };
         
         std::ofstream outputFile{ outputFileName };
         const nlohmann::json& jsonResult { {"dbsync_get_deleted_rows", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
+
+struct SyncRowAction final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsInput
+        {
+            cJSON_Parse(value["body"].dump().c_str())
+        };
+
+        CallbackData callbackData { dummyCallback, nullptr };
+
+        const auto retVal
+        {
+            dbsync_sync_row(ctx->handle,
+                            jsInput.get(),
+                            &callbackData)
+        };
+
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"dbsync_sync_row", retVal } };
         outputFile << jsonResult.dump() << std::endl;
     }
 };

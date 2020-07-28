@@ -70,6 +70,8 @@ namespace SQLite
         virtual void bind(const int32_t index, const std::string& value) = 0;
         virtual void bind(const int32_t index, const double value) = 0;
 
+        virtual std::string expand() = 0;
+
         virtual std::unique_ptr<IColumn> column(const int32_t index) = 0;
         virtual void reset() = 0;
 

@@ -39,15 +39,15 @@ enum ColumnType
     Blob,
 };
 
-const std::map<ColumnType, std::string> ColumnTypeNames = 
+const std::map<std::string, ColumnType> ColumnTypeNames =
 {
-    { Unknown        , "UNKNOWN"         },
-    { Text           , "TEXT"            },
-    { Integer        , "INTEGER"         },
-    { BigInt         , "BIGINT"          },
-    { UnsignedBigInt , "UNSIGNED BIGINT" },
-    { Double         , "DOUBLE"          },
-    { Blob           , "BLOB"            },
+    { "UNKNOWN"         , Unknown        },
+    { "TEXT"            , Text           },
+    { "INTEGER"         , Integer        },
+    { "BIGINT"          , BigInt         },
+    { "UNSIGNED BIGINT" , UnsignedBigInt },
+    { "DOUBLE"          , Double         },
+    { "BLOB"            , Blob           },
 };
 
 enum TableHeader 
@@ -59,12 +59,6 @@ enum TableHeader
     TXNStatusField
 }; 
 
-using ColumnData = 
-    std::tuple<int32_t, std::string, ColumnType, bool, bool>;
-
-using TableColumns =
-    std::vector<ColumnData>;
-
 enum GenericTupleIndex
 {
     GenType = 0,
@@ -75,7 +69,13 @@ enum GenericTupleIndex
     GenDouble
 }; 
 
-using TableField = 
+using ColumnData =
+    std::tuple<int32_t, std::string, ColumnType, bool, bool>;
+
+using TableColumns =
+    std::vector<ColumnData>;
+
+using TableField =
     std::tuple<int32_t, std::string, int32_t, int64_t, uint64_t, double_t>;
 
 using Row = std::map<std::string, TableField>;
@@ -98,6 +98,7 @@ public:
     }
     {}
 };
+
 class SQLiteDBEngine final : public DbSync::IDbEngine 
 {
     public:
@@ -145,7 +146,8 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         void bindJsonData(std::unique_ptr<SQLite::IStatement>const & stmt, 
                           const ColumnData& cd,
-                          const nlohmann::json::value_type& valueType);
+                          const nlohmann::json::value_type& valueType,
+                          const unsigned int cid);
 
         bool createCopyTempTable(const std::string& table);
 
@@ -159,6 +161,10 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                                  const std::vector<std::string>& primaryKeyList,
                                  const DbSync::ResultCallback callback);
 
+        bool getRowDiff(const std::string& table,
+                        const nlohmann::json& data,
+                        nlohmann::json& jsResult);                              
+
         bool insertNewRows(const std::string& table,
                            const std::vector<std::string>& primaryKeyList,
                            const DbSync::ResultCallback callback);
@@ -167,15 +173,15 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                         const std::vector<std::string>& primaryKeyList,
                         const std::vector<Row>& rowsToRemove);
 
-        int32_t getTableData(std::unique_ptr<SQLite::IStatement>const & stmt,
-                             const int32_t index,
-                             const ColumnType& type,
-                             const std::string& fieldName,
-                             Row& row);
+        void getTableData(std::unique_ptr<SQLite::IStatement>const & stmt,
+                          const int32_t index,
+                          const ColumnType& type,
+                          const std::string& fieldName,
+                          Row& row);
 
-        int32_t bindFieldData(std::unique_ptr<SQLite::IStatement>const & stmt,
-                              const int32_t index,
-                              const TableField& fieldData);
+        void bindFieldData(const std::unique_ptr<SQLite::IStatement>& stmt,
+                           const int32_t index,
+                           const TableField& fieldData);
 
         std::string buildLeftOnlyQuery(const std::string& t1,
                                        const std::string& t2,
@@ -204,24 +210,34 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                                const std::vector<std::string>& primaryKeyList,
                                const DbSync::ResultCallback callback);
 
+        std::string buildSelectMatchingPKsSqlQuery(const std::string& table,
+                                                   const std::vector<std::string>& primaryKeyList);
+
         std::string buildUpdateDataSqlQuery(const std::string& table,
                                             const std::vector<std::string>& primaryKeyList,
                                             const Row& row,
                                             const std::pair<const std::string, TableField> &field);
 
+        std::string buildUpdatePartialDataSqlQuery(const std::string& table,
+                                                   const nlohmann::json& data,
+                                                   const std::vector<std::string>& primaryKeyList);
+
         bool getRowsToModify(const std::string& table,
                              const std::vector<std::string>& primaryKeyList,
                              std::vector<Row>& rowKeysValue);
+
+        void updateSingleRow(const std::string& table,
+                             const nlohmann::json& jsData);
 
         bool updateRows(const std::string& table,
                         const std::vector<std::string>& primaryKeyList,
                         const std::vector<Row>& rowKeysValue);
 
-        void getFieldValueFromTuple(const Field &value,
+        void getFieldValueFromTuple(const Field& value,
                                     std::string& resultValue,
                                     const bool quotationMarks = false);
 
-        void getFieldValueFromTuple(const Field &value,
+        void getFieldValueFromTuple(const Field& value,
                                     nlohmann::json& object);
 
         SQLiteDBEngine(const SQLiteDBEngine&) = delete;

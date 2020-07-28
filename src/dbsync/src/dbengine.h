@@ -25,6 +25,8 @@ namespace DbSync
     class IDbEngine
     {
     public:
+        virtual ~IDbEngine() = default;
+    
         virtual void bulkInsert(const std::string& table,
                                 const nlohmann::json& data) = 0;
 
@@ -44,9 +46,6 @@ namespace DbSync
 
         virtual void returnRowsMarkedForDelete(const nlohmann::json& tableNames, 
                                                const DbSync::ResultCallback callback) = 0;
-
-        virtual ~IDbEngine() = default;
-
     protected:
         IDbEngine() = default;
     };
