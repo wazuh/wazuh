@@ -2026,6 +2026,65 @@ class AWSWAFBucket(AWSCustomBucket):
         return json.loads(json.dumps(content))
 
 
+class AWSALBBucket(AWSCustomBucket):
+
+    def __init__(self, **kwargs):
+        db_table_name = 'alb'
+        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+
+    def load_information_from_file(self, log_key):
+        """Load data from a ALB access log file."""
+        content = []
+        with self.decompress_file(log_key=log_key) as f:
+            fieldnames = (
+                "type", "time", "elb", "client_port", "target_port", "request_processing_time", "target_processing_time", "response_processing_time", "elb_status_code", "target_status_code",
+                "received_bytes", "sent_bytes", "request", "user_agent", "ssl_cipher", "ssl_protocol", "target_group_arn", "trace_id", "domain_name", "chosen_cert_arn",
+                "matched_rule_priority", "request_creation_time", "action_executed", "redirect_url", "error_reason", "target_port_list", "target_status_code_list")
+            tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
+            return [dict(x, source='alb') for x in tsv_file]
+
+        return json.loads(json.dumps(content))
+
+
+class AWSELBBucket(AWSCustomBucket):
+
+    def __init__(self, **kwargs):
+        db_table_name = 'elb'
+        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+
+    def load_information_from_file(self, log_key):
+        """Load data from a ELB access log file."""
+        content = []
+        with self.decompress_file(log_key=log_key) as f:
+            fieldnames = (
+                "time", "elb", "client_port", "backend_port", "request_processing_time", "backend_processing_time", "response_processing_time",
+                "elb_status_code", "backend_status_code", "received_bytes", "sent_bytes", "request", "user_agent", "ssl_cipher", "ssl_protocol")
+            tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
+            return [dict(x, source='elb') for x in tsv_file]
+
+        return json.loads(json.dumps(content))
+
+
+class AWSNLBBucket(AWSCustomBucket):
+
+    def __init__(self, **kwargs):
+        db_table_name = 'nlb'
+        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+
+    def load_information_from_file(self, log_key):
+        """Load data from a NLB access log file."""
+        content = []
+        with self.decompress_file(log_key=log_key) as f:
+            fieldnames = (
+                "type", "version", "time", "elb", "listener", "client_port", "destination_port", "connection_time", "tls_handshake_time", "received_bytes",
+                "sent_bytes", "incoming_tls_alert", "chosen_cert_arn", "chosen_cert_serial", "tls_cipher", "tls_protocol_version", "tls_named_group", "domain_name",
+                "alpn_fe_protocol", "alpn_client_preference_list")
+            tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
+            return [dict(x, source='nlb') for x in tsv_file]
+
+        return json.loads(json.dumps(content))
+
+
 class AWSService(WazuhIntegration):
     """
     Class for getting AWS Services logs from API calls
@@ -2341,6 +2400,12 @@ def main(argv):
                 bucket_type = CiscoUmbrella
             elif options.type.lower() == 'waf':
                 bucket_type = AWSWAFBucket
+            elif options.type.lower() == 'alb':
+                bucket_type = AWSALBBucket
+            elif options.type.lower() == 'elb':
+                bucket_type = AWSELBBucket
+            elif options.type.lower() == 'nlb':
+                bucket_type = AWSNLBBucket
             else:
                 raise Exception("Invalid type of bucket")
             bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,

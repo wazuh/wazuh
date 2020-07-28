@@ -34,6 +34,9 @@ static const char *XML_BUCKET_NAME = "name";
 static const char *LEGACY_AWS_ACCOUNT_ALIAS = "LEGACY";
 
 static const char *CLOUDTRAIL_BUCKET_TYPE = "cloudtrail";
+static const char *ALB_BUCKET_TYPE = "alb";
+static const char *ELB_BUCKET_TYPE = "elb";
+static const char *NLB_BUCKET_TYPE = "nlb";
 static const char *CONFIG_BUCKET_TYPE = "config";
 static const char *VPCFLOW_BUCKET_TYPE = "vpcflow";
 static const char *CUSTOM_BUCKET_TYPE = "custom";
@@ -156,12 +159,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     if (!strcmp(*nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE) || !strcmp(*nodes[i]->values, CONFIG_BUCKET_TYPE)
                         || !strcmp(*nodes[i]->values, CUSTOM_BUCKET_TYPE) || !strcmp(*nodes[i]->values, GUARDDUTY_BUCKET_TYPE)
                         || !strcmp(*nodes[i]->values, VPCFLOW_BUCKET_TYPE) || !strcmp(*nodes[i]->values, CISCO_UMBRELLA_BUCKET_TYPE)
-                        || !strcmp(*nodes[i]->values, WAF_BUCKET_TYPE)) {
+                        || !strcmp(*nodes[i]->values, WAF_BUCKET_TYPE) || !strcmp(*nodes[i]->values, ALB_BUCKET_TYPE)
+                        || !strcmp(*nodes[i]->values, ELB_BUCKET_TYPE) || !strcmp(*nodes[i]->values, NLB_BUCKET_TYPE)) {
                         os_strdup(*nodes[i]->values, cur_bucket->type);
                     } else {
                         mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s', '%s', '%s' or '%s'",
                             *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE, CONFIG_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE, VPCFLOW_BUCKET_TYPE,
-                            WAF_BUCKET_TYPE, CISCO_UMBRELLA_BUCKET_TYPE, CUSTOM_BUCKET_TYPE);
+                            WAF_BUCKET_TYPE, CISCO_UMBRELLA_BUCKET_TYPE, CUSTOM_BUCKET_TYPE, ALB_BUCKET_TYPE, ELB_BUCKET_TYPE, NLB_BUCKET_TYPE);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
