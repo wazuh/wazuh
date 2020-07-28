@@ -423,7 +423,6 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
           example:
-            type: "about:blank"
             title: "Bad Request"
             detail: "'{invalid_param}' is not a '{expected_type}'. Failed validating 'format' in schema['items']: {'description': '{parameter_name}', 'format': '{expected_format}', 'minLength': {expected_length}, 'type': '{expected_type}', 'x-scope': ['', '#/components/parameters/{parameter_name}']}."
 
@@ -434,7 +433,6 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
           example:
-            type: "about:blank"
             title: "Permission Denied"
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information on how to set up permissions, please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html"
@@ -450,7 +448,6 @@ components:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
-            type: "about:blank"
             title: "Unauthorized"
             detail: "No authorization token provided"
 
@@ -461,7 +458,6 @@ components:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
-            type: "about:blank"
             title: "Method Not Allowed"
             detail: "Specified method is invalid for this resource"
 
@@ -472,7 +468,6 @@ components:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
-            type: "about:blank"
             title: "Wazuh Error"
             detail: "The body type is not the one specified in the content-type"
             code: 6002
@@ -484,7 +479,6 @@ components:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
-            type: "about:blank"
             title: "Request Entity Too Large"
             detail: "Maximum request body size 1048576 exceeded, actual body size 1225245"
 
@@ -495,7 +489,6 @@ components:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
-            type: "about:blank"
             title: "Wazuh Error"
             detail: "Maximum number of request per minute reached"
             remediation: "This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html"
@@ -508,7 +501,6 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
           example:
-            type: "about:blank"
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /agents/groups` to find all available groups://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html"
