@@ -166,6 +166,13 @@ def rename_old_fields(config: Dict) -> Dict:
             if key in new_config:
                 del new_config[key]
 
+    # Add new access parameters
+    new_config['access'] = {
+        "max_login_attempts": 5,
+        "block_time": 300,
+        "max_request_per_minute": 300
+    }
+
     return new_config
 
 

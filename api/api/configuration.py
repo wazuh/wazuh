@@ -20,13 +20,9 @@ from api.constants import SECURITY_CONFIG_PATH
 from wazuh.core import common
 
 
-need_revoke_config = ["auth_token_exp_timeout", "rbac_mode"]
 default_security_configuration = {
     "auth_token_exp_timeout": 36000,
-    "rbac_mode": "black",
-    "max_login_attempts": 5,
-    "block_time": 300,
-    "max_request_per_minute": 300
+    "rbac_mode": "black"
 }
 
 default_api_configuration = {
@@ -54,6 +50,11 @@ default_api_configuration = {
     "cache": {
         "enabled": True,
         "time": 0.750
+    },
+    "access": {
+        "max_login_attempts": 5,
+        "block_time": 300,
+        "max_request_per_minute": 300
     },
     "use_only_authd": False,
     "drop_privileges": True,
