@@ -463,6 +463,67 @@ async def put_upgrade_custom_agent(request, agent_id, pretty=False, wait_for_com
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+async def put_upgrade_multiple_agents(request, list_agents, pretty=False, wait_for_complete=False, wpk_repo=None, version=None,
+                            use_http=False, force=False):
+    """Upgrade agents using a WPK file from online repository.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param list_agents: List of agent IDs. All posible values since 000 onwards.
+    :param wpk_repo: WPK repository.
+    :param version: Wazuh version to upgrade to.
+    :param use_http: Use protocol http. If it's false use https. By default the value is set to false.
+    :param force: Force upgrade.
+    :return: ApiResponse
+    """
+    f_kwargs = {'list_agents': list_agents,
+                'wpk_repo': wpk_repo,
+                'version': version,
+                'use_http': use_http,
+                'force': force}
+
+    dapi = DistributedAPI(f=agent.upgrade_multiple_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=True,  # Force wait_for_complete until timeout problems are resolved
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def put_upgrade_multiple_custom_agents(request, list_agents, pretty=False, wait_for_complete=False, file_path=None,
+                                   installer=None):
+    """Upgrade agents using a local WPK file.'.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param list_agents: Agent IDs. All posible values since 000 onwards.
+    :param file_path: Path to the WPK file. The file must be on a folder on the Wazuh's installation directory
+    (by default, <code>/var/ossec</code>).
+    :type installer: str
+    :return: ApiResponse
+    """
+    f_kwargs = {'list_agents': list_agents,
+                'file_path': file_path,
+                'installer': installer}
+
+    dapi = DistributedAPI(f=agent.upgrade_multiple_custom_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=True,  # Force wait_for_complete until timeout problems are resolved
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
 async def post_new_agent(request, agent_name, pretty=False, wait_for_complete=False):
     """Add agent (quick method)
 
@@ -502,6 +563,31 @@ async def get_agent_upgrade(request, agent_id, timeout=3, pretty=False, wait_for
                 'timeout': timeout}
 
     dapi = DistributedAPI(f=agent.get_upgrade_result,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def get_agent_upgrade_multiple(request, list_agents, timeout=3, pretty=False, wait_for_complete=False):
+    """Get upgrade results from agents.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param list_agents: Agent ID. All posible values since 000 onwards.
+    :param timeout: Seconds to wait for the agent to respond.
+    :return: ApiResponse
+    """
+    f_kwargs = {'list_agents': list_agents,
+                'timeout': timeout}
+
+    dapi = DistributedAPI(f=agent.get_upgrade_multiple_result,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
