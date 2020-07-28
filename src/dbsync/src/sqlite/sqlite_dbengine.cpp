@@ -100,8 +100,7 @@ void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
 
 void SQLiteDBEngine::syncTableRowData(const std::string& table,
                                       const nlohmann::json& data,
-                                      const DbSync::ResultCallback callback,
-                                      const bool inTransaction)
+                                      const DbSync::ResultCallback callback)
 {
     if (0 != loadTableData(table))
     {
@@ -112,18 +111,9 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
         {
             if (!jsResult.empty())
             {
-                if (inTransaction)
-                {
-                    jsResult[STATUS_FIELD_NAME] = 1;
-                }
                 const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
                 updateSingleRow(table, jsResult);
                 transaction->commit();
-                const auto it{jsResult.find(STATUS_FIELD_NAME)};
-                if (it != jsResult.end())
-                {
-                    jsResult.erase(it);
-                }
             }
         }
         else
@@ -365,16 +355,11 @@ bool SQLiteDBEngine::loadFieldData(const std::string& table)
 ColumnType SQLiteDBEngine::columnTypeName(const std::string& type)
 {
     ColumnType retVal { Unknown };
-    const auto& it { std::find_if(ColumnTypeNames.begin(), 
-                                 ColumnTypeNames.end(),
-                                 [&type] (const std::pair<ColumnType, std::string>& col)
-                                 {
-                                     return 0 == col.second.compare(type);
-                                 }) };
-
+    const auto& hiddenIt {type.find(" HIDDEN")};
+    const auto& it { hiddenIt == std::string::npos ? ColumnTypeNames.find(type) : ColumnTypeNames.find(type.substr(0, hiddenIt)) };
     if (ColumnTypeNames.end() != it)
     {
-        retVal = it->first;
+        retVal = it->second;
     }
     return retVal;
 }
@@ -1022,7 +1007,6 @@ std::string SQLiteDBEngine::buildUpdateDataSqlQuery(const std::string& table,
     {
         throw dbengine_error{ SQL_STMT_ERROR };
     }
-    
     return sql;
 }
 
