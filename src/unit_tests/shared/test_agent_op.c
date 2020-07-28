@@ -24,14 +24,7 @@
 /* redefinitons/wrapping */
 
 void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
 
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
 }
 
 void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
@@ -151,62 +144,76 @@ static void test_create_sendsync_payload(void **state) {
 
 static void test_parse_agent_add_response(void **state) {     
     char* success_response = "{\"error\":0,\"data\":{\"id\":\"001\",\"name\":\"agent1\",\"ip\":\"any\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}";
-    char* missingdata_response = "{\"error\":0,}";
+    char* missingdata_response = "{\"error\":0}";
     char* missingkey_response = "{\"error\":0,\"data\":{\"id\":\"001\",\"name\":\"agent1\",\"ip\":\"any\"}}";
     char* missingid_response = "{\"error\":0,\"data\":{\"name\":\"agent1\",\"ip\":\"any\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}";
-    char* error_response = "{\"error\":9009,\"message \":\"Issue generating key\"}";
+    char* error_response = "{\"error\":9009,\"message\":\"ERROR_MESSAGE\"}";
     char* unknown_response = "{\"message \":\"any_message\"}";   
     char new_id[FILE_SIZE+1] = { '\0' };
     char new_key[KEYSIZE+1] = { '\0' };   
     int err = 0;
+    char err_response[OS_MAXSTR + 1];
     
     /* Success parse */    
-    err = w_parse_agent_add_response(success_response, NULL, new_id, new_key, TRUE, FALSE);
+    err = w_parse_agent_add_response(success_response, err_response, new_id, new_key, FALSE, FALSE);
     assert_int_equal(err, 0);
     assert_string_equal(new_id, "001");
     assert_string_equal(new_key, "347e2dc688148aec8544c9777ff291b8868b885");
 
-    err = w_parse_agent_add_response(success_response, NULL, new_id, NULL, TRUE, FALSE);
+    err = w_parse_agent_add_response(success_response, err_response, new_id, NULL, FALSE, FALSE);
     assert_int_equal(err, 0);
     assert_string_equal(new_id, "001");
 
-    err = w_parse_agent_add_response(success_response, NULL, NULL, new_key, TRUE, FALSE);
+    err = w_parse_agent_add_response(success_response, err_response, NULL, new_key, FALSE, FALSE);
     assert_int_equal(err, 0);
     assert_string_equal(new_key, "347e2dc688148aec8544c9777ff291b8868b885");
 
     /* Error parse */   
-    err = w_parse_agent_add_response(error_response, NULL, new_id, new_key, TRUE, FALSE);
+    err = w_parse_agent_add_response(error_response, err_response, new_id, new_key, FALSE, FALSE);
     assert_int_equal(err, -1);
+    assert_string_equal(err_response, "ERROR: ERROR_MESSAGE"); 
 
     /* Unknown parse */    
-    err = w_parse_agent_add_response(unknown_response, NULL, new_id, new_key, TRUE, FALSE);
-    assert_int_equal(err, -1);
+    err = w_parse_agent_add_response(unknown_response, err_response, new_id, new_key, FALSE, FALSE);
+    assert_int_equal(err, -2);
+    assert_string_equal(err_response, "ERROR: Invalid message format");
 
     /* Missing Data parse */    
-    err = w_parse_agent_add_response(missingdata_response, NULL, new_id, new_key, TRUE, FALSE);
-    assert_int_equal(err, -1);
+    err = w_parse_agent_add_response(missingdata_response, err_response, new_id, new_key, FALSE, FALSE);
+    assert_int_equal(err, -2);
+    assert_string_equal(err_response, "ERROR: Invalid message format");
 
     /* Missing ID parse */    
-    err = w_parse_agent_add_response(missingid_response, NULL, new_id, new_key, TRUE, FALSE);
-    assert_int_equal(err, -1);
+    err = w_parse_agent_add_response(missingid_response, err_response, new_id, new_key, FALSE, FALSE);
+    assert_int_equal(err, -2);
+    assert_string_equal(err_response, "ERROR: Invalid message format");
 
     /* Missing key parse */    
-    err = w_parse_agent_add_response(missingkey_response, NULL, new_id, new_key, TRUE, FALSE);
-    assert_int_equal(err, -1);
+    err = w_parse_agent_add_response(missingkey_response, err_response, new_id, new_key, FALSE, FALSE);
+    assert_int_equal(err, -2);
+    assert_string_equal(err_response, "ERROR: Invalid message format");
 }
 
 static void test_parse_agent_remove_response(void **state) { 
     char* success_response = "{\"error\":0}";
-    char* error_response = "{\"error\":9011,\"message \":\"Agent ID not found\"}"; 
+    char* error_response = "{\"error\":9009,\"message\":\"ERROR_MESSAGE\"}";
+    char* unknown_response = "{\"message \":\"any_message\"}";
     int err = 0;
+    char err_response[OS_MAXSTR + 1];
        
     /* Success parse */
-    err = w_parse_agent_remove_response(success_response, NULL, TRUE, FALSE);
+    err = w_parse_agent_remove_response(success_response, err_response, FALSE, FALSE);
     assert_int_equal(err, 0);
   
     /* Error parse */    
-    err = w_parse_agent_remove_response(error_response, NULL, TRUE, FALSE);
+    err = w_parse_agent_remove_response(error_response, err_response, FALSE, FALSE);
     assert_int_equal(err, -1);
+    assert_string_equal(err_response, "ERROR: ERROR_MESSAGE"); 
+
+    /* Unknown parse */    
+    err = w_parse_agent_remove_response(unknown_response, err_response, FALSE, FALSE);
+    assert_int_equal(err, -2);
+    assert_string_equal(err_response, "ERROR: Invalid message format");
 }
 
 
