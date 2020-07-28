@@ -39,15 +39,15 @@ enum ColumnType
     Blob,
 };
 
-const std::map<ColumnType, std::string> ColumnTypeNames = 
+const std::map<std::string, ColumnType> ColumnTypeNames =
 {
-    { Unknown        , "UNKNOWN"         },
-    { Text           , "TEXT"            },
-    { Integer        , "INTEGER"         },
-    { BigInt         , "BIGINT"          },
-    { UnsignedBigInt , "UNSIGNED BIGINT" },
-    { Double         , "DOUBLE"          },
-    { Blob           , "BLOB"            },
+    { "UNKNOWN"         , Unknown        },
+    { "TEXT"            , Text           },
+    { "INTEGER"         , Integer        },
+    { "BIGINT"          , BigInt         },
+    { "UNSIGNED BIGINT" , UnsignedBigInt },
+    { "DOUBLE"          , Double         },
+    { "BLOB"            , Blob           },
 };
 
 enum TableHeader 

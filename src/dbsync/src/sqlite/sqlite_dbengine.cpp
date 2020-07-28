@@ -365,16 +365,11 @@ bool SQLiteDBEngine::loadFieldData(const std::string& table)
 ColumnType SQLiteDBEngine::columnTypeName(const std::string& type)
 {
     ColumnType retVal { Unknown };
-    const auto& it { std::find_if(ColumnTypeNames.begin(), 
-                                 ColumnTypeNames.end(),
-                                 [&type] (const std::pair<ColumnType, std::string>& col)
-                                 {
-                                     return 0 == col.second.compare(type);
-                                 }) };
-
+    const auto& hiddenIt {type.find(" HIDDEN")};
+    const auto& it { hiddenIt == std::string::npos ? ColumnTypeNames.find(type) : ColumnTypeNames.find(type.substr(0, hiddenIt)) };
     if (ColumnTypeNames.end() != it)
     {
-        retVal = it->first;
+        retVal = it->second;
     }
     return retVal;
 }

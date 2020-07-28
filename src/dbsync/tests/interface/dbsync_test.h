@@ -13,6 +13,7 @@
 #define _DBYSNC_TEST_H
 
 #include "gtest/gtest.h"
+#include "gmock/gmock.h"
 
 class DBSyncTest : public ::testing::Test 
 {

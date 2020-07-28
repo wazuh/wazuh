@@ -20,6 +20,10 @@
 #include "action.h"
 #include "factoryAction.h"
 
+static void loggerFunction(const char* msg)
+{
+    std::cout << "Msg: " << msg << std::endl;
+}
 
 int main(int argc, const char* argv[])
 {
@@ -38,6 +42,8 @@ int main(int argc, const char* argv[])
         const std::string persistance{ jsonConfigFile[0]["persistance"] };
         const std::string sqlStmt{ jsonConfigFile[0]["sql_statement"] };
 
+        dbsync_initialize(loggerFunction);
+
         auto handle 
         { 
             dbsync_create((hostType.compare("0") == 0) ? HostType::MANAGER : HostType::AGENT,
@@ -45,6 +51,7 @@ int main(int argc, const char* argv[])
                             dbName.c_str(),
                             sqlStmt.c_str())
         };
+
 
         if(0 != handle)
         {
