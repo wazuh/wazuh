@@ -794,7 +794,7 @@ bool SQLiteDBEngine::getRowDiff(const std::string& table,
 
             if(it != tableFields.end())
             {
-                jsResult.push_back({{pkValue, data[pkValue]}});
+                jsResult[pkValue] = data[pkValue];
                 bindJsonData(stmt, *it, data, index);
                 ++index;
             }
@@ -830,7 +830,7 @@ bool SQLiteDBEngine::getRowDiff(const std::string& table,
                         {
                             // Diff found
                             isModified = true;
-                            jsResult.push_back({{value.first, *it}});    
+                            jsResult[value.first] = *it;
                         }
                     }
                 }
@@ -933,14 +933,11 @@ std::string SQLiteDBEngine::buildUpdatePartialDataSqlQuery(const std::string& ta
     std::string sql{ "UPDATE " + table + " SET "};
     if (0 != primaryKeyList.size())
     {
-        for (const auto &dataValue : data)
+        for (auto it = data.begin(); it != data.end(); ++it)
         {
-            for (auto it = dataValue.begin(); it != dataValue.end(); ++it)
+            if (std::find(primaryKeyList.begin(), primaryKeyList.end(), it.key()) == primaryKeyList.end())
             {
-                if (std::find(primaryKeyList.begin(), primaryKeyList.end(), it.key()) == primaryKeyList.end())
-                {
-                    sql += it.key() + "=?,";
-                }
+                sql += it.key() + "=?,";
             }
         }
         sql = sql.substr(0, sql.size()-1);  // Remove the last " , "
@@ -1157,14 +1154,17 @@ void SQLiteDBEngine::updateSingleRow(const std::string& table,
                     {
                         return !pk1;
                     }
-                    const auto it1{jsData.find(std::get<TableHeader::Name>(data1))};
-                    const auto it2{jsData.find(std::get<TableHeader::Name>(data2))};
-                    return it1 < it2;
+                    const auto name1{std::get<TableHeader::Name>(data1)};
+                    const auto name2{std::get<TableHeader::Name>(data2)};
+                    return name1 < name2;
                   });
         for (const auto& field : tableFields)
         {
-            bindJsonData(stmt, field, jsData, index);
-            ++index;
+            if (jsData.end() != jsData.find(std::get<TableHeader::Name>(field)))
+            {
+                bindJsonData(stmt, field, jsData, index);
+                ++index;
+            }
         }
         stmt->step();
         stmt->reset();
