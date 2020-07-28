@@ -60,6 +60,10 @@ namespace DbSync
                         const TXN_HANDLE      txnHandle,
                         const ResultCallback  callback);
 
+        void getDeleted(const DBSYNC_HANDLE   handle, 
+                        const TXN_HANDLE      txnHandle,
+                        const ResultCallback  callback);
+
         void release();
     private:
 
