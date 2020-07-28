@@ -696,79 +696,90 @@ static cJSON* w_create_agent_remove_payload(const char *id, const int purge) {
 }
 
 static int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error) { 
-    cJSON* response;
-    int result;
-    cJSON * error;
-    cJSON * message;
-    cJSON * data;
-    cJSON * data_id;
-    cJSON * data_key;
+    int result = 0;
+    cJSON* response = NULL;
+    cJSON * error = NULL;
+    cJSON * message = NULL;
+    cJSON * data = NULL;
+    cJSON * data_id = NULL;
+    cJSON * data_key = NULL;
 
+    // Parse response
     const char *jsonErrPtr;
     if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
         if(exit_on_error){
             merror_exit("Parsing JSON response.");
         }
-        result = -1;
-        return result;
+        result = -2;
+    }
+    else {
+        // Get error field
+        if (error = cJSON_GetObjectItem(response, "error"), !error) {
+            if(exit_on_error){
+                merror_exit("No such status from response.");
+            }
+            result = -2;
+        }
+        else {
+            // Error response
+            if (error->valueint > 0) {
+                message = cJSON_GetObjectItem(response, "message");
+                if (json_format) {
+                    printf("%s", buffer);
+                }
+                else {            
+                    merror("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
+                }
+                result = -1;
+            }
+            //Success response
+            else {
+                // Get data field
+                if (data = cJSON_GetObjectItem(response, "data"), !data) {
+                    if(exit_on_error){
+                        merror_exit("No data received.");
+                    }
+                    result = -2;
+                }
+                else {
+                    // Get data information if required
+                    if (id) {
+                        if (data_id = cJSON_GetObjectItem(data, "id"), !data_id) {
+                            if(exit_on_error){
+                                merror_exit("No id received.");
+                            }
+                            result = -2;
+                        }
+                        else {
+                            strncpy(id, data_id->valuestring, FILE_SIZE);
+                            id[FILE_SIZE] = '\0';
+                        }
+                    }
+                    if (key && result == 0) {
+                        if (data_key = cJSON_GetObjectItem(data, "key"), !data_key) {
+                            if(exit_on_error){
+                                merror_exit("No key received.");
+                            }
+                            result = -2;
+                        }
+                        else {            
+                            strncpy(key, data_key->valuestring, KEYSIZE);
+                            key[KEYSIZE] = '\0';
+                        }
+                    }
+                }
+            } 
+        }
     }
 
-    // Detect error condition
-
-    if (error = cJSON_GetObjectItem(response, "error"), !error) {
-        if(exit_on_error){
-            merror_exit("No such status from response.");
-        }
-        result = -1;
-
-    } else if (error->valueint > 0) {
-        message = cJSON_GetObjectItem(response, "message");
-        if (json_format) {
-            printf("%s", buffer);
-        } else {            
-            merror("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
-        }
-        if(err_response) { 
+    // Create an error response if needed
+    if(err_response) {
+        if(result == -1) {
             snprintf(err_response, 2048, "ERROR: %s", message ? message->valuestring : "(undefined)");
-        } 
-        result = -1;
-
-    } else {
-        if (data = cJSON_GetObjectItem(response, "data"), !data) {
-            if(exit_on_error){
-                merror_exit("No data received.");
-            }
-            cJSON_Delete(response);
-            result = -1;
-            return result;
         }
-        if (id) {
-            if (data_id = cJSON_GetObjectItem(data, "id"), !data_id) {
-                if(exit_on_error){
-                    merror_exit("No id received.");
-                }
-                cJSON_Delete(response);
-                result = -1;
-                return result;
-            }
-        
-            strncpy(id, data_id->valuestring, FILE_SIZE);
-            id[FILE_SIZE] = '\0';
+        else if (result == -2) {
+            snprintf(err_response, 2048, "ERROR: Invalid message format");
         }
-        if (key) {
-            if (data_key = cJSON_GetObjectItem(data, "key"), !data_key) {
-                if(exit_on_error){
-                    merror_exit("No key received.");
-                }
-                cJSON_Delete(response);
-                result = -1;
-                return result;
-            }
-        
-            strncpy(key, data_key->valuestring, KEYSIZE);
-            key[KEYSIZE] = '\0';
-        }
-        result = 0;
     }
 
     cJSON_Delete(response);
@@ -777,42 +788,47 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
 }
 
 static int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error) { 
-    cJSON* response;
-    int result;
-    cJSON * error;
-    cJSON * message;
+    int result = 0;
+    cJSON* response = NULL;    
+    cJSON * error = NULL;
+    cJSON * message = NULL;
 
+    // Parse response
     const char *jsonErrPtr;
     if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
         if(exit_on_error){
             merror_exit("Parsing JSON response.");
         }
-        result = -1;
+        result = -2;
         return result;
     }
 
-    // Detect error condition
+    // Detect error field
     if (error = cJSON_GetObjectItem(response, "error"), !error) {
         if(exit_on_error){
             merror_exit("No such status from response.");
         }
-        result = -1;
-        
-    } else if (error->valueint > 0) {
+        result = -2;        
+    }
+    // Error response
+    else if (error->valueint > 0) {
         message = cJSON_GetObjectItem(response, "message");
         if (json_format) {
             printf("%s", buffer);
         } else {            
             merror("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
-        }
-        if(err_response) { 
-            snprintf(err_response, 2048, "ERROR: %s", message ? message->valuestring : "(undefined)");
-        } 
+        }        
         result = -1;
+    }
 
-    } else {
-                
-        result = 0;
+    // Create an error response if needed
+    if(err_response) {
+        if(result == -1) {
+            snprintf(err_response, 2048, "ERROR: %s", message ? message->valuestring : "(undefined)");
+        }
+        else if (result == -2) {
+            snprintf(err_response, 2048, "ERROR: Invalid message format");
+        }
     }
 
     cJSON_Delete(response);
