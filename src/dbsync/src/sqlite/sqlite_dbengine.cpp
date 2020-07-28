@@ -674,10 +674,7 @@ bool SQLiteDBEngine::deleteRows(const std::string& table,
             auto index {1l};
             for (const auto& value : primaryKeyList)
             {
-                if (!bindFieldData(stmt, index, row.at(value)))
-                {
-                    throw dbengine_error { EMPTY_TABLE_METADATA };
-                }
+                bindFieldData(stmt, index, row.at(value));
                 ++index;
             }
             stmt->step();
@@ -693,12 +690,11 @@ bool SQLiteDBEngine::deleteRows(const std::string& table,
     return ret;
 }
 
-int32_t SQLiteDBEngine::bindFieldData(std::unique_ptr<SQLite::IStatement>const & stmt,
-                                      const int32_t index,
-                                      const TableField& fieldData)
+void SQLiteDBEngine::bindFieldData(const std::unique_ptr<SQLite::IStatement>& stmt,
+                                   const int32_t index,
+                                   const TableField& fieldData)
 {
-    int32_t rc { SQLITE_ERROR };
-    const auto type = std::get<GenericTupleIndex::GenType>(fieldData);
+    const auto type { std::get<GenericTupleIndex::GenType>(fieldData) };
     if (ColumnType::BigInt == type)
     {
         const auto value { std::get<GenericTupleIndex::GenBigInt>(fieldData) };
@@ -726,10 +722,8 @@ int32_t SQLiteDBEngine::bindFieldData(std::unique_ptr<SQLite::IStatement>const &
     }
     else
     {
-        throw dbengine_error { INVALID_COLUMN_TYPE };
+        throw dbengine_error { INVALID_DATA_BIND };
     }
-
-    return rc;
 }
 
 std::string SQLiteDBEngine::buildLeftOnlyQuery(const std::string& t1,
@@ -882,10 +876,7 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
             auto it { row.find(std::get<TableHeader::Name>(value))};
             if (row.end() != it)
             {
-                if (!bindFieldData(stmt, std::get<TableHeader::CID>(value) + 1, (*it).second ))
-                {
-                    std::cout << "bind error: " <<  std::get<TableHeader::CID>(value) << std::endl;
-                }
+                bindFieldData(stmt, std::get<TableHeader::CID>(value) + 1, (*it).second);
             }
         }
         stmt->step();
