@@ -3,6 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import hashlib
+import logging
 import operator
 from os import chmod, path, listdir
 from shutil import copyfile
@@ -10,13 +11,15 @@ from shutil import copyfile
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
-    WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup, get_agents_info, get_groups
+    WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
 from wazuh.rbac.decorators import expose_resources
+
+logger = logging.getLogger('wazuh')
 
 cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
@@ -86,7 +89,6 @@ def get_agents_summary_os(agent_list=None):
                                       all_msg='Showing the operative system of all specified agents',
                                       some_msg='Could not get the operative system of some agents')
     if len(agent_list) != 0:
-
         db_query = WazuhDBQueryAgents(select=['os.platform'], filters={'id': agent_list},
                                       default_sort_field='os_platform', min_select_fields=set(),
                                       distinct=True)
@@ -685,23 +687,91 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, 
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, chunk_size=None, use_http=False):
-    """Read upgrade result output from agent.
+def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, use_http=False,
+                   file_path=None, installer=None):
+    """Start the agent upgrade process.
 
-    :param agent_list: List of agents ID's.
-    :param wpk_repo: URL for WPK download.
-    :param version: Version to upgrade to.
-    :param force: force the update even if it is a downgrade.
-    :param chunk_size: size of each update chunk.
-    :param use_http: False for HTTPS protocol, True for HTTP protocol.
-    :return: Upgrade message.
+    Parameters
+    ----------
+    agent_list : list
+        List of agents ID's.
+    wpk_repo : str
+        URL for WPK download.
+    version : str
+        Version to upgrade to.
+    force : bool
+        force the update even if it is a downgrade.
+    use_http : bool
+        False for HTTPS protocol, True for HTTP protocol.
+    file_path : str
+        Path to the installation file.
+    installer : str
+        Selected installer.
+
+    Returns
+    -------
+    Confirmation message
     """
-    # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
-    # agents
-    agent_id = agent_list[0]
+    result = AffectedItemsWazuhResult(all_msg='All agents are being upgraded',
+                                      some_msg='Some agents have not been upgraded',
+                                      none_msg='No agent has been upgraded')
 
-    return Agent(agent_id).upgrade(wpk_repo=wpk_repo, version=version, force=True if int(force) == 1 else False,
-                                   chunk_size=chunk_size, use_http=use_http)
+    map_errors_exceptions = {
+        'need_explanation': {
+            1: 1716,
+            2: 1716,
+            3: 1716,
+            5: 1716,
+            7: 1757
+        },
+        'no_need_explanation': {
+            4: 1715,
+            6: 1756,
+            8: {'windows': 1721, 'others': 1719},
+            10: 1749,
+            11: 1717,
+            12: 1701
+        }
+    }
+
+    wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url
+    msg = {
+        'command': 'upgrade',
+        'agents': agent_list,
+        'params': {
+            'version': version,
+            'force_upgrade': 0 if not force else 1,
+            'use_http': use_http,
+            'wpk_repo': f'{wpk_repo}/' if not wpk_repo.endswith('/') else wpk_repo,
+            'file_path': file_path,
+            'installer': installer
+        }
+    }
+    msg['params'] = {k: v for k, v in msg['params'].items() if v is not None}
+    data = core_upgrade_agents(command=msg)
+
+    for agent_result in data:
+        if agent_result['error'] == 0:
+            result.affected_items.append(agent_result['agent'])
+            result.total_affected_items += 1
+        else:
+            if agent_result['error'] in map_errors_exceptions['need_explanation'].keys():
+                result.add_failed_item(id_=agent_result['agent'], error=WazuhError(
+                    code=map_errors_exceptions[agent_result['error']], extra_message=agent_result['data']))
+            elif agent_result['error'] != 8:
+                map_errors_exceptions = map_errors_exceptions['no_need_explanation']
+                result.add_failed_item(id_=agent_result['agent'],
+                                       error=WazuhError(code=map_errors_exceptions[agent_result['error']]))
+            else:
+                map_errors_exceptions = map_errors_exceptions['no_need_explanation']
+                agent = Agent(id=agent_result['agent']).load_info_from_db()
+                result.add_failed_item(
+                    id_=agent_result['agent'],
+                    error=WazuhError(
+                        code=map_errors_exceptions[
+                            agent_result['error']]['others' if agent.os['platform'] != 'windows' else 'windows']))
+
+    return result
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -717,22 +787,6 @@ def get_upgrade_result(agent_list=None, timeout=3):
     agent_id = agent_list[0]
 
     return Agent(agent_id).upgrade_result(timeout=int(timeout))
-
-
-@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def upgrade_agents_custom(agent_list=None, file_path=None, installer=None):
-    """Read upgrade result output from agent.
-
-    :param agent_list: List of agents ID's.
-    :param file_path: Path to the installation file.
-    :param installer: Selected installer.
-    :return: Upgrade message.
-    """
-    # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
-    # agents
-    agent_id = agent_list[0]
-
-    return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)

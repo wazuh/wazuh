@@ -243,11 +243,11 @@ class WazuhException(Exception):
         1714: {'message': 'Error downloading WPK file',
                'remediation': 'Please check your internet connection and try again'
                },
-        1715: {'message': 'Error sending WPK file',
-               'remediation': 'Please check your internet connection, ensure the agent is active and try again'
+        1715: {'message': 'Could not create task ID for upgrade task',
+               'remediation': 'TO BE DEFINED'
                },
-        1716: {'message': 'Error upgrading agent',
-               'remediation': 'Please check that it is a new version and try again'
+        1716: {'message': 'Manager Error',
+               'remediation': 'TO BE DEFINED'
                },
         1717: {'message': 'Upgrading an agent to a version higher than the manager requires the force flag.',
                'remediation': 'The agent cannot have a more recent version than the manager, please update the manager '
@@ -340,6 +340,12 @@ class WazuhException(Exception):
                'remediation': 'Try listing all agents with GET /agents endpoint'},
         1755: {'message': 'The group does not have any agent assigned',
                'remediation': 'Please select another group or assign any agent to it'},
+        1756: {'message': 'Upgrade procedure could not start. Agent already upgrading',
+               'remediation': 'You can check the status of this task with the /agents/:agent_id/upgrade_result endpoint'
+               },
+        1757: {'message': 'Unknown error when upgrading',
+               'remediation': 'TO BE DEFINED'
+               },
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},

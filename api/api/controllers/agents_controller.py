@@ -402,12 +402,10 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_agent(request, agent_id, pretty=False, wait_for_complete=False, wpk_repo=None, version=None,
-                            use_http=False, force=False):
+async def put_upgrade_agent(request, agent_id, pretty=False, wpk_repo=None, version=None, use_http=False, force=False):
     """Upgrade agent using a WPK file from online repository.
 
     :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :param wpk_repo: WPK repository.
     :param version: Wazuh version to upgrade to.
@@ -450,7 +448,7 @@ async def put_upgrade_custom_agent(request, agent_id, pretty=False, wait_for_com
                 'file_path': file_path,
                 'installer': installer}
 
-    dapi = DistributedAPI(f=agent.upgrade_agents_custom,
+    dapi = DistributedAPI(f=agent.upgrade_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
