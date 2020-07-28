@@ -631,7 +631,8 @@ class SendSyncRequestQueue(WazuhRequestQueue):
             node = self.server.clients[names[0]]
             try:
                 request = json.loads(request, object_hook=c_common.as_wazuh_object)
-                self.logger.info("Receiving SendSync request from {}".format(names[0]))
+                self.logger.info("Receiving SendSync request ({}) from {} ({})".format(
+                    request['daemon_name'], names[0], names[1]))
                 result = await wazuh_sendsync(**request)
                 task_id = await node.send_string(json.dumps(result, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:

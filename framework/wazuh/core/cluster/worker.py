@@ -169,7 +169,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             sendsync_client, error_msg = data.split(b' ', 1)
             try:
                 asyncio.create_task(
-                    self.manager.local_server.clients[sendsync_client.decode()].send_request(command, error_msg))
+                    self.manager.local_server.clients[sendsync_client.decode()].send_request(b'err', error_msg))
             except WazuhClusterError as e:
                 raise WazuhClusterError(3025)
             return b'ok', b'SendSync error forwarded to worker'
