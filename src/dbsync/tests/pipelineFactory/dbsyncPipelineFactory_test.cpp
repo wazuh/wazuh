@@ -120,13 +120,13 @@ TEST_F(DBSyncPipelineFactoryTest, GetPipelineInvalidTxnContext)
 TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRow)
 {
     CallbackWrapper wrapper;
-    const auto jsonInput{ R"({"table":"processes","data":[{"pid":4, "tid":100 "name":"System"}]})"};
-    const auto jsonInput1{ R"({"table":"processes","data":[{"pid":4, "tid":101 "name":"System1"}]})"};
+    const auto jsonInput{ R"({"table":"processes","data":[{"pid":4, "tid":100, "name":"System"}]})"};
+    const auto jsonInput1{ R"({"table":"processes","data":[{"pid":4, "tid":101, "name":"System1"}]})"};
+    const auto jsonInput2{ R"({"table":"processes","data":[{"pid":4, "tid":102}]})"};
     const auto resultFnc
     {
         [&wrapper](ReturnTypeCallback resultType, const nlohmann::json& result)
         {
-            std::cout << result.dump() << std::endl;
             wrapper.callback(resultType, result);
         }
     };
@@ -145,48 +145,90 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRow)
     const auto pipeline{ m_pipelineFactory.pipeline(pipeHandle) };
     EXPECT_CALL(wrapper, callback(INSERTED, nlohmann::json::parse(R"([{"pid":4,"name":"System","tid":100}])"))).Times(1);
     EXPECT_CALL(wrapper, callback(MODIFIED, nlohmann::json::parse(R"({"pid":4,"name":"System1","tid":101})"))).Times(1);
+    EXPECT_CALL(wrapper, callback(MODIFIED, nlohmann::json::parse(R"({"pid":4,"tid":102})"))).Times(1);
     pipeline->syncRow(nlohmann::json::parse(jsonInput));
     pipeline->syncRow(nlohmann::json::parse(jsonInput));
     pipeline->syncRow(nlohmann::json::parse(jsonInput1));
     pipeline->syncRow(nlohmann::json::parse(jsonInput1));
+    pipeline->syncRow(nlohmann::json::parse(jsonInput2));
+    pipeline->syncRow(nlohmann::json::parse(jsonInput2));
     pipeline->getDeleted(nullptr);
     m_pipelineFactory.destroy(pipeHandle);
 }
 
-// TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowMaxQueueSize)
-// {
-//     const auto jsonInput{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})" };
-//     const nlohmann::json expectedResult{ jsonInput };
-//     const auto resultFnc
-//     {
-//         [&expectedResult](ReturnTypeCallback /*result_type*/, const nlohmann::json& result)
-//         {
-//             ASSERT_EQ(expectedResult[0], result);
-//         }
-//     };
-//     const auto json{ nlohmann::json::parse(R"({"tables": ["processes"]})") };
-//     const int threadNumber{ 1 };
-//     const int maxQueueSize{ 0 };
-//     const auto pipeHandle
-//     {
-//         m_pipelineFactory.create(m_dbHandle,
-//                                  json[0]["tables"].dump().c_str(),
-//                                  threadNumber,
-//                                  maxQueueSize,
-//                                  resultFnc)
-//     };
-//     ASSERT_NE(nullptr, pipeHandle);
-//     const auto pipeline{ m_pipelineFactory.pipeline(pipeHandle) };
-//     pipeline->syncRow(jsonInput);
-//     pipeline->getDeleted(nullptr);
-//     m_pipelineFactory.destroy(pipeHandle);
-// }
+TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowMaxQueueSize)
+{
+    CallbackWrapper wrapper;
+    const auto jsonInput{ R"({"table":"processes","data":[{"pid":4, "tid":100, "name":"System"}]})"};
+    const auto resultFnc
+    {
+        [&wrapper](ReturnTypeCallback resultType, const nlohmann::json& result)
+        {
+            wrapper.callback(resultType, result);
+        }
+    };
+    const auto json{ nlohmann::json::parse(R"({"tables": ["processes"]})") };
+    const int threadNumber{ 1 };
+    const int maxQueueSize{ 0 };
+    const auto pipeHandle
+    {
+        m_pipelineFactory.create(m_dbHandle,
+                                 json[0]["tables"].dump().c_str(),
+                                 threadNumber,
+                                 maxQueueSize,
+                                 resultFnc)
+    };
+    ASSERT_NE(nullptr, pipeHandle);
+    const auto pipeline{ m_pipelineFactory.pipeline(pipeHandle) };
+    EXPECT_CALL(wrapper, callback(INSERTED, nlohmann::json::parse(R"([{"pid":4,"name":"System","tid":100}])"))).Times(1);
+    pipeline->syncRow(nlohmann::json::parse(jsonInput));
+    pipeline->getDeleted(nullptr);
+    m_pipelineFactory.destroy(pipeHandle);
+}
 
-// TEST_F(DBSyncPipelineFactoryTest, DestroyInvalidPipeline)
-// {
-//     EXPECT_THROW
-//     (
-//         m_pipelineFactory.destroy(nullptr),
-//         DbSync::dbsync_error
-//     );
-// }
+TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowAndGetDeleted)
+{
+    CallbackWrapper wrapper;
+    const auto jsonInputNoTxn{ R"({"table":"processes","data":[{"pid":4, "tid":100, "name":"System"},{"pid":5, "tid":101, "name":"System1"},{"pid":7, "tid":101, "name":"System7"}]})"};
+    const auto jsonInputTxn1{ R"({"table":"processes","data":[{"pid":4, "tid":101, "name":"System"}]})"};
+    const auto jsonInputTxn2{ R"({"table":"processes","data":[{"pid":6, "tid":105, "name":"System2"}]})"};
+    const auto resultFnc
+    {
+        [&wrapper](ReturnTypeCallback resultType, const nlohmann::json& result)
+        {
+            wrapper.callback(resultType, result);
+        }
+    };
+    EXPECT_CALL(wrapper, callback(MODIFIED, nlohmann::json::parse(R"({"pid":4,"tid":101})"))).Times(1);
+    EXPECT_CALL(wrapper, callback(INSERTED, nlohmann::json::parse(R"([{"pid":6,"name":"System2","tid":105}])"))).Times(1);
+    EXPECT_CALL(wrapper, callback(DELETED, nlohmann::json::parse(R"({"pid":5,"name":"System1","tid":101})"))).Times(1);
+    EXPECT_CALL(wrapper, callback(DELETED, nlohmann::json::parse(R"({"pid":7,"name":"System7","tid":101})"))).Times(1);
+    DBSyncImplementation::instance().syncRowData(m_dbHandle, jsonInputNoTxn, nullptr);
+    const auto json{ nlohmann::json::parse(R"({"tables": ["processes"]})") };
+    const int threadNumber{ 1 };
+    const int maxQueueSize{ 1000 };
+    const auto pipeHandle
+    {
+        m_pipelineFactory.create(m_dbHandle,
+                                 json[0]["tables"].dump().c_str(),
+                                 threadNumber,
+                                 maxQueueSize,
+                                 resultFnc)
+    };
+    ASSERT_NE(nullptr, pipeHandle);
+    const auto pipeline{ m_pipelineFactory.pipeline(pipeHandle) };
+    pipeline->syncRow(nlohmann::json::parse(jsonInputTxn1));
+    pipeline->syncRow(nlohmann::json::parse(jsonInputTxn2));
+    pipeline->getDeleted(resultFnc);
+    m_pipelineFactory.destroy(pipeHandle);
+}
+
+
+TEST_F(DBSyncPipelineFactoryTest, DestroyInvalidPipeline)
+{
+    EXPECT_THROW
+    (
+        m_pipelineFactory.destroy(nullptr),
+        DbSync::dbsync_error
+    );
+}
