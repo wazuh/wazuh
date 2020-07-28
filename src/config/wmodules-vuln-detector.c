@@ -471,11 +471,15 @@ void wm_vuldet_enable_rhel_json_feed(update_node **updates) {
             mwarn(VU_OFFLINE_CONFLICT, updates[rhel_enabled]->dist);
         }
         // As soon as a valid RedHat O.S. is detected, enable the RedHat JSON feed
-        wm_vuldet_set_feed_version("jredhat", NULL, updates);
+        int retval;
+        if (retval = wm_vuldet_set_feed_version("jredhat", NULL, updates), retval == OS_INVALID) {
+            mwarn("Unable to load the RedHat JSON feed at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
+        }
     }
 }
 
 int wm_vuldet_read_deprecated_config(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update) {
+
     mwarn("'%s' option at module '%s' is deprecated. Use '%s' instead.", node->element, WM_VULNDETECTOR_CONTEXT.name, XML_PROVIDER);
 
     if (!strcmp(node->element, XML_FEED)) {
