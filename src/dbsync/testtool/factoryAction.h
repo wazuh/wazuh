@@ -42,7 +42,11 @@ public:
         else if (0 == actionCode.compare("dbsync_sync_row"))
         {
             return std::make_unique<SyncRowAction>();
-        }        
+        }
+        else if (0 == actionCode.compare("dbsync_sync_txn_row"))
+        {
+            return std::make_unique<SyncTxnRowsAction>();
+        }
         else
         {
             throw std::runtime_error { "Invalid action: " + actionCode };

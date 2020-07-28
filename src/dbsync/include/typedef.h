@@ -75,7 +75,7 @@ typedef struct
     result_callback_t callback;     /**< Result callback. */
     void* user_data;                /**< User data space returned in each callback. */
     /*@}*/
-} CallbackData, *callback_data_t;
+} callback_data_t;
 
 /**
  * @brief Callback function for user defined logging.
