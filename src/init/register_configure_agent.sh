@@ -48,7 +48,14 @@ edit_value_tag() {
             unix_sed "s#<$1>.*</$1>#<$1>$2</$1>#g" "${file}"
         fi
     fi
+}
 
+delete_tag() {
+    if [ -z "$2" ]; then
+        file="${CONF_FILE}"
+    else
+        file="${TMP_ENROLLMENT}"
+    fi
     # Delete the configuration tag if its value is empty
     # This will allow using the default value
     if [ "${file}" = "${TMP_ENROLLMENT}" ] && [ -z "$2" ]; then
@@ -175,6 +182,17 @@ concat_conf(){
     rm -f ${TMP_ENROLLMENT}
 }
 
+# Set autoenrollment configuration
+set_auto_enrollment_tag_value () {
+    tag="$1"
+    value="$2"
+    if [ ! -z "${value}" ]; then
+        edit_value_tag "${tag}" ${value} "auto_enrollment"
+    else
+        delete_tag "${tag}" "auto_enrollment"
+    fi
+}
+
 # Main function the script begin here
 main () {
 
@@ -214,14 +232,14 @@ main () {
         edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
 
         add_auto_enrollment
-        edit_value_tag "manager_address" ${WAZUH_REGISTRATION_SERVER} "auto_enrollment"
-        edit_value_tag "port" ${WAZUH_REGISTRATION_PORT} "auto_enrollment"
-        edit_value_tag "authorization_pass" ${WAZUH_REGISTRATION_PASSWORD} "auto_enrollment"
-        edit_value_tag "server_ca_path" ${WAZUH_REGISTRATION_CA} "auto_enrollment"
-        edit_value_tag "agent_certificate_path" ${WAZUH_REGISTRATION_CERTIFICATE} "auto_enrollment"
-        edit_value_tag "agent_key_path" ${WAZUH_REGISTRATION_KEY} "auto_enrollment"
-        edit_value_tag "agent_name" ${WAZUH_AGENT_NAME} "auto_enrollment"
-        edit_value_tag "groups" ${WAZUH_AGENT_GROUP} "auto_enrollment"
+        set_auto_enrollment_tag_value "manager_address" ${WAZUH_REGISTRATION_SERVER}
+        set_auto_enrollment_tag_value "port" ${WAZUH_REGISTRATION_PORT}
+        set_auto_enrollment_tag_value "authorization_pass" ${WAZUH_REGISTRATION_PASSWORD}
+        set_auto_enrollment_tag_value "server_ca_path" ${WAZUH_REGISTRATION_CA}
+        set_auto_enrollment_tag_value "agent_certificate_path" ${WAZUH_REGISTRATION_CERTIFICATE}
+        set_auto_enrollment_tag_value "agent_key_path" ${WAZUH_REGISTRATION_KEY}
+        set_auto_enrollment_tag_value "agent_name" ${WAZUH_AGENT_NAME}
+        set_auto_enrollment_tag_value "groups" ${WAZUH_AGENT_GROUP}
         concat_conf
     fi
 
