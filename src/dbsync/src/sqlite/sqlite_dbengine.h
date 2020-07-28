@@ -180,9 +180,9 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                           const std::string& fieldName,
                           Row& row);
 
-        int32_t bindFieldData(std::unique_ptr<SQLite::IStatement>const & stmt,
-                              const int32_t index,
-                              const TableField& fieldData);
+        void bindFieldData(const std::unique_ptr<SQLite::IStatement>& stmt,
+                           const int32_t index,
+                           const TableField& fieldData);
 
         std::string buildLeftOnlyQuery(const std::string& t1,
                                        const std::string& t2,
