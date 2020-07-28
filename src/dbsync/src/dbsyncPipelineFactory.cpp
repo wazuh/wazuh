@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#include <tuple>
+#include <utility>
 #include "db_exception.h"
 #include "dbsyncPipelineFactory.h"
 #include "dbsync_implementation.h"
@@ -78,7 +78,7 @@ namespace DbSync
             DBSyncImplementation::instance().getDeleted(m_handle, m_txnContext, callback);
         }
     private:
-        using SyncResult = std::tuple<ReturnTypeCallback, nlohmann::json>;
+        using SyncResult = std::pair<ReturnTypeCallback, nlohmann::json>;
         using DispatchCallbackNode = Utils::ReadNode<SyncResult>;
         using SyncRowNode = Utils::ReadWriteNode<nlohmann::json, SyncResult, DispatchCallbackNode>;
 
@@ -101,28 +101,39 @@ namespace DbSync
 
         SyncResult processSyncRow(const nlohmann::json& value)
         {
-            ReturnTypeCallback type{ DB_ERROR };
-            nlohmann::json result{ value };
+            SyncResult result{};
             try
             {
-                // DBSyncImplementation::instance().syncTxRow(m_handle, m_txnContext, value, type, result);
+                DBSyncImplementation::instance().syncRowData
+                (
+                    m_handle,
+                    m_txnContext,
+                    value.dump().c_str(),
+                    [&result](ReturnTypeCallback resType, const nlohmann::json& resValue)
+                    {
+                        result.first = resType;
+                        result.second = resValue;
+                    }
+                );
             }
-            catch(const DbSync::max_rows_error& /*ex*/)
+            catch(const DbSync::max_rows_error&)
             {
-                result = MAX_ROWS;
+                result.first = MAX_ROWS;
+                result.second = value;
             }
-            catch(...)
+            catch(const std::exception&)
             {
-                //we'll notify with DB_ERROR.
+                result.first = DB_ERROR;
+                result.second = value;
             }
-            return std::make_tuple<ReturnTypeCallback, std::string>(std::move(type), result[0]);
+            return result;
         }
         void dispatchResult(const SyncResult& result)
         {
-            const auto& value{ std::get<1>(result) };
+            const auto& value{ result.second };
             if (!value.empty())
             {
-                m_callback(std::get<0>(result), value);
+                m_callback(result.first, value);
             }
         }
         const std::shared_ptr<DispatchCallbackNode> m_spDispatchNode;
