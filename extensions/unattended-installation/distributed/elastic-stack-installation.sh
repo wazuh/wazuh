@@ -75,7 +75,7 @@ installPrerequisites() {
     if [ $sys_type == "yum" ] 
     then
         eval "yum install curl unzip wget libcap -y -q $debug"   
-        eval "echo -e '[AdoptOpenJDK] \nname=AdoptOpenJDK \nbaseurl=http://adoptopenjdk.jfrog.io/adoptopenjdk/rpm/centos/$releasever/$basearch\nenabled=1\ngpgcheck=1\ngpgkey=https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public' | tee /etc/yum.repos.d/adoptopenjdk.repo $debug"
+        echo -e '[AdoptOpenJDK] \nname=AdoptOpenJDK \nbaseurl=http://adoptopenjdk.jfrog.io/adoptopenjdk/rpm/centos/$releasever/$basearch\nenabled=1\ngpgcheck=1\ngpgkey=https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public' | eval "tee /etc/yum.repos.d/adoptopenjdk.repo $debug"
         eval "yum install adoptopenjdk-11-hotspot -y -q $debug"
         export JAVA_HOME=/usr/   
     elif [ $sys_type == "apt-get" ] 
