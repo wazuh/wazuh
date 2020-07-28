@@ -53,11 +53,10 @@
 
 /** Prototypes **/
 void OS_ReadMSG(int m_queue);
-RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match);
 static void LoopRule(RuleNode *curr_node, FILE *flog);
 
 /* For decoders */
-void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match, OSDecoderNode *node);
+void DecodeEvent(Eventinfo *lf, OSHash *rules_hash, regex_matching *decoder_match, OSDecoderNode *node);
 int DecodeSyscheck(Eventinfo *lf, _sdb *sdb);
 // Decode events in json format
 int decode_fim_event(_sdb *sdb, Eventinfo *lf);
@@ -777,7 +776,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     SecurityConfigurationAssessmentInit();
 
     /* Initialize the Accumulator */
-    if (!Accumulate_Init()) {
+    if (!Accumulate_Init(&os_analysisd_acm_store, &os_analysisd_acm_lookups, &os_analysisd_acm_purge_ts)) {
         merror("accumulator: ERROR: Initialization failed");
         exit(1);
     }
@@ -912,9 +911,11 @@ void OS_ReadMSG_analysisd(int m_queue)
     num_dispatch_dbsync_threads = (num_dispatch_dbsync_threads > 0) ? num_dispatch_dbsync_threads : cpu_cores;
 
     /* Initiate the FTS list */
-    if (!FTS_Init(num_rule_matching_threads)) {
+    if (!FTS_Init(num_rule_matching_threads, &os_analysisd_fts_list, &os_analysisd_fts_store)) {
         merror_exit(FTS_LIST_ERROR);
     }
+
+    mdebug1("FTS_Init completed.");
 
     /* Create message handler thread */
     w_create_thread(ad_input_main, &m_queue);
@@ -993,8 +994,9 @@ void OS_ReadMSG_analysisd(int m_queue)
 }
 
 /* Checks if the current_rule matches the event information */
-RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match)
-{
+RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, EventList *last_events, ListNode *cdblists, RuleNode *curr_node,
+                              regex_matching *rule_match, OSList **fts_list, OSHash **fts_store) {
+
     /* We check for:
      * decoded_as,
      * fts,
@@ -1335,7 +1337,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             char * _line_cpy;
             if ((lf->decoder_info->fts & FTS_DONE) || (lf->rootcheck_fts & FTS_DONE))  {
                 /* We already did the fts in here */
-            } else if (_line = FTS(lf),_line == NULL) {
+            } else if (_line = FTS(lf, fts_list, fts_store),_line == NULL) {
                 return (NULL);
             }
 
@@ -1360,7 +1362,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->srcip) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->srcip, os_analysisd_cdblists)) {
+                    if (!OS_DBSearch(list_holder, lf->srcip, cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1368,7 +1370,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->srcport) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->srcport, os_analysisd_cdblists)) {
+                    if (!OS_DBSearch(list_holder, lf->srcport, cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1376,7 +1378,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->dstip) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->dstip, os_analysisd_cdblists)) {
+                    if (!OS_DBSearch(list_holder, lf->dstip, cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1384,17 +1386,17 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->dstport) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->dstport, os_analysisd_cdblists)) {
+                    if (!OS_DBSearch(list_holder, lf->dstport, cdblists)) {
                         return (NULL);
                     }
                     break;
                 case RULE_USER:
                     if (lf->srcuser) {
-                        if (!OS_DBSearch(list_holder, lf->srcuser, os_analysisd_cdblists)) {
+                        if (!OS_DBSearch(list_holder, lf->srcuser,cdblists)) {
                             return (NULL);
                         }
                     } else if (lf->dstuser) {
-                        if (!OS_DBSearch(list_holder, lf->dstuser, os_analysisd_cdblists)) {
+                        if (!OS_DBSearch(list_holder, lf->dstuser, cdblists)) {
                             return (NULL);
                         }
                     } else {
@@ -1405,7 +1407,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->url) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->url, os_analysisd_cdblists)) {
+                    if (!OS_DBSearch(list_holder, lf->url, cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1413,7 +1415,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->id) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->id, os_analysisd_cdblists)) {
+                    if (!OS_DBSearch(list_holder, lf->id, cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1421,7 +1423,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->hostname) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->hostname, os_analysisd_cdblists)) {
+                    if (!OS_DBSearch(list_holder, lf->hostname, cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1429,7 +1431,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->program_name) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->program_name, os_analysisd_cdblists)) {
+                    if (!OS_DBSearch(list_holder, lf->program_name, cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1437,7 +1439,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->status) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->status, os_analysisd_cdblists)) {
+                    if (!OS_DBSearch(list_holder, lf->status, cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1445,7 +1447,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->action) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->action, os_analysisd_cdblists)) {
+                    if (!OS_DBSearch(list_holder, lf->action, cdblists)) {
                         return (NULL);
                     }
                     break;
@@ -1453,7 +1455,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->systemname) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->systemname, os_analysisd_cdblists)){
+                    if (!OS_DBSearch(list_holder, lf->systemname, cdblists)){
                         return (NULL);
                     }
                     break;
@@ -1461,7 +1463,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->protocol) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->protocol, os_analysisd_cdblists)){
+                    if (!OS_DBSearch(list_holder, lf->protocol, cdblists)){
                         return (NULL);
                     }
                     break;
@@ -1469,7 +1471,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->data) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->data, os_analysisd_cdblists)){
+                    if (!OS_DBSearch(list_holder, lf->data, cdblists)){
                         return (NULL);
                     }
                     break;
@@ -1477,14 +1479,14 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     if (!lf->extra_data) {
                         return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->extra_data, os_analysisd_cdblists)) {
+                    if (!OS_DBSearch(list_holder, lf->extra_data, cdblists)) {
                         return (NULL);
                     }
                     break;
                 case RULE_DYNAMIC:
                     field = FindField(lf, list_holder->dfield);
 
-                    if (!(field &&OS_DBSearch(list_holder, (char*)field, os_analysisd_cdblists)))
+                    if (!(field &&OS_DBSearch(list_holder, (char*)field, cdblists)))
                         return NULL;
 
                     break;
@@ -1500,7 +1502,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
     if (rule->context == 1) {
         if (!(rule->context_opts & FIELD_DODIFF)) {
             if (rule->event_search) {
-                if (!rule->event_search(lf, rule, rule_match)) {
+                if (!rule->event_search(lf, last_events, rule, rule_match)) {
                     w_FreeArray(lf->last_events);
                     return (NULL);
                 }
@@ -1526,7 +1528,8 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
 #endif
 
         while (child_node) {
-            child_rule = OS_CheckIfRuleMatch(lf, child_node, rule_match);
+            child_rule = OS_CheckIfRuleMatch(lf, last_events, cdblists, child_node, rule_match,
+                                             &os_analysisd_fts_list, &os_analysisd_fts_store);
             if (child_rule != NULL) {
                 if (!child_rule->prev_rule) {
                     child_rule->prev_rule = rule;
@@ -2246,7 +2249,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
                 }
             } else {
                 node = OS_GetFirstOSDecoder(lf->program_name);
-                DecodeEvent(lf, &decoder_match, node);
+                DecodeEvent(lf, Config.g_rules_hash, &decoder_match, node);
             }
 
             free(msg);
@@ -2381,7 +2384,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         /* Run accumulator */
         if ( lf->decoder_info->accumulate == 1 ) {
             w_mutex_lock(&accumulate_mutex);
-            lf = Accumulate(lf);
+            lf = Accumulate(lf, &os_analysisd_acm_store, &os_analysisd_acm_lookups, &os_analysisd_acm_purge_ts);
             w_mutex_unlock(&accumulate_mutex);
         }
 
@@ -2470,8 +2473,9 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             }
 
             /* Check each rule */
-            else if ((t_currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match))
-                        == NULL) {
+            else if (t_currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, os_analysisd_cdblists,
+                     rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store), !t_currently_rule) {
+
                 continue;
             }
 

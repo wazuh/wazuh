@@ -424,7 +424,7 @@ int ReadDecodeXML(const char *file, char **msg)
                         /* Initialize plugin */
                         void (*dec_init)(void) = (void (*)(void)) plugin_decoders_init[ed_c];
                         dec_init();
-                        pi->plugindecoder = (void (*)(void *, void *)) plugin_decoders_exec[ed_c];
+                        pi->plugindecoder = (void (*)(void *, void *, void *)) plugin_decoders_exec[ed_c];
                         break;
                     }
                 }

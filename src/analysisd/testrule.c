@@ -33,10 +33,7 @@
 /** Internal Functions **/
 void OS_ReadMSG(char *ut_str);
 
-/* Analysisd function */
-RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match);
-
-void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match, OSDecoderNode *node);
+void DecodeEvent(Eventinfo *lf, OSHash *rules_hash, regex_matching *decoder_match, OSDecoderNode *node);
 
 // Cleanup at exit
 static void onexit();
@@ -439,12 +436,14 @@ void OS_ReadMSG(char *ut_str)
     currently_rule = NULL;
 
     /* Initiate the FTS list */
-    if (!FTS_Init(1)) {
+    if (!FTS_Init(1, &os_analysisd_fts_list, &os_analysisd_fts_store)) {
         merror_exit(FTS_LIST_ERROR);
     }
 
+    mdebug1("FTS_Init completed.");
+
     /* Initialize the Accumulator */
-    if (!Accumulate_Init()) {
+    if (!Accumulate_Init(&os_analysisd_acm_store, &os_analysisd_acm_lookups, &os_analysisd_acm_purge_ts)) {
         merror("accumulator: ERROR: Initialization failed");
         exit(1);
     }
@@ -513,12 +512,12 @@ void OS_ReadMSG(char *ut_str)
 
             /* Decode event */
             node = OS_GetFirstOSDecoder(lf->program_name);
-            DecodeEvent(lf, &decoder_match, node);
+            DecodeEvent(lf, Config.g_rules_hash, &decoder_match, node);
 
             /* Run accumulator */
             if ( lf->decoder_info->accumulate == 1 ) {
                 print_out("\n**ACCUMULATOR: LEVEL UP!!**\n");
-                lf = Accumulate(lf);
+                lf = Accumulate(lf, &os_analysisd_acm_store, &os_analysisd_acm_lookups, &os_analysisd_acm_purge_ts);
             }
 
             /* Loop over all the rules */
@@ -550,7 +549,8 @@ void OS_ReadMSG(char *ut_str)
                 }
 
                 /* Check each rule */
-                else if (currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match), !currently_rule) {
+                else if (currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, os_analysisd_cdblists,
+                         rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store), !currently_rule) {
                     continue;
                 }
 
