@@ -121,7 +121,7 @@ namespace DbSync
                 result.first = MAX_ROWS;
                 result.second = value;
             }
-            catch(const std::exception&)
+            catch(...)
             {
                 result.first = DB_ERROR;
                 result.second = value;
