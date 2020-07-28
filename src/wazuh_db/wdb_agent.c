@@ -110,16 +110,20 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
     char wdbquery[OS_BUFFER_SIZE] = "";
     char wdboutput[OS_BUFFER_SIZE] = "";
     int wdb_sock = -1;
+    char os_uname_format[OS_BUFFER_SIZE] = "";
  
     // os_uname fails with %Q flag
     if(!os_uname){
-        os_strdup("NULL",os_uname);
+         snprintf(os_uname_format, sizeof(os_uname_format),"NULL");
+    }
+    else{
+        snprintf(os_uname_format, sizeof(os_uname_format),"'%s'", os_uname);
     }
 
     if(agent_ip) {
-        sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_VERSION_IP], os_name, os_version, os_major, os_minor,os_codename, os_platform, os_build, os_uname, os_arch, version, config_sum,merged_sum, manager_host, node_name, agent_ip , id );
+        sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_VERSION_IP], os_name, os_version, os_major, os_minor,os_codename, os_platform, os_build, os_uname_format, os_arch, version, config_sum,merged_sum, manager_host, node_name, agent_ip , id );
     } else {
-        sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_VERSION],  os_name, os_version, os_major, os_minor,os_codename, os_platform, os_build, os_uname, os_arch, version, config_sum,merged_sum, manager_host, node_name , id );
+        sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_VERSION],  os_name, os_version, os_major, os_minor,os_codename, os_platform, os_build, os_uname_format, os_arch, version, config_sum,merged_sum, manager_host, node_name , id );
     }
 
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
