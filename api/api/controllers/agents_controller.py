@@ -4,16 +4,15 @@
 
 import logging
 
-from aiohttp import web
-from connexion.lifecycle import ConnexionResponse
-
 import wazuh.agent as agent
+from aiohttp import web
 from api import configuration
 from api.encoder import dumps, prettify
 from api.models.agent_added import AgentAddedModel
 from api.models.agent_inserted import AgentInsertedModel
 from api.models.base_model_ import Data, Body
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
+from connexion.lifecycle import ConnexionResponse
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
@@ -247,7 +246,8 @@ async def get_agent_config(request, pretty=False, wait_for_complete=False, agent
     return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_single_agent_multiple_groups(request, agent_id, list_groups=None, pretty=False, wait_for_complete=False):
+async def delete_single_agent_multiple_groups(request, agent_id, list_groups=None, pretty=False,
+                                              wait_for_complete=False):
     """'Remove the agent from all groups or a list of them.
 
     The agent will automatically revert to the "default" group if it is removed from all its assigned groups.
@@ -329,7 +329,8 @@ async def delete_single_agent_single_group(request, agent_id, group_id, pretty=F
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_agent_single_group(request, agent_id, group_id, force_single_group=False, pretty=False, wait_for_complete=False):
+async def put_agent_single_group(request, agent_id, group_id, force_single_group=False, pretty=False,
+                                 wait_for_complete=False):
     """Assign an agent to the specified group.
 
     :param pretty: Show results in human-readable format
@@ -463,8 +464,9 @@ async def put_upgrade_custom_agent(request, agent_id, pretty=False, wait_for_com
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_multiple_agents(request, list_agents, pretty=False, wait_for_complete=False, wpk_repo=None, version=None,
-                            use_http=False, force=False):
+async def put_upgrade_multiple_agents(request, list_agents, pretty=False, wait_for_complete=False, wpk_repo=None,
+                                      version=None,
+                                      use_http=False, force=False):
     """Upgrade agents using a WPK file from online repository.
 
     :param pretty: Show results in human-readable format
@@ -495,8 +497,9 @@ async def put_upgrade_multiple_agents(request, list_agents, pretty=False, wait_f
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_multiple_custom_agents(request, list_agents, pretty=False, wait_for_complete=False, file_path=None,
-                                   installer=None):
+async def put_upgrade_multiple_custom_agents(request, list_agents, pretty=False, wait_for_complete=False,
+                                             file_path=None,
+                                             installer=None):
     """Upgrade agents using a local WPK file.'.
 
     :param pretty: Show results in human-readable format
