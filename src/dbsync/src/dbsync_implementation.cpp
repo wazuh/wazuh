@@ -63,13 +63,14 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE  handle,
     const auto& ctx{ dbEngineContext(handle) };
     const auto& tnxCtx { ctx->transactionContext(txn) };
     const auto json { nlohmann::json::parse(jsonRaw) };
-    if (spTransactionContext->m_tables.find(json[0]["table"]) == spTransactionContext->m_tables.end())
+    if (std::find(tnxCtx->m_tables.begin(), tnxCtx->m_tables.end(), json[0]["table"]) == tnxCtx->m_tables.end())
     {
         throw dbsync_error{INVALID_TABLE};
     }
     ctx->m_dbEngine->syncTableRowData(json[0]["table"],
                                       json[0]["data"],
-                                      callback);
+                                      callback,
+                                      true);
 }
 
 void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE  handle,
