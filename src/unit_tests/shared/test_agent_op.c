@@ -40,7 +40,7 @@ void __wrap__mdebug1(const char * file, int line, const char * func, const char 
   
 extern cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id);
 extern cJSON* w_create_agent_remove_payload(const char *id, const int purge);
-extern cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message);
+extern cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 extern int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error);
 extern int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error);
 
@@ -112,52 +112,38 @@ static void test_create_agent_remove_payload(void **state) {
     cJSON_Delete(payload); 
 }
 
-static void test_create_send_sync_payload(void **state) {   
+static void test_create_sendsync_payload(void **state) {   
     char* daemon = "daemon_test";
     char* id = "001";
     int purge = 1;
     cJSON* payload = NULL;
     cJSON* message = NULL;
-    cJSON* function = NULL;
-    cJSON* arguments = NULL;
     cJSON* item = NULL;   
     /* NULL message */ 
-    payload = w_create_send_sync_payload(daemon, message);    
+    payload = w_create_sendsync_payload(daemon, message);    
     
     assert_non_null(payload);
-    function = cJSON_GetObjectItem(payload, "function");
-    assert_non_null(function);
-    assert_string_equal(function->valuestring, "send_sync");
     
-    arguments = cJSON_GetObjectItem(payload, "arguments");
-    assert_non_null(arguments);
-    
-    item = cJSON_GetObjectItem(arguments, "daemon_name");
+    item = cJSON_GetObjectItem(payload, "daemon_name");
     assert_non_null(item);
     assert_string_equal(item->valuestring, daemon);    
     
-    item = cJSON_GetObjectItem(arguments, "message");
+    item = cJSON_GetObjectItem(payload, "message");
     assert_null(item);
 
     cJSON_Delete(payload); 
 
     /* non NULL message */
     message = w_create_agent_remove_payload(id,purge);
-    payload = w_create_send_sync_payload(daemon, message);    
+    payload = w_create_sendsync_payload(daemon, message);    
     
     assert_non_null(payload);
-    function = cJSON_GetObjectItem(payload, "function");
-    assert_non_null(function);
-    assert_string_equal(function->valuestring, "send_sync");
     
-    arguments = cJSON_GetObjectItem(payload, "arguments");
-    assert_non_null(arguments);
-    
-    item = cJSON_GetObjectItem(arguments, "daemon_name");
+    item = cJSON_GetObjectItem(payload, "daemon_name");
     assert_non_null(item);
     assert_string_equal(item->valuestring, daemon);    
     
-    item = cJSON_GetObjectItem(arguments, "message");
+    item = cJSON_GetObjectItem(payload, "message");
     assert_non_null(item);
 
     cJSON_Delete(payload);  
@@ -228,7 +214,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_create_agent_add_payload),
         cmocka_unit_test(test_create_agent_remove_payload),
-        cmocka_unit_test(test_create_send_sync_payload),
+        cmocka_unit_test(test_create_sendsync_payload),
         cmocka_unit_test(test_parse_agent_add_response),
         cmocka_unit_test(test_parse_agent_remove_response),
     };
