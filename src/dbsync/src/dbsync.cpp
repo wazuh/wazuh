@@ -98,11 +98,11 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
                              const cJSON*        tables,
                              const unsigned int  thread_number,
                              const unsigned int  max_queue_size,
-                             result_callback_t   callback)
+                             callback_data_t     callback_data)
 {
     std::string errorMessage;
     TXN_HANDLE txn{ nullptr };
-    if (!handle || !tables || !max_queue_size || !callback)
+    if (!handle || !tables || !max_queue_size || !callback_data || !callback_data->callback)
     {
         errorMessage += "Invalid parameters.";
     }
@@ -112,10 +112,10 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
         {
             const auto callbackWrapper
             {
-                [callback](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+                [callback_data](ReturnTypeCallback result, const nlohmann::json& jsonResult)
                 {
                     const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
-                    callback(result, spJson.get());
+                    callback_data->callback(result, spJson.get(), callback_data->user_data);
                 }
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(tables)};
@@ -285,11 +285,11 @@ int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
 
 int dbsync_sync_row(const DBSYNC_HANDLE handle,
                     const cJSON*        js_input,
-                    result_callback_t   callback)
+                    callback_data_t     callback_data)
 {
     auto ret_val { -1 };
     std::string errorMessage;
-    if (!handle || !js_input || !callback)
+    if (!handle || !js_input || !callback_data || !callback_data->callback)
     {
         errorMessage += "Invalid input parameters.";
     }
@@ -299,10 +299,10 @@ int dbsync_sync_row(const DBSYNC_HANDLE handle,
         {
             const auto callbackWrapper
             {
-                [callback](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+                [callback_data](ReturnTypeCallback result, const nlohmann::json& jsonResult)
                 {
                     const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
-                    callback(result, spJson.get());
+                    callback_data->callback(result, spJson.get(),callback_data->user_data);
                 }
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_input) };
@@ -323,7 +323,7 @@ int dbsync_sync_row(const DBSYNC_HANDLE handle,
         {
             errorMessage += "DB error, ";
             errorMessage += ex.what();
-            callback(ReturnTypeCallback::MAX_ROWS, js_input);
+            callback_data->callback(ReturnTypeCallback::MAX_ROWS, js_input, callback_data->user_data);
         }
         catch(...)
         {
@@ -336,7 +336,7 @@ int dbsync_sync_row(const DBSYNC_HANDLE handle,
 
 int dbsync_select_rows(const DBSYNC_HANDLE /*handle*/,
                        const cJSON*        /*js_data_input*/,
-                       result_callback_t   /*callback*/)
+                       callback_data_t     /*callback_data*/)
 {
     // Dummy function for now.
     return 0;
@@ -350,11 +350,11 @@ int dbsync_delete_rows(const DBSYNC_HANDLE /*handle*/,
 }
 
 int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
-                            result_callback_t callback)
+                            callback_data_t   callback_data)
 {
     auto ret_val { -1 };
     std::string error_message;
-    if (!txn || !callback)
+    if (!txn || !callback_data || !callback_data->callback)
     {
         error_message += "Invalid txn or callback.";
     }
@@ -364,10 +364,10 @@ int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
         {
             const auto callbackWrapper
             {
-                [callback](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+                [callback_data](ReturnTypeCallback result, const nlohmann::json& jsonResult)
                 {
                     const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
-                    callback(result, spJson.get());
+                    callback_data->callback(result, spJson.get(), callback_data->user_data);
                 }
             };
             PipelineFactory::instance().pipeline(txn)->getDeleted(callbackWrapper);
@@ -447,11 +447,11 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
 
 int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
                                    const cJSON*        js_snapshot,
-                                   result_callback_t   callback)
+                                   callback_data_t     callback_data)
 {
     auto ret_val { -1 };
     std::string errorMessage;
-    if (!handle || !js_snapshot || !callback)
+    if (!handle || !js_snapshot || !callback_data || !callback_data->callback)
     {
         errorMessage += "Invalid input parameters.";
     }
@@ -461,10 +461,10 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
         {
             const auto callbackWrapper
             {
-                [callback](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+                [callback_data](ReturnTypeCallback result, const nlohmann::json& jsonResult)
                 {
                     const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
-                    callback(result, spJson.get());
+                    callback_data->callback(result, spJson.get(), callback_data->user_data);
                 }
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
@@ -485,7 +485,7 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
         {
             errorMessage += "DB error, ";
             errorMessage += ex.what();
-            callback(ReturnTypeCallback::MAX_ROWS, js_snapshot);
+            callback_data->callback(ReturnTypeCallback::MAX_ROWS, js_snapshot, callback_data->user_data);
         }
         catch(...)
         {

@@ -77,15 +77,15 @@ private:
 
     static std::vector<std::string> splitActions(const std::string& values)
     {
-        std::vector<std::string> actions;
+        std::vector<std::string> actionsValues;
         std::stringstream ss{ values };
         while (ss.good())
         {
             std::string substr;
             getline(ss, substr, ','); // Getting each string between ',' character
-            actions.push_back(std::move(substr));
+            actionsValues.push_back(std::move(substr));
         }
-        return actions;
+        return actionsValues;
     }
 
     const std::string m_configFile;

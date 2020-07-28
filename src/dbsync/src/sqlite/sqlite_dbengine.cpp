@@ -59,6 +59,10 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
         }
         transaction->commit();
     }
+    else
+    {
+        throw dbengine_error { EMPTY_TABLE_METADATA };
+    }
 }
 
 void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
@@ -86,6 +90,10 @@ void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
                     std::cout << "Error during the insert rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
                 }
             }
+        }
+        else
+        {
+            throw dbengine_error { EMPTY_TABLE_METADATA };
         }
     }
 }
@@ -119,6 +127,10 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
         {
             callback(resultCbType, jsResult);
         }
+    }
+    else
+    {
+        throw dbengine_error { EMPTY_TABLE_METADATA };
     }
 }
 
@@ -190,6 +202,47 @@ void SQLiteDBEngine::deleteRowsByStatusField(const nlohmann::json& tableNames)
     transaction->commit();
 }
 
+void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames, 
+                                               const DbSync::ResultCallback callback)
+{
+    for (const auto& tableValue : tableNames)
+    {
+        const auto& table { tableValue.get<std::string>() };
+
+        if (0 != loadTableData(table)) 
+        {
+            const auto& tableFields { m_tableFields[table] };
+            auto const& stmt { getStatement(getSelectAllQuery(table, tableFields)) };
+
+            while (SQLITE_ROW == stmt->step())
+            {
+                Row registerFields;
+                for(const auto& field : tableFields)
+                {
+                    if (!std::get<TableHeader::TXNStatusField>(field))
+                    {
+                        getTableData(stmt, 
+                                 std::get<TableHeader::CID>(field), 
+                                 std::get<TableHeader::Type>(field),
+                                 std::get<TableHeader::Name>(field), 
+                                 registerFields);
+                    }
+                }
+
+                nlohmann::json object {};
+                for (const auto& value : registerFields)
+                {
+                    getFieldValueFromTuple(value, object);
+                }
+                callback(ReturnTypeCallback::DELETED, object);
+            }
+        }
+        else
+        {
+            throw dbengine_error { EMPTY_TABLE_METADATA };
+        }
+    }
+}
 
 ///
 /// Private functions section
@@ -407,7 +460,7 @@ void SQLiteDBEngine::deleteTempTable(const std::string& table)
 { 
     try
     {
-        m_sqliteConnection->execute("DROP TABLE " + table + TEMP_TABLE_SUBFIX + ";");
+        m_sqliteConnection->execute("DROP TABLE IF EXISTS " + table + TEMP_TABLE_SUBFIX + ";");
     }
     //if the table doesn't exist we don't care.
     catch(...)
@@ -448,10 +501,7 @@ bool SQLiteDBEngine::removeNotExistsRows(const std::string& table,
                 nlohmann::json object;
                 for (const auto& value : row)
                 {
-                    if(!getFieldValueFromTuple(value, object))
-                    {
-                        std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
-                    }
+                    getFieldValueFromTuple(value, object);
                 }
                 if(callback)
                 {
@@ -626,7 +676,7 @@ bool SQLiteDBEngine::deleteRows(const std::string& table,
             {
                 if (!bindFieldData(stmt, index, row.at(value)))
                 {
-                    std::cout << "bind error: " <<  index << std::endl;
+                    throw dbengine_error { EMPTY_TABLE_METADATA };
                 }
                 ++index;
             }
@@ -744,7 +794,7 @@ bool SQLiteDBEngine::getRowDiff(const std::string& table,
 
             if(it != tableFields.end())
             {
-                jsResult.push_back({{pkValue, data[pkValue]}});
+                jsResult[pkValue] = data[pkValue];
                 bindJsonData(stmt, *it, data, index);
                 ++index;
             }
@@ -769,20 +819,18 @@ bool SQLiteDBEngine::getRowDiff(const std::string& table,
                 for (const auto& value : registryFields)
                 {
                     nlohmann::json object;
-                    if(getFieldValueFromTuple(value, object))
+                    getFieldValueFromTuple(value, object);
+                    const auto& it
                     {
-                        const auto& it
+                        data.find(value.first)
+                    };
+                    if (data.end() != it)
+                    {
+                        if(*it != object[value.first])
                         {
-                            data.find(value.first)
-                        };
-                        if (data.end() != it)
-                        {
-                            if(*it != object[value.first])
-                            {
-                                // Diff found
-                                isModified = true;
-                                jsResult.push_back({{value.first, *it}});    
-                            }
+                            // Diff found
+                            isModified = true;
+                            jsResult[value.first] = *it;
                         }
                     }
                 }
@@ -810,10 +858,7 @@ bool SQLiteDBEngine::insertNewRows(const std::string& table,
             nlohmann::json object;
             for (const auto& value : row)
             {
-                if(!getFieldValueFromTuple(value, object))
-                {
-                    std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
-                }
+                getFieldValueFromTuple(value, object);
             }
             if(callback)
             {
@@ -822,26 +867,6 @@ bool SQLiteDBEngine::insertNewRows(const std::string& table,
         }
     }
     return ret;
-}
-
-void SQLiteDBEngine::bulkInsert(const std::string& table,
-                                const Row& rowData)
-{
-    auto const& stmt { getStatement(buildInsertBulkDataSqlQuery(table)) };
-
-    for (const auto& value : m_tableFields[table])
-    {
-        auto it { rowData.find(std::get<TableHeader::Name>(value))};
-        if (rowData.end() != it)
-        {
-            if (!bindFieldData(stmt, std::get<TableHeader::CID>(value) + 1, (*it).second ))
-            {
-                std::cout << "bind error: " <<  std::get<TableHeader::CID>(value) << std::endl;
-            }
-        }
-    }
-    stmt->step();
-    stmt->reset();
 }
 
 void SQLiteDBEngine::bulkInsert(const std::string& table,
@@ -884,10 +909,7 @@ int SQLiteDBEngine::changeModifiedRows(const std::string& table,
                 nlohmann::json object;
                 for (const auto& value : row)
                 {
-                    if(!getFieldValueFromTuple(value, object))
-                    {
-                        std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
-                    }
+                    getFieldValueFromTuple(value, object);
                 }
                 if(callback)
                 {
@@ -911,14 +933,11 @@ std::string SQLiteDBEngine::buildUpdatePartialDataSqlQuery(const std::string& ta
     std::string sql{ "UPDATE " + table + " SET "};
     if (0 != primaryKeyList.size())
     {
-        for (const auto &dataValue : data)
+        for (auto it = data.begin(); it != data.end(); ++it)
         {
-            for (auto it = dataValue.begin(); it != dataValue.end(); ++it)
+            if (std::find(primaryKeyList.begin(), primaryKeyList.end(), it.key()) == primaryKeyList.end())
             {
-                if (std::find(primaryKeyList.begin(), primaryKeyList.end(), it.key()) == primaryKeyList.end())
-                {
-                    sql += it.key() + "=?,";
-                }
+                sql += it.key() + "=?,";
             }
         }
         sql = sql.substr(0, sql.size()-1);  // Remove the last " , "
@@ -972,40 +991,30 @@ std::string SQLiteDBEngine::buildUpdateDataSqlQuery(const std::string& table,
     sql.append(" SET ");
     sql.append(field.first);
     sql.append("=");
-    if (getFieldValueFromTuple(field, sql, true))
+    getFieldValueFromTuple(field, sql, true);
+    sql.append(" WHERE ");
+    if (0 != primaryKeyList.size())
     {
-        sql.append(" WHERE ");
-        if (0 != primaryKeyList.size())
+        for (const auto& value : primaryKeyList)
         {
-            for (const auto& value : primaryKeyList)
+            const auto it { row.find("PK_"+value) };
+            if (it != row.end())
             {
-                const auto it { row.find("PK_"+value) };
-                if (it != row.end())
-                {
-                    sql.append(value);
-                    sql.append("=");  
-                    if (!getFieldValueFromTuple((*it), sql, true))
-                    {
-                        sql.clear();
-                        break;
-                    }
-                }
-                else
-                {
-                    sql.clear();
-                    break;
-                }
-                sql.append(" AND ");
+                sql.append(value);
+                sql.append("=");  
+                getFieldValueFromTuple((*it), sql, true);
             }
-            sql = sql.substr(0, sql.length()-5);
-            if (sql.length() > 0)
+            else
             {
-                sql.append(";");
+                sql.clear();
+                break;
             }
+            sql.append(" AND ");
         }
-        else
+        sql = sql.substr(0, sql.length()-5);
+        if (sql.length() > 0)
         {
-            throw dbengine_error{ SQL_STMT_ERROR };
+            sql.append(";");
         }
     }
     else
@@ -1144,14 +1153,17 @@ void SQLiteDBEngine::updateSingleRow(const std::string& table,
                     {
                         return !pk1;
                     }
-                    const auto it1{jsData.find(std::get<TableHeader::Name>(data1))};
-                    const auto it2{jsData.find(std::get<TableHeader::Name>(data2))};
-                    return it1 < it2;
+                    const auto name1{std::get<TableHeader::Name>(data1)};
+                    const auto name2{std::get<TableHeader::Name>(data2)};
+                    return name1 < name2;
                   });
         for (const auto& field : tableFields)
         {
-            bindJsonData(stmt, field, jsData, index);
-            ++index;
+            if (jsData.end() != jsData.find(std::get<TableHeader::Name>(field)))
+            {
+                bindJsonData(stmt, field, jsData, index);
+                ++index;
+            }
         }
         stmt->step();
         stmt->reset();
@@ -1185,10 +1197,9 @@ bool SQLiteDBEngine::updateRows(const std::string& table,
     return true;
 }
 
-bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::string, TableField> &value,
+void SQLiteDBEngine::getFieldValueFromTuple(const Field& value,
                                             nlohmann::json& object)
 {
-    auto ret { true };
     const auto rowType { std::get<GenericTupleIndex::GenType>(value.second) };
     if (ColumnType::BigInt == rowType)
     {
@@ -1212,17 +1223,14 @@ bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::string, T
     }
     else
     {
-        throw dbengine_error { INVALID_COLUMN_TYPE };
+        throw dbengine_error { DATATYPE_NOT_IMPLEMENTED };
     }
-
-    return ret;
 }
 
-bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::string, TableField> &value,
+void SQLiteDBEngine::getFieldValueFromTuple(const Field& value,
                                             std::string& resultValue,
                                             const bool quotationMarks)
 {
-    auto ret { true };
     const auto rowType { std::get<GenericTupleIndex::GenType>(value.second) };
     if (ColumnType::BigInt == rowType)
     {
@@ -1253,12 +1261,9 @@ bool SQLiteDBEngine::getFieldValueFromTuple(const std::pair<const std::string, T
     }
     else
     {
-        throw dbengine_error { INVALID_COLUMN_TYPE };
+        throw dbengine_error { DATATYPE_NOT_IMPLEMENTED };
     }
-    return ret;
 }
-
-
 
 std::unique_ptr<SQLite::IStatement>const& SQLiteDBEngine::getStatement(const std::string& sql) 
 {
@@ -1274,3 +1279,34 @@ std::unique_ptr<SQLite::IStatement>const& SQLiteDBEngine::getStatement(const std
         return m_statementsCache[sql];
     }
 }
+
+std::string SQLiteDBEngine::getSelectAllQuery(const std::string& table, 
+                                              const TableColumns& tableFields) const
+{
+    std::string retVal { "SELECT " };
+
+    if (!tableFields.empty() && !table.empty())
+    {
+        for(const auto& field : tableFields)
+        {
+            if (!std::get<TableHeader::TXNStatusField>(field))
+            {
+                retVal.append(std::get<TableHeader::Name>(field));
+                retVal.append(",");
+            }
+
+        }
+        retVal = retVal.substr(0, retVal.size()-1);
+        retVal.append(" FROM ");
+        retVal.append(table);
+        retVal.append(" WHERE ");
+        retVal.append(STATUS_FIELD_NAME);
+        retVal.append("=0;");
+    }
+    else 
+    {
+        throw dbengine_error { EMPTY_TABLE_METADATA };
+    }
+
+    return retVal;
+} 

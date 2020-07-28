@@ -24,7 +24,8 @@ struct CJsonDeleter final
 };
 
 static void callback(const ReturnTypeCallback value, 
-                     const cJSON* json)
+                     const cJSON* json,
+                     void*)
 {
     if (ReturnTypeCallback::INSERTED == value)
     {
@@ -259,10 +260,10 @@ TEST_F(DBSyncTest, syncRow)
     const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate2{ cJSON_Parse(updateSqlStmt2) };    
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert2{ cJSON_Parse(insertSqlStmt3) }; 
     
-    result_callback_t notifyCb = reinterpret_cast<result_callback_t>(callback);
+    CallbackData callbackData { callback, nullptr };
 
-    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), notifyCb));
-    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), notifyCb));
-    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate2.get(), notifyCb));
-    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert2.get(), notifyCb));
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), &callbackData));
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), &callbackData));
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate2.get(), &callbackData));
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert2.get(), &callbackData));
 }
