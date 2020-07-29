@@ -30,6 +30,8 @@
     #define Privsep_GetGroup(x) -1
 #endif
 
+static const char *SQL_SELECT_KEEPALIVE = "global sql SELECT last_keepalive FROM agent WHERE name = %Q;";
+
 /* Global variables */
 fpos_t fp_pos;
 static uid_t uid = -1;
@@ -518,15 +520,54 @@ double OS_AgentAntiquity_ID(const char *id) {
 /* Returns the number of seconds since last agent connection, or -1 if error. */
 double OS_AgentAntiquity(const char *name, const char *ip)
 {
-    struct stat file_stat;
-    char file_name[OS_FLSIZE];
+    int result = 0;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
+    time_t output = 0;
+    char *json_string = NULL;
+    cJSON *root = NULL;
+    cJSON *elem = NULL;
+    cJSON *json_name = NULL;
 
-    snprintf(file_name, OS_FLSIZE - 1, "%s/%s-%s", AGENTINFO_DIR, name, ip);
+    // Unused
+    (void) ip;
 
-    if (stat(file_name, &file_stat) < 0)
-        return -1;
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, SQL_SELECT_KEEPALIVE, name);
+    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
-    return difftime(time(NULL), file_stat.st_mtime);
+    switch (result){
+        case OS_SUCCESS:
+            break;
+        case OS_INVALID:
+            mdebug1("GLobal DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+        default:
+            mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+    }
+
+    if(json_string = wstr_chr(wdboutput, ' '), json_string ){
+        *json_string='\0';
+        json_string++;
+    } else{
+        mdebug1("SQLite result has no space. Query: %s",wdbquery);
+        return OS_INVALID;
+    }
+
+    if(strcmp(wdboutput,"ok") == 0 && strcmp(json_string,"[]") != 0 && strcmp(json_string,"[{}]") != 0){
+        root = cJSON_Parse(json_string);    
+        elem = cJSON_GetArrayItem(root, 0);
+        json_name = cJSON_GetObjectItem(elem, "last_keepalive");
+        output = json_name->valueint;
+    } else{
+        mdebug1("SQLite Query failed: %s", wdbquery);
+        return OS_INVALID;
+    }
+
+    return difftime(time(NULL), output);
 }
 
 /* Print available agents */
