@@ -118,18 +118,11 @@ addWazuhrepo() {
     fi        
 }
 
-## Wazuh manager and API
+## Wazuh manager
 installWazuh() {
-    logger "Installing the Wazuh manager and the Wazuh API..."
+    logger "Installing the Wazuh manager..."
 
-    if [ $sys_type == "yum" ] 
-    then
-        eval "curl -sL https://rpm.nodesource.com/setup_10.x --max-time 300 | bash - $debug"
-    elif [ $sys_type == "apt-get" ] 
-    then
-        eval "curl -sL https://deb.nodesource.com/setup_10.x --max-time 300 | bash - $debug"
-    fi 
-    eval "$sys_type install wazuh-manager nodejs wazuh-api -y -q $debug"
+    eval "$sys_type install wazuh-manager -y -q $debug"
     if [  "$?" != 0  ]
     then
         echo "Error: Wazuh installation failed"
