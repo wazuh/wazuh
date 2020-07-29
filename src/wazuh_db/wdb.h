@@ -660,6 +660,9 @@ int wdb_journal_wal(sqlite3 *db);
  */
 int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
 
+// Get all the information from the agent in global.db, return NULL on error.
+char* OS_BackupAgentInfo_globalDB (const char *name);
+
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
 
