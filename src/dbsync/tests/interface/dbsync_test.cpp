@@ -281,3 +281,21 @@ TEST_F(DBSyncTest, syncRowInsertAndModified)
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert2.get(), callbackData));  // Expect an insert event
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert2.get(), callbackData));  // Same as above but EXPECT_CALL Times is 1
 }
+
+TEST_F(DBSyncTest, syncRowInvalidData)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    const auto inputNoData{ R"({"table":"processes"})"};
+    const auto inputNoTable{ R"({"data":[{"pid":4,"name":"System", "tid":101}]})"};
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInputNoData{ cJSON_Parse(inputNoData) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInputNoTable{ cJSON_Parse(inputNoTable) };
+
+    callback_data_t callbackData { callback, nullptr };
+
+    EXPECT_NE(0, dbsync_sync_row(handle, jsInputNoData.get(), callbackData));
+    EXPECT_NE(0, dbsync_sync_row(handle, jsInputNoTable.get(), callbackData));
+}
