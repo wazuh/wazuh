@@ -22,7 +22,7 @@
 #define MAX_ATTEMPTS 1000
 
 static const char *SQL_VACUUM = "VACUUM;";
-static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (%Q, %Q);";
+static const char *SQL_INSERT_INFO = "global sql INSERT INTO info (key, value) VALUES (%Q, %Q);";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
 static const char *SQL_STMT[] = {
