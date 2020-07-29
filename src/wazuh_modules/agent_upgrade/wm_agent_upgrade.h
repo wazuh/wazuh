@@ -14,6 +14,9 @@
 
 #define WM_AGENT_UPGRADE_LOGTAG ARGV0 ":" AGENT_UPGRADE_WM_NAME
 #define WM_AGENT_UPGRADE_MODULE_NAME "upgrade_module"
+#define WM_UPGRADE_MINIMAL_VERSION_SUPPORT "v3.0.0"
+#define WM_UPGRADE_SUCCESS_VALIDATE 0
+#define MANAGER_ID 0
 
 typedef struct _wm_agent_upgrade {
     int enabled:1;
@@ -33,6 +36,7 @@ typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT,
     WM_UPGRADE_NEW_VERSION_GREATER_MASTER,
     WM_UPGRADE_NOT_AGENT_IN_DB,
+    WM_UPGRADE_INVALID_ACTION_FOR_MANAGER,
     WM_UPGRADE_AGENT_IS_NOT_ACTIVE
 } wm_upgrade_error_code;
 
@@ -112,20 +116,31 @@ cJSON* wm_agent_upgrade_process_upgrade_result_command(const cJSON* agents);
 /**
  * Check if agent exist
  * @param agent_id Id of agent to validate
- * @return error_code (0 = success, -1 = agent not exist)
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS_VALIDATE
+ * @retval WM_UPGRADE_NOT_AGENT_IN_DB
  * */
 int wm_agent_upgrade_validate_id(int agent_id);
 
 /**
  * Check if agent version is valid to upgrade
  * @param agent_id Id of agent to validate
- * @return error_code (0 = not error,   WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED, 
- *                                      WM_UPGRADE_VERSION_SAME_MANAGER, 
- *                                      WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT,
- *                                      WM_UPGRADE_NEW_VERSION_GREATER_MASTER)
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS_VALIDATE
+ * @retval WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED
+ * @retval WM_UPGRADE_VERSION_SAME_MANAGER
+ * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
+ * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER)
  * */
 int wm_agent_upgrade_validate_agent_version(int agent_id, void *task, wm_upgrade_command command);
 
+/**
+ * Check if agent status is active
+ * @param agent_id Id of agent to validate
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS_VALIDATE
+ * @retval WM_UPGRADE_AGENT_IS_NOT_ACTIVE
+ * */
 int wm_agent_upgrade_validate_status(int agent_id);
 
 #endif
