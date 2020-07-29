@@ -774,7 +774,6 @@ stages:
       json:
         detail: !anystr
         title: !anystr
-        type: !anystr
 
   # GET /manager/files
   - name: Get file with empty path
@@ -791,7 +790,6 @@ stages:
       json:
         detail: !anystr
         title: !anystr
-        type: !anystr
 
   # GET /manager/files
   - name: Get unexisting rules file with right path

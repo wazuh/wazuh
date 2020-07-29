@@ -74,7 +74,6 @@ stages:
       json: &error_spec
         detail: !anystr
         title: !anystr
-        type: !anystr
 
     # POST /agents
   - name: Create agent without assigning an specific IP

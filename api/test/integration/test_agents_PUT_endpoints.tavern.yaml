@@ -34,7 +34,6 @@ stages:
       json: &error_spec
         detail: !anystr
         title: !anystr
-        type: !anystr
 
     # PUT /agents/group?group_id=wrong_%_group
   - name: Try to assign all agents to an invalid group id
