@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import concurrent.futures
 from base64 import b64decode
 from json import loads
 from logging import getLogger
@@ -9,12 +10,12 @@ from time import time
 
 from aiohttp import web
 
-from api import configuration
-from api.api_exception import APIError
+from api.authentication import get_api_conf
 from api.util import raise_if_exc
 from wazuh.core.exception import WazuhError
 
 logger = getLogger('wazuh')
+pool = concurrent.futures.ThreadPoolExecutor()
 
 
 @web.middleware
@@ -27,15 +28,16 @@ async def set_user_name(request, handler):
 
 ip_stats = dict()
 ip_block = set()
+request_counter = 0
+current_time = None
 
 
-@web.middleware
-async def prevent_bruteforce_attack(request, handler):
+async def prevent_bruteforce_attack(request, block_time=300, attempts=5):
     """This function checks that the IPs that are requesting an API token do not do so repeatedly"""
     global ip_stats, ip_block
     if 'authenticate' in request.path:
         try:
-            if time() - configuration.security_conf['block_time'] >= ip_stats[request.remote]['timestamp']:
+            if time() - block_time >= ip_stats[request.remote]['timestamp']:
                 ip_stats.pop(request.remote)
                 ip_block.remove(request.remote)
         except (KeyError, ValueError):
@@ -52,20 +54,11 @@ async def prevent_bruteforce_attack(request, handler):
         else:
             ip_stats[request.remote]['attempts'] += 1
 
-        if ip_stats[request.remote]['attempts'] >= configuration.security_conf['max_login_attempts']:
+        if ip_stats[request.remote]['attempts'] >= attempts:
             ip_block.add(request.remote)
 
-    response = await handler(request)
 
-    return response
-
-
-request_counter = 0
-current_time = None
-
-
-@web.middleware
-async def prevent_denial_of_service(request, handler):
+async def prevent_denial_of_service(request, max_requests=300):
     """This function checks that the maximum number of requests per minute set in the configuration is not exceeded"""
     if 'authenticate' not in request.path:
         global current_time, request_counter
@@ -78,7 +71,7 @@ async def prevent_denial_of_service(request, handler):
             request_counter = 0
             current_time = time()
 
-        if request_counter > configuration.security_conf['max_request_per_minute']:
+        if request_counter > max_requests:
             logger.debug(f'Request rejected due to high request per minute: Source IP: {request.remote}')
             try:
                 payload = dict(request.raw_headers)[b'Authorization'].decode().split('.')[1]
@@ -87,6 +80,15 @@ async def prevent_denial_of_service(request, handler):
             payload += "=" * ((4 - len(payload) % 4) % 4)
             request['user'] = loads(b64decode(payload).decode())['sub']
             raise_if_exc(WazuhError(6001), code=429)
+
+
+@web.middleware
+async def security_middleware(request, handler):
+    access_conf = get_api_conf()['access']
+    await prevent_bruteforce_attack(request, block_time=access_conf['block_time'],
+                                    attempts=access_conf['max_login_attempts'])
+    await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
+
     response = await handler(request)
 
     return response
