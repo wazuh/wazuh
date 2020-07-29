@@ -186,8 +186,8 @@ createCertificates() {
   
 
     logger "Creating the certificates..."
-    eval "curl -so /etc/elasticsearch/certs/search-guard-tlstool-1.7.zip https://releases.floragunn.com/search-guard-tlstool/1.7/search-guard-tlstool-1.7.zip --max-time 300 $debug"
-    eval "unzip search-guard-tlstool-1.7.zip -d searchguard $debug"
+    eval "curl -so /etc/elasticsearch/certs/search-guard-tlstool-1.8.zip https://maven.search-guard.com/search-guard-tlstool/1.8/search-guard-tlstool-1.8.zip --max-time 300 $debug"
+    eval "unzip search-guard-tlstool-1.8.zip -d searchguard $debug"
     eval "curl -so /etc/elasticsearch/certs/searchguard/search-guard.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/unattended-installation/distributed/templates/search-guard-unattended.yml --max-time 300 $debug"
 
     awk -v RS='' '/## Certificates/' ~/config.yml >> /etc/elasticsearch/certs/searchguard/search-guard.yml
@@ -204,7 +204,7 @@ createCertificates() {
         mv /etc/elasticsearch/certs/node-1.key /etc/elasticsearch/certs/elasticsearch.key
         mv /etc/elasticsearch/certs/node-1_http.pem /etc/elasticsearch/certs/elasticsearch_http.pem
         mv /etc/elasticsearch/certs/node-1_http.key /etc/elasticsearch/certs/elasticsearch_http.key            
-        eval "rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f $debug"
+        eval "rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.8.zip -f $debug"
     fi
 
     if [[ -n "$c" ]] || [[ -n "$single" ]]
@@ -256,7 +256,9 @@ installKibana() {
             exit 1;
         fi     
         eval "mkdir /etc/kibana/certs $debug"
-        awk -v RS='' '/## Kibana/' ~/config.yml >> /etc/kibana/kibana.yml 
+
+        echo "server.host: "$kip"" >> /etc/kibana/kibana.yml
+        echo "elasticsearch.hosts: https://"$eip":9200" >> /etc/kibana/kibana.yml
         logger "Kibana installed."
         
         checkKibanacerts kc
@@ -290,8 +292,7 @@ initializeKibana() {
         echo -ne $char
         sleep 10
     done     
-    wip=$(cat ~/config.yml | grep "url: https:")
-    conf="$(awk '{sub("url: https://localhost", "'"${wip}"'")}1' /usr/share/kibana/optimize/wazuh/config/wazuh.yml)"
+    conf="$(awk '{sub("url: https://localhost", "url: https://'"${wip}"'")}1' /usr/share/kibana/optimize/wazuh/config/wazuh.yml)"
     echo "$conf" > /usr/share/kibana/optimize/wazuh/config/wazuh.yml  
 
 }
@@ -342,6 +343,21 @@ main() {
                 k=1          
                 shift 1
                 ;;
+            "-kip"|"--kibana-ip") 
+                kip=$2          
+                shift
+                shift
+                ;;   
+            "-eip"|"--elasticsearch-ip") 
+                eip=$2          
+                shift
+                shift
+                ;;   
+            "-wip"|"--wazuh-ip") 
+                wip=$2          
+                shift
+                shift
+                ;;                                                
             "-i"|"--ignore-healthcheck") 
                 i=1          
                 shift 1
@@ -361,25 +377,24 @@ main() {
         if [ -n "$d" ]
         then
             debug=""
-        fi
-
-        if [[ -n "$e" ]] && [[ -n "$k" ]]   
-        then
-            getHelp
-        fi        
-
-        if [ -n "$i" ]
-        then
-            echo "Health-check ignored."    
-        else
-            healthCheck           
-        fi             
-        installPrerequisites
-        addWazuhrepo   
-        checkNodes    
+        fi         
 
         if [ -n "$e" ]
         then
+            if [[ -n "$e" ]] && [[ -n "$k" ]]   
+            then
+                getHelp
+            fi        
+
+            if [ -n "$i" ]
+            then
+                echo "Health-check ignored."    
+            else
+                healthCheck           
+            fi           
+            installPrerequisites
+            addWazuhrepo   
+            checkNodes         
             installElasticsearch
             if [ -n "$c" ]
             then
@@ -388,6 +403,23 @@ main() {
         fi
         if [ -n "$k" ]
         then
+            if [[ -z "$kip" ]] || [[ -z "$eip" ]] || [[ -z "$wip" ]]
+            then
+                getHelp
+            fi
+            if [[ -n "$e" ]] && [[ -n "$k" ]]   
+            then
+                getHelp
+            fi        
+
+            if [ -n "$i" ]
+            then
+                echo "Health-check ignored."    
+            else
+                healthCheck           
+            fi               
+            installPrerequisites
+            addWazuhrepo             
             installKibana
         fi
     else
