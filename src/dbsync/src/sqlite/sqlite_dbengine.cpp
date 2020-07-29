@@ -100,7 +100,8 @@ void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
 
 void SQLiteDBEngine::syncTableRowData(const std::string& table,
                                       const nlohmann::json& data,
-                                      const DbSync::ResultCallback callback)
+                                      const DbSync::ResultCallback callback,
+                                      const bool inTransaction)
 {
     if (0 != loadTableData(table))
     {
@@ -111,6 +112,10 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
         {
             if (!jsResult.empty())
             {
+                if (inTransaction)
+                {
+                    jsResult[STATUS_FIELD_NAME] = 1;
+                }
                 const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
                 updateSingleRow(table, jsResult);
                 transaction->commit();

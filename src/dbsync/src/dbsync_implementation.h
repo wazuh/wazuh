@@ -56,6 +56,11 @@ namespace DbSync
         void closeTransaction(const DBSYNC_HANDLE handle,
                               const TXN_HANDLE txnHandle);
 
+        void syncRowData(const DBSYNC_HANDLE  handle,
+                         const TXN_HANDLE     txnHandle,
+                         const char*          jsonRaw,
+                         const ResultCallback callback);
+
         void getDeleted(const DBSYNC_HANDLE   handle, 
                         const TXN_HANDLE      txnHandle,
                         const ResultCallback  callback);
