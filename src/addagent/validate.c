@@ -30,7 +30,7 @@
     #define Privsep_GetGroup(x) -1
 #endif
 
-static const char *SQL_SELECT_KEEPALIVE = "global sql SELECT last_keepalive FROM agent WHERE name = %Q;";
+static const char *SQL_SELECT_KEEPALIVE = "global sql SELECT last_keepalive FROM agent WHERE name = '%s';";
 
 /* Global variables */
 fpos_t fp_pos;
@@ -540,7 +540,12 @@ double OS_AgentAntiquity(const char *name, const char *ip)
     // Unused
     (void) ip;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, SQL_SELECT_KEEPALIVE, name);
+    if(!name){
+        mdebug1("Empty agent name trying to read last keepalive");
+        return OS_INVALID;
+    }
+
+    snprintf(wdbquery, sizeof(wdbquery), SQL_SELECT_KEEPALIVE, name);
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
