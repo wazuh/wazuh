@@ -535,7 +535,7 @@ int main_analysisd(int argc, char **argv)
                     }
                     if (!ReadDecodeXML(*decodersfiles, &msg)) {
                         if (msg) {
-                            minfo("Call ReadDecodeXML result in the following errors/warning:\n %s", msg);
+                            minfo("Call ReadDecodeXML result in the following errors/warning:\n%s", msg);
                             os_free(msg);
                         }
                         merror_exit(CONFIG_ERROR, *decodersfiles);
@@ -549,7 +549,7 @@ int main_analysisd(int argc, char **argv)
             /* Load decoders */
             SetDecodeXML(&msg);
             if (msg) {
-                minfo("Call SetDecodeXML result in the following errors/warning:\n %s", msg);
+                minfo("Call SetDecodeXML result in the following errors/warning:\n%s", msg);
                 os_free(msg);
             }
         }
@@ -601,7 +601,7 @@ int main_analysisd(int argc, char **argv)
                     
                     if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists, &msg) < 0) {
                         if (msg) {
-                            minfo("Call Rules_OP_ReadRules result in the following errors/warning:\n %s", msg);
+                            minfo("Call Rules_OP_ReadRules result in the following errors/warning:\n%s", msg);
                             os_free(msg);
                         }
                         merror_exit(RULES_ERROR, *rulesfiles);
