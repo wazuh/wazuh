@@ -279,5 +279,30 @@ struct SyncTxnRowsAction final : public IAction
     }
 };
 
+struct DeleteRowsAction final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsInput
+        {
+            cJSON_Parse(value.at("body").dump().c_str())
+        };
+
+        const auto retVal
+        {
+            dbsync_delete_rows(ctx->handle,
+                               jsInput.get())
+        };
+
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"dbsync_delete_rows", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
 
 #endif //_ACTION_H
