@@ -57,7 +57,7 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
     cJSON *json_task_module_request = cJSON_CreateArray();
 
     while (agent_id = agent_ids[agent++], agent_id) {
-        wm_upgrade_error_code error_code;
+        wm_upgrade_error_code error_code = WM_UPGRADE_SUCCESS;
         cJSON *task_request = NULL;
         wm_agent_task *agent_task = NULL;
         wm_upgrade_task *upgrade_task = NULL;
@@ -108,7 +108,7 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
     cJSON *json_task_module_request = cJSON_CreateArray();
 
     while (agent_id = agent_ids[agent++], agent_id) {
-        wm_upgrade_error_code error_code;
+        wm_upgrade_error_code error_code = WM_UPGRADE_SUCCESS;
         cJSON *task_request = NULL;
         wm_agent_task *agent_task = NULL;
         wm_upgrade_custom_task *upgrade_custom_task = NULL;
