@@ -87,7 +87,8 @@ async def response_postprocessing(request, handler):
         problem = connexion_problem(ex.__dict__['status'],
                                     ex.__dict__['title'] if 'title' in ex.__dict__ and ex.__dict__['title'] else 'Bad Request',
                                     type=ex.__dict__['type'] if 'type' in ex.__dict__ else 'about:blank',
-                                    detail=cleanup_detail_field(ex.__dict__['detail']) if 'detail' in ex.__dict__ else '')
+                                    detail=cleanup_detail_field(ex.__dict__['detail']) if 'detail' in ex.__dict__ else '',
+                                    ext=ex.__dict__['ext'] if 'ext' in ex.__dict__ else None)
     except OAuthProblem:
         problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="No authorization token provided")
     finally:
