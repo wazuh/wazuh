@@ -11,6 +11,7 @@
 
 #include "wdb.h"
 #include "wazuh_modules/wmodules.h"
+#include "wazuhdb_op.h"
 
 #ifdef WIN32
 #define getuid() 0
@@ -21,7 +22,8 @@
 #define MAX_ATTEMPTS 1000
 
 static const char *SQL_VACUUM = "VACUUM;";
-static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
+//static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
+static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (%Q, %Q);";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
 static const char *SQL_STMT[] = {
@@ -103,7 +105,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
 };
 
-sqlite3 *wdb_global = NULL;
 wdb_config wconfig;
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 wdb_t * db_pool_begin;
@@ -111,44 +112,8 @@ wdb_t * db_pool_last;
 int db_pool_size;
 OSHash * open_dbs;
 
-/* Open global database. Returns 0 on success or -1 on failure. */
-int wdb_open_global() {
-    char dir[OS_FLSIZE + 1];
-
-    if (!wdb_global) {
-        // Database dir
-        snprintf(dir, OS_FLSIZE, "%s%s/%s", isChroot() ? "/" : "", WDB2_DIR, WDB_GLOB_NAME);
-
-        // Connect to the database
-
-        if (sqlite3_open_v2(dir, &wdb_global, SQLITE_OPEN_READWRITE, NULL)) {
-            mdebug1("Global database not found, creating.");
-            sqlite3_close_v2(wdb_global);
-            wdb_global = NULL;
-
-            if (wdb_create_global(dir) < 0) {
-                wdb_global = NULL;
-                return -1;
-            }
-
-            // Retry to open
-
-            if (sqlite3_open_v2(dir, &wdb_global, SQLITE_OPEN_READWRITE, NULL)) {
-                merror("Can't open SQLite database '%s': %s", dir, sqlite3_errmsg(wdb_global));
-                sqlite3_close_v2(wdb_global);
-                wdb_global = NULL;
-                return -1;
-            }
-        }
-
-        sqlite3_busy_timeout(wdb_global, BUSY_SLEEP);
-    }
-
-    return 0;
-}
-
 // Opens global database and stores it in DB pool. It returns a locked database or NULL
-wdb_t * wdb_open_global2() {
+wdb_t * wdb_open_global() {
     char path[PATH_MAX + 1] = "";
     sqlite3 *db = NULL;
     wdb_t * wdb = NULL;
@@ -237,12 +202,6 @@ success:
 end:
     w_mutex_unlock(&pool_mutex);
     return wdb;
-}
-
-/* Close global database */
-void wdb_close_global() {
-    sqlite3_close_v2(wdb_global);
-    wdb_global = NULL;
 }
 
 /* Open database for agent */
@@ -645,22 +604,26 @@ int wdb_vacuum(sqlite3 *db) {
 /* Insert key-value pair into info table */
 int wdb_insert_info(const char *key, const char *value) {
     int result = 0;
-    sqlite3_stmt *stmt;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    int wdb_sock = -1;
 
-    if (wdb_open_global() < 0)
-        return -1;
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, SQL_INSERT_INFO, key, value);
+    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
-    if (wdb_prepare(wdb_global, SQL_INSERT_INFO, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
+    switch (result){
+        case OS_SUCCESS:
+            break;
+        case OS_INVALID:
+            mdebug1("GLobal DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            break;
+        default:
+            mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            result = OS_INVALID;
     }
 
-    sqlite3_bind_text(stmt, 1, key, -1, NULL);
-    sqlite3_bind_text(stmt, 2, value, -1, NULL);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? 0 : -1;
-    sqlite3_finalize(stmt);
-    wdb_close_global();
     return result;
 }
 

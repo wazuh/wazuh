@@ -395,7 +395,7 @@ int wdb_parse(char * input, char * output) {
     } else if(strcmp(actor, "global") == 0) {
         query = next;
 
-        if (wdb = wdb_open_global2(), !wdb) {
+        if (wdb = wdb_open_global(), !wdb) {
             mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
             return -1;

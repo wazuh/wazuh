@@ -72,7 +72,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
         default:
             mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
-            break;
+            result = OS_INVALID;
     }
 
     return result;
@@ -98,7 +98,7 @@ int wdb_update_agent_name(int id, const char *name) {
         default:
             mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
-            break;
+            result = OS_INVALID;
     }
 
     return result;
@@ -139,7 +139,7 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
         default:
             mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
-            break;
+            result = OS_INVALID;
     }
     
     return result;
@@ -166,7 +166,7 @@ int wdb_update_agent_keepalive(int id, long keepalive) {
         default:
             mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
-            break;
+            result = OS_INVALID;
     }
 
     return result;
@@ -199,7 +199,7 @@ int wdb_remove_agent(int id) {
         default:
             mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
-            break;
+            result = OS_INVALID;
     }
 
     os_free(name);
