@@ -45,7 +45,8 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_TASK_MANAGER_COMMUNICATION] ="Could not create task id for upgrade task",
     [WM_UPGRADE_TASK_MANAGER_FAILURE] = "", // Data string will be provided by task manager
     [WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading",
-    [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start"
+    [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start",
+    [WM_UPGRADE_GLOBAL_DB_FAILURE] = "Not agent found in database"
 };
 
 void wm_agent_upgrade_listen_messages(int sock, int timeout_sec) {

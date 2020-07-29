@@ -59,7 +59,7 @@ const char* upgrade_commands[] = {
 
 int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error) {
     int retval = OS_INVALID;
-    int error_code = WM_UPGRADE_SUCCESS;
+    int error_code;
     char* error_message = NULL;
     cJSON *error_json = NULL;
 
