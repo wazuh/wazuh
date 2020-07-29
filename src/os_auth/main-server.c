@@ -159,9 +159,9 @@ int main(int argc, char **argv)
     struct sockaddr_in _nc;
     struct timeval timeout;
     socklen_t _ncl;
-    pthread_t thread_dispatcher;
-    pthread_t thread_writer;
-    pthread_t thread_local_server;
+    pthread_t thread_dispatcher = 0;
+    pthread_t thread_writer = 0;
+    pthread_t thread_local_server = 0;
     fd_set fdset;
 
     /* Initialize some variables */
