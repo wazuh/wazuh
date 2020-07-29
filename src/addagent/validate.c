@@ -31,7 +31,6 @@
 #endif
 
 static const char *SQL_SELECT_KEEPALIVE = "global sql SELECT last_keepalive FROM agent WHERE name = %Q;";
-static const char *SQL_SELEC_AGENT_INFO = "global sql SELECT * FROM agent WHERE name = %Q;";
 
 /* Global variables */
 fpos_t fp_pos;
@@ -721,7 +720,6 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
     char *path_backup;
     char path_src[OS_FLSIZE];
     char path_dst[OS_FLSIZE];
-    char *agent_info = NULL;
 
     time_t timer = time(NULL);
     int status = 0;
@@ -734,16 +732,9 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
     }
 
     /* agent-info */
-    if(agent_info = OS_BackupAgentInfo_globalDB(name),agent_info){
-        FILE *fptr = NULL;
-        snprintf(path_dst, OS_FLSIZE, "%s/agent-info.json", path_backup);
-        if(fptr = fopen (path_dst,"w"), !fptr){
-            merror(OPEN_ERROR, path_dst, errno, strerror (errno));
-        }
-        fprintf(fptr,"%s", agent_info);
-        fclose(fptr);
-        os_free(agent_info);
-    }
+    snprintf(path_src, OS_FLSIZE, "%s/%s-%s", AGENTINFO_DIR, name, ip);
+    snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
+    status += link(path_src, path_dst);
 
     /* rootcheck */
     snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->rootcheck", ROOTCHECK_DIR, name, ip);
@@ -765,49 +756,6 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
     }
 
     free(path_backup);
-}
-
-// Get all the information from the agent in global.db, return NULL on error.
-char* OS_BackupAgentInfo_globalDB (const char *name){
-    int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
-    char *json_string = NULL;
-
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, SQL_SELEC_AGENT_INFO, name);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    switch (result){
-        case OS_SUCCESS:
-            break;
-        case OS_INVALID:
-            mdebug1("GLobal DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return NULL;
-        default:
-            mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return NULL;
-    }
-
-    if(json_string = wstr_chr(wdboutput, ' '), json_string ){
-        *json_string='\0';
-        json_string++;
-
-    } else{
-        mdebug1("SQLite result has no space. Query: %s",wdbquery);
-        return NULL;
-    }
-
-    if(strcmp(wdboutput,"ok") == 0 && strcmp(json_string,"[]") != 0 && strcmp(json_string,"[{}]") != 0){
-        return json_string;
-            
-    } else{
-        mdebug1("SQLite Query failed: %s", wdbquery);
-        return NULL;
-    }
-
 }
 
 char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now) {
