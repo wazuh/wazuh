@@ -18,7 +18,7 @@ from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.exception import WazuhError
+from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.security import revoke_tokens
 from wazuh.rbac import preprocessor
@@ -218,7 +218,10 @@ async def delete_users(request, user_ids: list = None):
     -------
     Result of the operation
     """
+    if 'all' in user_ids:
+        user_ids = None
     f_kwargs = {'user_ids': user_ids}
+
     dapi = DistributedAPI(f=security.remove_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -328,6 +331,8 @@ async def remove_roles(request, role_ids: list = None, pretty: bool = False, wai
     -------
     Two list with deleted roles and not deleted roles
     """
+    if 'all' in role_ids:
+        role_ids = None
     f_kwargs = {'role_ids': role_ids}
 
     dapi = DistributedAPI(f=security.remove_roles,
@@ -473,6 +478,8 @@ async def remove_policies(request, policy_ids: list = None, pretty: bool = False
     -------
     Two list with deleted roles and not deleted roles
     """
+    if 'all' in policy_ids:
+        policy_ids = None
     f_kwargs = {'policy_ids': policy_ids}
 
     dapi = DistributedAPI(f=security.remove_policies,
@@ -579,6 +586,8 @@ async def remove_user_role(request, user_id: str, role_ids: list, pretty: bool =
     -------
     Result of the operation
     """
+    if 'all' in role_ids:
+        role_ids = None
     f_kwargs = {'user_id': user_id, 'role_ids': role_ids}
 
     dapi = DistributedAPI(f=security.remove_user_role,
@@ -649,6 +658,8 @@ async def remove_role_policy(request, role_id: int, policy_ids: list, pretty: bo
     -------
     Role information
     """
+    if 'all' in policy_ids:
+        policy_ids = None
     f_kwargs = {'role_id': role_id, 'policy_ids': policy_ids}
 
     dapi = DistributedAPI(f=security.remove_role_policy,
@@ -773,12 +784,18 @@ async def get_security_config(request, pretty=False, wait_for_complete=False):
 
 async def security_revoke_tokens():
     """Revokes all tokens on all nodes after a change in security configuration."""
-    nodes = await get_system_nodes()
+    nodes = list()
+    try:
+        nodes = await get_system_nodes()
+    except WazuhInternalError as e:
+        if e.code != 3012:  # Cluster is disabled
+            raise e
+
     dapi = DistributedAPI(f=revoke_tokens,
-                          request_type='distributed_master',
+                          request_type='distributed_master' if len(nodes) > 0 else 'local_master',
                           is_async=False,
                           wait_for_complete=True,
-                          broadcasting=True,
+                          broadcasting=len(nodes) > 0,
                           logger=logger,
                           nodes=nodes
                           )

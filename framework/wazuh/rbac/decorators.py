@@ -285,10 +285,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                     res_list.append("{0}:{1}".format(res_base, params))
             # If we don't find a regex match we obtain the static resource/s
             else:
-                if m.group(2) == '*':  # If resourceless
-                    target_params[m.group(1)] = m.group(2)
-                else:  # Static resource
-                    target_params[m.group(1)] = '*'
+                target_params[m.group(1)] = '*'
                 add_denied = not broadcast.get()
                 res_list.append(r)
     # Create dict of required policies with action: list(resources) pairs
