@@ -12,6 +12,17 @@
 #include "wazuh_db/wdb.h"
 #include "wazuh_modules/wmodules.h"
 
+/**
+ * Check if agent version is valid to upgrade to a non-customized version
+ * @param agent_id Id of agent to validate
+ * @param task pointer to wm_upgrade_task with the params
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS_VALIDATE
+ * @retval WM_UPGRADE_VERSION_SAME_MANAGER
+ * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
+ * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER)
+ * @retval WM_UPGRADE_VERSION_QUERY_ERROR
+ * */
 static int wm_agent_upgrade_validate_non_custom_version(char *agent_version, wm_upgrade_task *task);
 
 /**
@@ -20,6 +31,7 @@ static int wm_agent_upgrade_validate_non_custom_version(char *agent_version, wm_
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS_VALIDATE
  * @retval WM_UPGRADE_NOT_AGENT_IN_DB
+ * @retval WM_UPGRADE_INVALID_ACTION_FOR_MANAGER
  * */
 int wm_agent_upgrade_validate_id(int agent_id) {
     char *name = NULL;
@@ -57,21 +69,24 @@ int wm_agent_upgrade_validate_status(int agent_id) {
 /**
  * Check if agent version is valid to upgrade
  * @param agent_id Id of agent to validate
+ * @param task pointer to task with the params
+ * @param command wm_upgrade_command with the selected upgrade type
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS_VALIDATE
  * @retval WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED
  * @retval WM_UPGRADE_VERSION_SAME_MANAGER
  * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER)
+ * @retval WM_UPGRADE_VERSION_QUERY_ERROR
  * */
 int wm_agent_upgrade_validate_agent_version(int agent_id, void *task, wm_upgrade_command command) {
     char *agent_version = NULL;
     char *tmp_agent_version = NULL;
-    int return_code = WM_UPGRADE_SUCCESS_VALIDATE;
+    int return_code = WM_UPGRADE_VERSION_QUERY_ERROR;
 
     if (agent_version = wdb_agent_version(agent_id), agent_version) {
         tmp_agent_version = strchr(agent_version, 'v');
-        
+        return_code = WM_UPGRADE_SUCCESS_VALIDATE;
         if (strcmp(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT) < 0) {
             return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
         } else if (WM_UPGRADE_UPGRADE == command) {
@@ -88,27 +103,32 @@ int wm_agent_upgrade_validate_agent_version(int agent_id, void *task, wm_upgrade
 /**
  * Check if agent version is valid to upgrade to a non-customized version
  * @param agent_id Id of agent to validate
+ * @param task pointer to wm_upgrade_task with the params
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS_VALIDATE
  * @retval WM_UPGRADE_VERSION_SAME_MANAGER
  * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER)
+ * @retval WM_UPGRADE_VERSION_QUERY_ERROR
  * */
 static int wm_agent_upgrade_validate_non_custom_version(char *agent_version, wm_upgrade_task *task) {
-    char *master_version = NULL;
-    char *tmp_master_version = NULL;
-    master_version = wdb_agent_version(MANAGER_ID);
-    tmp_master_version = strchr(master_version, 'v');
-    int return_code = WM_UPGRADE_SUCCESS_VALIDATE;
+    char *manager_version = NULL;
+    char *tmp_manager_version = NULL;
+    int return_code = WM_UPGRADE_VERSION_QUERY_ERROR;
 
-    if (task->custom_version && strcmp(agent_version, task->custom_version) >= 0 && task->force_upgrade == false) {
-        return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
-    } else if (task->custom_version && strcmp(task->custom_version, tmp_master_version) > 0 && task->force_upgrade == false) {
-        return_code = WM_UPGRADE_NEW_VERSION_GREATER_MASTER;
-    } else if (strcmp(agent_version, tmp_master_version) == 0 && task->force_upgrade == false) {
-        return_code = WM_UPGRADE_VERSION_SAME_MANAGER;
+    if (manager_version = wdb_agent_version(MANAGER_ID), manager_version) {
+        tmp_manager_version = strchr(manager_version, 'v');
+        return_code = WM_UPGRADE_SUCCESS_VALIDATE;
+        if (task->custom_version && strcmp(agent_version, task->custom_version) >= 0 && task->force_upgrade == false) {
+            return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
+        } else if (task->custom_version && strcmp(task->custom_version, tmp_manager_version) > 0 && task->force_upgrade == false) {
+            return_code = WM_UPGRADE_NEW_VERSION_GREATER_MASTER;
+        } else if (strcmp(agent_version, tmp_manager_version) == 0 && task->force_upgrade == false) {
+            return_code = WM_UPGRADE_VERSION_SAME_MANAGER;
+        }
+
+        free(manager_version);
     }
-
-    free(master_version);
+    
     return return_code;
 }

@@ -74,6 +74,22 @@ static cJSON *wm_agent_upgrade_send_tasks_information(const cJSON *message_objec
 /* Hash table of current tasks based on agent_id */
 static OSHash *task_table_by_agent_id;
 
+/**
+ * Encloses calls to agent, status and version validation functions
+ * @param agent_id Id of agent to validate
+ * @param task pointer to task with the params
+ * @param command wm_upgrade_command with the selected upgrade type
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS_VALIDATE
+ * @retval WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED
+ * @retval WM_UPGRADE_VERSION_SAME_MANAGER
+ * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
+ * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER)
+ * @retval WM_UPGRADE_NOT_AGENT_IN_DB
+ * @retval WM_UPGRADE_AGENT_IS_NOT_ACTIVE
+ * @retval WM_UPGRADE_INVALID_ACTION_FOR_MANAGER
+ * @retval WM_UPGRADE_VERSION_QUERY_ERROR
+ * */
 static int wm_agent_upgrade_validate_agent(int agent_id, void *task, wm_upgrade_command command);
 
 wm_upgrade_task* wm_agent_upgrade_init_upgrade_task() {
