@@ -102,7 +102,7 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
 {
     std::string errorMessage;
     TXN_HANDLE txn{ nullptr };
-    if (!handle || !tables || !max_queue_size || !callback_data || !callback_data->callback)
+    if (!handle || !tables || !max_queue_size || !callback_data.callback)
     {
         errorMessage += "Invalid parameters.";
     }
@@ -115,7 +115,7 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
                 [callback_data](ReturnTypeCallback result, const nlohmann::json& jsonResult)
                 {
                     const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
-                    callback_data->callback(result, spJson.get(), callback_data->user_data);
+                    callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(tables)};
@@ -176,8 +176,8 @@ int dbsync_sync_txn_row(const TXN_HANDLE txn,
     {
         try
         {
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(js_input)};
-            PipelineFactory::instance().pipeline(txn)->syncRow(spJsonBytes.get());
+            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_input)};
+            PipelineFactory::instance().pipeline(txn)->syncRow(nlohmann::json::parse(spJsonBytes.get()));
             ret_val = 0;
         }
         catch(const DbSync::dbsync_error& ex)
@@ -289,7 +289,7 @@ int dbsync_sync_row(const DBSYNC_HANDLE handle,
 {
     auto ret_val { -1 };
     std::string errorMessage;
-    if (!handle || !js_input || !callback_data || !callback_data->callback)
+    if (!handle || !js_input || !callback_data.callback)
     {
         errorMessage += "Invalid input parameters.";
     }
@@ -302,7 +302,7 @@ int dbsync_sync_row(const DBSYNC_HANDLE handle,
                 [callback_data](ReturnTypeCallback result, const nlohmann::json& jsonResult)
                 {
                     const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
-                    callback_data->callback(result, spJson.get(),callback_data->user_data);
+                    callback_data.callback(result, spJson.get(),callback_data.user_data);
                 }
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_input) };
@@ -323,7 +323,7 @@ int dbsync_sync_row(const DBSYNC_HANDLE handle,
         {
             errorMessage += "DB error, ";
             errorMessage += ex.what();
-            callback_data->callback(ReturnTypeCallback::MAX_ROWS, js_input, callback_data->user_data);
+            callback_data.callback(ReturnTypeCallback::MAX_ROWS, js_input, callback_data.user_data);
         }
         catch(...)
         {
@@ -354,7 +354,7 @@ int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
 {
     auto ret_val { -1 };
     std::string error_message;
-    if (!txn || !callback_data || !callback_data->callback)
+    if (!txn || !callback_data.callback)
     {
         error_message += "Invalid txn or callback.";
     }
@@ -367,7 +367,7 @@ int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
                 [callback_data](ReturnTypeCallback result, const nlohmann::json& jsonResult)
                 {
                     const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
-                    callback_data->callback(result, spJson.get(), callback_data->user_data);
+                    callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
             PipelineFactory::instance().pipeline(txn)->getDeleted(callbackWrapper);
@@ -451,7 +451,7 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
 {
     auto ret_val { -1 };
     std::string errorMessage;
-    if (!handle || !js_snapshot || !callback_data || !callback_data->callback)
+    if (!handle || !js_snapshot || !callback_data.callback)
     {
         errorMessage += "Invalid input parameters.";
     }
@@ -464,7 +464,7 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
                 [callback_data](ReturnTypeCallback result, const nlohmann::json& jsonResult)
                 {
                     const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
-                    callback_data->callback(result, spJson.get(), callback_data->user_data);
+                    callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
@@ -485,7 +485,7 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
         {
             errorMessage += "DB error, ";
             errorMessage += ex.what();
-            callback_data->callback(ReturnTypeCallback::MAX_ROWS, js_snapshot, callback_data->user_data);
+            callback_data.callback(ReturnTypeCallback::MAX_ROWS, js_snapshot, callback_data.user_data);
         }
         catch(...)
         {
