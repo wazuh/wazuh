@@ -45,7 +45,6 @@ stages:
       json: &error_spec
         detail: !anystr
         title: !anystr
-        type: !anystr
 
     # DELETE /agents/001/group/wrong_group
   - name: Try to remove agent 001 from a wrong_group

@@ -104,7 +104,6 @@ stages:
      json: &error_spec
        detail: !anystr
        title: !anystr
-       type: !anystr
 
  - name: Try to show agents with offset not integer value
    request:
@@ -3991,7 +3990,6 @@ stages:
        dapi_errors: !anything
        detail: !anystr
        title: !anystr
-       type: !anystr
 
  - name: Upgrade an agent
    request:

@@ -218,7 +218,6 @@ stages:
       json:
         detail: !anystr
         title: !anystr
-        type: !anystr
 
   - name: Sort nodes by name in ascending order
     request:
