@@ -266,6 +266,7 @@ installKibana() {
         else
             initializeKibana
         fi
+        echo -e
     fi
 
 }
@@ -292,6 +293,7 @@ initializeKibana() {
     wip=$(cat ~/config.yml | grep "url: https:")
     conf="$(awk '{sub("url: https://localhost", "'"${wip}"'")}1' /usr/share/kibana/optimize/wazuh/config/wazuh.yml)"
     echo "$conf" > /usr/share/kibana/optimize/wazuh/config/wazuh.yml  
+
 }
 
 ## Check nodes
