@@ -258,18 +258,25 @@ installKibana() {
         eval "mkdir /etc/kibana/certs $debug"
         awk -v RS='' '/## Kibana/' ~/config.yml >> /etc/kibana/kibana.yml 
         logger "Kibana installed."
-
-        if [[ -n "$e" ]] && [[ -n "$k" ]] && [[ -n "$c" ]]
+        
+        checkKibanacerts kc
+        if [ "$kc" -eq "0" ]
         then
-            eval "mv /etc/elasticsearch/certs/kibana* /etc/kibana/certs/ $debug"
-        fi
-
-        if [[ -n "$e" ]] && [[ -n "$k" ]] && [[ -n "$single" ]]
-        then
+            exit
+        else
             initializeKibana
         fi
     fi
 
+}
+
+checkKibanacerts() {
+    if [[ -f "/etc/elasticsearch/certs/kibana.pem" ]] && [[ -f "/etc/elasticsearch/certs/kibana.key" ]]
+    then
+        kc=1
+    else
+        kc=0
+    fi
 }
 
 initializeKibana() {
@@ -284,7 +291,7 @@ initializeKibana() {
     done     
     wip=$(cat ~/config.yml | grep "url: https:")
     conf="$(awk '{sub("url: https://localhost", "'"${wip}"'")}1' /usr/share/kibana/optimize/wazuh/config/wazuh.yml)"
-    echo "$conf" > /usr/share/kibana/optimize/wazuh/config/wazuh.yml   
+    echo "$conf" > /usr/share/kibana/optimize/wazuh/config/wazuh.yml  
 }
 
 ## Check nodes
@@ -354,6 +361,11 @@ main() {
             debug=""
         fi
 
+        if [[ -n "$e" ]] && [[ -n "$k" ]]   
+        then
+            getHelp
+        fi        
+
         if [ -n "$i" ]
         then
             echo "Health-check ignored."    
@@ -362,14 +374,15 @@ main() {
         fi             
         installPrerequisites
         addWazuhrepo   
-        checkNodes        
+        checkNodes    
+
         if [ -n "$e" ]
         then
             installElasticsearch
-        fi
-        if [[ -n "$c" ]] && [[ -n "$e" ]]
-        then
-            createCertificates
+            if [ -n "$c" ]
+            then
+                createCertificates
+            fi
         fi
         if [ -n "$k" ]
         then
