@@ -3,16 +3,14 @@
 # # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
-import os
 import socket
 import time
 
-import yaml
 from aiohttp import web
 
-from api import __path__ as api_path
 from api.encoder import dumps
 from api.models.basic_info import BasicInfo
+from wazuh.core.security import load_spec
 
 logger = logging.getLogger('wazuh')
 
@@ -22,8 +20,7 @@ async def default_info():
 
     Returns various basic information about the API
     """
-    with open(os.path.join(api_path[0], 'spec', 'spec.yaml'), 'r') as stream:
-        info_data = yaml.safe_load(stream)
+    info_data = load_spec()
     timestamp = time.strftime("%Y-%m-%dT%H:%M:%S%z", time.gmtime())
     data = {
         'title': info_data['info']['title'],
