@@ -12,7 +12,7 @@
 
 void *w_logtest_init() {
 
-    w_logtest_connection connection;
+    w_logtest_connection_t connection;
 
     if (w_logtest_init_parameters() == OS_INVALID) {
         merror(LOGTEST_ERROR_INV_CONF);
@@ -34,6 +34,11 @@ void *w_logtest_init() {
         return NULL;
     }
 
+    if (!OSHash_setSize(w_logtest_sessions, w_logtest_conf.max_sessions*2)) {
+        merror(LOGTEST_ERROR_SIZE_HASH);
+        return NULL;
+    }
+
     w_mutex_init(&connection.mutex, NULL);
 
     minfo(LOGTEST_INITIALIZED);
@@ -42,6 +47,7 @@ void *w_logtest_init() {
         w_create_thread(w_logtest_main, &connection);
     }
 
+    w_create_thread(w_logtest_check_inactive_sessions, NULL);
     w_logtest_main(&connection);
 
     close(connection.sock);
@@ -72,7 +78,7 @@ int w_logtest_init_parameters() {
 }
 
 
-void *w_logtest_main(w_logtest_connection *connection) {
+void *w_logtest_main(w_logtest_connection_t *connection) {
 
     int client;
     char msg_received[OS_MAXSTR];
@@ -102,22 +108,47 @@ void *w_logtest_main(w_logtest_connection *connection) {
 }
 
 
-void w_logtest_initialize_session(int token) {
+void w_logtest_initialize_session(const char *token) {
 
 }
 
 
-void w_logtest_process_log(int token) {
+void w_logtest_process_log(const char *token) {
+
+}
+
+void w_logtest_remove_session(const char *token) {
 
 }
 
 
-void w_logtest_remove_session(int token) {
+void *w_logtest_check_inactive_sessions(__attribute__((unused)) void * arg) {
+    OSHashNode *hash_node;
+    unsigned int inode_it = 0;
+    time_t current_time;
 
-}
+    while (1) {
 
+        sleep(w_logtest_conf.session_timeout);
 
-void w_logtest_check_active_sessions() {
+        hash_node = OSHash_Begin(w_logtest_sessions, &inode_it);
+
+        while (hash_node) {
+            char *token_session;
+            w_logtest_session_t *session = NULL;
+
+            token_session = hash_node->key;
+            session = hash_node->data;
+
+            current_time = time(NULL);
+            if (difftime(current_time, session->last_connection) >= w_logtest_conf.session_timeout) {
+                w_logtest_remove_session(token_session);
+            }
+
+            hash_node = OSHash_Next(w_logtest_sessions, &inode_it, hash_node);
+        }
+
+    }
 
 }
 
