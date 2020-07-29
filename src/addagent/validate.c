@@ -517,7 +517,14 @@ double OS_AgentAntiquity_ID(const char *id) {
     return ret;
 }
 
-/* Returns the number of seconds since last agent connection, or -1 if error. */
+/**
+ * @brief Returns the number of seconds since last agent connection with a Query to Wazuh DB
+ * 
+ * @param name the name of the agent
+ * @param input the ip of the agent (unused). Kept only for compatibility
+ * @retval output On Success: diff between the actual time and the last keepalive
+ * @retval -1 On error: invalid DB query syntax or result
+ */
 double OS_AgentAntiquity(const char *name, const char *ip)
 {
     int result = 0;
