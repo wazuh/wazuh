@@ -569,11 +569,18 @@ double OS_AgentAntiquity(const char *name, const char *ip)
         return OS_INVALID;
     }
 
+    // The query returned a valid keepalive
     if(strcmp(wdboutput,"ok") == 0 && strcmp(json_string,"[]") != 0 && strcmp(json_string,"[{}]") != 0){
         root = cJSON_Parse(json_string);    
         elem = cJSON_GetArrayItem(root, 0);
         json_name = cJSON_GetObjectItem(elem, "last_keepalive");
         output = json_name->valueint;
+
+    // The query returned NULL or empty JSON
+    } else if(strcmp(json_string,"[]") == 0 || strcmp(json_string,"[{}]") == 0){
+        output = 0;
+
+    // The query failed
     } else{
         mdebug1("SQLite Query failed: %s", wdbquery);
         return OS_INVALID;
