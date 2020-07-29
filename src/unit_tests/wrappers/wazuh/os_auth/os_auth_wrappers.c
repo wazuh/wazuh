@@ -31,3 +31,7 @@ int __wrap_check_x509_cert(const SSL *ssl, const char *manager) {
     check_expected(manager);
     return mock_type(int);
 }
+
+void __wrap_add_backup(__attribute__((unused)) const keyentry *entry) {
+    // Empty wrapper
+}
