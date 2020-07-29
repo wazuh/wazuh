@@ -41,7 +41,7 @@ void DBSyncImplementation::insertBulkData(const DBSYNC_HANDLE handle,
 {
     const auto ctx{ dbEngineContext(handle) };
     const auto json { nlohmann::json::parse(jsonRaw)};
-    ctx->m_dbEngine->bulkInsert(json[0]["table"], json[0]["data"]);
+    ctx->m_dbEngine->bulkInsert(json.at(0).at("table"), json.at(0).at("data"));
 }
 
 void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE  handle,
@@ -50,8 +50,8 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE  handle,
 {
     const auto ctx{ dbEngineContext(handle) };
     const auto json { nlohmann::json::parse(jsonRaw) };
-    ctx->m_dbEngine->syncTableRowData(json[0]["table"],
-                                      json[0]["data"],
+    ctx->m_dbEngine->syncTableRowData(json.at(0).at("table"),
+                                      json.at(0).at("data"),
                                       callback);
 }
 
@@ -63,12 +63,12 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE  handle,
     const auto& ctx{ dbEngineContext(handle) };
     const auto& tnxCtx { ctx->transactionContext(txn) };
     const auto json { nlohmann::json::parse(jsonRaw) };
-    if (std::find(tnxCtx->m_tables.begin(), tnxCtx->m_tables.end(), json[0]["table"]) == tnxCtx->m_tables.end())
+    if (std::find(tnxCtx->m_tables.begin(), tnxCtx->m_tables.end(), json.at(0).at("table")) == tnxCtx->m_tables.end())
     {
         throw dbsync_error{INVALID_TABLE};
     }
-    ctx->m_dbEngine->syncTableRowData(json[0]["table"],
-                                      json[0]["data"],
+    ctx->m_dbEngine->syncTableRowData(json.at(0).at("table"),
+                                      json.at(0).at("data"),
                                       callback,
                                       true);
 }
@@ -79,7 +79,7 @@ void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE  handle,
 {
     const auto ctx{ dbEngineContext(handle) };
     const auto json { nlohmann::json::parse(jsonSnapshot)};
-    ctx->m_dbEngine->refreshTableData(json[0], callback);
+    ctx->m_dbEngine->refreshTableData(json.at(0), callback);
 }
 
 std::shared_ptr<DBSyncImplementation::DbEngineContext> DBSyncImplementation::dbEngineContext(const DBSYNC_HANDLE handle)
