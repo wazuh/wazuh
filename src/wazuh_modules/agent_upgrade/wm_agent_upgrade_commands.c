@@ -15,10 +15,20 @@
 #include "os_net/os_net.h"
 
 /**
- * 
- * 
+ * Analyze agent information and returns a JSON to be sent to the task manager
+ * @param agent_id id of the agent to analyze
+ * @param agent_task structure where the information of the agent will be stored
+ * @param error_code variable to modify in case of failure
+ * @return JSON task if success, NULL otherwise
  * */
 static cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, wm_upgrade_error_code *error_code);
+
+/**
+ * Validate the information of the agent and the task
+ * @param agent_task structure with the information to be validated
+ * @return error_code
+ * */
+static int wm_agent_upgrade_validate_agent_task(wm_agent_task *agent_task);
 
 typedef enum _upgrade_results_codes {
     STATUS_UPDATED = 0,
@@ -177,31 +187,44 @@ cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, w
     agent_task->agent_info = wm_agent_upgrade_init_agent_info();
     agent_task->agent_info->agent_id = agent_id;
 
-    if (wdb_agent_info(agent_id,
-                       &agent_task->agent_info->platform,
-                       &agent_task->agent_info->major_version,
-                       &agent_task->agent_info->minor_version,
-                       &agent_task->agent_info->architecture,
-                       &agent_task->agent_info->wazuh_version,
-                       &agent_task->agent_info->last_keep_alive)) {
-            *error_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
-    } else {
+    if (!wdb_agent_info(agent_id,
+                        &agent_task->agent_info->platform,
+                        &agent_task->agent_info->major_version,
+                        &agent_task->agent_info->minor_version,
+                        &agent_task->agent_info->architecture,
+                        &agent_task->agent_info->wazuh_version,
+                        &agent_task->agent_info->last_keep_alive)) {
 
-        // TODO: Validate agent platform, version, architecture
+        // Validate agent and task information
+        *error_code = wm_agent_upgrade_validate_agent_task(agent_task);
 
-        // TODO: Validate WPK for agent and download it if necessary
+        if (*error_code == WM_UPGRADE_SUCCESS) {
+            // Save task entry for agent
+            int result = wm_agent_upgrade_create_task_entry(agent_id, agent_task);
 
-        // Save task entry for agent
-        int result = wm_agent_upgrade_create_task_entry(agent_id, agent_task);
-
-        if (result == OSHASH_SUCCESS) {
-            task_request = wm_agent_upgrade_parse_task_module_request(agent_task->task_info->command, agent_id);
-        } else if (result == OSHASH_DUPLICATED) {
-            *error_code = WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS;
-        } else {
-            *error_code = WM_UPGRADE_UNKNOWN_ERROR;
+            if (result == OSHASH_SUCCESS) {
+                task_request = wm_agent_upgrade_parse_task_module_request(agent_task->task_info->command, agent_id);
+            } else if (result == OSHASH_DUPLICATED) {
+                *error_code = WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS;
+            } else {
+                *error_code = WM_UPGRADE_UNKNOWN_ERROR;
+            }
         }
+    } else {
+        *error_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
     }
 
     return task_request;
+}
+
+int wm_agent_upgrade_validate_agent_task(wm_agent_task *agent_task) {
+    wm_upgrade_error_code error_code = WM_UPGRADE_SUCCESS;
+
+
+    // TODO: Validate agent platform, version, architecture
+
+    // TODO: Validate WPK for agent and download it if necessary
+
+
+    return error_code;
 }
