@@ -11,10 +11,12 @@
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha256/sha256_op.h"
-#include "wazuhdb_op.h"
 #ifndef CLIENT
 #include "wazuh_db/wdb.h"
+#include "wazuhdb_op.h"
 #endif
+
+
 
 #define str_startwith(x, y) strncmp(x, y, strlen(y))
 #define str_endwith(x, y) (strlen(x) < strlen(y) || strcmp(x + strlen(x) - strlen(y), y))
@@ -517,6 +519,11 @@ double OS_AgentAntiquity_ID(const char *id) {
     return ret;
 }
 
+#ifdef CLIENT
+double OS_AgentAntiquity(const char *name, const char *ip){;}
+
+#else
+
 /**
  * @brief Returns the number of seconds since last agent connection with a Query to Wazuh DB
  * 
@@ -588,6 +595,7 @@ double OS_AgentAntiquity(const char *name, const char *ip)
 
     return difftime(time(NULL), output);
 }
+#endif
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output)
