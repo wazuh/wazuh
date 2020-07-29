@@ -27,7 +27,8 @@ typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_TASK_MANAGER_COMMUNICATION,
     WM_UPGRADE_TASK_MANAGER_FAILURE,
     WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS,
-    WM_UPGRADE_UNKNOWN_ERROR
+    WM_UPGRADE_UNKNOWN_ERROR,
+    WM_UPGRADE_GLOBAL_DB_FAILURE
 } wm_upgrade_error_code;
 
 typedef enum _wm_upgrade_command {
@@ -69,9 +70,11 @@ typedef struct _wm_task_info {
 typedef struct _wm_agent_info {
     int agent_id;                ///> agent_id of the agent
     char *platform;              ///> platform of the agent
-    char *major_version;         ///> major version of the agent
-    char *minor_version;         ///> minor version of the agent
+    char *major_version;         ///> OS major version of the agent
+    char *minor_version;         ///> OS minor version of the agent
     char *architecture;          ///> architecture of the agent
+    char *wazuh_version;         ///> wazuh version of the agent
+    int last_keep_alive;         ///> last_keep_alive of the agent
 } wm_agent_info;
 
 /**
