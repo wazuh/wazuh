@@ -50,21 +50,17 @@ edit_value_tag() {
     fi
 }
 
-delete_tag() {
-    if [ -z "$2" ]; then
-        file="${CONF_FILE}"
-    else
-        file="${TMP_ENROLLMENT}"
-    fi
+delete_auto_enrollment_tag() {
     # Delete the configuration tag if its value is empty
     # This will allow using the default value
-    if [ "${file}" = "${TMP_ENROLLMENT}" ] && [ -z "$2" ]; then
-        if [ "${use_unix_sed}" = "False" ] ; then
-            ${sed} "s#<$1>.*</$1>##g" "${file}"
-        else
-            unix_sed "s#<$1>.*</$1>##g" "${file}"
-        fi
+    if [ "${use_unix_sed}" = "False" ] ; then
+        ${sed} "s#.*<$1>.*</$1>.*##g" "${TMP_ENROLLMENT}"
+    else
+        unix_sed "s#.*<$1>.*</$1>.*##g" "${TMP_ENROLLMENT}"
     fi
+
+    cat -s "${TMP_ENROLLMENT}" > "${TMP_ENROLLMENT}.tmp"
+    mv "${TMP_ENROLLMENT}.tmp" "${TMP_ENROLLMENT}"
 }
 
 # Change address block of the ossec.conf
@@ -158,19 +154,18 @@ add_auto_enrollment () {
     echo "  <client>" >> "${TMP_ENROLLMENT}"
     echo "    <auto_enrollment>" >> "${TMP_ENROLLMENT}"
     echo "      <enabled>yes</enabled>" >> "${TMP_ENROLLMENT}"
+    echo "      <auto_method>no</auto_method>" >> "${TMP_ENROLLMENT}"
+    echo "      <use_source_ip>no</use_source_ip>" >> "${TMP_ENROLLMENT}"
+    echo "      <delay_after_enrollment>20</delay_after_enrollment>" >> "${TMP_ENROLLMENT}"
+    echo "      <ssl_cipher>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ssl_cipher>" >> "${TMP_ENROLLMENT}"
     echo "      <manager_address>address</manager_address>" >> "${TMP_ENROLLMENT}"
     echo "      <port>1515</port>" >> "${TMP_ENROLLMENT}"
     echo "      <agent_name>agent</agent_name>" >> "${TMP_ENROLLMENT}"
     echo "      <groups>Group1</groups>" >> "${TMP_ENROLLMENT}"
-    echo "      <agent_address>agent_address</agent_address>" >> "${TMP_ENROLLMENT}"
-    echo "      <ssl_cipher>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ssl_cipher>" >> "${TMP_ENROLLMENT}"
     echo "      <server_ca_path>/path/to/server_ca</server_ca_path>" >> "${TMP_ENROLLMENT}"
     echo "      <agent_certificate_path>/path/to/agent.cert</agent_certificate_path>" >> "${TMP_ENROLLMENT}"
     echo "      <agent_key_path>/path/to/agent.key</agent_key_path>" >> "${TMP_ENROLLMENT}"
     echo "      <authorization_pass>TopSecret</authorization_pass>" >> "${TMP_ENROLLMENT}"
-    echo "      <auto_method>no</auto_method>" >> "${TMP_ENROLLMENT}"
-    echo "      <delay_after_enrollment>20</delay_after_enrollment>" >> "${TMP_ENROLLMENT}"
-    echo "      <use_source_ip>no</use_source_ip>" >> "${TMP_ENROLLMENT}"
     echo "    </auto_enrollment>" >> "${TMP_ENROLLMENT}"
     echo "  </client>" >> "${TMP_ENROLLMENT}"
     echo "</ossec_config>" >> "${TMP_ENROLLMENT}"
@@ -189,7 +184,7 @@ set_auto_enrollment_tag_value () {
     if [ ! -z "${value}" ]; then
         edit_value_tag "${tag}" ${value} "auto_enrollment"
     else
-        delete_tag "${tag}" "auto_enrollment"
+        delete_auto_enrollment_tag "${tag}" "auto_enrollment"
     fi
 }
 
@@ -220,9 +215,11 @@ main () {
             # Get uniques values
             ADDRESSES=$(echo "${ADDRESSES}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
             add_adress_block "${ADDRESSES}"
+            WAZUH_REGISTRATION_SERVER=${ADDRESSES[0]}
         else
             # Single address
             edit_value_tag "address" ${WAZUH_MANAGER}
+            WAZUH_REGISTRATION_SERVER="${WAZUH_MANAGER}"
         fi
 
         # Options to be modified in ossec.conf
