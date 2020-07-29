@@ -9,13 +9,14 @@ import logging
 import os
 from secrets import token_urlsafe
 from shutil import chown
+from importlib import reload
 from time import time
 
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
+import api.configuration as configuration
 from api.api_exception import APIException
-from api.configuration import security_conf
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -109,8 +110,14 @@ def change_secret():
         jwt_secret.write(new_secret)
 
 
+def get_api_conf():
+    reload(configuration)
+    return copy.deepcopy(configuration.api_conf)
+
+
 def get_security_conf():
-    return copy.deepcopy(security_conf)
+    reload(configuration)
+    return copy.deepcopy(configuration.security_conf)
 
 
 def generate_token(user_id=None, rbac_policies=None):
@@ -193,6 +200,7 @@ def decode_token(token):
         if not data.to_dict()['result']['valid']:
             raise Unauthorized
 
+        # Detect local changes
         dapi = DistributedAPI(f=get_security_conf,
                               request_type='local_master',
                               is_async=False,
