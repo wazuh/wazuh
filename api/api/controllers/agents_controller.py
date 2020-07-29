@@ -526,6 +526,8 @@ async def delete_multiple_agent_single_group(request, group_id, list_agents=None
     :param wait_for_complete: Disable timeout response
     :return: AllItemsResponseAgentIDs
     """
+    if 'all' in list_agents:
+        list_agents = None
     f_kwargs = {'agent_list': list_agents,
                 'group_list': [group_id]}
 

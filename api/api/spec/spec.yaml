@@ -5650,7 +5650,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/list_agents_delete'
         - $ref: '#/components/parameters/group_id_query'
       responses:
         '200':
