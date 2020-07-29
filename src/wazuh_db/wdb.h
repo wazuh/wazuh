@@ -191,7 +191,13 @@ extern wdb_t * db_pool;
 extern int db_pool_size;
 extern OSHash * open_dbs;
 
-// Opens global database and stores it in DB pool. It returns a locked database or NULL
+/**
+ * @brief Opens global database and stores it in DB pool.
+ *
+ * It is opened every time a query to global database is done.
+ *
+ * @return wdb_t* Database Structure locked or NULL.
+ */
 wdb_t * wdb_open_global();
 
 /**
