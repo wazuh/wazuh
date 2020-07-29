@@ -295,11 +295,11 @@ int wdb_agent_info(int id, char **platform, char **os_major, char **os_minor, ch
 
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
-        *platform = strdup((char*)sqlite3_column_text(stmt, 0));
-        *os_major = strdup((char*)sqlite3_column_text(stmt, 1));
-        *os_minor = strdup((char*)sqlite3_column_text(stmt, 2));
-        *arch = strdup((char*)sqlite3_column_text(stmt, 3));
-        *version = strdup((char*)sqlite3_column_text(stmt, 4));
+        sqlite_strdup((char*)sqlite3_column_text(stmt, 0), *platform);
+        sqlite_strdup((char*)sqlite3_column_text(stmt, 1), *os_major);
+        sqlite_strdup((char*)sqlite3_column_text(stmt, 2), *os_minor);
+        sqlite_strdup((char*)sqlite3_column_text(stmt, 3), *arch);
+        sqlite_strdup((char*)sqlite3_column_text(stmt, 4), *version);
         *last_keepalive = sqlite3_column_int(stmt, 5);
         break;
     case SQLITE_DONE:
