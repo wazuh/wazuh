@@ -59,7 +59,7 @@ DBSYNC_HANDLE dbsync_create(const HostType     host_type,
                             const char*        path,
                             const char*        sql_statement)
 {
-    DBSYNC_HANDLE ret_val{ nullptr };
+    DBSYNC_HANDLE retVal{ nullptr };
     std::string errorMessage;
     if (!path || !sql_statement)
     {
@@ -69,7 +69,7 @@ DBSYNC_HANDLE dbsync_create(const HostType     host_type,
     {
         try
         {
-            ret_val = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement);
+            retVal = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement);
         }
         catch(const nlohmann::detail::exception& ex)
         {
@@ -85,7 +85,7 @@ DBSYNC_HANDLE dbsync_create(const HostType     host_type,
         }
     }
     log_message(errorMessage);
-    return ret_val;
+    return retVal;
 }
 
 void dbsync_teardown(void)
@@ -136,7 +136,7 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
 
 int dbsync_close_txn(const TXN_HANDLE txn)
 {
-    auto ret_val { -1 };
+    auto retVal { -1 };
     std::string errorMessage;
     if (!txn)
     {
@@ -147,12 +147,12 @@ int dbsync_close_txn(const TXN_HANDLE txn)
         try
         {
             PipelineFactory::instance().destroy(txn);
-            ret_val = 0;
+            retVal = 0;
         }
         catch(const DbSync::dbsync_error& ex)
         {
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
-            ret_val = ex.id();
+            retVal = ex.id();
         }
         catch(...)
         {
@@ -160,13 +160,13 @@ int dbsync_close_txn(const TXN_HANDLE txn)
         }
     }
     log_message(errorMessage);
-    return ret_val;
+    return retVal;
 }
 
 int dbsync_sync_txn_row(const TXN_HANDLE txn,
                         const cJSON*     js_input)
 {
-    auto ret_val { -1 };
+    auto retVal { -1 };
     std::string error_message;
     if (!txn || !js_input)
     {
@@ -178,12 +178,12 @@ int dbsync_sync_txn_row(const TXN_HANDLE txn,
         {
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_input)};
             PipelineFactory::instance().pipeline(txn)->syncRow(nlohmann::json::parse(spJsonBytes.get()));
-            ret_val = 0;
+            retVal = 0;
         }
         catch(const DbSync::dbsync_error& ex)
         {
             error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
-            ret_val = ex.id();
+            retVal = ex.id();
         }
         catch(...)
         {
@@ -191,7 +191,7 @@ int dbsync_sync_txn_row(const TXN_HANDLE txn,
         }
     }
     log_message(error_message);
-    return ret_val;
+    return retVal;
 }
 
 int dbsync_add_table_relationship(const DBSYNC_HANDLE /*handle*/,
@@ -207,7 +207,7 @@ int dbsync_add_table_relationship(const DBSYNC_HANDLE /*handle*/,
 int dbsync_insert_data(const DBSYNC_HANDLE handle,
                        const cJSON*        js_insert)
 {
-    auto ret_val { -1 };
+    auto retVal { -1 };
     std::string errorMessage;
     if (!handle || !js_insert)
     {
@@ -219,17 +219,17 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
         {
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(js_insert)};
             DBSyncImplementation::instance().insertBulkData(handle, spJsonBytes.get());
-            ret_val = 0;
+            retVal = 0;
         }
         catch(const nlohmann::detail::exception& ex)
         {
             errorMessage += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
-            ret_val = ex.id;
+            retVal = ex.id;
         }
         catch(const DbSync::dbsync_error& ex)
         {
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
-            ret_val = ex.id();
+            retVal = ex.id();
         }
         catch(const DbSync::max_rows_error& ex)
         {
@@ -243,14 +243,14 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
     }
     log_message(errorMessage);
 
-    return ret_val;
+    return retVal;
 }
 
 int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
                               const char*              table,
                               const unsigned long long max_rows)
 {
-    auto ret_val { -1 };
+    auto retVal { -1 };
     std::string errorMessage;
     if (!handle || !table)
     {
@@ -261,17 +261,17 @@ int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
         try
         {
             DBSyncImplementation::instance().setMaxRows(handle, table, max_rows);
-            ret_val = 0;
+            retVal = 0;
         }
         catch(const nlohmann::detail::exception& ex)
         {
             errorMessage += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
-            ret_val = ex.id;
+            retVal = ex.id;
         }
         catch(const DbSync::dbsync_error& ex)
         {
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
-            ret_val = ex.id();
+            retVal = ex.id();
         }
         catch(...)
         {
@@ -280,14 +280,14 @@ int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
     }
     log_message(errorMessage);
 
-    return ret_val;
+    return retVal;
 }
 
 int dbsync_sync_row(const DBSYNC_HANDLE handle,
                     const cJSON*        js_input,
                     callback_data_t     callback_data)
 {
-    auto ret_val { -1 };
+    auto retVal { -1 };
     std::string errorMessage;
     if (!handle || !js_input || !callback_data.callback)
     {
@@ -307,17 +307,17 @@ int dbsync_sync_row(const DBSYNC_HANDLE handle,
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_input) };
             DBSyncImplementation::instance().syncRowData(handle, spJsonBytes.get(), callbackWrapper);
-            ret_val = 0;
+            retVal = 0;
         }
         catch(const nlohmann::detail::exception& ex)
         {
             errorMessage += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
-            ret_val = ex.id;
+            retVal = ex.id;
         }
         catch(const DbSync::dbsync_error& ex)
         {
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
-            ret_val = ex.id();
+            retVal = ex.id();
         }
         catch(const DbSync::max_rows_error& ex)
         {
@@ -331,14 +331,14 @@ int dbsync_sync_row(const DBSYNC_HANDLE handle,
         }
     }
     log_message(errorMessage);
-    return ret_val;
+    return retVal;
 }
 
 int dbsync_select_rows(const DBSYNC_HANDLE handle,
                        const cJSON*        js_data_input,
                        callback_data_t     callback_data)
 {
-    auto ret_val { -1 };
+    auto retVal { -1 };
     std::string errorMessage;
     if (!handle || !js_data_input || !callback_data.callback)
     {
@@ -358,23 +358,17 @@ int dbsync_select_rows(const DBSYNC_HANDLE handle,
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_data_input) };
             DBSyncImplementation::instance().selectData(handle, spJsonBytes.get(), callbackWrapper);
-            ret_val = 0;
+            retVal = 0;
         }
         catch(const nlohmann::detail::exception& ex)
         {
             errorMessage += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
-            ret_val = ex.id;
+            retVal = ex.id;
         }
         catch(const DbSync::dbsync_error& ex)
         {
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
-            ret_val = ex.id();
-        }
-        catch(const DbSync::max_rows_error& ex)
-        {
-            errorMessage += "DB error, ";
-            errorMessage += ex.what();
-            callback_data.callback(ReturnTypeCallback::MAX_ROWS, js_data_input, callback_data.user_data);
+            retVal = ex.id();
         }
         catch(...)
         {
@@ -382,7 +376,7 @@ int dbsync_select_rows(const DBSYNC_HANDLE handle,
         }
     }
     log_message(errorMessage);
-    return ret_val;
+    return retVal;
 }
 
 int dbsync_delete_rows(const DBSYNC_HANDLE handle,
@@ -424,7 +418,7 @@ int dbsync_delete_rows(const DBSYNC_HANDLE handle,
 int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
                             callback_data_t   callback_data)
 {
-    auto ret_val { -1 };
+    auto retVal { -1 };
     std::string error_message;
     if (!txn || !callback_data.callback)
     {
@@ -443,12 +437,12 @@ int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
                 }
             };
             PipelineFactory::instance().pipeline(txn)->getDeleted(callbackWrapper);
-            ret_val = 0;
+            retVal = 0;
         }
         catch(const DbSync::dbsync_error& ex)
         {
             error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
-            ret_val = ex.id();
+            retVal = ex.id();
         }
         catch(...)
         {
@@ -457,14 +451,14 @@ int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
     }
     log_message(error_message);
 
-    return ret_val;
+    return retVal;
 }
 
 int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
                                 const cJSON*        js_snapshot,
                                 cJSON**             js_result)
 {
-    auto ret_val { -1 };
+    auto retVal { -1 };
     std::string errorMessage;
     if (!handle || !js_snapshot || !js_result)
     {
@@ -491,17 +485,17 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
             DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), callbackWrapper);
             *js_result = cJSON_Parse(result.dump().c_str());
-            ret_val = 0;
+            retVal = 0;
         }
         catch(const nlohmann::detail::exception& ex)
         {
             errorMessage += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
-            ret_val = ex.id;
+            retVal = ex.id;
         }
         catch(const DbSync::dbsync_error& ex)
         {
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
-            ret_val = ex.id();
+            retVal = ex.id();
         }
         catch(const DbSync::max_rows_error& ex)
         {
@@ -514,14 +508,14 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
         }
     }
     log_message(errorMessage);
-    return ret_val;
+    return retVal;
 }
 
 int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
                                    const cJSON*        js_snapshot,
                                    callback_data_t     callback_data)
 {
-    auto ret_val { -1 };
+    auto retVal { -1 };
     std::string errorMessage;
     if (!handle || !js_snapshot || !callback_data.callback)
     {
@@ -541,17 +535,17 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
             DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), callbackWrapper);
-            ret_val = 0;
+            retVal = 0;
         }
         catch(const nlohmann::detail::exception& ex)
         {
             errorMessage += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
-            ret_val = ex.id;
+            retVal = ex.id;
         }
         catch(const DbSync::dbsync_error& ex)
         {
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
-            ret_val = ex.id();
+            retVal = ex.id();
         }
         catch(const DbSync::max_rows_error& ex)
         {
@@ -565,7 +559,7 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
         }
     }
     log_message(errorMessage);
-    return ret_val;
+    return retVal;
 }
 
 void dbsync_free_result(cJSON** js_data)
