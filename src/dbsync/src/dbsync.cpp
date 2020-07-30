@@ -334,12 +334,55 @@ int dbsync_sync_row(const DBSYNC_HANDLE handle,
     return ret_val;
 }
 
-int dbsync_select_rows(const DBSYNC_HANDLE /*handle*/,
-                       const cJSON*        /*js_data_input*/,
-                       callback_data_t     /*callback_data*/)
+int dbsync_select_rows(const DBSYNC_HANDLE handle,
+                       const cJSON*        js_data_input,
+                       callback_data_t     callback_data)
 {
-    // Dummy function for now.
-    return 0;
+    auto ret_val { -1 };
+    std::string errorMessage;
+    if (!handle || !js_data_input || !callback_data.callback)
+    {
+        errorMessage += "Invalid input parameters.";
+    }
+    else
+    {
+        try
+        {
+            const auto callbackWrapper
+            {
+                [callback_data](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+                {
+                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    callback_data.callback(result, spJson.get(),callback_data.user_data);
+                }
+            };
+            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_data_input) };
+            DBSyncImplementation::instance().selectData(handle, spJsonBytes.get(), callbackWrapper);
+            ret_val = 0;
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            errorMessage += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
+            ret_val = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+            ret_val = ex.id();
+        }
+        catch(const DbSync::max_rows_error& ex)
+        {
+            errorMessage += "DB error, ";
+            errorMessage += ex.what();
+            callback_data.callback(ReturnTypeCallback::MAX_ROWS, js_data_input, callback_data.user_data);
+        }
+        catch(...)
+        {
+            errorMessage += "Unrecognized error.";
+        }
+    }
+    log_message(errorMessage);
+    return ret_val;
 }
 
 int dbsync_delete_rows(const DBSYNC_HANDLE /*handle*/,

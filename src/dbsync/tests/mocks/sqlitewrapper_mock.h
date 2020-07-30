@@ -57,6 +57,10 @@ class MockColumn : public SQLite::IColumn
                     (),
                     (const override));
         MOCK_METHOD(int32_t,
+                    type,
+                    (),
+                    (const override));
+        MOCK_METHOD(int32_t,
                     value,
                     (const int32_t&),
                     (const override));

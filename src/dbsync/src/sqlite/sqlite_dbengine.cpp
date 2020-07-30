@@ -254,6 +254,68 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
     }
 }
 
+void SQLiteDBEngine::selectData(const std::string& table,
+                                const nlohmann::json& query,
+                                const DbSync::ResultCallback& callback)
+{
+    const auto& sql{ buildSelectQuery(table, query) };
+    auto const& stmt { getStatement(sql) };
+    const auto tableFields { m_tableFields[table] };
+
+    while (SQLITE_ROW == stmt->step())
+    {
+        Row row;
+        const auto& columns{ query.at("column_list") };
+        if (std::find_if(columns.begin(), columns.end(),[](const std::string& value){return value == "*";}) != columns.end())
+        {
+            for(const auto& field : tableFields)
+            {
+                if (!std::get<TableHeader::TXNStatusField>(field))
+                {
+                    getTableData(stmt,
+                             std::get<TableHeader::CID>(field),
+                             std::get<TableHeader::Type>(field),
+                             std::get<TableHeader::Name>(field),
+                             row);
+                }
+            }
+        }
+        else
+        {
+            int32_t index{ 0 };
+            for (const auto& column : columns)
+            {
+                const auto& it
+                {
+                    std::find_if(tableFields.begin(),
+                                 tableFields.end(),
+                                 [&column](const ColumnData& data)
+                                 {
+                                    return column == std::get<TableHeader::Name>(data);
+                                 })
+                };
+                if (it != tableFields.end())
+                {
+                    getTableData(stmt,
+                                 index,
+                                 std::get<TableHeader::Type>(*it),
+                                 column,
+                                 row);
+                    ++index;
+                }
+            }
+        }
+        nlohmann::json object;
+        for (const auto& value : row)
+        {
+            getFieldValueFromTuple(value, object);
+        }
+        if (callback && !object.empty())
+        {
+            callback(SELECTED, object);
+        }
+    }
+}
 ///
 /// Private functions section
 ///
@@ -729,6 +791,48 @@ void SQLiteDBEngine::bindFieldData(const std::unique_ptr<SQLite::IStatement>& st
     {
         throw dbengine_error { INVALID_DATA_BIND };
     }
+}
+
+
+std::string SQLiteDBEngine::buildSelectQuery(const std::string& table,
+                                             const nlohmann::json& jsQuery)
+{
+    const auto& columns{ jsQuery.at("column_list")};
+    const auto& itFilter{ jsQuery.find("row_filter")};
+    /*optional fields*/
+    const auto& itDistinct{ jsQuery.find("distinct_opt") };
+    const auto& itOrderBy{ jsQuery.find("order_by_opt") };
+    const auto& itCount{ jsQuery.find("count_opt") };
+
+    std::string sql{ "SELECT "};
+    if (itDistinct != jsQuery.end() && itDistinct->get<bool>())
+    {
+        sql += "DISTINCT ";
+    }
+    for (const auto& column : columns)
+    {
+        sql += column;
+        sql += ",";
+    }
+    sql = sql.substr(0, sql.size()-1);
+
+    sql += " FROM " + table;
+    if (itFilter != jsQuery.end() && !itFilter->get<std::string>().empty())
+    {
+        sql += " WHERE ";
+        sql += itFilter->get<std::string>();
+    }
+    if (itOrderBy != jsQuery.end() && !itOrderBy->get<std::string>().empty())
+    {
+        sql += " ORDER BY " + itOrderBy->get<std::string>();
+    }
+    if (itCount != jsQuery.end())
+    {
+        const unsigned int limit{*itCount};
+        sql += " LIMIT " + std::to_string(limit);
+    }
+    sql += ";";
+    return sql;
 }
 
 std::string SQLiteDBEngine::buildLeftOnlyQuery(const std::string& t1,
