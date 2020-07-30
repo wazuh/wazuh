@@ -16,6 +16,7 @@
 #include "shared.h"
 #include "active-response.h"
 #include "lists.h"
+#include "list_log.h"
 
 /* Event fields - stored on a u_int32_t */
 #define FIELD_SRCIP      0x01
@@ -212,7 +213,7 @@ typedef struct _RuleNode {
 
 
 RuleInfoDetail *zeroinfodetails(int type, const char *data);
-int get_info_attributes(char **attributes, char **values, char **msg);
+int get_info_attributes(char **attributes, char **values, os_analysisd_list_log_msg_t* log_msg);
 
 /* RuleInfo functions */
 RuleInfo *zerorulemember(int id,
@@ -237,11 +238,10 @@ int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node);
  * @brief  Add rule information as a child.
  * @param[in]  read_rule rule information.
  * @param[in]  r_node node to add as a child rule information.
- * @param[out] msg Store error as result of call.
+ * @param[in]  log_msg List to save log messages.
  * @return int -1 for critical errors, 1 for errors, 0 otherwise.
- * @note If *msg==null, memory are allocate, otherwise memory are reallocate and error are concatenate.
  */
-int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, char** msg);
+int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, os_analysisd_list_log_msg_t* log_msg);
 
 /* Add an overwrite rule */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid);
@@ -260,13 +260,11 @@ void Rules_OP_CreateRules(void);
 /**
  * @brief Read the log rules of `rulefile` and add the `ruleNode` if the CDB list (l_node) allowed
  * @param[in]  rulefile path of the rule configuration xml file.
- * @param[in]  r_node Rules node to add
- * @param[in]  l_node CDB list
- * @param[out] **msg If any error or warning occurs, your description are stored in *msg.
- *                   If *msg==null, memory are allocate for messages, otherwise memory
- *                   are reallocate and error messages are stored here, replacing the original content.
+ * @param[in]  r_node Rules node to add.
+ * @param[in]  l_node CDB list.
+ * @param[in]  log_msg List to save log messages.
 */ 
-int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, char** msg);
+int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, os_analysisd_list_log_msg_t* log_msg);
 
 int AddHash_Rule(RuleNode *node);
 

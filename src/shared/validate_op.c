@@ -695,7 +695,7 @@ int OS_IsonDay(int week_day, const char *ossec_day)
 
 #define IS_SEP(x) (*x == ' ' || *x == ',')
 
-char *OS_IsValidDay(const char *day_str, char **msg)
+char *OS_IsValidDay(const char *day_str)
 {
     int i = 0, ng = 0;
     char *ret;
@@ -745,7 +745,6 @@ char *OS_IsValidDay(const char *day_str, char **msg)
         }
 
         if (!days[i]) {
-            smerror(msg,INVALID_DAY, day_str);
             return (NULL);
         }
 
@@ -757,7 +756,6 @@ char *OS_IsValidDay(const char *day_str, char **msg)
         } else if (*day_str == '\0') {
             break;
         } else {
-            smerror(msg,INVALID_DAY, day_str);
             return (NULL);
         }
     }
@@ -781,7 +779,6 @@ char *OS_IsValidDay(const char *day_str, char **msg)
     /* At least one day must be checked */
     if (ng == 0) {
         free(ret);
-        smerror(msg,INVALID_DAY, day_str);
         return (NULL);
     }
 

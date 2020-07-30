@@ -513,7 +513,9 @@ int main_analysisd(int argc, char **argv)
     {
         {
             /* Error and warning msg */
-            char *msg = NULL;
+            os_analysisd_list_log_msg_t*  list_msg = os_analysisd_create_list_log();
+            os_analysisd_log_msg_t* data_msg;
+            char* msg;
 
             /* Initialize the decoders list */
             OS_CreateOSDecoderList();
@@ -533,10 +535,17 @@ int main_analysisd(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles, &msg)) {
-                        if (msg) {
-                            minfo("Call ReadDecodeXML result in the following errors/warning:\n%s", msg);
+                    if (!ReadDecodeXML(*decodersfiles, list_msg)) {
+                        while (data_msg = os_analysisd_pop_list_log(list_msg), data_msg) {
+                            msg = os_analysisd_string_log_msg(data_msg);
+                            if (data_msg->level == LOGLEVEL_WARNING) {
+                                mwarn("%s", msg);
+                            } else if (data_msg->level == LOGLEVEL_ERROR) {
+                                merror("%s", msg);
+                            }
                             os_free(msg);
+                            os_analysisd_free_log_msg(data_msg);
+                            os_free(data_msg);
                         }
                         merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
@@ -547,10 +556,17 @@ int main_analysisd(int argc, char **argv)
             }
 
             /* Load decoders */
-            SetDecodeXML(&msg);
-            if (msg) {
-                minfo("Call SetDecodeXML result in the following errors/warning:\n%s", msg);
+            SetDecodeXML(list_msg);
+            while (data_msg = os_analysisd_pop_list_log(list_msg), data_msg) {
+                msg = os_analysisd_string_log_msg(data_msg);
+                if (data_msg->level == LOGLEVEL_WARNING) {
+                    mwarn("%s", msg);
+                } else if (data_msg->level == LOGLEVEL_ERROR) {
+                    merror("%s", msg);
+                }
                 os_free(msg);
+                os_analysisd_free_log_msg(data_msg);
+                os_free(data_msg);
             }
         }
         {
@@ -590,7 +606,9 @@ int main_analysisd(int argc, char **argv)
             /* Read the rules */
             {
                 /* Error and warning msg */
-                char *msg = NULL;
+                os_analysisd_list_log_msg_t*  list_msg = os_analysisd_create_list_log();
+                os_analysisd_log_msg_t* data_msg;
+                char* msg;
 
                 char **rulesfiles;
                 rulesfiles = Config.includes;
@@ -599,10 +617,17 @@ int main_analysisd(int argc, char **argv)
                         mdebug1("Reading rules file: '%s'", *rulesfiles);
                     }
                     
-                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists, &msg) < 0) {
-                        if (msg) {
-                            minfo("Call Rules_OP_ReadRules result in the following errors/warning:\n%s", msg);
+                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists, list_msg) < 0) {
+                        while (data_msg = os_analysisd_pop_list_log(list_msg), data_msg) {
+                            msg = os_analysisd_string_log_msg(data_msg);
+                            if (data_msg->level == LOGLEVEL_WARNING) {
+                                mwarn("%s", msg);
+                            } else if (data_msg->level == LOGLEVEL_ERROR) {
+                                merror("%s", msg);
+                            }
                             os_free(msg);
+                            os_analysisd_free_log_msg(data_msg);
+                            os_free(data_msg);
                         }
                         merror_exit(RULES_ERROR, *rulesfiles);
                     }

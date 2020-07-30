@@ -30,6 +30,7 @@
 #include "cleanevent.h"
 #include "lists_make.h"
 
+
 /** Internal Functions **/
 void OS_ReadMSG(char *ut_str);
 
@@ -216,7 +217,9 @@ int main(int argc, char **argv)
             OS_CreateOSDecoderList();
 
             /* Error and warning msg */
-            char* msg = NULL;
+            os_analysisd_list_log_msg_t* list_msg = os_analysisd_create_list_log();
+            os_analysisd_log_msg_t* data_msg;
+            char* msg;
 
             if (!Config.decoders) {
                 /* Legacy loading */
@@ -230,11 +233,17 @@ int main(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles, &msg)) {
-                        if (msg) {
-                            // [wazuh-logtest] This will be sent through the socket
-                            minfo("Call ReadDecodeXML result in the following errors/warning:\n %s", msg);
+                    if (!ReadDecodeXML(*decodersfiles, list_msg)) {
+                        while (data_msg = os_analysisd_pop_list_log(list_msg), data_msg) {
+                            msg = os_analysisd_string_log_msg(data_msg);
+                            if (data_msg->level == LOGLEVEL_WARNING) {
+                                mwarn("%s", msg);
+                            } else if (data_msg->level == LOGLEVEL_ERROR) {
+                                merror("%s", msg);
+                            }
                             os_free(msg);
+                            os_analysisd_free_log_msg(data_msg);
+                            os_free(data_msg);
                         }
                         merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
@@ -245,11 +254,17 @@ int main(int argc, char **argv)
 
                 /* Read local ones */
 
-                c = ReadDecodeXML(XML_LDECODER, &msg);
-                if (msg) {
-                    // [wazuh-logtest] This will be sent through the socket
-                    minfo("Call ReadDecodeXML result in the following errors/warning:\n %s", msg);
+                c = ReadDecodeXML(XML_LDECODER, list_msg);
+                while (data_msg = os_analysisd_pop_list_log(list_msg), data_msg) {
+                    msg = os_analysisd_string_log_msg(data_msg);
+                    if (data_msg->level == LOGLEVEL_WARNING) {
+                        mwarn("%s", msg);
+                    } else if (data_msg->level == LOGLEVEL_ERROR) {
+                        merror("%s", msg);
+                    }
                     os_free(msg);
+                    os_analysisd_free_log_msg(data_msg);
+                    os_free(data_msg);
                 }
                 if (!c) {
                     if ((c != -2)) {
@@ -268,10 +283,17 @@ int main(int argc, char **argv)
                     if(!quiet) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles, &msg)) {
-                        if (msg) {
-                            minfo("Call ReadDecodeXML result in the following errors/warning:\n %s", msg);
+                    if (!ReadDecodeXML(*decodersfiles, list_msg)) {
+                        while (data_msg = os_analysisd_pop_list_log(list_msg), data_msg) {
+                            msg = os_analysisd_string_log_msg(data_msg);
+                            if (data_msg->level == LOGLEVEL_WARNING) {
+                                mwarn("%s", msg);
+                            } else if (data_msg->level == LOGLEVEL_ERROR) {
+                                merror("%s", msg);
+                            }
                             os_free(msg);
+                            os_analysisd_free_log_msg(data_msg);
+                            os_free(data_msg);
                         }
                         merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
@@ -282,11 +304,17 @@ int main(int argc, char **argv)
             }
 
             /* Load decoders */
-            SetDecodeXML(&msg);
-            if (msg) {
-                // [wazuh-logtest] This will be sent through the socket
-                minfo("Call SetDecodeXML result in the following errors/warning:\n %s", msg);
+            SetDecodeXML(list_msg);
+            while (data_msg = os_analysisd_pop_list_log(list_msg), data_msg) {
+                msg = os_analysisd_string_log_msg(data_msg);
+                if (data_msg->level == LOGLEVEL_WARNING) {
+                    mwarn("%s", msg);
+                } else if (data_msg->level == LOGLEVEL_ERROR) {
+                    merror("%s", msg);
+                }
                 os_free(msg);
+                os_analysisd_free_log_msg(data_msg);
+                os_free(data_msg);
             }
         }
         {
@@ -315,17 +343,28 @@ int main(int argc, char **argv)
             /* Create the rules list */
             Rules_OP_CreateRules();
 
+            /* Error and warning msg */
+            os_analysisd_list_log_msg_t* list_msg = os_analysisd_create_list_log();
+            os_analysisd_log_msg_t* data_msg;
+            char* msg;
+
             /* Read the rules */
             {
-                char*  msg = NULL;
                 char **rulesfiles;
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     mdebug1("Reading rules file: '%s'", *rulesfiles);
-                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists, &msg) < 0) {
-                        if (msg) {
-                            minfo("Call Rules_OP_ReadRules result in the following errors/warning:\n %s", msg);
+                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists, list_msg) < 0) {
+                        while (data_msg = os_analysisd_pop_list_log(list_msg), data_msg) {
+                            msg = os_analysisd_string_log_msg(data_msg);
+                            if (data_msg->level == LOGLEVEL_WARNING) {
+                                mwarn("%s", msg);
+                            } else if (data_msg->level == LOGLEVEL_ERROR) {
+                                merror("%s", msg);
+                            }
                             os_free(msg);
+                            os_analysisd_free_log_msg(data_msg);
+                            os_free(data_msg);
                         }
                         merror_exit(RULES_ERROR, *rulesfiles);
                     }

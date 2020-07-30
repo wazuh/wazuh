@@ -27,7 +27,6 @@ struct{
 } flags;
 
 static void _log(int level, const char *tag, const char * file, int line, const char * func, const char *msg, va_list args) __attribute__((format(printf, 5, 0))) __attribute__((nonnull));
-static char* _smsg(int level, const char * file, int line, const char * func, const char *msg, va_list args)  __attribute__((nonnull));
 
 
 #ifdef WIN32
@@ -339,73 +338,6 @@ void _merror(const char * file, int line, const char * func, const char *msg, ..
     _log(level, tag, file, line, func, msg, args);
     va_end(args);
 }
-
-static char* _smsg(int level, const char * file, int line, const char * func, const char *msg, va_list args){
-    
-    const char *tag = __local_name;
-    char* str = NULL;
-    os_malloc(OS_BUFFER_SIZE, str);
-    str[0] = '\0';
-    char *timestamp = w_get_timestamp(time(NULL));
-    
-    
-    const char *strlevel[5]={
-      "DEBUG",
-      "INFO",
-      "WARNING",
-      "ERROR",
-      "CRITICAL",
-    };
-
-    (void) snprintf(str, OS_BUFFER_SIZE, "%s ", timestamp);
-
-    if (isDebug()) {
-        (void) snprintf(str + strlen(str), OS_BUFFER_SIZE, "%s[%d] %s:%d at %s(): %s: ", tag, pid, file, line, func, strlevel[level]);
-    } else {
-        (void) snprintf(str + strlen(str), OS_BUFFER_SIZE, "%s: ", strlevel[level]);
-    }
-    
-    (void) vsnprintf(str + strlen(str), OS_BUFFER_SIZE - strlen(str), msg, args);
-    
-    os_realloc(str, strlen(str) + 1, str);
-    
-    return str;
-}
-
-
-void _serror_join(const char * file, int line, const char * func, char** msg, const char *format, ...)
-{
-    va_list args;
-    char* new_msg;
-    int level = LOGLEVEL_ERROR;
-
-    va_start(args, format);
-    new_msg = _smsg(level, file, line, func, format, args);
-    va_end(args);
-    if (*msg) {
-        wm_strcat(msg, "\n", 0);
-    }
-    wm_strcat(msg, new_msg, 0);
-    os_free(new_msg);
-    
-};
-
-
-void _swarn_join(const char * file, int line, const char * func, char** msg, const char *format, ...)
-{
-    va_list args;
-    char* new_msg;
-    int level = LOGLEVEL_WARNING;
-    
-    va_start(args, format);
-    new_msg = _smsg(level, file, line, func, format, args);
-    va_end(args);
-    if (*msg) {
-        wm_strcat(msg, "\n", 0);
-    }
-    wm_strcat(msg, new_msg, 0);
-    os_free(new_msg); 
-};
 
 void _mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...)
 {

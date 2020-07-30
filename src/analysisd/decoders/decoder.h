@@ -12,6 +12,7 @@
 #define DECODER_H
 
 #include "shared.h"
+#include "../list_log.h"
 #include "os_regex/os_regex.h"
 
 #define AFTER_PARENT    0x001   /* 1   */
@@ -81,18 +82,17 @@ typedef struct dbsync_context_t {
  * list and to get the first osdecoder
  */
 void OS_CreateOSDecoderList(void);
-int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode, OSDecoderNode **npn_osdecodernode, char **msg);
+int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode, OSDecoderNode **npn_osdecodernode, os_analysisd_list_log_msg_t* log_msg);
 OSDecoderNode *OS_GetFirstOSDecoder(const char *pname);
 int getDecoderfromlist(const char *name);
 char *GetGeoInfobyIP(char *ip_addr);
 
 /**
  * @brief Read decoder files and save them in the decoder list.
- * @param[out] msg Store warnings and error as result of call
+ * @param[in] log_msg list to save log messages.
  * @return int 0 in case of error, 1 otherwise.
- * @note If *msg==null, memory are allocate, otherwise memory are reallocate.
  */
-int SetDecodeXML(char **msg);
+int SetDecodeXML(os_analysisd_list_log_msg_t* log_msg);
 
 void HostinfoInit(void);
 int fim_init(void);
@@ -106,12 +106,11 @@ void SecurityConfigurationAssessmentInit(void);
  * Add decoders to main list
  * 
  * @param[in]  *file path of the decoder configuration xml file.
- * @param[out] **msg Store warnings and error as result of call
+ * @param[in]  log_msg List to save log messages.
  * @return  1 Decoder was added to the list.
  *          0 in case of error.
  *         -2 File XML_LDECODER (localdecoderfile) not found or can't get root element of xmlfile.
- * @note If *msg==null, memory are allocate, otherwise memory are reallocate and concatenate the original content
-*/
-int ReadDecodeXML(const char *file, char **msg);
+ */
+int ReadDecodeXML(const char *file, os_analysisd_list_log_msg_t* log_msg);
 
 #endif /* DECODER_H */
