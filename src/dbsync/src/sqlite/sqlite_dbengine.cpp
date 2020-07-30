@@ -110,20 +110,29 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
         const bool diffExist { getRowDiff(table, data[0], jsResult) };
         if (diffExist)
         {
-            if (!jsResult.empty())
+            static const auto getDataToUpdate
             {
-                if (inTransaction)
+                [](const nlohmann::json& result, const nlohmann::json& data, const bool inTransaction)
                 {
-                    jsResult[STATUS_FIELD_NAME] = 1;
+                    nlohmann::json ret;
+                    if (inTransaction)
+                    {
+                        ret = result.empty() ? data[0] : result;
+                        ret[STATUS_FIELD_NAME] = 1;
+                    }
+                    else if (!result.empty())
+                    {
+                        ret = result;
+                    }
+                    return ret;
                 }
+            };
+            const nlohmann::json jsDataToUpdate{getDataToUpdate(jsResult, data, inTransaction)};
+            if (!jsDataToUpdate[0].empty())
+            {
                 const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
-                updateSingleRow(table, jsResult);
+                updateSingleRow(table, jsDataToUpdate[0]);
                 transaction->commit();
-                const auto& it{ jsResult.find(STATUS_FIELD_NAME) };
-                if (it != jsResult.end())
-                {
-                    jsResult.erase(it);
-                }
             }
         }
         else
@@ -1383,7 +1392,7 @@ void SQLiteDBEngine::updateSingleRow(const std::string& table,
         int32_t index { 1l };
         std::sort(tableFields.begin(),
                   tableFields.end(),
-                  [jsData](const ColumnData& data1, const ColumnData& data2)
+                  [](const ColumnData& data1, const ColumnData& data2)
                   {
                     const auto pk1{std::get<TableHeader::PK>(data1)};
                     const auto pk2{std::get<TableHeader::PK>(data2)};
