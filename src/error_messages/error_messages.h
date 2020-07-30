@@ -503,6 +503,7 @@
 #define WM_UPGRADE_ACCEPT_ERROR                     "(8110): Error in accept(): '%s'"
 #define WM_UPGRADE_RECV_ERROR                       "(8111): Error in recv(): '%s'"
 #define WM_UPGRADE_SOCKTERR_ERROR                   "(8112): Response size is bigger than expected."
+#define WM_UPGRADE_QUEUE_FD                         "(8113): Could not open default queue to send upgrade notification."
 
 #define MOD_TASK_CHECK_DB_ERROR                     "(8250): DB integrity is invalid. Exiting..."
 #define MOD_TASK_CREATE_SOCK_ERROR                  "(8251): Queue '%s' not accesible: '%s'. Exiting..."

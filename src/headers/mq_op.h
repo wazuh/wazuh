@@ -22,6 +22,7 @@
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
 #define SCA_MQ          'p'
+#define UPGRADE_MQ      'u'
 
 /* Queues for additional log types */
 #define MYSQL_MQ         'a'

@@ -1026,12 +1026,14 @@ config/%.o: config/%.c
 
 #### Wazuh modules ##
 
-wmodules_c := $(wildcard wazuh_modules/wm*.c)
+wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
 
 ifneq (${TARGET},agent)
 	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/vulnerability_detector/*.c)
-	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/*.c)
 	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/task_manager/*.c)
+	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/manager/*.c)
+else
+	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/agent/*.c)
 endif
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
