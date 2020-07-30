@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-/var/ossec/bin/ossec-control stop
-
 sed -i "s:MANAGER_IP:$1:g" /var/ossec/etc/ossec.conf
 sed -i "s:<protocol>udp</protocol>:<protocol>tcp</protocol>:g" /var/ossec/etc/ossec.conf
 sed -n "/$2 /p" /var/ossec/etc/test.keys > /var/ossec/etc/client.keys
