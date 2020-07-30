@@ -110,7 +110,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     pending_data_t *data = NULL;
     int is_startup = 0;
     int agent_id = 0;
-    time_t keepalive = 0;
     int result = 0;
 
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
@@ -163,8 +162,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
         w_mutex_unlock(&lastmsg_mutex);
 
         agent_id = atoi(key->id);
-        keepalive = time(NULL);
-        result = wdb_update_agent_keepalive(agent_id, keepalive);
+
+        result = wdb_update_agent_keepalive(agent_id);
 
         if (OS_SUCCESS != result)
             mwarn("Unable to save agent last keepalive in global.db");
@@ -226,7 +225,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             }
 
             agent_id = atoi(key->id);
-            keepalive = time(NULL);
 
             // Updating version and keepalive in global.db
             result = wdb_update_agent_version(agent_id, os_name, os_version, os_major, os_minor, os_codename, os_platform,
@@ -235,11 +233,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             
             if (OS_INVALID == result)
                 mwarn("Unable to update information in global.db for agent: %s", key->id);
-            
-            result = wdb_update_agent_keepalive(agent_id, keepalive);
-
-            if (OS_INVALID == result)
-                mwarn("Unable to save last keepalive in global.db for agent: %s", key->id);
 
             os_free(version);
             os_free(os_name);

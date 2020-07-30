@@ -20,9 +20,9 @@
 static const char *global_db_queries[] = {
     [SQL_INSERT_AGENT] = "global sql INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (%d, %Q, %Q, %Q, %Q, %lu, %Q);",
     [SQL_UPDATE_AGENT_NAME] = "global sql UPDATE agent SET name = %Q WHERE id = %d;",
-    [SQL_UPDATE_AGENT_VERSION] = "global sql UPDATE agent SET os_name = %Q, os_version = %Q, os_major = %Q, os_minor = %Q, os_codename = %Q, os_platform = %Q, os_build = %Q, os_uname = %s, os_arch = %Q, version = %Q, config_sum = %Q, merged_sum = %Q, manager_host = %Q, node_name = %Q WHERE id = %d;",
-    [SQL_UPDATE_AGENT_VERSION_IP] = "global sql UPDATE agent SET os_name = %Q, os_version = %Q, os_major = %Q, os_minor = %Q, os_codename = %Q, os_platform = %Q, os_build = %Q, os_uname = %s, os_arch = %Q, version = %Q, config_sum = %Q, merged_sum = %Q, manager_host = %Q, node_name = %Q , ip = %Q WHERE id = %d;",
-    [SQL_UPDATE_AGENT_KEEPALIVE] = "global sql UPDATE agent SET last_keepalive = %lu WHERE id = %d;",
+    [SQL_UPDATE_AGENT_VERSION] = "global sql UPDATE agent SET os_name = %Q, os_version = %Q, os_major = %Q, os_minor = %Q, os_codename = %Q, os_platform = %Q, os_build = %Q, os_uname = %s, os_arch = %Q, version = %Q, config_sum = %Q, merged_sum = %Q, manager_host = %Q, node_name = %Q, last_keepalive = STRFTIME('%s', 'NOW') WHERE id = %d;",
+    [SQL_UPDATE_AGENT_VERSION_IP] = "global sql UPDATE agent SET os_name = %Q, os_version = %Q, os_major = %Q, os_minor = %Q, os_codename = %Q, os_platform = %Q, os_build = %Q, os_uname = %s, os_arch = %Q, version = %Q, config_sum = %Q, merged_sum = %Q, manager_host = %Q, node_name = %Q, last_keepalive = STRFTIME('%s', 'NOW'), ip = %Q WHERE id = %d;",
+    [SQL_UPDATE_AGENT_KEEPALIVE] = "global sql UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW') WHERE id = %d;",
     [SQL_DELETE_AGENT] = "global sql DELETE FROM agent WHERE id = %d;",
     [SQL_SELECT_AGENT] = "global sql SELECT name FROM agent WHERE id = %d;",
     [SQL_SELECT_AGENT_GROUP] = "global sql SELECT `group` FROM agent WHERE id = %d;",
@@ -145,14 +145,14 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
     return result;
 }
 
-/* Update agent's last keepalive time. It opens and closes the DB. Returns OS_SUCCESS or -1 on error. */
-int wdb_update_agent_keepalive(int id, long keepalive) {
+/* Update agent's last keepalive time. Returns OS_SUCCESS or -1 on error. */
+int wdb_update_agent_keepalive(int id) {
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
     char wdboutput[OS_BUFFER_SIZE] = "";
     int wdb_sock = -1;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_KEEPALIVE], keepalive, id);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_KEEPALIVE], id);
     
     result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 

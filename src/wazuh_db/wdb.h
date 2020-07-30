@@ -335,7 +335,7 @@ int wdb_update_agent_name(int id, const char *name);
 int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name, const char *agent_ip);
 
 /* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_keepalive(int id, long keepalive);
+int wdb_update_agent_keepalive(int id);
 
 /* Update agent group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_group(int id,char *group);
