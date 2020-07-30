@@ -175,7 +175,7 @@ wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, cha
         if(strcmp(item->string, "wpk_repo") == 0) {
             /* wpk_repo */
             if (item->type == cJSON_String) {
-                task->wpk_repository = strdup(item->valuestring);
+                os_strdup(item->valuestring, task->wpk_repository);
             } else {
                 sprintf(output, "Parameter \"%s\" should be a string", item->string);
                 error_flag = 1;
@@ -183,7 +183,7 @@ wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, cha
         } else if(strcmp(item->string, "version") == 0) {
             /* version */
             if (item->type == cJSON_String) {
-                task->custom_version = strdup(item->valuestring);
+                os_strdup(item->valuestring, task->custom_version);
             } else {
                 sprintf(output, "Parameter \"%s\" should be a string", item->string);
                 error_flag = 1;
@@ -195,7 +195,7 @@ wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, cha
             } else if(item->valueint == 0) {
                 task->use_http = false;
             } else {
-                sprintf(output, "Parameter \"%s\" should be either true or false", item->string);
+                sprintf(output, "Parameter \"%s\" can take only values [0, 1]", item->string);
                 error_flag = 1;
             }
         } else if(strcmp(item->string, "force_upgrade") == 0) {
@@ -237,7 +237,7 @@ wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSO
         if (strcmp(item->string, "file_path") == 0) {
             /* file_path */
             if (item->type == cJSON_String) {
-                task->custom_file_path = strdup(item->valuestring);
+                os_strdup(item->valuestring, task->custom_file_path);
             } else {
                 sprintf(output, "Parameter \"%s\" should be a string", item->string);
                 error_flag = 1;
@@ -245,7 +245,7 @@ wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSO
         } else if(strcmp(item->string, "installer") == 0) {
             /* installer */
             if (item->type == cJSON_String) {
-                task->custom_installer = strdup(item->valuestring);
+                os_strdup(item->valuestring, task->custom_installer);
             } else {
                 sprintf(output, "Parameter \"%s\" should be a string", item->string);
                 error_flag = 1;

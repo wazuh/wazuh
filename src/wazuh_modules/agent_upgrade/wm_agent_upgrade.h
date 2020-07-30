@@ -15,6 +15,8 @@
 #define WM_AGENT_UPGRADE_LOGTAG ARGV0 ":" AGENT_UPGRADE_WM_NAME
 #define WM_AGENT_UPGRADE_MODULE_NAME "upgrade_module"
 #define WM_UPGRADE_MINIMAL_VERSION_SUPPORT "v3.0.0"
+#define WM_UPGRADE_NEW_VERSION_REPOSITORY "v3.4.0"
+#define WM_UPGRADE_WPK_REPO_URL "packages.wazuh.com/wpk/"
 #define MANAGER_ID 0
 
 typedef struct _wm_agent_upgrade {
@@ -31,8 +33,10 @@ typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_GLOBAL_DB_FAILURE,
     WM_UPGRADE_INVALID_ACTION_FOR_MANAGER,
     WM_UPGRADE_AGENT_IS_NOT_ACTIVE,
-    WM_UPGRADE_SYSTEM_NOT_SUPPORTED,
     WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED,
+    WM_UPGRADE_SYSTEM_NOT_SUPPORTED,
+    WM_UPGRADE_URL_NOT_FOUND,
+    WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST,
     WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT,
     WM_UPGRADE_NEW_VERSION_GREATER_MASTER,
     WM_UPGRADE_VERSION_SAME_MANAGER,
@@ -54,6 +58,8 @@ typedef struct _wm_upgrade_task {
     char *custom_version;        ///> upgrade to a custom version
     bool use_http;               ///> when enabled uses http instead of https to connect to repository
     bool force_upgrade;          ///> when enabled forces upgrade
+    char *wpk_version;           ///> WPK version to download
+    char *wpk_sha1;              ///> WPK sha1 to validate
 } wm_upgrade_task;
 
 /**
@@ -152,11 +158,12 @@ int wm_agent_upgrade_validate_status(int last_keep_alive);
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED
+ * @retval WM_UPGRADE_SYSTEM_NOT_SUPPORTED
  * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER
  * @retval WM_UPGRADE_VERSION_SAME_MANAGER
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
-int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, const void *task, wm_upgrade_command command);
+int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *task, wm_upgrade_command command);
 
 #endif

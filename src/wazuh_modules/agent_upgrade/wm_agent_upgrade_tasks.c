@@ -24,6 +24,8 @@ wm_upgrade_task* wm_agent_upgrade_init_upgrade_task() {
     task->wpk_repository = NULL;
     task->force_upgrade = false;
     task->use_http = false;
+    task->wpk_version = NULL;
+    task->wpk_sha1 = NULL;
     return task;
 }
 
@@ -65,6 +67,8 @@ void wm_agent_upgrade_free_upgrade_task(wm_upgrade_task* upgrade_task) {
     if (upgrade_task) {
         os_free(upgrade_task->custom_version);
         os_free(upgrade_task->wpk_repository);
+        os_free(upgrade_task->wpk_version);
+        os_free(upgrade_task->wpk_sha1);
         os_free(upgrade_task);
     }
     upgrade_task = NULL;

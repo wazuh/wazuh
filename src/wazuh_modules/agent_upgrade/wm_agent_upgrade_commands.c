@@ -75,8 +75,11 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
         agent_task = wm_agent_upgrade_init_agent_task();
 
         // Task information
-        os_calloc(1, sizeof(wm_upgrade_task), upgrade_task);
-        memcpy(upgrade_task, task, sizeof(wm_upgrade_task));
+        upgrade_task = wm_agent_upgrade_init_upgrade_task();
+        w_strdup(task->wpk_repository, upgrade_task->wpk_repository);
+        w_strdup(task->custom_version, upgrade_task->custom_version);
+        upgrade_task->use_http = task->use_http;
+        upgrade_task->force_upgrade = task->force_upgrade;
 
         agent_task->task_info = wm_agent_upgrade_init_task_info();
         agent_task->task_info->command = WM_UPGRADE_UPGRADE;
@@ -126,8 +129,9 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
         agent_task = wm_agent_upgrade_init_agent_task();
 
         // Task information
-        os_calloc(1, sizeof(wm_upgrade_custom_task), upgrade_custom_task);
-        memcpy(upgrade_custom_task, task, sizeof(wm_upgrade_custom_task));
+        upgrade_custom_task = wm_agent_upgrade_init_upgrade_custom_task();
+        w_strdup(task->custom_file_path, upgrade_custom_task->custom_file_path);
+        w_strdup(task->custom_installer, upgrade_custom_task->custom_installer);
 
         agent_task->task_info = wm_agent_upgrade_init_task_info();
         agent_task->task_info->command = WM_UPGRADE_UPGRADE_CUSTOM;
@@ -242,7 +246,7 @@ int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task) {
     }
 
 
-    // TODO: Validate WPK for agent and download it if necessary
+    // TODO: If necessary, download WPK and check sha1
 
 
     return validate_result;
