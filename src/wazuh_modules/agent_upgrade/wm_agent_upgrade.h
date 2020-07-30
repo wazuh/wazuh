@@ -14,6 +14,9 @@
 
 #define WM_AGENT_UPGRADE_LOGTAG ARGV0 ":" AGENT_UPGRADE_WM_NAME
 #define WM_AGENT_UPGRADE_MODULE_NAME "upgrade_module"
+#define WM_UPGRADE_MINIMAL_VERSION_SUPPORT "v3.0.0"
+#define WM_UPGRADE_SUCCESS_VALIDATE 0
+#define MANAGER_ID 0
 
 typedef struct _wm_agent_upgrade {
     int enabled:1;
@@ -28,7 +31,15 @@ typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_TASK_MANAGER_FAILURE,
     WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS,
     WM_UPGRADE_UNKNOWN_ERROR,
-    WM_UPGRADE_GLOBAL_DB_FAILURE
+    WM_UPGRADE_GLOBAL_DB_FAILURE,
+    WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED,
+    WM_UPGRADE_VERSION_SAME_MANAGER,
+    WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT,
+    WM_UPGRADE_NEW_VERSION_GREATER_MASTER,
+    WM_UPGRADE_NOT_AGENT_IN_DB,
+    WM_UPGRADE_INVALID_ACTION_FOR_MANAGER,
+    WM_UPGRADE_AGENT_IS_NOT_ACTIVE,
+    WM_UPGRADE_VERSION_QUERY_ERROR
 } wm_upgrade_error_code;
 
 typedef enum _wm_upgrade_command {
@@ -116,5 +127,39 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
  * @return string with the response
  * */
 char* wm_agent_upgrade_process_upgrade_result_command(const int* agent_ids);
+
+/**
+ * Check if agent exist
+ * @param agent_id Id of agent to validate
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS_VALIDATE
+ * @retval WM_UPGRADE_NOT_AGENT_IN_DB
+ * @retval WM_UPGRADE_INVALID_ACTION_FOR_MANAGER
+ * */
+int wm_agent_upgrade_validate_id(int agent_id);
+
+/**
+ * Check if agent status is active
+ * @param agent_id Id of agent to validate
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS_VALIDATE
+ * @retval WM_UPGRADE_AGENT_IS_NOT_ACTIVE
+ * */
+int wm_agent_upgrade_validate_status(int agent_id);
+
+/**
+ * Check if agent version is valid to upgrade
+ * @param agent_id Id of agent to validate
+ * @param task pointer to task with the params
+ * @param command wm_upgrade_command with the selected upgrade type
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS_VALIDATE
+ * @retval WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED
+ * @retval WM_UPGRADE_VERSION_SAME_MANAGER
+ * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
+ * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER)
+ * @retval WM_UPGRADE_VERSION_QUERY_ERROR
+ * */
+int wm_agent_upgrade_validate_agent_version(int agent_id, void *task, wm_upgrade_command command);
 
 #endif

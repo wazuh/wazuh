@@ -26,7 +26,16 @@ static cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_
 /**
  * Validate the information of the agent and the task
  * @param agent_task structure with the information to be validated
- * @return error_code
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS_VALIDATE
+ * @retval WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED
+ * @retval WM_UPGRADE_VERSION_SAME_MANAGER
+ * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
+ * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER)
+ * @retval WM_UPGRADE_NOT_AGENT_IN_DB
+ * @retval WM_UPGRADE_AGENT_IS_NOT_ACTIVE
+ * @retval WM_UPGRADE_INVALID_ACTION_FOR_MANAGER
+ * @retval WM_UPGRADE_VERSION_QUERY_ERROR
  * */
 static int wm_agent_upgrade_validate_agent_task(wm_agent_task *agent_task);
 
@@ -218,13 +227,18 @@ cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, w
 }
 
 int wm_agent_upgrade_validate_agent_task(wm_agent_task *agent_task) {
-    wm_upgrade_error_code error_code = WM_UPGRADE_SUCCESS;
+    int validate_result = wm_agent_upgrade_validate_id(agent_task->agent_info->agent_id);
 
+    if (validate_result == WM_UPGRADE_SUCCESS_VALIDATE) {
+        validate_result = wm_agent_upgrade_validate_status(agent_task->agent_info->agent_id);
+        if (validate_result == WM_UPGRADE_SUCCESS_VALIDATE) {
+            validate_result = wm_agent_upgrade_validate_agent_version(agent_task->agent_info->agent_id, agent_task->task_info->task, agent_task->task_info->command);
+        }
+    }
 
     // TODO: Validate agent platform, version, architecture
 
     // TODO: Validate WPK for agent and download it if necessary
 
-
-    return error_code;
+    return validate_result;
 }
