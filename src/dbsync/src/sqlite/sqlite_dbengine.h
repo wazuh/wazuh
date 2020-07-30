@@ -127,9 +127,10 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         void returnRowsMarkedForDelete(const nlohmann::json& tableNames, 
                                        const DbSync::ResultCallback callback) override;
-        void selectData(const std::string& table,
-                        const nlohmann::json& query,
-                        const DbSync::ResultCallback& callback) override;
+
+        void deleteTableRowsData(const std::string& table,
+                                 const nlohmann::json& data) override;
+
     private:
         void initialize(const std::string& path,
                         const std::string& tableStmtCreation);
@@ -177,6 +178,10 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         bool deleteRows(const std::string& table,
                         const std::vector<std::string>& primaryKeyList,
                         const std::vector<Row>& rowsToRemove);
+
+        void deleteRows(const std::string& table,
+                        const nlohmann::json& data,
+                        const std::vector<std::string>& primaryKeyList);
 
         void getTableData(std::unique_ptr<SQLite::IStatement>const & stmt,
                           const int32_t index,

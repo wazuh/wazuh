@@ -300,336 +300,40 @@ TEST_F(DBSyncTest, syncRowInvalidData)
     EXPECT_NE(0, dbsync_sync_row(handle, jsInputNoTable.get(), callbackData));
 }
 
-TEST_F(DBSyncTest, selectRowsDataAllNoFilter)
+TEST_F(DBSyncTest, deleteSingleAndComposedData)
 {
-    CallbackMock wrapper;
-
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const auto selectData
-    {
-        R"({"table":"processes",
-           "query":{"column_list":["*"],
-           "row_filter":"",
-           "distinct_opt":false,
-           "order_by_opt":"tid",
-           "count_opt":100}})"
-    };
-
-    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System1", "tid":100},
-                                                                 {"pid":115,"name":"System2", "tid":101},
-                                                                 {"pid":120,"name":"System3", "tid":101},
-                                                                 {"pid":125,"name":"System3", "tid":102},
-                                                                 {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
-
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
-
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":4,"name":"System1", "tid":100})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":115,"name":"System2", "tid":101})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":120,"name":"System3", "tid":101})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":125,"name":"System3", "tid":102})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":300,"name":"System5", "tid":102})"))).Times(1);
-
-    callback_data_t callbackData { callback, &wrapper };
-
-    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
-    EXPECT_EQ(0, dbsync_select_rows(handle, jsSelectData.get(), callbackData));
-}
-
-TEST_F(DBSyncTest, selectRowsDataAllFilterPid)
-{
     CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(INSERTED,
+                nlohmann::json::parse(R"([{"pid":4,"name":"System", "tid":100},
+                                          {"pid":5,"name":"System", "tid":101},
+                                          {"pid":6,"name":"System", "tid":102},
+                                          {"pid":7,"name":"System", "tid":103},
+                                          {"pid":8,"name":"System", "tid":104}])"))).Times(1);
 
-    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
-    ASSERT_NE(nullptr, handle);
+    const auto initialData{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":100},
+                                                            {"pid":5,"name":"System", "tid":101},
+                                                            {"pid":6,"name":"System", "tid":102},
+                                                            {"pid":7,"name":"System", "tid":103},
+                                                            {"pid":8,"name":"System", "tid":104}]})"};
 
-    const auto selectData
-    {
-        R"({"table":"processes",
-           "query":{"column_list":["*"],
-           "row_filter":"pid>120",
-           "distinct_opt":false,
-           "order_by_opt":"tid",
-           "count_opt":100}})"
-    };
-
-    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System1", "tid":100},
-                                                                 {"pid":115,"name":"System2", "tid":101},
-                                                                 {"pid":120,"name":"System3", "tid":101},
-                                                                 {"pid":125,"name":"System3", "tid":102},
-                                                                 {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
-
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
-
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":125,"name":"System3", "tid":102})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":300,"name":"System5", "tid":102})"))).Times(1);
+    const auto singleRowToDelete{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":101}]})"};
+    const auto composedRowsToDelete{ R"({"table":"processes","data":[{"pid":5,"name":"Systemmm", "tid":105},
+                                                                     {"pid":7,"name":"Systemmm", "tid":105},
+                                                                     {"pid":8,"name":"Systemmm", "tid":105}]})"};
+    const auto unexistentRowToDelete{ R"({"table":"processes","data":[{"pid":9,"name":"Systemmm", "tid":101}]})"};
 
     callback_data_t callbackData { callback, &wrapper };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsSingleDeletion{ cJSON_Parse(singleRowToDelete) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsComposedDeletion{ cJSON_Parse(composedRowsToDelete) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsUnexistentDeletion{ cJSON_Parse(unexistentRowToDelete) };
 
-    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
-    EXPECT_EQ(0, dbsync_select_rows(handle, jsSelectData.get(), callbackData));
-}
-
-TEST_F(DBSyncTest, selectRowsDataAllFilterPid1)
-{
-    CallbackMock wrapper;
-
-    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
-    ASSERT_NE(nullptr, handle);
-
-    const auto selectData
-    {
-        R"({"table":"processes",
-           "query":{"column_list":["*"],
-           "row_filter":"(pid>120 AND pid<200) ",
-           "distinct_opt":false,
-           "order_by_opt":"tid",
-           "count_opt":100}})"
-    };
-
-    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System1", "tid":100},
-                                                                 {"pid":115,"name":"System2", "tid":101},
-                                                                 {"pid":120,"name":"System3", "tid":101},
-                                                                 {"pid":125,"name":"System3", "tid":102},
-                                                                 {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
-
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
-
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":125,"name":"System3", "tid":102})"))).Times(1);
-
-    callback_data_t callbackData { callback, &wrapper };
-
-    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
-    EXPECT_EQ(0, dbsync_select_rows(handle, jsSelectData.get(), callbackData));
-}
-
-TEST_F(DBSyncTest, selectRowsDataAllFilterPidTid)
-{
-    CallbackMock wrapper;
-
-    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
-    ASSERT_NE(nullptr, handle);
-
-    const auto selectData
-    {
-        R"({"table":"processes",
-           "query":{"column_list":["*"],
-           "row_filter":"(pid>120 AND tid!=101) ",
-           "distinct_opt":false,
-           "order_by_opt":"tid",
-           "count_opt":100}})"
-    };
-
-    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System1", "tid":100},
-                                                                 {"pid":115,"name":"System2", "tid":101},
-                                                                 {"pid":120,"name":"System3", "tid":101},
-                                                                 {"pid":125,"name":"System3", "tid":102},
-                                                                 {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
-
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
-
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":125,"name":"System3", "tid":102})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":300,"name":"System5", "tid":102})"))).Times(1);
-
-    callback_data_t callbackData { callback, &wrapper };
-
-    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
-    EXPECT_EQ(0, dbsync_select_rows(handle, jsSelectData.get(), callbackData));
-}
-
-TEST_F(DBSyncTest, selectRowsDataNameOnlyFilterPidTid)
-{
-    CallbackMock wrapper;
-
-    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
-    ASSERT_NE(nullptr, handle);
-
-    const auto selectData
-    {
-        R"({"table":"processes",
-           "query":{"column_list":["name"],
-           "row_filter":"(pid>120 AND tid!=101) ",
-           "distinct_opt":false,
-           "order_by_opt":"tid",
-           "count_opt":100}})"
-    };
-
-    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System1", "tid":100},
-                                                                 {"pid":115,"name":"System2", "tid":101},
-                                                                 {"pid":120,"name":"System3", "tid":101},
-                                                                 {"pid":125,"name":"System3", "tid":102},
-                                                                 {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
-
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
-
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System3"})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System5"})"))).Times(1);
-
-    callback_data_t callbackData { callback, &wrapper };
-
-    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
-    EXPECT_EQ(0, dbsync_select_rows(handle, jsSelectData.get(), callbackData));
-}
-
-
-TEST_F(DBSyncTest, selectRowsDataNameOnly)
-{
-    CallbackMock wrapper;
-
-    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
-    ASSERT_NE(nullptr, handle);
-
-    const auto selectData
-    {
-        R"({"table":"processes",
-           "query":{"column_list":["name"],
-           "row_filter":"",
-           "distinct_opt":false,
-           "order_by_opt":"tid",
-           "count_opt":100}})"
-    };
-
-    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System1", "tid":100},
-                                                                 {"pid":115,"name":"System2", "tid":101},
-                                                                 {"pid":120,"name":"System3", "tid":101},
-                                                                 {"pid":125,"name":"System3", "tid":102},
-                                                                 {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
-
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
-
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System1"})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System2"})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System3"})"))).Times(2);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System5"})"))).Times(1);
-
-    callback_data_t callbackData { callback, &wrapper };
-
-    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
-    EXPECT_EQ(0, dbsync_select_rows(handle, jsSelectData.get(), callbackData));
-}
-
-TEST_F(DBSyncTest, selectRowsDataNameOnlyFilterPid)
-{
-    CallbackMock wrapper;
-
-    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
-    ASSERT_NE(nullptr, handle);
-
-    const auto selectData
-    {
-        R"({"table":"processes",
-           "query":{"column_list":["name"],
-           "row_filter":"pid<120",
-           "distinct_opt":false,
-           "order_by_opt":"tid",
-           "count_opt":100}})"
-    };
-
-    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System1", "tid":100},
-                                                                 {"pid":115,"name":"System2", "tid":101},
-                                                                 {"pid":120,"name":"System3", "tid":101},
-                                                                 {"pid":125,"name":"System3", "tid":102},
-                                                                 {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
-
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
-
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System1"})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System2"})"))).Times(1);
-
-    callback_data_t callbackData { callback, &wrapper };
-
-    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
-    EXPECT_EQ(0, dbsync_select_rows(handle, jsSelectData.get(), callbackData));
-}
-
-TEST_F(DBSyncTest, selectRowsDataNameTidOnly)
-{
-    CallbackMock wrapper;
-
-    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
-    ASSERT_NE(nullptr, handle);
-
-    const auto selectData
-    {
-        R"({"table":"processes",
-           "query":{"column_list":["name","tid"],
-           "row_filter":"",
-           "distinct_opt":false,
-           "order_by_opt":"tid",
-           "count_opt":100}})"
-    };
-
-    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System1", "tid":100},
-                                                                 {"pid":115,"name":"System2", "tid":101},
-                                                                 {"pid":120,"name":"System3", "tid":101},
-                                                                 {"pid":125,"name":"System3", "tid":102},
-                                                                 {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
-
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
-
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System1","tid":100})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System2","tid":101})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System3","tid":101})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System3","tid":102})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System5","tid":102})"))).Times(1);
-
-    callback_data_t callbackData { callback, &wrapper };
-
-    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
-    EXPECT_EQ(0, dbsync_select_rows(handle, jsSelectData.get(), callbackData));
-}
-
-TEST_F(DBSyncTest, selectRowsDataNameTidOnlyPid)
-{
-    CallbackMock wrapper;
-
-    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
-    ASSERT_NE(nullptr, handle);
-
-    const auto selectData
-    {
-        R"({"table":"processes",
-           "query":{"column_list":["name","tid"],
-           "row_filter":"pid>100",
-           "distinct_opt":false,
-           "order_by_opt":"tid",
-           "count_opt":100}})"
-    };
-
-    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System1", "tid":100},
-                                                                 {"pid":115,"name":"System2", "tid":101},
-                                                                 {"pid":120,"name":"System3", "tid":101},
-                                                                 {"pid":125,"name":"System3", "tid":102},
-                                                                 {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
-
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
-
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System2","tid":101})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System3","tid":101})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System3","tid":102})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System5","tid":102})"))).Times(1);
-
-    callback_data_t callbackData { callback, &wrapper };
-
-    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
-    EXPECT_EQ(0, dbsync_select_rows(handle, jsSelectData.get(), callbackData));
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsSingleDeletion.get()));
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsComposedDeletion.get()));
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsUnexistentDeletion.get()));
 }

@@ -254,68 +254,26 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
     }
 }
 
-void SQLiteDBEngine::selectData(const std::string& table,
-                                const nlohmann::json& query,
-                                const DbSync::ResultCallback& callback)
+void SQLiteDBEngine::deleteTableRowsData(const std::string& table,
+                                         const nlohmann::json& data)
 {
-    const auto& sql{ buildSelectQuery(table, query) };
-    auto const& stmt { getStatement(sql) };
-    const auto tableFields { m_tableFields[table] };
-
-    while (SQLITE_ROW == stmt->step())
+    if (0 != loadTableData(table))
     {
-        Row row;
-        const auto& columns{ query.at("column_list") };
-        if (std::find_if(columns.begin(), columns.end(),[](const std::string& value){return value == "*";}) != columns.end())
+        std::vector<std::string> primaryKeyList;
+        if (getPrimaryKeysFromTable(table, primaryKeyList))
         {
-            for(const auto& field : tableFields)
-            {
-                if (!std::get<TableHeader::TXNStatusField>(field))
-                {
-                    getTableData(stmt,
-                             std::get<TableHeader::CID>(field),
-                             std::get<TableHeader::Type>(field),
-                             std::get<TableHeader::Name>(field),
-                             row);
-                }
-            }
-        }
-        else
-        {
-            int32_t index{ 0 };
-            for (const auto& column : columns)
-            {
-                const auto& it
-                {
-                    std::find_if(tableFields.begin(),
-                                 tableFields.end(),
-                                 [&column](const ColumnData& data)
-                                 {
-                                    return column == std::get<TableHeader::Name>(data);
-                                 })
-                };
-                if (it != tableFields.end())
-                {
-                    getTableData(stmt,
-                                 index,
-                                 std::get<TableHeader::Type>(*it),
-                                 column,
-                                 row);
-                    ++index;
-                }
-            }
-        }
-        nlohmann::json object;
-        for (const auto& value : row)
-        {
-            getFieldValueFromTuple(value, object);
-        }
-        if (callback && !object.empty())
-        {
-            callback(SELECTED, object);
+            const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
+            deleteRows(table, data, primaryKeyList);
+            transaction->commit();
         }
     }
+    else
+    {
+        throw dbengine_error { EMPTY_TABLE_METADATA };
+    }
 }
+
+
 ///
 /// Private functions section
 ///
@@ -719,7 +677,7 @@ std::string SQLiteDBEngine::buildDeleteBulkDataSqlQuery(const std::string& table
     }
     else
     {
-        sql.clear();
+        throw dbengine_error { SQL_STMT_ERROR };
     }
     return sql;
 }
@@ -755,6 +713,41 @@ bool SQLiteDBEngine::deleteRows(const std::string& table,
         throw dbengine_error { SQL_STMT_ERROR };
     }
     return ret;
+}
+
+void SQLiteDBEngine::deleteRows(const std::string& table,
+                                const nlohmann::json& data,
+                                const std::vector<std::string>& primaryKeyList)
+{
+    const auto& tableFields { m_tableFields[table] };
+    const auto& stmt
+    {
+        getStatement(buildDeleteBulkDataSqlQuery(table, primaryKeyList))
+    };
+
+    for (const auto& jsRow : data)
+    {
+        int32_t index { 1l };
+        for (const auto& pkValue : primaryKeyList)
+        {
+            const auto& it
+            {
+                std::find_if(tableFields.begin(), tableFields.end(),
+                                [&pkValue](const ColumnData& column)
+                                {
+                                    return 0 == std::get<Name>(column).compare(pkValue);
+                                })
+            };
+
+            if(it != tableFields.end())
+            {
+                bindJsonData(stmt, *it, jsRow, index);
+                ++index;
+            }
+        }
+        stmt->step();
+        stmt->reset();
+    }
 }
 
 void SQLiteDBEngine::bindFieldData(const std::unique_ptr<SQLite::IStatement>& stmt,
