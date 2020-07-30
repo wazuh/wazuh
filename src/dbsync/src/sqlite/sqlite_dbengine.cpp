@@ -273,6 +273,25 @@ void SQLiteDBEngine::deleteTableRowsData(const std::string& table,
     }
 }
 
+void SQLiteDBEngine::deleteTableRowsData(const std::string& table,
+                                         const nlohmann::json& data)
+{
+    if (0 != loadTableData(table))
+    {
+        std::vector<std::string> primaryKeyList;
+        if (getPrimaryKeysFromTable(table, primaryKeyList))
+        {
+            const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
+            deleteRows(table, data, primaryKeyList);
+            transaction->commit();
+        }
+    }
+    else
+    {
+        throw dbengine_error { EMPTY_TABLE_METADATA };
+    }
+}
+
 
 ///
 /// Private functions section

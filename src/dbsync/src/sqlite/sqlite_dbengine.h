@@ -128,6 +128,10 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         void returnRowsMarkedForDelete(const nlohmann::json& tableNames, 
                                        const DbSync::ResultCallback callback) override;
 
+        void selectData(const std::string& table,
+                        const nlohmann::json& query,
+                        const DbSync::ResultCallback& callback) override;
+
         void deleteTableRowsData(const std::string& table,
                                  const nlohmann::json& data) override;
 

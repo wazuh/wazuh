@@ -327,6 +327,38 @@ TEST_F(DBSyncTest, deleteSingleAndComposedData)
     const auto unexistentRowToDelete{ R"({"table":"processes","data":[{"pid":9,"name":"Systemmm", "tid":101}]})"};
 
     callback_data_t callbackData { callback, &wrapper };
+
+    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
+    EXPECT_EQ(0, dbsync_select_rows(handle, jsSelectData.get(), callbackData));
+}
+
+TEST_F(DBSyncTest, deleteSingleAndComposedData)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(INSERTED,
+                nlohmann::json::parse(R"([{"pid":4,"name":"System", "tid":100},
+                                          {"pid":5,"name":"System", "tid":101},
+                                          {"pid":6,"name":"System", "tid":102},
+                                          {"pid":7,"name":"System", "tid":103},
+                                          {"pid":8,"name":"System", "tid":104}])"))).Times(1);
+
+    const auto initialData{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":100},
+                                                            {"pid":5,"name":"System", "tid":101},
+                                                            {"pid":6,"name":"System", "tid":102},
+                                                            {"pid":7,"name":"System", "tid":103},
+                                                            {"pid":8,"name":"System", "tid":104}]})"};
+
+    const auto singleRowToDelete{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":101}]})"};
+    const auto composedRowsToDelete{ R"({"table":"processes","data":[{"pid":5,"name":"Systemmm", "tid":105},
+                                                                     {"pid":7,"name":"Systemmm", "tid":105},
+                                                                     {"pid":8,"name":"Systemmm", "tid":105}]})"};
+    const auto unexistentRowToDelete{ R"({"table":"processes","data":[{"pid":9,"name":"Systemmm", "tid":101}]})"};
+
+    callback_data_t callbackData { callback, &wrapper };
     const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
     const std::unique_ptr<cJSON, smartDeleterJson> jsSingleDeletion{ cJSON_Parse(singleRowToDelete) };
     const std::unique_ptr<cJSON, smartDeleterJson> jsComposedDeletion{ cJSON_Parse(composedRowsToDelete) };
