@@ -309,16 +309,16 @@ stages:
         <<: *error
 
   - name: Try to delete roles (invalid role_ids)
-  request: &delete_roles_request
-    verify: False
-    url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
-    headers:
-      Authorization: "Bearer {test_login_token}"
-    method: DELETE
-    params:
-      role_ids: invalid
-  response:
-    status_code: 400
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        role_ids: invalid
+    response:
+      status_code: 400
 
 ---
 test_name: DELETE /security/policies
@@ -374,7 +374,7 @@ stages:
         <<: *error
 
   - name: Try to delete policies (invalid policy_ids)
-    request: &delete_all_policies_request
+    request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
@@ -616,6 +616,8 @@ stages:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        policy_ids: all
       method: DELETE
     response:
       status_code: 200
@@ -632,6 +634,8 @@ stages:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: all
       method: DELETE
     response:
       status_code: 200

@@ -840,6 +840,8 @@ stages:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        user_ids: all
       method: DELETE
     response:
       status_code: 200
@@ -874,6 +876,8 @@ stages:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        user_ids: all
       method: DELETE
     response:
       status_code: 200
@@ -961,6 +965,8 @@ stages:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: all
       method: DELETE
     response:
       status_code: 200
@@ -1015,6 +1021,8 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        policy_ids: all
     response:
       status_code: 200
       json:

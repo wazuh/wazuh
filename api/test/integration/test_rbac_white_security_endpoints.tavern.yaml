@@ -957,6 +957,8 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        user_ids: all
     response:
       status_code: 200
       json:
@@ -976,6 +978,8 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        user_ids: all
     response:
       status_code: 200
       json:
@@ -1030,6 +1034,8 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        role_ids: all
     response:
       status_code: 200
       json:
@@ -1066,6 +1072,8 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        policy_ids: all
     response:
       status_code: 200
       json:
