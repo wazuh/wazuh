@@ -134,14 +134,14 @@ int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message) {
     os_calloc(OS_MAXSTR, sizeof(char), output);
 
     os_calloc(1, sizeof(int), agent_ids);
-    *agent_ids = 0;
+    *agent_ids = OS_INVALID;
 
     while(!error_flag && (agent_index < cJSON_GetArraySize(agents))) {
         cJSON *agent = cJSON_GetArrayItem(agents, agent_index);
         if (agent->type == cJSON_Number) {
             os_realloc(agent_ids, sizeof(int) * (agent_index + 2), agent_ids);
             agent_ids[agent_index] = agent->valueint;
-            agent_ids[agent_index + 1] = 0;
+            agent_ids[agent_index + 1] = OS_INVALID;
         } else {
             sprintf(output, "Agent id not recognized");
             error_flag = 1;
