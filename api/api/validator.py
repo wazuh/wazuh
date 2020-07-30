@@ -20,7 +20,7 @@ _boolean = re.compile(r'^true$|^false$')
 _cdb_list = re.compile(r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
-_group_names = re.compile(r'^(?!.*(all))[A-Za-z0-9.\-_]+$')
+_group_names = re.compile(r'^[A-Za-z0-9.\-_]+\b(?<!\ball)$')
 _group_names_delete = re.compile(r'^[A-Za-z0-9.\-_]+$')
 _hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{56})?$|(?:[\da-fA-F]{64})?$|(?:[\da-fA-F]{96})?$|(?:[\da-fA-F]{128})?$')
 _ips = re.compile(
@@ -259,6 +259,7 @@ def format_datetime_or_empty(value):
 def format_group_names(value):
     return check_exp(value, _group_names)
 
+
 @draft4_format_checker.checks("group_names_delete")
-def format_group_names(value):
+def format_group_names_delete(value):
     return check_exp(value, _group_names_delete)

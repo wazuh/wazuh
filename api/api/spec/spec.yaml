@@ -1340,7 +1340,7 @@ components:
     AgentID_DELETE:
       type: string
       minLength: 3
-      description: "Agent ID|All"
+      description: "Agent ID|all"
       format: numbers_delete
 
     NodeID:
@@ -1357,7 +1357,7 @@ components:
     GroupID_DELETE:
       type: string
       minLength: 1
-      description: "Group name|All"
+      description: "Group name|all"
       format: group_names_delete
 
     AgentConfiguration:
@@ -1541,7 +1541,7 @@ components:
       description: "Role ID"
     Role_id_DELETE:
       type: string
-      description: "Role ID|All"
+      description: "Role ID|all"
       format: numbers_delete
     Policy_id:
       type: string
@@ -1549,7 +1549,7 @@ components:
       description: "Policy ID"
     Policy_id_DELETE:
       type: string
-      description: "Policy ID|All"
+      description: "Policy ID|all"
       format: numbers_delete
     User_id:
       type: string
@@ -1558,7 +1558,7 @@ components:
     User_id_DELETE:
       type: string
       format: numbers_delete
-      description: "User ID|All"
+      description: "User ID|all"
     Username:
       type: string
       description: "Username of the user"
