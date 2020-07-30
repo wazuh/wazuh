@@ -2297,6 +2297,29 @@ components:
       type: object
       minProperties: 1
       properties:
+        access:
+          description: API Security Options
+          type: object
+          additionalProperties: false
+          properties:
+            max_login_attempts:
+              description: "Maximum number of login attempts in {block_time} seconds"
+              type: integer
+              format: int32
+              minimum: 1
+              example: 5
+            block_time:
+              description: "Blocking time for IPs that have exceeded {max_login_attempts}. Time counts from the first attempt"
+              type: integer
+              format: int32
+              minimum: 0
+              example: 300
+            max_request_per_minute:
+              description: "Maximum number of requests allowed per minute"
+              type: integer
+              format: int32
+              minimum: 1
+              example: 300
         behind_proxy_server:
           description: Set this option to "yes" in case the API is running behind a proxy server.
           type: boolean
@@ -2449,24 +2472,6 @@ components:
           type: string
           enum: [white, black]
           example: white
-        max_login_attempts:
-          description: "Maximum number of login attempts in {block_time} seconds"
-          type: integer
-          format: int32
-          minimum: 1
-          example: 5
-        block_time:
-          description: "Blocking time for IPs that have exceeded {max_login_attempts}. Time counts from the first attempt"
-          type: integer
-          format: int32
-          minimum: 0
-          example: 300
-        max_request_per_minute:
-          description: "Maximum number of requests allowed per minute"
-          type: integer
-          format: int32
-          minimum: 1
-          example: 300
 
     # SCA models
     SCAChecks:
@@ -7179,6 +7184,10 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        access:
+                          max_login_attempts: 5
+                          block_time: 300
+                          max_request_per_minute: 300
                         logs:
                           path: /var/ossec/logs/api.log
                           level: info
@@ -9432,6 +9441,10 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        access:
+                          max_login_attempts: 5
+                          block_time: 300
+                          max_request_per_minute: 300
                         logs:
                           path: /var/ossec/logs/api.log
                           level: info
@@ -13541,9 +13554,6 @@ paths:
               example:
                 auth_token_exp_timeout: 36000
                 rbac_mode: white
-                max_login_attempts: 5
-                block_time: 300
-                max_request_per_minute: 300
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13609,4 +13619,3 @@ paths:
 externalDocs:
   description: "Find more about Wazuh API usage"
   url: 'https://documentation.wazuh.com/current/user-manual/api/index.html'
-

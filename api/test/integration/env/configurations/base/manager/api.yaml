@@ -32,6 +32,11 @@ cache:
   enabled: yes
   time: 0.750
 
+# Access parameters
+access:
+  max_login_attempts: 10000
+  max_request_per_minute: 10000
+
 # Force the use of authd when adding and removing agents. Values: yes, no
 use_only_authd: no
 

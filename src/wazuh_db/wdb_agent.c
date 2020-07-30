@@ -18,9 +18,9 @@
 
 static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?, ?);";
 static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_VERSION_IP = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? , ip = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = ? WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = STRFTIME('%s', 'NOW') WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_VERSION_IP = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = STRFTIME('%s', 'NOW'), ip = ? WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW') WHERE id = ?;";
 static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_GROUP = "UPDATE agent SET `group` = ? WHERE id = ?;";
@@ -161,7 +161,7 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
 }
 
 /* Update agent's last keepalive time. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_keepalive(int id, long keepalive) {
+int wdb_update_agent_keepalive(int id) {
     int result = 0;
     sqlite3_stmt *stmt;
 
@@ -173,8 +173,7 @@ int wdb_update_agent_keepalive(int id, long keepalive) {
         return -1;
     }
 
-    sqlite3_bind_int64(stmt, 1, keepalive);
-    sqlite3_bind_int(stmt, 2, id);
+    sqlite3_bind_int(stmt, 1, id);
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);
