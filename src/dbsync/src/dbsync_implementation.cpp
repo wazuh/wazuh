@@ -134,3 +134,14 @@ void DBSyncImplementation::getDeleted(const DBSYNC_HANDLE   handle,
 
     ctx->m_dbEngine->returnRowsMarkedForDelete(tnxCtx->m_tables, callback);
 }
+
+void DBSyncImplementation::selectData(const DBSYNC_HANDLE   handle, 
+                                      const char*           jsonRaw,
+                                      const ResultCallback& callback)
+{
+    const auto ctx{ dbEngineContext(handle) };
+    const auto json { nlohmann::json::parse(jsonRaw) };
+    ctx->m_dbEngine->selectData(json.at(0).at("table"),
+                                json.at(0).at("query"),
+                                callback);
+}

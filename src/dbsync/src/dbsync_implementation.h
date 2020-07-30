@@ -65,6 +65,10 @@ namespace DbSync
                         const TXN_HANDLE      txnHandle,
                         const ResultCallback  callback);
 
+        void selectData(const DBSYNC_HANDLE    handle,
+                        const char*            jsonRaw,
+                        const ResultCallback&  callback);
+
         void release();
     private:
 

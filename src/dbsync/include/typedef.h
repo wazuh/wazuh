@@ -41,7 +41,8 @@ typedef enum
     DELETED  = 1,   /*< Database deletion operation.            */
     INSERTED = 2,   /*< Database insertion operation.           */
     MAX_ROWS = 3,   /*< Database has reached max rows number.   */
-    DB_ERROR = 4    /*< Internal failure.                       */
+    DB_ERROR = 4,   /*< Internal failure.                       */
+    SELECTED = 5    /*< Database select operation.              */
 }ReturnTypeCallback;
 
 /**

@@ -55,6 +55,7 @@ namespace SQLite
         Column(std::shared_ptr<sqlite3_stmt>& stmt, const int32_t index);
 
         bool hasValue() const override;
+        int32_t type() const override;
         int32_t value(const int32_t&) const override;
         uint64_t value(const uint64_t&) const override;
         int64_t value(const int64_t&) const override;
