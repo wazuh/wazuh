@@ -42,7 +42,6 @@ static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
 static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
 static const char *SQL_SELECT_AGENT_INFO = "SELECT os_platform, os_major, os_minor, os_arch, version, last_keepalive FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_VERSION = "SELECT version FROM agent WHERE id = ?;";
-static const char *SQL_SELECT_LAST_KEEPALIVE = "SELECT last_keepalive FROM agent WHERE id = ?;";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date) {
@@ -180,38 +179,6 @@ int wdb_update_agent_keepalive(int id, long keepalive) {
     sqlite3_bind_int(stmt, 2, id);
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
-}
-
-/* Get last_keepalive from agent. The string must be freed after using. Returns -1 on error. */
-int wdb_agent_last_keepalive(int id){
-    sqlite3_stmt *stmt = NULL;
-    int result = -1;
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_SELECT_LAST_KEEPALIVE, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_int(stmt, 1, id);
-
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-        result = sqlite3_column_int(stmt, 0);
-        break;
-    case SQLITE_DONE:
-        result = -1;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        result = -1;
-    }
-
     sqlite3_finalize(stmt);
 
     return result;

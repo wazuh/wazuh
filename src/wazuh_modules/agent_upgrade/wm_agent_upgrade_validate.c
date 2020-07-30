@@ -24,7 +24,7 @@
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER)
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
-static int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, const wm_upgrade_task *task);
+static int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task);
 
 /**
  * Check if WPK exists for this agent
@@ -38,6 +38,17 @@ static int wm_agent_upgrade_validate_non_custom_version(const char *agent_versio
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
 static int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch);
+
+/**
+ * Check if a WPK exist for the upgrade version
+ * @param agent_info structure with the agent information
+ * @param task structure with the task information
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS
+ * @retval WM_UPGRADE_URL_NOT_FOUND
+ * @retval WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
+ * */
+static int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task);
 
 static const char* invalid_platforms[] = {
     "darwin",
@@ -67,7 +78,7 @@ int wm_agent_upgrade_validate_status(int last_keep_alive) {
     return return_code;
 }
 
-int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, const void *task, wm_upgrade_command command) {
+int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *task, wm_upgrade_command command) {
     char *tmp_agent_version = NULL;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
 
@@ -87,7 +98,7 @@ int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, const voi
     return return_code;
 }
 
-int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, const wm_upgrade_task *task) {
+int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task) {
     char *manager_version = NULL;
     char *tmp_manager_version = NULL;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
@@ -97,14 +108,19 @@ int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, cons
     if (WM_UPGRADE_SUCCESS == return_code) {
         if (manager_version = wdb_agent_version(MANAGER_ID), manager_version) {
             if (tmp_manager_version = strchr(manager_version, 'v'), tmp_manager_version) {
-                return_code = WM_UPGRADE_SUCCESS;
+                os_strdup(task->custom_version ? task->custom_version : tmp_manager_version, task->wpk_version);
 
-                if (task->custom_version && strcmp(agent_version, task->custom_version) >= 0 && task->force_upgrade == false) {
-                    return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
-                } else if (task->custom_version && strcmp(task->custom_version, tmp_manager_version) > 0 && task->force_upgrade == false) {
-                    return_code = WM_UPGRADE_NEW_VERSION_GREATER_MASTER;
-                } else if (strcmp(agent_version, tmp_manager_version) == 0 && task->force_upgrade == false) {
-                    return_code = WM_UPGRADE_VERSION_SAME_MANAGER;
+                // Check if a WPK package exist for the upgrade version
+                return_code = wm_agent_upgrade_validate_wpk_version(agent_info, task);
+
+                if (WM_UPGRADE_SUCCESS == return_code) {
+                    if (strcmp(agent_version, task->wpk_version) >= 0 && task->force_upgrade == false) {
+                        return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
+                    } else if (strcmp(task->wpk_version, tmp_manager_version) > 0 && task->force_upgrade == false) {
+                        return_code = WM_UPGRADE_NEW_VERSION_GREATER_MASTER;
+                    } else if (strcmp(agent_version, tmp_manager_version) == 0 && task->force_upgrade == false) {
+                        return_code = WM_UPGRADE_VERSION_SAME_MANAGER;
+                    }
                 }
             }
 
@@ -116,12 +132,12 @@ int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, cons
 }
 
 int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch) {
-    int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
     int invalid_platforms_len = 0;
     int invalid_platforms_it = 0;
+    int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
 
-    if (platform && os_major && arch) {
-        if (strcmp(platform, "ubuntu") || os_minor) {
+    if (platform) {
+        if (!strcmp(platform, "windows") || (os_major && arch && (strcmp(platform, "ubuntu") || os_minor))) {
             return_code = WM_UPGRADE_SUCCESS;
             invalid_platforms_len = sizeof(invalid_platforms) / sizeof(invalid_platforms[0]);
 
@@ -141,6 +157,85 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
             }
         }
     }
+
+    return return_code;
+}
+
+int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task) {
+    const char *http_tag = "http://";
+    const char *https_tag = "https://";
+    char *repository_url = NULL;
+    char *versions_url = NULL;
+    char *versions = NULL;
+    int return_code = WM_UPGRADE_SUCCESS;
+
+    os_calloc(OS_MAXSTR, sizeof(char), repository_url);
+    os_calloc(OS_MAXSTR, sizeof(char), versions_url);
+
+    if (!task->wpk_repository) {
+        os_strdup(WM_UPGRADE_WPK_REPO_URL, task->wpk_repository);
+    }
+
+    // Set protocol
+    if (!strstr(task->wpk_repository, http_tag) && !strstr(task->wpk_repository, https_tag)) {
+        if (task->use_http) {
+            strcat(repository_url, http_tag);
+        } else {
+            strcat(repository_url, https_tag);
+        }
+    }
+
+    // Set repository
+    strncat(repository_url, task->wpk_repository, OS_SIZE_1024);
+    if (task->wpk_repository[strlen(task->wpk_repository) - 1] != '/') {
+        strcat(repository_url, "/");
+    }
+
+    // Set URL path
+    if (!strcmp(agent_info->platform, "windows")) {
+        strcat(repository_url, "windows/");
+    } else {
+        if (strcmp(task->wpk_version, WM_UPGRADE_NEW_VERSION_REPOSITORY) >= 0) { // Fix this
+            strcat(repository_url, "linux/");
+            strcat(repository_url, agent_info->architecture);
+            strcat(repository_url, "/");
+        } else if (!strcmp(agent_info->platform, "ubuntu")) {
+            strcat(repository_url, agent_info->platform);
+            strcat(repository_url, "/");
+            strcat(repository_url, agent_info->major_version);
+            strcat(repository_url, ".");
+            strcat(repository_url, agent_info->minor_version);
+            strcat(repository_url, "/");
+            strcat(repository_url, agent_info->architecture);
+            strcat(repository_url, "/");
+        } else {
+            strcat(repository_url, agent_info->platform);
+            strcat(repository_url, "/");
+            strcat(repository_url, agent_info->major_version);
+            strcat(repository_url, "/");
+            strcat(repository_url, agent_info->architecture);
+            strcat(repository_url, "/");
+        }
+    }
+
+    // Versions respository
+    strcat(versions_url, repository_url);
+    strcat(versions_url, "versions");
+
+    //mterror(WM_AGENT_UPGRADE_LOGTAG, "AAAAAAAAA: %s", repository_url);
+    //mterror(WM_AGENT_UPGRADE_LOGTAG, "BBBBBBBBB: %s", versions_url);
+
+    if (versions = wurl_http_get(versions_url), versions) {
+
+        //mterror(WM_AGENT_UPGRADE_LOGTAG, "CCCCCCCCC: %s", versions); // WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
+
+    } else {
+        return_code = WM_UPGRADE_URL_NOT_FOUND;
+    }
+
+    os_free(repository_url);
+    os_free(versions_url);
+    os_free(versions);
 
     return return_code;
 }
