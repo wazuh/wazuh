@@ -144,6 +144,7 @@ stages:
       <<: *permission_denied
 
   - name: Get Request-Agent-Client for agent 002 (Allowed)
+    delay_before: !float "{active_reponse_delay}"
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/002/config/agent/client"
@@ -699,7 +700,7 @@ stages:
       status_code: 200
       json:
         message: "Agent '002' removed from 'group2'."
-    delay_after: 10
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE /agents/{agent_id}/group
@@ -745,7 +746,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-    delay_after: 1
+    delay_after: !float "{global_db_delay}"
 
   - name: Try to remove agent 005 from all groups (Partially allowed, user agnostic)
     request:
@@ -763,7 +764,7 @@ stages:
             - 'group2'
           total_affected_items: 2
           total_failed_items: 0
-    delay_after: 1
+    delay_after: !float "{global_db_delay}"
 
   - name: Try to remove agent 007 from a list of groups (Partially allowed, user aware)
     request:
@@ -791,7 +792,7 @@ stages:
                 - 'group1'
           total_affected_items: 1
           total_failed_items: 2
-    delay_after: 1
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE /agents/group?group_id={group_id}
@@ -842,7 +843,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    delay_after: 1
+    delay_after: !float "{global_db_delay}"
 
   - name: Remove a list of agents from group3 (Partially allowed, user aware)
     request:
@@ -876,7 +877,7 @@ stages:
                 - '998'
           total_affected_items: 1
           total_failed_items: 4
-    delay_after: 1
+    delay_after: !float "{global_db_delay}"
 
   - name: Remove a list of agents from group default (Allowed)
     request:
@@ -898,7 +899,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-    delay_after: 1
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE /groups?list_groups={group_id}
@@ -960,7 +961,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    delay_after: 11
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE /groups
@@ -987,7 +988,7 @@ stages:
                 - group1
           total_affected_items: 0
           total_failed_items: 1
-    delay_after: 11
+    delay_after: !float "{global_db_delay}"
 
   - name: Try to delete a list of groups (Partially allowed, indirectly denied to delete group1, user aware)
     request:
@@ -1061,7 +1062,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    delay_after: 11
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE /agents
@@ -1101,7 +1102,7 @@ stages:
           older_than: 0s
           total_affected_items: 2
           total_failed_items: 0
-    delay_after: 11
+    delay_after: !float "{global_db_delay}"
 
   - name: Try to delete a list of agents (Partially allowed, user aware)
     request:
@@ -1128,7 +1129,7 @@ stages:
           older_than: 0s
           total_affected_items: 1
           total_failed_items: 2
-    delay_after: 11
+    delay_after: !float "{global_db_delay}"
 
   - name: Try to delete all agents (Partially allowed, user agnostic)
     request:
@@ -1149,7 +1150,7 @@ stages:
           older_than: 0s
           total_affected_items: 2
           total_failed_items: 0
-    delay_after: 11
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: POST /agents
@@ -1289,7 +1290,7 @@ stages:
                 - '005'
           total_affected_items: 1
           total_failed_items: 2
-    delay_after: 10
+    delay_after: !float "{global_db_delay}"
 
   - name: Try to assign all agents to group2 (Partially allowed, user agnostic)
     request:
@@ -1310,7 +1311,8 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        
+    delay_after: !float "{global_db_delay}"
+
 ---
 test_name: PUT /groups/{group_id}/configuration
 
@@ -1330,6 +1332,7 @@ stages:
       status_code: 200
       json:
         message: !anystr
+    delay_after: !float "{global_db_delay}"
 
   - name: Try to update group1 configuration (Denied)
     request:
@@ -1351,7 +1354,6 @@ stages:
 
     # PUT /agents/group/default/restart
   - name: Restart all agents from group default (Partially allowed)
-    delay_before: 20
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/default/restart"
@@ -1417,7 +1419,6 @@ stages:
       <<: *permission_denied
 
   - name: Try to restart a list of agents (Partially allowed, user aware)
-    delay_before: 15
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/restart"
@@ -1544,7 +1545,8 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+    delay_after: !float "{global_db_delay}"
+
 ---
 test_name: PUT /agents/{agent_id}/restart
 

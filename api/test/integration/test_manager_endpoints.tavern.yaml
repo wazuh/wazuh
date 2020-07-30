@@ -1989,7 +1989,6 @@ stages:
 
   # PUT /manager/restart
   - name: Restart manager
-    delay_before: 5
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/restart"

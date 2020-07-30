@@ -97,6 +97,7 @@ stages:
       status_code: 200
       json:
         message: "Agent '001' removed from 'group1'."
+    delay_after: !float "{global_db_delay}"
 
     # DELETE /agents/002/group/default
   - name: Remove agent 002 from default
@@ -110,6 +111,7 @@ stages:
       status_code: 200
       json:
         message: "Agent '002' removed from 'default'."
+    delay_after: !float "{global_db_delay}"
 
     # DELETE /agents/002/group/group2
   - name: Remove agent 002 from group2 when it is the only group assigned
@@ -123,6 +125,7 @@ stages:
       status_code: 200
       json:
         message: "Agent '002' removed from 'group2'. Agent reassigned to group default."
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE /agents/{agent_id}/group
@@ -182,6 +185,7 @@ stages:
             - "group1"
             - "group2"
           total_affected_items: 2
+    delay_after: !float "{global_db_delay}"
 
     # DELETE /agents/008/group?list_groups=group1,group3
   - name: Remove agent 008 from group1 and group2
@@ -201,6 +205,7 @@ stages:
             - "group1"
             - "group3"
           total_affected_items: 2
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE /agents/group
@@ -296,6 +301,7 @@ stages:
             - '006'
             - '010'
           total_affected_items: 2
+    delay_after: !float "{global_db_delay}"
 
     # DELETE /agents/group?group_id=group2
   - name: Remove all agents from group2 (008)
@@ -314,6 +320,7 @@ stages:
           affected_items:
             - '008'
           total_affected_items: 1
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE /groups (only one group)
@@ -343,6 +350,7 @@ stages:
                 - 'wrong_group'
           total_affected_items: 0
           total_failed_items: 1
+    delay_after: !float "{global_db_delay}"
 
     # DELETE /groups?list_groups=default
   - name: Try to delete default group
@@ -370,7 +378,6 @@ stages:
 
     # DELETE /groups?list_groups=group3
   - name: Delete group3
-    delay_before: 12
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
@@ -390,6 +397,7 @@ stages:
           affected_items:
             - 'group3'
           total_affected_items: 1
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE /groups (several groups)
@@ -447,10 +455,10 @@ stages:
                 - 'default'
           total_affected_items: 1
           total_failed_items: 1
+    delay_after: !float "{global_db_delay}"
 
     # DELETE /groups
   - name: Delete all groups (group2)
-    delay_before: 12
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
@@ -465,6 +473,7 @@ stages:
           affected_items:
             - 'group2'
           total_affected_items: 1
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE /agents
@@ -548,6 +557,7 @@ stages:
           affected_items:
             - '006'
           total_affected_items: 1
+    delay_after: !float "{global_db_delay}"
 
     # DELETE /agents?list_agents=010&purge=True
   - name: Delete an agent using purge
@@ -568,6 +578,7 @@ stages:
           affected_items:
             - '010'
           total_affected_items: 1
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE /agents
@@ -681,6 +692,7 @@ stages:
             - '004'
           older_than: 0s
           total_affected_items: 1
+    delay_after: !float "{global_db_delay}"
 
     # DELETE /agents?list_agents=007&older_than=wrong
   - name: Try to delete agent with a wrong older_than param
@@ -716,6 +728,7 @@ stages:
           older_than: '1h'
           total_affected_items: 0
           total_failed_items: 1
+    delay_after: !float "{global_db_delay}"
 
     # DELETE /agents?list_agents=009&older_than=1s
   - name: Delete agent older_than 1s
@@ -733,6 +746,7 @@ stages:
             - '009'
           older_than: '1s'
           total_affected_items: 1
+    delay_after: !float "{global_db_delay}"
 
     # DELETE /agents?list_agents=001,011&older_than=1s
   - name: Delete several agents
@@ -751,6 +765,7 @@ stages:
             - "011"
           older_than: '0s'
           total_affected_items: 2
+    delay_after: !float "{global_db_delay}"
 
     # DELETE /agents?list_agents=012&older_than=1s&purge=True
   - name: Delete agent older_than 1s with purge
@@ -769,10 +784,10 @@ stages:
             - '012'
           older_than: '1s'
           total_affected_items: 1
+    delay_after: !float "{global_db_delay}"
 
     # DELETE /agents
   - name: Delete all agents (001,002,003,005)
-    delay_before: 12
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"

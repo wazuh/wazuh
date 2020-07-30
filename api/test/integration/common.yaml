@@ -18,6 +18,7 @@ variables:
   restart_delay: 30
   upgrade_delay: 45
   global_db_delay: 3
+  active_reponse_delay: 5
 
   custom_wpk_path: "/var/ossec/test_custom_upgrade_3.10.2.wpk"
 
