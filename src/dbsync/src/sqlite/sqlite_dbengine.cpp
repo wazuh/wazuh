@@ -257,65 +257,70 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
 void SQLiteDBEngine::deleteTableRowsData(const std::string& table,
                                          const nlohmann::json& data)
 {
-    const auto& stmt { getStatement(buildSelectQuery(table, query)) };
-    const auto tableFields { m_tableFields[table] };
-
-    while (SQLITE_ROW == stmt->step())
+    if (0 != loadTableData(table))
     {
-        Row row;
-        const auto& columns{ query.at("column_list") };
-        // if there is a * in the column_list we need to include all data in the result.
-        if (std::find_if(columns.begin(), columns.end(),[](const std::string& value){return value == "*";}) != columns.end())
+        const auto& stmt { getStatement(buildSelectQuery(table, query)) };
+        const auto tableFields { m_tableFields[table] };
+
+        while (SQLITE_ROW == stmt->step())
         {
-            for(const auto& field : tableFields)
+            Row row;
+            const auto& columns{ query.at("column_list") };
+            // if there is a * in the column_list we need to include all data in the result.
+            if (std::find_if(columns.begin(), columns.end(),[](const std::string& value){return value == "*";}) != columns.end())
             {
-                if (!std::get<TableHeader::TXNStatusField>(field))
+                for(const auto& field : tableFields)
                 {
-                    getTableData(stmt,
-                             std::get<TableHeader::CID>(field),
-                             std::get<TableHeader::Type>(field),
-                             std::get<TableHeader::Name>(field),
-                             row);
-                }
-            }
-        }
-        // if some specific columns are queried we have to build the result with just those rows.
-        else
-        {
-            int32_t index{ 0l };
-            for (const auto& column : columns)
-            {
-                const auto& it
-                {
-                    std::find_if(tableFields.begin(),
-                                 tableFields.end(),
-                                 [&column](const ColumnData& data)
-                                 {
-                                    return column == std::get<TableHeader::Name>(data);
-                                 })
-                };
-                if (it != tableFields.end())
-                {
-                    getTableData(stmt,
-                                 index,
-                                 std::get<TableHeader::Type>(*it),
-                                 column,
+                    if (!std::get<TableHeader::TXNStatusField>(field))
+                    {
+                        getTableData(stmt,
+                                 std::get<TableHeader::CID>(field),
+                                 std::get<TableHeader::Type>(field),
+                                 std::get<TableHeader::Name>(field),
                                  row);
-                    ++index;
+                    }
                 }
             }
+            // if some specific columns are queried we have to build the result with just those rows.
+            else
+            {
+                int32_t index{ 0l };
+                for (const auto& column : columns)
+                {
+                    const auto& it
+                    {
+                        std::find_if(tableFields.begin(),
+                                     tableFields.end(),
+                                     [&column](const ColumnData& data)
+                                     {
+                                        return column == std::get<TableHeader::Name>(data);
+                                     })
+                    };
+                    if (it != tableFields.end())
+                    {
+                        getTableData(stmt,
+                                     index,
+                                     std::get<TableHeader::Type>(*it),
+                                     column,
+                                     row);
+                        ++index;
+                    }
+                }
+            }
+            nlohmann::json object;
+            for (const auto& value : row)
+            {
+                getFieldValueFromTuple(value, object);
+            }
+            if (callback && !object.empty())
+            {
+                callback(SELECTED, object);
+            }
         }
-        nlohmann::json object;
-        for (const auto& value : row)
-        {
-            getFieldValueFromTuple(value, object);
-        }
-        if (callback && !object.empty())
-        {
-            const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
-            deleteRows(table, data, primaryKeyList);
-            transaction->commit();
-        }
+    }
+    else
+    {
+        throw dbengine_error { EMPTY_TABLE_METADATA };
     }
     else
     {
