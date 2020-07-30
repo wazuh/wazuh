@@ -369,11 +369,6 @@ int dbsync_delete_rows(const DBSYNC_HANDLE handle,
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
             retVal = ex.id();
         }
-        catch(const DbSync::max_rows_error& ex)
-        {
-            errorMessage += "DB error, ";
-            errorMessage += ex.what();
-        }
         catch(...)
         {
             errorMessage += "Unrecognized error.";
