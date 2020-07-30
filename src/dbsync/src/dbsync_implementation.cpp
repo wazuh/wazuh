@@ -73,6 +73,15 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE  handle,
                                       true);
 }
 
+void DBSyncImplementation::deleteRowsData(const DBSYNC_HANDLE  handle,
+                                          const char*          jsonRaw)
+{
+    const auto ctx{ dbEngineContext(handle) };
+    const auto json { nlohmann::json::parse(jsonRaw) };
+    ctx->m_dbEngine->deleteTableRowsData(json.at(0).at("table"),
+                                         json.at(0).at("data"));
+}
+
 void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE  handle,
                                               const char*          jsonSnapshot,
                                               const ResultCallback callback)

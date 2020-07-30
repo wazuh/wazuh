@@ -385,11 +385,40 @@ int dbsync_select_rows(const DBSYNC_HANDLE handle,
     return ret_val;
 }
 
-int dbsync_delete_rows(const DBSYNC_HANDLE /*handle*/,
-                       const cJSON*        /*js_key_values*/)
+int dbsync_delete_rows(const DBSYNC_HANDLE handle,
+                       const cJSON*        js_key_values)
 {
-    // Dummy function for now.
-    return 0;
+    auto retVal { -1 };
+    std::string errorMessage;
+    if (!handle || !js_key_values)
+    {
+        errorMessage += "Invalid input parameters.";
+    }
+    else
+    {
+        try
+        {
+            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_key_values) };
+            DBSyncImplementation::instance().deleteRowsData(handle, spJsonBytes.get());
+            retVal = 0;
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            errorMessage += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
+            retVal = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+            retVal = ex.id();
+        }
+        catch(...)
+        {
+            errorMessage += "Unrecognized error.";
+        }
+    }
+    log_message(errorMessage);
+    return retVal;
 }
 
 int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
