@@ -32,7 +32,9 @@
     #define Privsep_GetGroup(x) -1
 #endif
 
+#ifndef CLIENT
 static const char *SQL_SELECT_KEEPALIVE = "global sql SELECT last_keepalive FROM agent WHERE name = '%s';";
+#endif
 
 /* Global variables */
 fpos_t fp_pos;
@@ -501,6 +503,8 @@ char *IPExist(const char *u_ip)
     return NULL;
 }
 
+#ifndef CLIENT
+
 double OS_AgentAntiquity_ID(const char *id) {
     char *name = getFullnameById(id);
     char *ip;
@@ -519,17 +523,12 @@ double OS_AgentAntiquity_ID(const char *id) {
     return ret;
 }
 
-#ifdef CLIENT
-double OS_AgentAntiquity(const char *name, const char *ip){;}
-
-#else
-
 /**
- * @brief Returns the number of seconds since last agent connection with a Query to Wazuh DB
+ * @brief Returns the number of seconds since last agent connection
  * 
- * @param name the name of the agent
- * @param input the ip of the agent (unused). Kept only for compatibility
- * @retval output On Success: diff between the actual time and the last keepalive
+ * @param name of the agent
+ * @param ip of the agent (unused). Kept only for compatibility
+ * @retval On success, it returns the difference between the current time and the last keepalive
  * @retval -1 On error: invalid DB query syntax or result
  */
 double OS_AgentAntiquity(const char *name, const char *ip)
