@@ -167,9 +167,9 @@ struct SetMaxRowsAction final : public IAction
     }
 };
 
-struct GetDeleteTxnCallbackLogger final 
+struct GetCallbackLogger final
 {
-    explicit GetDeleteTxnCallbackLogger(const std::string &fileName) 
+    explicit GetCallbackLogger(const std::string &fileName)
     : m_fileName(fileName)
     {};
     std::string m_fileName;
@@ -177,11 +177,11 @@ struct GetDeleteTxnCallbackLogger final
 
 };
 
-static void getDeleteTxnCallback(ReturnTypeCallback /*type*/,
-                                 const cJSON* json,
-                                 void* user_data)
+static void getCallbackCtx(ReturnTypeCallback /*type*/,
+                           const cJSON* json,
+                           void* user_data)
 {
-    GetDeleteTxnCallbackLogger* loggerContext { reinterpret_cast<GetDeleteTxnCallbackLogger *>(user_data) };
+    GetCallbackLogger* loggerContext { reinterpret_cast<GetCallbackLogger *>(user_data) };
 
     std::lock_guard<std::mutex> lock(loggerContext->m_mutex);
     std::ifstream inputFile{ loggerContext->m_fileName };
@@ -192,10 +192,9 @@ static void getDeleteTxnCallback(ReturnTypeCallback /*type*/,
     }
     const std::unique_ptr<char, TestDeleters::CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json)};
     const auto& newJson { nlohmann::json::parse(spJsonBytes.get()) };
-    jsonResult.push_back(newJson[0]);
+    jsonResult.push_back(newJson.is_array() ? newJson[0] : newJson);
 
     std::ofstream outputFile{ loggerContext->m_fileName };
-    outputFile << jsonResult.dump() << std::endl;
 };
 
 
@@ -209,8 +208,8 @@ struct GetDeletedRowsAction final : public IAction
         const auto& outputFileName{ ctx->outputPath + "/" + oFileName.str() };
         const auto& outputFileNameCallback{ ctx->outputPath + "/" + "callback." + oFileName.str() };
 
-        const auto& loggerContext { std::make_unique<GetDeleteTxnCallbackLogger>(outputFileNameCallback) };
-        callback_data_t callbackData { getDeleteTxnCallback, loggerContext.get() } ;
+        const auto& loggerContext { std::make_unique<GetCallbackLogger>(outputFileNameCallback) };
+        callback_data_t callbackData { getCallbackCtx, loggerContext.get() } ;
         
         const auto retVal
         {
@@ -301,6 +300,36 @@ struct DeleteRowsAction final : public IAction
 
         std::ofstream outputFile{ outputFileName };
         const nlohmann::json jsonResult = { {"dbsync_delete_rows", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
+
+struct SelectRowsAction final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsInput
+        {
+            cJSON_Parse(value.at("body").dump().c_str())
+        };
+
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+        const auto& outputFileNameCallback{ ctx->outputPath + "/" + "callback." + oFileName.str() };
+
+        const auto& loggerContext { std::make_unique<GetCallbackLogger>(outputFileNameCallback) };
+        callback_data_t callbackData { getCallbackCtx, loggerContext.get() } ;
+
+        const auto retVal
+        {
+            dbsync_select_rows(ctx->handle,
+                               jsInput.get(),
+                               callbackData)
+        };
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"dbsync_select_rows", retVal } };
         outputFile << jsonResult.dump() << std::endl;
     }
 };
