@@ -98,36 +98,56 @@ void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
     }
 }
 
+
 void SQLiteDBEngine::syncTableRowData(const std::string& table,
                                       const nlohmann::json& data,
                                       const DbSync::ResultCallback callback,
                                       const bool inTransaction)
 {
-    if (0 != loadTableData(table))
+    static const auto getDataToUpdate
+    {
+        [](const std::vector<std::string>& primaryKeyList,
+           const nlohmann::json& result,
+           const nlohmann::json& data,
+           const bool inTransaction)
+        {
+            nlohmann::json ret;
+            if (inTransaction)
+            {
+                if (result.empty())
+                {
+                    std::for_each(primaryKeyList.begin(),
+                                  primaryKeyList.end(),
+                                  [&data, &ret](const std::string& pKey)
+                                  {
+                                        if(data.find(pKey) != data.end())
+                                        {
+                                            ret[pKey] = data[pKey];
+                                        }
+                                  });
+                }
+                else
+                {
+                    ret = result;
+                }
+                ret[STATUS_FIELD_NAME] = 1;
+            }
+            else if (!result.empty())
+            {
+                ret = result;
+            }
+            return ret;
+        }
+    };
+    std::vector<std::string> primaryKeyList;
+    if (0 != loadTableData(table) && getPrimaryKeysFromTable(table, primaryKeyList))
     {
         ReturnTypeCallback resultCbType{ MODIFIED };
         nlohmann::json jsResult;
-        const bool diffExist { getRowDiff(table, data[0], jsResult) };
+        const bool diffExist { getRowDiff(primaryKeyList, table, data[0], jsResult) };
         if (diffExist)
         {
-            static const auto getDataToUpdate
-            {
-                [](const nlohmann::json& result, const nlohmann::json& data, const bool inTransaction)
-                {
-                    nlohmann::json ret;
-                    if (inTransaction)
-                    {
-                        ret = result.empty() ? data[0] : result;
-                        ret[STATUS_FIELD_NAME] = 1;
-                    }
-                    else if (!result.empty())
-                    {
-                        ret = result;
-                    }
-                    return ret;
-                }
-            };
-            const nlohmann::json jsDataToUpdate{getDataToUpdate(jsResult, data, inTransaction)};
+            const nlohmann::json jsDataToUpdate{getDataToUpdate(primaryKeyList, jsResult, data[0], inTransaction)};
             if (!jsDataToUpdate[0].empty())
             {
                 const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
@@ -1015,81 +1035,78 @@ std::string SQLiteDBEngine::buildLeftOnlyQuery(const std::string& t1,
     return std::string("SELECT "+fieldsList+" FROM "+t1+" t1 LEFT JOIN "+t2+" t2 ON "+onMatchList+" WHERE "+nullFilterList+";");
 } 
 
-bool SQLiteDBEngine::getRowDiff(const std::string& table,
+bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
+                                const std::string& table,
                                 const nlohmann::json& data,
                                 nlohmann::json& jsResult)
 {
     bool diffExist { false };
-    std::vector<std::string> primaryKeyList;
-    if (getPrimaryKeysFromTable(table, primaryKeyList))
+    bool isModified { false };
+    const auto& stmt
     {
-        bool isModified { false };
-        const auto& stmt
+        getStatement(buildSelectMatchingPKsSqlQuery(table, primaryKeyList))
+    };
+
+    const auto& tableFields { m_tableFields[table] };
+    int32_t index { 1l };
+    for (const auto& pkValue : primaryKeyList)
+    {
+        const auto& it
         {
-            getStatement(buildSelectMatchingPKsSqlQuery(table, primaryKeyList))
+            std::find_if(tableFields.begin(), tableFields.end(),
+                            [&pkValue](const ColumnData& column)
+                            {
+                                return 0 == std::get<Name>(column).compare(pkValue);
+                            })
         };
 
-        const auto& tableFields { m_tableFields[table] };
-        int32_t index { 1l };
-        for (const auto& pkValue : primaryKeyList)
+        if(it != tableFields.end())
         {
-            const auto& it
-            {
-                std::find_if(tableFields.begin(), tableFields.end(),
-                                [&pkValue](const ColumnData& column)
-                                {
-                                    return 0 == std::get<Name>(column).compare(pkValue);
-                                })
-            };
+            jsResult[pkValue] = data[pkValue];
+            bindJsonData(stmt, *it, data, index);
+            ++index;
+        }
+    }
 
-            if(it != tableFields.end())
-            {
-                jsResult[pkValue] = data[pkValue];
-                bindJsonData(stmt, *it, data, index);
-                ++index;
-            }
+    diffExist = SQLITE_ROW == stmt->step();
+    if (diffExist)
+    {
+        // The row exist, so lets generate the diff
+        Row registryFields;
+        for(const auto& field : tableFields)
+        {
+            getTableData(stmt,
+                        std::get<TableHeader::CID>(field),
+                        std::get<TableHeader::Type>(field),
+                        std::get<TableHeader::Name>(field),
+                        registryFields);
         }
 
-        diffExist = SQLITE_ROW == stmt->step();
-        if (diffExist)
+        if(!registryFields.empty())
         {
-            // The row exist, so lets generate the diff
-            Row registryFields;
-            for(const auto& field : tableFields)
+            for (const auto& value : registryFields)
             {
-                getTableData(stmt,
-                            std::get<TableHeader::CID>(field),
-                            std::get<TableHeader::Type>(field),
-                            std::get<TableHeader::Name>(field),
-                            registryFields);
-            }
-
-            if(!registryFields.empty())
-            {
-                for (const auto& value : registryFields)
+                nlohmann::json object;
+                getFieldValueFromTuple(value, object);
+                const auto& it
                 {
-                    nlohmann::json object;
-                    getFieldValueFromTuple(value, object);
-                    const auto& it
+                    data.find(value.first)
+                };
+                if (data.end() != it)
+                {
+                    if(*it != object[value.first])
                     {
-                        data.find(value.first)
-                    };
-                    if (data.end() != it)
-                    {
-                        if(*it != object[value.first])
-                        {
-                            // Diff found
-                            isModified = true;
-                            jsResult[value.first] = *it;
-                        }
+                        // Diff found
+                        isModified = true;
+                        jsResult[value.first] = *it;
                     }
                 }
             }
         }
-        if(!isModified)
-        {
-            jsResult.clear();
-        }
+    }
+    if(!isModified)
+    {
+        jsResult.clear();
     }
     return diffExist;
 }
