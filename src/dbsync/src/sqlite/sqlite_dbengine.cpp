@@ -140,31 +140,34 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
         }
     };
     std::vector<std::string> primaryKeyList;
-    if (0 != loadTableData(table) && getPrimaryKeysFromTable(table, primaryKeyList))
+    if (0 != loadTableData(table))
     {
-        ReturnTypeCallback resultCbType{ MODIFIED };
-        nlohmann::json jsResult;
-        const bool diffExist { getRowDiff(primaryKeyList, table, data[0], jsResult) };
-        if (diffExist)
+        if (getPrimaryKeysFromTable(table, primaryKeyList))
         {
-            const nlohmann::json jsDataToUpdate{getDataToUpdate(primaryKeyList, jsResult, data[0], inTransaction)};
-            if (!jsDataToUpdate[0].empty())
+            ReturnTypeCallback resultCbType{ MODIFIED };
+            nlohmann::json jsResult;
+            const bool diffExist { getRowDiff(primaryKeyList, table, data[0], jsResult) };
+            if (diffExist)
             {
-                const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
-                updateSingleRow(table, jsDataToUpdate[0]);
-                transaction->commit();
+                const nlohmann::json jsDataToUpdate{getDataToUpdate(primaryKeyList, jsResult, data[0], inTransaction)};
+                if (!jsDataToUpdate[0].empty())
+                {
+                    const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
+                    updateSingleRow(table, jsDataToUpdate[0]);
+                    transaction->commit();
+                }
             }
-        }
-        else
-        {
-            resultCbType = INSERTED;
-            jsResult = data;
-            bulkInsert(table, data);
-        }
+            else
+            {
+                resultCbType = INSERTED;
+                jsResult = data;
+                bulkInsert(table, data);
+            }
 
-        if (callback && !jsResult.empty())
-        {
-            callback(resultCbType, jsResult);
+            if (callback && !jsResult.empty())
+            {
+                callback(resultCbType, jsResult);
+            }
         }
     }
     else
