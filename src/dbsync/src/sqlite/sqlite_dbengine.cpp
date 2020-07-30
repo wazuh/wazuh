@@ -258,14 +258,14 @@ void SQLiteDBEngine::selectData(const std::string& table,
                                 const nlohmann::json& query,
                                 const DbSync::ResultCallback& callback)
 {
-    const auto& sql{ buildSelectQuery(table, query) };
-    auto const& stmt { getStatement(sql) };
+    const auto& stmt { getStatement(buildSelectQuery(table, query)) };
     const auto tableFields { m_tableFields[table] };
 
     while (SQLITE_ROW == stmt->step())
     {
         Row row;
         const auto& columns{ query.at("column_list") };
+        // if there is a * in the column_list we need to include all data in the result.
         if (std::find_if(columns.begin(), columns.end(),[](const std::string& value){return value == "*";}) != columns.end())
         {
             for(const auto& field : tableFields)
@@ -280,9 +280,10 @@ void SQLiteDBEngine::selectData(const std::string& table,
                 }
             }
         }
+        // if some specific columns are queried we have to build the result with just those rows.
         else
         {
-            int32_t index{ 0 };
+            int32_t index{ 0l };
             for (const auto& column : columns)
             {
                 const auto& it
