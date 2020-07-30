@@ -475,16 +475,14 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     while (*dir) {
         int opts = 0;
         char *tmp_dir;
-        int tmp_diff_size;
+        int tmp_diff_size = -1;
         int len_str_limit = 0;
-        char diff_size_data_unit = 'K';
-        char *limit_value_str;
+        char *limit_value_str = NULL;
 
         char **attrs = NULL;
         char **values = NULL;
 
         tmp_dir = *dir;
-        tmp_diff_size = -1;
 
         /* Remove spaces at the beginning */
         while (*tmp_dir == ' ') {
@@ -739,7 +737,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 }
                 recursion_limit = (unsigned int) atoi(*values);
                 if (recursion_limit < 0) {
-                    mwarn("Invalid recursion level value: %d. Setting default (%d).", recursion_limit, syscheck->max_depth);
+                    mwarn("Invalid recursion level value: %d. Setting default (%d).", recursion_limit,
+                          syscheck->max_depth);
                     recursion_limit = syscheck->max_depth;
                 } else if (recursion_limit > MAX_DEPTH_ALLOWED) {
                     mwarn("Recursion level '%d' exceeding limit. Setting %d.", recursion_limit, MAX_DEPTH_ALLOWED);
@@ -776,36 +775,12 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
                     if (value[len_str_limit - 1] == 'B' || value[len_str_limit - 1] == 'b') {
                         if (isalpha(value[len_str_limit - 2])){
-                            switch (value[len_str_limit - 2]) {
-                                case 'M':
-                                    // Fallthrough
-                                case 'm':
-                                    diff_size_data_unit = 'M';
-                                    break;
-                                case 'G':
-                                    // Fallthrough
-                                case 'g':
-                                    diff_size_data_unit = 'G';
-                                    break;
-                                case 'T':
-                                    // Fallthrough
-                                case 't':
-                                    diff_size_data_unit = 'T';
-                                    break;
-                                case 'K':
-                                    // Fallthrough
-                                case 'k':
-                                    // Fallthough
-                                default:
-                                    diff_size_data_unit = 'K';
-                                    break;
-                            }
-
                             os_calloc(len_str_limit, sizeof(char), limit_value_str);
                             strncpy(limit_value_str, value, len_str_limit - 2);
 
                             if (OS_StrIsNum(limit_value_str)) {
-                                tmp_diff_size = adjust_value_to_data_unit(atoi(limit_value_str), diff_size_data_unit);
+                                tmp_diff_size = adjust_value_to_data_unit(atoi(limit_value_str),
+                                                                          value[len_str_limit - 2]);
                             }
                             else {
                                 mwarn(FIM_INVALID_OPTION_SKIP, value, *attrs, dirs);
@@ -1074,16 +1049,24 @@ int adjust_value_to_data_unit(const int value, const char data_unit) {
 
     switch (data_unit) {
         case 'M':
+            // Fallthrough
+        case 'm':
             converted_value = value * 1024;
             break;
         case 'G':
+            // Fallthrough
+        case 'g':
             converted_value = value * (1024 * 1024);
             break;
         case 'T':
+            // Fallthrough
+        case 't':
             converted_value = value * (1024 * 1024 * 1024);
             break;
         case 'K':
-            // Fallthough
+            // Fallthrough
+        case 'k':
+            // Fallthrough
         default:
             converted_value = value;
             break;
@@ -1108,8 +1091,6 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
     int i = 0;
     int j = 0;
     xml_node **children = NULL;
-    char disk_quota_data_unit = 'K';    // KB by default
-    char file_size_data_unit = 'K';
     char *limit_value_str;
     unsigned int nodiff_size = 0;
     size_t len_str_limit = 0;
@@ -1219,37 +1200,14 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                             children[j]->content[len_str_limit - 1] == 'b') {
 
                             if (isalpha(children[j]->content[len_str_limit - 2])){
-                                switch (children[j]->content[len_str_limit - 2]) {
-                                    case 'M':
-                                        // Fallthrough
-                                    case 'm':
-                                        disk_quota_data_unit = 'M';
-                                        break;
-                                    case 'G':
-                                        // Fallthrough
-                                    case 'g':
-                                        disk_quota_data_unit = 'G';
-                                        break;
-                                    case 'T':
-                                        // Fallthrough
-                                    case 't':
-                                        disk_quota_data_unit = 'T';
-                                        break;
-                                    case 'K':
-                                        // Fallthrough
-                                    case 'k':
-                                        // Fallthough
-                                    default:
-                                        disk_quota_data_unit = 'K';
-                                        break;
-                                }
-
                                 os_calloc(len_str_limit, sizeof(char), limit_value_str);
                                 strncpy(limit_value_str, children[j]->content, len_str_limit - 2);
 
                                 if (OS_StrIsNum(limit_value_str)) {
-                                    syscheck->disk_quota_limit = adjust_value_to_data_unit(atoi(limit_value_str),
-                                                                                            disk_quota_data_unit);
+                                    syscheck->disk_quota_limit = adjust_value_to_data_unit(
+                                                                    atoi(limit_value_str),
+                                                                    children[j]->content[len_str_limit - 2]
+                                                                 );
                                 }
                                 else {
                                     merror(XML_VALUEERR, children[j]->element, children[j]->content);
@@ -1320,37 +1278,14 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
 
                         if (children[j]->content[len_str_limit - 1] == 'B') {
                             if (isalpha(children[j]->content[len_str_limit - 2])){
-                                switch (children[j]->content[len_str_limit - 2]) {
-                                    case 'M':
-                                        // Fallthrough
-                                    case 'm':
-                                        file_size_data_unit = 'M';
-                                        break;
-                                    case 'G':
-                                        // Fallthrough
-                                    case 'g':
-                                        file_size_data_unit = 'G';
-                                        break;
-                                    case 'T':
-                                        // Fallthrough
-                                    case 't':
-                                        file_size_data_unit = 'T';
-                                        break;
-                                    case 'K':
-                                        // Fallthrough
-                                    case 'k':
-                                        // Fallthough
-                                    default:
-                                        file_size_data_unit = 'K';
-                                        break;
-                                }
-
                                 os_calloc(len_str_limit, sizeof(char), limit_value_str);
                                 strncpy(limit_value_str, children[j]->content, len_str_limit - 2);
 
                                 if (OS_StrIsNum(limit_value_str)) {
-                                    syscheck->file_size_limit = adjust_value_to_data_unit(atoi(limit_value_str),
-                                                                                            file_size_data_unit);
+                                    syscheck->file_size_limit = adjust_value_to_data_unit(
+                                                                    atoi(limit_value_str),
+                                                                    children[j]->content[len_str_limit - 2]
+                                                                );
                                 }
                                 else {
                                     merror(XML_VALUEERR, children[j]->element, children[j]->content);
@@ -2090,7 +2025,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         } /* Allow prefilter cmd */
         else if (strcmp(node[i]->element, xml_allow_remote_prefilter_cmd) == 0) {
             if (modules & CAGENT_CONFIG) {
-                mwarn("'%s' option can't be changed using centralized configuration (agent.conf).", xml_allow_remote_prefilter_cmd);
+                mwarn("'%s' option can't be changed using centralized configuration (agent.conf).",
+                      xml_allow_remote_prefilter_cmd);
                 i++;
                 continue;
             }
