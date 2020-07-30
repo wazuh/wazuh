@@ -36,7 +36,7 @@ static cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_
  * @retval WM_UPGRADE_INVALID_ACTION_FOR_MANAGER
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
-static int wm_agent_upgrade_validate_agent_task(wm_agent_task *agent_task);
+static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task);
 
 typedef enum _upgrade_results_codes {
     STATUS_UPDATED = 0,
@@ -217,7 +217,7 @@ cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, w
     return task_request;
 }
 
-int wm_agent_upgrade_validate_agent_task(wm_agent_task *agent_task) {
+int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task) {
     int validate_result = WM_UPGRADE_SUCCESS;
 
     // Validate agent id
@@ -234,17 +234,12 @@ int wm_agent_upgrade_validate_agent_task(wm_agent_task *agent_task) {
         return validate_result;
     }
 
-    // Validate agent system for upgrade command
-    if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
-        validate_result = wm_agent_upgrade_validate_system(agent_task->agent_info->platform, agent_task->agent_info->major_version, agent_task->agent_info->minor_version, agent_task->agent_info->architecture);
+    // Validate Wazuh version to upgrade
+    validate_result = wm_agent_upgrade_validate_version(agent_task->agent_info, agent_task->task_info->task, agent_task->task_info->command);
 
-        if (validate_result != WM_UPGRADE_SUCCESS) {
-            return validate_result;
-        }
+    if (validate_result != WM_UPGRADE_SUCCESS) {
+        return validate_result;
     }
-
-    // Validate wazuh version to upgrade
-    validate_result = wm_agent_upgrade_validate_version(agent_task->agent_info->wazuh_version, agent_task->task_info->task, agent_task->task_info->command);
 
 
     // TODO: Validate WPK for agent and download it if necessary

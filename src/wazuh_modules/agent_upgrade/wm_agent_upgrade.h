@@ -145,21 +145,8 @@ int wm_agent_upgrade_validate_id(int agent_id);
 int wm_agent_upgrade_validate_status(int last_keep_alive);
 
 /**
- * Check if agent exist
- * @param platform platform of agent to validate
- * @param os_major OS major version of agent to validate
- * @param os_minor OS minor version of agent to validate
- * @param arch architecture of agent to validate
- * @return return_code
- * @retval WM_UPGRADE_SUCCESS
- * @retval WM_UPGRADE_SYSTEM_NOT_SUPPORTED
- * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
- * */
-int wm_agent_upgrade_validate_system(char *platform, char *os_major, char *os_minor, char *arch);
-
-/**
- * Check if agent version is valid to upgrade
- * @param version wazuh version of agent to validate
+ * Check if agent is valid to upgrade
+ * @param agent_info pointer to agent_info struture
  * @param task pointer to task with the params
  * @param command wm_upgrade_command with the selected upgrade type
  * @return return_code
@@ -170,6 +157,6 @@ int wm_agent_upgrade_validate_system(char *platform, char *os_major, char *os_mi
  * @retval WM_UPGRADE_VERSION_SAME_MANAGER
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
-int wm_agent_upgrade_validate_version(const char *version, void *task, wm_upgrade_command command);
+int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, const void *task, wm_upgrade_command command);
 
 #endif
