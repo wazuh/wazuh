@@ -787,6 +787,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             tmp_str = strchr(tmp_str, '/');
         }
 
+        // Get absolute path cheking if the path is a drive without the backslash.
+        if (strlen(expandedpath) == 2) {
+            strcat(expandedpath, "\\");
+        }
+
         /* Get absolute path and monitor it */
         retvalF = GetFullPathName(tmp_dir, PATH_MAX, real_path, NULL);
         if (retvalF == 0) {
