@@ -161,6 +161,13 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
     int node;
     int depth;
 
+#ifdef WIN32
+    // Ignore the recycle bin.
+    if (check_removed_file(path)){
+        return;
+    }
+#endif
+
     if (item->mode == FIM_SCHEDULED) {
         // If the directory have another configuration will come back
         if (node = fim_configuration_directory(path, "file"), node < 0 || item->index != node) {
