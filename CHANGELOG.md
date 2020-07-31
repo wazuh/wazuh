@@ -1,7 +1,18 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.13.0]
+## [v3.13.1] - 2020-07-14
+
+### Added
+
+- Added two new settings <max_retries> and <retry_interval> to adjust the agent failover interval. ([#5433](https://github.com/wazuh/wazuh/pull/5433))
+
+### Fixed
+
+- Fixed a crash in Modulesd caused by Vulnerability Detector when skipping a kernel package if the agent has OS info disabled. ([#5467](https://github.com/wazuh/wazuh/pull/5467))
+
+
+## [v3.13.0] - 2020-06-29
 
 ### Added
 
@@ -15,21 +26,21 @@ All notable changes to this project will be documented in this file.
 - Set a configurable maximum limit of files to be monitored by FIM. ([#4717](https://github.com/wazuh/wazuh/pull/4717))
 - New integration for pull logs from Google Cloud Pub/Sub. ([#4078](https://github.com/wazuh/wazuh/pull/4078))
 - Added support for MITRE ATT&CK knowledge base. ([#3746](https://github.com/wazuh/wazuh/pull/3746))
-- Added new configuration block for Windows Defender EventChannel. ([#5037](https://github.com/wazuh/wazuh/pull/5037))
 - Microsoft Software Update Catalog used by vulnerability detector added as a dependency. ([#5101](https://github.com/wazuh/wazuh/pull/5101))
+- Added support for `aarch64` and `armhf` architectures. ([#5030](https://github.com/wazuh/wazuh/pull/5030))
 
 ### Changed
 
 - Internal variable rt_delay configuration changes to 5 milliseconds. ([#4760](https://github.com/wazuh/wazuh/pull/4760))
-- Who-data includes new fields: process CWD, parent process id, and CWD of paren process. ([#4782](https://github.com/wazuh/wazuh/pull/4782))
+- Who-data includes new fields: process CWD, parent process id, and CWD of parent process. ([#4782](https://github.com/wazuh/wazuh/pull/4782))
 - FIM opens files with shared deletion permission. ([#5018](https://github.com/wazuh/wazuh/pull/5018))
 - Extended the statics fields comparison in the ruleset options. ([#4416](https://github.com/wazuh/wazuh/pull/4416))
 - The state field was removed from vulnerability alerts. ([#5211](https://github.com/wazuh/wazuh/pull/5211))
 - The NVD is now the primary feed for the vulnerability detector in Linux. ([#5097](https://github.com/wazuh/wazuh/pull/5097))
 - Removed OpenSCAP policies installation and configuration block. ([#5061](https://github.com/wazuh/wazuh/pull/5061))
 - Changed the internal configuration of Analysisd to be able to register by default a number of agents higher than 65536. ([#4332](https://github.com/wazuh/wazuh/pull/4332))
-- Change 'same/different_systemname' for 'same/different_system_name' in Analysisd static filters. ([#5131](https://github.com/wazuh/wazuh/pull/5131))
-
+- Changed `same/different_systemname` for `same/different_system_name` in Analysisd static filters. ([#5131](https://github.com/wazuh/wazuh/pull/5131))
+- Updated the internal Python interpreter from v3.7.2 to v3.8.2. ([#5030](https://github.com/wazuh/wazuh/pull/5030))
 
 ### Fixed
 
@@ -54,7 +65,6 @@ All notable changes to this project will be documented in this file.
 - Avoid duplicate descriptors using wildcards in 'localfile' configuration. ([#4977](https://github.com/wazuh/wazuh/pull/4977))
 - Added guarantee that all processes are killed when service stops. ([#4975](https://github.com/wazuh/wazuh/pull/4975))
 - Fixed mismatch in integration scripts when the debug flag is set to active. ([#4800](https://github.com/wazuh/wazuh/pull/4800))
-
 
 
 ## [v3.12.3] - 2020-04-30

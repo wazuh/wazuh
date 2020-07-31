@@ -362,21 +362,23 @@ static int setup_group(void **state) {
     // Setup mock whodata event
     fim_data->w_evt->user_id = strdup("100");
     fim_data->w_evt->user_name = strdup("test");
-    fim_data->w_evt->group_id = strdup("1000");
-    fim_data->w_evt->group_name = "testing";
     fim_data->w_evt->process_name = strdup("test_proc");
     fim_data->w_evt->path = strdup("./test/test.file");
+    #ifndef TEST_WINAGENT
+    fim_data->w_evt->group_id = strdup("1000");
+    fim_data->w_evt->group_name = "testing";
     fim_data->w_evt->audit_uid = strdup("99");
     fim_data->w_evt->audit_name = strdup("audit_user");
     fim_data->w_evt->effective_uid = strdup("999");
     fim_data->w_evt->effective_name = strdup("effective_user");
     fim_data->w_evt->inode = strdup("606060");
     fim_data->w_evt->dev = strdup("12345678");
-    fim_data->w_evt->ppid = 1000;
-    fim_data->w_evt->process_id = 1001;
-    fim_data->w_evt->cwd = strdup("process_cwd");
-    fim_data->w_evt->parent_cwd = strdup("parent_cwd");
     fim_data->w_evt->parent_name = strdup("parent_name");
+    fim_data->w_evt->parent_cwd = strdup("parent_cwd");
+    fim_data->w_evt->ppid = 1000;
+    fim_data->w_evt->cwd = strdup("process_cwd");
+    #endif
+    fim_data->w_evt->process_id = 1001;
 
     // Setup mock old fim_entry
     fim_data->old_data->size = 1500;
@@ -519,6 +521,7 @@ static int teardown_file_limit(void **state) {
     return 0;
 }
 
+#ifndef TEST_WINAGENT
 static int teardown_fim_scan_realtime(void **state) {
     int *dir_opts = *state;
     int it = 0;
@@ -532,6 +535,7 @@ static int teardown_fim_scan_realtime(void **state) {
 
     return 0;
 }
+#endif
 
 /* tests */
 static void test_fim_json_event(void **state) {
@@ -645,9 +649,9 @@ static void test_fim_json_event_whodata(void **state) {
     cJSON *audit = cJSON_GetObjectItem(data, "audit");
     assert_non_null(audit);
     #ifdef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(audit), 5);
+    assert_int_equal(cJSON_GetArraySize(audit), 4);
     #else
-    assert_int_equal(cJSON_GetArraySize(audit), 15);
+    assert_int_equal(cJSON_GetArraySize(audit), 14);
     #endif
     cJSON *diff = cJSON_GetObjectItem(data, "content_changes");
     assert_string_equal(cJSON_GetStringValue(diff), "diff");
@@ -956,13 +960,11 @@ static void test_fim_audit_json(void **state) {
 
     assert_non_null(fim_data->json);
     #ifdef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 5);
+    assert_int_equal(cJSON_GetArraySize(fim_data->json), 4);
     #else
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 15);
+    assert_int_equal(cJSON_GetArraySize(fim_data->json), 14);
     #endif
 
-    cJSON *path = cJSON_GetObjectItem(fim_data->json, "path");
-    assert_string_equal(cJSON_GetStringValue(path), "./test/test.file");
     cJSON *user_id = cJSON_GetObjectItem(fim_data->json, "user_id");
     assert_string_equal(cJSON_GetStringValue(user_id), "100");
     cJSON *user_name = cJSON_GetObjectItem(fim_data->json, "user_name");
@@ -1689,6 +1691,8 @@ static void test_fim_checker_over_max_recursion_level(void **state) {
         "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '/media/a/test.file'");
 
     fim_checker(path, fim_data->item, NULL, 1);
+
+    syscheck.recursion_level[3] = 50;
 }
 
 static void test_fim_checker_deleted_file(void **state) {
@@ -1935,6 +1939,40 @@ static void test_fim_checker_fim_directory(void **state) {
     will_return(__wrap_readdir, NULL);
 
     fim_checker(path, fim_data->item, NULL, 1);
+}
+
+static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char * path = "/media";
+    struct stat buf;
+    buf.st_mode = S_IFDIR;
+    fim_data->item->index = 3;
+    fim_data->item->statbuf = buf;
+    fim_data->item->mode = FIM_REALTIME;
+
+    syscheck.recursion_level[3] = 0;
+
+    will_return_always(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/media");
+    expect_string(__wrap_HasFilesystem, path, "/media/test");
+    will_return_always(__wrap_HasFilesystem, 0);
+
+    expect_string(__wrap_realtime_adddir, dir, "/media");
+
+    strcpy(fim_data->entry->d_name, "test");
+
+    will_return_always(__wrap_opendir, 1);
+    will_return(__wrap_readdir, fim_data->entry);
+    will_return(__wrap_readdir, NULL);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6347): Directory '/media/test' is already on the max recursion_level (0), it will not be scanned.");
+
+    fim_checker(path, fim_data->item, NULL, 1);
+
+    syscheck.recursion_level[3] = 50;
 }
 
 static void test_fim_scan_db_full_double_scan(void **state) {
@@ -2555,6 +2593,7 @@ static void test_fim_checker_fim_directory(void **state) {
     fim_data_t *fim_data = *state;
 
     char * path = "%WINDIR%\\System32\\drivers\\etc";
+    char skip_directory_message[OS_MAXSTR];
     char expanded_path[OS_MAXSTR];
     char expanded_path_test[OS_MAXSTR];
     struct stat buf;
@@ -2581,7 +2620,10 @@ static void test_fim_checker_fim_directory(void **state) {
     will_return_always(__wrap_opendir, 1);
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
-    will_return(__wrap_readdir, NULL);
+
+    snprintf(skip_directory_message, OS_MAXSTR,
+        "(6347): Directory '%s' is already on the max recursion_level (0), it will not be scanned.", expanded_path_test);
+    expect_string(__wrap__mdebug2, formatted_msg, skip_directory_message);
 
     fim_checker(expanded_path, fim_data->item, NULL, 1);
 }
@@ -3994,6 +4036,9 @@ int main(void) {
         cmocka_unit_test(test_fim_checker_fim_regular_ignore),
         cmocka_unit_test(test_fim_checker_fim_regular_restrict),
         cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory, setup_struct_dirent, teardown_struct_dirent),
+        #ifndef TEST_WINAGENT
+        cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory_on_max_recursion_level, setup_struct_dirent, teardown_struct_dirent),
+        #endif
 
         /* fim_directory */
         cmocka_unit_test_setup_teardown(test_fim_directory, setup_struct_dirent, teardown_struct_dirent),

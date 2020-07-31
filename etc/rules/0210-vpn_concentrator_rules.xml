@@ -33,7 +33,6 @@
   <rule id="14203" level="4">
     <if_sid>14200</if_sid>
     <id>^HTTP/47$|^SSH/16$</id>
-    <options>alert_by_email</options>
     <description>CiscoVPN: VPN Admin authentication successful.</description>
     <mitre>
       <id>T1078</id>

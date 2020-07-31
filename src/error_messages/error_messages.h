@@ -254,6 +254,7 @@
 #define AG_MAX_ERROR    "(4110): Maximum number of agents '%d' reached."
 #define AG_AX_AGENTS    "(4111): Maximum number of agents allowed: '%d'."
 #define AG_INV_MNGIP    "(4112): Invalid server address found: '%s'"
+#define AG_ENROLL_FAIL  "(4113): Auto Enrollment configuration failed."
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."
@@ -373,6 +374,8 @@
 #define VU_REPORT_OVAL_ERROR        "(5581): Could not fill the report with the CVE info from the Vendor feed for agent '%.3d'"
 #define VU_NVD_EMPTY                "(5582): Unavailable vulnerabilities at the NVD database. The scan is aborted."
 #define VU_GET_DEB_STATUS_FEED      "(5583): Couldn't get the Debian feed '%s' to check the status of the packages. This can lead to many false positives."
+#define VU_FILTER_VULN_NVD_ERROR    "(5584): Couldn't verify if the vulnerability '%s' is reported in the NVD feed."
+#define VU_GET_NVD_YEAR_ERROR       "(5585): Couldn't get the NVD configured year."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
@@ -397,8 +400,8 @@
 #define FIM_ERROR_WHODATA_AUDIT_SUPPORT             "(6620): Audit support not built. Whodata is not available."
 #define FIM_ERROR_WHODATA_EVENTCHANNEL              "(6621): Event Channel subscription could not be made. Whodata scan is disabled."
 #define FIM_ERROR_WHODATA_RESTORE_POLICIES          "(6622): There is no backup of audit policies. Policies will not be restored."
-#define FIM_ERROR_WHODATA_RENDER_EVENT              "(6623): Error rendering the event. Error %lu."
-#define FIM_ERROR_WHODATA_RENDER_PARAM              "(6624): Invalid number of rendered parameters."
+
+
 #define FIM_ERROR_WHODATA_NOTFIND_DIRPOS            "(6625): The '%s' file does not have an associated directory."
 #define FIM_ERROR_WHODATA_HANDLER_REMOVE            "(6626): The handler '%s' could not be removed from the whodata hash table."
 #define FIM_ERROR_WHODATA_HANDLER_EVENT             "(6627): Could not get the time of the event whose handler is '%llu'."
@@ -417,8 +420,8 @@
 #define FIM_ERROR_WHODATA_MAXNUM_WATCHES            "(6640): Unable to monitor who-data for directory: '%s' - Maximum size permitted (%d)."
 #define FIM_ERROR_WHODATA_COMPILE_REGEX             "(6641): Cannot compile '%s' regular expression."
 #define FIM_ERROR_WHODATA_HEALTHCHECK_START         "(6642): Audit health check couldn't be completed correctly."
-#define FIM_ERROR_WHODATA_EVENT_TOOLONG             "(6643): Caching Audit message: event too long."
-#define FIM_ERROR_WHODATA_GETID                     "(6644): Couldn't get event ID from Audit message. Line: '%s'."
+
+
 #define FIM_ERROR_WHODATA_CONTEXT                   "(6645): Error creating the whodata context. Error %lu."
 #define FIM_ERROR_SACL_ACE_DELETE                   "(6646): DeleteAce() failed restoring the SACLs. Error '%ld'"
 #define FIM_ERROR_SACL_FIND_PRIVILEGE               "(6647): Could not find the '%s' privilege. Error: %lu"
@@ -455,7 +458,7 @@
 #define FIM_DIRECTORY_NOPROVIDED                    "(6678): No directory provided for syscheck to monitor."
 #define FIM_INVALID_ATTRIBUTE                       "(6679): Invalid attribute '%s' for '%s' option."
 #define FIM_INVALID_OPTION                          "(6680): Invalid option '%s' for attribute '%s'"
-#define FIM_WHODATA_PARAMETER                       "(6681): Invalid parameter type (%ld) for '%s'."
+
 #define FIM_ERROR_WHODATA_WIN_ARCH                  "(6682): Error reading 'Architecture' from Windows registry. (Error %u)"
 #define FIM_ERROR_WHODATA_WIN_SIDERROR              "(6683): Could not obtain the sid of Everyone. Error '%lu'."
 #define FIM_ERROR_WHODATA_OPEN_TOKEN                "(6684): OpenProcessToken() failed. Error '%lu'."

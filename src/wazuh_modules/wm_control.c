@@ -18,7 +18,7 @@
 
 static void *wm_control_main();
 static void wm_control_destroy();
-cJSON *wm_control_dump(void);
+cJSON *wm_control_dump();
 
 const wm_context WM_CONTROL_CONTEXT = {
     "control",
@@ -271,7 +271,7 @@ wmodule *wm_control_read(){
     return module;
 }
 
-cJSON *wm_control_dump(void) {
+cJSON *wm_control_dump() {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
     cJSON_AddStringToObject(wm_wd,"enabled","yes");
