@@ -760,6 +760,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
             for(int i = 0; env_variable[i]; i++) {
                 if(strcmp(env_variable[i], "")) {
+                    // Get absolute path cheking if the path is a drive without the backslash.
+                    if (strlen(env_variable[i]) == 2) {
+                        strcat(env_variable[i], "\\");
+                    }
 
                     if (retvalF = GetFullPathName(env_variable[i], PATH_MAX, real_path, NULL), retvalF == 0) {
                         retvalF = GetLastError();
@@ -767,6 +771,16 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                         os_free(env_variable[i]);
                         continue;
                     }
+
+                    // Remove any trailling path separators
+                    int path_length = strlen(real_path);
+                    if (path_length != 3) { // Drives need :\ attached in order to work properly
+                        tmp_str = real_path + path_length - 1;
+                        if (*tmp_str == PATH_SEP) {
+                            *tmp_str = '\0';
+                        }
+                    }
+
                     str_lowercase(env_variable[i]);
                     dump_syscheck_entry(syscheck, env_variable[i], opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
                 }
@@ -788,8 +802,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 
         // Get absolute path cheking if the path is a drive without the backslash.
-        if (strlen(expandedpath) == 2) {
-            strcat(expandedpath, "\\");
+        if (strlen(tmp_dir) == 2) {
+            strcat(tmp_dir, "\\");
         }
 
         /* Get absolute path and monitor it */
@@ -822,6 +836,15 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
                 for(int i = 0; env_variable[i]; i++) {
                     if(strcmp(env_variable[i], "")) {
+                        // Remove any trailling path separators
+                        int path_length = strlen(env_variable[i]);
+                        if (path_length != 1) {
+                            tmp_str = env_variable[i] + path_length - 1;
+                            if (*tmp_str == PATH_SEP) {
+                                *tmp_str = '\0';
+                            }
+                        }
+
                         dump_syscheck_entry(syscheck, env_variable[i], opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
                     }
                     os_free(env_variable[i]);
