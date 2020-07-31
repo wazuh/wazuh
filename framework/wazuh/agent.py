@@ -716,16 +716,17 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
                                       some_msg='Some agents have not been upgraded',
                                       none_msg='No agent has been upgraded')
 
+    # Exceptions need to be clarified (Ask core).
     map_errors_exceptions = {
         'need_explanation': {
-            1: 1716,
-            2: 1716,
-            3: 1716,
-            5: 1716,
-            7: 1757
+            1: 1716,  # Could not parse message JSON
+            2: 1716,  # Required parameters in JSON message where not found (This errors shouldn't happen with our dict)
+            3: 1716,  # Command not recognized (This errors shouldn't happen with our dict)
+            5: 1716,  # Error message from socket
+            7: 1757  # Upgrade procedure could not start (?)
         },
         'no_need_explanation': {
-            4: 1715,
+            4: 1715,  # Could not create task id for upgrade task (?)
             6: 1756,
             8: {'windows': 1721, 'others': 1719},
             10: 1749,
