@@ -1,11 +1,16 @@
 # DBSync Testing Tool
 ## Index
 1. [Purpose](#purpose)
-2. [Compile Wazuh](#compile-wazuh)
-3. [How to use the tool](#how-to-use-the-tool)
+2. [Architecture Diagram](#architecture-diagram)
+3. [Compile Wazuh](#compile-wazuh)
+4. [How to use the tool](#how-to-use-the-tool)
 
 ## Purpose
 The DBSync Testing Tool was created to test and validate the dbsync module. This tool works as a black box where an user will be able execute it with different arguments and analyze the output data as desired.
+
+## Architecture Diagram
+
+![alt text](../images/dbsyncTestToolArchDiagram.png)
 
 ## Compile Wazuh
 In order to run unit tests on a specific wazuh target, the project needs to be built with the `DEBUG` and `TEST` options as shown below:

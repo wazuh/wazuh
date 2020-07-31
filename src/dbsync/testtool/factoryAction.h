@@ -19,6 +19,10 @@ class FactoryAction
 public:
     static std::unique_ptr<IAction> create(const std::string& actionCode)
     {
+        if (0 == actionCode.compare("dbsync_insert_data"))
+        {
+            return std::make_unique<InsertDataAction>();
+        }        
         if (0 == actionCode.compare("dbsync_update_with_snapshot"))
         {
             return std::make_unique<UpdateWithSnapshotAction>();
@@ -50,7 +54,11 @@ public:
         else if (0 == actionCode.compare("dbsync_delete_rows"))
         {
             return std::make_unique<DeleteRowsAction>();
-        }        
+        }
+        else if (0 == actionCode.compare("dbsync_select_rows"))
+        {
+            return std::make_unique<SelectRowsAction>();
+        }
         else
         {
             throw std::runtime_error { "Invalid action: " + actionCode };
