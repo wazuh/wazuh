@@ -125,6 +125,33 @@ typedef enum wdb_stmt {
     WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
 
+typedef enum global_db_query {
+    SQL_INSERT_AGENT,
+    SQL_UPDATE_AGENT_NAME,
+    SQL_UPDATE_AGENT_VERSION,
+    SQL_UPDATE_AGENT_VERSION_IP,
+    SQL_UPDATE_AGENT_KEEPALIVE,
+    SQL_DELETE_AGENT,
+    SQL_SELECT_AGENT,
+    SQL_SELECT_AGENT_GROUP,
+    SQL_SELECT_AGENTS,
+    SQL_FIND_AGENT,
+    SQL_SELECT_FIM_OFFSET,
+    SQL_SELECT_REG_OFFSET,
+    SQL_UPDATE_FIM_OFFSET,
+    SQL_UPDATE_REG_OFFSET,
+    SQL_SELECT_AGENT_STATUS,
+    SQL_UPDATE_AGENT_STATUS,
+    SQL_UPDATE_AGENT_GROUP,
+    SQL_FIND_GROUP,
+    SQL_INSERT_AGENT_GROUP,
+    SQL_INSERT_AGENT_BELONG,
+    SQL_DELETE_AGENT_BELONG,
+    SQL_DELETE_GROUP_BELONG,
+    SQL_DELETE_GROUP,
+    SQL_SELECT_GROUPS
+} global_db_query;
+
 typedef struct wdb_t {
     sqlite3 * db;
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
@@ -150,9 +177,6 @@ typedef enum {
     WDB_FIM         ///< File integrity monitoring.
 } wdb_component_t;
 
-/* Global SQLite database */
-extern sqlite3 *wdb_global;
-
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
 extern char *schema_upgrade_v1_sql;
@@ -167,11 +191,14 @@ extern wdb_t * db_pool;
 extern int db_pool_size;
 extern OSHash * open_dbs;
 
-/* Open global database. Returns 0 on success or -1 on failure. */
-int wdb_open_global();
-
-// Opens global database and stores it in DB pool. It returns a locked database or NULL
-wdb_t * wdb_open_global2();
+/**
+ * @brief Opens global database and stores it in DB pool.
+ *
+ * It is opened every time a query to global database is done.
+ *
+ * @return wdb_t* Database Structure locked or NULL.
+ */
+wdb_t * wdb_open_global();
 
 /**
  * @brief Open mitre database and store in DB poll.
@@ -181,9 +208,6 @@ wdb_t * wdb_open_global2();
  * @return wdb_t* Database Structure that store mitre database or NULL on failure.
  */
 wdb_t * wdb_open_mitre();
-
-/* Close global database */
-void wdb_close_global();
 
 /* Open database for agent */
 sqlite3* wdb_open_agent(int id_agent, const char *name);
