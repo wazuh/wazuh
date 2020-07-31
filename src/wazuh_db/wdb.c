@@ -22,7 +22,7 @@
 #define MAX_ATTEMPTS 1000
 
 static const char *SQL_VACUUM = "VACUUM;";
-static const char *SQL_INSERT_INFO = "global sql INSERT INTO info (key, value) VALUES (%Q, %Q);";
+static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
 static const char *SQL_STMT[] = {
@@ -126,7 +126,6 @@ wdb_t * wdb_open_global() {
         wdb->refcount++;
         w_mutex_unlock(&pool_mutex);
         return wdb;
-    
     } else {
         // Try to open DB
         snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
@@ -136,23 +135,24 @@ wdb_t * wdb_open_global() {
             sqlite3_close_v2(db);
 
             // Creating database
-            if (wdb_create_global(path) < 0) {
+            if (OS_SUCCESS != wdb_create_global(path)) {
                 merror("Couldn't create SQLite database '%s'", path);
                 w_mutex_unlock(&pool_mutex);
                 return wdb;
+            }
 
             // Retry to open
-            } if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+            if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
                 merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
                 sqlite3_close_v2(db);
                 w_mutex_unlock(&pool_mutex);
-                return wdb;    
-            } 
+                return wdb;
+            }
 
             wdb = wdb_init(db, WDB2_GLOB_NAME);
             wdb_pool_append(wdb);
 
-        } 
+        }
         else {
             wdb = wdb_init(db, WDB2_GLOB_NAME);
             wdb_pool_append(wdb);
@@ -490,14 +490,14 @@ int wdb_create_global(const char *path) {
     char max_agents[16];
     snprintf(max_agents, 15, "%d", MAX_AGENTS);
 
-    if (wdb_create_file(path, schema_global_sql) < 0)
-        return -1;
-    else if (wdb_insert_info("max_agents", max_agents) < 0)
-        return -1;
-    else if (wdb_insert_info("openssl_support", "yes") < 0)
-        return -1;
+    if (OS_SUCCESS != wdb_create_file(path, schema_global_sql))
+        return OS_INVALID;
+    else if (OS_SUCCESS != wdb_insert_info("max_agents", max_agents))
+        return OS_INVALID;
+    else if (OS_SUCCESS != wdb_insert_info("openssl_support", "yes"))
+        return OS_INVALID;
     else
-        return 0;
+        return OS_SUCCESS;
 }
 
 /* Create profile database */
@@ -519,14 +519,14 @@ int wdb_create_file(const char *path, const char *source) {
     if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
         mdebug1("Couldn't create SQLite database '%s': %s", path, sqlite3_errmsg(db));
         sqlite3_close_v2(db);
-        return -1;
+        return OS_INVALID;
     }
 
     for (sql = source; sql && *sql; sql = tail) {
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
             mdebug1("Preparing statement: %s", sqlite3_errmsg(db));
             sqlite3_close_v2(db);
-            return -1;
+            return OS_INVALID;
         }
 
         result = sqlite3_step(stmt);
@@ -540,7 +540,7 @@ int wdb_create_file(const char *path, const char *source) {
             mdebug1("Stepping statement: %s", sqlite3_errmsg(db));
             sqlite3_finalize(stmt);
             sqlite3_close_v2(db);
-            return -1;
+            return OS_INVALID;
 
         }
 
@@ -552,7 +552,7 @@ int wdb_create_file(const char *path, const char *source) {
     switch (getuid()) {
     case -1:
         merror("getuid(): %s (%d)", strerror(errno), errno);
-        return -1;
+        return OS_INVALID;
 
     case 0:
         uid = Privsep_GetUser(ROOT);
@@ -560,12 +560,12 @@ int wdb_create_file(const char *path, const char *source) {
 
         if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
             merror(USER_ERROR, ROOT, GROUPGLOBAL, strerror(errno), errno);
-            return -1;
+            return OS_INVALID;
         }
 
         if (chown(path, uid, gid) < 0) {
             merror(CHOWN_ERROR, path, errno, strerror(errno));
-            return -1;
+            return OS_INVALID;
         }
 
         break;
@@ -577,10 +577,10 @@ int wdb_create_file(const char *path, const char *source) {
 
     if (chmod(path, 0660) < 0) {
         merror(CHMOD_ERROR, path, errno, strerror(errno));
-        return -1;
+        return OS_INVALID;
     }
 
-    return 0;
+    return OS_SUCCESS;
 }
 
 /* Rebuild database. Returns 0 on success or -1 on error. */
@@ -600,28 +600,33 @@ int wdb_vacuum(sqlite3 *db) {
     return result;
 }
 
-/* Insert key-value pair into info table */
+/* Insert key-value pair into global.db info table */
 int wdb_insert_info(const char *key, const char *value) {
-    int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char path[PATH_MAX + 1] = "";
+    sqlite3 *db = NULL;
+    sqlite3_stmt *stmt = NULL;
+    int result = OS_SUCCESS;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, SQL_INSERT_INFO, key, value);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
 
-    switch (result){
-        case OS_SUCCESS:
-            break;
-        case OS_INVALID:
-            mdebug1("GLobal DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            break;
-        default:
-            mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            result = OS_INVALID;
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+        mdebug1("Couldn't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
+        sqlite3_close_v2(db);
+        return OS_INVALID;
     }
+
+    if (wdb_prepare(db, SQL_INSERT_INFO, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
+        return OS_INVALID;
+    }
+
+    sqlite3_bind_text(stmt, 1, key, -1, NULL);
+    sqlite3_bind_text(stmt, 2, value, -1, NULL);
+
+    result = wdb_step(stmt) == SQLITE_DONE ? OS_SUCCESS : OS_INVALID;
+
+    sqlite3_finalize(stmt);
+    sqlite3_close_v2(db);
 
     return result;
 }
