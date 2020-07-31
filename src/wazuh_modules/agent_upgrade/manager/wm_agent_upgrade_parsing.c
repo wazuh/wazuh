@@ -13,12 +13,6 @@
 #include "wm_agent_upgrade_parsing.h"
 #include "wm_agent_upgrade_tasks.h"
 
-const char* upgrade_commands[] = {
-    [WM_UPGRADE_UPGRADE] = "upgrade",
-    [WM_UPGRADE_UPGRADE_CUSTOM] = "upgrade_custom",
-    [WM_UPGRADE_UPGRADE_RESULT] = "upgrade_result"
-};
-
 int wm_agent_upgrade_parse_command(const char* buffer, cJSON** json_api, cJSON** params, cJSON** agents) {
     int retval = OS_INVALID;
     int error = WM_UPGRADE_SUCCESS;

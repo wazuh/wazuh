@@ -21,6 +21,11 @@ const char* upgrade_messages[] = {
     [WM_UPGRADE_FAILED]      = "Upgrade failed"
 };
 
+const int command_code[] = {
+    [WM_UPGRADE_SUCCESSFULL] = WM_UPGRADE_AGENT_UPGRADED,
+    [WM_UPGRADE_FAILED]      = WM_UPGRADE_AGENT_UPGRADE_FAILED
+};
+
 static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state);
 
 void wm_agent_upgrade_check_status() {
@@ -61,7 +66,9 @@ void wm_agent_upgrade_check_status() {
 static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state) {
     int msg_delay = 1000000 / wm_max_eps;
     cJSON* root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "command", WM_UPGRADE_AGENT_UPDATED_COMMAND);
+    // TODO review this
+    int code = command_code[state];
+    cJSON_AddStringToObject(root, "command", upgrade_commands[code]);
     cJSON* params = cJSON_CreateObject();
     cJSON_AddNumberToObject(params, "error", atoi(upgrade_values[state]));
     cJSON_AddStringToObject(params, "message", upgrade_messages[state]);

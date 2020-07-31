@@ -100,6 +100,12 @@ void wm_agent_upgrade_listen_messages(int sock, int timeout_sec) {
                     message = cJSON_PrintUnformatted(command_response); 
                     cJSON_Delete(command_response);
                     break;
+                case WM_UPGRADE_AGENT_UPGRADED:
+                case WM_UPGRADE_AGENT_UPGRADE_FAILED:
+                    command_response = wm_agent_upgrade_process_agent_result_command((wm_upgrade_command) parsing_retval, params, agents);
+                    message = cJSON_PrintUnformatted(command_response); 
+                    cJSON_Delete(command_response);
+                    break;
                 default:
                     message = cJSON_PrintUnformatted(json_response);
                     break;

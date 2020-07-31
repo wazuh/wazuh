@@ -76,4 +76,6 @@ wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, cha
  * */
 wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char* output);
 
+extern const char* upgrade_commands[];
+
 #endif

@@ -29,13 +29,6 @@ typedef enum _wm_upgrade_state {
     WM_UPGRADE_ERROR
 } wm_upgrade_state;
 
-typedef enum _wm_upgrade_command {
-    WM_UPGRADE_UPGRADE = 0,
-    WM_UPGRADE_UPGRADE_CUSTOM,
-    WM_UPGRADE_UPGRADE_RESULT,
-    WM_UPGRADE_INVALID_COMMAND
-} wm_upgrade_command;
-
 /**
  * Definition of the structure that will represent a certain task
  * */
@@ -99,5 +92,15 @@ cJSON *wm_agent_upgrade_process_upgrade_custom_command(const cJSON* params, cons
  * @return json object with the response
  * */
 cJSON* wm_agent_upgrade_process_upgrade_result_command(const cJSON* agents);
+
+/**
+ * @WIP
+ * Process and agent_upgraded command
+ * @param command WM_UPGRADE_AGENT_UPGRADED or WM_UPGRADE_AGENT_UPGRADE_FAILED
+ * @param params Parameters of the message
+ *        error: 0 on success otherwise error
+ *        message: Message asociated with the error code 
+ * */
+cJSON* wm_agent_upgrade_process_agent_result_command(wm_upgrade_command command, const cJSON* params, const cJSON* agents);
 
 #endif

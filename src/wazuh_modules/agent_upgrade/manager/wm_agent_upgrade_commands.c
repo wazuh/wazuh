@@ -81,3 +81,12 @@ cJSON* wm_agent_upgrade_process_upgrade_result_command(const cJSON* agents) {
 
     return response;
 }
+
+cJSON* wm_agent_upgrade_process_agent_result_command(wm_upgrade_command command, const cJSON* params, const cJSON* agents) {
+    cJSON *response = cJSON_CreateArray();
+    // Only one id of agent will reach at a time
+    int agent_id = cJSON_GetArrayItem(agents, 0)->valueint;
+    cJSON *message_object = wm_agent_upgrade_parse_task_module_message(command, agent_id);
+    wm_agent_upgrade_parse_create_tasks_information(response, message_object);
+    return response;
+}

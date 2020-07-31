@@ -56,4 +56,12 @@ void wm_agent_upgrade_destroy_task_map();
  * */
 cJSON* wm_agent_upgrade_create_agent_tasks(const cJSON *agents, void *task, wm_upgrade_command command);
 
+/**
+ * Sends json with task information to the task module and parses the response
+ * to give back to the api
+ * @param json_api cJSON array where the task response will be stored
+ * @param json_task_module cJSON to be sent to the task module
+ * */
+void wm_agent_upgrade_parse_create_tasks_information(cJSON *json_api, const cJSON* json_task_module);
+
 #endif

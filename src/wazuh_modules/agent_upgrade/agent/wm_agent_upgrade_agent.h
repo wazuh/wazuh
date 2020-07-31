@@ -25,6 +25,6 @@ typedef enum _wm_upgrade_agent_state {
 
 #define WM_UPGRADE_MAX_AGENT_STATE WM_UPGRADE_FAILED 
 
-#define WM_UPGRADE_AGENT_UPDATED_COMMAND "agent_upgraded"
+extern const char* upgrade_commands[];
 
 #endif

@@ -27,6 +27,14 @@ typedef struct _wm_agent_upgrade {
     int enabled:1;
 } wm_agent_upgrade;
 
+typedef enum _wm_upgrade_command {
+    WM_UPGRADE_UPGRADE = 0,
+    WM_UPGRADE_UPGRADE_CUSTOM,
+    WM_UPGRADE_UPGRADE_RESULT,
+    WM_UPGRADE_AGENT_UPGRADED,
+    WM_UPGRADE_AGENT_UPGRADE_FAILED,
+    WM_UPGRADE_INVALID_COMMAND
+} wm_upgrade_command;
 
 // Parse XML configuration
 int wm_agent_upgrade_read(xml_node **nodes, wmodule *module);
