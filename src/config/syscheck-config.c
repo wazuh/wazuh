@@ -781,8 +781,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                         }
                     }
 
-                    str_lowercase(env_variable[i]);
-                    dump_syscheck_entry(syscheck, env_variable[i], opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
+                    str_lowercase(real_path);
+                    dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
                 }
                 os_free(env_variable[i]);
             }

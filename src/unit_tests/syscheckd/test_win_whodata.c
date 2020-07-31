@@ -3968,7 +3968,7 @@ void test_whodata_event_render_fail_to_render_event(void **state) {
     will_return(wrap_win_whodata_EvtRender, 0);
 
     will_return(wrap_win_whodata_GetLastError, 500);
-    expect_string(__wrap__mwarn, formatted_msg, "(6929): Error rendering the event. Error 500.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6933): Error rendering the event. Error 500.");
 
     result = whodata_event_render(event);
 
@@ -4002,7 +4002,7 @@ void test_whodata_event_render_wrong_property_count(void **state) {
     will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
     will_return(wrap_win_whodata_EvtRender, 1);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6930): Invalid number of rendered parameters.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6934): Invalid number of rendered parameters.");
 
     result = whodata_event_render(event);
     assert_null(result);
@@ -4077,7 +4077,7 @@ void test_whodata_get_event_id_wrong_event_type(void **state) {
     short event_id;
     int result;
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'event_id'.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'event_id'.");
 
     result = whodata_get_event_id(raw_data, &event_id);
 
@@ -4159,7 +4159,7 @@ void test_whodata_get_handle_id_32bit_handle_wrong_type(void **state) {
     unsigned __int64 handle_id;
     int result;
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'handle_id'.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'handle_id'.");
 
     result = whodata_get_handle_id(raw_data, &handle_id);
 
@@ -4241,7 +4241,7 @@ void test_whodata_get_access_mask_wrong_type(void **state) {
     unsigned long mask;
     int result;
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'mask'.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'mask'.");
 
     result = whodata_get_access_mask(raw_data, &mask);
 
@@ -4303,7 +4303,7 @@ void test_whodata_event_parse_wrong_path_type(void **state) {
     whodata_evt event_data;
     int result;
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'path'.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'path'.");
 
     result = whodata_event_parse(raw_data, &event_data);
 
@@ -4409,10 +4409,10 @@ void test_whodata_event_parse_wrong_types(void **state) {
         will_return(wrap_win_whodata_WideCharToMultiByte, strlen(STR_TEST_PATH));
     }
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'user_name'.");
-    expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'process_name'.");
-    expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'process_id'.");
-    expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'user_id'.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'user_name'.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'process_name'.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'process_id'.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'user_id'.");
 
     result = whodata_event_parse(raw_data, &event_data);
 
@@ -4497,7 +4497,7 @@ void test_whodata_event_parse_32bit_hex_process_id(void **state) {
         will_return(wrap_win_whodata_WideCharToMultiByte, strlen(STR_TEST_PATH));
     }
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'user_name'.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'user_name'.");
 
     expect_memory(__wrap_convert_windows_string, string, L"process_name", wcslen(L"process_name"));
     will_return(__wrap_convert_windows_string, strdup("process_name"));
@@ -4592,7 +4592,7 @@ void test_whodata_callback_fail_to_render_event(void **state) {
         will_return(wrap_win_whodata_EvtRender, 0);
 
         will_return(wrap_win_whodata_GetLastError, 500);
-        expect_string(__wrap__mwarn, formatted_msg, "(6929): Error rendering the event. Error 500.");
+        expect_string(__wrap__mwarn, formatted_msg, "(6933): Error rendering the event. Error 500.");
     }
 
     result = whodata_callback(action, NULL, event);
@@ -4618,7 +4618,7 @@ void test_whodata_callback_fail_to_get_event_id(void **state) {
 
     // Inside whodata_get_event_id
     {
-        expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'event_id'.");
+        expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'event_id'.");
     }
 
     result = whodata_callback(action, NULL, event);
@@ -4644,7 +4644,7 @@ void test_whodata_callback_fail_to_get_handle_id(void **state) {
 
     // Inside whodata_get_handle_id
     {
-        expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'handle_id'.");
+        expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'handle_id'.");
     }
 
     result = whodata_callback(action, NULL, event);
@@ -4670,7 +4670,7 @@ void test_whodata_callback_4656_fail_to_parse_event(void **state) {
 
     // Inside whodata_event_parse
     {
-        expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'path'.");
+        expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'path'.");
     }
 
     result = whodata_callback(action, NULL, event);
@@ -4720,7 +4720,7 @@ void test_whodata_callback_4656_fail_to_get_access_mask(void **state) {
 
     // Inside whodata_get_access_mask
     {
-        expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'mask'.");
+        expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'mask'.");
     }
 
     result = whodata_callback(action, NULL, event);
@@ -5160,7 +5160,7 @@ void test_whodata_callback_4663_fail_to_get_mask(void **state) {
     expect_string(__wrap_OSHash_Get, key, "1193046");
     will_return(__wrap_OSHash_Get, w_evt);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'mask'.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'mask'.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 1);
@@ -5457,7 +5457,7 @@ void test_whodata_callback_4663_wrong_time_type(void **state) {
     expect_string(__wrap_OSHash_Get, key, "1193046");
     will_return(__wrap_OSHash_Get, w_evt);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6928): Invalid parameter type (0) for 'event_time'.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6932): Invalid parameter type (0) for 'event_time'.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 1);
