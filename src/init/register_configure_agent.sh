@@ -245,7 +245,7 @@ main () {
             # Get uniques values
             ADDRESSES=$(echo "${ADDRESSES}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
             add_adress_block "${ADDRESSES}"
-            WAZUH_REGISTRATION_SERVER=${ADDRESSES[0]}
+            WAZUH_REGISTRATION_SERVER="$(echo $ADDRESSES | cut -d ' ' -f 1)"
         else
             # Single address
             edit_value_tag "address" ${WAZUH_MANAGER}
