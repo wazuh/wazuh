@@ -9,6 +9,7 @@ from aiohttp import web
 import wazuh.active_response as active_response
 from api.encoder import dumps, prettify
 from api.models.active_response_model import ActiveResponseModel
+from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
@@ -24,6 +25,7 @@ async def run_command(request, list_agents='*', pretty=False, wait_for_complete=
     :return: message
     """
     # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await ActiveResponseModel.get_kwargs(request, additional_kwargs={'agent_list': list_agents})
 
     dapi = DistributedAPI(f=active_response.run_command,

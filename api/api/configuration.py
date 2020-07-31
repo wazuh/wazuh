@@ -19,6 +19,7 @@ from api.api_exception import APIException
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh.core import common
 
+
 default_security_configuration = {
     "auth_token_exp_timeout": 36000,
     "rbac_mode": "black"
@@ -49,6 +50,11 @@ default_api_configuration = {
     "cache": {
         "enabled": True,
         "time": 0.750
+    },
+    "access": {
+        "max_login_attempts": 5,
+        "block_time": 300,
+        "max_request_per_minute": 300
     },
     "use_only_authd": False,
     "drop_privileges": True,

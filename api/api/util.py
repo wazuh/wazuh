@@ -1,4 +1,3 @@
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -10,9 +9,9 @@ import typing
 import six
 from connexion import ProblemException
 
+from api.api_exception import APIException, APIError
 from wazuh.core.common import ossec_path as WAZUH_PATH
 from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError
-from api.api_exception import APIException, APIError
 
 
 def serialize(item):
@@ -38,7 +37,7 @@ def _deserialize(data, klass):
 
     if klass in six.integer_types or klass in (float, str, bool):
         return _deserialize_primitive(data, klass)
-    elif klass == object:
+    elif klass == object or klass == dict:
         return _deserialize_object(data)
     elif klass == datetime.date:
         return deserialize_date(data)
@@ -237,7 +236,7 @@ def to_relative_path(full_path):
     return os.path.relpath(full_path, WAZUH_PATH)
 
 
-def _create_problem(exc: Exception):
+def _create_problem(exc: Exception, code=None):
     """
     Transforms an exception into a ProblemException according to `exc`
 
@@ -246,6 +245,8 @@ def _create_problem(exc: Exception):
     exc : Exception
         If `exc` is an instance of `WazuhException` it will be casted into a ProblemException, otherwise it will be
         raised
+    code : int
+        HTTP status code for this response
 
     Raises
     ------
@@ -260,25 +261,30 @@ def _create_problem(exc: Exception):
         ext = remove_nones_to_dict({'code': exc.code})
     else:
         ext = None
-    if isinstance(exc, WazuhError):
-        raise ProblemException(status=400, title='Wazuh Error', detail=exc.message, ext=ext)
-    elif isinstance(exc, (WazuhInternalError, WazuhException)):
-        raise ProblemException(status=500, title='Wazuh Internal Error', detail=exc.message, ext=ext)
-    elif isinstance(exc, APIError):
-        raise ProblemException(status=400, title='Wazuh Error', detail=exc.details, ext=ext)
-    elif isinstance(exc, APIException):
-        raise ProblemException(status=500, title='Wazuh Internal Error', detail=exc.details, ext=ext)
+    if isinstance(exc, (WazuhError, APIError)):
+        raise ProblemException(status=400 if not code else code, title='Wazuh Error', detail=exc.message, ext=ext)
+    elif isinstance(exc, (WazuhInternalError, WazuhException, APIException)):
+        raise ProblemException(status=500 if not code else code, title='Wazuh Internal Error', detail=exc.message,
+                               ext=ext)
+
     raise exc
 
 
-def raise_if_exc(obj):
-    """
-    Checks if obj is an Exception and raises it. Otherwise it is returned
+def raise_if_exc(obj, code=None):
+    """Checks if obj is an Exception and raises it. Otherwise it is returned
 
-    :param obj: object to be checked
-    :return: obj only if it is not an Exception instance
+    Parameters
+    ----------
+    obj : dict
+        Object to be checked
+    code : int
+        HTTP status code for this response
+
+    Returns
+    -------
+    An obj only if it is not an Exception instance
     """
     if isinstance(obj, Exception):
-        _create_problem(obj)
+        _create_problem(obj, code)
     else:
         return obj

@@ -49,7 +49,6 @@ def execute(command):
     :param command: Command as list.
     :return: If output.error !=0 returns output.data, otherwise launches a WazuhException with output.error as error code and output.message as description.
     """
-
     try:
         output = check_output(command)
     except CalledProcessError as error:
@@ -772,7 +771,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             return False
 
     # compile regular expression only one time when function is called
-    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-]*))(=|!=|<|>|~)([\w\-./]+)') # get elements in a clause
+    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-]*))(=|!=|<|>|~)([\w\-./:]+)') # get elements in a clause
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
@@ -1063,6 +1062,7 @@ class WazuhDBQuery(object):
     def _parse_legacy_filters(self):
         """Parses legacy filters."""
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
+        self.legacy_filters.get('older_than', None) == '0s' and self.legacy_filters.pop('older_than')
         legacy_filters_as_list = {
             name: value if isinstance(value, list) else [value] for name, value in self.legacy_filters.items()
         }

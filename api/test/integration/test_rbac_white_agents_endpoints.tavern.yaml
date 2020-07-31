@@ -1419,16 +1419,16 @@ stages:
         <<: *permission_denied
 
 ---
-test_name: PUT /groups/{group_id}/restart
+test_name: PUT /agents/group/{group_id}/restart
 
 stages:
 
-    # PUT /groups/default/restart
+    # PUT /agents/group/default/restart
   - name: Restart all agents from group default (Partially allowed)
     delay_before: 20
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/restart"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/default/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1724,7 +1724,7 @@ stages:
         <<: *permission_denied
 
 ---
-test_name: GET /agents (deny cluster:read_config)
+test_name: GET /agents (deny cluster:read)
 
 stages:
 
@@ -1743,4 +1743,24 @@ stages:
         code: 4000
         dapi_errors:
           unknown-node: # No permissions to see node name
+            error: !anystr
+
+---
+test_name: PUT /agents/node/{node_id}/restart
+
+stages:
+
+  - name: Restart all agents belonging to master-node (Deny node_id)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/node/master-node/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        code: 4000
+        dapi_errors:
+          unknown-node:
             error: !anystr

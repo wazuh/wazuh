@@ -117,7 +117,7 @@ char *__generatetmppass()
     OS_MD5_Str(rand3, -1, md3);
     OS_MD5_Str(rand4, -1, md4);
 
-    snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4);
+    os_snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4);
     OS_MD5_Str(str1, -1, md1);
     fstring = strdup(md1);
     free(rand3);
@@ -448,7 +448,7 @@ int main(int argc, char **argv)
         exit(1);
     }
     fclose(fp);
-    
+
     /* Start SSL */
     ctx = os_ssl_keys(1, dir, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
     if (!ctx) {
@@ -581,7 +581,7 @@ int main(int argc, char **argv)
     w_cond_signal(&cond_pending);
     w_mutex_unlock(&mutex_keys);
 
-    
+
     pthread_join(thread_dispatcher, NULL);
     if (!config.worker_node) {
         pthread_join(thread_writer, NULL);
@@ -595,7 +595,7 @@ int main(int argc, char **argv)
 
 /* Thread for dispatching connection pool */
 void* run_dispatcher(__attribute__((unused)) void *arg) {
-    char ip[IPSIZE + 1];    
+    char ip[IPSIZE + 1];
     int ret;
     char* buf = NULL;
     SSL *ssl;
@@ -606,7 +606,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
     /* Initialize some variables */
     memset(ip, '\0', IPSIZE + 1);
-    
+
     if (!config.worker_node) {
         OS_PassEmptyKeyfile();
         OS_ReadKeys(&keys, 0, !config.flags.clear_removed, 1);
@@ -649,7 +649,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         }
 
         os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
-        buf[0] = '\0'; 
+        buf[0] = '\0';
         ret = wrap_SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
         if (ret <= 0) {
             switch (ssl_error(ssl, ret)) {
@@ -664,9 +664,9 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             os_free(client);
             free(buf);
             continue;
-        }      
-        buf[ret] = '\0';  
-             
+        }
+        buf[ret] = '\0';
+
         mdebug2("Request received: <%s>", buf);
         bool enrollment_ok = FALSE;
         char *agentname = NULL;
@@ -674,20 +674,20 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         char* new_id = NULL;
         char* new_key = NULL;
         if(OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, &centralized_group)){
-            if (config.worker_node) {                
+            if (config.worker_node) {
                 minfo("Dispatching request to master node");
                 if( 0 == w_request_agent_add_clustered(response, agentname, ip, centralized_group, &new_id, &new_key, config.flags.force_insert?config.force_time:-1, NULL) ) {
                     enrollment_ok = TRUE;
-                } 
+                }
             }
             else {
-                w_mutex_lock(&mutex_keys);                
+                w_mutex_lock(&mutex_keys);
                 if(OS_SUCCESS == w_auth_validate_data(response, ip, agentname, centralized_group)){
                     if(OS_SUCCESS == w_auth_add_agent(response, ip, agentname, centralized_group, &new_id, &new_key)){
                         enrollment_ok = TRUE;
                     }
                 }
-                w_mutex_unlock(&mutex_keys); 
+                w_mutex_unlock(&mutex_keys);
             }
         }
 
@@ -700,8 +700,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             if (config.worker_node) {
                 if (ret < 0) {
                     merror("SSL write error (%d)", ret);
-                    
-                    ERR_print_errors_fp(stderr);       
+
+                    ERR_print_errors_fp(stderr);
                     if (0 != w_request_agent_remove_clustered(NULL, new_id, TRUE)) {
                         merror("Agent key unable to be shared with %s and unable to delete from master node", agentname);
                     }
@@ -710,7 +710,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     }
                 }
             }
-            else{     
+            else{
                 if (ret < 0) {
                     merror("SSL write error (%d)", ret);
                     merror("Agent key not saved for %s", agentname);
@@ -722,16 +722,16 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     write_pending = 1;
                     w_cond_signal(&cond_pending);
                 }
-            }  
+            }
         }
         else {
             SSL_write(ssl, response, strlen(response));
             snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-            SSL_write(ssl, response, strlen(response));  
+            SSL_write(ssl, response, strlen(response));
         }
-            
+
         SSL_free(ssl);
-        close(client->socket);   
+        close(client->socket);
         os_free(client);
         os_free(buf);
         os_free(agentname);

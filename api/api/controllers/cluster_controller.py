@@ -391,7 +391,7 @@ async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_comple
 
 
 async def get_log_node(request, node_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                       search=None, category=None, type_log=None, q=None):
+                       search=None, tag=None, level=None, q=None):
     """Get a specified node's wazuh logs. 
 
     Returns the last 2000 wazuh log entries in node {node_id}.
@@ -404,8 +404,8 @@ async def get_log_node(request, node_id, pretty=False, wait_for_complete=False, 
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
-    :param category: Filter by category of log.
-    :param type_log: Filters by log level.
+    :param tag: Filter by category/tag of log.
+    :param level: Filters by log level.
     :param q: Query to filter results by.
     """
     f_kwargs = {'node_id': node_id,
@@ -415,8 +415,8 @@ async def get_log_node(request, node_id, pretty=False, wait_for_complete=False, 
                 'sort_ascending': False if sort is None or parse_api_param(sort, 'sort')['order'] == 'desc' else True,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-                'category': category,
-                'type_log': type_log,
+                'tag': tag,
+                'level': level,
                 'q': q}
 
     nodes = await get_system_nodes()
@@ -499,6 +499,7 @@ async def put_files_node(request, body, node_id, path, overwrite=False, pretty=F
     """
 
     # parse body to utf-8
+    Body.validate_content_type(request, expected_content_type='application/octet-stream')
     parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
 
     f_kwargs = {'node_id': node_id,
@@ -582,6 +583,7 @@ async def put_api_config(request, pretty=False, wait_for_complete=False, list_no
     :param wait_for_complete: Disable timeout response
     :param list_nodes: List of node ids
     """
+    Body.validate_content_type(request, expected_content_type='application/json')
     updated_conf = await APIConfigurationModel.get_kwargs(request)
     f_kwargs = {'node_list': list_nodes, 'updated_config': updated_conf}
 

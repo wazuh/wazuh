@@ -55,7 +55,7 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     /* Create the checksum file names */
     snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
-    snprintf(logfilesum, OS_FLSIZE, "%s.sum", logfile_r);
+    os_snprintf(logfilesum, OS_FLSIZE, "%s.sum", logfile_r);
     snprintf(logfilesum_old, OS_FLSIZE, "%s.%s.sum", logfile_old, ext);
 
     MD5_Init(&md5_ctx);

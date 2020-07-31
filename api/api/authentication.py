@@ -9,13 +9,14 @@ import logging
 import os
 from secrets import token_urlsafe
 from shutil import chown
+from importlib import reload
 from time import time
 
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
+import api.configuration as configuration
 from api.api_exception import APIException
-from api.configuration import security_conf
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -109,8 +110,14 @@ def change_secret():
         jwt_secret.write(new_secret)
 
 
+def get_api_conf():
+    reload(configuration)
+    return copy.deepcopy(configuration.api_conf)
+
+
 def get_security_conf():
-    return copy.deepcopy(security_conf)
+    reload(configuration)
+    return copy.deepcopy(configuration.security_conf)
 
 
 def generate_token(user_id=None, rbac_policies=None):
@@ -133,14 +140,14 @@ def generate_token(user_id=None, rbac_policies=None):
                           wait_for_complete=True,
                           logger=logging.getLogger('wazuh')
                           )
-    result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).values()
-    token_exp, rbac_mode = list(result)
+    result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
     timestamp = int(time())
-    rbac_policies['rbac_mode'] = rbac_mode
+    rbac_policies['rbac_mode'] = result['rbac_mode']
     payload = {
         "iss": JWT_ISSUER,
-        "iat": int(timestamp),
-        "exp": int(timestamp + token_exp),
+        "aud": "Wazuh API REST",
+        "nbf": int(timestamp),
+        "exp": int(timestamp + result['auth_token_exp_timeout']),
         "sub": str(user_id),
         "rbac_policies": rbac_policies
     }
@@ -148,21 +155,21 @@ def generate_token(user_id=None, rbac_policies=None):
     return jwt.encode(payload, generate_secret(), algorithm=JWT_ALGORITHM)
 
 
-def check_token(username, token_iat_time):
+def check_token(username, token_nbf_time):
     """Check the validity of a token with the current time and the generation time of the token.
 
     Parameters
     ----------
     username : str
         Unique username
-    token_iat_time : int
+    token_nbf_time : int
         Issued at time of the current token
     Returns
     -------
     Dict with the result
     """
     with TokenManager() as tm:
-        result = tm.is_token_valid(username=username, token_iat_time=int(token_iat_time))
+        result = tm.is_token_valid(username=username, token_nbf_time=int(token_nbf_time))
 
     return {'valid': result}
 
@@ -180,9 +187,9 @@ def decode_token(token):
     Dict payload ot the token
     """
     try:
-        payload = jwt.decode(token, generate_secret(), algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, generate_secret(), algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
         dapi = DistributedAPI(f=check_token,
-                              f_kwargs={'username': payload['sub'], 'token_iat_time': payload['iat']},
+                              f_kwargs={'username': payload['sub'], 'token_nbf_time': payload['nbf']},
                               request_type='local_master',
                               is_async=False,
                               wait_for_complete=True,
@@ -193,6 +200,7 @@ def decode_token(token):
         if not data.to_dict()['result']['valid']:
             raise Unauthorized
 
+        # Detect local changes
         dapi = DistributedAPI(f=get_security_conf,
                               request_type='local_master',
                               is_async=False,
@@ -203,7 +211,7 @@ def decode_token(token):
         current_rbac_mode = result['rbac_mode']
         current_expiration_time = result['auth_token_exp_timeout']
         if payload['rbac_policies']['rbac_mode'] != current_rbac_mode or \
-                (payload['exp'] - payload['iat']) != current_expiration_time:
+                (payload['exp'] - payload['nbf']) != current_expiration_time:
             raise Unauthorized
 
         return payload

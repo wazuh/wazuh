@@ -341,7 +341,7 @@ stages:
         data:
           affected_items:
             - <<: *rules_response
-              id: 5
+              id: !anyint
               details:
                 category:
                   'squid'
@@ -741,12 +741,12 @@ stages:
       json:
         data:
           affected_items:
-            - 1.1.1
-            - 1.3.4
+            - !anystr
+            - !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
+        message: !anystr
 
   - name: Try to show the rules by requirement pci_dss, limit and offset
     request:
@@ -760,11 +760,11 @@ stages:
       json:
         data:
           affected_items:
-            - 1.1.1
+            - !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
+        message: !anystr
 
   - name: Try to show the rules by requirement pci_dss, limit = 0
     request:
@@ -791,7 +791,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
+        message: !anystr
       save:
         json:
           affected_items: data.affected_items
@@ -853,12 +853,12 @@ stages:
       json:
         data:
           affected_items:
-            - II_5.1.f
-            - IV_30.1.g
+            - !anystr
+            - !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
+        message: !anystr
 
   - name: Try to show the rules by requirement gdpr, limit and offset
     request:
@@ -872,11 +872,11 @@ stages:
       json:
         data:
           affected_items:
-            - II_5.1.f
+            - !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
+        message: !anystr
 
   - name: Try to show the rules by requirement gdpr, limit = 0
     request:
@@ -903,7 +903,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
+        message: !anystr
       save:
         json:
           affected_items: data.affected_items
@@ -977,12 +977,12 @@ stages:
       json:
         data:
           affected_items:
-            - '1.3'
-            - '10.1'
+            - !anystr
+            - !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
+        message: !anystr
 
   - name: Try to show the rules by requirement gpg13, limit = 0
     request:
@@ -1007,7 +1007,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
-        message: Selected rules were shown
+        message: !anystr
       save:
         json:
           affected_items: data.affected_items
@@ -1026,7 +1026,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
+        message: !anystr
       save:
         json:
           affected_items: data.affected_items
@@ -1677,7 +1677,7 @@ stages:
       verify: False
       <<: *id_rules_request
       params:
-        rule_ids: 200,9
+        rule_ids: 200,99999999
     response:
       status_code: 200
       json:
@@ -1690,10 +1690,10 @@ stages:
                 message: !anystr
                 remediation: !anystr
               id:
-                - 9
+                - 99999999
           total_affected_items: !anyint
           total_failed_items: 1
-        message: Some rules could not be shown
+        message: !anystr
 
   - name: Try to show a rule with a existent id but with a wrong file in file filter
     request:
@@ -1710,7 +1710,7 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        message: No rule was shown
+        message: !anystr
 
   - name: Try to show a rule with a existent id, limit = 0
     request:
@@ -1792,4 +1792,4 @@ stages:
                 - 9999999999
           total_affected_items: 0
           total_failed_items: 1
-        message: No rule was shown
+        message: !anystr

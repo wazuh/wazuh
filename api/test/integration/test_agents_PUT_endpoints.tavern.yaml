@@ -296,15 +296,15 @@ stages:
         code: 1114
 
 ---
-test_name: PUT /groups/{group_id}/restart
+test_name: PUT /agents/group/{group_id}/restart
 
 stages:
 
-    # PUT /groups/group1/restart (This group has no agents assigned)
+    # PUT /agents/group/group1/restart (This group has no agents assigned)
   - name: Restart all agents from group1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/restart"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/group1/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -314,11 +314,11 @@ stages:
       json:
         code: 1755
 
-    # PUT /groups/group2/restart (Agents 009 and 010 are disconnected)
+    # PUT /agents/group/group2/restart (Agents 009 and 010 are disconnected)
   - name: Restart all agents from group2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group2/restart"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/group2/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -351,7 +351,7 @@ stages:
   - name: Restart all agents from a group which does not exist
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/not_exists/restart"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/not_exists/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -633,6 +633,62 @@ stages:
             - "002"
           total_affected_items: 1
         message: !anystr
+
+
+---
+test_name: PUT /agents/node/{node_id}/restart
+
+stages:
+
+  - name: Get agents belonging to a node
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        select: id,status
+        node_name: worker1
+    response:
+      status_code: 200
+      save:
+        $ext:
+          function: tavern_utils:test_save_response_data
+
+
+  - name: Restart all agents belonging to a node (worker1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/node/worker1/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_validate_restart_by_node
+          extra_kwargs:
+            data: "{response_data}"
+    delay_after: 45
+
+  - name: Restart all agents belonging to a node (it does not exist)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/node/notexists/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - "notexists"
 
 ---
 test_name: PUT /agents/{agent_id}/upgrade

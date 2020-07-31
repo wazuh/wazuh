@@ -7,8 +7,10 @@ from functools import lru_cache
 
 import yaml
 
+import api.configuration as configuration
+import api.middlewares as middlewares
 from api import __path__ as api_path
-from api import configuration
+from api.authentication import change_secret
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
 from wazuh.rbac.orm import RolesManager, TokenManager
@@ -30,11 +32,7 @@ def update_security_conf(new_config):
     """
     configuration.security_conf.update(new_config)
 
-    need_revoke = False
     if new_config:
-        for key in new_config:
-            if key in configuration.security_conf.keys():
-                need_revoke = True
         try:
             with open(SECURITY_CONFIG_PATH, 'w+') as f:
                 yaml.dump(configuration.security_conf, f)
@@ -42,8 +40,11 @@ def update_security_conf(new_config):
             raise WazuhInternalError(1005)
     else:
         raise WazuhError(4021)
-
-    return need_revoke
+    if 'max_login_attempts' in new_config.keys():
+        middlewares.ip_stats = dict()
+        middlewares.ip_block = set()
+    if 'max_request_per_minute' in new_config.keys():
+        middlewares.request_counter = 0
 
 
 def check_relationships(roles: list = None):
@@ -83,3 +84,12 @@ def invalid_users_tokens(roles: list = None, users: list = None):
             related_users.add(user)
     with TokenManager() as tm:
         tm.add_user_rules(users=related_users)
+
+
+def revoke_tokens():
+    """Revoke all tokens in current node."""
+    change_secret()
+    with TokenManager() as tm:
+        tm.delete_all_rules()
+
+    return {'result': 'True'}
