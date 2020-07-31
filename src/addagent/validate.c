@@ -526,8 +526,8 @@ double OS_AgentAntiquity_ID(const char *id) {
 /**
  * @brief Returns the number of seconds since last agent connection
  * 
- * @param name of the agent
- * @param ip of the agent (unused). Kept only for compatibility
+ * @param name The name of the agent
+ * @param ip The IP address of the agent (unused). Kept only for compatibility
  * @retval On success, it returns the difference between the current time and the last keepalive
  * @retval -1 On error: invalid DB query syntax or result
  */
