@@ -69,8 +69,9 @@ static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_sta
 
     char *msg_string = cJSON_PrintUnformatted(root);
     if (wm_sendmsg(msg_delay, queue_fd, msg_string, WM_AGENT_UPGRADE_MODULE_NAME, UPGRADE_MQ) < 0) {
-        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+        mterror(WM_AGENT_UPGRADE_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
+    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACK_MESSAGE, msg_string);
     os_free(msg_string);
     cJSON_Delete(root);
 }

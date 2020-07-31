@@ -12,6 +12,7 @@
 #include "wm_agent_upgrade_manager.h"
 #include "wm_agent_upgrade_parsing.h"
 #include "wm_agent_upgrade_tasks.h"
+#include "os_net/os_net.h"
 
 const char* upgrade_error_codes[] = {
     [WM_UPGRADE_SUCCESS] = "Success",
@@ -62,7 +63,7 @@ void wm_agent_upgrade_listen_messages(int sock, int timeout_sec) {
         int parsing_retval;
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         int length;
-        switch (length = OS_RecvTCPBuffer(peer, buffer, OS_MAXSTR), length) {
+        switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length) {
         case OS_SOCKTERR:
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SOCKTERR_ERROR);
             break;

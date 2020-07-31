@@ -2344,10 +2344,9 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
 void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
     char * msg;
     Eventinfo * lf;
-    dbsync_context_t ctx = { .db_sock = -1, .ar_sock = -1 };
 
-    for (;;) {
-        msg = queue_pop_ex(dispatch_dbsync_input);
+    while (true) {
+        msg = queue_pop_ex(upgrade_module_input);
         assert(msg != NULL);
 
         os_calloc(1, sizeof(Eventinfo), lf);
@@ -2360,8 +2359,30 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
             free(msg);
             continue;
         }
+        free(msg);
 
-        // TODO: HERE lf
+        // Inserts agent id into incomming message and sends it to upgrade module
+        cJSON *message_obj = cJSON_Parse(lf->log);
+        if (message_obj) {
+            int sock = OS_ConnectUnixDomain(WM_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
+            if (sock == OS_SOCKTERR) {
+                merror("Could not connect to upgrade module socket at '%s'. Error: %s", WM_UPGRADE_SOCK, strerror(errno));
+            } else {
+                int agent = atoi(lf->agent_id);
+                cJSON* agents = cJSON_CreateIntArray(&agent, 1);
+                cJSON_AddItemToObject(message_obj, "agents", agents);
+                
+                char *message = cJSON_PrintUnformatted(message_obj);
+                OS_SendSecureTCP(sock, strlen(message), message);
+                os_free(message);
+                
+                close(sock);
+            }
+            cJSON_Delete(message_obj);
+        } else {
+            merror("Could not parse upgrade message: %s", lf->log);
+        }
+        Free_Eventinfo(lf);
     }
 
     return NULL;
@@ -2894,5 +2915,5 @@ void w_init_queues(){
     dispatch_dbsync_input = queue_init(getDefine_Int("analysisd", "dbsync_queue_size", 0, 2000000));
 
     /* Initialize upgrade module message queue */
-    upgrade_module_input = queue_init(getDefine_Int("analysisd", "upgrade_queue_size", 0, 2000000))
+    upgrade_module_input = queue_init(getDefine_Int("analysisd", "upgrade_queue_size", 0, 2000000));
 }

@@ -52,7 +52,7 @@ void * wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 
         int sock = OS_BindUnixDomain(WM_UPGRADE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
         if (sock < 0) {
-            merror(WM_UPGRADE_BIND_SOCK_ERROR, WM_UPGRADE_SOCK_PATH, strerror(errno));
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_BIND_SOCK_ERROR, WM_UPGRADE_SOCK_PATH, strerror(errno));
             return NULL;
         }
 
