@@ -1007,7 +1007,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_agent) == 0) {
-                        log_emsg(log_msg, "Detected a deprecated field option for rule, %s is not longer available.",
+                        log_wmsg(log_msg, "Detected a deprecated field option for rule, %s is not longer available.",
                             xml_same_agent);
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_srcuser) == 0) {
@@ -1155,7 +1155,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_notsame_agent) == 0) {
-                        log_emsg(log_msg, "Detected a deprecated field option for rule, %s is not longer available.",
+                        log_wmsg(log_msg, "Detected a deprecated field option for rule, %s is not longer available.",
                             xml_notsame_agent);
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_location) == 0) {
@@ -1354,7 +1354,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         mitre_opt = OS_GetElementsbyNode(&xml, rule_opt[k]);
 
                         if (mitre_opt == NULL) {
-                            log_emsg(log_msg, "Empty Mitre information for rule '%d'", config_ruleinfo->sigid);
+                            log_wmsg(log_msg, "Empty Mitre information for rule '%d'", config_ruleinfo->sigid);
                             k++;
                             continue;
                         }
@@ -1364,7 +1364,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                 break;
                             } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_id) == 0) {
                                 if (strlen(mitre_opt[ind]->content) == 0) {
-                                    log_emsg(log_msg, "No Mitre Technique ID found for rule '%d'",
+                                    log_wmsg(log_msg, "No Mitre Technique ID found for rule '%d'",
                                         config_ruleinfo->sigid);
                                 } else {
                                     int inarray = 0;
