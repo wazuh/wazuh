@@ -135,7 +135,7 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
         if(overwrite != -1) {
             pl = overwrite;
         }
-        
+
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);
             os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[0]);
@@ -271,7 +271,7 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             } else {
                 os_free(syscheck->registry[pl].tag);
             }
-        } 
+        }
 
         if (tag) {
             os_strdup(tag, syscheck->registry[pl].tag);
@@ -359,7 +359,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
         tmp_entry = entry[j];
 
 
-        /* When the maximum number of registries monitored in the same tag is reached, 
+        /* When the maximum number of registries monitored in the same tag is reached,
            the excess is discarded and warned */
         if (j >= MAX_DIR_SIZE){
             mwarn(FIM_WARN_MAX_REG_REACH, MAX_DIR_SIZE, tmp_entry);
@@ -1574,7 +1574,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "hash_sha256",
         "attributes",
         "report_changes",
-        "follow_symbolic_links",
+        "follow_symbolic_link",
         "realtime",
         "whodata",
         "scheduled",
@@ -1582,19 +1582,19 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
 	};
 
     buf[0] = '\0';
-    for ( i = 0; check_bits[ i ]; i++ ) {
-	if ( opts & check_bits[ i ] ) {
-	    if ( left < buflen )  {
-		strncat( buf, " | ", left );
-		left -= 3;
-		}
-	    strncat( buf, check_strings[ i ], left );
-	    left = buflen - strlen( buf );
+    for (i = 0; check_bits[i]; i++) {
+	    if (opts & check_bits[i]) {
+            if (left < buflen) {
+                strncat(buf, " | ", left);
+                left -= 3;
+            }
+            strncat(buf, check_strings[i], left);
+            left = buflen - strlen(buf);
 	    }
 	}
 
     return buf;
-    }
+}
 
 int Test_Syscheck(const char * path){
     int fail = 0;
