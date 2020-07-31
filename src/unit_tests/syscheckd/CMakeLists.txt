@@ -215,12 +215,13 @@ if(${TARGET} STREQUAL "winagent")
 
   list(APPEND syscheckd_event_tests_names "test_win_whodata")
   list(APPEND syscheckd_event_tests_flags "-Wl,--wrap=_mdebug2,--wrap=_merror,--wrap=_mdebug1,--wrap=_mwarn,--wrap=wstr_replace \
-                                           -Wl,--wrap=SendMSG,--wrap,OSHash_Add_ex,--wrap=free_whodata_event,--wrap=IsFile \
+                                           -Wl,--wrap=SendMSG,--wrap,OSHash_Add_ex,--wrap=IsFile \
                                            -Wl,--wrap=remove,--wrap=wm_exec,--wrap=fopen,--wrap=fclose,--wrap=atexit \
                                            -Wl,--wrap=OSHash_Delete_ex,--wrap=_mterror,--wrap=check_path_type,--wrap=_minfo \
                                            -Wl,--wrap=OSHash_Create,--wrap=OSHash_SetFreeDataPointer,--wrap=fim_whodata_event \
-                                           -Wl,--wrap=fim_configuration_directory,--wrap=fim_checker,--wrap=OSHash_Get \
-                                           -Wl,--wrap=convert_windows_string,--wrap=OSHash_Get_ex,--wrap=FOREVER")
+                                           -Wl,--wrap=fim_checker,--wrap=OSHash_Get \
+                                           -Wl,--wrap=convert_windows_string,--wrap=OSHash_Get_ex,--wrap=FOREVER \
+                                           -Wl,--wrap=pthread_rwlock_wrlock,--wrap=pthread_rwlock_unlock")
 endif()
 
 # Compiling tests
