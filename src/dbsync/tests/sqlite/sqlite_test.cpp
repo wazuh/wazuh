@@ -215,20 +215,25 @@ TEST_F(SQLiteTest, ColumnValue)
     auto spColumn1{ selectStmt.column(0) };
     EXPECT_TRUE(spColumn1->hasValue());
     EXPECT_EQ(1, spColumn1->value(int32_t{}));
+    EXPECT_EQ(SQLITE_INTEGER, spColumn1->type());
 
     auto spColumn2{ selectStmt.column(1) };
     EXPECT_TRUE(spColumn2->hasValue());
     EXPECT_EQ("some text", spColumn2->value(std::string{}));
+    EXPECT_EQ(SQLITE3_TEXT, spColumn2->type());
 
     auto spColumn3{ selectStmt.column(2) };
     EXPECT_TRUE(spColumn3->hasValue());
     EXPECT_EQ(2l, spColumn3->value(int64_t{}));
+    EXPECT_EQ(SQLITE_INTEGER, spColumn3->type());
 
     auto spColumn4{ selectStmt.column(3) };
     EXPECT_TRUE(spColumn4->hasValue());
     EXPECT_EQ(3lu, spColumn4->value(uint64_t{}));
+    EXPECT_EQ(SQLITE_INTEGER, spColumn4->type());
 
     auto spColumn5{ selectStmt.column(4) };
     EXPECT_TRUE(spColumn5->hasValue());
     EXPECT_DOUBLE_EQ(4.0, spColumn5->value(double{}));
+    EXPECT_EQ(SQLITE_FLOAT, spColumn5->type());
 }
