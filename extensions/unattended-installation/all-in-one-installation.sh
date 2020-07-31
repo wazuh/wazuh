@@ -304,7 +304,7 @@ checkInstallation() {
         sleep 10
     done    
     echo $'\nInstallation finished'
-    exit 1;
+    exit 0;
 }
 
 main() {
