@@ -58,12 +58,16 @@ startService() {
 getHelp() {
    echo ""
    echo "Usage: $0 arguments"
-   echo -e "\t-e   | --install-elasticsearch Install Elasticsearch"
-   echo -e "\t-k   | --install-kibana Install Kibana"
-   echo -e "\t-c   | --create-certificates Generates the certificates for all the indicated nodes"
-   echo -e "\t-d   | --debug Shows the complete installation output"
-   echo -e "\t-i   | --ignore-health-check Ignores the health-check"
-   echo -e "\t-h   | --help Shows help"
+   echo -e "\t-e     | --install-elasticsearch Installs Open Distro for Elasticsearch (cannot be used together with option -k)"
+   echo -e "\t-k     | --install-kibana Installs Open Distro for Kibana (cannot be used together with option -e)"
+   echo -e "\t-kip   | --kibana-ip indicates the IP of Kibana. It can be set to 0.0.0.0 which will bind all the availables IPs"
+   echo -e "\t-eip   | --elasticsearch-ip Indicates the IP of Elasticsearch. It can be set to 0.0.0.0 which will bind all the availables IPs"
+   echo -e "\t-wip   | --wazuh-ip Indicates the IP of Wazuh."
+   echo -e "\t-c     | --create-certificates Generates the certificates for all the indicated nodes"
+   echo -e "\t-k     | --install-kibana Install Kibana"
+   echo -e "\t-d     | --debug Shows the complete installation output"
+   echo -e "\t-i     | --ignore-health-check Ignores the health-check"
+   echo -e "\t-h     | --help Shows help"
    exit 1 # Exit script after printing help
 }
 
