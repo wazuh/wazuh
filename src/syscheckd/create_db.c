@@ -218,8 +218,8 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
     if (w_evt && w_evt->scan_directory == 1) {
         if (w_update_sacl(path)) {
             mdebug1(FIM_SCAL_NOREFRESH, path);
-            }
         }
+    }
 #endif
 
     if (HasFilesystem(path, syscheck.skip_fs)) {
@@ -246,6 +246,10 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         break;
 
     case FIM_DIRECTORY:
+        if (depth == syscheck.recursion_level[node]) {
+            mdebug2(FIM_DIR_RECURSION_LEVEL, path, depth);
+            return;
+        }
 #ifndef WIN32
         if (item->configuration & REALTIME_ACTIVE) {
             realtime_adddir(path, 0, (item->configuration & CHECK_FOLLOW) ? 1 : 0);
