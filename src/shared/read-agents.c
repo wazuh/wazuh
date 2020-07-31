@@ -842,7 +842,7 @@ void delete_diff(const char *name)
     char tmp_folder[513];
     tmp_folder[512] = '\0';
     snprintf(tmp_folder, 512, "%s/%s",
-             DIFF_DIR_PATH,
+             DIFF_DIR,
              name);
     
     rmdir_ex(tmp_folder);
