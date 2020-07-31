@@ -51,6 +51,14 @@ public:
         {
             return std::make_unique<SyncTxnRowsAction>();
         }
+        else if (0 == actionCode.compare("dbsync_delete_rows"))
+        {
+            return std::make_unique<DeleteRowsAction>();
+        }
+        else if (0 == actionCode.compare("dbsync_select_rows"))
+        {
+            return std::make_unique<SelectRowsAction>();
+        }
         else
         {
             throw std::runtime_error { "Invalid action: " + actionCode };

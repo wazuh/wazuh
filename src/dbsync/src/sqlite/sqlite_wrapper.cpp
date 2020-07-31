@@ -227,6 +227,10 @@ bool Column::hasValue() const
 {
     return SQLITE_NULL != sqlite3_column_type(m_stmt.get(), m_index);
 }
+int32_t Column::type() const
+{
+    return sqlite3_column_type(m_stmt.get(), m_index);
+}
 int32_t Column::value(const int32_t&) const
 {
     return sqlite3_column_int(m_stmt.get(), m_index);

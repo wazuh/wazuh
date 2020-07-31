@@ -73,6 +73,15 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE  handle,
                                       true);
 }
 
+void DBSyncImplementation::deleteRowsData(const DBSYNC_HANDLE  handle,
+                                          const char*          jsonRaw)
+{
+    const auto ctx{ dbEngineContext(handle) };
+    const auto json { nlohmann::json::parse(jsonRaw) };
+    ctx->m_dbEngine->deleteTableRowsData(json.at(0).at("table"),
+                                         json.at(0).at("data"));
+}
+
 void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE  handle,
                                               const char*          jsonSnapshot,
                                               const ResultCallback callback)
@@ -133,4 +142,15 @@ void DBSyncImplementation::getDeleted(const DBSYNC_HANDLE   handle,
     const auto& tnxCtx { ctx->transactionContext(txnHandle) };
 
     ctx->m_dbEngine->returnRowsMarkedForDelete(tnxCtx->m_tables, callback);
+}
+
+void DBSyncImplementation::selectData(const DBSYNC_HANDLE   handle, 
+                                      const char*           jsonRaw,
+                                      const ResultCallback& callback)
+{
+    const auto ctx{ dbEngineContext(handle) };
+    const auto json { nlohmann::json::parse(jsonRaw) };
+    ctx->m_dbEngine->selectData(json.at(0).at("table"),
+                                json.at(0).at("query"),
+                                callback);
 }

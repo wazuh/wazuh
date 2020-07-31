@@ -51,6 +51,7 @@ namespace SQLite
     {
     public:
         virtual ~IColumn() = default;
+        virtual int32_t type() const = 0;
         virtual bool hasValue() const = 0;
         virtual int32_t value(const int32_t&) const = 0;
         virtual uint64_t value(const uint64_t&) const = 0;
