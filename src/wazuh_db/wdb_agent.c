@@ -421,8 +421,8 @@ int* wdb_get_all_agents() {
     cJSON *elem = NULL;
     cJSON *name = NULL;
     cJSON *root = NULL;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[OS_MAXSTR] = "";
+    char wdboutput[OS_MAXSTR] = "";
     int wdb_sock = -1;
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery,"%s", global_db_queries[SQL_SELECT_AGENTS]);

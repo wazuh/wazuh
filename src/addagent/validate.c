@@ -33,7 +33,7 @@
 #endif
 
 #ifndef CLIENT
-static const char *SQL_SELECT_KEEPALIVE = "global sql SELECT last_keepalive FROM agent WHERE name = '%s';";
+static const char *SQL_SELECT_KEEPALIVE = "global sql SELECT last_keepalive FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');";
 #endif
 
 /* Global variables */
@@ -533,64 +533,31 @@ double OS_AgentAntiquity_ID(const char *id) {
  */
 double OS_AgentAntiquity(const char *name, const char *ip)
 {
-    int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[OS_MAXSTR] = "";
+    char wdboutput[OS_MAXSTR] = "";
     int wdb_sock = -1;
     time_t output = 0;
-    char *json_string = NULL;
     cJSON *root = NULL;
-    cJSON *elem = NULL;
-    cJSON *json_name = NULL;
+    cJSON *keepalive = NULL;
 
-    // Unused
-    (void) ip;
-
-    if(!name){
-        mdebug1("Empty agent name trying to read last keepalive");
+    if(!name || !ip){
+        mdebug1("Empty agent name or ip trying to read last keepalive. Agent: (%s) IP: (%s)", name, ip);
         return OS_INVALID;
     }
 
-    snprintf(wdbquery, sizeof(wdbquery), SQL_SELECT_KEEPALIVE, name);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    snprintf(wdbquery, sizeof(wdbquery), SQL_SELECT_KEEPALIVE, name, ip, ip);
+    root = wdbc_query_parse_json(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
-    switch (result){
-        case OS_SUCCESS:
-            break;
-        case OS_INVALID:
-            mdebug1("GLobal DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-        default:
-            mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-    }
-
-    if(json_string = wstr_chr(wdboutput, ' '), json_string ){
-        *json_string='\0';
-        json_string++;
-    } else{
-        mdebug1("SQLite result has no space. Query: %s",wdbquery);
+    if (!root) {
+        merror("Response from the Global database cannot be parsed.");
         return OS_INVALID;
     }
 
-    // The query returned a valid keepalive
-    if(strcmp(wdboutput,"ok") == 0 && strcmp(json_string,"[]") != 0 && strcmp(json_string,"[{}]") != 0){
-        root = cJSON_Parse(json_string);    
-        elem = cJSON_GetArrayItem(root, 0);
-        json_name = cJSON_GetObjectItem(elem, "last_keepalive");
-        output = json_name->valueint;
+    keepalive = cJSON_GetObjectItem(cJSON_GetArrayItem(root, 0),"last_keepalive");
+    output = !keepalive ? 0 : keepalive->valueint;
 
-    // The query returned NULL or empty JSON
-    } else if(strcmp(json_string,"[]") == 0 || strcmp(json_string,"[{}]") == 0){
-        output = 0;
-
-    // The query failed
-    } else{
-        mdebug1("SQLite Query failed: %s", wdbquery);
-        return OS_INVALID;
-    }
+    cJSON_Delete(root);
+    os_free(keepalive);
 
     return difftime(time(NULL), output);
 }
