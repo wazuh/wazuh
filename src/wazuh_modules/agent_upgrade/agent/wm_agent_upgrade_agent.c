@@ -21,6 +21,8 @@ const char* upgrade_messages[] = {
     [WM_UPGRADE_FAILED]      = "Upgrade failed"
 };
 
+static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state);
+
 void wm_agent_upgrade_check_status() {
     char buffer[20];
     FILE * result_file;
@@ -30,7 +32,6 @@ void wm_agent_upgrade_check_status() {
      *  the upgrade result
     */
     int queue_fd = StartMQ(DEFAULTQPATH, WRITE, MAX_OPENQ_ATTEMPS);
-    int msg_delay = 1000000 / wm_max_eps;
 
     if (queue_fd < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_QUEUE_FD);
@@ -46,19 +47,30 @@ void wm_agent_upgrade_check_status() {
 
         wm_upgrade_agent_state state;
         for(state = 0; state <= WM_UPGRADE_MAX_AGENT_STATE; state++) {
-            if (strcmp(buffer, upgrade_values[state]) == 0) {
+            if (strcmp(buffer, upgrade_values[state]) >= 0) {
                 // Matched value, send message
-                if (wm_sendmsg(msg_delay, queue_fd, "", WM_AGENT_UPGRADE_MODULE_NAME, UPGRADE_MQ) < 0) {
-                    merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-                }
+                wm_upgrade_agent_send_ack_message(queue_fd, state);
             }
         }
         
         close(queue_fd);
     }
+}
 
-    
 
-    
+static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state) {
+    int msg_delay = 1000000 / wm_max_eps;
+    cJSON* root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "command", WM_UPGRADE_AGENT_UPDATED_COMMAND);
+    cJSON* params = cJSON_CreateObject();
+    cJSON_AddNumberToObject(params, "error", atoi(upgrade_values[state]));
+    cJSON_AddStringToObject(params, "message", upgrade_messages[state]);
+    cJSON_AddItemToObject(root,"params",params);
 
+    char *msg_string = cJSON_PrintUnformatted(root);
+    if (wm_sendmsg(msg_delay, queue_fd, msg_string, WM_AGENT_UPGRADE_MODULE_NAME, UPGRADE_MQ) < 0) {
+        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+    }
+    os_free(msg_string);
+    cJSON_Delete(root);
 }

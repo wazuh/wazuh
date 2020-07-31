@@ -12,13 +12,15 @@
 #ifndef WM_AGENT_UPGRADE_H
 #define WM_AGENT_UPGRADE_H
 
+#include "defs.h"
+
 #define WM_AGENT_UPGRADE_LOGTAG ARGV0 ":" AGENT_UPGRADE_WM_NAME
 #define WM_AGENT_UPGRADE_MODULE_NAME "upgrade_module"
 
-#ifndef WIN32
-    #define WM_AGENT_UPGRADE_RESULT_FILE UPGRADE_DIR "/upgrade_result"
-#else 
+#ifdef WIN32
     #define WM_AGENT_UPGRADE_RESULT_FILE UPGRADE_DIR "\\upgrade_result"
+#else 
+    #define WM_AGENT_UPGRADE_RESULT_FILE DEFAULTDIR UPGRADE_DIR "/upgrade_result"
 #endif
 
 typedef struct _wm_agent_upgrade {
