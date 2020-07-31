@@ -153,7 +153,6 @@ stages:
                 - "005"
           total_affected_items: 2
           total_failed_items: 1
-    delay_after: !float "{global_db_delay}"
 
     # PUT /agents/group?group_id=group2
   - name: Assign all agents to group2
@@ -176,7 +175,6 @@ stages:
             - "007"
             - "009"
           total_affected_items: 5
-    delay_after: !float "{global_db_delay}"
 
     # PUT /agents/group?group_id=group2&force_single_group=true
   - name: Assign all agents to group2 with force_single_group
@@ -205,7 +203,6 @@ stages:
             - "009"
             - "010"
           total_affected_items: 10
-    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: PUT /groups/{group_id}/configuration
@@ -225,7 +222,6 @@ stages:
         "{file_xml:s}"
     response:
       status_code: 200
-    delay_after: !float "{global_db_delay}"
 
     # PUT /groups/wrong_group/configuration
   - name: Try to update configuration of a non existing group
@@ -336,7 +332,7 @@ stages:
                 - "009"
                 - "010"
           total_failed_items: 2
-    delay_after: !float "{restart_delay}"
+    delay_after: !float "{global_db_delay}"
 
   # PUT /groups/not_exists/restart (Group does not exist)
   - name: Restart all agents from a group which does not exist
@@ -435,7 +431,7 @@ stages:
                 - "999"
           total_affected_items: 2
           total_failed_items: 1
-    delay_after: !float "{restart_delay}"
+    delay_after: !float "{global_db_delay}"
 
     # PUT /agents/restart
   - name: Try to restart all agents
@@ -461,7 +457,7 @@ stages:
           failed_items: !anything
           total_affected_items: 8
           total_failed_items: 4
-    delay_after: !float "{restart_delay}"
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
@@ -483,7 +479,6 @@ stages:
           affected_items:
             - "001"
           total_affected_items: 1
-    delay_after: !float "{global_db_delay}"
 
     # PUT /agents/wrong_id/group/group1
   - name: Try to assign an agent with an invalid id
@@ -536,7 +531,6 @@ stages:
           affected_items:
             - "001"
           total_affected_items: 1
-    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: PUT /agents/{agent_id}/restart
@@ -613,7 +607,6 @@ stages:
           affected_items:
             - "002"
           total_affected_items: 1
-    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/node/{node_id}/restart
@@ -650,7 +643,7 @@ stages:
         - function: tavern_utils:test_validate_restart_by_node
           extra_kwargs:
             data: "{response_data}"
-    delay_after: !float "{restart_delay}"
+    delay_after: !float "{global_db_delay}"
 
   - name: Restart all agents belonging to a node (it does not exist)
     request:
@@ -761,6 +754,7 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
+    delay_after: !float "{global_db_delay}"
 
     # PUT /agents/004/upgrade
   - name: Upgrade an agent using http
@@ -894,7 +888,6 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
-    delay_after: !float "{upgrade_delay}"
 
     # PUT /agents/008/upgrade_custom?file_path=custom_wpk_path
   - name: Customly upgrade agent 008 using default installer
@@ -909,7 +902,7 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
-    delay_after: !float "{upgrade_delay}"
+    delay_after: !float "{global_db_delay}"
 
   - name: Get agent 007 upgrade result
     request:

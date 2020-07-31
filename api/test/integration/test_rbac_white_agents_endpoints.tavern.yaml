@@ -92,7 +92,7 @@ stages:
             - id: '012'
           total_affected_items: 4
           total_failed_items: 0
-        
+
 ---
 test_name: GET /agents?list_agents=agent_id
 
@@ -127,7 +127,7 @@ stages:
             - id: '010'
           total_affected_items: 1
           total_failed_items: 0
-        
+
 ---
 test_name: GET /agents/{agent_id}/config/{component}/{configuration}
 
@@ -402,7 +402,7 @@ stages:
          total_affected_items: 3
          total_failed_items: 0
          failed_items: []
-       
+
 ---
 test_name: GET /groups/{group_id}/files/{filename}/json
 
@@ -614,7 +614,7 @@ stages:
          total_affected_items: 1
          total_failed_items: 0
          failed_items: []
-       
+
 ---
 test_name: GET /agents/{agent_id}/upgrade_result
 
@@ -940,7 +940,7 @@ stages:
                 - 'group1'
           total_affected_items: 0
           total_failed_items: 1
-        
+
   - name: Delete group3
     request:
       verify: False
@@ -1025,7 +1025,7 @@ stages:
                 - group1
           total_affected_items: 0
           total_failed_items: 5
-        
+
 ---
 test_name: DELETE /agents?list_agents=agent_id
 
@@ -1311,7 +1311,6 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: PUT /groups/{group_id}/configuration
@@ -1332,7 +1331,6 @@ stages:
       status_code: 200
       json:
         message: !anystr
-    delay_after: !float "{global_db_delay}"
 
   - name: Try to update group1 configuration (Denied)
     request:
@@ -1405,7 +1403,7 @@ stages:
                 - '997'
           total_affected_items: 0
           total_failed_items: 1
-        
+
   - name: Try to restart agent 010 (Denied)
     request:
       verify: False
@@ -1528,7 +1526,7 @@ stages:
                 - '001'
           total_affected_items: 0
           total_failed_items: 1
-        
+
   - name: Assign agent 008 to default (Allowed)
     request:
       verify: False
@@ -1545,7 +1543,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: PUT /agents/{agent_id}/restart
@@ -1571,8 +1568,7 @@ stages:
                 - '001'
           total_affected_items: 0
           total_failed_items: 1
-    delay_after: !float "{restart_delay}"
-        
+
   - name: Try to restart agent 010 (Denied)
     request:
       verify: False
