@@ -803,6 +803,15 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             continue;
         }
 
+        // Remove any trailling path separators
+        int path_length = strlen(real_path);
+        if (path_length != 3) { // Drives need :\ attached in order to work properly
+            tmp_str = real_path + path_length - 1;
+            if (*tmp_str == PATH_SEP) {
+                *tmp_str = '\0';
+            }
+        }
+
         str_lowercase(real_path);
         dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
 
@@ -826,6 +835,15 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
         /* Else, check if it's a wildcard, hard/symbolic link or path of file/directory */
         strncpy(real_path, tmp_dir, PATH_MAX);
+
+        // Remove any trailling path separators
+        int path_length = strlen(real_path);
+        if (path_length != 1) {
+            tmp_str = real_path + path_length - 1;
+            if (*tmp_str == PATH_SEP) {
+                *tmp_str = '\0';
+            }
+        }
 
         /* Check for glob */
         /* The mingw32 builder used by travis.ci can't find glob.h
@@ -1040,9 +1058,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         /* Get directories */
         else if (strcmp(node[i]->element, xml_directories) == 0) {
             char dirs[OS_MAXSTR];
+#ifdef WIN32
             char *ptfile;
 
-#ifdef WIN32
             /* Change backslashes to forwardslashes on entry */
             ptfile = strchr(node[i]->content, '/');
             while (ptfile) {
@@ -1052,12 +1070,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 ptfile = strchr(ptfile, '/');
             }
 #endif
-            int path_lenght = strlen(node[i]->content);
-            ptfile = node[i]->content + path_lenght - 1;
-            if (*ptfile == '/' && path_lenght != 1) {
-                *ptfile = '\0';
-            }
-
             strncpy(dirs, node[i]->content, sizeof(dirs) - 1);
 
             if (!read_attr(syscheck,
