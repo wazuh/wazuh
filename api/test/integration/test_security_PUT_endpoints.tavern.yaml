@@ -299,6 +299,22 @@ stages:
       status_code: 401
 
 ---
+test_name: DELETE /security/user/authenticate
+
+stages:
+
+  - name: Logout current user
+    delay_after: 10
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/authenticate"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
+
+---
 test_name: PUT /security/users/{username}
 
 stages:

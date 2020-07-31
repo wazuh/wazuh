@@ -128,7 +128,7 @@ max_groups_per_multigroup = 256
 rbac: ContextVar[Dict] = ContextVar('rbac', default={'rbac_mode': 'black'})
 current_user: ContextVar[str] = ContextVar('current_user', default='')
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
-cluster_nodes: ContextVar[set] = ContextVar('cluster_nodes', default=set())
+cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
 
 _context_cache = dict()
 
