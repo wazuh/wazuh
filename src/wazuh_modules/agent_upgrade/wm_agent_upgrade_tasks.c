@@ -74,6 +74,24 @@ static cJSON *wm_agent_upgrade_send_tasks_information(const cJSON *message_objec
 /* Hash table of current tasks based on agent_id */
 static OSHash *task_table_by_agent_id;
 
+/**
+ * Encloses calls to agent, status and version validation functions
+ * @param agent_id Id of agent to validate
+ * @param task pointer to task with the params
+ * @param command wm_upgrade_command with the selected upgrade type
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS_VALIDATE
+ * @retval WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED
+ * @retval WM_UPGRADE_VERSION_SAME_MANAGER
+ * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
+ * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER)
+ * @retval WM_UPGRADE_NOT_AGENT_IN_DB
+ * @retval WM_UPGRADE_AGENT_IS_NOT_ACTIVE
+ * @retval WM_UPGRADE_INVALID_ACTION_FOR_MANAGER
+ * @retval WM_UPGRADE_VERSION_QUERY_ERROR
+ * */
+static int wm_agent_upgrade_validate_agent(int agent_id, void *task, wm_upgrade_command command);
+
 wm_upgrade_task* wm_agent_upgrade_init_upgrade_task() {
     wm_upgrade_task *task;
     os_malloc(sizeof(wm_upgrade_task), task);
@@ -151,21 +169,28 @@ cJSON* wm_agent_upgrade_create_agent_tasks(const cJSON *agents, void *task, wm_u
         agent_task->command = command;
         agent_task->task = task;
 
-        // Save task entry for agent
-        int result = wm_agent_upgrade_create_task_entry(agent_id->valueint, agent_task);
+        int validate_result = wm_agent_upgrade_validate_agent(agent_id->valueint, task, command);
+        if ( validate_result == WM_UPGRADE_SUCCESS_VALIDATE) {
+            // Save task entry for agent
+            int result = wm_agent_upgrade_create_task_entry(agent_id->valueint, agent_task);
 
-        if (result == OSHASH_SUCCESS ) {
-            cJSON *task_message = wm_agent_upgrade_parse_task_module_message(agent_task->command, agent_id->valueint);
-            cJSON_AddItemToArray(json_task_module, task_message);
-        } else if (result == OSHASH_DUPLICATED) {
-            cJSON *task_message = wm_agent_upgrade_parse_response_message(WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS, upgrade_error_codes[WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS], &(agent_id->valueint), NULL, NULL);
-            cJSON_AddItemToArray(json_api, task_message);
-            os_free(agent_task);
+            if (result == OSHASH_SUCCESS ) {
+                cJSON *task_message = wm_agent_upgrade_parse_task_module_message(agent_task->command, agent_id->valueint);
+                cJSON_AddItemToArray(json_task_module, task_message);
+            } else if (result == OSHASH_DUPLICATED) {
+                cJSON *task_message = wm_agent_upgrade_parse_response_message(WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS, upgrade_error_codes[WM_UPGRADE_UPGRADE_ALREADY_ON_PROGRESS], &(agent_id->valueint), NULL, NULL);
+                cJSON_AddItemToArray(json_api, task_message);
+                os_free(agent_task);
+            } else {
+                cJSON *task_message = wm_agent_upgrade_parse_response_message(WM_UPGRADE_UNKNOWN_ERROR, upgrade_error_codes[WM_UPGRADE_UNKNOWN_ERROR], &(agent_id->valueint), NULL, NULL);
+                cJSON_AddItemToArray(json_api, task_message);
+                os_free(agent_task);
+            }
         } else {
-            cJSON *task_message = wm_agent_upgrade_parse_response_message(WM_UPGRADE_UNKNOWN_ERROR, upgrade_error_codes[WM_UPGRADE_UNKNOWN_ERROR], &(agent_id->valueint), NULL, NULL);
+            cJSON *task_message = wm_agent_upgrade_parse_response_message(validate_result, upgrade_error_codes[validate_result], &(agent_id->valueint), NULL, NULL);
             cJSON_AddItemToArray(json_api, task_message);
-            os_free(agent_task);
         }
+
     }
 
     // Update tasks with task module infomation
@@ -258,4 +283,17 @@ cJSON *wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
     }
 
     return response;
+}
+
+static int wm_agent_upgrade_validate_agent(int agent_id, void *task, wm_upgrade_command command){
+    int validate_result = wm_agent_upgrade_validate_id(agent_id);
+
+    if ( validate_result == WM_UPGRADE_SUCCESS_VALIDATE){
+        validate_result = wm_agent_upgrade_validate_status(agent_id);
+        if ( validate_result == WM_UPGRADE_SUCCESS_VALIDATE){
+            validate_result = wm_agent_upgrade_validate_agent_version(agent_id, task, command);
+        }
+    }
+
+    return validate_result;
 }
