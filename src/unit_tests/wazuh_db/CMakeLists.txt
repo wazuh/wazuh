@@ -20,7 +20,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mwarn \
-                             -Wl,--wrap,wdb_open_global2 -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg")
+                             -Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg")
 
 
 # Compilig tests

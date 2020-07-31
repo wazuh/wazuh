@@ -395,7 +395,9 @@ int wdb_parse(char * input, char * output) {
     } else if(strcmp(actor, "global") == 0) {
         query = next;
 
-        if (wdb = wdb_open_global2(), !wdb) {
+        mdebug2("Global query: %s", query);
+
+        if (wdb = wdb_open_global(), !wdb) {
             mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
             return -1;
@@ -417,7 +419,6 @@ int wdb_parse(char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
-
                 if (data = wdb_exec(wdb->db, next), data) {
                     out = cJSON_PrintUnformatted(data);
                     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
