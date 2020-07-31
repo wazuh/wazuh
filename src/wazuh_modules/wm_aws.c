@@ -19,14 +19,12 @@
 #endif
 
 static wm_aws *aws_config;                              // Pointer to aws_configuration
-static int queue_fd;                                    // Output queue file descriptor
 
 static void* wm_aws_main(wm_aws *aws_config);           // Module main function. It won't return
 static void wm_aws_setup(wm_aws *_aws_config);          // Setup module
-static void wm_aws_cleanup();                           // Cleanup function, doesn't overwrite wm_cleanup
 static void wm_aws_check();                             // Check configuration, disable flag
-static void wm_aws_run_s3(wm_aws_bucket *bucket);       // Run a s3 bucket
-static void wm_aws_run_service(wm_aws_service *service);// Run a AWS service such as Inspector
+static void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *bucket);       // Run a s3 bucket
+static void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *service);// Run a AWS service such as Inspector
 static void wm_aws_destroy(wm_aws *aws_config);         // Destroy data
 cJSON *wm_aws_dump(const wm_aws *aws_config);
 
@@ -119,7 +117,7 @@ void* wm_aws_main(wm_aws *aws_config) {
             wm_strcat(&log_info, ")", '\0');
 
             mtinfo(WM_AWS_LOGTAG, "%s", log_info);
-            wm_aws_run_s3(cur_bucket);
+            wm_aws_run_s3(aws_config, cur_bucket);
             free(log_info);
         }
 
@@ -154,7 +152,7 @@ void* wm_aws_main(wm_aws *aws_config) {
             wm_strcat(&log_info, ")", '\0');
 
             mtinfo(WM_AWS_LOGTAG, "%s", log_info);
-            wm_aws_run_service(cur_service);
+            wm_aws_run_service(aws_config, cur_service);
             free(log_info);
         }
 
@@ -240,7 +238,6 @@ void wm_aws_destroy(wm_aws *aws_config) {
 // Setup module
 
 void wm_aws_setup(wm_aws *_aws_config) {
-    int i;
 
     aws_config = _aws_config;
     wm_aws_check();
@@ -252,17 +249,12 @@ void wm_aws_setup(wm_aws *_aws_config) {
 
     // Connect to socket
 
-    for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        w_time_delay(1000 * WM_MAX_WAIT);
+    aws_config->queue_fd = StartMQ(DEFAULTQPATH, WRITE, MAX_OPENQ_ATTEMPS);
 
-    if (i == WM_MAX_ATTEMPTS) {
+    if (aws_config->queue_fd < 0) {
         mterror(WM_AWS_LOGTAG, "Can't connect to queue.");
         pthread_exit(NULL);
     }
-
-    // Cleanup exiting
-
-    atexit(wm_aws_cleanup);
 }
 
 
@@ -290,18 +282,11 @@ void wm_aws_check() {
 
 }
 
-// Cleanup function, doesn't overwrite wm_cleanup
-
-void wm_aws_cleanup() {
-    close(queue_fd);
-    mtinfo(WM_AWS_LOGTAG, "Module AWS finished.");
-}
-
 // Run a bucket parsing
 #ifdef UNIT_TESTING
 __attribute__((weak))
 #endif
-void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
+void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     int status;
     char *output = NULL;
     char *command = NULL;
@@ -438,7 +423,7 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     char *line;
     char *save_ptr = NULL;
     for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
-        wm_sendmsg(usec, queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
+        wm_sendmsg(usec, aws_config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
     }
 
     os_free(trail_title);
@@ -447,7 +432,7 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
 
 // Run a service parsing
 
-void wm_aws_run_service(wm_aws_service *exec_service) {
+void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
     int status;
     char *output = NULL;
     char *command = NULL;
@@ -572,7 +557,7 @@ void wm_aws_run_service(wm_aws_service *exec_service) {
     char *line;
     char *save_ptr = NULL;
     for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
-        wm_sendmsg(usec, queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
+        wm_sendmsg(usec, aws_config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
     }
 
     os_free(output);

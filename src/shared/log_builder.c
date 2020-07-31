@@ -97,6 +97,8 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
     size_t z;
     time_t timestamp = time(NULL);
 
+    assert(logmsg != NULL);
+
     if (!pattern) {
         return strdup(logmsg);
     }
@@ -173,6 +175,8 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
             field = builder->host_ip;
         } else if (strcmp(param, "json_escaped_log") == 0) {
             field = escaped_log = wstr_escape_json(logmsg);
+        } else if (strcmp(param, "base64_log") == 0) {
+            field = escaped_log = encode_base64(strlen(logmsg), logmsg);
         } else {
             mdebug1("Invalid parameter '%s' for log format.", param);
             continue;
