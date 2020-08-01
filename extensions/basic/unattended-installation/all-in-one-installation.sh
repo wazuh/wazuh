@@ -76,23 +76,13 @@ installPrerequisites() {
     if [ $sys_type == "yum" ] 
     then
         eval "yum install zip unzip curl -y -q $debug"   
-        echo -e '[AdoptOpenJDK] \nname=AdoptOpenJDK \nbaseurl=http://adoptopenjdk.jfrog.io/adoptopenjdk/rpm/centos/$releasever/$basearch\nenabled=1\ngpgcheck=1\ngpgkey=https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public' | eval "tee /etc/yum.repos.d/adoptopenjdk.repo $debug"
-        eval "yum install adoptopenjdk-11-hotspot -y -q $debug"
-        export JAVA_HOME=/usr/   
     elif [ $sys_type == "apt-get" ] 
     then
-        eval "apt-get install curl apt-transport-https zip unzip lsb-release gnupg2 curl -y -q $debug"
-        eval "wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | sudo apt-key add - $debug"
-        eval "add-apt-repository --yes https://adoptopenjdk.jfrog.io/adoptopenjdk/deb/ $debug"
+        eval "apt-get install curl apt-transport-https zip unzip lsb-release gnupg2 libcap2-bin -y -q $debug"
         eval "apt-get update -q $debug"
-        eval "apt-get install adoptopenjdk-11-hotspot -y -q $debug" 
-        export JAVA_HOME=/usr/ 
         elif [ $sys_type == "zypper" ] 
     then
         eval "zypper install zip unzip curl -y -q $debug"   
-        eval "zypper ar -f http://adoptopenjdk.jfrog.io/adoptopenjdk/rpm/opensuse/15.0/$(uname -m) adoptopenjdk $debug"
-        eval "zypper install adoptopenjdk-11-hotspot -y -q $debug"
-        export JAVA_HOME=/usr/      
     fi
 
     if [  "$?" != 0  ]
@@ -115,12 +105,12 @@ addElasticrepo() {
     elif [ $sys_type == "apt-get" ] 
     then
         eval "curl -s https://artifacts.elastic.co/GPG-KEY-elasticsearch --max-time 300 | apt-key add - $debug"
-        eval "echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | tee /etc/apt/sources.list.d/elastic-7.x.list $debug"
+        echo 'deb https://artifacts.elastic.co/packages/7.x/apt stable main' | eval "tee /etc/apt/sources.list.d/elastic-7.x.list $debug"
         eval "apt-get update -q $debug"
     elif [ $sys_type == "zypper" ] 
     then
         eval "rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch $debug"
-        echo -e "[elasticsearch-7.x]\nname=Elasticsearch repository for 7.x packages\nbaseurl=https://artifacts.elastic.co/packages/7.x/yum\ngpgcheck=1\ngpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch\nenabled=1\nautorefresh=1\ntype=rpm-md" | eval "tee /etc/yum.repos.d/elastic.repo $debug"
+        echo -e '[elasticsearch-7.x]\nname=Elasticsearch repository for 7.x packages\nbaseurl=https://artifacts.elastic.co/packages/7.x/yum\ngpgcheck=1\ngpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch\nenabled=1\nautorefresh=1\ntype=rpm-md' | eval "tee /etc/zypp/repos.d/elastic.repo $debug"
     fi    
 
     if [  "$?" != 0  ]
@@ -238,7 +228,7 @@ installElasticsearch() {
         echo "Initializing Elasticsearch..."
         passwords=$(/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b)
         password=$(echo $passwords | awk 'NF{print $NF; exit}')
-        until $(curl -XGET https://localhost:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
+        until $(curl -XGET https://localhost:9200/ -elastic:"$password" -k --max-time 120 --silent --output /dev/null); do
             echo -ne $char
             sleep 10
         done
@@ -328,7 +318,7 @@ healthCheck() {
 
 checkInstallation() {
     logger "Checking the installation..."
-    eval "curl -XGET https://localhost:9200 -uadmin:admin -k --max-time 300 $debug"
+    eval "curl -XGET https://localhost:9200 -elastic:"$password" -k --max-time 300 $debug"
     if [  "$?" != 0  ]
     then
         echo "Error: Elasticsearch was not successfully installed."
@@ -345,12 +335,12 @@ checkInstallation() {
         echo "Filebeat installation succeeded."
     fi    
     logger "Initializing Kibana (this may take a while)"
-    until [[ "$(curl -XGET https://localhost/status -I -uadmin:admin -k -s | grep "200 OK")" ]]; do
+    until [[ "$(curl -XGET https://localhost/status -I -uelastic:"$password" -k -s | grep "200 OK")" ]]; do
         echo -ne $char
         sleep 10
     done    
     echo $'\nDuring the installation of Elasticsearch the passwords for its user were generated. Please take note of them:'
-    echo $passwords
+    echo "$passwords"
     echo $'\nInstallation finished'
     exit 1;
 }
