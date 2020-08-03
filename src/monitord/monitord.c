@@ -84,7 +84,7 @@ void Monitord()
         if (mond.monitor_agents && counter >= 120) {
             if (mond.a_queue < 0) {
                 /* Connect to the message queue */
-                if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, 1)) > 0) {
+                if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, MAX_OPENQ_ATTEMPS)) > 0) {
                     /* Send startup message */
                     snprintf(str, OS_SIZE_1024 - 1, OS_AD_STARTED);
                     if (SendMSG(mond.a_queue, str, ARGV0,

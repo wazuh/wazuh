@@ -409,7 +409,7 @@ static void ExecdStart(int q)
             int rc;
             /* Start api socket */
             int api_sock;
-            if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE, MAX_OPENQ_ATTEMPS)) < 0) {
+            if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE, 1)) < 0) {
                 merror(QUEUE_ERROR, EXECQUEUEPATHAPI, strerror(errno));
                 os_free(output);
                 continue;
