@@ -549,7 +549,7 @@ double OS_AgentAntiquity(const char *name, const char *ip)
     root = wdbc_query_parse_json(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
-        merror("Response from the Global database cannot be parsed.");
+        merror("Error querying Wazuh DB to get the last agent keepalive.");
         return OS_INVALID;
     }
 
