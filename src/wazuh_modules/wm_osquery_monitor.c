@@ -587,7 +587,7 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
 #ifndef WIN32
     // Connect to queue
 
-    osquery->queue_fd = StartMQ(DEFAULTQPATH, WRITE, MAX_OPENQ_ATTEMPS);
+    osquery->queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
     if (osquery->queue_fd < 0) {
         mterror(WM_OSQUERYMONITOR_LOGTAG, "Can't connect to queue. Closing module.");
         return NULL;
