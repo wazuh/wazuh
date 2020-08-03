@@ -222,13 +222,27 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
     strcat(versions_url, repository_url);
     strcat(versions_url, "versions");
 
-    //mterror(WM_AGENT_UPGRADE_LOGTAG, "AAAAAAAAA: %s", repository_url);
-    //mterror(WM_AGENT_UPGRADE_LOGTAG, "BBBBBBBBB: %s", versions_url);
-
     if (versions = wurl_http_get(versions_url), versions) {
+        char *version = versions;
+        char *sha1 = NULL;
+        char *next_line = NULL;
 
-        //mterror(WM_AGENT_UPGRADE_LOGTAG, "CCCCCCCCC: %s", versions); // WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
-
+        while (next_line = strchr(version, '\n'), next_line) {
+            *next_line = '\0';
+            if (sha1 = strchr(version, ' '), sha1) {
+                *sha1 = '\0';
+                if (!strcmp(version, task->wpk_version)) {
+                    os_strdup(sha1 + 1, task->wpk_sha1);
+                    os_free(task->wpk_repository);
+                    os_strdup(repository_url, task->wpk_repository);
+                    break;
+                }
+            }
+            version = next_line + 1;
+        }
+        if (!task->wpk_sha1) {
+            return_code = WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST;
+        }
     } else {
         return_code = WM_UPGRADE_URL_NOT_FOUND;
     }
