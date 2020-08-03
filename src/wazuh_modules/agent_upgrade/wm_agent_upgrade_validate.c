@@ -86,7 +86,7 @@ int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *tas
         if (tmp_agent_version = strchr(agent_info->wazuh_version, 'v'), tmp_agent_version) {
             return_code = WM_UPGRADE_SUCCESS;
 
-            if (strcmp(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT) < 0) {
+            if (wm_agent_upgrade_compare_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT) < 0) {
                 return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
             } else if (WM_UPGRADE_UPGRADE == command) {
                 task = (wm_upgrade_task *)task;
@@ -114,11 +114,11 @@ int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, cons
                 return_code = wm_agent_upgrade_validate_wpk_version(agent_info, task);
 
                 if (WM_UPGRADE_SUCCESS == return_code) {
-                    if (strcmp(agent_version, task->wpk_version) >= 0 && task->force_upgrade == false) {
+                    if (wm_agent_upgrade_compare_versions(agent_version, task->wpk_version) >= 0 && task->force_upgrade == false) {
                         return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
-                    } else if (strcmp(task->wpk_version, tmp_manager_version) > 0 && task->force_upgrade == false) {
+                    } else if (wm_agent_upgrade_compare_versions(task->wpk_version, tmp_manager_version) > 0 && task->force_upgrade == false) {
                         return_code = WM_UPGRADE_NEW_VERSION_GREATER_MASTER;
-                    } else if (strcmp(agent_version, tmp_manager_version) == 0 && task->force_upgrade == false) {
+                    } else if (wm_agent_upgrade_compare_versions(agent_version, tmp_manager_version) == 0 && task->force_upgrade == false) {
                         return_code = WM_UPGRADE_VERSION_SAME_MANAGER;
                     }
                 }
@@ -252,4 +252,60 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
     os_free(versions);
 
     return return_code;
+}
+
+/**
+ * Compare two versions with format v4.0.0
+ * @param version1 char * with the string version 
+ * @param version2 char * with the string version
+ * @return return_code
+ * @retval 0 equals
+ * @retval 1 version1 > version2
+ * @retval -1 version1 < version2
+ * */
+int wm_agent_upgrade_compare_versions(const char * version1, const char * version2){
+    char ver1[10];
+    strcpy(ver1, version1);
+    char ver2[10];
+    strcpy(ver2, version2);
+    char *tmp_v1 = strchr(ver1, 'v');
+    char *tmp_v2 = strchr(ver2, 'v');
+    tmp_v1 ++;
+    tmp_v2 ++;
+    int result = 0;
+    int patch1;
+    int major1;
+    int minor1;
+    int patch2;
+    int major2;
+    int minor2;
+
+    major1 = atoi(strtok(tmp_v1, "."));
+    minor1 = atoi(strtok(NULL, "."));
+    patch1 = atoi(strtok(NULL, "."));
+
+    major2 = atoi(strtok(tmp_v2, "."));
+    minor2 = atoi(strtok(NULL, "."));
+    patch2 = atoi(strtok(NULL, "."));
+    
+    if (major1 > major2) {
+        result = 1;
+    } else if (major1 < major2){
+        result = -1;
+    } else {
+        if(minor1 > minor2) {
+            result = 1;
+        } else if (minor1 < minor2) {
+            result = -1;
+        } else {
+            if (patch1 > patch2) {
+                result = 1;
+            } else if (patch1 < patch2) {
+                result = -1;
+            } else {
+                result = 0;
+            }
+        }
+    } 
+    return result;
 }

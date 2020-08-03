@@ -166,4 +166,15 @@ int wm_agent_upgrade_validate_status(int last_keep_alive);
  * */
 int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *task, wm_upgrade_command command);
 
+/**
+ * Compare two versions with format v4.0.0
+ * @param version1 char * with the string version 
+ * @param version2 char * with the string version
+ * @return return_code
+ * @retval 0 equals
+ * @retval 1 version1 > version2
+ * @retval -1 version1 < version2
+ * */
+int wm_agent_upgrade_compare_versions(const char * version1, const char * version2);
+
 #endif
