@@ -17,6 +17,9 @@
 #define WM_UPGRADE_MINIMAL_VERSION_SUPPORT "v3.0.0"
 #define WM_UPGRADE_NEW_VERSION_REPOSITORY "v3.4.0"
 #define WM_UPGRADE_WPK_REPO_URL "packages.wazuh.com/wpk/"
+#define WM_UPGRADE_WPK_DEFAULT_PATH "var/upgrade/"
+#define WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT 60000
+#define WM_UPGRADE_WPK_DOWNLOAD_ATTEMPTS 5
 #define MANAGER_ID 0
 
 typedef struct _wm_agent_upgrade {
@@ -40,6 +43,8 @@ typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT,
     WM_UPGRADE_NEW_VERSION_GREATER_MASTER,
     WM_UPGRADE_VERSION_SAME_MANAGER,
+    WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST,
+    WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH,
     WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS,
     WM_UPGRADE_UNKNOWN_ERROR
 } wm_upgrade_error_code;
@@ -58,7 +63,7 @@ typedef struct _wm_upgrade_task {
     char *custom_version;        ///> upgrade to a custom version
     bool use_http;               ///> when enabled uses http instead of https to connect to repository
     bool force_upgrade;          ///> when enabled forces upgrade
-    char *wpk_version;           ///> WPK version to download
+    char *wpk_file;              ///> WPK file name
     char *wpk_sha1;              ///> WPK sha1 to validate
 } wm_upgrade_task;
 
@@ -165,5 +170,16 @@ int wm_agent_upgrade_validate_status(int last_keep_alive);
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
 int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *task, wm_upgrade_command command);
+
+/**
+ * Check if WPK file exist and/or download it
+ * @param task pointer to task with the params
+ * @param command wm_upgrade_command with the selected upgrade type
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS
+ * @retval WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST
+ * @retval WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH
+ * */
+int wm_agent_upgrade_validate_wpk(const void *task, wm_upgrade_command command);
 
 #endif
