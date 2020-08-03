@@ -84,7 +84,6 @@ getCoverage()
 
 runCppCheck()
 {
-    suppressList="*:*sqlite_dbengine.cpp:115"
     result=$(cppcheck --force --std=c++11 --quiet --suppressions-list=./cppcheckSuppress.txt ./ 2>&1)
     if [[ ! -z "$result" ]]; then
         cppcheck --force --std=c++11 --quiet ./
