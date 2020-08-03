@@ -203,6 +203,7 @@ stages:
             - "009"
             - "010"
           total_affected_items: 10
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: PUT /groups/{group_id}/configuration
@@ -332,7 +333,7 @@ stages:
                 - "009"
                 - "010"
           total_failed_items: 2
-    delay_after: !float "{global_db_delay}"
+    delay_after: !float "{restart_delay}"
 
   # PUT /groups/not_exists/restart (Group does not exist)
   - name: Restart all agents from a group which does not exist
@@ -431,7 +432,7 @@ stages:
                 - "999"
           total_affected_items: 2
           total_failed_items: 1
-    delay_after: !float "{global_db_delay}"
+    delay_after: !float "{restart_delay}"
 
     # PUT /agents/restart
   - name: Try to restart all agents
@@ -457,7 +458,7 @@ stages:
           failed_items: !anything
           total_affected_items: 8
           total_failed_items: 4
-    delay_after: !float "{global_db_delay}"
+    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
@@ -643,7 +644,6 @@ stages:
         - function: tavern_utils:test_validate_restart_by_node
           extra_kwargs:
             data: "{response_data}"
-    delay_after: !float "{global_db_delay}"
 
   - name: Restart all agents belonging to a node (it does not exist)
     request:
@@ -719,11 +719,12 @@ stages:
         force: True
         wait_for_complete: 'true'
     response:
-     status_code:
-       - 200
-       - 500
-     verify_response_with:
-       function: tavern_utils:test_validate_upgrade
+      status_code:
+        - 200
+        - 500
+      verify_response_with:
+        function: tavern_utils:test_validate_upgrade
+    delay_after: !float "{upgrade_delay}"
 
     # PUT /agents/001/upgrade
   - name: Try to upgrade an agent that is updated to the latest version
@@ -754,7 +755,7 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
-    delay_after: !float "{global_db_delay}"
+    delay_after: !float "{upgrade_delay}"
 
     # PUT /agents/004/upgrade
   - name: Upgrade an agent using http
@@ -849,7 +850,7 @@ stages:
   - name: Try to customly upgrade an agent without parameters
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/003/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/006/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -888,6 +889,7 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
+    delay_after: !float "{upgrade_delay}"
 
     # PUT /agents/008/upgrade_custom?file_path=custom_wpk_path
   - name: Customly upgrade agent 008 using default installer
@@ -902,7 +904,7 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
-    delay_after: !float "{global_db_delay}"
+    delay_after: !float "{upgrade_delay}"
 
   - name: Get agent 007 upgrade result
     request:
