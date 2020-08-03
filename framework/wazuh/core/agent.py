@@ -1644,19 +1644,21 @@ def send_task_upgrade_module(command=None, agent_list=None, debug=False, file_pa
 
     if command == 'upgrade':
         data["params"] = {}
-        if file_path != None:
-            data.get("params").update({"file_path" : file_path})
-        if installer != None:
-            data.get("params").update({"installer" : installer})
         if wpk_repo != None:
             data.get("params").update({"wpk_repo" : wpk_repo})
         if version != None:
             data.get("params").update({"version" : version})
         if use_http != None:
-            data.get("params").update({"use_http" : str(use_http)})
+            data.get("params").update({"use_http" : int(use_http)})
         if force_upgrade != None:
-            data.get("params").update({"force_upgrade" : str(force_upgrade)})
-        
+            data.get("params").update({"force_upgrade" : int(force_upgrade)})
+    elif command == 'upgrade_custom':
+        data["params"] = {}
+        if file_path != None:
+            data.get("params").update({"file_path" : file_path})
+        if installer != None:
+            data.get("params").update({"installer" : installer})
+
     data = str(data).replace("\'", "\"")
     if debug:
         print("MSG SENT TO UPGRADE MODULE: {0}".format(data))

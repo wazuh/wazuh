@@ -724,7 +724,7 @@ def upgrade_agents_custom(agent_list=None, file_path=None, installer=None):
     :return: Upgrade message.
     """
     
-    return send_task_upgrade_module(command='upgrade', agent_list=agent_list, file_path=file_path, installer=installer)
+    return send_task_upgrade_module(command='upgrade_custom', agent_list=agent_list, file_path=file_path, installer=installer)
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
