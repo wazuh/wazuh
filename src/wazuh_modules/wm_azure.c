@@ -343,7 +343,7 @@ void wm_azure_setup(wm_azure_t *_azure_config) {
 
     // Connect to socket
 
-    queue_fd = StartMQ(DEFAULTQPATH, WRITE, MAX_OPENQ_ATTEMPS);
+    queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
     if (queue_fd < 0) {
         mterror(WM_AZURE_LOGTAG, "Can't connect to queue.");

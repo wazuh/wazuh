@@ -33,7 +33,7 @@ int StartMQ(const char *path, short int type, short int n_attempts)
         while ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)), rc < 0){
             attempt++;
             mdebug1("Can't connect to queue. attempt: %d", attempt);
-            if (n_attempts != 0 && attempt == n_attempts) {
+            if (n_attempts != INFINITE_OPENQ_ATTEMPTS && attempt == n_attempts) {
                 break;
             }
             sleep(sleep_time += 5);

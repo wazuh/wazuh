@@ -193,7 +193,7 @@ int main(int argc, char **argv)
     }
 
     /* Start exec queue */
-    if ((m_queue = StartMQ(EXECQUEUEPATH, READ, MAX_OPENQ_ATTEMPS)) < 0) {
+    if ((m_queue = StartMQ(EXECQUEUEPATH, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
     }
 
