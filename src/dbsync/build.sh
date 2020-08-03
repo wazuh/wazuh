@@ -126,31 +126,31 @@ readyToReview()
     makeDbSync
     if [[ $? -ne 0 ]]; then
         echoRed "Compiling Failed"
-        return $?
+        return 1
     fi
     echoYellow "====================== Cppcheck  ====================="
     runCppCheck
     if [[ $? -ne 0 ]]; then
         echoRed "cppcheck Failed"
-        return $?
+        return 2
     fi
     echoYellow "==================== Running Tests ===================="
     runTest
     if [[ $? -ne 0 ]]; then
         echoRed "Tests Failed"
-        return $?
+        return 3
     fi
     echoYellow "====================== Valgrind  ====================="
     runValgrind
     if [[ $? -ne 0 ]]; then
         echoRed "Valgrind Failed"
-        return $?
+        return 4
     fi
     echoYellow "==================== Running Coverage ================="
     getCoverage
     if [[ $? -ne 0 ]]; then
         echoRed "Coverage Failed"
-        return $?
+        return 5
     fi
     echoGreen "RTR PASSED: code is ready to review."
 }
