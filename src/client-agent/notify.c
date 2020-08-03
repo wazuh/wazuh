@@ -51,11 +51,11 @@ char *get_agent_ip()
     for (i = SOCK_ATTEMPTS; i > 0; --i) {
         if (sock = control_check_connection(), sock >= 0) {
             if (OS_SendUnix(sock, agent_ip, IPSIZE) < 0) {
-                merror("Error sending msg to control socket (%d) %s", errno, strerror(errno));
+                mdebug1("Error sending msg to control socket (%d) %s", errno, strerror(errno));
             }
             else{
-                if(OS_RecvUnix(sock, IPSIZE, agent_ip) == 0){
-                    merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
+                if (OS_RecvUnix(sock, IPSIZE, agent_ip) <= 0) {
+                    mdebug1("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
                     *agent_ip = '\0';
                 }
             }
