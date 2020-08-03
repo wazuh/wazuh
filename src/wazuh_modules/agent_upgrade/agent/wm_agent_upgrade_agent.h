@@ -14,7 +14,8 @@
 
 /**
  * Checks if an agent has been recently upgraded, by reading upgrade_results file
- * If there has been an upgrade, dispatchs a message to notificate the maanger
+ * If there has been an upgrade, dispatchs a message to notificate the maanger.
+ * This method will block the thread if the agent is not connected to the manager
  * */
 void wm_agent_upgrade_check_status();
 

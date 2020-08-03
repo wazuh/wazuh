@@ -12,7 +12,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
 
-#ifdef CLIENT
+#if defined(CLIENT) || defined(WIN32)
 #include "agent/wm_agent_upgrade_agent.h"
 #else
 #include "manager/wm_agent_upgrade_manager.h"
@@ -44,7 +44,7 @@ void * wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_STARTED);
 
-    #ifdef CLIENT
+    #if defined(CLIENT) || defined(WIN32)
         wm_agent_upgrade_check_status();
     #else 
         // Initialize task hashmap

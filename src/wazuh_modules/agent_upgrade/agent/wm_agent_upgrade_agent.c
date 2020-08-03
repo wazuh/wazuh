@@ -21,6 +21,19 @@ const char* upgrade_messages[] = {
     [WM_UPGRADE_FAILED]      = "Upgrade failed"
 };
 
+/**
+ * Reads the upgrade_result file if it is present and sends the upgrade result message to the manager.
+ * Example message:
+ * {
+ *   "command": "agent_upgraded/agent_upgrade_failed",
+ *   "params":  {
+ *     "error": 0/{ERROR_CODE},
+ *     "message": "Upgrade was successfull"
+ *   }
+ * }
+ * @param queue_fd File descriptor of the upgrade queue
+ * @param state upgrade result state
+ * */
 static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state);
 
 void wm_agent_upgrade_check_status() {
@@ -36,11 +49,7 @@ void wm_agent_upgrade_check_status() {
     if (queue_fd < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_QUEUE_FD);
     } else {
-        #ifndef WIN32
-            if (result_file = fopen(PATH, "r"), result_file) {
-        #else
-            if (result_file = fopen(PATH, "rb"), result_file) {
-        #endif
+        if (result_file = fopen(PATH, "r"), result_file) {
             fgets(buffer,20,result_file);
             fclose(result_file);
         }
