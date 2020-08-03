@@ -541,7 +541,7 @@ double OS_AgentAntiquity(const char *name, const char *ip)
     cJSON *keepalive = NULL;
 
     if(!name || !ip){
-        mdebug1("Empty agent name or ip trying to read last keepalive. Agent: (%s) IP: (%s)", name, ip);
+        mdebug1("Empty agent name or ip when trying to get last keepalive. Agent: (%s) IP: (%s)", name, ip);
         return OS_INVALID;
     }
 
