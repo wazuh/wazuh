@@ -7,7 +7,10 @@ chown root:ossec /var/ossec/etc/client.keys
 rm /var/ossec/etc/test.keys
 
 # Agent configuration
-. /configuration_files/*.sh
+for sh_file in /configuration_files/*.sh; do
+  . $sh_file
+done
+
 sleep 1
 
 /var/ossec/bin/ossec-control start
