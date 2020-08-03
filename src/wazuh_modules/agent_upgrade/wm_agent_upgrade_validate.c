@@ -50,6 +50,18 @@ static int wm_agent_upgrade_validate_system(const char *platform, const char *os
  * */
 static int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task);
 
+
+/**
+ * Compare two versions with format v4.0.0
+ * @param version1 char * with the string version
+ * @param version2 char * with the string version
+ * @return return_code
+ * @retval 0 equals
+ * @retval 1 version1 > version2
+ * @retval -1 version1 < version2
+ * */
+int wm_agent_upgrade_compare_versions(const char *version1, const char *version2);
+
 static const char* invalid_platforms[] = {
     "darwin",
     "solaris",
@@ -195,7 +207,7 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
     if (!strcmp(agent_info->platform, "windows")) {
         strcat(repository_url, "windows/");
     } else {
-        if (strcmp(task->wpk_version, WM_UPGRADE_NEW_VERSION_REPOSITORY) >= 0) { // Fix this
+        if (wm_agent_upgrade_compare_versions(task->wpk_version, WM_UPGRADE_NEW_VERSION_REPOSITORY) >= 0) {
             strcat(repository_url, "linux/");
             strcat(repository_url, agent_info->architecture);
             strcat(repository_url, "/");
@@ -254,31 +266,26 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
     return return_code;
 }
 
-/**
- * Compare two versions with format v4.0.0
- * @param version1 char * with the string version 
- * @param version2 char * with the string version
- * @return return_code
- * @retval 0 equals
- * @retval 1 version1 > version2
- * @retval -1 version1 < version2
- * */
-int wm_agent_upgrade_compare_versions(const char * version1, const char * version2){
+int wm_agent_upgrade_compare_versions(const char *version1, const char *version2){
     char ver1[10];
-    strcpy(ver1, version1);
     char ver2[10];
-    strcpy(ver2, version2);
-    char *tmp_v1 = strchr(ver1, 'v');
-    char *tmp_v2 = strchr(ver2, 'v');
-    tmp_v1 ++;
-    tmp_v2 ++;
-    int result = 0;
+    char *tmp_v1 = NULL;
+    char *tmp_v2 = NULL;
     int patch1;
     int major1;
     int minor1;
     int patch2;
     int major2;
     int minor2;
+    int result = 0;
+
+    strcpy(ver1, version1);
+    strcpy(ver2, version2);
+
+    tmp_v1 = strchr(ver1, 'v');
+    tmp_v2 = strchr(ver2, 'v');
+    tmp_v1++;
+    tmp_v2++;
 
     major1 = atoi(strtok(tmp_v1, "."));
     minor1 = atoi(strtok(NULL, "."));
