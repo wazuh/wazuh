@@ -245,9 +245,6 @@ int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task) {
         return validate_result;
     }
 
-
-    // TODO: If necessary, download WPK and check sha1
-
-
-    return validate_result;
+    // If necessary, download WPK and check sha1
+    return wm_agent_upgrade_validate_wpk(agent_task->task_info->task, agent_task->task_info->command);
 }
