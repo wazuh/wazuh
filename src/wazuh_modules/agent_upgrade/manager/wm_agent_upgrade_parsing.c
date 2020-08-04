@@ -144,7 +144,7 @@ static int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_mess
 
     if (error_flag) {
         // We will reject this list of agents since they are incorrect
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, *error_message);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, output);
         os_free(agent_ids);
         os_strdup(output, *error_message);
     }
@@ -206,7 +206,7 @@ static wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
 
     if (error_flag) {
         // We will reject this task since the parameters are incorrect
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, *error_message);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, output);
         wm_agent_upgrade_free_upgrade_task(task);
         os_strdup(output, *error_message);
     }
@@ -248,7 +248,7 @@ static wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(con
 
     if (error_flag) {
         // We will reject this task since the parameters are incorrect
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, *error_message);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, output);
         wm_agent_upgrade_free_upgrade_custom_task(task);
         os_strdup(output, *error_message);
     }
