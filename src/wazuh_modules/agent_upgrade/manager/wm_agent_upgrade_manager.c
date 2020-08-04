@@ -40,7 +40,7 @@ void wm_agent_upgrade_listen_messages(int timeout_sec) {
     int sock = OS_BindUnixDomain(WM_UPGRADE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
     if (sock < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_BIND_SOCK_ERROR, WM_UPGRADE_SOCK_PATH, strerror(errno));
-        return NULL;
+        return;
     }
 
     struct timeval timeout = { timeout_sec, 0 };
@@ -130,4 +130,7 @@ void wm_agent_upgrade_listen_messages(int timeout_sec) {
         free(buffer);
         close(peer);
     }
+
+    // Destroy task hashmap
+    wm_agent_upgrade_destroy_task_map();
 }

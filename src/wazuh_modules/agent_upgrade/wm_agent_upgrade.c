@@ -55,10 +55,6 @@ void * wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config) {
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_FINISHED);
     os_free(upgrade_config);
-
-    #ifndef CLIENT
-        wm_agent_upgrade_destroy_task_map();
-    #endif
 }
 
 cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
