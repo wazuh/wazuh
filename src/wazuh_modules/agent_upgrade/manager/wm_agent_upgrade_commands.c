@@ -188,6 +188,10 @@ static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task)
         return validate_result;
     }
 
+
+    // TODO: Check if there isn't already a task for this agent with status UPDATING
+
+
     // Validate Wazuh version to upgrade
     validate_result = wm_agent_upgrade_validate_version(agent_task->agent_info, agent_task->task_info->task, agent_task->task_info->command);
 
@@ -208,15 +212,23 @@ static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task)
 static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request) {
     unsigned int index = 0;
     OSHashNode *node = NULL;
+    char *agent_key = NULL;
     wm_agent_task *agent_task = NULL;
 
     // Send request to task module and store task ids
     if (!wm_agent_upgrade_parse_task_module_task_ids(json_response, task_module_request)) {
+        node = wm_agent_upgrade_get_first_node(&index);
 
-        for (node = wm_agent_upgrade_get_first_node(&index); node != NULL; node = wm_agent_upgrade_get_next_node(&index, node)) {
+        while (node) {
+            agent_key = node->key;
             agent_task = (wm_agent_task *)node->data;
+            node = wm_agent_upgrade_get_next_node(&index, node);
+
 
             // TODO: Send WPK to agent and update task to UPDATING/ERROR
+
+
+            wm_agent_upgrade_remove_entry(atoi(agent_key));
         }
     } else {
         mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_NO_AGENTS_TO_UPGRADE);
