@@ -107,7 +107,7 @@ runValgrind()
 configDbSync()
 {
     currentDir=$(pwd)
-    cmake -DEXTERNAL_LIB=$currentDir/../external/
+    cmake -DEXTERNAL_LIB=$currentDir/../external/ -DCMAKE_BUILD_TYPE=Debug -DUNIT_TEST=ON .
 }
 
 makeDbSync()
