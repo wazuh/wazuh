@@ -249,6 +249,7 @@
 #define WM_UPGRADE_EMPTY_MESSAGE            "(8160): Empty message from local client."
 #define WM_UPGRADE_NO_AGENTS_TO_UPGRADE     "(8161): There are no valid agents to upgrade."
 #define WM_UPGRADE_DOWNLOADING_WPK          "(8162): Downloading WPK file from: '%s'"
+#define WM_UPGRADE_ACK_MESSAGE              "(8163): Sending upgrade ACK event: '%s'"
 
 #define MOD_TASK_START                      "(8200): Module Task Manager started."
 #define MOD_TASK_FINISH                     "(8201): Module Task Manager finished."
