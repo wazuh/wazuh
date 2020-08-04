@@ -508,11 +508,7 @@ size_t wcom_upgrade_result(char ** output){
 
     FILE * result_file;
 
-#ifndef WIN32
     if (result_file = fopen(PATH, "r"), result_file) {
-#else
-    if (result_file = fopen(PATH, "rb"), result_file) {
-#endif
         if (fgets(buffer,20,result_file)){
             os_malloc(OS_MAXSTR + 1, *output);
             snprintf(*output, OS_MAXSTR, "ok %s", buffer);

@@ -33,6 +33,7 @@ extern float s_event_queue;
 extern float s_process_event_queue;
 extern float s_winevt_queue;
 extern float s_dbsync_message_queue;
+extern float s_upgrade_message_queue;
 
 extern unsigned int s_syscheck_queue_size;
 extern unsigned int s_syscollector_queue_size;
@@ -43,6 +44,7 @@ extern unsigned int s_event_queue_size;
 extern unsigned int s_process_event_queue_size;
 extern unsigned int s_winevt_queue_size;
 extern unsigned int s_dbsync_message_queue_size;
+extern unsigned int s_upgrade_message_queue_size;
 
 extern float s_writer_alerts_queue;
 extern float s_writer_archives_queue;

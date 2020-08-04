@@ -11,7 +11,7 @@
 #ifndef WM_AGENT_UPGRADE_PARSING_H
 #define WM_AGENT_UPGRADE_PARSING_H
 
-#include "wm_agent_upgrade.h"
+#include "wm_agent_upgrade_manager.h"
 
 /**
  * Parse received upgrade message and returns task and agent ids values and a code
