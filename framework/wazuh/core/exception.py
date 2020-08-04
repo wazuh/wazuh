@@ -5,7 +5,6 @@
 
 from copy import deepcopy
 
-
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 
 
@@ -42,23 +41,24 @@ class WazuhException(Exception):
         1016: {'message': 'Error moving file',
                'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
         1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
+        1018: 'Body request is not a valid JSON',
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
         1101: {'message': 'Requested component does not exist',
                'remediation': 'Run `WAZUH_PATH/bin/ossec-logtest -t` to check your configuration'},
         1102: {'message': 'Invalid section',
                'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
-               'to get more information about configuration sections'},
+                              'to get more information about configuration sections'},
         1103: {'message': 'Invalid field in section',
                'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
-               'to get more information about configuration sections'},
+                              'to get more information about configuration sections'},
         1104: {'message': 'Invalid type',
                'remediation': 'Insert a valid type'},
         1105: 'Error reading API configuration',
         1106: {'message': 'Requested section not present in configuration',
                'remediation': 'Please, check your configuration file. '
-               'You can visit the official documentation (https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
-               'to get more information about configuration sections'},
+                              'You can visit the official documentation (https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
+                              'to get more information about configuration sections'},
         1107: 'Internal options file not found',
         1108: 'Value not found in internal_options.conf',
         1109: 'Option must be a digit',
@@ -80,9 +80,10 @@ class WazuhException(Exception):
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
         1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
-        1120: {'message': "Error adding agent. HTTP header 'X-Forwarded-For' not present in a behind_proxy_server API configuration",
-               'remediation': "Please, make sure your proxy is setting 'X-Forwarded-For' HTTP header"
-               },
+        1120: {
+            'message': "Error adding agent. HTTP header 'X-Forwarded-For' not present in a behind_proxy_server API configuration",
+            'remediation': "Please, make sure your proxy is setting 'X-Forwarded-For' HTTP header"
+            },
         1121: {'message': "Error connecting with socket"},
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
@@ -197,8 +198,8 @@ class WazuhException(Exception):
         1655: 'Active response - Command not available',
         1656: {'message': 'No parameters provided for request',
                'remediation': 'Please, visit the official documentation '
-               '(https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response) '
-               'to get more information about `active-response` API call'},
+                              '(https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response) '
+                              'to get more information about `active-response` API call'},
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
@@ -283,13 +284,14 @@ class WazuhException(Exception):
                },
         1728: {'message': 'Invalid node type',
                'remediation': 'Valid types are `master` and `worker`. Please, visit https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html '
-                          'to get more information about cluster configuration'},
-        1729: {'message': 'Agent status not valid. Valid statuses are active, disconnected, pending and never_connected',
-               'remediation': 'Please check used status and try again.'
-               },
+                              'to get more information about cluster configuration'},
+        1729: {
+            'message': 'Agent status not valid. Valid statuses are active, disconnected, pending and never_connected',
+            'remediation': 'Please check used status and try again.'
+            },
         1730: {'message': 'Node does not exist',
                'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
-                          '`cluster_control -l` (https://documentation.wazuh.com/current/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
+                              '`cluster_control -l` (https://documentation.wazuh.com/current/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
         1731: {'message': 'Agent is not eligible for removal',
                'remediation': "Please check the agent's status official documentation (https://documentation.wazuh.com/3.x/user-manual/agents/restful-api/remove.html)"
                },
@@ -530,12 +532,15 @@ class WazuhException(Exception):
                           'The current IP has been blocked due to a high number of login attempts'},
         6001: {'message': 'Maximum number of request per minute reached',
                'remediation': 'This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html'},
-        6002: {'message': 'The body type is not the one specified in the content-type'}
+        6002: {'message': 'The body type is not the one specified in the content-type'},
+        6003: {'message': 'Error trying to load the JWT secret',
+               'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/jwt_secret'}
 
         # > 9000: Authd
     }
 
-    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None):
+    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, title=None,
+                 type=None):
         """
         Creates a Wazuh Exception.
 
@@ -547,7 +552,10 @@ class WazuhException(Exception):
                             {'master-node': {'error': 'Wazuh Internal error',
                                              'logfile': WAZUH_HOME/logs/api.log}
                             }
+        :param title: Name of the exception to be shown
         """
+        self._type = type if type else 'about:blank'
+        self._title = title if title else self.__class__.__name__
         self._code = code
         self._extra_message = extra_message
         self._extra_remediation = extra_remediation
@@ -583,16 +591,21 @@ class WazuhException(Exception):
     def __eq__(self, other):
         if not isinstance(other, WazuhException):
             return NotImplemented
-        return (self._code,
+        return (self._type,
+                self._title,
+                self._code,
                 self._extra_message,
                 self._extra_remediation,
-                self._cmd_error) == (other._code,
+                self._cmd_error) == (other._type,
+                                     other._title,
+                                     other._code,
                                      other._extra_message,
                                      other._extra_remediation,
                                      other._cmd_error)
 
     def __hash__(self):
-        return hash((self._code, self._extra_message, self._extra_remediation, self._cmd_error))
+        return hash(
+            (self._type, self._title, self._code, self._extra_message, self._extra_remediation, self._cmd_error))
 
     def __or__(self, other):
         if isinstance(other, WazuhException):
@@ -608,12 +621,22 @@ class WazuhException(Exception):
         return obj
 
     def to_dict(self):
-        return {'code': self._code,
+        return {'type': self._type,
+                'title': self._title,
+                'code': self._code,
                 'extra_message': self._extra_message,
                 'extra_remediation': self._extra_remediation,
                 'cmd_error': self._cmd_error,
                 'dapi_errors': self._dapi_errors
                 }
+
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def title(self):
+        return self._title
 
     @property
     def message(self):
@@ -645,7 +668,32 @@ class WazuhInternalError(WazuhException):
     This type of exception is raised when an unexpected error in framework code occurs,
     which means an internal error could not be handled
     """
-    pass
+    _default_type = "about:blank"
+    _default_title = "Wazuh Internal Error"
+
+    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, ids=None,
+                 title=None, type=None):
+        """Creates a WazuhInternalError exception.
+
+        :param code: Exception code.
+        :param extra_message: Adds an extra message to the error description.
+        :param extra_remediation: Adds an extra description to remediation
+        :param cmd_error: If it is a custom error code (i.e. ossec commands), the error description will be the message.
+        :param dapi_errors: dict with details about node and logfile. I.e.:
+                            {'master-node': {'error': 'Wazuh Internal error',
+                                             'logfile': WAZUH_HOME/logs/api.log}
+                            }
+        :param ids: List or set with the ids involved in the exception
+        """
+
+        super().__init__(code, extra_message=extra_message,
+                         extra_remediation=extra_remediation,
+                         cmd_error=cmd_error,
+                         dapi_errors=dapi_errors,
+                         title=title if title else self._default_title,
+                         type=type if type else self._default_type
+                         )
+        self._ids = set() if ids is None else set(ids)
 
 
 class WazuhError(WazuhException):
@@ -653,8 +701,11 @@ class WazuhError(WazuhException):
     This type of exception is raised as a controlled response to a bad request from user
     that cannot be performed properly
     """
+    _default_type = "about:blank"
+    _default_title = "Bad Request"
 
-    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, ids=None):
+    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, ids=None,
+                 title=None, type=None):
         """Creates a WazuhError exception.
 
         :param code: Exception code.
@@ -667,10 +718,13 @@ class WazuhError(WazuhException):
                             }
         :param ids: List or set with the ids involved in the exception
         """
+
         super().__init__(code, extra_message=extra_message,
                          extra_remediation=extra_remediation,
                          cmd_error=cmd_error,
-                         dapi_errors=dapi_errors
+                         dapi_errors=dapi_errors,
+                         title=title if title else self._default_title,
+                         type=type if type else self._default_type
                          )
         self._ids = set() if ids is None else set(ids)
 
@@ -692,8 +746,25 @@ class WazuhError(WazuhException):
         return result
 
 
-class WazuhClusterError(WazuhException):
+class WazuhPermissionError(WazuhError):
+    """
+    This type of exception is raised as a controlled response to a permission denied accessing a resource.
+    """
+    _default_type = "about:blank"
+    _default_title = "Permission Denied"
+
+
+class WazuhClusterError(WazuhError):
     """
     This type of exception is raised inside the cluster.
     """
-    pass
+    _default_type = "about:blank"
+    _default_title = "Wazuh Cluster Error"
+
+
+class WazuhResourceNotFound(WazuhError):
+    """
+    This type of exception is raised as a controlled response to a not found resource.
+    """
+    _default_type = "about:blank"
+    _default_title = "Resource Not Found"

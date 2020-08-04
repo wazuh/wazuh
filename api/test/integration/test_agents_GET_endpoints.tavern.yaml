@@ -103,9 +103,7 @@ stages:
      status_code: 400
      json: &error_spec
        detail: !anystr
-       status: !anyint
        title: !anystr
-       type: !anystr
 
  - name: Try to show agents with offset not integer value
    request:
@@ -159,8 +157,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
  - name: Sort
    request:
@@ -1714,8 +1710,8 @@ stages:
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-   response:
-     status_code: 400
+   response: &resource_not_found
+     status_code: 404
      json:
        code: 1701
 
@@ -2057,8 +2053,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
  - name: Sort
    request:
@@ -2291,8 +2285,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
  - name: Params, bad group name
    request:
@@ -2301,8 +2293,8 @@ stages:
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-   response:
-     status_code: 400
+   response: &resource_not_found_group
+     status_code: 404
      json:
        code: 1710
 
@@ -2633,9 +2625,7 @@ stages:
      params:
        limit: 1
    response:
-     status_code: 400
-     json:
-       code: 1710
+     <<: *resource_not_found_group
 
  - name: Try get the configuration of a bad group (not alphanumeric)
    request:
@@ -2728,8 +2718,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
 ---
 test_name: GET /groups/{group_id}/files
@@ -2758,7 +2746,6 @@ stages:
          total_affected_items: !anyint
          total_failed_items: 0
          failed_items: []
-       message: !anystr
      save:
        json:
          filename_saved: data.affected_items[1].filename
@@ -2781,7 +2768,6 @@ stages:
          total_affected_items: !anyint
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
  - name: Try get the files of a group with offset -1
    request:
@@ -2819,7 +2805,6 @@ stages:
          total_affected_items: !anyint
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
  - name: Try get the files of a group with limit 0
    request:
@@ -2851,8 +2836,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
  - name: Try get the files of a bad group name
    request:
@@ -2873,11 +2856,8 @@ stages:
          failed_items:
            - error:
                code: 1710
-               message: The group does not exist
-               remediation: Please, use `GET /agents/groups` to find all available groups
              id:
                - wrong_group
-       message: No groups files are shown
 
  - name: Try get the files of a bad group name (no alphanumeric)
    request:
@@ -2907,7 +2887,6 @@ stages:
          total_affected_items: !anyint
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
  - name: Try get the files of a group with wrong sort
    request:
@@ -2936,7 +2915,6 @@ stages:
          total_affected_items: 1
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
  - name: Try get the files of a group with wrong search
    request:
@@ -2952,7 +2930,6 @@ stages:
          total_affected_items: 0
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
  - name: Try get the files of a group, filter bad hash
    request:
@@ -3003,7 +2980,6 @@ stages:
          total_affected_items: !anyint
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
 ---
 test_name: GET /groups/{group_id}/files/{filename}/json
@@ -3030,9 +3006,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-     status_code: 400
-     json:
-       code: 1710
+      <<: *resource_not_found_group
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
    request:
@@ -3072,9 +3046,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-     status_code: 400
-     json:
-       code: 1710
+      <<: *resource_not_found_group
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
    request:
@@ -3275,8 +3247,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
  - name: Sort
    request:
@@ -3519,8 +3489,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
  - name: Try show agents with wrong sort
    request:
@@ -3785,8 +3753,6 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     json:
-       code: 1405
 
  - name: Sort
    request:
@@ -3970,7 +3936,6 @@ stages:
          total_affected_items: 1
          total_failed_items: 0
          failed_items: []
-       message: !anystr
 
 ---
 test_name: GET /agents/{agent_id}/upgrade_result
@@ -3997,9 +3962,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-     status_code: 400
-     json:
-       code: 1701
+      <<: *resource_not_found
 
  - name: Try get upgrade result agent by name
    request:
@@ -4026,9 +3989,7 @@ stages:
        code: !anyint
        dapi_errors: !anything
        detail: !anystr
-       status: !anyint
        title: !anystr
-       type: !anystr
 
  - name: Upgrade an agent
    request:

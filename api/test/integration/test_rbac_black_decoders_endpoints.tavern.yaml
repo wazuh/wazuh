@@ -38,7 +38,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the decoders of the system (try q parameter to bypass a denied resource)
     request:
@@ -57,7 +56,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the decoders of the system (list)
     request:
@@ -84,7 +82,6 @@ stages:
                 - wazuh
           total_affected_items: 0
           total_failed_items: 5
-        message: !anystr
 
 ---
 test_name: GET DECODERS FILES RBAC
@@ -123,7 +120,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the decoders files of the system (list)
     request:
@@ -152,7 +148,6 @@ stages:
                 - 0005-wazuh_decoders.xml
           total_affected_items: 2
           total_failed_items: 1
-        message: !anystr
 
   - name: Try to show the decoders files of the system (no permissions)
     request:
@@ -163,18 +158,10 @@ stages:
       method: GET
       params:
         filename: 0160-netscaler_decoders.xml,0005-wazuh_decoders.xml
-    response:
-      status_code: 400
-      json: &permissions_denied
+    response: &permissions_denied
+      status_code: 403
+      json:
         code: 4000
-        dapi_errors:
-          master-node:
-            error: !anystr
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
 ---
 test_name: GET DECODERS FILES RBAC (Download)
@@ -201,9 +188,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
-      status_code: 400
-      json:
-        <<: *permissions_denied
+      <<: *permissions_denied
 
 ---
 test_name: GET DECODERS PARENTS RBAC
@@ -242,4 +227,3 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr

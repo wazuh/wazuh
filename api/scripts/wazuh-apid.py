@@ -23,10 +23,10 @@ import wazuh.security
 from api import alogging, configuration, __path__ as api_path
 # noinspection PyUnresolvedReferences
 from api import validator
-from api.api_exception import APIException
+from api.api_exception import APIError
 from api.configuration import generate_self_signed_certificate, generate_private_key
 from api.constants import CONFIG_FILE_PATH, API_LOG_FILE_PATH
-from api.middlewares import set_user_name, prevent_bruteforce_attack, prevent_denial_of_service
+from api.middlewares import set_user_name, security_middleware, response_postprocessing
 from api.uri_parser import APIUriParser
 from api.util import to_relative_path
 from wazuh.core import pyDaemonModule, common
@@ -86,10 +86,10 @@ def start(foreground, root, config_file):
             ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
                                         keyfile=api_conf['https']['key'])
         except ssl.SSLError as e:
-            raise APIException(2003, details='Private key does not match with the certificate')
+            raise APIError(2003, details='Private key does not match with the certificate')
         except OSError as e:
             if e.errno == 22:
-                raise APIException(2003, details='PEM phrase is not correct')
+                raise APIError(2003, details='PEM phrase is not correct')
 
     # Foreground/Daemon
     if not foreground:
@@ -124,7 +124,7 @@ def start(foreground, root, config_file):
                 strict_validation=True,
                 validate_responses=True,
                 pass_context_arg_name='request',
-                options={"middlewares": [set_user_name, prevent_bruteforce_attack, prevent_denial_of_service]})
+                options={"middlewares": [set_user_name, security_middleware, response_postprocessing]})
 
     # Enable CORS
     if cors['enabled']:
@@ -171,11 +171,11 @@ def start(foreground, root, config_file):
                 ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
                                             keyfile=api_conf['https']['key'])
             except ssl.SSLError:
-                raise APIException(2003, details='Private key does not match with the certificate')
+                raise APIError(2003, details='Private key does not match with the certificate')
             except IOError:
-                raise APIException(2003,
-                                   details='Please, ensure if path to certificates is correct in the configuration '
-                                           f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
+                raise APIError(2003,
+                               details='Please, ensure if path to certificates is correct in the configuration '
+                                       f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
 
     app.run(port=api_conf['port'],
             host=api_conf['host'],

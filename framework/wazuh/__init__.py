@@ -31,9 +31,9 @@ msg += "\n  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rh/python27/root/usr/li
 try:
     from sys import version_info as python_version
     if python_version.major < 2 or (python_version.major == 2 and python_version.minor < 7):
-        raise WazuhException(999, msg)
+        raise WazuhInternalError(999, msg)
 except Exception as e:
-    raise WazuhException(999, msg)
+    raise WazuhInternalError(999, msg)
 
 
 class Wazuh:

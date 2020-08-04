@@ -2,18 +2,18 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from typing import Dict
 import json
 import os
 import re
+from typing import Dict
+
 import yaml
 
-from api.api_exception import APIException
+from api import validator
+from api.api_exception import APIError
 from api.constants import CONFIG_FILE_PATH
 from api.util import to_relative_path
 from wazuh.core import common
-
-from api import validator
 
 
 def get_old_config() -> Dict:
@@ -36,7 +36,7 @@ def get_old_config() -> Dict:
                         # add element to old_config only if it is right
                         old_config[var_name] = parse_to_yaml_value(var_value)
     except IOError as e:
-        raise APIException(2002, details=f'Error loading {to_relative_path(old_config_path)} '
+        raise APIError(2002, details=f'Error loading {to_relative_path(old_config_path)} '
                            f'file: {e.strerror}')
 
     return rename_old_fields(old_config)
@@ -166,6 +166,13 @@ def rename_old_fields(config: Dict) -> Dict:
             if key in new_config:
                 del new_config[key]
 
+    # Add new access parameters
+    new_config['access'] = {
+        "max_login_attempts": 5,
+        "block_time": 300,
+        "max_request_per_minute": 300
+    }
+
     return new_config
 
 
@@ -182,7 +189,7 @@ def write_into_yaml_file(config: Dict):
         os.chown(CONFIG_FILE_PATH, common.ossec_uid(), common.ossec_gid())
         os.chmod(CONFIG_FILE_PATH, 0o660)
     except IOError as e:
-        raise APIException(2002, details='API configuration could not be written into '
+        raise APIError(2002, details='API configuration could not be written into '
                            f'{to_relative_path(CONFIG_FILE_PATH)} file: '
                            f'{e.strerror}')
 
