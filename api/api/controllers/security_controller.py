@@ -4,24 +4,24 @@
 
 import logging
 import re
-from json import JSONDecodeError
 
 from aiohttp import web
 
-from api.api_exception import APIError
 from api.authentication import generate_token
 from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
+from api.models.base_model_ import Body
 from api.models.configuration import SecurityConfigurationModel
 from api.models.security import CreateUserModel, UpdateUserModel, RoleModel, PolicyModel
 from api.models.token_response import TokenResponseModel
 from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
+from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.exception import WazuhError
-from wazuh.rbac import preprocessor
+from wazuh.core.exception import WazuhPermissionError, WazuhException
+from wazuh.core.security import revoke_tokens
 from wazuh.core.results import AffectedItemsWazuhResult
-from api.models.base_model_ import Body
+from wazuh.rbac import preprocessor
 
 logger = logging.getLogger('wazuh')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
@@ -54,8 +54,12 @@ async def login_user(request, user: str, auth_context=None):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=TokenResponseModel(token=generate_token(user_id=user, rbac_policies=data.dikt)),
-                             status=200, dumps=dumps)
+    try:
+        token = generate_token(user_id=user, rbac_policies=data.dikt)
+    except WazuhException as e:
+        raise_if_exc(e)
+
+    return web.json_response(data=TokenResponseModel(token=token), status=200, dumps=dumps)
 
 
 async def get_user_me(request, pretty=False, wait_for_complete=False):
@@ -218,7 +222,10 @@ async def delete_users(request, user_ids: list = None):
     -------
     Result of the operation
     """
+    if 'all' in user_ids:
+        user_ids = None
     f_kwargs = {'user_ids': user_ids}
+
     dapi = DistributedAPI(f=security.remove_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -328,6 +335,8 @@ async def remove_roles(request, role_ids: list = None, pretty: bool = False, wai
     -------
     Two list with deleted roles and not deleted roles
     """
+    if 'all' in role_ids:
+        role_ids = None
     f_kwargs = {'role_ids': role_ids}
 
     dapi = DistributedAPI(f=security.remove_roles,
@@ -473,6 +482,8 @@ async def remove_policies(request, policy_ids: list = None, pretty: bool = False
     -------
     Two list with deleted roles and not deleted roles
     """
+    if 'all' in policy_ids:
+        policy_ids = None
     f_kwargs = {'policy_ids': policy_ids}
 
     dapi = DistributedAPI(f=security.remove_policies,
@@ -579,6 +590,8 @@ async def remove_user_role(request, user_id: str, role_ids: list, pretty: bool =
     -------
     Result of the operation
     """
+    if 'all' in role_ids:
+        role_ids = None
     f_kwargs = {'user_id': user_id, 'role_ids': role_ids}
 
     dapi = DistributedAPI(f=security.remove_user_role,
@@ -649,6 +662,8 @@ async def remove_role_policy(request, role_id: int, policy_ids: list, pretty: bo
     -------
     Role information
     """
+    if 'all' in policy_ids:
+        policy_ids = None
     f_kwargs = {'role_id': role_id, 'policy_ids': policy_ids}
 
     dapi = DistributedAPI(f=security.remove_role_policy,
@@ -725,20 +740,22 @@ async def get_rbac_actions(pretty: bool = False, endpoint: str = None):
 async def revoke_all_tokens(request):
     """Revoke all tokens."""
     f_kwargs = {}
+    nodes = await get_system_nodes()
 
-    dapi = DistributedAPI(f=security.revoke_tokens,
+    dapi = DistributedAPI(f=security.wrapper_revoke_tokens,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           broadcasting=True,
                           wait_for_complete=True,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
     status = 200
     if type(data) == AffectedItemsWazuhResult and len(data.affected_items) == 0:
-        raise_if_exc(WazuhError(4000, data.message))
+        raise_if_exc(WazuhPermissionError(4000, data.message))
 
     return web.json_response(data=data, status=status, dumps=dumps)
 
@@ -769,6 +786,26 @@ async def get_security_config(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+async def security_revoke_tokens():
+    """Revokes all tokens on all nodes after a change in security configuration."""
+    nodes = list()
+    try:
+        nodes = await get_system_nodes()
+    except WazuhInternalError as e:
+        if e.code != 3012:  # Cluster is disabled
+            raise e
+
+    dapi = DistributedAPI(f=revoke_tokens,
+                          request_type='distributed_master' if len(nodes) > 0 else 'local_master',
+                          is_async=False,
+                          wait_for_complete=True,
+                          broadcasting=len(nodes) > 0,
+                          logger=logger,
+                          nodes=nodes
+                          )
+    raise_if_exc(await dapi.distribute_function())
+
+
 async def put_security_config(request, pretty=False, wait_for_complete=False):
     """Update current security configuration with the given one.
 
@@ -787,6 +824,7 @@ async def put_security_config(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
+    await security_revoke_tokens()
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
@@ -808,5 +846,6 @@ async def delete_security_config(request, pretty=False, wait_for_complete=False)
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
+    await security_revoke_tokens()
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

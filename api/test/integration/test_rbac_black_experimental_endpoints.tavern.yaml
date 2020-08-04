@@ -13,6 +13,8 @@ stages:
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: all
     response:
       status_code: 200
       json:
@@ -26,7 +28,6 @@ stages:
           failed_items: []
           total_affected_items: 5
           total_failed_items: 0
-        message: !anystr
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
@@ -52,7 +53,6 @@ stages:
                 - '005'
           total_affected_items: 2
           total_failed_items: 2
-        message: !anystr
 
 ---
 test_name: GET /experimental/ciscat/results
@@ -78,7 +78,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
@@ -104,7 +103,6 @@ stages:
                 - '007'
           total_affected_items: 2
           total_failed_items: 2
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/hardware
@@ -156,7 +154,6 @@ stages:
                 - '007'
           total_affected_items: 2
           total_failed_items: 2
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netaddr
@@ -200,7 +197,6 @@ stages:
                 - '007'
           total_affected_items: 2
           total_failed_items: 2
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netiface
@@ -244,7 +240,6 @@ stages:
                 - '007'
           total_affected_items: 1
           total_failed_items: 3
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netproto
@@ -288,7 +283,6 @@ stages:
                 - '005'
           total_affected_items: 3
           total_failed_items: 1
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/os
@@ -332,7 +326,6 @@ stages:
                 - '003'
           total_affected_items: 2
           total_failed_items: 2
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/packages
@@ -354,7 +347,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name:  Request all agents (Denied)
     request:
@@ -366,7 +358,7 @@ stages:
       params:
         list_agents: '001,003,005,007'
     response:
-      status_code: 400
+      status_code: 403
       json:
         code: 4000
 
@@ -442,7 +434,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
@@ -466,7 +457,6 @@ stages:
                 - '005'
           total_affected_items: !anyint
           total_failed_items: 2
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/hotfixes
@@ -488,7 +478,6 @@ stages:
           failed_items: []
           total_affected_items: 1  # Only the agent 000 will have results
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
@@ -511,10 +500,7 @@ stages:
           failed_items:
             - error:
                 code: 4000
-                message: !anystr
-                remediation: !anystr
               id:
                 - '005'
           total_affected_items: 1
           total_failed_items: 1
-        message: !anystr

@@ -112,9 +112,9 @@ class LocalClient(client.AbstractClientManager):
                                                                                          cluster_items=self.cluster_items),
                                              path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
         except ConnectionRefusedError:
-            raise exception.WazuhException(3012)
+            raise exception.WazuhInternalError(3012)
         except MemoryError:
-            raise exception.WazuhException(1119)
+            raise exception.WazuhInternalError(1119)
         except Exception as e:
             raise exception.WazuhInternalError(3009, str(e))
 
@@ -139,7 +139,7 @@ class LocalClient(client.AbstractClientManager):
                     await asyncio.wait_for(self.protocol.response_available.wait(), timeout=timeout)
                     request_result = self.protocol.response.decode()
                 except asyncio.TimeoutError:
-                    raise exception.WazuhException(3020)
+                    raise exception.WazuhInternalError(3020)
             else:
                 request_result = result
         return request_result
