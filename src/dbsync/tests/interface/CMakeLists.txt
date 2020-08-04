@@ -9,7 +9,9 @@ link_directories(${CMAKE_BINARY_DIR}/lib)
 
 
 file(GLOB INTERFACE_UNITTEST_SRC
-    "*.cpp")
+    "*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sqlite/*.cpp")
 
 add_executable(dbsync_unit_test 
     "${INTERFACE_UNITTEST_SRC}" )
