@@ -3,10 +3,10 @@
     "body": {
     	"table":"processes",
      	"query":{
-     		"column_list":["name","threads"],
-            "row_filter":"WHERE pid>=5",
+     		"column_list":["pid","name","path","cmdline"],
+            "row_filter":"WHERE pid>5",
             "distinct_opt":false,
-            "order_by_opt":"threads",
+            "order_by_opt":"",
             "count_opt":100
         }
     }
