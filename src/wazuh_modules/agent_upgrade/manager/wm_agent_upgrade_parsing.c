@@ -121,18 +121,20 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
 static int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message) {
     char *output = NULL;
     int *agent_ids = NULL;
+    int agents_size = 0;
     int agent_index = 0;
     int error_flag = 0;
 
     os_calloc(OS_MAXSTR, sizeof(char), output);
 
-    os_calloc(1, sizeof(int), agent_ids);
-    *agent_ids = OS_INVALID;
+    agents_size = cJSON_GetArraySize(agents);
 
-    while(!error_flag && (agent_index < cJSON_GetArraySize(agents))) {
+    os_calloc(agents_size + 1, sizeof(int), agent_ids);
+    agent_ids[agent_index] = OS_INVALID;
+
+    while(!error_flag && (agent_index < agents_size)) {
         cJSON *agent = cJSON_GetArrayItem(agents, agent_index);
         if (agent->type == cJSON_Number) {
-            os_realloc(agent_ids, sizeof(int) * (agent_index + 2), agent_ids);
             agent_ids[agent_index] = agent->valueint;
             agent_ids[agent_index + 1] = OS_INVALID;
         } else {
