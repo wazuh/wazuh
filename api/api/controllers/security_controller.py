@@ -18,9 +18,9 @@ from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.exception import WazuhError, WazuhInternalError
-from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.exception import WazuhPermissionError, WazuhException
 from wazuh.core.security import revoke_tokens
+from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac import preprocessor
 
 logger = logging.getLogger('wazuh')
@@ -54,8 +54,12 @@ async def login_user(request, user: str, auth_context=None):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=TokenResponseModel(token=generate_token(user_id=user, rbac_policies=data.dikt)),
-                             status=200, dumps=dumps)
+    try:
+        token = generate_token(user_id=user, rbac_policies=data.dikt)
+    except WazuhException as e:
+        raise_if_exc(e)
+
+    return web.json_response(data=TokenResponseModel(token=token), status=200, dumps=dumps)
 
 
 async def get_user_me(request, pretty=False, wait_for_complete=False):
@@ -751,7 +755,7 @@ async def revoke_all_tokens(request):
     data = raise_if_exc(await dapi.distribute_function())
     status = 200
     if type(data) == AffectedItemsWazuhResult and len(data.affected_items) == 0:
-        raise_if_exc(WazuhError(4000, data.message))
+        raise_if_exc(WazuhPermissionError(4000, data.message))
 
     return web.json_response(data=data, status=status, dumps=dumps)
 
