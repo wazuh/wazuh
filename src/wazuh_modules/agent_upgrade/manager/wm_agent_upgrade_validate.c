@@ -11,7 +11,7 @@
 
 #include "wazuh_db/wdb.h"
 #include "wazuh_modules/wmodules.h"
-
+#include "wm_agent_upgrade_manager.h"
 /**
  * Check if agent version is valid to upgrade to a non-customized version
  * @param agent_id Id of agent to validate

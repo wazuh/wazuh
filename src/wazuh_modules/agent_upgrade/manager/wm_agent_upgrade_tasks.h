@@ -11,7 +11,7 @@
 #ifndef WM_AGENT_UPGRADE_TASKS_H
 #define WM_AGENT_UPGRADE_TASKS_H
 
-#include "wm_agent_upgrade.h"
+#include "wm_agent_upgrade_manager.h"
 
 /**
  * Initialization of upgrade_task
