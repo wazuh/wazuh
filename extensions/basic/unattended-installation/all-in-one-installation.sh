@@ -7,12 +7,12 @@ passwords=""
 if [ -n "$(command -v yum)" ] 
 then
     sys_type="yum"
-elif [ -n "$(command -v apt-get)" ] 
-then
-    sys_type="apt-get"
 elif [ -n "$(command -v zypper)" ] 
 then
-    sys_type="zypper"    
+    sys_type="zypper"     
+elif [ -n "$(command -v apt-get)" ] 
+then
+    sys_type="apt-get"   
 fi
 
 logger() {
@@ -76,13 +76,13 @@ installPrerequisites() {
     if [ $sys_type == "yum" ] 
     then
         eval "yum install zip unzip curl -y -q $debug"   
+    elif [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install zip unzip curl $debug"       
     elif [ $sys_type == "apt-get" ] 
     then
         eval "apt-get install curl apt-transport-https zip unzip lsb-release gnupg2 libcap2-bin -y -q $debug"
         eval "apt-get update -q $debug"
-        elif [ $sys_type == "zypper" ] 
-    then
-        eval "zypper install zip unzip curl -y -q $debug"   
     fi
 
     if [  "$?" != 0  ]
@@ -98,19 +98,21 @@ installPrerequisites() {
 addElasticrepo() {
     logger "Adding the Elasticsearch repository..."
 
+
     if [ $sys_type == "yum" ] 
     then
         eval "rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch $debug"
-        echo -e '[elasticsearch-7.x]\nname=Elasticsearch repository for 7.x packages\nbaseurl=https://artifacts.elastic.co/packages/7.x/yum\ngpgcheck=1\ngpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch\nenabled=1\nautorefresh=1\ntype=rpm-md' | eval "tee /etc/yum.repos.d/elastic.repo $debug"
+        echo -e '[elasticsearch-7.x]\nname=Elasticsearch repository for 7.x packages\nbaseurl=https://artifacts.elastic.co/packages/7.x/yum\ngpgcheck=1\ngpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch\nenabled=1\nautorefresh=1\ntype=rpm-md' > /etc/yum.repos.d/elastic.repo
+    elif [ $sys_type == "zypper" ] 
+    then
+        rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch > /dev/null 2>&1
+        echo -e '[elasticsearch-7.x]\nname=Elasticsearch repository for 7.x packages\nbaseurl=https://artifacts.elastic.co/packages/7.x/yum\ngpgcheck=1\ngpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch\nenabled=1\nautorefresh=1\ntype=rpm-md' > /etc/zypp/repos.d/elastic.repo
+        
     elif [ $sys_type == "apt-get" ] 
     then
         eval "curl -s https://artifacts.elastic.co/GPG-KEY-elasticsearch --max-time 300 | apt-key add - $debug"
         echo 'deb https://artifacts.elastic.co/packages/7.x/apt stable main' | eval "tee /etc/apt/sources.list.d/elastic-7.x.list $debug"
         eval "apt-get update -q $debug"
-    elif [ $sys_type == "zypper" ] 
-    then
-        eval "rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch $debug"
-        echo -e '[elasticsearch-7.x]\nname=Elasticsearch repository for 7.x packages\nbaseurl=https://artifacts.elastic.co/packages/7.x/yum\ngpgcheck=1\ngpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch\nenabled=1\nautorefresh=1\ntype=rpm-md' | eval "tee /etc/zypp/repos.d/elastic.repo $debug"
     fi    
 
     if [  "$?" != 0  ]
@@ -130,6 +132,11 @@ addWazuhrepo() {
     then
         eval "rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH $debug"
         eval "echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh_pre.repo $debug"
+    elif [ $sys_type == "zypper" ] 
+    then
+        rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH > /dev/null 2>&1
+        echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' > /etc/zypp/repos.d/wazuh_pre.repo
+    
     elif [ $sys_type == "apt-get" ] 
     then
         eval "curl -s https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH --max-time 300 | apt-key add - $debug"
@@ -149,8 +156,12 @@ addWazuhrepo() {
 ## Wazuh manager
 installWazuh() {
     logger "Installing the Wazuh manager..."
-
-    eval "$sys_type install wazuh-manager -y -q $debug"
+    if [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install wazuh-manager $debug"
+    else
+        eval "$sys_type install wazuh-manager -y -q $debug"
+    fi
     if [  "$?" != 0  ]
     then
         echo "Error: Wazuh installation failed"
@@ -172,7 +183,7 @@ installElasticsearch() {
         eval "apt-get install elasticsearch -y -q $debug"
     elif [ $sys_type == "zypper" ] 
     then
-        eval "zypper install elasticsearch -y -q $debug"        
+        eval "zypper -n install elasticsearch $debug"
     fi
 
     if [  "$?" != 0  ]
@@ -185,7 +196,7 @@ installElasticsearch() {
         logger "Configuring Elasticsearch..."
 
         eval "curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/elasticsearch/elasticsearch_all_in_one.yml --max-time 300 $debug"
-        eval "curl -so /usr/share/elasticsearch/instances.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/instances_aio.yml $debug"
+        eval "curl -so /usr/share/elasticsearch/instances.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/instances_aio.yml --max-time 300 $debug"
         eval "/usr/share/elasticsearch/bin/elasticsearch-certutil cert ca --pem --in instances.yml --keep-ca-key --out ~/certs.zip $debug"
         eval "unzip ~/certs.zip -d ~/certs $debug"
         eval "mkdir /etc/elasticsearch/certs/ca -p $debug"
@@ -193,7 +204,6 @@ installElasticsearch() {
         eval "chown -R elasticsearch: /etc/elasticsearch/certs $debug"
         eval "chmod -R 500 /etc/elasticsearch/certs $debug"
         eval "chmod 400 /etc/elasticsearch/certs/ca/ca.* /etc/elasticsearch/certs/elasticsearch.* $debug"
-        eval "rm -rf ~/certs/ ~/certs.zip -f $debug"
         if [  "$?" != 0  ]
         then
             echo "Error: certificates were not created"
@@ -210,18 +220,7 @@ installElasticsearch() {
             ram=1;
         fi    
         eval "sed -i "s/-Xms1g/-Xms${ram}g/" /etc/elasticsearch/jvm.options $debug"
-        eval "sed -i "s/-Xmx1g/-Xmx${ram}g/" /etc/elasticsearch/jvm.options $debug"
-
-        jv=$(java -version 2>&1 | grep -o -m1 '1.8.0' )
-        if [ "$jv" == "1.8.0" ]
-        then
-            ln -s /usr/lib/jvm/java-1.8.0/lib/tools.jar /usr/share/elasticsearch/lib/
-            echo "root hard nproc 4096" >> /etc/security/limits.conf 
-            echo "root soft nproc 4096" >> /etc/security/limits.conf 
-            echo "elasticsearch hard nproc 4096" >> /etc/security/limits.conf 
-            echo "elasticsearch soft nproc 4096" >> /etc/security/limits.conf 
-            echo "bootstrap.system_call_filter: false" >> /etc/elasticsearch/elasticsearch.yml
-        fi      
+        eval "sed -i "s/-Xmx1g/-Xmx${ram}g/" /etc/elasticsearch/jvm.options $debug"     
 
         # Start Elasticsearch
         startService "elasticsearch"
@@ -241,8 +240,13 @@ installElasticsearch() {
 installFilebeat() {
     
     logger "Installing Filebeat..."
-
-    eval "$sys_type install filebeat -y -q  $debug"
+    
+    if [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install filebeat $debug"
+    else
+        eval "$sys_type install filebeat -y -q  $debug"
+    fi
     if [  "$?" != 0  ]
     then
         echo "Error: Filebeat installation failed"
@@ -269,8 +273,12 @@ installFilebeat() {
 installKibana() {
     
     logger "Installing Open Distro for Kibana..."
-
-    eval "$sys_type install kibana -y -q $debug"
+    if [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install kibana $debug"
+    else
+        eval "$sys_type install kibana -y -q $debug"
+    fi
     if [  "$?" != 0  ]
     then
         echo "Error: Kibana installation failed"
