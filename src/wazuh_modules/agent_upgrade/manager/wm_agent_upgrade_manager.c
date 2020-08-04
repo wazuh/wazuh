@@ -33,7 +33,16 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_VERSION_QUERY_ERROR] = "Not agent version found in database."
 };
 
-void wm_agent_upgrade_listen_messages(int sock, int timeout_sec) {
+void wm_agent_upgrade_listen_messages(int timeout_sec) {
+    // Initialize task hashmap
+    wm_agent_upgrade_init_task_map();
+
+    int sock = OS_BindUnixDomain(WM_UPGRADE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
+    if (sock < 0) {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_BIND_SOCK_ERROR, WM_UPGRADE_SOCK_PATH, strerror(errno));
+        return NULL;
+    }
+
     struct timeval timeout = { timeout_sec, 0 };
 
     while(1) {

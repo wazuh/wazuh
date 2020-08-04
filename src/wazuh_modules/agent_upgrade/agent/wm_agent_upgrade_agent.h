@@ -14,18 +14,17 @@
 
 /**
  * Checks if an agent has been recently upgraded, by reading upgrade_results file
- * If there has been an upgrade, dispatchs a message to notificate the maanger.
+ * If there has been an upgrade, dispatchs a message to notificate the manager.
  * This method will block the thread if the agent is not connected to the manager
  * */
 void wm_agent_upgrade_check_status();
 
 typedef enum _wm_upgrade_agent_state {
     WM_UPGRADE_SUCCESSFULL = 0,
-    WM_UPGRADE_FAILED
+    WM_UPGRADE_FAILED,
+    WM_UPGRADE_MAX_STATE
 } wm_upgrade_agent_state;
 
-#define WM_UPGRADE_MAX_AGENT_STATE WM_UPGRADE_FAILED 
-
-#define WM_UPGRADE_AGENT_UPDATED_COMMAND "agent_upgraded"
+#define WM_UPGRADE_AGENT_UPDATED_COMMAND "agent_status"
 
 #endif

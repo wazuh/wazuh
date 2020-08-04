@@ -76,11 +76,10 @@ extern const char* upgrade_error_codes[];
 
 /**
  * Start listening loop, exits only on error 
- * @param socket to listen to
  * @param timeout_sec timeout in seconds
  * @return only on errors, socket will be closed
  * */
-void wm_agent_upgrade_listen_messages(int sock, int timeout_sec);
+void wm_agent_upgrade_listen_messages(int timeout_sec);
 
 /**
  * Process and upgrade command. Create the task for each agent_id, dispatches to task manager and
@@ -107,5 +106,39 @@ cJSON *wm_agent_upgrade_process_upgrade_custom_command(const cJSON* params, cons
  * @return json object with the response
  * */
 cJSON* wm_agent_upgrade_process_upgrade_result_command(const cJSON* agents);
+
+/**
+ * Check if agent exist
+ * @param agent_id Id of agent to validate
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS_VALIDATE
+ * @retval WM_UPGRADE_NOT_AGENT_IN_DB
+ * @retval WM_UPGRADE_INVALID_ACTION_FOR_MANAGER
+ * */
+int wm_agent_upgrade_validate_id(int agent_id);
+
+/**
+ * Check if agent version is valid to upgrade
+ * @param agent_id Id of agent to validate
+ * @param task pointer to task with the params
+ * @param command wm_upgrade_command with the selected upgrade type
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS_VALIDATE
+ * @retval WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED
+ * @retval WM_UPGRADE_VERSION_SAME_MANAGER
+ * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
+ * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER)
+ * @retval WM_UPGRADE_VERSION_QUERY_ERROR
+ * */
+int wm_agent_upgrade_validate_agent_version(int agent_id, void *task, wm_upgrade_command command);
+
+/**
+ * Check if agent status is active
+ * @param agent_id Id of agent to validate
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS_VALIDATE
+ * @retval WM_UPGRADE_AGENT_IS_NOT_ACTIVE
+ * */
+int wm_agent_upgrade_validate_status(int agent_id);
 
 #endif

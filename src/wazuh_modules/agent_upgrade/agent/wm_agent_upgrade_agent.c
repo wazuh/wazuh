@@ -17,7 +17,7 @@ const char* upgrade_values[] = {
 };
 
 const char* upgrade_messages[] = {
-    [WM_UPGRADE_SUCCESSFULL] = "Upgrade was successfull",
+    [WM_UPGRADE_SUCCESSFULL] = "Upgrade was successful",
     [WM_UPGRADE_FAILED]      = "Upgrade failed"
 };
 
@@ -52,16 +52,16 @@ void wm_agent_upgrade_check_status() {
         if (result_file = fopen(PATH, "r"), result_file) {
             fgets(buffer,20,result_file);
             fclose(result_file);
-        }
 
-        wm_upgrade_agent_state state;
-        for(state = 0; state <= WM_UPGRADE_MAX_AGENT_STATE; state++) {
-            if (strcmp(buffer, upgrade_values[state]) >= 0) {
-                // Matched value, send message
-                wm_upgrade_agent_send_ack_message(queue_fd, state);
+            wm_upgrade_agent_state state;
+            for(state = 0; state < WM_UPGRADE_MAX_STATE; state++) {
+                // File can either be "0\n" or "2\n, so we are expecting a positive match"
+                if (strcmp(buffer, upgrade_values[state]) >= 0) {
+                    // Matched value, send message
+                    wm_upgrade_agent_send_ack_message(queue_fd, state);
+                }
             }
         }
-        
         close(queue_fd);
     }
 }

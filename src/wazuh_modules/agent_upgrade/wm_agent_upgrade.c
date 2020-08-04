@@ -12,11 +12,10 @@
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
 
-#if defined(CLIENT) || defined(WIN32)
+#ifdef CLIENT
 #include "agent/wm_agent_upgrade_agent.h"
 #else
 #include "manager/wm_agent_upgrade_manager.h"
-#include "manager/wm_agent_upgrade_tasks.h"
 #endif
 
 /**
@@ -44,19 +43,10 @@ void * wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_STARTED);
 
-    #if defined(CLIENT) || defined(WIN32)
+    #ifdef CLIENT
         wm_agent_upgrade_check_status();
     #else 
-        // Initialize task hashmap
-        wm_agent_upgrade_init_task_map();
-
-        int sock = OS_BindUnixDomain(WM_UPGRADE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
-        if (sock < 0) {
-            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_BIND_SOCK_ERROR, WM_UPGRADE_SOCK_PATH, strerror(errno));
-            return NULL;
-        }
-
-        wm_agent_upgrade_listen_messages(sock, 5);
+        wm_agent_upgrade_listen_messages(5);
     #endif 
 
     return NULL;
