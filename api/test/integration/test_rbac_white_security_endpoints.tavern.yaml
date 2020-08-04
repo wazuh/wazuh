@@ -563,9 +563,6 @@ stages:
       json:
         auth_token_exp_timeout: !anyint
         rbac_mode: !anystr
-        max_login_attempts: !anyint
-        block_time: !anyint
-        max_request_per_minute: !anyint
 
 ---
 test_name: UPDATE SECURITY CONFIG
@@ -909,6 +906,8 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        user_ids: all
     response:
       status_code: 200
       json:
@@ -927,6 +926,8 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        user_ids: all
     response:
       status_code: 200
       json:
@@ -975,6 +976,8 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        role_ids: all
     response:
       status_code: 200
       json:
@@ -1008,6 +1011,8 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        policy_ids: all
     response:
       status_code: 200
       json:

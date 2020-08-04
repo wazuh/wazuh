@@ -300,6 +300,19 @@ stages:
       status_code: 200
       json:
         <<: *error
+
+  - name: Try to delete roles (invalid role_ids)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        role_ids: invalid
+    response:
+      status_code: 400
+
 ---
 test_name: DELETE /security/policies
 
@@ -352,6 +365,18 @@ stages:
       status_code: 200
       json:
         <<: *error
+
+  - name: Try to delete policies (invalid policy_ids)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        policy_ids: none
+    response:
+      status_code: 400
 
 ---
 test_name: DELETE /security/users
@@ -466,6 +491,8 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        user_ids: all
     response:
       status_code: 200
       json:
@@ -491,6 +518,18 @@ stages:
           total_affected_items: 4
           total_failed_items: 0
           failed_items: []
+
+  - name: Delete all users in the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        user_ids: none
+    response:
+      status_code: 400
 
 ---
 test_name: PUT /security/config
@@ -558,6 +597,8 @@ stages:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        policy_ids: all
       method: DELETE
     response:
       status_code: 200
@@ -574,6 +615,8 @@ stages:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: all
       method: DELETE
     response:
       status_code: 200

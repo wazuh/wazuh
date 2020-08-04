@@ -2512,10 +2512,14 @@ stages:
                   source_route: !anystr
                   expose_headers: !anystr
                   allow_headers: !anystr
-                  allow_credentials: !anything
+                  allow_credentials: !anybool
                 cache:
                   enabled: !anybool
                   time: !anything
+                access:
+                  max_login_attempts: !anyint
+                  block_time: !anyint
+                  max_request_per_minute: !anyint
                 use_only_authd: !anybool
                 drop_privileges: !anybool
                 experimental_features: !anybool
@@ -2596,6 +2600,8 @@ stages:
         cache:
           enabled: true
           time: 3
+        access:
+          block_time: 0
         use_only_authd: true
         experimental_features: true
     response:

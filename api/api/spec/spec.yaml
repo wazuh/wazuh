@@ -1350,6 +1350,12 @@ components:
       description: "Agent ID"
       format: numbers
 
+    AgentID_DELETE:
+      type: string
+      minLength: 3
+      description: "Agent ID|all"
+      format: numbers_delete
+
     NodeID:
       type: string
       description: "Node ID"
@@ -1360,6 +1366,12 @@ components:
       minLength: 1
       description: "Group name"
       format: group_names
+
+    GroupID_DELETE:
+      type: string
+      minLength: 1
+      description: "Group name|all"
+      format: group_names_delete
 
     AgentConfiguration:
       type: object
@@ -1540,14 +1552,26 @@ components:
       type: string
       format: numbers
       description: "Role ID"
+    Role_id_DELETE:
+      type: string
+      description: "Role ID|all"
+      format: numbers_delete
     Policy_id:
       type: string
       format: numbers
       description: "Policy ID"
+    Policy_id_DELETE:
+      type: string
+      description: "Policy ID|all"
+      format: numbers_delete
     User_id:
       type: string
       format: numbers
       description: "User ID"
+    User_id_DELETE:
+      type: string
+      format: numbers_delete
+      description: "User ID|all"
     Username:
       type: string
       description: "Username of the user"
@@ -2310,6 +2334,29 @@ components:
       type: object
       minProperties: 1
       properties:
+        access:
+          description: API Security Options
+          type: object
+          additionalProperties: false
+          properties:
+            max_login_attempts:
+              description: "Maximum number of login attempts in {block_time} seconds"
+              type: integer
+              format: int32
+              minimum: 1
+              example: 5
+            block_time:
+              description: "Blocking time for IPs that have exceeded {max_login_attempts}. Time counts from the first attempt"
+              type: integer
+              format: int32
+              minimum: 0
+              example: 300
+            max_request_per_minute:
+              description: "Maximum number of requests allowed per minute"
+              type: integer
+              format: int32
+              minimum: 1
+              example: 300
         behind_proxy_server:
           description: Set this option to "yes" in case the API is running behind a proxy server.
           type: boolean
@@ -2462,24 +2509,6 @@ components:
           type: string
           enum: [white, black]
           example: white
-        max_login_attempts:
-          description: "Maximum number of login attempts in {block_time} seconds"
-          type: integer
-          format: int32
-          minimum: 1
-          example: 5
-        block_time:
-          description: "Blocking time for IPs that have exceeded {max_login_attempts}. Time counts from the first attempt"
-          type: integer
-          format: int32
-          minimum: 0
-          example: 300
-        max_request_per_minute:
-          description: "Maximum number of requests allowed per minute"
-          type: integer
-          format: int32
-          minimum: 1
-          example: 300
 
     # SCA models
     SCAChecks:
@@ -3690,6 +3719,15 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/AgentID'
+    list_agents_delete:
+      in: query
+      name: list_agents
+      description: "List of agent IDs (separated by comma), use the keyword 'all' to select all agents"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/AgentID_DELETE'
     list_groups:
       in: query
       name: list_groups
@@ -3698,6 +3736,15 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupID'
+    list_groups_delete:
+      in: query
+      name: list_groups
+      description: "List of group IDs (separated by comma), use the keyword 'all' to select all groups"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/GroupID_DELETE'
     list_nodes:
       in: query
       name: list_nodes
@@ -3817,6 +3864,15 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Policy_id'
+    policy_ids_rbac_delete:
+      in: query
+      name: 'policy_ids'
+      description: "List of policy IDs (separated by comma), use the keyword 'all' to select all policies"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Policy_id_DELETE'
     policy_ids_rbac_required:
       in: query
       name: 'policy_ids'
@@ -3902,20 +3958,29 @@ components:
     role_ids:
       in: query
       name: 'role_ids'
-      description: "List of role IDs"
+      description: "List of role IDs (separated by comma)"
       schema:
         type: array
         items:
           $ref: '#/components/schemas/Role_id'
+    role_ids_delete:
+      in: query
+      name: 'role_ids'
+      description: "List of role IDs (separated by comma), use the keyword 'all' to select all roles"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Role_id_DELETE'
     role_ids_required:
       in: query
       name: 'role_ids'
-      description: "List of role IDs"
+      description: "List of role IDs (separated by comma)"
       required: True
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/Role_id'
+          $ref: '#/components/schemas/Role_id_DELETE'
     security_position:
       in: query
       name: 'position'
@@ -4047,20 +4112,27 @@ components:
     user_ids:
       in: query
       name: 'user_ids'
-      description: "List of user IDs"
+      description: "List of user IDs (separated by comma)"
       schema:
         type: array
         items:
           $ref: '#/components/schemas/User_id'
+    user_ids_delete:
+      in: query
+      name: 'user_ids'
+      description: "List of user IDs (separated by comma), use the keyword 'all' to select all users"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/User_id_DELETE'
     user_id_required:
       in: path
       name: 'user_id'
       description: "User ID"
       required: True
       schema:
-        type: array
-        items:
-          $ref: '#/components/schemas/User_id'
+        $ref: '#/components/schemas/User_id'
     unknown:
       in: query
       name: unknown
@@ -4949,7 +5021,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/list_agents_delete'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/older_than'
@@ -5624,7 +5696,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/list_agents_delete'
         - $ref: '#/components/parameters/group_id_query'
       responses:
         '200':
@@ -5779,7 +5851,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_groups'
+        - $ref: '#/components/parameters/list_groups_delete'
       responses:
         '200':
           description: "Remove multiple group of multiple agents"
@@ -7295,6 +7367,10 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        access:
+                          max_login_attempts: 5
+                          block_time: 300
+                          max_request_per_minute: 300
                         logs:
                           path: /var/ossec/logs/api.log
                           level: info
@@ -9616,6 +9692,10 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        access:
+                          max_login_attempts: 5
+                          block_time: 300
+                          max_request_per_minute: 300
                         logs:
                           path: /var/ossec/logs/api.log
                           level: info
@@ -10853,7 +10933,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/list_agents_delete'
       responses:
         '200':
           description: "Delete syscheck database"
@@ -12844,7 +12924,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
-        - $ref: '#/components/parameters/role_ids'
+        - $ref: '#/components/parameters/role_ids_delete'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -13100,7 +13180,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
-        - $ref: '#/components/parameters/policy_ids_rbac'
+        - $ref: '#/components/parameters/policy_ids_rbac_delete'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -13303,7 +13383,7 @@ paths:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/role_id'
-        - $ref: '#/components/parameters/policy_ids_rbac_required'
+        - $ref: '#/components/parameters/policy_ids_rbac_delete'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -13399,7 +13479,7 @@ paths:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/user_id_required'
-        - $ref: '#/components/parameters/role_ids_required'
+        - $ref: '#/components/parameters/role_ids_delete'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -13634,13 +13714,13 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a user"
-      description: "Delete a user by specifying their ID"
+      summary: "Delete a list of users"
+      description: "Delete a list of users by specifying their IDs"
       operationId: api.controllers.security_controller.delete_users
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
-        - $ref: '#/components/parameters/user_ids'
+        - $ref: '#/components/parameters/user_ids_delete'
       responses:
         '200':
           description: "User deleted successful"
@@ -13843,9 +13923,6 @@ paths:
               example:
                 auth_token_exp_timeout: 36000
                 rbac_mode: white
-                max_login_attempts: 5
-                block_time: 300
-                max_request_per_minute: 300
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13913,4 +13990,3 @@ paths:
 externalDocs:
   description: "Find more about Wazuh API usage"
   url: 'https://documentation.wazuh.com/current/user-manual/api/index.html'
-

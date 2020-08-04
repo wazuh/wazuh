@@ -1047,6 +1047,3 @@ stages:
       json:
         auth_token_exp_timeout: !anyint
         rbac_mode: !anystr
-        max_login_attempts: !anyint
-        block_time: !anyint
-        max_request_per_minute: !anyint

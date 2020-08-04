@@ -13,6 +13,8 @@ stages:
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: 'all'
     response:
       status_code: 200
       json:

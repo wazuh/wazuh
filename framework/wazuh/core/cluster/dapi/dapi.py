@@ -423,11 +423,9 @@ class DistributedAPI:
         # get the node(s) who has all available information to answer the request.
         nodes = await self.get_solver_node()
         self.from_cluster = True
-
         common.rbac.set(self.rbac_permissions)
         common.cluster_nodes.set(self.nodes)
         common.broadcast.set(self.broadcasting)
-
         if 'node_id' in self.f_kwargs or 'node_list' in self.f_kwargs:
             # Check cluster:read permissions for each node
             filter_node_kwarg = {'filter_node': list(nodes)} if nodes else {}
@@ -446,7 +444,6 @@ class DistributedAPI:
             else:
                 broadcasted_nodes = await get_nodes_info(self.get_client())
                 valid_nodes = [(n['name'], []) for n in broadcasted_nodes.affected_items]
-
             allowed_nodes = wresults.AffectedItemsWazuhResult()
             allowed_nodes.affected_items = list(nodes)
             allowed_nodes.total_affected_items = len(allowed_nodes.affected_items)
