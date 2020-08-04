@@ -13,6 +13,7 @@
 #include "os_crypto/sha256/sha256_op.h"
 #ifndef CLIENT
 #include "wazuh_db/wdb.h"
+#include "wazuhdb_op.h"
 #endif
 
 #define str_startwith(x, y) strncmp(x, y, strlen(y))
@@ -496,6 +497,8 @@ char *IPExist(const char *u_ip)
     return NULL;
 }
 
+#ifndef CLIENT
+
 double OS_AgentAntiquity_ID(const char *id) {
     char *name = getFullnameById(id);
     char *ip;
@@ -529,6 +532,9 @@ double OS_AgentAntiquity(const char *name, const char *ip){
 
     return output == OS_INVALID ? OS_INVALID : difftime(time(NULL), output);
 }
+
+ /* !CLIENT */
+ #endif
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output)
