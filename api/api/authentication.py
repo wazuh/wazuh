@@ -168,8 +168,10 @@ def check_token(username, token_nbf_time):
     -------
     Dict with the result
     """
+    with AuthenticationManager() as am:
+        user_id = am.get_user(username=username)['id']
     with TokenManager() as tm:
-        result = tm.is_token_valid(username=username, token_nbf_time=int(token_nbf_time))
+        result = tm.is_token_valid(user_id=user_id, token_nbf_time=int(token_nbf_time))
 
     return {'valid': result}
 

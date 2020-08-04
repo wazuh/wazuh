@@ -238,7 +238,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000,002'
+        list_agents: 000,002
         group_id: group1
     response:
       status_code: 200
@@ -267,7 +267,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '998,999'
+        list_agents: 998,999
         group_id: group1
     response:
       strict: False
@@ -294,7 +294,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '006,010'
+        list_agents: 006,010
         group_id: group2
     response:
       status_code: 200
@@ -316,6 +316,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         group_id: group2
+        list_agents: all
     response:
       status_code: 200
       json:
@@ -324,6 +325,33 @@ stages:
             - '008'
           total_affected_items: 1
         message: !anystr
+
+  # DELETE /agents/group?group_id=group2
+  - name: Remove all agents from group2 (invalid list_agents)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: group2
+        list_agents: none
+    response:
+      status_code: 400
+
+  # DELETE /agents/group?group_id=group2
+  - name: Remove all agents from group2 (invalid list_agents)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: group2
+    response:
+      status_code: 400
 
 ---
 test_name: DELETE /groups (only one group)
@@ -404,6 +432,17 @@ stages:
           total_affected_items: 1
         message: !anystr
 
+  # DELETE /groups (invalid list_groups)
+  - name: Delete group3
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+
 ---
 test_name: DELETE /groups (several groups)
 
@@ -472,6 +511,8 @@ stages:
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_groups: all
     response:
       status_code: 200
       json:
@@ -588,6 +629,20 @@ stages:
             - '010'
           total_affected_items: 1
         message: !anystr
+
+  # DELETE /agents?purge=True
+  - name: Delete an agent using purge
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        purge: True
+        older_than: '0s'
+    response:
+      status_code: 400
 
 ---
 test_name: DELETE /agents
@@ -812,6 +867,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         older_than: '0s'
+        list_agents: all
     response:
       status_code: 200
       json:

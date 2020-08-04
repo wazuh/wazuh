@@ -844,6 +844,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         group_id: 'wrong_group'
+        list_agents: 'all'
     response:
       status_code: 400
       json:
@@ -858,6 +859,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         group_id: 'group1'
+        list_agents: 'all'
     response:
       status_code: 400
       json:
@@ -872,6 +874,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         group_id: 'group2'
+        list_agents: 'all'
     response:
       status_code: 200
       json:
@@ -1020,6 +1023,8 @@ stages:
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_groups: 'all'
     response:
       status_code: 200
       json:
@@ -1194,6 +1199,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         older_than: '0s'
+        list_agents: 'all'
     response:
       status_code: 200
       json:
