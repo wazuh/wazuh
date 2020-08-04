@@ -13,10 +13,7 @@
 #include "os_crypto/sha256/sha256_op.h"
 #ifndef CLIENT
 #include "wazuh_db/wdb.h"
-#include "wazuhdb_op.h"
 #endif
-
-
 
 #define str_startwith(x, y) strncmp(x, y, strlen(y))
 #define str_endwith(x, y) (strlen(x) < strlen(y) || strcmp(x + strlen(x) - strlen(y), y))
@@ -30,10 +27,6 @@
     #define chown(x,y,z) 0
     #define Privsep_GetUser(x) -1
     #define Privsep_GetGroup(x) -1
-#endif
-
-#ifndef CLIENT
-static const char *SQL_SELECT_KEEPALIVE = "global sql SELECT last_keepalive FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');";
 #endif
 
 /* Global variables */
@@ -503,8 +496,6 @@ char *IPExist(const char *u_ip)
     return NULL;
 }
 
-#ifndef CLIENT
-
 double OS_AgentAntiquity_ID(const char *id) {
     char *name = getFullnameById(id);
     char *ip;
@@ -531,37 +522,13 @@ double OS_AgentAntiquity_ID(const char *id) {
  * @retval On success, it returns the difference between the current time and the last keepalive
  * @retval -1 On error: invalid DB query syntax or result
  */
-double OS_AgentAntiquity(const char *name, const char *ip)
-{
-    char wdbquery[OS_MAXSTR] = "";
-    char wdboutput[OS_MAXSTR] = "";
-    int wdb_sock = -1;
+double OS_AgentAntiquity(const char *name, const char *ip){
     time_t output = 0;
-    cJSON *root = NULL;
-    cJSON *keepalive = NULL;
 
-    if(!name || !ip){
-        mdebug1("Empty agent name or ip when trying to get last keepalive. Agent: (%s) IP: (%s)", name, ip);
-        return OS_INVALID;
-    }
+    output = wdb_get_agent_keepalive(name,ip);
 
-    snprintf(wdbquery, sizeof(wdbquery), SQL_SELECT_KEEPALIVE, name, ip, ip);
-    root = wdbc_query_parse_json(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!root) {
-        merror("Error querying Wazuh DB to get the last agent keepalive.");
-        return OS_INVALID;
-    }
-
-    keepalive = cJSON_GetObjectItem(cJSON_GetArrayItem(root, 0),"last_keepalive");
-    output = !keepalive ? 0 : keepalive->valueint;
-
-    cJSON_Delete(root);
-    os_free(keepalive);
-
-    return difftime(time(NULL), output);
+    return output == OS_INVALID ? OS_INVALID : difftime(time(NULL), output);
 }
-#endif
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output)
