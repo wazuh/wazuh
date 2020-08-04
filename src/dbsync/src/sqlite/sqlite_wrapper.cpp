@@ -217,6 +217,10 @@ std::unique_ptr<IColumn> Statement::column(const int32_t index)
     return std::make_unique<SQLite::Column>(m_stmt, index);
 }
 
+int Statement::columnsCount() const
+{
+    return sqlite3_column_count(m_stmt.get());
+}
 Column::Column(std::shared_ptr<sqlite3_stmt>& stmt,
                const int32_t index)
 : m_stmt{ stmt }
@@ -230,6 +234,10 @@ bool Column::hasValue() const
 int32_t Column::type() const
 {
     return sqlite3_column_type(m_stmt.get(), m_index);
+}
+std::string Column::name() const
+{
+    return sqlite3_column_name(m_stmt.get(), m_index);
 }
 int32_t Column::value(const int32_t&) const
 {

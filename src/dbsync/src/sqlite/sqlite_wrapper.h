@@ -56,6 +56,7 @@ namespace SQLite
 
         bool hasValue() const override;
         int32_t type() const override;
+        std::string name() const override;
         int32_t value(const int32_t&) const override;
         uint64_t value(const uint64_t&) const override;
         int64_t value(const int64_t&) const override;
@@ -81,6 +82,7 @@ namespace SQLite
         void bind(const int32_t index, const int64_t value) override;
         void bind(const int32_t index, const std::string& value) override;
         void bind(const int32_t index, const double value) override;
+        int columnsCount() const override;
 
         std::string expand() override;
 

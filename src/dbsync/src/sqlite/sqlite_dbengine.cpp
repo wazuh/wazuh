@@ -293,60 +293,34 @@ void SQLiteDBEngine::selectData(const std::string& table,
     if (0 != loadTableData(table))
     {
         const auto& stmt { getStatement(buildSelectQuery(table, query)) };
-        const auto tableFields { m_tableFields[table] };
 
         while (SQLITE_ROW == stmt->step())
         {
-            Row row;
-            const auto& columns{ query.at("column_list") };
-            // if there is a * in the column_list we need to include all data in the result.
-            if (std::find_if(columns.begin(), columns.end(),[](const std::string& value){return value == "*";}) != columns.end())
-            {
-                for(const auto& field : tableFields)
-                {
-                    if (!std::get<TableHeader::TXNStatusField>(field))
-                    {
-                        getTableData(stmt,
-                                 std::get<TableHeader::CID>(field),
-                                 std::get<TableHeader::Type>(field),
-                                 std::get<TableHeader::Name>(field),
-                                 row);
-                    }
-                }
-            }
-            // if some specific columns are queried we have to build the result with just those rows.
-            else
-            {
-                int32_t index{ 0l };
-                for (const auto& column : columns)
-                {
-                    const auto& it
-                    {
-                        std::find_if(tableFields.begin(),
-                                     tableFields.end(),
-                                     [&column](const ColumnData& data)
-                                     {
-                                        return column == std::get<TableHeader::Name>(data);
-                                     })
-                    };
-                    if (it != tableFields.end())
-                    {
-                        getTableData(stmt,
-                                     index,
-                                     std::get<TableHeader::Type>(*it),
-                                     column,
-                                     row);
-                        ++index;
-                    }
-                }
-            }
             nlohmann::json object;
-            for (const auto& value : row)
+            for(int i = 0; i < stmt->columnsCount(); ++i)
             {
-                getFieldValueFromTuple(value, object);
+                const auto& column{ stmt->column(i) };
+                const auto& name{ column->name() };
+                if (column->hasValue() && name != STATUS_FIELD_NAME)
+                {
+                    switch(column->type())
+                    {
+                        case SQLITE_TEXT:
+                            object[name] = column->value(std::string{});
+                            break;
+                        case SQLITE_INTEGER:
+                            object[name] = column->value(int64_t{});
+                            break;
+                        case SQLITE_FLOAT:
+                            object[name] = column->value(double{});
+                            break;
+                        default:
+                            throw dbengine_error{INVALID_COLUMN_TYPE};
+                    }
+                }
             }
             if (callback && !object.empty())
-            {
+            {   
                 callback(SELECTED, object);
             }
         }
@@ -915,7 +889,7 @@ std::string SQLiteDBEngine::buildSelectQuery(const std::string& table,
     sql += " FROM " + table;
     if (itFilter != jsQuery.end() && !itFilter->get<std::string>().empty())
     {
-        sql += " WHERE ";
+        sql += " ";
         sql += itFilter->get<std::string>();
     }
     if (itOrderBy != jsQuery.end() && !itOrderBy->get<std::string>().empty())
