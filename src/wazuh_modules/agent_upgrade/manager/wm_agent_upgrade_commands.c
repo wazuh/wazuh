@@ -134,7 +134,7 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
     return response;
 }
 
-cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, wm_upgrade_error_code *error_code) {
+static cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, wm_upgrade_error_code *error_code) {
     cJSON *task_request = NULL;
 
     // Agent information
@@ -171,7 +171,7 @@ cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, w
     return task_request;
 }
 
-int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task) {
+static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task) {
     int validate_result = WM_UPGRADE_SUCCESS;
 
     // Validate agent id
@@ -205,7 +205,7 @@ int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task) {
     return validate_result;
 }
 
-void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request) {
+static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request) {
 
     // Send request to task module and store task ids
     if (!wm_agent_upgrade_parse_task_module_task_ids(json_response, task_module_request)) {

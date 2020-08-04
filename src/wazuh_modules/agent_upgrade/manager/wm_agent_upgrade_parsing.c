@@ -118,7 +118,7 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
     return retval;
 }
 
-int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message) {
+static int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message) {
     char *output = NULL;
     int *agent_ids = NULL;
     int agent_index = 0;
@@ -154,7 +154,7 @@ int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message) {
     return agent_ids;
 }
 
-wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char** error_message) {
+static wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char** error_message) {
     char *output = NULL;
     int param_index = 0;
     int error_flag = 0;
@@ -216,7 +216,7 @@ wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, cha
     return task;
 }
 
-wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message) {
+static wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message) {
     char *output = NULL;
     int param_index = 0;
     int error_flag = 0;
