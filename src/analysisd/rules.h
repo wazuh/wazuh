@@ -213,7 +213,7 @@ typedef struct _RuleNode {
 
 
 RuleInfoDetail *zeroinfodetails(int type, const char *data);
-int get_info_attributes(char **attributes, char **values, os_analysisd_list_log_msg_t* log_msg);
+int get_info_attributes(char **attributes, char **values, OSList* log_msg);
 
 /* RuleInfo functions */
 RuleInfo *zerorulemember(int id,
@@ -235,13 +235,13 @@ void OS_CreateRuleList(void);
 int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node);
 
 /**
- * @brief  Add rule information as a child.
- * @param[in]  read_rule rule information.
- * @param[in]  r_node node to add as a child rule information.
- * @param[in]  log_msg List to save log messages.
+ * @brief Add rule information as a child.
+ * @param read_rule rule information.
+ * @param r_node node to add as a child rule information.
+ * @param log_msg List to save log messages.
  * @return int -1 for critical errors, 1 for errors, 0 otherwise.
  */
-int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, os_analysisd_list_log_msg_t* log_msg);
+int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg);
 
 /* Add an overwrite rule */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid);
@@ -259,12 +259,12 @@ void Rules_OP_CreateRules(void);
 
 /**
  * @brief Read the log rules of `rulefile` and add the `ruleNode` if the CDB list (l_node) allowed
- * @param[in]  rulefile path of the rule configuration xml file.
- * @param[in]  r_node Rules node to add.
- * @param[in]  l_node CDB list.
- * @param[in]  log_msg List to save log messages.
+ * @param rulefile path of the rule configuration xml file.
+ * @param r_node Rules node to add.
+ * @param l_node CDB list.
+ * @param log_msg List to save log messages.
 */ 
-int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, os_analysisd_list_log_msg_t* log_msg);
+int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, OSList* log_msg);
 
 int AddHash_Rule(RuleNode *node);
 

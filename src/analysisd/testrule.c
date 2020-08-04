@@ -217,9 +217,10 @@ int main(int argc, char **argv)
             OS_CreateOSDecoderList();
 
             /* Error and warning msg */
-            os_analysisd_list_log_msg_t* list_msg = os_analysisd_create_list_log();
-            os_analysisd_log_msg_t* data_msg;
-            char* msg;
+            char * msg;
+            OSList * list_msg = OSList_Create();
+            OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+            OSListNode * node_log_msg;
             int error_exit = 0;
 
             if (!Config.decoders) {
@@ -235,11 +236,16 @@ int main(int argc, char **argv)
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
                     if (!ReadDecodeXML(*decodersfiles, list_msg)) {
-                        while (data_msg = os_analysisd_pop_list_log(list_msg), data_msg) {
+                        node_log_msg = OSList_GetFirstNode(list_msg);
+
+                        while (node_log_msg) {
+                            os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                            msg = os_analysisd_string_log_msg(data_msg);
                             merror("%s", msg);
                             os_free(msg);
-                            os_analysisd_free_log_msg(data_msg);
-                            os_free(data_msg);
+                            os_analysisd_free_log_msg(&data_msg);
+                            OSList_DeleteCurrentlyNode(list_msg);
+                            node_log_msg = OSList_GetFirstNode(list_msg);
                         }
                         merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
@@ -251,16 +257,20 @@ int main(int argc, char **argv)
                 /* Read local ones */
 
                 c = ReadDecodeXML(XML_LDECODER, list_msg);
-                while (data_msg = os_analysisd_pop_list_log(list_msg), data_msg) {
+                node_log_msg = OSList_GetFirstNode(list_msg);
+                while (node_log_msg) {
+                    os_analysisd_log_msg_t * data_msg = node_log_msg->data;
                     msg = os_analysisd_string_log_msg(data_msg);
+
                     if (data_msg->level == LOGLEVEL_WARNING) {
                         mwarn("%s", msg);
                     } else if (data_msg->level == LOGLEVEL_ERROR) {
                         merror("%s", msg);
                     }
                     os_free(msg);
-                    os_analysisd_free_log_msg(data_msg);
-                    os_free(data_msg);
+                    os_analysisd_free_log_msg(&data_msg);
+                    OSList_DeleteCurrentlyNode(list_msg);
+                    node_log_msg = OSList_GetFirstNode(list_msg);
                 }
                 if (!c) {
                     if ((c != -2)) {
@@ -280,12 +290,16 @@ int main(int argc, char **argv)
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
                     if (!ReadDecodeXML(*decodersfiles, list_msg)) {
-                        while (data_msg = os_analysisd_pop_list_log(list_msg), data_msg) {
+                        node_log_msg = OSList_GetFirstNode(list_msg);
+                        
+                        while (node_log_msg) {
+                            os_analysisd_log_msg_t * data_msg = node_log_msg->data;
                             msg = os_analysisd_string_log_msg(data_msg);
                             merror("%s", msg);
                             os_free(msg);
-                            os_analysisd_free_log_msg(data_msg);
-                            os_free(data_msg);
+                            os_analysisd_free_log_msg(&data_msg);
+                            OSList_DeleteCurrentlyNode(list_msg);
+                            node_log_msg = OSList_GetFirstNode(list_msg);
                         }
                         merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
@@ -297,7 +311,9 @@ int main(int argc, char **argv)
 
             /* Load decoders */
             SetDecodeXML(list_msg);
-            while (data_msg = os_analysisd_pop_list_log(list_msg), data_msg) {
+            node_log_msg = OSList_GetFirstNode(list_msg);
+            while (node_log_msg) {
+                os_analysisd_log_msg_t * data_msg = node_log_msg->data;
                 msg = os_analysisd_string_log_msg(data_msg);
                 if (data_msg->level == LOGLEVEL_WARNING) {
                     mwarn("%s", msg);
@@ -306,10 +322,11 @@ int main(int argc, char **argv)
                     error_exit = 1;
                 }
                 os_free(msg);
-                os_analysisd_free_log_msg(data_msg);
-                os_free(data_msg);
+                os_analysisd_free_log_msg(&data_msg);
+                OSList_DeleteCurrentlyNode(list_msg);
+                node_log_msg = OSList_GetFirstNode(list_msg);
             }
-            if(error_exit){
+            if (error_exit) {
                  merror_exit(DEC_PLUGIN_ERR);
             }
         }
@@ -340,9 +357,10 @@ int main(int argc, char **argv)
             Rules_OP_CreateRules();
 
             /* Error and warning msg */
-            os_analysisd_list_log_msg_t* list_msg = os_analysisd_create_list_log();
-            os_analysisd_log_msg_t* data_msg;
-            char* msg;
+            char * msg;
+            OSList * list_msg = OSList_Create();
+            OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+            OSListNode * node_log_msg;
             int error_exit = 0;
 
             /* Read the rules */
@@ -354,16 +372,21 @@ int main(int argc, char **argv)
                     if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists, list_msg) < 0) {
                         error_exit = 1;
                     }
-                    while (data_msg = os_analysisd_pop_list_log(list_msg), data_msg) {
+                    node_log_msg = OSList_GetFirstNode(list_msg);
+                    while (node_log_msg) {
+                        os_analysisd_log_msg_t * data_msg = node_log_msg->data;
                         msg = os_analysisd_string_log_msg(data_msg);
+
                         if (data_msg->level == LOGLEVEL_WARNING) {
                             mwarn("%s", msg);
                         } else if (data_msg->level == LOGLEVEL_ERROR) {
                             merror("%s", msg);
+                            error_exit = 1;
                         }
                         os_free(msg);
-                        os_analysisd_free_log_msg(data_msg);
-                        os_free(data_msg);
+                        os_analysisd_free_log_msg(&data_msg);
+                        OSList_DeleteCurrentlyNode(list_msg);
+                        node_log_msg = OSList_GetFirstNode(list_msg);
                     }
                     if (error_exit) {
                         merror_exit(RULES_ERROR, *rulesfiles);

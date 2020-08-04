@@ -18,7 +18,7 @@
 #include "error_messages/debug_messages.h"
 #include "analysisd.h"
 
-static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi, os_analysisd_list_log_msg_t* log_msg);
+static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi, OSList* log_msg);
 
 /* Create the Event List */
 void OS_CreateOSDecoderList()
@@ -41,7 +41,7 @@ OSDecoderNode *OS_GetFirstOSDecoder(const char *p_name)
 }
 
 /* Add an osdecoder to the list */
-static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi, os_analysisd_list_log_msg_t* log_msg)
+static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi, OSList* log_msg)
 {
     OSDecoderNode *tmp_node = s_node;
     OSDecoderNode *new_node;
@@ -120,7 +120,8 @@ error:
     return (NULL);
 }
 
-int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode, OSDecoderNode **npn_osdecodernode, os_analysisd_list_log_msg_t* log_msg)
+int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode,
+                    OSDecoderNode **npn_osdecodernode, OSList* log_msg)
 {
     int added = 0;
     OSDecoderNode *osdecodernode;

@@ -23,13 +23,13 @@
  * @brief Appends a copy of *str to the *at string and return the new string
  * @details Allocate memory at "*at" and copy *str to it
  *          If *at already exist, realloc the memory and cat str on it.
- * @param[in] at original string (Null an acceptable Value).
- * @param[in] str source string to append at.
- * @param[in] log_msg list to save log messages.
+ * @param at original string (Null an acceptable Value).
+ * @param str source string to append at.
+ * @param log_msg list to save log messages.
  * @return char* The new string.
  * @warning This function assumes that "at" reserved memory is `OS_SIZE_1024`.
  */
-static char *_loadmemory(char *at, char* str, os_analysisd_list_log_msg_t* log_msg);
+static char *_loadmemory(char *at, char* str, OSList* log_msg);
 
 static int addDecoder2list(const char *name);
 static int os_setdecoderids(const char *p_name);
@@ -158,7 +158,7 @@ static int ReadDecodeAttrs(char *const *names, char *const *values)
     return (AFTER_ERROR | AFTER_ERR_NAME );
 }
 
-int ReadDecodeXML(const char *file, os_analysisd_list_log_msg_t* log_msg)
+int ReadDecodeXML(const char *file, OSList* log_msg)
 {
     OS_XML xml;
     XML_NODE node = NULL;
@@ -254,8 +254,8 @@ int ReadDecodeXML(const char *file, os_analysisd_list_log_msg_t* log_msg)
 
         /* Get name */
         if ((!node[i]->attributes) || (!node[i]->values) 
-                ||(!node[i]->values[0])  || (!node[i]->attributes[0]) 
-                ||(strcasecmp(node[i]->attributes[0], xml_decoder_name) != 0)) {
+                || (!node[i]->values[0]) || (!node[i]->attributes[0]) 
+                || (strcasecmp(node[i]->attributes[0], xml_decoder_name) != 0)) {
             log_emsg(log_msg, XML_INVELEM, node[i]->element);
             goto cleanup;
         }
@@ -804,7 +804,7 @@ cleanup:
     return retval;
 }
 
-int SetDecodeXML(os_analysisd_list_log_msg_t* log_msg)
+int SetDecodeXML(OSList* log_msg)
 {
     /* Add rootcheck decoder to list */
     addDecoder2list(ROOTCHECK_MOD);
@@ -831,7 +831,7 @@ int SetDecodeXML(os_analysisd_list_log_msg_t* log_msg)
     return (1);
 }
 
-char *_loadmemory(char *at, char *str, os_analysisd_list_log_msg_t* log_msg)
+char *_loadmemory(char *at, char *str, OSList* log_msg)
 {
     if (at == NULL) {
         size_t strsize = 0;

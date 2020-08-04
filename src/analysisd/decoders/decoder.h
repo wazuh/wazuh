@@ -82,17 +82,18 @@ typedef struct dbsync_context_t {
  * list and to get the first osdecoder
  */
 void OS_CreateOSDecoderList(void);
-int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode, OSDecoderNode **npn_osdecodernode, os_analysisd_list_log_msg_t* log_msg);
+int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode,
+                    OSDecoderNode **npn_osdecodernode, OSList* log_msg);
 OSDecoderNode *OS_GetFirstOSDecoder(const char *pname);
 int getDecoderfromlist(const char *name);
 char *GetGeoInfobyIP(char *ip_addr);
 
 /**
  * @brief Read decoder files and save them in the decoder list.
- * @param[in] log_msg list to save log messages.
+ * @param log_msg list to save log messages.
  * @return int 0 in case of error, 1 otherwise.
  */
-int SetDecodeXML(os_analysisd_list_log_msg_t* log_msg);
+int SetDecodeXML(OSList* log_msg);
 
 void HostinfoInit(void);
 int fim_init(void);
@@ -105,12 +106,12 @@ void SecurityConfigurationAssessmentInit(void);
 /**
  * Add decoders to main list
  * 
- * @param[in]  *file path of the decoder configuration xml file.
- * @param[in]  log_msg List to save log messages.
- * @return  1 Decoder was added to the list.
- *          0 in case of error.
- *         -2 File XML_LDECODER (localdecoderfile) not found or can't get root element of xmlfile.
+ * @param file path of the decoder configuration xml file.
+ * @param log_msg List to save log messages.
+ * @return 1 Decoder was added to the list.
+ *         0 in case of error.
+ *        -2 File XML_LDECODER (localdecoderfile) not found or can't get root element of xmlfile.
  */
-int ReadDecodeXML(const char *file, os_analysisd_list_log_msg_t* log_msg);
+int ReadDecodeXML(const char *file, OSList* log_msg);
 
 #endif /* DECODER_H */

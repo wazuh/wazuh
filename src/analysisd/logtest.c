@@ -78,7 +78,7 @@ void *w_logtest_main(w_logtest_connection *connection) {
     char msg_received[OS_MAXSTR];
     int size_msg_received;
 
-    while(1) {
+    while (1) {
 
         w_mutex_lock(&connection->mutex);
 

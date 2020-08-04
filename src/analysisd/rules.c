@@ -31,10 +31,10 @@ static int getattributes(char **attributes,
                   int *maxsize, int *timeframe,
                   int *frequency, int *accuracy,
                   int *noalert, int *ignore_time, int *overwrite,
-                  os_analysisd_list_log_msg_t* log_msg);
+                  OSList* log_msg);
 static int doesRuleExist(int sid, RuleNode *r_node);
 static void Rule_AddAR(RuleInfo *config_rule);
-static char *loadmemory(char *at, const char *str, os_analysisd_list_log_msg_t* log_msg);
+static char *loadmemory(char *at, const char *str, OSList* log_msg);
 static void printRuleinfo(const RuleInfo *rule, int node);
 
 /* Will initialize the rules list */
@@ -46,7 +46,7 @@ void Rules_OP_CreateRules()
     return;
 }
 
-int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, os_analysisd_list_log_msg_t* log_msg)
+int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, OSList* log_msg)
 {
     OS_XML xml;
     XML_NODE node = NULL;
@@ -474,7 +474,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         config_ruleinfo->day_time =
                             OS_IsValidTime(rule_opt[k]->content);
                         if (!config_ruleinfo->day_time) {
-                            log_emsg(log_msg, INVALID_CONFIG,rule_opt[k]->element,rule_opt[k]->content);
+                            log_emsg(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
                             goto cleanup;
                         }
 
@@ -487,7 +487,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                         if (!config_ruleinfo->week_day) {
                             log_emsg(log_msg, INVALID_DAY, rule_opt[k]->content);
-                            log_emsg(log_msg, INVALID_CONFIG,rule_opt[k]->element, rule_opt[k]->content);
+                            log_emsg(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
                             goto cleanup;
                         }
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
@@ -1777,7 +1777,7 @@ cleanup:
  * If *at already exist, realloc the memory and cat str on it.
  * Returns the new string
  */
-static char *loadmemory(char *at, const char *str, os_analysisd_list_log_msg_t* log_msg)
+static char *loadmemory(char *at, const char *str, OSList* log_msg)
 {
     if (at == NULL) {
         size_t strsize = 0;
@@ -1949,7 +1949,7 @@ RuleInfo *zerorulemember(int id, int level,
     return (ruleinfo_pt);
 }
 
-int get_info_attributes(char **attributes, char **values, os_analysisd_list_log_msg_t* log_msg)
+int get_info_attributes(char **attributes, char **values, OSList* log_msg)
 {
     const char *xml_type = "type";
     int k = 0;
@@ -1990,7 +1990,7 @@ static int getattributes(char **attributes, char **values,
                   int *maxsize, int *timeframe,
                   int *frequency, int *accuracy,
                   int *noalert, int *ignore_time, int *overwrite,
-                  os_analysisd_list_log_msg_t* log_msg)
+                  OSList* log_msg)
 {
     int k = 0;
 

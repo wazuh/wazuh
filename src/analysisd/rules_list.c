@@ -114,7 +114,7 @@ static int _AddtoRule(int sid, int level, int none, const char *group,
 }
 
 /* Add a child */
-int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, os_analysisd_list_log_msg_t* log_msg)
+int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
 {
     if (!read_rule) {
         log_emsg(log_msg, "rules_list: Passing a NULL rule. Inconsistent state");
@@ -152,7 +152,7 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, os_analysisd_list_log_ms
 
     /* Adding for if_level */
     else if (read_rule->if_level) {
-        int  ilevel = 0;
+        int ilevel = 0;
 
         ilevel = atoi(read_rule->if_level);
         if (ilevel == 0) {
