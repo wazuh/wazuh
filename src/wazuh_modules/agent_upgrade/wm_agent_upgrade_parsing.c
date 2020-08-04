@@ -53,8 +53,7 @@ static wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(con
 
 const char* upgrade_commands[] = {
     [WM_UPGRADE_UPGRADE] = "upgrade",
-    [WM_UPGRADE_UPGRADE_CUSTOM] = "upgrade_custom",
-    [WM_UPGRADE_UPGRADE_RESULT] = "upgrade_result"
+    [WM_UPGRADE_UPGRADE_CUSTOM] = "upgrade_custom"
 };
 
 int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error) {
@@ -93,12 +92,6 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
                     if (!error_message) {
                         retval = WM_UPGRADE_UPGRADE_CUSTOM;
                     }
-                }
-            } else if (strcmp(command->valuestring, upgrade_commands[WM_UPGRADE_UPGRADE_RESULT]) == 0) { // Upgrade result command
-                // Analyze agent IDs
-                *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
-                if (!error_message) {
-                    retval = WM_UPGRADE_UPGRADE_RESULT;
                 }
             } else {
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR, command->valuestring);

@@ -110,80 +110,71 @@ int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *tas
     return return_code;
 }
 
-int wm_agent_upgrade_validate_wpk(const void *task, wm_upgrade_command command) {
+int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
     int return_code = WM_UPGRADE_SUCCESS;
-    wm_upgrade_task *upgrade = NULL;
-    wm_upgrade_custom_task *upgrade_custom = NULL;
+    FILE *wpk_file = NULL;
+    int exist = 0;
+    int attempts = 0;
+    int req = 0;
+    char *file_url = NULL;
+    char *file_path = NULL;
+    os_sha1 sha1;
+
+    if (task && task->wpk_repository && task->wpk_file && task->wpk_sha1) {
+        os_calloc(OS_SIZE_4096, sizeof(char), file_url);
+        os_calloc(OS_SIZE_4096, sizeof(char), file_path);
+
+        snprintf(file_url, OS_SIZE_4096, "%s%s", task->wpk_repository, task->wpk_file);
+        snprintf(file_path, OS_SIZE_4096, "%s%s", WM_UPGRADE_WPK_DEFAULT_PATH, task->wpk_file);
+
+        if (wpk_file = fopen(file_path, "rb"), wpk_file) {
+            if (!OS_SHA1_File(file_path, sha1, OS_BINARY) && !strcasecmp(sha1, task->wpk_sha1)) {
+                // WPK already downloaded
+                exist = 1;
+            }
+            fclose(wpk_file);
+        }
+
+        if (!exist) {
+            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_DOWNLOADING_WPK, file_url);
+
+            // Download WPK file
+            for (attempts = 0;; attempts++) {
+                if (req = wurl_request(file_url, file_path, NULL, NULL, WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT), !req) {
+                    if (OS_SHA1_File(file_path, sha1, OS_BINARY) || strcasecmp(sha1, task->wpk_sha1)) {
+                        return_code = WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH;
+                    }
+                    break;
+                } else if (attempts == WM_UPGRADE_WPK_DOWNLOAD_ATTEMPTS) {
+                    return_code = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
+                }
+                sleep(attempts);
+            }
+        }
+
+        os_free(file_url);
+        os_free(file_path);
+
+    } else {
+        return_code = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
+    }
+
+    return return_code;
+}
+
+int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task) {
+    int return_code = WM_UPGRADE_SUCCESS;
     FILE *wpk_file = NULL;
 
-    switch (command) {
-    case WM_UPGRADE_UPGRADE:
-        upgrade = (wm_upgrade_task*)task;
-        int exist = 0;
-        int attempts = 0;
-        int req = 0;
-        char *file_url = NULL;
-        char *file_path = NULL;
-        os_sha1 sha1;
-
-        if (upgrade->wpk_repository && upgrade->wpk_file) {
-            os_calloc(OS_SIZE_4096, sizeof(char), file_url);
-            os_calloc(OS_SIZE_4096, sizeof(char), file_path);
-
-            snprintf(file_url, OS_SIZE_4096, "%s%s", upgrade->wpk_repository, upgrade->wpk_file);
-            snprintf(file_path, OS_SIZE_4096, "%s%s", WM_UPGRADE_WPK_DEFAULT_PATH, upgrade->wpk_file);
-
-            if (wpk_file = fopen(file_path, "rb"), wpk_file) {
-                if (!OS_SHA1_File(file_path, sha1, OS_BINARY) && !strcasecmp(sha1, upgrade->wpk_sha1)) {
-                    // WPK already downloaded
-                    exist = 1;
-                }
-                fclose(wpk_file);
-            }
-
-            if (!exist) {
-                mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_DOWNLOADING_WPK, file_url);
-
-                // Download WPK file
-                for (attempts = 0;; attempts++) {
-                    if (req = wurl_request(file_url, file_path, NULL, NULL, WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT), !req) {
-                        if (OS_SHA1_File(file_path, sha1, OS_BINARY) || strcasecmp(sha1, upgrade->wpk_sha1)) {
-                            return_code = WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH;
-                        }
-                        break;
-                    } else if (attempts == WM_UPGRADE_WPK_DOWNLOAD_ATTEMPTS) {
-                        return_code = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
-                    }
-                    sleep(attempts);
-                }
-            }
-
-            os_free(file_url);
-            os_free(file_path);
-
-        } else {
+    if (task && task->custom_file_path) {
+        if (wpk_file = fopen(task->custom_file_path, "rb"), !wpk_file) {
             return_code = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
-        }
-
-        break;
-    case WM_UPGRADE_UPGRADE_CUSTOM:
-        upgrade_custom = (wm_upgrade_custom_task*)task;
-
-        if (upgrade_custom->custom_file_path) {
-            if (wpk_file = fopen(upgrade_custom->custom_file_path, "rb"), !wpk_file) {
-                return_code = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
-            } else {
-                // WPK file exists
-                fclose(wpk_file);
-            }
         } else {
-            return_code = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
+            // WPK file exists
+            fclose(wpk_file);
         }
-
-        break;
-    default:
+    } else {
         return_code = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
-        break;
     }
 
     return return_code;

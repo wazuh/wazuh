@@ -134,13 +134,6 @@ void wm_agent_upgrade_listen_messages(int sock, int timeout_sec) {
                     os_free(agent_ids);
                 }
                 break;
-            case WM_UPGRADE_UPGRADE_RESULT:
-                // Upgrade result command
-                if (agent_ids) {
-                    message = wm_agent_upgrade_process_upgrade_result_command(agent_ids);
-                    os_free(agent_ids);
-                }
-                break;
             default:
                 // Parsing error
                 if (!message) {
