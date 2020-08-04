@@ -153,6 +153,16 @@ void wm_agent_upgrade_remove_entry(int agent_id) {
     }
 }
 
+OSHashNode* wm_agent_upgrade_get_first_node() {
+    unsigned int i;
+    return OSHash_Begin(task_table_by_agent_id, &i);
+}
+
+OSHashNode* wm_agent_upgrade_get_next_node(OSHashNode *current) {
+    unsigned int i;
+    return OSHash_Next(task_table_by_agent_id, &i, current);
+}
+
 cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
     cJSON* response = NULL;
 

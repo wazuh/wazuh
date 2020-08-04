@@ -98,10 +98,22 @@ int wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* agent_task);
 void wm_agent_upgrade_insert_task_id(int agent_id, int task_id);
 
 /**
- * Remoes a entry based on the agent_id
+ * Removes an entry based on the agent_id
  * @param agent_id id of the agent
  * */
 void wm_agent_upgrade_remove_entry(int agent_id);
+
+/**
+ * Returns the first node of the tasks hash table
+ * @return the first node stored
+ * */
+OSHashNode* wm_agent_upgrade_get_first_node();
+
+/**
+ * Returns the next node of the tasks hash table
+ * @return the next node stored
+ * */
+OSHashNode* wm_agent_upgrade_get_next_node(OSHashNode *current);
 
 /**
  * Sends the JSON information to the task module and retrieves the answer

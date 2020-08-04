@@ -206,14 +206,17 @@ static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task)
 }
 
 static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request) {
+    OSHashNode *node = NULL;
+    wm_agent_task *agent_task = NULL;
 
     // Send request to task module and store task ids
     if (!wm_agent_upgrade_parse_task_module_task_ids(json_response, task_module_request)) {
 
+        for (node = wm_agent_upgrade_get_first_node(); node != NULL; node = wm_agent_upgrade_get_next_node(node)) {
+            agent_task = (wm_agent_task *)node->data;
 
-        // TODO: Send WPK to agents and update task to UPDATING/ERROR
-
-
+            // TODO: Send WPK to agent and update task to UPDATING/ERROR
+        }
     } else {
         mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_NO_AGENTS_TO_UPGRADE);
     }
