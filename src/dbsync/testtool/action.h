@@ -113,7 +113,7 @@ static void txnCallback(ReturnTypeCallback type, const cJSON* json, void* user_d
         const std::unique_ptr<char, TestDeleters::CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json)};
         const auto newJson{nlohmann::json::parse(spJsonBytes.get())};
         nlohmann::json jsonResult;
-        jsonResult.push_back(newJson[0]);
+        jsonResult.push_back(newJson.is_array() ? newJson[0] : newJson);
         jsonResult.push_back({{"result", type}});
 
         std::ofstream outputFile{ outputFileName, std::ofstream::app};
@@ -220,6 +220,7 @@ static void getCallbackCtx(ReturnTypeCallback /*type*/,
     jsonResult.push_back(newJson.is_array() ? newJson[0] : newJson);
 
     std::ofstream outputFile{ loggerContext->m_fileName };
+    outputFile << jsonResult.dump() << std::endl;
 };
 
 
