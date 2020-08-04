@@ -104,13 +104,10 @@ stages:
           failed_items:
             - error:
                 code: 4005
-                message: !anystr
-                remediation: !anything
               id:
                 - test_i
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # POST /security/roles
   - name: Add an existent role (rule) to the system
@@ -132,13 +129,10 @@ stages:
           failed_items:
             - error:
                 code: 4005
-                message: !anystr
-                remediation: !anything
               id:
                 - test_i1
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 ---
 test_name: POST /security/policies
 
@@ -280,13 +274,10 @@ stages:
           failed_items:
             - error:
                 code: 4009
-                message: !anystr
-                remediation: !anything
               id:
                 - test_i
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # POST /security/policies
   - name: Add an existent policy (policy) to the system
@@ -314,13 +305,10 @@ stages:
           failed_items:
             - error:
                 code: 4009
-                message: !anystr
-                remediation: !anything
               id:
                 - test_i1
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # POST /security/policies
   - name: Add an invalid policy to the system
@@ -348,13 +336,10 @@ stages:
           failed_items:
             - error:
                 code: 4006
-                message: !anystr
-                remediation: !anystr
               id:
                 - test_i1
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # POST /security/policies
   - name: Add an invalid policy to the system
@@ -374,11 +359,6 @@ stages:
           effect: "allow"
     response:
       status_code: 400
-      json:
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
 ---
 test_name: POST /security/roles/{role_id}/policies/{policy_id}
 
@@ -436,8 +416,6 @@ stages:
           failed_items:
             - error:
                 code: !anyint
-                message: !anystr
-                remediation: !anything
               id:
                 - '999'
           total_affected_items: 0
@@ -461,8 +439,6 @@ stages:
           failed_items:
             - error:
                 code: !anyint
-                message: !anystr
-                remediation: !anything
               id:
                 - '999'
                 - '10000'
@@ -497,11 +473,6 @@ stages:
       method: POST
     response:
       status_code: 400
-      json: &error_spec
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
 
   - name: Create a new user (insecure password)
     request:
@@ -512,8 +483,6 @@ stages:
         password: "new_user"
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Create a new user (secure password)
     request:
@@ -543,13 +512,10 @@ stages:
           failed_items:
             - error:
                 code: 5000
-                message: !anystr
-                remediation: !anystr
               id:
                 - new_user
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Create a new user (invalid parameters)
     request:
@@ -560,8 +526,6 @@ stages:
         pass: "new_user11A"
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Create a new user (extra parameter)
     request:
@@ -573,8 +537,6 @@ stages:
         pass: "extra"
     response:
       status_code: 400
-      json:
-        code: 5005
 
   - name: Create a new user (extra parameters)
     request:
@@ -593,8 +555,6 @@ stages:
         pass7: "extra"
     response:
       status_code: 400
-      json:
-        code: 5005
 
   - name: Create a new user (missing password parameter)
     request:
@@ -604,8 +564,6 @@ stages:
         username: "new_user1"
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Create a new user (missing username parameter)
     request:
@@ -615,8 +573,6 @@ stages:
         password: "new_user11A"
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Create a new user (invalid username parameter)
     request:
@@ -627,8 +583,6 @@ stages:
         username: 1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Create a new user (invalid password parameter)
     request:
@@ -639,8 +593,6 @@ stages:
         username: "new_user1"
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Create a new user (secure password)
     request:
@@ -707,8 +659,6 @@ stages:
           failed_items:
             - error:
                 code: 4002
-                message: !anystr
-                remediation: !anystr
               id:
                 - '498'
                 - '500'
@@ -738,15 +688,11 @@ stages:
           failed_items:
             - error:
                 code: 4002
-                message: !anystr
-                remediation: !anystr
               id:
                 - '498'
                 - '500'
             - error:
                 code: 4017
-                message: !anystr
-                remediation: !anything
               id:
                 - '3'
           total_affected_items: 2

@@ -135,12 +135,7 @@ stages:
     response:
       status_code: 400
       json: &invalid_select
-        type: !anystr
-        detail: !anystr
-        status: 400
-        remediation: !anystr
         code: 1724
-        dapi_errors: !anything
 
   - name: Show lists using select (one select is invalid)
     request:

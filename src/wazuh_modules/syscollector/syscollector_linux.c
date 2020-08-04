@@ -1396,18 +1396,24 @@ char* get_default_gateway(char *ifa_name){
     struct in_addr address;
     int destination, gateway, flags, ref, use, metric;
     char * def_gateway;
+    bool is_first_line = true;
+    bool starts_with_default_gw = false;
     os_calloc(V_LENGTH, sizeof(char) + 1, def_gateway);
 
     strncpy(interface, ifa_name, sizeof(interface) - 1);
     snprintf(file_location, PATH_LENGTH, "%s%s", WM_SYS_NET_DIR, "route");
     snprintf(def_gateway, V_LENGTH, "%s", "unknown");
 
-    if ((fp = fopen(file_location, "r"))){
+    if ((fp = fopen(file_location, "r"))) {
 
-        while (fgets(string, OS_MAXSTR, fp) != NULL){
+        while (fgets(string, OS_MAXSTR, fp) != NULL) {
+            if (sscanf(string, "%s %8x %8x %d %d %d %d", if_name, &destination, &gateway, &flags, &ref, &use, &metric) == 7) {
+                if (is_first_line) {
+                    is_first_line = false;
+                    starts_with_default_gw = (destination == 0);
+                }
 
-            if (sscanf(string, "%s %8x %8x %d %d %d %d", if_name, &destination, &gateway, &flags, &ref, &use, &metric) == 7){
-                if (destination != 00000000) {
+                if (starts_with_default_gw && destination != 0) {
                     break;
                 }
 

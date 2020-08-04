@@ -164,6 +164,6 @@ def test_validate_restart_by_node_rbac(response, permitted_agents):
         else:
             assert data['total_affected_items'] == 0
     else:
-        assert response.json()['status'] == 400
+        assert response.status_code == 403
         assert response.json()['code'] == 4000
         assert 'agent:id' in response.json()['detail']

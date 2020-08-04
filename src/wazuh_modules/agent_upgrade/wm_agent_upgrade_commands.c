@@ -38,26 +38,12 @@ static cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_
  * */
 static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task);
 
-typedef enum _upgrade_results_codes {
-    STATUS_UPDATED = 0,
-    STATUS_UPDATING,
-    STATUS_OUTDATED,
-    STATUS_ERROR
-} upgrade_results_codes;
-
-static const char* upgrade_results_status[] = {
-    [STATUS_UPDATED] = "UPDATED",
-    [STATUS_UPDATING] = "UPDATING",
-    [STATUS_OUTDATED] = "OUTDATED",
-    [STATUS_ERROR]    = "ERROR"
-};
-
-static const char* upgrade_results_messages[] = {
-    [STATUS_UPDATED]  = "Agent is updated",
-    [STATUS_UPDATING] = "Agent is updating",
-    [STATUS_OUTDATED] = "Agent is outdated",
-    [STATUS_ERROR]    = "Agent upgrade process failed"
-};
+/**
+ * Start the upgrade procedure for the agents
+ * @param json_response cJSON array where the responses for each agent will be stored
+ * @param task_module_request cJSON array with the agents to be upgraded
+ * */
+static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request);
 
 char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task) {
     char* response = NULL;
@@ -94,16 +80,7 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
         }
     }
 
-    // Send request to task module and store task ids
-    if (!wm_agent_upgrade_parse_task_module_task_ids(json_response, json_task_module_request)) {
-
-
-        // TODO: Send WPK to agents and update task to UPDATING/ERROR
-
-
-    } else {
-        mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_NO_AGENTS_TO_UPGRADE);
-    }
+    wm_agent_upgrade_start_upgrades(json_response, json_task_module_request);
 
     response = cJSON_PrintUnformatted(json_response);
 
@@ -146,39 +123,11 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
         }
     }
 
-    // Send request to task module and store task ids
-    if (!wm_agent_upgrade_parse_task_module_task_ids(json_response, json_task_module_request)) {
-
-
-        // TODO: Send WPK to agents and update task to UPDATING/ERROR
-
-
-    } else {
-        mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_NO_AGENTS_TO_UPGRADE);
-    }
+    wm_agent_upgrade_start_upgrades(json_response, json_task_module_request);
 
     response = cJSON_PrintUnformatted(json_response);
 
     cJSON_Delete(json_task_module_request);
-    cJSON_Delete(json_response);
-
-    return response;
-}
-
-char* wm_agent_upgrade_process_upgrade_result_command(const int* agent_ids) {
-    char* response = NULL;
-    cJSON* json_response = cJSON_CreateArray();
-    int agent = 0;
-    int agent_id = 0;
-
-    while (agent_id = agent_ids[agent++], agent_id != OS_INVALID) {
-
-        // TODO: Implement upgrade_result command
-
-        cJSON_AddItemToArray(json_response, wm_agent_upgrade_parse_response_message(WM_UPGRADE_SUCCESS, upgrade_results_messages[STATUS_OUTDATED], &agent_id, NULL, upgrade_results_status[STATUS_OUTDATED]));
-    }
-
-    response = cJSON_PrintUnformatted(json_response);
     cJSON_Delete(json_response);
 
     return response;
@@ -245,6 +194,26 @@ int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task) {
         return validate_result;
     }
 
-    // If necessary, download WPK and check sha1
-    return wm_agent_upgrade_validate_wpk(agent_task->task_info->task, agent_task->task_info->command);
+    // Validate WPK file
+    if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
+        validate_result = wm_agent_upgrade_validate_wpk((wm_upgrade_task *)agent_task->task_info->task);
+    } else {
+        validate_result = wm_agent_upgrade_validate_wpk_custom((wm_upgrade_custom_task *)agent_task->task_info->task);
+    }
+
+    return validate_result;
+}
+
+void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request) {
+
+    // Send request to task module and store task ids
+    if (!wm_agent_upgrade_parse_task_module_task_ids(json_response, task_module_request)) {
+
+
+        // TODO: Send WPK to agents and update task to UPDATING/ERROR
+
+
+    } else {
+        mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_NO_AGENTS_TO_UPGRADE);
+    }
 }

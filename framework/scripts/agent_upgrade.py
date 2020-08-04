@@ -21,6 +21,7 @@ try:
     from wazuh import Wazuh
     from wazuh.core.agent import Agent, send_task_upgrade_module
     from wazuh.core.exception import WazuhException
+    from wazuh.core.exception import WazuhError
     from wazuh.core import common
     import wazuh.agent
 except Exception as e:
@@ -69,7 +70,7 @@ def main():
     if args.version is not None:
         pattern = re.compile("v[0-9]+\.[0-9]+\.[0-9]+")
         if not pattern.match(args.version):
-            raise WazuhException(1733, "Version received: {0}".format(args.version))
+            raise WazuhError(1733, "Version received: {0}".format(args.version))
 
     upgrade_command_result = None
     # Custom WPK file
@@ -178,7 +179,7 @@ if __name__ == "__main__":
 
     try:
         main()
-    except WazuhException as e:
+    except WazuhError as e:
         print("Error {0}: {1}".format(e.code, e.message))
         if args.debug:
             raise

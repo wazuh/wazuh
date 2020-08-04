@@ -191,13 +191,14 @@ void wm_setup()
 
 void wm_cleanup()
 {
-    // Delete PID file
-
-    if (DeletePID(ARGV0) < 0)
-        merror("Couldn't delete PID file.");
-
     // Kill active child processes
     wm_kill_children();
+
+    // Delete PID file
+
+    if (DeletePID(ARGV0) < 0) {
+        merror("Couldn't delete PID file.");
+    }
 }
 
 // Action on signal

@@ -111,51 +111,20 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
     int overwrite = -1;
     int j;
 
-    for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
-        /* Duplicate entry */
-        if (strcmp(syscheck->dir[j], entry) == 0) {
-            mdebug2("Overwriting the file entry %s", entry);
-            overwrite = j;
-        }
-    }
-
-    /* If overwrite < 0, syscheck entry is added at the end */
-    if(overwrite != -1) {
-        pl = overwrite;
-    }
-
-    if (reg == 1) {
-#ifdef WIN32
-        if (syscheck->registry == NULL) {
-            os_calloc(2, sizeof(registry), syscheck->registry);
-            syscheck->registry[pl + 1].entry = NULL;
-            syscheck->registry[pl].tag = NULL;
-            syscheck->registry[pl + 1].tag = NULL;
-            syscheck->registry[pl].arch = vals;
-            os_strdup(entry, syscheck->registry[pl].entry);
-        } else if (overwrite < 0) {
-            while (syscheck->registry[pl].entry != NULL) {
-                pl++;
+    if (!reg) {
+        for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
+            /* Duplicate entry */
+            if (strcmp(syscheck->dir[j], entry) == 0) {
+                mdebug2("Overwriting the file entry %s", entry);
+                overwrite = j;
             }
-            os_realloc(syscheck->registry, (pl + 2) * sizeof(registry),
-                       syscheck->registry);
-            syscheck->registry[pl + 1].entry = NULL;
-            syscheck->registry[pl].tag = NULL;
-            syscheck->registry[pl + 1].tag = NULL;
-            syscheck->registry[pl].arch = vals;
-            os_strdup(entry, syscheck->registry[pl].entry);
-        } else {
-            os_free(syscheck->registry[pl].tag);
-            syscheck->registry[pl].arch = vals;
         }
 
-        if (tag) {
-            os_strdup(tag, syscheck->registry[pl].tag);
+        /* If overwrite < 0, syscheck entry is added at the end */
+        if(overwrite != -1) {
+            pl = overwrite;
         }
-
-#endif
-    }
-    else {
+        
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);
             os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[0]);
@@ -261,6 +230,43 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             os_strdup(tag, syscheck->tag[pl]);
         }
     }
+#ifdef WIN32
+    else {
+        if (syscheck->registry == NULL) {
+            os_calloc(2, sizeof(registry), syscheck->registry);
+            syscheck->registry[pl + 1].entry = NULL;
+            syscheck->registry[pl].tag = NULL;
+            syscheck->registry[pl + 1].tag = NULL;
+            syscheck->registry[pl].arch = vals;
+            os_strdup(entry, syscheck->registry[pl].entry);
+        } else {
+            while (syscheck->registry[pl].entry != NULL) {
+                /* Duplicated entry */
+                if (strcmp(syscheck->registry[pl].entry, entry) == 0 && vals == syscheck->registry[pl].arch) {
+                    overwrite = pl;
+                    mdebug2("Duplicated registration entry: %s", syscheck->registry[pl].entry);
+                    break;
+                }
+                pl++;
+            }
+            if (overwrite < 0) {
+                os_realloc(syscheck->registry, (pl + 2) * sizeof(registry),
+                        syscheck->registry);
+                syscheck->registry[pl + 1].entry = NULL;
+                syscheck->registry[pl].tag = NULL;
+                syscheck->registry[pl + 1].tag = NULL;
+                syscheck->registry[pl].arch = vals;
+                os_strdup(entry, syscheck->registry[pl].entry);
+            } else {
+                os_free(syscheck->registry[pl].tag);
+            }
+        } 
+
+        if (tag) {
+            os_strdup(tag, syscheck->registry[pl].tag);
+        }
+    }
+#endif
 }
 
 #ifdef WIN32
@@ -324,13 +330,12 @@ int dump_registry_ignore_regex(syscheck_config *syscheck, char *regex, int arch)
 /* Read Windows registry configuration */
 int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
 {
-    int i;
     int j;
     char **entry;
     char *tmp_str;
 
     /* Get each entry separately */
-    entry = OS_StrBreak(',', entries, MAX_DIR_SIZE); /* Max number */
+    entry = OS_StrBreak(',', entries, MAX_DIR_SIZE + 1); /* Max number */
 
     if (entry == NULL) {
         return (0);
@@ -341,6 +346,15 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
         char * clean_tag = NULL;
 
         tmp_entry = entry[j];
+
+
+        /* When the maximum number of registries monitored in the same tag is reached, 
+           the excess is discarded and warned */
+        if (j >= MAX_DIR_SIZE){
+            mwarn(FIM_WARN_MAX_REG_REACH, MAX_DIR_SIZE, tmp_entry);
+            free(entry[j]);
+            continue;
+        }
 
         /* Remove spaces at the beginning */
         while (*tmp_entry == ' ') {
@@ -357,19 +371,6 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
                 tmp_str--;
                 *tmp_str = '\0';
             }
-        }
-
-        /* Add entries - look for the last available */
-        i = 0;
-        while (syscheck->registry && syscheck->registry[i].entry) {
-            /* Duplicated entry */
-            if (syscheck->registry[i].arch == arch && strcmp(syscheck->registry[i].entry, tmp_entry) == 0) {
-                mdebug2("Overwriting the registration entry: %s", syscheck->registry[i].entry);
-                dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag, NULL);
-                free_strarray(entry);
-                return (1);
-            }
-            i++;
         }
 
         /* Remove spaces from tag */
@@ -423,10 +424,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     char *clean_tag = NULL;
     char **dir;
     char *tmp_str;
-    dir = OS_StrBreak(',', dirs, MAX_DIR_SIZE); /* Max number */
+    dir = OS_StrBreak(',', dirs, MAX_DIR_SIZE + 1); /* Max number */
     char **dir_org = dir;
 
     int i;
+    int j = 0;
 
     /* Dir can not be null */
     if (dir == NULL) {
@@ -441,6 +443,14 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         char **values = NULL;
 
         tmp_dir = *dir;
+
+        /* When the maximum number of directories monitored in the same tag is reached, 
+           the excess are discarded and warned */
+        if (j++ >= MAX_DIR_SIZE){
+            mwarn(FIM_WARN_MAX_DIR_REACH, MAX_DIR_SIZE, tmp_dir);
+            dir++;
+            continue;
+        }
 
         /* Remove spaces at the beginning */
         while (*tmp_dir == ' ') {

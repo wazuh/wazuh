@@ -14,6 +14,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 403
       json:
         code: 4000

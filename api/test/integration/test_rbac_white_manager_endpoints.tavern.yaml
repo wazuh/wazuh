@@ -14,7 +14,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response: &permission_denied
-      status_code: 400
+      status_code: 403
       json:
         code: 4000
 
@@ -122,9 +122,7 @@ stages:
       params:
         path: 'etc/decoders/test_decoders.xml'
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/info

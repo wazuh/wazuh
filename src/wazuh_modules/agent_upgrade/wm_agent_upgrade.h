@@ -51,8 +51,7 @@ typedef enum _wm_upgrade_error_code {
 
 typedef enum _wm_upgrade_command {
     WM_UPGRADE_UPGRADE = 0,
-    WM_UPGRADE_UPGRADE_CUSTOM,
-    WM_UPGRADE_UPGRADE_RESULT
+    WM_UPGRADE_UPGRADE_CUSTOM
 } wm_upgrade_command;
 
 /**
@@ -130,14 +129,6 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
 char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task);
 
 /**
- * @WIP
- * Process and upgrade_result command.
- * @param agent_ids array with the list of agents id
- * @return string with the response
- * */
-char* wm_agent_upgrade_process_upgrade_result_command(const int* agent_ids);
-
-/**
  * Check if agent exist
  * @param agent_id id of agent to validate
  * @return return_code
@@ -172,14 +163,22 @@ int wm_agent_upgrade_validate_status(int last_keep_alive);
 int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *task, wm_upgrade_command command);
 
 /**
- * Check if WPK file exist and/or download it
+ * Check if WPK file exist or download it
  * @param task pointer to task with the params
- * @param command wm_upgrade_command with the selected upgrade type
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST
  * @retval WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH
  * */
-int wm_agent_upgrade_validate_wpk(const void *task, wm_upgrade_command command);
+int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task);
+
+/**
+ * Check if WPK custom file exist
+ * @param task pointer to task with the params
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS
+ * @retval WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST
+ * */
+int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task);
 
 #endif
