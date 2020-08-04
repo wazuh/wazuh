@@ -67,7 +67,7 @@ void wm_agent_upgrade_check_status() {
     }
 }
 
-void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state) {
+static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state) {
     int msg_delay = 1000000 / wm_max_eps;
     cJSON* root = cJSON_CreateObject();
     cJSON* params = cJSON_CreateObject();

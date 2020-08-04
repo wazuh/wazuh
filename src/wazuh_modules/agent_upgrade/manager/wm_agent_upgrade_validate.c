@@ -180,7 +180,7 @@ int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task) {
     return return_code;
 }
 
-int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task) {
+static int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task) {
     char *manager_version = NULL;
     char *tmp_manager_version = NULL;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
@@ -213,7 +213,7 @@ int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, cons
     return return_code;
 }
 
-int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch) {
+static int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch) {
     int invalid_platforms_len = 0;
     int invalid_platforms_it = 0;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
@@ -243,7 +243,7 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
     return return_code;
 }
 
-int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version) {
+static int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version) {
     const char *http_tag = "http://";
     const char *https_tag = "https://";
     char *repository_url = NULL;
@@ -341,7 +341,7 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
     return return_code;
 }
 
-int wm_agent_upgrade_compare_versions(const char *version1, const char *version2) {
+static int wm_agent_upgrade_compare_versions(const char *version1, const char *version2) {
     char ver1[10];
     char ver2[10];
     char *tmp_v1 = NULL;
