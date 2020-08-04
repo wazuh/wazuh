@@ -139,7 +139,7 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
             mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_DOWNLOADING_WPK, file_url);
 
             // Download WPK file
-            for (attempts = 0;; attempts++) {
+            while (attempts++ < WM_UPGRADE_WPK_DOWNLOAD_ATTEMPTS) {
                 if (req = wurl_request(file_url, file_path, NULL, NULL, WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT), !req) {
                     if (OS_SHA1_File(file_path, sha1, OS_BINARY) || strcasecmp(sha1, task->wpk_sha1)) {
                         return_code = WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH;
@@ -195,12 +195,12 @@ static int wm_agent_upgrade_validate_non_custom_version(const char *agent_versio
                 // Check if a WPK package exist for the upgrade version
                 return_code = wm_agent_upgrade_validate_wpk_version(agent_info, task, wpk_version);
 
-                if (WM_UPGRADE_SUCCESS == return_code) {
-                    if (wm_agent_upgrade_compare_versions(agent_version, wpk_version) >= 0 && task->force_upgrade == false) {
+                if (WM_UPGRADE_SUCCESS == return_code && !task->force_upgrade) {
+                    if (wm_agent_upgrade_compare_versions(agent_version, wpk_version) >= 0) {
                         return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
-                    } else if (wm_agent_upgrade_compare_versions(wpk_version, tmp_manager_version) > 0 && task->force_upgrade == false) {
+                    } else if (wm_agent_upgrade_compare_versions(wpk_version, tmp_manager_version) > 0) {
                         return_code = WM_UPGRADE_NEW_VERSION_GREATER_MASTER;
-                    } else if (wm_agent_upgrade_compare_versions(agent_version, tmp_manager_version) == 0 && task->force_upgrade == false) {
+                    } else if (wm_agent_upgrade_compare_versions(agent_version, tmp_manager_version) == 0) {
                         return_code = WM_UPGRADE_VERSION_SAME_MANAGER;
                     }
                 }

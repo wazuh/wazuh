@@ -107,13 +107,13 @@ void wm_agent_upgrade_remove_entry(int agent_id);
  * Returns the first node of the tasks hash table
  * @return the first node stored
  * */
-OSHashNode* wm_agent_upgrade_get_first_node();
+OSHashNode* wm_agent_upgrade_get_first_node(unsigned int *index);
 
 /**
  * Returns the next node of the tasks hash table
  * @return the next node stored
  * */
-OSHashNode* wm_agent_upgrade_get_next_node(OSHashNode *current);
+OSHashNode* wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNode *current);
 
 /**
  * Sends the JSON information to the task module and retrieves the answer

@@ -17,7 +17,7 @@
 
 /**
  * Analyze agent information and returns a JSON to be sent to the task manager
- * @param agent_id id of agent to analyze
+ * @param agent_id id of the agent
  * @param agent_task structure where the information of the agent will be stored
  * @param error_code variable to modify in case of failure
  * @return JSON task if success, NULL otherwise
@@ -206,13 +206,14 @@ static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task)
 }
 
 static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request) {
+    unsigned int index = 0;
     OSHashNode *node = NULL;
     wm_agent_task *agent_task = NULL;
 
     // Send request to task module and store task ids
     if (!wm_agent_upgrade_parse_task_module_task_ids(json_response, task_module_request)) {
 
-        for (node = wm_agent_upgrade_get_first_node(); node != NULL; node = wm_agent_upgrade_get_next_node(node)) {
+        for (node = wm_agent_upgrade_get_first_node(&index); node != NULL; node = wm_agent_upgrade_get_next_node(&index, node)) {
             agent_task = (wm_agent_task *)node->data;
 
             // TODO: Send WPK to agent and update task to UPDATING/ERROR
