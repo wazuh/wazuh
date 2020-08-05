@@ -149,7 +149,8 @@ typedef enum global_db_query {
     SQL_DELETE_AGENT_BELONG,
     SQL_DELETE_GROUP_BELONG,
     SQL_DELETE_GROUP,
-    SQL_SELECT_GROUPS
+    SQL_SELECT_GROUPS,
+    SQL_SELECT_KEEPALIVE
 } global_db_query;
 
 typedef struct wdb_t {
@@ -629,6 +630,9 @@ wdb_t * wdb_backup(wdb_t *wdb, int version);
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */
 int wdb_create_backup(const char * agent_id, int version);
+
+/* Gets the agent last keepalive. Returns this value, 0 on NULL or OS_INVALID on error */
+time_t wdb_get_agent_keepalive (const char *name, const char *ip);
 
 /**
  * @brief Query the checksum of a data range

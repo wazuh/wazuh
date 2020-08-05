@@ -13,6 +13,8 @@ stages:
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: 'all'
     response:
       status_code: 200
       json:
@@ -25,8 +27,7 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
-
+        
   - name: Request a list of agents (Partially allowed, user aware)
     request:
       verify: False
@@ -51,8 +52,7 @@ stages:
                 - '006'
           total_affected_items: 2
           total_failed_items: 2
-        message: !anystr
-
+        
 ---
 test_name: GET /experimental/ciscat/results
 
@@ -77,8 +77,7 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
-
+        
   - name: Request a list of agents (Partially allowed, user aware)
     request:
       verify: False
@@ -103,8 +102,7 @@ stages:
                 - '008'
           total_affected_items: 2
           total_failed_items: 2
-        message: !anystr
-
+        
 ---
 test_name: GET /experimental/syscollector/hardware
 
@@ -154,8 +152,7 @@ stages:
                 - '006'
           total_affected_items: 2
           total_failed_items: 2
-        message: !anystr
-
+        
 ---
 test_name: GET /experimental/syscollector/netaddr
 
@@ -205,8 +202,7 @@ stages:
                 - '008'
           total_affected_items: 2
           total_failed_items: 2
-        message: !anystr
-
+        
 ---
 test_name: GET /experimental/syscollector/netiface
 
@@ -256,8 +252,7 @@ stages:
                 - '008'
           total_affected_items: 3
           total_failed_items: 1
-        message: !anystr
-
+        
 ---
 test_name: GET /experimental/syscollector/netproto
 
@@ -307,8 +302,7 @@ stages:
                 - '008'
           total_affected_items: 1
           total_failed_items: 3
-        message: !anystr
-
+        
 ---
 test_name: GET /experimental/syscollector/os
 
@@ -358,8 +352,7 @@ stages:
                 - '004'
           total_affected_items: 2
           total_failed_items: 2
-        message: !anystr
-
+        
 ---
 test_name: GET /experimental/syscollector/packages
 
@@ -380,8 +373,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
-
+        
   - name:  Request all agents (Denied)
     request:
       verify: False
@@ -392,9 +384,12 @@ stages:
       params:
         list_agents: '002,004,006,008'
     response:
-      status_code: 400
+      status_code: 403
       json:
         code: 4000
+        dapi_errors:
+          unknown-node: # No permission to see node
+            error: !anystr
 
 ---
 test_name: GET /experimental/syscollector/ports
@@ -463,8 +458,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
-
+        
   - name: Request
     request:
       verify: False
@@ -487,8 +481,7 @@ stages:
                 - '008'
           total_affected_items: !anyint
           total_failed_items: 2
-        message: !anystr
-
+        
 ---
 test_name: GET /experimental/syscollector/hotfixes
 
@@ -509,8 +502,7 @@ stages:
           failed_items: []
           total_affected_items: 0  # Only the agent 000 will have results but we don't have permissions
           total_failed_items: 0
-        message: !anystr
-
+        
   - name: Request
     request:
       verify: False
@@ -529,12 +521,9 @@ stages:
           # Even agent IDs do not have permissions
             - error:
                 code: 4000
-                message: !anystr
-                remediation: !anystr
               id:
                 - '000'
                 - '004'
                 - '006'
           total_affected_items: 0
           total_failed_items: 3
-        message: !anystr

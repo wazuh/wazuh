@@ -77,6 +77,10 @@ int __wrap__mdebug1(const char * file, int line, const char * func, const char *
 void __wrap_OS_RemoveAgentGroup(const char *id) {    
 }
 
+int __wrap_OS_AgentAntiquity() {
+    return -1;
+}
+
 void __wrap_add_backup(const keyentry *entry) {
 }
 

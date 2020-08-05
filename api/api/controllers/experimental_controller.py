@@ -18,7 +18,7 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 logger = logging.getLogger('wazuh')
 
 
-async def clear_syscheck_database(request, pretty=False, wait_for_complete=False, list_agents='*'):
+async def clear_syscheck_database(request, pretty=False, wait_for_complete=False, list_agents=None):
     """ Clear the syscheck database for all agents.
 
     :param pretty: Show results in human-readable format
@@ -26,6 +26,8 @@ async def clear_syscheck_database(request, pretty=False, wait_for_complete=False
     :param list_agents: List of agent's IDs.
     :return: AllItemsResponseAgentIDs
     """
+    if 'all' in list_agents:
+        list_agents = '*'
     if not configuration.api_conf['experimental_features']:
         raise_if_exc(APIError(code=2008))
 

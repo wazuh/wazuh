@@ -236,12 +236,12 @@ class DistributedAPI:
             try:
                 data = await asyncio.wait_for(task, timeout=timeout)
             except asyncio.TimeoutError:
-                raise exception.WazuhException(3021)
+                raise exception.WazuhInternalError(3021)
 
             after = time.time()
             self.logger.debug("Time calculating request result: {}s".format(after - before))
             return data
-        except exception.WazuhError as e:
+        except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
             e.dapi_errors = self.get_error_info(e)
             if self.debug:
                 raise

@@ -16,8 +16,8 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         group_id: wrong_group
-    response:
-      status_code: 400
+    response: &resource_not_found_group
+      status_code: 404
       json:
         code: 1710
 
@@ -33,9 +33,7 @@ stages:
       status_code: 400
       json: &error_spec
         detail: !anystr
-        status: !anyint
         title: !anystr
-        type: !anystr
 
     # PUT /agents/group?group_id=wrong_%_group
   - name: Try to assign all agents to an invalid group id
@@ -76,7 +74,6 @@ stages:
                 - "999"
           total_affected_items: 0
           total_failed_items: 2
-        message: !anystr
 
     # PUT /agents/group?group_id=default&list_agents=000,999
   - name: Try to assign 000 and a non existing agent to group default
@@ -105,7 +102,6 @@ stages:
                 - "000"
           total_affected_items: 0
           total_failed_items: 2
-        message: !anystr
 
     # PUT /agents/group?group_id=default&list_agents=001,002
   - name: Try to assign agents 001 and 002 to group default where they already belong
@@ -131,7 +127,6 @@ stages:
                 - "002"
           total_affected_items: 0
           total_failed_items: 2
-        message: !anystr
 
     # PUT /agents/group?group_id=group1&list_agents=003,004,005
   - name: Assign agents 003, 004 and 005 to group1
@@ -158,7 +153,6 @@ stages:
                 - "005"
           total_affected_items: 2
           total_failed_items: 1
-        message: !anystr
 
     # PUT /agents/group?group_id=group2
   - name: Assign all agents to group2
@@ -181,7 +175,6 @@ stages:
             - "007"
             - "009"
           total_affected_items: 5
-        message: !anystr
 
     # PUT /agents/group?group_id=group2&force_single_group=true
   - name: Assign all agents to group2 with force_single_group
@@ -210,7 +203,7 @@ stages:
             - "009"
             - "010"
           total_affected_items: 10
-        message: !anystr
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: PUT /groups/{group_id}/configuration
@@ -230,8 +223,6 @@ stages:
         "{file_xml:s}"
     response:
       status_code: 200
-      json:
-        message: !anystr
 
     # PUT /groups/wrong_group/configuration
   - name: Try to update configuration of a non existing group
@@ -245,9 +236,7 @@ stages:
       data:
         "{file_xml:s}"
     response:
-      status_code: 400
-      json:
-        code: 1710
+      <<: *resource_not_found_group
 
     # PUT /groups/group1/configuration
   - name: Try to update configuration using an empty file
@@ -344,8 +333,7 @@ stages:
                 - "009"
                 - "010"
           total_failed_items: 2
-        message: "Could not send command to some agents"
-    delay_after: 45
+    delay_after: !float "{restart_delay}"
 
   # PUT /groups/not_exists/restart (Group does not exist)
   - name: Restart all agents from a group which does not exist
@@ -357,10 +345,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: "application/xml"
     response:
-      status_code: 400
-      json:
-        status: 400
-        code: 1710
+      <<: *resource_not_found_group
 
 ---
 test_name: PUT /agents/restart
@@ -400,7 +385,6 @@ stages:
               id: !anything
           total_affected_items: 0
           total_failed_items: 2
-        message: !anystr
 
 
     # PUT /agents/restart?list_agents=000,999
@@ -426,7 +410,6 @@ stages:
                 - "000"
           total_affected_items: 0
           total_failed_items: 2
-        message: !anystr
 
     # PUT /agents/restart?list_agents=001,002,999
   - name: Try to restart agents 001,002 and 999
@@ -449,8 +432,7 @@ stages:
                 - "999"
           total_affected_items: 2
           total_failed_items: 1
-        message: !anystr
-    delay_after: 40
+    delay_after: !float "{restart_delay}"
 
     # PUT /agents/restart
   - name: Try to restart all agents
@@ -476,8 +458,7 @@ stages:
           failed_items: !anything
           total_affected_items: 8
           total_failed_items: 4
-        message: !anystr
-    delay_after: 40
+    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
@@ -499,7 +480,6 @@ stages:
           affected_items:
             - "001"
           total_affected_items: 1
-        message: !anystr
 
     # PUT /agents/wrong_id/group/group1
   - name: Try to assign an agent with an invalid id
@@ -534,7 +514,6 @@ stages:
                 - "999"
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
     # PUT /agents/001/group/group3?force_single_group=true
   - name: Assign agent 001 to group3 with force_single_group
@@ -553,7 +532,6 @@ stages:
           affected_items:
             - "001"
           total_affected_items: 1
-        message: !anystr
 
 ---
 test_name: PUT /agents/{agent_id}/restart
@@ -580,7 +558,6 @@ stages:
                 - "000"
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
     # PUT /agents/999/restart
   - name: Try to restart a not existing agent
@@ -602,7 +579,6 @@ stages:
                 - "999"
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
     # PUT /agents/wrong_id/restart
   - name: Try to restart an agent with an invalid id
@@ -632,8 +608,6 @@ stages:
           affected_items:
             - "002"
           total_affected_items: 1
-        message: !anystr
-
 
 ---
 test_name: PUT /agents/node/{node_id}/restart
@@ -670,7 +644,6 @@ stages:
         - function: tavern_utils:test_validate_restart_by_node
           extra_kwargs:
             data: "{response_data}"
-    delay_after: 45
 
   - name: Restart all agents belonging to a node (it does not exist)
     request:
@@ -703,8 +676,8 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
+    response: &resource_not_found
+      status_code: 404
       json:
         code: 1701
 
@@ -746,11 +719,12 @@ stages:
         force: True
         wait_for_complete: 'true'
     response:
-     status_code:
-       - 200
-       - 500
-     verify_response_with:
-       function: tavern_utils:test_validate_upgrade
+      status_code:
+        - 200
+        - 500
+      verify_response_with:
+        function: tavern_utils:test_validate_upgrade
+    delay_after: !float "{upgrade_delay}"
 
     # PUT /agents/001/upgrade
   - name: Try to upgrade an agent that is updated to the latest version
@@ -781,9 +755,7 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
-      json:
-        message: !anystr
-    delay_after: 30
+    delay_after: !float "{upgrade_delay}"
 
     # PUT /agents/004/upgrade
   - name: Upgrade an agent using http
@@ -840,9 +812,7 @@ stages:
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
     response:
-      status_code: 400
-      json:
-        code: 1701
+      <<: *resource_not_found
 
     # PUT /agents/000/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade agent 000 (manager)
@@ -880,7 +850,7 @@ stages:
   - name: Try to customly upgrade an agent without parameters
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/003/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/006/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -919,8 +889,7 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
-      json:
-        message: "Installation started"
+    delay_after: !float "{upgrade_delay}"
 
     # PUT /agents/008/upgrade_custom?file_path=custom_wpk_path
   - name: Customly upgrade agent 008 using default installer
@@ -935,9 +904,7 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
-      json:
-        message: "Installation started"
-    delay_after: 45
+    delay_after: !float "{upgrade_delay}"
 
   - name: Get agent 007 upgrade result
     request:
@@ -946,7 +913,7 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
+    response: &upgrade_result
       status_code: 200
       json:
         message: Agent upgraded successfully
@@ -959,6 +926,4 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
-      json:
-        message: Agent upgraded successfully
+      <<: *upgrade_result

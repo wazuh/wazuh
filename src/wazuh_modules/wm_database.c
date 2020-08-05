@@ -112,6 +112,11 @@ const wm_context WM_DATABASE_CONTEXT = {
 void* wm_database_main(wm_database *data) {
     module = data;
 
+    mwarn("Test Antiquity %lf",OS_AgentAntiquity("",""));
+    mwarn("Test Antiquity %lf",OS_AgentAntiquity("1-b2c2007e-debian7",""));
+    mwarn("Test Antiquity %lf",OS_AgentAntiquity("test",""));
+
+
     mtinfo(WM_DATABASE_LOGTAG, "Module started.");
 
     // Reset template. Basically, remove queue/db/.template.db

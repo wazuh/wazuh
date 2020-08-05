@@ -573,7 +573,7 @@ def test_agent_load_info_from_db_ko():
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
 
-        with pytest.raises(WazuhError, match='.* 1701 .*'):
+        with pytest.raises(WazuhResourceNotFound, match='.* 1701 .*'):
             agent = Agent(id=11250)
             agent.load_info_from_db()
 
@@ -1315,7 +1315,7 @@ def test_agent_add_group_to_agent_ko():
             Agent.add_group_to_agent('test_group', '000')
 
         # Group does not exists
-        with pytest.raises(WazuhError, match='.* 1710 .*'):
+        with pytest.raises(WazuhResourceNotFound, match='.* 1710 .*'):
             Agent.add_group_to_agent('test_group', '002')
 
         with patch('os.path.exists', return_value=True):
@@ -1532,7 +1532,7 @@ def test_agent_unset_single_group_agent_ko():
             Agent.unset_single_group_agent('000', 'test_group')
 
         # Group does not exists
-        with pytest.raises(WazuhError, match='.* 1710 .*'):
+        with pytest.raises(WazuhResourceNotFound, match='.* 1710 .*'):
             Agent.unset_single_group_agent('002', 'test_group')
 
         with patch('os.path.exists', return_value=True):
