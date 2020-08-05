@@ -77,7 +77,7 @@ stages:
       params:
         path: 'etc/rules/local_rules.xml'
     response: &permission_denied
-      status_code: 400
+      status_code: 403
       json:
         code: 4000
 
@@ -96,9 +96,7 @@ stages:
       params:
         path: 'etc/rules/local_rules.xml'
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: PUT /manager/files
@@ -141,9 +139,6 @@ stages:
                 - 'etc/rules/local_rules.xml'
               error:
                 code: 4000
-                message: !anystr
-                remediation: !anystr
-        message: !anystr
 
 ---
 test_name: GET /manager/info
@@ -204,7 +199,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_allowed
-    delay_after: 45
+    delay_after: !float "{restart_delay}"
 
 ---
 test_name: GET /manager/stats

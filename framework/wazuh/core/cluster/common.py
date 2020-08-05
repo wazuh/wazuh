@@ -18,7 +18,7 @@ import cryptography.fernet
 
 import wazuh.core.cluster.utils
 import wazuh.core.results as wresults
-from wazuh import Wazuh
+from wazuh import Wazuh, WazuhException
 from wazuh.core import common, exception
 
 
@@ -599,7 +599,6 @@ def asyncio_exception_handler(loop, context: Dict):
 
 class WazuhJSONEncoder(json.JSONEncoder):
     def default(self, obj):
-
         if callable(obj):
             result = {'__callable__': {}}
             attributes = result['__callable__']
