@@ -1,0 +1,29 @@
+## Multi-node configuration
+
+## Elasticsearch configuration
+network.host: <elasticsearch_ip>
+node.name: <node_name>
+cluster.name: <elastic_cluster>
+cluster.initial_master_nodes:
+        - <master_node_1>
+        - <master_node_2>
+        - <master_node_3>
+discovery.seed_hosts:
+        - <elasticsearch_ip_node1>
+        - <elasticsearch_ip_node2>
+        - <elasticsearch_ip_node3> 
+
+## Certificates creation
+instances:
+- name: "elasticsearch-1"
+  ip:
+  - "<elasticsearch_ip-1>"
+- name: "elasticsearch-2"
+  ip:
+  - "<elasticsearch_ip-2>"
+- name: "elasticsearch-3"
+  ip:
+  - "<elasticsearch_ip-3>"
+- name: "filebeat"
+  ip:
+  - "<wazuh_server_ip>"
