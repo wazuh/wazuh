@@ -25,7 +25,7 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh.sca import get_sca_list, fields_translation_sca, \
             get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
         from wazuh.core.results import AffectedItemsWazuhResult
-        from wazuh.core.exception import WazuhError
+        from wazuh.core.exception import WazuhResourceNotFound
 
         del sys.modules['wazuh.rbac.orm']
 
@@ -87,7 +87,7 @@ def test_get_sca_list():
         assert result['total_failed_items'] == 1
         assert len(result['failed_items']) == 1
         failed = result['failed_items']
-        assert isinstance(list(failed.keys())[0], WazuhError)
+        assert isinstance(list(failed.keys())[0], WazuhResourceNotFound)
         assert list(failed.keys())[0].to_dict()['code'] == 1701
         assert failed[list(failed.keys())[0]] == {'999'}
 
@@ -181,7 +181,7 @@ def test_get_sca_checks():
         assert result['total_failed_items'] == 1
         assert len(result['failed_items']) == 1
         failed = result['failed_items']
-        assert isinstance(list(failed.keys())[0], WazuhError)
+        assert isinstance(list(failed.keys())[0], WazuhResourceNotFound)
         assert list(failed.keys())[0].to_dict()['code'] == 1701
         assert failed[list(failed.keys())[0]] == {'999'}
 

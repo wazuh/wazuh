@@ -537,14 +537,10 @@ stages:
           failed_items:
             - error:
                 code: 1601
-                message: !anystr
-                remediation: !anystr
               id:
                 - '012'
             - error:
                 code: 1601
-                message: !anystr
-                remediation: !anystr
               id:
                 - '010'
           total_affected_items: 5
@@ -1038,15 +1034,11 @@ stages:
           failed_items:
             - error:
                 code: 1601
-                message: !anystr
-                remediation: !anystr
               id:
                 - '011'
                 - '012'
             - error:
                 code: 1601
-                message: !anystr
-                remediation: !anystr
               id:
                 - '009'
                 - '010'

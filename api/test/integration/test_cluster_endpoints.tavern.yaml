@@ -30,7 +30,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/healthcheck
@@ -68,7 +67,6 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: !anystr
 
   - name: Get cluster healtcheck
     request:
@@ -105,7 +103,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/local/info
@@ -130,7 +127,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/nodes
@@ -158,7 +154,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
   - name: Get cluster nodes
     request:
@@ -177,7 +172,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
   - name: Filter nodes by query
     request:
@@ -223,9 +217,7 @@ stages:
       status_code: 400
       json:
         detail: !anystr
-        status: 400
         title: !anystr
-        type: !anystr
 
   - name: Sort nodes by name in ascending order
     request:
@@ -250,7 +242,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
   - name: Sort nodes by name in descending order
     request:
@@ -275,7 +266,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
   - name: Search master
     request:
@@ -294,7 +284,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Search worker1
     request:
@@ -312,7 +301,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters (type) -> master
     request:
@@ -330,7 +318,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters (type) -> worker
     request:
@@ -349,7 +336,6 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: !anystr
 
 
   - name: Filters -> invalid type
@@ -381,7 +367,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
   - name: Select type
     request:
@@ -400,7 +385,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
   - name: Select wrong_field
     request:
@@ -445,7 +429,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/nodes select
@@ -538,7 +521,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Request (worker)
     request:
@@ -570,7 +552,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> section=alerts (master-node)
     request:
@@ -592,7 +573,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 
   - name: Filters -> section=syscheck (master)
@@ -622,7 +602,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> section=syscollector (master)
     request:
@@ -651,7 +630,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> section=alerts (worker1)
     request:
@@ -673,7 +651,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> section=syscheck (worker1)
     request:
@@ -702,7 +679,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> section=syscollector (worker1)
     request:
@@ -731,7 +707,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/configuration/validation
@@ -759,7 +734,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
   #### Upload corrupted rules file
   - name: Upload corrupted configuration
@@ -795,13 +769,10 @@ stages:
           failed_items:
             - error:
                 code: 1908
-                message: !anystr
-                remediation: !anystr
               id:
                 - 'master-node'
           total_affected_items: 2
           total_failed_items: 1
-        message: !anystr
 
     #### Delete corrupted rules file
   - name: Delete rules file
@@ -837,7 +808,6 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: !anystr
 
   - name: Request cluster validation
     request:
@@ -858,7 +828,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
@@ -896,7 +865,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of analysis/active_response through a worker
     request:
@@ -914,7 +882,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of analysis/alerts through a worker
     request:
@@ -932,7 +899,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show analysis/command through a worker
 
@@ -951,7 +917,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of authd/authd in the manager through a worker
     request:
@@ -981,7 +946,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of com/internal in the manager through a worker
     request:
@@ -1002,7 +966,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of csyslog/csyslog in the manager through a worker
     request:
@@ -1025,7 +988,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of integrator/integration in the manager through a worker
     request:
@@ -1043,7 +1005,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of analysis/internal through a worker
     request:
@@ -1075,7 +1036,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of logcollector/localfile in the manager trough a worker
     request:
@@ -1093,7 +1053,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of logcollector/socket in the manager trough a worker
     request:
@@ -1110,7 +1069,6 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of logcollector/internal in the manager trough a worker
     request:
@@ -1144,7 +1102,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of mail/global in the manager trough a worker
     request:
@@ -1166,7 +1123,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of mail/alerts in the manager trough a worker
     request:
@@ -1187,7 +1143,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of mail/internal in the manager trough a worker
     request:
@@ -1208,7 +1163,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of monitor/internal in the manager trough a worker
     request:
@@ -1235,7 +1189,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of request/remote in the manager trough a worker
     request:
@@ -1258,7 +1211,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of request/internal in the manager trough a worker
     request:
@@ -1299,7 +1251,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of syscheck/syscheck in the manager trough a worker
     request:
@@ -1318,7 +1269,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of syscheck/rootcheck in the manager trough a worker
     request:
@@ -1351,7 +1301,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of syscheck/internal in the manager through a worker
     request:
@@ -1378,7 +1327,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of wmodules/wmodules in the manager trough a worker
     request:
@@ -1396,7 +1344,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/files
@@ -1529,7 +1476,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Delete unexisting rules file
     request:
@@ -1545,12 +1491,9 @@ stages:
           failed_items:
             - error:
                 code: 1906
-                message: !anystr
-                remediation: !anystr
               id: !anything
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Delete decoder file
     request:
@@ -1567,7 +1510,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Delete unexisting decoder file
     request:
@@ -1593,7 +1535,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Delete unexisting CDB list file
     request:
@@ -1656,7 +1597,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Upload new rules {node_id}
     request:
@@ -1674,7 +1614,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Upload rules (overwrite=false) {node_id}
     request:
@@ -1692,13 +1631,10 @@ stages:
           failed_items:
             - error:
                 code: 1905
-                message: !anystr
-                remediation: !anystr
               id:
                 - 'etc/rules/new-rules.xml'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Upload rules (overwrite=true) {node_id}
     request:
@@ -1717,7 +1653,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Upload rules with XML syntax error (overwrite=true)
     request:
@@ -1735,13 +1670,10 @@ stages:
           failed_items:
             - error:
                 code: 1113
-                message: !anystr
-                remediation: !anystr
               id:
                 - 'etc/rules/new-rules.xml'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Upload new decoder
     request:
@@ -1759,7 +1691,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Upload decoder (overwrite=false)
     request:
@@ -1777,13 +1708,10 @@ stages:
           failed_items:
             - error:
                 code: 1905
-                message: !anystr
-                remediation: !anystr
               id:
                 - 'etc/decoders/new-decoder.xml'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Upload decoder (overwrite=true)
     request:
@@ -1802,7 +1730,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Upload decoder with XML syntax error (overwrite=true)
     request:
@@ -1820,13 +1747,10 @@ stages:
           failed_items:
             - error:
                 code: 1113
-                message: !anystr
-                remediation: !anystr
               id:
                 - 'etc/decoders/new-decoder.xml'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Upload new CDB list
     request:
@@ -1844,7 +1768,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Upload CDB list (overwrite=false)
     request:
@@ -1862,13 +1785,10 @@ stages:
           failed_items:
             - error:
                 code: 1905
-                message: !anystr
-                remediation: !anystr
               id:
                 - 'etc/lists/new-list'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Upload CDB list (overwrite=true)
     request:
@@ -1887,7 +1807,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Upload CDB list with a syntax error (overwrite=true)
     request:
@@ -1909,7 +1828,6 @@ stages:
                 - 'etc/lists/new-list'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
 ---
 test_name: PUT /cluster/wrong_node/files
@@ -1928,7 +1846,7 @@ stages:
       params:
         path: etc/rules/new-rules.xml
         overwrite: True
-    response:
+    response: &unexisting_node
       status_code: 200
       json:
         data:
@@ -1954,15 +1872,7 @@ stages:
         path: etc/decoders/new-decoder.xml
         overwrite: True
     response:
-      status_code: 200
-      json: &unexisting_node
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1730
-              id:
-                - "unexisting-node"
+      <<: *unexisting_node
 
   - name: Upload CDB list to unexisting node
     request:
@@ -1977,9 +1887,7 @@ stages:
         path: etc/lists/new-list
         overwrite: False
     response:
-      status_code: 200
-      json:
-        <<: *unexisting_node
+      <<: *unexisting_node
 
 ---
 test_name: GET /cluster/{node_id}/info
@@ -2018,7 +1926,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/logs
@@ -2048,7 +1955,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> limit=3 {node_id}
     request:
@@ -2071,7 +1977,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> limit=4 {node_id}
     request:
@@ -2091,7 +1996,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> limit=2, sort=tag {node_id}
     request:
@@ -2110,7 +2014,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> limit=1, sort=-level {node_id}
     request:
@@ -2128,7 +2031,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> offset=2, limit=3 {node_id}
     request:
@@ -2148,7 +2050,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> offset=5, limit=2 {node_id}
     request:
@@ -2167,7 +2068,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> tag=ossec-analysisd, limit=1 {node_id}
     request:
@@ -2185,7 +2085,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> tag=ossec-syscheckd, limit=2 {node_id}
     request:
@@ -2206,7 +2105,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> level=info, limit=1 {node_id}
     request:
@@ -2225,7 +2123,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters by query (tag=ossec-syscheckd, level=info)
     request:
@@ -2292,7 +2189,6 @@ stages:
           failed_items: []
           total_affected_items: 20
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/stats
@@ -2318,12 +2214,6 @@ stages:
       status_code: 400
       json:
         code: 1308
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Cluster stats {node_id} 2019-08-27
     request:
@@ -2346,35 +2236,21 @@ stages:
       status_code: 400
       json:
         code: 1308
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
 ---
 test_name: GET /cluster/wrong_node/stats
 
 stages:
 
-  - name: wrong_node stats
+  - name: unexisting_node stats
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/wrong_node/stats"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/unexisting_node/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
-      json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1730
-              id:
-                - "wrong_node"
+      <<: *unexisting_node
 
 ---
 test_name: GET /cluster/{node_id}/stats/analysisd
@@ -2598,7 +2474,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/api/config
@@ -2637,10 +2512,14 @@ stages:
                   source_route: !anystr
                   expose_headers: !anystr
                   allow_headers: !anystr
-                  allow_credentials: !anything
+                  allow_credentials: !anybool
                 cache:
                   enabled: !anybool
                   time: !anything
+                access:
+                  max_login_attempts: !anyint
+                  block_time: !anyint
+                  max_request_per_minute: !anyint
                 use_only_authd: !anybool
                 drop_privileges: !anybool
                 experimental_features: !anybool
@@ -2653,7 +2532,6 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   # GET /cluster/api/config/{node_list}
   - name: Get API configuration
@@ -2679,7 +2557,6 @@ stages:
           total_affected_items: 2
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: PUT /cluster/api/config
@@ -2706,7 +2583,6 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   # PUT /cluster/api/config
   - name: Modify API configuration (all allowed fields)
@@ -2724,6 +2600,8 @@ stages:
         cache:
           enabled: true
           time: 3
+        access:
+          block_time: 0
         use_only_authd: true
         experimental_features: true
     response:
@@ -2736,7 +2614,6 @@ stages:
           total_affected_items: 2
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   # PUT /cluster/api/config
   - name: Modify API configuration (forbidden field)
@@ -2783,7 +2660,6 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: DELETE /cluster/api/config
@@ -2808,7 +2684,6 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   # GET /cluster/api/config
   - name: Get API default configuration
@@ -2841,7 +2716,6 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   # DELETE /cluster/api/config (all nodes)
   - name: Restore API configuration
@@ -2859,7 +2733,6 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   # GET /cluster/api/config
   - name: Get API default configuration
@@ -2886,7 +2759,6 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: PUT /cluster/restart
@@ -2912,8 +2784,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: !anystr
-    delay_after: 30
+    delay_after: !float "{restart_delay}"
 
   - name: Restart cluster
     request:
@@ -2933,4 +2804,3 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr

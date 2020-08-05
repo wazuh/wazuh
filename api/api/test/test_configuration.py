@@ -85,12 +85,12 @@ def test_read_configuration(mock_open, mock_exists, read_config):
 def test_read_wrong_configuration(mock_exists):
     """Verify that expected exceptions are raised when incorrect configuration"""
     with patch('api.configuration.yaml.safe_load') as m:
-        with pytest.raises(api_exception.APIException, match='.* 2004 .*'):
+        with pytest.raises(api_exception.APIError, match='.* 2004 .*'):
             configuration.read_yaml_config()
 
         with patch('builtins.open'):
             m.return_value = {'marta': 'yay'}
-            with pytest.raises(api_exception.APIException, match='.* 2000 .*'):
+            with pytest.raises(api_exception.APIError, match='.* 2000 .*'):
                 configuration.read_yaml_config()
 
 
