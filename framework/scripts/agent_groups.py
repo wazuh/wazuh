@@ -13,7 +13,7 @@ from sys import exit, argv
 from wazuh import agent
 from wazuh.core import agent as core_agent
 from wazuh.core.cluster.utils import read_config
-from wazuh.core.exception import WazuhException
+from wazuh.core.exception import WazuhError
 
 # Global variables
 debug = False
@@ -309,10 +309,10 @@ if __name__ == "__main__":
         executable_name = "agent_groups"
         master_ip = cluster_config['nodes'][0]
         if cluster_config['node_type'] != 'master' and not cluster_config['disabled']:
-            raise WazuhException(3019, {"EXECUTABLE_NAME": executable_name, "MASTER_IP": master_ip})
+            raise WazuhError(3019, {"EXECUTABLE_NAME": executable_name, "MASTER_IP": master_ip})
         main()
 
-    except WazuhException as e:
+    except WazuhError as e:
         print("Error {0}: {1}".format(e.code, e.message))
         if debug:
             raise

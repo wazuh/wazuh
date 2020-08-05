@@ -4,13 +4,11 @@ from json import JSONDecodeError
 from typing import List, Dict  # noqa: F401
 
 import six
+from connexion import ProblemException
 
 from api import util
-from api.api_exception import APIError
 from api.util import raise_if_exc
 from wazuh import WazuhError
-from wazuh.security import load_spec
-from aiohttp.web_request import Request
 
 T = typing.TypeVar('T')
 
@@ -198,13 +196,13 @@ class Body(Model):
         try:
             dikt = request if isinstance(request, dict) else await request.json()
             f_kwargs = util.deserialize_model(dikt, cls).to_dict()
-        except JSONDecodeError as e:
-            raise_if_exc(APIError(code=2005, details=e.msg))
+        except JSONDecodeError:
+            raise_if_exc(WazuhError(code=1018))
 
         invalid = {key for key in dikt.keys() if key not in list(f_kwargs.keys())}
 
         if invalid:
-            raise_if_exc(WazuhError(5005, extra_message='Invalid field found {}'.format(invalid)))
+            raise ProblemException(status=400, title='Bad Request', detail='Invalid field found {}'.format(invalid))
 
         if additional_kwargs is not None:
             f_kwargs.update(additional_kwargs)
