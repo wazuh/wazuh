@@ -91,7 +91,8 @@ char *GetGeoInfobyIP(char *ip_addr);
 /**
  * @brief Read decoder files and save them in the decoder list.
  * @param log_msg list to save log messages.
- * @return int 0 in case of error, 1 otherwise.
+ * @retval 0 in case of error.
+ * @retval 1 successful.
  */
 int SetDecodeXML(OSList* log_msg);
 
@@ -108,9 +109,9 @@ void SecurityConfigurationAssessmentInit(void);
  * 
  * @param file path of the decoder configuration xml file.
  * @param log_msg List to save log messages.
- * @return 1 Decoder was added to the list.
- *         0 in case of error.
- *        -2 File XML_LDECODER (localdecoderfile) not found or can't get root element of xmlfile.
+ * @retval -2 File XML_LDECODER (localdecoderfile) not found or can't get root element of xmlfile.
+ * @retval  0 in case of error.
+ * @retval  1 Decoder was added to the list.
  */
 int ReadDecodeXML(const char *file, OSList* log_msg);
 

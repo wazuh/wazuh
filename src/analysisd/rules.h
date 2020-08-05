@@ -239,7 +239,9 @@ int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node);
  * @param read_rule rule information.
  * @param r_node node to add as a child rule information.
  * @param log_msg List to save log messages.
- * @return int -1 for critical errors, 1 for errors, 0 otherwise.
+ * @retval -1 Critical errors.
+ * @retval  0 successful.
+ * @retval  1 for errors.
  */
 int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg);
 
