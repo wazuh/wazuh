@@ -1,0 +1,450 @@
+#!/bin/bash
+## Check if system is based on yum or apt-get
+char="#"
+debug='> /dev/null 2>&1'
+password=""
+passwords=""
+if [ -n "$(command -v yum)" ] 
+then
+    sys_type="yum"
+elif [ -n "$(command -v apt-get)" ] 
+then
+    sys_type="apt-get"
+fi
+
+## Prints information
+logger() {
+    echo $1
+}
+
+startService() {
+
+    if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
+        eval "systemctl daemon-reload $debug"
+        eval "systemctl enable $1.service $debug"
+        eval "systemctl start $1.service $debug"
+        if [  "$?" != 0  ]
+        then
+            echo "${1^} could not be started."
+            exit 1;
+        else
+            echo "${1^} started"
+        fi  
+    elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
+        eval "chkconfig $1 on $debug"
+        eval "service $1 start $debug"
+        eval "/etc/init.d/$1 start $debug"
+        if [  "$?" != 0  ]
+        then
+            echo "${1^} could not be started."
+            exit 1;
+        else
+            echo "${1^} started"
+        fi     
+    elif [ -x /etc/rc.d/init.d/$1 ] ; then
+        eval "/etc/rc.d/init.d/$1 start $debug"
+        if [  "$?" != 0  ]
+        then
+            echo "${1^} could not be started."
+            exit 1;
+        else
+            echo "${1^} started"
+        fi             
+    else
+        echo "Error: ${1^} could not start. No service manager found on the system."
+        exit 1;
+    fi
+}
+
+## Show script usage
+getHelp() {
+   echo ""
+   echo "Usage: $0 arguments"
+   echo -e "\t-e   | --install-elasticsearch Install Elasticsearch"
+   echo -e "\t-k   | --install-kibana Install Kibana"
+   echo -e "\t-c   | --create-certificates Generates the certificates for all the indicated nodes"
+   echo -e "\t-d   | --debug Shows the complete installation output"
+   echo -e "\t-i   | --ignore-health-check Ignores the health-check"
+   echo -e "\t-h   | --help Shows help"
+   exit 1 # Exit script after printing help
+}
+
+
+## Install the required packages for the installation
+installPrerequisites() {
+    logger "Installing all necessary utilities for the installation..."
+
+    if [ $sys_type == "yum" ] 
+    then
+        eval "yum install zip unzip curl -y -q $debug"   
+    elif [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install zip unzip curl $debug"       
+    elif [ $sys_type == "apt-get" ] 
+    then
+        eval "apt-get install curl apt-transport-https zip unzip lsb-release gnupg2 libcap2-bin -y -q $debug"
+        eval "apt-get update -q $debug"
+    fi
+
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Prerequisites could not be installed"
+        exit 1;
+    else
+        logger "Done"
+    fi   
+}
+
+## Add the Elastic repository
+addElasticrepo() {
+    logger "Adding the Elasticsearch repository..."
+
+
+    if [ $sys_type == "yum" ] 
+    then
+        eval "rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch $debug"
+        echo -e '[elasticsearch-7.x]\nname=Elasticsearch repository for 7.x packages\nbaseurl=https://artifacts.elastic.co/packages/7.x/yum\ngpgcheck=1\ngpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch\nenabled=1\nautorefresh=1\ntype=rpm-md' > /etc/yum.repos.d/elastic.repo
+    elif [ $sys_type == "zypper" ] 
+    then
+        rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch > /dev/null 2>&1
+        echo -e '[elasticsearch-7.x]\nname=Elasticsearch repository for 7.x packages\nbaseurl=https://artifacts.elastic.co/packages/7.x/yum\ngpgcheck=1\ngpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch\nenabled=1\nautorefresh=1\ntype=rpm-md' > /etc/zypp/repos.d/elastic.repo
+        
+    elif [ $sys_type == "apt-get" ] 
+    then
+        eval "curl -s https://artifacts.elastic.co/GPG-KEY-elasticsearch --max-time 300 | apt-key add - $debug"
+        echo 'deb https://artifacts.elastic.co/packages/7.x/apt stable main' | eval "tee /etc/apt/sources.list.d/elastic-7.x.list $debug"
+        eval "apt-get update -q $debug"
+    fi    
+
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Elasticsearch repository could not be added"
+        exit 1;
+    else
+        logger "Done"
+    fi        
+}
+
+## Elasticsearch
+installElasticsearch() {
+    logger "Installing Elasticsearch..."
+
+    if [ $sys_type == "yum" ] 
+    then
+        eval "yum install elasticsearch -y -q $debug"
+    elif [ $sys_type == "apt-get" ] 
+    then
+        eval "apt-get install elasticsearch -y -q $debug"
+    elif [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install elasticsearch $debug"
+    fi
+
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Elasticsearch installation failed"
+        exit 1;
+    else
+        logger "Done"
+
+        logger "Configuring Elasticsearch..."
+
+        eval "curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/elasticsearch/elasticsearch_all_in_one.yml --max-time 300 $debug"
+        eval "curl -so /usr/share/elasticsearch/instances.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/instances_aio.yml --max-time 300 $debug"
+        eval "/usr/share/elasticsearch/bin/elasticsearch-certutil cert ca --pem --in instances.yml --keep-ca-key --out ~/certs.zip $debug"
+        eval "unzip ~/certs.zip -d ~/certs $debug"
+        eval "mkdir /etc/elasticsearch/certs/ca -p $debug"
+        eval "cp -R ~/certs/ca/ ~/certs/elasticsearch/* /etc/elasticsearch/certs/ $debug"
+        eval "chown -R elasticsearch: /etc/elasticsearch/certs $debug"
+        eval "chmod -R 500 /etc/elasticsearch/certs $debug"
+        eval "chmod 400 /etc/elasticsearch/certs/ca/ca.* /etc/elasticsearch/certs/elasticsearch.* $debug"
+        if [  "$?" != 0  ]
+        then
+            echo "Error: certificates were not created"
+            exit 1;
+        else
+            logger "Certificates created"
+        fi     
+        
+        # Configure JVM options for Elasticsearch
+        ram_gb=$(free -g | awk '/^Mem:/{print $2}')
+        ram=$(( ${ram_gb} / 2 ))
+
+        if [ ${ram} -eq "0" ]; then
+            ram=1;
+        fi    
+        eval "sed -i "s/-Xms1g/-Xms${ram}g/" /etc/elasticsearch/jvm.options $debug"
+        eval "sed -i "s/-Xmx1g/-Xmx${ram}g/" /etc/elasticsearch/jvm.options $debug"     
+
+        # Start Elasticsearch
+        startService "elasticsearch"
+        echo "Initializing Elasticsearch..."
+        passwords=$(/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b)
+        password=$(echo $passwords | awk 'NF{print $NF; exit}')
+        until $(curl -XGET https://localhost:9200/ -elastic:"$password" -k --max-time 120 --silent --output /dev/null); do
+            echo -ne $char
+            sleep 10
+        done
+
+        echo "Done"
+    fi
+}
+
+createCertificates() {
+  
+
+    logger "Creating the certificates..."
+    eval "curl -so /etc/elasticsearch/certs/search-guard-tlstool-1.8.zip https://maven.search-guard.com/search-guard-tlstool/1.8/search-guard-tlstool-1.8.zip --max-time 300 $debug"
+    eval "unzip search-guard-tlstool-1.8.zip -d searchguard $debug"
+    eval "curl -so /etc/elasticsearch/certs/searchguard/search-guard.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/unattended-installation/distributed/templates/search-guard-unattended.yml --max-time 300 $debug"
+
+    awk -v RS='' '/## Certificates/' ~/config.yml >> /etc/elasticsearch/certs/searchguard/search-guard.yml
+
+    eval "chmod +x searchguard/tools/sgtlstool.sh $debug"
+    eval "./searchguard/tools/sgtlstool.sh -c ./searchguard/search-guard.yml -ca -crt -t /etc/elasticsearch/certs/ $debug            "
+    if [  "$?" != 0  ]
+    then
+        echo "Error: certificates were no created"
+        exit 1;
+    else
+        logger "Certificates created"
+        mv /etc/elasticsearch/certs/node-1.pem /etc/elasticsearch/certs/elasticsearch.pem
+        mv /etc/elasticsearch/certs/node-1.key /etc/elasticsearch/certs/elasticsearch.key
+        mv /etc/elasticsearch/certs/node-1_http.pem /etc/elasticsearch/certs/elasticsearch_http.pem
+        mv /etc/elasticsearch/certs/node-1_http.key /etc/elasticsearch/certs/elasticsearch_http.key            
+        eval "rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.8.zip -f $debug"
+    fi
+
+    if [[ -n "$c" ]] || [[ -n "$single" ]]
+    then
+        tar -cf certs.tar *
+        tar --delete -f certs.tar 'searchguard'
+    fi
+
+    logger "Elasticsearch installed."  
+
+    # Start Elasticsearch
+    logger "Starting Elasticsearch..."
+    startService "elasticsearch"
+    logger "Initializing Elasticsearch..."
+    elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs)
+    until $(curl -XGET https://${elk}:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
+        echo -ne $char
+        sleep 10
+    done    
+
+    if [ -n "$single" ]
+    then
+        eval "cd /usr/share/elasticsearch/plugins/opendistro_security/tools/ $debug"
+        eval "./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key -h ${elk} $debug"
+    fi
+
+    logger "Done"
+}
+
+## Kibana
+installKibana() {
+    
+    logger "Installing Kibana..."
+    if [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install kibana $debug"
+    else
+        eval "$sys_type install kibana -y -q $debug"
+    fi
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Kibana installation failed"
+        exit 1;
+    else   
+        eval "curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/kibana/kibana_all_in_one.yml --max-time 300 $debug"
+        eval "cd /usr/share/kibana $debug"
+        eval "sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-4.0.0_7.8.0.zip $debug"
+        if [  "$?" != 0  ]
+        then
+            echo "Error: Wazuh Kibana plugin could not be installed."
+            exit 1;
+        fi     
+        eval "setcap 'cap_net_bind_service=+ep' /usr/share/kibana/node/bin/node $debug"
+        conf="$(awk '{sub("<elasticsearch_password>", "'"${password}"'")}1' /etc/kibana/kibana.yml)"
+        echo "$conf" > /etc/kibana/kibana.yml     
+        eval "mkdir /etc/kibana/certs/ca -p"
+        echo "server.host: "$kip"" >> /etc/kibana/kibana.yml
+        echo "elasticsearch.hosts: https://"$eip":9200" >> /etc/kibana/kibana.yml
+        logger "Kibana installed."
+        
+        checkKibanacerts kc
+        if [ "$kc" -eq "0" ]
+        then
+            exit
+        else
+            initializeKibana
+        fi
+        echo -e            
+
+        logger "Done"
+    fi
+}
+
+checkKibanacerts() {
+    if [ -f "/etc/elasticsearch/certs/elasticsearch.key" ]
+    then
+        kc=1
+    else
+        kc=0
+    fi
+}
+
+initializeKibana() {
+    
+    eval "cp -R /etc/elasticsearch/certs/ca/ /etc/kibana/certs/"
+    eval "cp /etc/elasticsearch/certs/elasticsearch.key /etc/kibana/certs/kibana.key"
+    eval "cp /etc/elasticsearch/certs/elasticsearch.crt /etc/kibana/certs/kibana.crt"
+    eval "chown -R kibana:kibana /etc/kibana/"
+    eval "chmod -R 500 /etc/kibana/certs"
+    eval "chmod 440 /etc/kibana/certs/ca/ca.* /etc/kibana/certs/kibana.*"    
+    # Start Kibana
+    startService "kibana"   
+    logger "Initializing Kibana (this may take a while)" 
+    elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs) 
+    until [[ "$(curl -XGET https://${elk}/status -I -uadmin:admin -k -s | grep "200 OK")" ]]; do
+        echo -ne $char
+        sleep 10
+    done     
+    conf="$(awk '{sub("url: https://localhost", "url: https://'"${wip}"'")}1' /usr/share/kibana/optimize/wazuh/config/wazuh.yml)"
+    echo "$conf" > /usr/share/kibana/optimize/wazuh/config/wazuh.yml  
+  
+
+}
+
+## Check nodes
+checkNodes() {
+    head=$(head -n1 config.yml)
+    if [ "${head}" == "## Multi-node configuration" ]
+    then
+        master=1
+    else
+        single=1
+    fi    
+}
+
+## Health check
+healthCheck() {
+    cores=$(cat /proc/cpuinfo | grep processor | wc -l)
+    ram_gb=$(free -m | awk '/^Mem:/{print $2}')
+
+    if [[ $cores < "2" ]] || [[ $ram_gb < "4096" ]]
+    then
+        echo "The system must have at least 4Gb of RAM and 2 CPUs"
+        exit 1;
+    else
+        echo "Starting the installation..."
+    fi
+}
+
+## Main
+
+main() {
+
+    if [ -n "$1" ] 
+    then      
+        while [ -n "$1" ]
+        do
+            case "$1" in           
+            "-e"|"--install-elasticsearch")        
+                e=1
+                shift 1
+                ;;      
+            "-c"|"--create-certificates") 
+                c=1  
+                shift 1
+                ;;                                  
+            "-k"|"--install-kibana") 
+                k=1          
+                shift 1
+                ;;
+            "-kip"|"--kibana-ip") 
+                kip=$2          
+                shift
+                shift
+                ;;   
+            "-eip"|"--elasticsearch-ip") 
+                eip=$2          
+                shift
+                shift
+                ;;   
+            "-wip"|"--wazuh-ip") 
+                wip=$2          
+                shift
+                shift
+                ;;                                                
+            "-i"|"--ignore-healthcheck") 
+                i=1          
+                shift 1
+                ;; 
+            "-d"|"--debug") 
+                d=1          
+                shift 1
+                ;;                                 
+            "-h"|"--help")        
+                getHelp
+                ;;                                         
+            *)
+                exit 1
+            esac
+        done    
+
+        if [ -n "$d" ]
+        then
+            debug=""
+        fi         
+
+        if [ -n "$e" ]
+        then
+            if [[ -n "$e" ]] && [[ -n "$k" ]]   
+            then
+                getHelp
+            fi        
+
+            if [ -n "$i" ]
+            then
+                echo "Health-check ignored."    
+            else
+                healthCheck           
+            fi           
+            installPrerequisites
+            addElasticrepo   
+            checkNodes         
+            installElasticsearch
+            if [ -n "$c" ]
+            then
+                createCertificates
+            fi
+        fi
+        if [ -n "$k" ]
+        then
+            if [[ -z "$kip" ]] || [[ -z "$eip" ]] || [[ -z "$wip" ]]
+            then
+                getHelp
+            fi
+            if [[ -n "$e" ]] && [[ -n "$k" ]]   
+            then
+                getHelp
+            fi        
+
+            if [ -n "$i" ]
+            then
+                echo "Health-check ignored."    
+            else
+                healthCheck           
+            fi               
+            installPrerequisites
+            addElasticrepo             
+            installKibana
+        fi
+    else
+        getHelp
+    fi
+}
+
+main "$@"
