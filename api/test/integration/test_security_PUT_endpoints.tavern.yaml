@@ -10,7 +10,7 @@ stages:
   - name: Modify a role in the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/102"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/102"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -36,7 +36,7 @@ stages:
   - name: Modify a role in the system (without change rule)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/103"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/103"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -66,7 +66,7 @@ stages:
   - name: Modify a role in the system (without change name)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/102"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/102"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -91,7 +91,7 @@ stages:
   - name: Modify a non-existent role in the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/999"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -120,7 +120,7 @@ stages:
   - name: Modify a policy in the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -156,7 +156,7 @@ stages:
   - name: Modify a policy in the system (without change policy definition)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -184,7 +184,7 @@ stages:
   - name: Modify a policy in the system (without change name)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -219,7 +219,7 @@ stages:
   - name: Modify a non-existent policy in the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/999"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/999"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -250,7 +250,7 @@ stages:
   - name: Modify a policy in the system, bad policy definition
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -274,7 +274,7 @@ stages:
   - name: Revoke all tokens
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/revoke"
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -284,7 +284,7 @@ stages:
   - name: Revoke all tokens (Invalid token after previous call)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/revoke"
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -300,7 +300,7 @@ stages:
     delay_after: 10
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/authenticate"
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -315,7 +315,7 @@ stages:
   - name: Update an existent user (empty body)
     request: &put_users_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/103"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/103"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -349,7 +349,7 @@ stages:
   - name: Update an non-existent user
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/200"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/200"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -399,7 +399,7 @@ stages:
   - name: Update security configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      url: "{protocol:s}://{host:s}:{port:d}/security/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -416,7 +416,7 @@ stages:
   - name: Get security configuration to check if PUT method worked correctly
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      url: "{protocol:s}://{host:s}:{port:d}/security/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
