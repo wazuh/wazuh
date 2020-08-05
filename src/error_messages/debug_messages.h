@@ -145,12 +145,12 @@
 #define FIM_HEALTHCHECK_CREATE              "(6252): Whodata health-check: Detected file creation event (%s)"
 #define FIM_HEALTHCHECK_DELETE              "(6253): Whodata health-check: Detected file deletion event (%s)"
 #define FIM_HEALTHCHECK_UNRECOGNIZED_EVENT  "(6254): Whodata health-check: Unrecognized event (%s)"
-#define FIM_HEALTHCHECK_THREAD_ATIVE        "(6255): Whodata health-check: Reading thread active."
-#define FIM_HEALTHCHECK_THREAD_FINISED      "(6256): Whodata health-check: Reading thread finished."
-#define FIM_HEALTHCHECK_WAIT_CREATE         "(6257): Whodata health-check: Waiting creation event."
-#define FIM_HEALTHCHECK_CREATE_RECEIVE      "(6258): Whodata health-check: Creation event received."
-#define FIM_HEALTHCHECK_WAIT_DELETE         "(6259): Whodata health-check: Waiting deletion event."
-#define FIM_HEALTHCHECK_DELETE_RECEIVE      "(6260): Whodata health-check: Deletion event received."
+#define FIM_HEALTHCHECK_THREAD_ACTIVE       "(6255): Whodata health-check: Reading thread active."
+#define FIM_HEALTHCHECK_THREAD_FINISHED     "(6256): Whodata health-check: Reading thread finished."
+#define FIM_HEALTHCHECK_CREATE_ERROR        "(6257): Whodata health-check: Failed to receive creation event."
+
+
+
 #define FIM_HEALTHCHECK_SUCCESS             "(6261): Whodata health-check: Success."
 #define FIM_HEALTHCHECK_CHECK_RULE          "(6262): Couldn't delete audit health check rule."
 #define FIM_SACL_CHECK_CONFIGURE            "(6263): Setting up SACL for '%s'"
@@ -238,17 +238,18 @@
 #define FIM_REALTIME_CALLBACK               "(6346): Realtime watch deleted for '%s'"
 
 /* Modules messages */
-#define WM_UPGRADE_RESULT_AGENT_INFO        "(8151): Agent Information obtained: \n %s"
-#define WM_UPGRADE_RESULT_SHOW_RESULTS      "(8152): Upgrade results response: \n %s"
+#define WM_UPGRADE_RESULT_AGENT_INFO        "(8151): Agent Information obtained: '%s'"
 #define WM_UPGRADE_MODULE_DISABLED          "(8153): Module Agent Upgrade disabled. Exiting..."
 #define WM_UPGRADE_MODULE_STARTED           "(8154): Module Agent Upgrade started."
 #define WM_UPGRADE_MODULE_FINISHED          "(8155): Module Agent Upgrade finished."
 #define WM_UPGRADE_INCOMMING_MESSAGE        "(8156): Incomming message: '%s'"
 #define WM_UPGRADE_RESPONSE_MESSAGE         "(8157): Response message: '%s'"
 #define WM_UPGRADE_TASK_SEND_MESSAGE        "(8158): Sending message to task_manager module: '%s'"
-#define WM_UPGRADE_TASK_RECEIVE_MESSAGE     "(8159): Receiving message to task_manager module: '%s'"
+#define WM_UPGRADE_TASK_RECEIVE_MESSAGE     "(8159): Receiving message from task_manager module: '%s'"
 #define WM_UPGRADE_EMPTY_MESSAGE            "(8160): Empty message from local client."
-#define WM_UPGRADE_ACK_MESSAGE              "(8161): Sending upgrade ACK event: '%s'"
+#define WM_UPGRADE_NO_AGENTS_TO_UPGRADE     "(8161): There are no valid agents to upgrade."
+#define WM_UPGRADE_DOWNLOADING_WPK          "(8162): Downloading WPK file from: '%s'"
+#define WM_UPGRADE_ACK_MESSAGE              "(8163): Sending upgrade ACK event: '%s'"
 
 #define MOD_TASK_START                      "(8200): Module Task Manager started."
 #define MOD_TASK_FINISH                     "(8201): Module Task Manager finished."

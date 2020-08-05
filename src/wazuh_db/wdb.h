@@ -332,8 +332,14 @@ int wdb_remove_group_db(const char *name);
 /* Get name from agent. The string must be freed after using. Returns NULL on error. */
 char* wdb_agent_name(int id);
 
+/* Get version from agent. The string must be freed after using. Returns NULL on error. */
+char* wdb_agent_version(int id);
+
 /* Get group from agent. The string must be freed after using. Returns NULL on error. */
 char* wdb_agent_group(int id);
+
+/* Get the platform, os_major, os_minor, arch, version and last_keepalive from agent. Returns 0 on success or -1 on error. */
+int wdb_agent_info(int id, char **platform, char **os_major, char **os_minor, char **arch, char **version, int *last_keepalive);
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_create_agent_db(int id, const char *name);

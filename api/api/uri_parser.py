@@ -2,7 +2,7 @@ import functools
 
 import connexion
 
-from api.api_exception import APIException
+from api.api_exception import APIError
 from api.util import parse_api_param, raise_if_exc
 
 
@@ -28,7 +28,7 @@ class APIUriParser(connexion.decorators.uri_parsing.OpenAPIURIParser):
                 q = parse_api_param(request.url, 'q')
                 if q:
                     if ';' in q:
-                        raise_if_exc(APIException(code=2009))
+                        raise_if_exc(APIError(code=2009))
 
             query = coerce_dict(request.query)
             path_params = coerce_dict(request.path_params)

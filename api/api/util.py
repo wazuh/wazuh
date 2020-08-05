@@ -9,9 +9,9 @@ import typing
 import six
 from connexion import ProblemException
 
-from api.api_exception import APIException, APIError
 from wazuh.core.common import ossec_path as WAZUH_PATH
-from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError
+from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError, WazuhPermissionError, \
+    WazuhResourceNotFound
 
 
 def serialize(item):
@@ -255,18 +255,18 @@ def _create_problem(exc: Exception, code=None):
     if isinstance(exc, WazuhException):
         ext = remove_nones_to_dict({'remediation': exc.remediation,
                                     'code': exc.code,
-                                    'dapi_errors': exc.dapi_errors
+                                    'dapi_errors': exc.dapi_errors if exc.dapi_errors != {} else None
                                     })
-    elif isinstance(exc, APIException):
-        ext = remove_nones_to_dict({'code': exc.code})
-    else:
-        ext = None
-    if isinstance(exc, (WazuhError, APIError)):
-        raise ProblemException(status=400 if not code else code, title='Wazuh Error', detail=exc.message, ext=ext)
-    elif isinstance(exc, (WazuhInternalError, WazuhException, APIException)):
-        raise ProblemException(status=500 if not code else code, title='Wazuh Internal Error', detail=exc.message,
+    if isinstance(exc, WazuhInternalError):
+        raise ProblemException(status=500 if not code else code, type=exc.type, title=exc.title, detail=exc.message,
                                ext=ext)
-
+    elif isinstance(exc, WazuhPermissionError):
+        raise ProblemException(status=403, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
+    elif isinstance(exc, WazuhResourceNotFound):
+        raise ProblemException(status=404, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
+    elif isinstance(exc, WazuhError):
+        raise ProblemException(status=400 if not code else code, type=exc.type, title=exc.title, detail=exc.message,
+                               ext=ext)
     raise exc
 
 
