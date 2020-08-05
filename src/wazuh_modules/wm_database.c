@@ -99,7 +99,6 @@ static int wm_fill_rootcheck(sqlite3 *db, const char *path);
  */
 static int wm_extract_agent(const char *fname, char *name, char *addr, int *registry);
 
-
 // Database module context definition
 const wm_context WM_DATABASE_CONTEXT = {
     "database",
@@ -111,11 +110,6 @@ const wm_context WM_DATABASE_CONTEXT = {
 // Module main function. It won't return
 void* wm_database_main(wm_database *data) {
     module = data;
-
-    mwarn("Test Antiquity %lf",OS_AgentAntiquity("",""));
-    mwarn("Test Antiquity %lf",OS_AgentAntiquity("1-b2c2007e-debian7",""));
-    mwarn("Test Antiquity %lf",OS_AgentAntiquity("test",""));
-
 
     mtinfo(WM_DATABASE_LOGTAG, "Module started.");
 
