@@ -179,8 +179,8 @@ typedef enum {
 
 /// Enumeration of sync-status.
 typedef enum {
-    WDB_UNSYNCED,
-    WDB_SYNCED    
+    WDB_SYNCED,
+    WDB_SYNC_REQ        
 } wdb_sync_status_t;
 
 extern char *schema_global_sql;
@@ -357,7 +357,7 @@ int wdb_update_agent_version(int id,
                              wdb_sync_status_t sync_status);
 
 /* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_keepalive(int id);
+int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status);
 
 /* Update agent group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_group(int id,char *group);

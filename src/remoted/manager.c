@@ -163,7 +163,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
 
         agent_id = atoi(key->id);
 
-        result = wdb_update_agent_keepalive(agent_id);
+        result = wdb_update_agent_keepalive(agent_id, logr.worker_node?WDB_SYNC_REQ:WDB_SYNCED);
 
         if (OS_SUCCESS != result)
             mwarn("Unable to save agent last keepalive in global.db");
@@ -229,7 +229,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             // Updating version and keepalive in global.db
             result = wdb_update_agent_version(agent_id, os_name, os_version, os_major, os_minor, os_codename, os_platform,
                                               os_build, uname, os_arch, version, config_sum, merged_sum, manager_host,
-                                              node_name, agent_ip, logr.worker_node?WDB_UNSYNCED:WDB_SYNCED);
+                                              node_name, agent_ip, logr.worker_node?WDB_SYNC_REQ:WDB_SYNCED);
             
             if (OS_INVALID == result)
                 mwarn("Unable to update information in global.db for agent: %s", key->id);
