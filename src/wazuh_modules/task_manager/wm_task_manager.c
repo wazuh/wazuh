@@ -35,7 +35,10 @@ static const char *json_keys[] = {
     [WM_TASK_TASK_ID] = "task_id",
     [WM_TASK_STATUS] = "status",
     [WM_TASK_ERROR] = "error",
-    [WM_TASK_ERROR_DATA] = "data"
+    [WM_TASK_ERROR_DATA] = "data",
+    [WM_TASK_CREATE_TIME] = "create",
+    [WM_TASK_LAST_UPDATE_TIME] = "update",
+    [WM_TASK_STATUS] = "status"
 };
 
 static const char *modules_list[] = {
@@ -46,7 +49,8 @@ static const char *commands_list[] = {
     [WM_TASK_UPGRADE] = "upgrade",
     [WM_TASK_UPGRADE_CUSTOM] = "upgrade_custom",
     [WM_TASK_UPGRADE_GET_STATUS] = "upgrade_get_status",
-    [WM_TASK_UPGRADE_UPDATE_STATUS] = "upgrade_update_status"
+    [WM_TASK_UPGRADE_UPDATE_STATUS] = "upgrade_update_status",
+    [WM_TASK_UPGRADE_RESULT] = "upgrade_result"
 };
 
 static const char *error_codes[] = {
@@ -252,6 +256,24 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
                 response = wm_task_manager_build_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
             }
 
+        } else if (!strcmp(commands_list[WM_TASK_UPGRADE_RESULT], command)) {
+            int create_time = -1;
+            int last_update_time = -1;
+            char *tmp_status = NULL;
+            char *comm = NULL;
+            int task = OS_INVALID;
+            if (task = wm_task_manager_get_task_by_agent_id_and_module(agent_id, module, &comm, &tmp_status, &create_time, &last_update_time), task == OS_INVALID){
+                *error_code = WM_TASK_INVALID_AGENT_ID;
+                response = wm_task_manager_build_response(WM_TASK_INVALID_AGENT_ID, agent_id, task, status);
+            } else if (task == OS_NOTFOUND || task == 0){
+                *error_code = WM_TASK_INVALID_AGENT_ID;
+                response = wm_task_manager_build_response(WM_TASK_INVALID_AGENT_ID, agent_id, OS_INVALID, status);
+            } else {
+                response = wm_task_manager_build_response(WM_TASK_SUCCESS, agent_id, task, tmp_status);
+                wm_task_manager_build_response_result(response, module, comm, tmp_status, create_time, last_update_time);
+                os_free(status);
+                os_free(comm);
+            }
         } else {
             *error_code = WM_TASK_INVALID_COMMAND;
             response = wm_task_manager_build_response(WM_TASK_INVALID_COMMAND, agent_id, task_id, status);
@@ -265,6 +287,27 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
     os_free(status);
 
     return response;
+}
+
+cJSON* wm_task_manager_build_response_result(cJSON *res, char *module, char *command, char *status, int create_time, int last_update_time) {
+    
+    if (module != NULL) {
+        cJSON_AddStringToObject(res, json_keys[WM_TASK_MODULE], module);
+    }
+    if (command != NULL) {
+        cJSON_AddStringToObject(res, json_keys[WM_TASK_COMMAND], command);
+    }
+    if (status != NULL) {
+        cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], status);
+    }
+    if (create_time != OS_INVALID) {
+        cJSON_AddNumberToObject(res, json_keys[WM_TASK_CREATE_TIME], create_time);
+    }
+    if (last_update_time != OS_INVALID) {
+        cJSON_AddNumberToObject(res, json_keys[WM_TASK_LAST_UPDATE_TIME], last_update_time);
+    }
+
+    return res;
 }
 
 cJSON* wm_task_manager_build_response(int error_code, int agent_id, int task_id, char *status) {

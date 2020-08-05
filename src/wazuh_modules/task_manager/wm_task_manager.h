@@ -27,7 +27,9 @@ typedef enum _json_key {
     WM_TASK_TASK_ID,
     WM_TASK_STATUS,
     WM_TASK_ERROR,
-    WM_TASK_ERROR_DATA
+    WM_TASK_ERROR_DATA,
+    WM_TASK_CREATE_TIME,
+    WM_TASK_LAST_UPDATE_TIME
 } json_key;
 
 typedef enum _module_list {
@@ -38,7 +40,8 @@ typedef enum _command_list {
     WM_TASK_UPGRADE = 0,
     WM_TASK_UPGRADE_CUSTOM,
     WM_TASK_UPGRADE_GET_STATUS,
-    WM_TASK_UPGRADE_UPDATE_STATUS
+    WM_TASK_UPGRADE_UPDATE_STATUS,
+    WM_TASK_UPGRADE_RESULT
 } command_list;
 
 typedef enum _error_code {
@@ -125,6 +128,8 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code);
  * @return JSON object.
  * */
 cJSON* wm_task_manager_build_response(int error_code, int agent_id, int task_id, char *status);
+
+cJSON* wm_task_manager_build_response_result(cJSON *res, char *module, char *command, char *status, int create_time, int last_update_time);
 
 #endif
 #endif

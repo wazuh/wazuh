@@ -25,7 +25,8 @@ typedef enum _task_query {
     WM_TASK_GET_MAX_TASK_ID,
     WM_TASK_GET_LAST_AGENT_TASK,
     WM_TASK_GET_TASK_STATUS,
-    WM_TASK_UPDATE_TASK_STATUS
+    WM_TASK_UPDATE_TASK_STATUS,
+    WM_TASK_GET_TASK_BY_AGENT_ID_AND_MODULE
 } task_query;
 
 typedef enum _task_status {
@@ -69,6 +70,8 @@ int wm_task_manager_get_task_status(int agent_id, const char *module, char **sta
  * @return 0 when succeed, !=0 otherwise.
  * */
 int wm_task_manager_update_task_status(int agent_id, const char *module, const char *status);
+
+int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *module, char **command, char **status, int *create_time, int *last_update_time);
 
 #endif
 #endif
