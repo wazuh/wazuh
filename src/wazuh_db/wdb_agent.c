@@ -182,7 +182,6 @@ int wdb_remove_agent(int id) {
     int result = 0 ;
     char wdbquery[OS_BUFFER_SIZE] = "";
     char wdboutput[OS_MAXSTR] = "";
-     
     char * name = NULL;
 
     name = wdb_agent_name(id);
@@ -267,7 +266,6 @@ char* wdb_agent_group(int id) {
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
     char wdboutput[OS_MAXSTR] = "";
-     
     char *json_string = NULL;
     cJSON *root = NULL;
     cJSON *elem = NULL;
