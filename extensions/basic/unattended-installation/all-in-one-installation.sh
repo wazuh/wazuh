@@ -98,7 +98,6 @@ installPrerequisites() {
 addElasticrepo() {
     logger "Adding the Elasticsearch repository..."
 
-
     if [ $sys_type == "yum" ] 
     then
         eval "rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch $debug"
@@ -106,7 +105,16 @@ addElasticrepo() {
     elif [ $sys_type == "zypper" ] 
     then
         rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch > /dev/null 2>&1
-        echo -e '[elasticsearch-7.x]\nname=Elasticsearch repository for 7.x packages\nbaseurl=https://artifacts.elastic.co/packages/7.x/yum\ngpgcheck=1\ngpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch\nenabled=1\nautorefresh=1\ntype=rpm-md' > /etc/zypp/repos.d/elastic.repo
+		cat > /etc/zypp/repos.d/elastic.repo <<- EOF
+        [elasticsearch-7.x]
+        name=Elasticsearch repository for 7.x packages
+        baseurl=https://artifacts.elastic.co/packages/7.x/yum
+        gpgcheck=1
+        gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        enabled=1
+        autorefresh=1
+        type=rpm-md
+		EOF
         
     elif [ $sys_type == "apt-get" ] 
     then
@@ -135,7 +143,15 @@ addWazuhrepo() {
     elif [ $sys_type == "zypper" ] 
     then
         rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH > /dev/null 2>&1
-        echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' > /etc/zypp/repos.d/wazuh_pre.repo
+		cat > /etc/zypp/repos.d/wazuh_pre.repo <<- EOF
+		[wazuh_repo]
+		gpgcheck=1
+		gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
+		enabled=1
+		name=Wazuh repository
+		baseurl=https://packages.wazuh.com/3.x/yum/
+		protect=1
+		EOF
     
     elif [ $sys_type == "apt-get" ] 
     then
