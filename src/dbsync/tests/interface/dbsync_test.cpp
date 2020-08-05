@@ -13,9 +13,6 @@
 #include "json.hpp"
 #include "dbsync_test.h"
 #include "dbsync.h"
-#include "../mocks/dbsyncImplementation_mock.h"
-
-using ::testing::_;
 
 constexpr auto DATABASE_TEMP {"TEMP.db"};
 
@@ -154,7 +151,6 @@ TEST_F(DBSyncTest, dbsyncAddTableRelationshipDummy)
 
 TEST_F(DBSyncTest, InsertData)
 {
-    //MockDBSyncImpl mockDBSyncImpl;
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
     const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
     

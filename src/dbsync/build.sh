@@ -61,7 +61,7 @@ checkCoverageValues()
     if [[ coverageOk -eq 0 ]]; then
         return -1
     fi
-    echoGreen [PASSE]D
+    echoGreen [PASSED]
 }
 
 getCoverage()
