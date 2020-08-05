@@ -106,6 +106,9 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
                 *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
                 if (!error_message) {
                     *task = (wm_upgrade_agent_status_task*)wm_agent_upgrade_parse_upgrade_agent_status(params, &error_message);
+                    if (!error_message) {
+                        retval = WM_UPGRADE_AGENT_STATUS;
+                    }
                 }
             } else {
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR, command->valuestring);
@@ -281,15 +284,14 @@ static wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
 
     os_calloc(OS_MAXSTR, sizeof(char), output);
 
-    wm_upgrade_agent_status_task *task;
-    os_malloc(1, task);
+    wm_upgrade_agent_status_task *task = wm_agent_upgrade_init_agent_status_task();
 
     while(!error_flag && params && (param_index < cJSON_GetArraySize(params))) {
         cJSON *item = cJSON_GetArrayItem(params, param_index++);
         if(strcmp(item->string, "error") == 0) {
             task->error_code = item->valueint;
         } else if(strcmp(item->string, "message") == 0) {
-            task->message = item->valuestring;
+            os_strdup(item->valuestring, task->message);
         }
     }
 

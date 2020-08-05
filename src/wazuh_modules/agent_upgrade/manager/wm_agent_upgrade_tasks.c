@@ -63,6 +63,12 @@ wm_agent_task* wm_agent_upgrade_init_agent_task() {
     return agent_task;
 }
 
+wm_upgrade_agent_status_task* wm_agent_upgrade_init_agent_status_task() {
+    wm_upgrade_agent_status_task *task = NULL;
+    os_calloc(1, sizeof(wm_upgrade_agent_status_task), task);
+    return task;
+}
+
 void wm_agent_upgrade_free_upgrade_task(wm_upgrade_task* upgrade_task) {
     if (upgrade_task) {
         os_free(upgrade_task->custom_version);
@@ -118,6 +124,13 @@ void wm_agent_upgrade_free_agent_task(wm_agent_task* agent_task) {
     }
     os_free(agent_task);
     agent_task = NULL;
+}
+
+void wm_agent_upgrade_free_agent_status_task(wm_upgrade_agent_status_task* task) {
+    if (task->message) {
+        os_free(task->message);
+    }
+    os_free(task);
 }
 
 void wm_agent_upgrade_init_task_map() {
