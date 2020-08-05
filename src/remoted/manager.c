@@ -106,6 +106,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     char *config_sum = NULL;
     char *merged_sum = NULL;
     char *agent_ip = NULL;
+    char *labels = NULL;
     char manager_host[512] = "";
     pending_data_t *data = NULL;
     int is_startup = 0;
@@ -212,7 +213,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
 
             /* Parsing msg */
             result = parse_agent_update_msg(msg, &version, &os_name, &os_major, &os_minor, &os_build, &os_version, &os_codename,
-                                            &os_platform, &os_arch, &uname, &config_sum, &merged_sum, &agent_ip);
+                                            &os_platform, &os_arch, &uname, &config_sum, &merged_sum, &agent_ip, &labels);
             
             if (OS_SUCCESS != result) {
                 merror("Error parsing message for agent %s.", key->id);
@@ -230,9 +231,16 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             result = wdb_update_agent_version(agent_id, os_name, os_version, os_major, os_minor, os_codename, os_platform,
                                               os_build, uname, os_arch, version, config_sum, merged_sum, manager_host,
                                               node_name, agent_ip);
-            
+
             if (OS_INVALID == result)
                 mwarn("Unable to update information in global.db for agent: %s", key->id);
+
+            if (labels) {
+                result = wdb_update_agent_labels(agent_id, labels);
+
+                if (OS_INVALID == result)
+                    mwarn("Unable to update labels information in global.db for agent: %s", key->id);
+            }
 
             os_free(version);
             os_free(os_name);
@@ -247,6 +255,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             os_free(config_sum);
             os_free(merged_sum);
             os_free(agent_ip);
+            os_free(labels);
         }
     }
 

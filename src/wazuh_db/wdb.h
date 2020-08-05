@@ -130,6 +130,7 @@ typedef enum global_db_query {
     SQL_UPDATE_AGENT_NAME,
     SQL_UPDATE_AGENT_VERSION,
     SQL_UPDATE_AGENT_VERSION_IP,
+    SQL_UPDATE_AGENT_LABELS,
     SQL_UPDATE_AGENT_KEEPALIVE,
     SQL_DELETE_AGENT,
     SQL_SELECT_AGENT,
@@ -335,6 +336,15 @@ int wdb_update_agent_name(int id, const char *name);
 
 /* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
 int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name, const char *agent_ip);
+
+/**
+ * @brief Update agent's labels.
+ * 
+ * @param[in] id Id of the agent for whom the labels must be updated.
+ * @param[in] labels String with the labels separated by EOL.
+ * @return OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_update_agent_labels(int id, const char *labels);
 
 /* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */
 int wdb_update_agent_keepalive(int id);
@@ -610,6 +620,17 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
  * @retval -1 On error: invalid DB query syntax.
  */
 int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse and update the agent labels in global database.
+ * 
+ * @param wdb the global struct database.
+ * @param input labels to be inserted.
+ * @param output response of the query.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_labels_update(wdb_t * wdb, char * input, char * output);
 
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
