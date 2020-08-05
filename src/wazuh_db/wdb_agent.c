@@ -41,7 +41,8 @@ static const char *global_db_queries[] = {
     [SQL_DELETE_AGENT_BELONG] = "global sql DELETE FROM belongs WHERE id_agent = %d",
     [SQL_DELETE_GROUP_BELONG] = "global sql DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = %Q );", 
     [SQL_DELETE_GROUP] = "global sql DELETE FROM `group` WHERE name = %Q;",
-    [SQL_SELECT_GROUPS] = "global sql SELECT name FROM `group`;"
+    [SQL_SELECT_GROUPS] = "global sql SELECT name FROM `group`;",
+    [SQL_SELECT_KEEPALIVE] = "global sql SELECT last_keepalive FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');"
  };
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
@@ -422,7 +423,7 @@ int* wdb_get_all_agents() {
     cJSON *name = NULL;
     cJSON *root = NULL;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_MAXSTR] = "";
     int wdb_sock = -1;
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery,"%s", global_db_queries[SQL_SELECT_AGENTS]);
@@ -1186,3 +1187,35 @@ time_t get_agent_date_added(int agent_id) {
     fclose(fp);
     return 0;
 }
+
+/* Gets the agent last keepalive. Returns this value, 0 on NULL or OS_INVALID on error */
+time_t wdb_get_agent_keepalive (const char *name, const char *ip){
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    time_t output = 0;
+    cJSON *root = NULL;
+    cJSON *keepalive = NULL;
+    int wdb_sock = -1;
+
+    if(!name || !ip){
+        mdebug1("Empty agent name or ip when trying to get last keepalive. Agent: (%s) IP: (%s)", name, ip);
+        return OS_INVALID;
+    }
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_queries[SQL_SELECT_KEEPALIVE], name, ip, ip);
+    root = wdbc_query_parse_json(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!root) {
+        merror("Error querying Wazuh DB to get the last agent keepalive.");
+        return OS_INVALID;
+    }
+
+    keepalive = cJSON_GetObjectItem(cJSON_GetArrayItem(root, 0),"last_keepalive");
+    output = !keepalive ? 0 : keepalive->valueint;
+
+    cJSON_Delete(root);
+    os_free(keepalive);
+
+    return output;
+}
+
