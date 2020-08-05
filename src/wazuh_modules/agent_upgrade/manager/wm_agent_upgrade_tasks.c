@@ -130,6 +130,9 @@ void wm_agent_upgrade_free_agent_status_task(wm_upgrade_agent_status_task* task)
     if (task->message) {
         os_free(task->message);
     }
+    if (task->status) {
+        os_free(task->status);
+    }
     os_free(task);
 }
 

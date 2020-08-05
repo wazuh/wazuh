@@ -289,11 +289,36 @@ static wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
     while(!error_flag && params && (param_index < cJSON_GetArraySize(params))) {
         cJSON *item = cJSON_GetArrayItem(params, param_index++);
         if(strcmp(item->string, "error") == 0) {
-            task->error_code = item->valueint;
+            if (item->type == cJSON_Number) {
+                task->error_code = item->valueint;
+            } else {
+                sprintf(output, "Parameter \"%s\" should be a number", item->string);
+                error_flag = 1;
+            }
         } else if(strcmp(item->string, "message") == 0) {
-            os_strdup(item->valuestring, task->message);
+            if (item->type == cJSON_String) {
+                os_strdup(item->valuestring, task->message);
+            } else {
+                sprintf(output, "Parameter \"%s\" should be a string", item->string);
+                error_flag = 1;
+            }
+        } else if(strcmp(item->string, "status") == 0) {
+            if (item->type == cJSON_String) {
+                os_strdup(item->valuestring, task->status);
+            } else {
+                sprintf(output, "Parameter \"%s\" should be a string", item->string);
+                error_flag = 1;
+            }
         }
     }
+
+    if (error_flag) {
+        // We will reject this task since the parameters are incorrect
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, output);
+        wm_agent_upgrade_free_agent_status_task(task);
+        os_strdup(output, *error_message);
+    }
+    os_free(output);
 
     return task;
 }

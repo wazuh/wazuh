@@ -241,6 +241,8 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upg
     // Only one id of agent will reach at a time
     int agent_id = agent_ids[0];
     cJSON *message_object = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_STATUS, agent_id);
+    cJSON_AddStringToObject(message_object, "status", task->status);
+    mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACK_RECEIVED, agent_id, task->error_code, task->message);
     cJSON_AddItemToArray(message_array, message_object);
     wm_agent_upgrade_parse_task_module_task_ids(response, message_array);
     char *message = cJSON_PrintUnformatted(response);

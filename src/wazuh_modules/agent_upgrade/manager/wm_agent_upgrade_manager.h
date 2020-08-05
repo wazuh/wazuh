@@ -76,7 +76,7 @@ typedef struct _wm_upgrade_custom_task {
 typedef struct _wm_upgrade_agent_status_task {
     unsigned int error_code;
     char *message;
-    int status;
+    char *status;
 } wm_upgrade_agent_status_task;
 
 /**
