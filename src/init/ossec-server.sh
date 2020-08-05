@@ -20,30 +20,11 @@ if [ $? = 0 ]; then
 . ${PLIST};
 fi
 
-is_rhel_le_5() {
-    RPM_RELEASE="/etc/redhat-release"
-
-    # If SO is not RHEL, return (false)
-    [ -r $RPM_RELEASE ] || return
-
-    DIST_NAME=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\1/p' /etc/redhat-release)
-    DIST_VER=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\2/p' /etc/redhat-release)
-
-    [[ "$DIST_NAME" =~ ^CentOS ]] || [[ "$DIST_NAME" =~ ^"Red Hat" ]] && [ -n "$DIST_VER" ] && [ $DIST_VER -le 5 ]
-}
-
-
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
-DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
-OP_DAEMONS="ossec-maild ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
-
-if ! is_rhel_le_5
-then
-    DAEMONS="wazuh-clusterd $DAEMONS"
-    OP_DAEMONS="wazuh-clusterd $OP_DAEMONS"
-fi
+DAEMONS="wazuh-clusterd wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
+OP_DAEMONS="wazuh-clusterd ossec-maild ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
@@ -61,6 +42,21 @@ LOCK_PID="${LOCK}/pid"
 MAX_ITERATION="10"
 
 MAX_KILL_TRIES=600
+
+start_api()
+{
+    ${DIR}/bin/wazuh-apid start
+}
+
+stop_api()
+{
+    ${DIR}/bin/wazuh-apid stop
+}
+
+status_api()
+{
+    ${DIR}/bin/wazuh-apid status
+}
 
 checkpid()
 {
@@ -246,6 +242,7 @@ status()
     if [ $USE_JSON = true ]; then
         echo -n ']}'
     fi
+    status_api
 }
 
 testconfig()
@@ -273,7 +270,6 @@ testconfig()
 # Start function
 start()
 {
-    incompatible=false
 
     if [ $USE_JSON = false ]; then
         echo "Starting $NAME $VERSION..."
@@ -288,15 +284,6 @@ start()
         fi
         touch ${DIR}/var/run/ossec-analysisd.failed
         exit 1;
-    fi
-
-    if is_rhel_le_5
-    then
-        if [ $USE_JSON = true ]; then
-            incompatible=true
-        else
-            echo "Cluster daemon is incompatible with CentOS 5 and RHEL 5... Skipping wazuh-clusterd."
-        fi
     fi
 
     checkpid;
@@ -418,10 +405,9 @@ start()
             fi
         fi
     done
-    if $incompatible
-    then
-        echo -n '{"daemon":"wazuh-clusterd","status":"incompatible"}'
-    fi
+
+    start_api
+
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
@@ -542,6 +528,8 @@ stopa()
         fi
         rm -f ${DIR}/var/run/${i}*.pid
     done
+
+    stop_api
 
     if [ $USE_JSON = true ]; then
         echo -n ']}'

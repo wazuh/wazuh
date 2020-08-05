@@ -931,11 +931,6 @@ InstallLocal()
 
     ### Install API
     ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
-
-    ### Install API service
-    if [ "X${INSTALL_API_DAEMON}" = "X" ] || [ "X${INSTALL_API_DAEMON}" = "Xy" ]; then
-        ${MAKEBIN} --quiet -C ../api service PREFIX=${PREFIX}
-    fi
 }
 
 TransferShared()
