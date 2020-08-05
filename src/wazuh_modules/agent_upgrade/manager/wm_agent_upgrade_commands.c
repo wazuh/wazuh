@@ -235,11 +235,13 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
     }
 }
 
-cJSON* wm_agent_upgrade_process_agent_result_command(wm_upgrade_command command, const cJSON* params, const cJSON* agents) {
+char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upgrade_agent_status_task* task) {
     cJSON *response = cJSON_CreateArray();
     // Only one id of agent will reach at a time
-    int agent_id = cJSON_GetArrayItem(agents, 0)->valueint;
-    cJSON *message_object = wm_agent_upgrade_parse_task_module_message(command, agent_id);
-    wm_agent_upgrade_parse_create_tasks_information(response, message_object);
-    return response;
+    int agent_id = agent_ids[0];
+    cJSON *message_object = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_STATUS, agent_id);
+    wm_agent_upgrade_parse_task_module_task_ids(response, message_object);
+    char *message = cJSON_PrintUnformatted(response);
+    cJSON_Delete(response);
+    return message;
 }

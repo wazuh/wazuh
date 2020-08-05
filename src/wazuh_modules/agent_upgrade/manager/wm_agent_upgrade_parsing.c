@@ -51,9 +51,18 @@ static wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
  * */
 static wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message);
 
+/**
+ * Parses upgrade agent status and return an agent status task from the information
+ * @param params JSON where the task parameters are
+ * @param error_message message in case of error
+ * @return upgrade task if there is no error, NULL otherwise
+ * */
+static wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status(const cJSON* params, char** error_message);
+
 const char* upgrade_commands[] = {
     [WM_UPGRADE_UPGRADE] = "upgrade",
-    [WM_UPGRADE_UPGRADE_CUSTOM] = "upgrade_custom"
+    [WM_UPGRADE_UPGRADE_CUSTOM] = "upgrade_custom",
+    [WM_UPGRADE_AGENT_STATUS] = WM_UPGRADE_AGENT_UPDATED_COMMAND
 };
 
 int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error) {
@@ -92,6 +101,11 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
                     if (!error_message) {
                         retval = WM_UPGRADE_UPGRADE_CUSTOM;
                     }
+                }
+            } else if (strcmp(command->valuestring, upgrade_commands[WM_UPGRADE_AGENT_STATUS]) == 0) {
+                *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
+                if (!error_message) {
+                    *task = (wm_upgrade_agent_status_task*)wm_agent_upgrade_parse_upgrade_agent_status(params, &error_message);
                 }
             } else {
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR, command->valuestring);
@@ -256,6 +270,28 @@ static wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(con
     }
 
     os_free(output);
+
+    return task;
+}
+
+static wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status(const cJSON* params, char** error_message) {
+    char *output = NULL;
+    int param_index = 0;
+    int error_flag = 0;
+
+    os_calloc(OS_MAXSTR, sizeof(char), output);
+
+    wm_upgrade_agent_status_task *task;
+    os_malloc(1, task);
+
+    while(!error_flag && params && (param_index < cJSON_GetArraySize(params))) {
+        cJSON *item = cJSON_GetArrayItem(params, param_index++);
+        if(strcmp(item->string, "error") == 0) {
+            task->error_code = item->valueint;
+        } else if(strcmp(item->string, "message") == 0) {
+            task->message = item->valuestring;
+        }
+    }
 
     return task;
 }

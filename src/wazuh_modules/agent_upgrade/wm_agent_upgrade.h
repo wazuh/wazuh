@@ -15,6 +15,8 @@
 #define WM_AGENT_UPGRADE_LOGTAG ARGV0 ":" AGENT_UPGRADE_WM_NAME
 #define WM_AGENT_UPGRADE_MODULE_NAME "upgrade_module"
 
+#define WM_UPGRADE_AGENT_UPDATED_COMMAND "agent_status"
+
 typedef struct _wm_agent_upgrade {
     int enabled:1;
 } wm_agent_upgrade;

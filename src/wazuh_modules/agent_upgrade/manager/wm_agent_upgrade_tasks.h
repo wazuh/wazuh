@@ -144,12 +144,4 @@ OSHashNode* wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNode *curr
  * */
 cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object);
 
-/**
- * Sends json with task information to the task module and parses the response
- * to give back to the api
- * @param json_api cJSON array where the task response will be stored
- * @param json_task_module cJSON to be sent to the task module
- * */
-void wm_agent_upgrade_parse_create_tasks_information(cJSON *json_api, const cJSON* json_task_module);
-
 #endif
