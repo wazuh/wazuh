@@ -77,7 +77,7 @@ installPrerequisites() {
     elif [ $sys_type == "apt-get" ] 
     then
         eval "apt-get install apt-transport-https curl unzip wget libcap2-bin software-properties-common -y -q $debug"
-        eval "wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | sudo apt-key add - $debug"
+        eval "wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | apt-key add - $debug"
         eval "add-apt-repository --yes https://adoptopenjdk.jfrog.io/adoptopenjdk/deb/ $debug"
         eval "apt-get update -q $debug"
         eval "apt-get install adoptopenjdk-11-hotspot -y -q $debug" 
