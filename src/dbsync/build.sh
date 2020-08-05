@@ -25,7 +25,7 @@ echoMagenta()
 }
 runTest()
 {
-    for Test in ./bin/*_unit_test ; do
+    for Test in ./bin/*_test ; do
         echoGreen "Running $Test"
         "$Test" > /dev/null
         status=$?
