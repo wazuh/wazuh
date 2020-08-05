@@ -45,13 +45,14 @@ static const char *global_db_queries[] = {
     [SQL_SELECT_KEEPALIVE] = "global sql SELECT last_keepalive FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');"
  };
 
+int wdb_sock_agent = -1;
+
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date) {
     int result = 0;
     time_t date = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = "";
 
     if(keep_date) {
         date = get_agent_date_added(id);
@@ -60,7 +61,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
     }
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery,  global_db_queries[SQL_INSERT_AGENT], id, name, ip, register_ip, key, date, group);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -83,11 +84,10 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
 int wdb_update_agent_name(int id, const char *name) {
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = "";
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_NAME], name, id);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -109,11 +109,10 @@ int wdb_update_agent_name(int id, const char *name) {
 int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name, const char *agent_ip) {
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_MAXSTR] = "";
     char os_uname_format[OS_BUFFER_SIZE] = "";
     char *keepalive_format = "%s";
-    int wdb_sock = -1;
-
+     
     // os_uname fails with %Q flag
     if(!os_uname){
          snprintf(os_uname_format, sizeof(os_uname_format),"NULL");
@@ -132,7 +131,7 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
         os_arch, version, config_sum, merged_sum, manager_host, node_name, keepalive_format, id);
     }
 
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -155,13 +154,12 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
 int wdb_update_agent_keepalive(int id) {
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_MAXSTR] = "";
     char *keepalive_format = "%s";
-    int wdb_sock = -1;
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_KEEPALIVE], keepalive_format, id);
     
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -183,13 +181,12 @@ int wdb_update_agent_keepalive(int id) {
 int wdb_remove_agent(int id) {
     int result = 0 ;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = "";
     char * name = NULL;
 
     name = wdb_agent_name(id);
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_DELETE_AGENT], id);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -218,15 +215,14 @@ char* wdb_agent_name(int id) {
     char *output = NULL;
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = "";
     char *json_string = NULL;
     cJSON *root = NULL;
     cJSON *elem = NULL;
     cJSON *json_name = NULL;
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_SELECT_AGENT], id);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
   
     switch (result){
         case OS_SUCCESS:
@@ -269,15 +265,14 @@ char* wdb_agent_group(int id) {
     char *output = NULL;
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = "";
     char *json_string = NULL;
     cJSON *root = NULL;
     cJSON *elem = NULL;
     cJSON *json_name = NULL;
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_SELECT_AGENT_GROUP], id);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -424,10 +419,9 @@ int* wdb_get_all_agents() {
     cJSON *root = NULL;
     char wdbquery[OS_BUFFER_SIZE] = "";
     char wdboutput[OS_MAXSTR] = "";
-    int wdb_sock = -1;
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery,"%s", global_db_queries[SQL_SELECT_AGENTS]);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -478,15 +472,14 @@ int wdb_find_agent(const char *name, const char *ip) {
     int result = 0;
     int output = -1;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = ""; 
     char *json_string = NULL;
     cJSON *root = NULL;
     cJSON *elem = NULL;
     cJSON *json_name = NULL;
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_FIND_AGENT], name, ip, ip);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -528,8 +521,7 @@ long wdb_get_agent_offset(int id_agent, int type) {
     int result = -1;
     bool is_FIM = FALSE;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = "";
     char *json_string = NULL;
     cJSON *root = NULL;
     cJSON *elem = NULL;
@@ -548,7 +540,7 @@ long wdb_get_agent_offset(int id_agent, int type) {
         return OS_INVALID;
     }
 
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -588,8 +580,7 @@ long wdb_get_agent_offset(int id_agent, int type) {
 int wdb_set_agent_offset(int id_agent, int type, long offset) {
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = "";
 
     switch (type) {
     case WDB_SYSCHECK:
@@ -602,7 +593,7 @@ int wdb_set_agent_offset(int id_agent, int type, long offset) {
         return OS_INVALID;
     }
 
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -625,15 +616,14 @@ int wdb_get_agent_status(int id_agent) {
     int result = 0;
     const char *status = NULL;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = "";
     char *json_string = NULL;
     cJSON *root = NULL;
     cJSON *elem = NULL;
     cJSON *json_name = NULL;
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_SELECT_AGENT_STATUS], id_agent);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -675,8 +665,7 @@ int wdb_set_agent_status(int id_agent, int status) {
     int result = 0;
     const char *str_status = NULL;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = "";
  
     switch (status) {
     case WDB_AGENT_EMPTY:
@@ -693,7 +682,7 @@ int wdb_set_agent_status(int id_agent, int status) {
     }
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_STATUS], str_status, id_agent);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -716,11 +705,10 @@ int wdb_set_agent_status(int id_agent, int status) {
 int wdb_update_agent_group(int id, char *group) {
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
-
+    char wdboutput[OS_MAXSTR] = "";
+     
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_GROUP], group, id);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -801,15 +789,14 @@ int wdb_update_agent_multi_group(int id, char *group) {
 int wdb_find_group(const char *name) {
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = "";
     char *json_string = NULL;
     cJSON *root = NULL;
     cJSON *elem = NULL;
     cJSON *json_name = NULL;
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_FIND_GROUP], name);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -849,11 +836,11 @@ int wdb_find_group(const char *name) {
 int wdb_insert_group(const char *name) {
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = "";
+     
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_INSERT_AGENT_GROUP], name);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -876,11 +863,11 @@ int wdb_insert_group(const char *name) {
 int wdb_update_agent_belongs(int id_group, int id_agent) {
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = "";
+     
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_INSERT_AGENT_BELONG], id_group, id_agent);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
@@ -903,11 +890,11 @@ int wdb_update_agent_belongs(int id_group, int id_agent) {
 int wdb_delete_agent_belongs(int id_agent) {
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = "";
+     
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_DELETE_AGENT_BELONG], id_agent);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
  
     switch (result){
         case OS_SUCCESS:
@@ -936,11 +923,10 @@ int wdb_update_groups(const char *dirname) {
     cJSON *name = NULL;
     cJSON *root = NULL;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
-
+    char wdboutput[OS_MAXSTR] = "";
+     
     sqlite3_snprintf(sizeof(wdbquery), wdbquery,"%s", global_db_queries[SQL_SELECT_GROUPS]);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
  
     switch (result){
         case OS_SUCCESS:
@@ -1038,11 +1024,10 @@ int wdb_update_groups(const char *dirname) {
 int wdb_remove_group_from_belongs_db(const char *name) {
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
+    char wdboutput[OS_MAXSTR] = "";
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_DELETE_GROUP_BELONG], name);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
   
     switch (result){
         case OS_SUCCESS:
@@ -1064,16 +1049,15 @@ int wdb_remove_group_from_belongs_db(const char *name) {
 int wdb_remove_group_db(const char *name) {
     int result = 0;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    int wdb_sock = -1;
-
+    char wdboutput[OS_MAXSTR] = "";
+     
     if(wdb_remove_group_from_belongs_db(name) == OS_INVALID){
         merror("At wdb_remove_group_from_belongs_db(): couldn't delete '%s' from 'belongs' table.", name);
         return OS_INVALID;
     }
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_DELETE_GROUP], name);
-    result = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
   
     switch (result){
         case OS_SUCCESS:
@@ -1114,7 +1098,7 @@ int wdb_agent_belongs_first_time(){
 
 time_t get_agent_date_added(int agent_id) {
     char path[PATH_MAX + 1] = {0};
-    char line[OS_BUFFER_SIZE] = {0};
+    char line[OS_MAXSTR] = {0};
     char * sep;
     FILE *fp;
     struct tm t;
@@ -1128,7 +1112,7 @@ time_t get_agent_date_added(int agent_id) {
         return 0;
     }
 
-    while (fgets(line, OS_BUFFER_SIZE, fp)) {
+    while (fgets(line, OS_MAXSTR, fp)) {
         if (sep = strchr(line, ' '), sep) {
             *sep = '\0';
         } else {
