@@ -25,6 +25,7 @@ typedef enum _json_key {
     WM_TASK_COMMAND,
     WM_TASK_AGENT_ID,
     WM_TASK_TASK_ID,
+    WM_TASK_STATUS,
     WM_TASK_ERROR,
     WM_TASK_ERROR_DATA
 } json_key;
@@ -35,7 +36,9 @@ typedef enum _module_list {
 
 typedef enum _command_list {
     WM_TASK_UPGRADE = 0,
-    WM_TASK_UPGRADE_CUSTOM
+    WM_TASK_UPGRADE_CUSTOM,
+    WM_TASK_UPGRADE_GET_STATUS,
+    WM_TASK_UPGRADE_UPDATE_STATUS
 } command_list;
 
 typedef enum _error_code {
@@ -45,6 +48,8 @@ typedef enum _error_code {
     WM_TASK_INVALID_COMMAND,
     WM_TASK_INVALID_AGENT_ID,
     WM_TASK_INVALID_TASK_ID,
+    WM_TASK_INVALID_STATUS,
+    WM_TASK_DATABASE_NO_TASK,
     WM_TASK_DATABASE_ERROR,
     WM_TASK_UNKNOWN_ERROR
 } error_code;
@@ -116,9 +121,10 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code);
  * @param error_code Code of the error.
  * @param agent_id ID of the agent when receiving a request for a specific agent.
  * @param task_id ID of the task when receiving a request for a specific task.
+ * @param status Status of the task when receiving a request for a specific status.
  * @return JSON object.
  * */
-cJSON* wm_task_manager_build_response(int error_code, int agent_id, int task_id);
+cJSON* wm_task_manager_build_response(int error_code, int agent_id, int task_id, char *status);
 
 #endif
 #endif
