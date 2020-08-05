@@ -1,6 +1,9 @@
 # Generate analysisd library
 file(GLOB analysisd_files
     ${SRC_FOLDER}/analysisd/*.o
+    ${SRC_FOLDER}/analysisd/alerts/*.o
+    ${SRC_FOLDER}/analysisd/output/*.o
+    ${SRC_FOLDER}/analysisd/format/*.o
     ${SRC_FOLDER}/analysisd/cdb/*.o
     ${SRC_FOLDER}/analysisd/decoders/*.o
     ${SRC_FOLDER}/analysisd/decoders/plugins/*.o
