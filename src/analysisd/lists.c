@@ -19,7 +19,7 @@ void Lists_OP_CreateLists()
     return;
 }
 
-int Lists_OP_LoadList(char *listfile)
+int Lists_OP_LoadList(char *listfile, ListNode **cdblists)
 {
     char *holder;
     char a_filename[OS_MAXSTR];
@@ -64,7 +64,7 @@ int Lists_OP_LoadList(char *listfile)
     tmp_listnode_pt->loaded = 0;
     tmp_listnode_pt->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
-    OS_AddList(tmp_listnode_pt);
+    OS_AddList(tmp_listnode_pt, cdblists);
 
     return 0;
 }

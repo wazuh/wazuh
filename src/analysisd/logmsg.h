@@ -7,13 +7,13 @@
  * Foundation
  */
 
-#ifndef LIST_LOG_H
-#define LIST_LOG_H
+#ifndef LOGMSG_H
+#define LOGMSG_H
 
 #include "shared.h"
 
-#define log_emsg(list, msg, ...) _os_analysisd_add_list_log(list, LOGLEVEL_ERROR, __LINE__, __func__, __FILE__, msg, ##__VA_ARGS__)
-#define log_wmsg(list, msg, ...) _os_analysisd_add_list_log(list, LOGLEVEL_WARNING, __LINE__, __func__, __FILE__, msg, ##__VA_ARGS__)
+#define smerror(list, msg, ...) _os_analysisd_add_logmsg(list, LOGLEVEL_ERROR, __LINE__, __func__, __FILE__, msg, ##__VA_ARGS__)
+#define smwarn(list, msg, ...) _os_analysisd_add_logmsg(list, LOGLEVEL_WARNING, __LINE__, __func__, __FILE__, msg, ##__VA_ARGS__)
 
 #define ERRORLIST_MAXSIZE   50 ///< Max size of log messages list
 
@@ -39,7 +39,7 @@ typedef struct os_analysisd_log_msg_t {
  * @param ...    additional arguments following format are formatted and inserted in the
  *                   resulting string replacing their respective specifiers.
  */
-void _os_analysisd_add_list_log(OSList * list, int level, int line, const char * func, 
+void _os_analysisd_add_logmsg(OSList * list, int level, int line, const char * func, 
                                 const char * file, char * msg, ...) __attribute__((nonnull));
 
 /**

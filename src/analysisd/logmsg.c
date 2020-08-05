@@ -8,9 +8,9 @@
  * Foundation
  */
 
-#include "list_log.h"
+#include "logmsg.h"
 
-void _os_analysisd_add_list_log(OSList * list, int level, int line, const char * func, 
+void _os_analysisd_add_logmsg(OSList * list, int level, int line, const char * func, 
                                 const char * file, char * msg, ...) {
 
     va_list args;

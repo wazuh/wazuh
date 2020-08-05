@@ -9,10 +9,16 @@
 
 #include "shared.h"
 #include "rules.h"
+#include "config.h"
 #include "decoders/decoder.h"
 #include "eventinfo.h"
+#include "lists.h"
+#include "lists_make.h"
+#include "fts.h"
+#include "accumulator.h"
 #include "../config/logtest-config.h"
 #include "../os_net/os_net.h"
+#include <time.h>
 
 
 /**
@@ -20,7 +26,7 @@
  */
 typedef struct w_logtest_session_t {
 
-    int token;                              ///< Client ID
+    char *token;                            ///< Client ID
     time_t last_connection;                 ///< Timestamp of the last query
 
     RuleNode *rule_list;                    ///< Rule list
@@ -46,12 +52,12 @@ OSHash *w_logtest_sessions;
 /**
  * @brief An instance of w_logtest_connection allow managing the connections with the logtest socket
  */
-typedef struct w_logtest_connection {
+typedef struct w_logtest_connection_t {
 
     pthread_mutex_t mutex;      ///< Mutex to prevent race condition in accept syscall
     int sock;                   ///< The open connection with logtest queue
 
-} w_logtest_connection;
+} w_logtest_connection_t;
 
 
 /**
@@ -74,33 +80,33 @@ int w_logtest_init_parameters();
  *
  * @param connection The listener where clients connect
  */
-void *w_logtest_main(w_logtest_connection * connection);
-
-/**
- * @brief Create resources necessary to service client
- * @param fd File descriptor which represents the client
- */
-void w_logtest_initialize_session(int token);
+void *w_logtest_main(w_logtest_connection_t * connection);
 
 /**
  * @brief Process client's request
  * @param fd File descriptor which represents the client
  */
-void w_logtest_process_log(int token);
+void w_logtest_process_log(char * token);
+
+/**
+ * @brief Create resources necessary to service client
+ * @param fd File descriptor which represents the client
+ */
+w_logtest_session_t *w_logtest_initialize_session(char * token, OSList* log_msg);
 
 /**
  * @brief Free resources after client closes connection
  * @param fd File descriptor which represents the client
  */
-void w_logtest_remove_session(int token);
+void w_logtest_remove_session(char * token);
 
 /**
- * @brief Check the active log-test sessions
+ * @brief Check the inactive logtest sessions
  *
- * Check all sessions. If a session is created and the client has been offline
- * for more than 15 minutes, remove it.
+ * Check all the sessions. If a session has been inactive longer than session_timeout,
+ * call w_logtest_remove_session to remove it.
  */
-void w_logtest_check_active_sessions();
+void * w_logtest_check_inactive_sessions(__attribute__((unused)) void * arg);
 
 /**
  * @brief Initialize FTS engine for a client session
