@@ -1790,7 +1790,7 @@ def test_agent_send_wpk_file(_get_wpk_mock, get_req_mock, stat_mock, ossec_socke
             # mock return value of open.read to avoid infinite loop
             open_mock.return_value.read.side_effect = [b'test', b'']
 
-            result = agent._send_wpk_file(wpk_repo='packages.wazuh.com/wpk', debug=True, show_progress=Mock())
+            result = agent._send_wpk_file(wpk_repo='packages.wazuh.com/4.x/wpk', debug=True, show_progress=Mock())
 
             assert result == ["WPK file sent", version[0]]
             calls = [call(bytes(f'{agent_id} com lock_restart -1', encoding='ascii')),
@@ -1827,7 +1827,7 @@ def test_agent_send_wpk_file_ko(_get_wpk_mock, get_req_mock, stat_mock, ossec_so
         with pytest.raises(WazuhException, match=".* 1715 .*"):
             ossec_socket_mock.return_value.receive.side_effect = [f'ok {wpk_version}'.encode()] + \
                                                                  [f'err {wpk_version}'.encode()]*11
-            agent._send_wpk_file(wpk_repo='packages.wazuh.com/wpk', debug=True)
+            agent._send_wpk_file(wpk_repo='packages.wazuh.com/4.x/wpk', debug=True)
 
         # 3rd 'receive' method returns err all the time in the loop
         with pytest.raises(WazuhException, match=".* 1715 .*"):
@@ -1890,7 +1890,7 @@ def test_agent_upgrade(socket_sendto, _send_wpk_file, ossec_socket_mock, agent_i
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
         agent = Agent(agent_id)
-        result = agent.upgrade(wpk_repo='packages.wazuh.com/wpk', debug=True)
+        result = agent.upgrade(wpk_repo='packages.wazuh.com/4.x/wpk', debug=True)
 
         assert result == 'Upgrade procedure started'
         ossec_socket_mock.return_value.send.assert_called_once()

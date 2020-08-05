@@ -785,7 +785,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        wpk_repo: "packages.wazuh.com/wpk/"
+        wpk_repo: "packages.wazuh.com/4.x/wpk/"
         force: true
         wait_for_complete: 'true'
     response:
