@@ -560,3 +560,12 @@ TEST_F(DBEngineTest, selectDataWithoutMetadataShouldThrow)
     // Due to the no metadata this should throw
     EXPECT_THROW(spEngine->selectData("dummy", {}, nullptr), dbengine_error);
 }
+
+TEST_F(DBEngineTest, bulkInsertWithoutMetadataShouldThrow)
+{
+    std::unique_ptr<SQLiteDBEngine> spEngine;
+    initNoMetaDataMocks(spEngine);
+
+    // Due to the no metadata this should throw
+    EXPECT_THROW(spEngine->bulkInsert("dummy", nullptr), dbengine_error);
+}

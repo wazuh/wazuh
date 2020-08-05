@@ -114,18 +114,20 @@ configDbSync()
 makeDbSync()
 {
     make
-    if [[ $? -eq 0 ]]; then
-        echoGreen "[PASSED]"
+    if [[ $? -ne 0 ]]; then
+        return -1
     fi
+    echoGreen "[PASSED]"
 }
 
 remakeDbSync()
 {
     make clean
     make
-    if [[ $? -eq 0 ]]; then
-        echoGreen "[PASSED]"
+    if [[ $? -ne 0 ]]; then
+        return -1
     fi
+    echoGreen "[PASSED]"
 }
 readyToReview()
 {

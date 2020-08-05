@@ -13,6 +13,7 @@
 #include "json.hpp"
 #include "dbsync_test.h"
 #include "dbsync.h"
+#include "makeUnique.h"
 
 constexpr auto DATABASE_TEMP {"TEMP.db"};
 
@@ -98,6 +99,13 @@ TEST_F(DBSyncTest, InitializationWithInvalidSqlStmt)
     ASSERT_EQ(nullptr, handle_1);
 }
 
+TEST_F(DBSyncTest, InitializationWithWrongDBEngine)
+{
+    const auto sqlWithoutTable{ "CREATE TABLE (`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::UNDEFINED, DATABASE_TEMP, sqlWithoutTable) };
+    ASSERT_EQ(nullptr, handle);
+}
+
 TEST_F(DBSyncTest, createTxn)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
@@ -160,6 +168,32 @@ TEST_F(DBSyncTest, InsertData)
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
+}
+
+TEST_F(DBSyncTest, InsertMoreCompleteData)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `threads` INTEGER, `cpu_usage` DOUBLE, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System", "threads":5, "cpu_usage":17.50}]})"};
+
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+
+    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
+}
+
+TEST_F(DBSyncTest, InsertDataWithWrongColumnType)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `threads` INTEGER, `cpu_usage` DOUBLE, `blob` BLOB, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System", "threads":5, "cpu_usage":17.50, "blob":1}]})"};
+    
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+
+    EXPECT_NE(0, dbsync_insert_data(handle, jsInsert.get()));
 }
 
 TEST_F(DBSyncTest, InsertDataWithInvalidInput)
@@ -477,7 +511,7 @@ TEST_F(DBSyncTest, selectRowsDataAllNoFilter)
 {
     CallbackMock wrapper;
 
-    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` UNSIGNED BIGINT,`cpu_percentage` DOUBLE, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
@@ -491,20 +525,20 @@ TEST_F(DBSyncTest, selectRowsDataAllNoFilter)
            "count_opt":100}})"
     };
 
-    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System1", "tid":100},
-                                                                 {"pid":115,"name":"System2", "tid":101},
-                                                                 {"pid":120,"name":"System3", "tid":101},
-                                                                 {"pid":125,"name":"System3", "tid":102},
-                                                                 {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
+    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System1", "tid":100, "cpu_percentage":10.7},
+                                                                 {"pid":115,"name":"System2", "tid":101, "cpu_percentage":55.4},
+                                                                 {"pid":120,"name":"System3", "tid":101, "cpu_percentage":22.1},
+                                                                 {"pid":125,"name":"System3", "tid":102, "cpu_percentage":90.3},
+                                                                 {"pid":300,"name":"System5", "tid":102, "cpu_percentage":30.5}]})"}; // Insert
 
     const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":4,"name":"System1", "tid":100})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":115,"name":"System2", "tid":101})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":120,"name":"System3", "tid":101})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":125,"name":"System3", "tid":102})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":300,"name":"System5", "tid":102})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":4,"name":"System1", "tid":100, "cpu_percentage":10.7})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":115,"name":"System2", "tid":101, "cpu_percentage":55.4})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":120,"name":"System3", "tid":101, "cpu_percentage":22.1})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":125,"name":"System3", "tid":102, "cpu_percentage":90.3})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":300,"name":"System5", "tid":102, "cpu_percentage":30.5})"))).Times(1);
 
     callback_data_t callbackData { callback, &wrapper };
 
