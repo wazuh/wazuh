@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS agent (
     status TEXT NOT NULL CHECK (status IN ('empty', 'pending', 'updated')) DEFAULT 'empty',
     fim_offset INTEGER NOT NULL DEFAULT 0,
     reg_offset INTEGER NOT NULL DEFAULT 0,
-    `group` TEXT DEFAULT 'default'
+    `group` TEXT DEFAULT 'default',
+    sync_status INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
