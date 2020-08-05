@@ -252,31 +252,34 @@ TEST_F(DBSyncTest, UpdateData)
 
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
-    cJSON * json_response { nullptr };
+    cJSON * jsResponse { nullptr };
     
-    EXPECT_EQ(0, dbsync_update_with_snapshot(handle, jsInsert.get(), &json_response));
-    EXPECT_NE(nullptr, json_response);
-    EXPECT_NO_THROW(dbsync_free_result(&json_response));
+    EXPECT_EQ(0, dbsync_update_with_snapshot(handle, jsInsert.get(), &jsResponse));
+    EXPECT_NE(nullptr, jsResponse);
+    EXPECT_NO_THROW(dbsync_free_result(&jsResponse));
 }
 
 TEST_F(DBSyncTest, UpdateDataBadInputs)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
     const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
-    const auto insertionSqlStmtWithoutTable{ R"({"data":[{"pid":4,"name":"System"}]})"};
+    const auto badSqlStmt{ R"("pid":4,"name":"System")"};
 
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsertWithoutTable{ cJSON_Parse(insertionSqlStmtWithoutTable) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsertWithoutTable{ cJSON_Parse(badSqlStmt) };
+
+    cJSON * jsResponse { nullptr };
 
     // Failure cases
     EXPECT_NE(0, dbsync_update_with_snapshot(reinterpret_cast<void *>(0xffffffff), jsInsert.get(), nullptr));
-    EXPECT_NE(0, dbsync_update_with_snapshot(handle, jsInsertWithoutTable.get(), nullptr));
+    EXPECT_NE(0, dbsync_update_with_snapshot(handle, jsInsertWithoutTable.get(), &jsResponse));
     EXPECT_NE(0, dbsync_update_with_snapshot(nullptr, jsInsertWithoutTable.get(), nullptr));
     EXPECT_NE(0, dbsync_update_with_snapshot(handle, nullptr, nullptr));
     EXPECT_NE(0, dbsync_update_with_snapshot(handle, jsInsert.get(), nullptr));
+    EXPECT_NO_THROW(dbsync_free_result(&jsResponse));
 }
 
 TEST_F(DBSyncTest, UpdateDataCb)
@@ -325,11 +328,11 @@ TEST(DBSyncTestInit, InitializeWithNullFnct)
 
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
-    cJSON * json_response { nullptr };
+    cJSON * jsResponse { nullptr };
     
-    EXPECT_EQ(0, dbsync_update_with_snapshot(handle, jsInsert.get(), &json_response));
-    EXPECT_NE(nullptr, json_response);
-    EXPECT_NO_THROW(dbsync_free_result(&json_response));    
+    EXPECT_EQ(0, dbsync_update_with_snapshot(handle, jsInsert.get(), &jsResponse));
+    EXPECT_NE(nullptr, jsResponse);
+    EXPECT_NO_THROW(dbsync_free_result(&jsResponse));
 }
 
 TEST_F(DBSyncTest, FreeNullptrResult)
@@ -339,9 +342,9 @@ TEST_F(DBSyncTest, FreeNullptrResult)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    cJSON* json_response { nullptr };
+    cJSON* jsResponse { nullptr };
 
-    EXPECT_NO_THROW(dbsync_free_result(&json_response));
+    EXPECT_NO_THROW(dbsync_free_result(&jsResponse));
 }
 
 TEST_F(DBSyncTest, UpdateDataWithLessFields)
@@ -354,11 +357,11 @@ TEST_F(DBSyncTest, UpdateDataWithLessFields)
 
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
-    cJSON * json_response { nullptr };
+    cJSON * jsResponse { nullptr };
     
-    EXPECT_EQ(0, dbsync_update_with_snapshot(handle, jsInsert.get(), &json_response));
-    EXPECT_NE(nullptr, json_response);
-    EXPECT_NO_THROW(dbsync_free_result(&json_response));
+    EXPECT_EQ(0, dbsync_update_with_snapshot(handle, jsInsert.get(), &jsResponse));
+    EXPECT_NE(nullptr, jsResponse);
+    EXPECT_NO_THROW(dbsync_free_result(&jsResponse));
 }
 
 TEST_F(DBSyncTest, SetMaxRows)
@@ -397,15 +400,16 @@ TEST_F(DBSyncTest, TryToUpdateMaxRowsElements)
     ASSERT_NE(nullptr, handle);
 
     EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 2));
+    EXPECT_NE(0, dbsync_set_table_max_rows(handle, "proceses", 2));
 
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
     EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
 
-    cJSON * json_response { nullptr };
+    cJSON * jsResponse { nullptr };
     const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate{ cJSON_Parse(updateSqlStmt) };
-    EXPECT_EQ(0, dbsync_update_with_snapshot(handle, jsUpdate.get(), &json_response));
-    EXPECT_NE(nullptr, json_response);
-    EXPECT_NO_THROW(dbsync_free_result(&json_response));
+    EXPECT_EQ(0, dbsync_update_with_snapshot(handle, jsUpdate.get(), &jsResponse));
+    EXPECT_NE(nullptr, jsResponse);
+    EXPECT_NO_THROW(dbsync_free_result(&jsResponse));
 }
 
 TEST_F(DBSyncTest, TryToUpdateMoreThanMaxRowsElements)
@@ -422,16 +426,16 @@ TEST_F(DBSyncTest, TryToUpdateMoreThanMaxRowsElements)
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
     EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
 
-    cJSON * json_response { nullptr };
+    cJSON * jsResponse { nullptr };
     const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate{ cJSON_Parse(updateSqlStmt) };
-    EXPECT_NE(0, dbsync_update_with_snapshot(handle, jsUpdate.get(), &json_response));
-    EXPECT_EQ(nullptr, json_response);
+    EXPECT_NE(0, dbsync_update_with_snapshot(handle, jsUpdate.get(), &jsResponse));
+    EXPECT_EQ(nullptr, jsResponse);
 
     EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 0));
     EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 10));
-    EXPECT_EQ(0, dbsync_update_with_snapshot(handle, jsUpdate.get(), &json_response));
-    EXPECT_NE(nullptr, json_response);
-    EXPECT_NO_THROW(dbsync_free_result(&json_response));
+    EXPECT_EQ(0, dbsync_update_with_snapshot(handle, jsUpdate.get(), &jsResponse));
+    EXPECT_NE(nullptr, jsResponse);
+    EXPECT_NO_THROW(dbsync_free_result(&jsResponse));
 
     // Failure cases
     EXPECT_NE(0, dbsync_set_table_max_rows(nullptr, "processes", 10));
@@ -920,12 +924,14 @@ TEST_F(DBSyncTest, deleteSingleAndComposedData)
                                                                      {"pid":7,"name":"Systemmm", "tid":105},
                                                                      {"pid":8,"name":"Systemmm", "tid":105}]})"};
     const auto unexistentRowToDelete{ R"({"table":"processes","data":[{"pid":9,"name":"Systemmm", "tid":101}]})"};
+    const auto dataWithoutTable{ R"({"data":[{"pid":9,"name":"Systemmm", "tid":101}]})"};
 
     callback_data_t callbackData { callback, &wrapper };
     const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
     const std::unique_ptr<cJSON, smartDeleterJson> jsSingleDeletion{ cJSON_Parse(singleRowToDelete) };
     const std::unique_ptr<cJSON, smartDeleterJson> jsComposedDeletion{ cJSON_Parse(composedRowsToDelete) };
     const std::unique_ptr<cJSON, smartDeleterJson> jsUnexistentDeletion{ cJSON_Parse(unexistentRowToDelete) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsWithoutTable{ cJSON_Parse(dataWithoutTable) };
 
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
     EXPECT_EQ(0, dbsync_delete_rows(handle, jsSingleDeletion.get()));
@@ -934,4 +940,6 @@ TEST_F(DBSyncTest, deleteSingleAndComposedData)
     // Failure cases
     EXPECT_NE(0, dbsync_delete_rows(nullptr, jsSingleDeletion.get()));
     EXPECT_NE(0, dbsync_delete_rows(handle, nullptr));
+    EXPECT_NE(0, dbsync_delete_rows(handle, jsWithoutTable.get()));
+    EXPECT_NE(0, dbsync_delete_rows(reinterpret_cast<void *>(0xffffffff), jsSingleDeletion.get()));
 }

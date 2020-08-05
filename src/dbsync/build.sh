@@ -61,6 +61,8 @@ checkCoverageValues()
     if [[ coverageOk -eq 0 ]]; then
         return -1
     fi
+    echoGreen "Lines Coverage: $lines"
+    echoGreen "Functions Coverage: $functions"
     echoGreen [PASSED]
 }
 
@@ -74,7 +76,7 @@ getCoverage()
     folders="$folders --directory $Folder "
     done
     reportFolder=./coverage_report
-    lcov $folders --capture --output-file $reportFolder/code_coverage.info -rc lcov_branch_coverage=1 --exclude "*/tests/*" --include "*/dbsync/*" -q
+    lcov $folders --capture --output-file $reportFolder/code_coverage.info -rc lcov_branch_coverage=0 --exclude "*/tests/*" --include "*/dbsync/*" -q
     coverage=$(genhtml $reportFolder/code_coverage.info --branch-coverage --output-directory $reportFolder)
     echo "Report: $reportFolder/index.html"
     checkCoverageValues "$coverage"
@@ -161,7 +163,9 @@ readyToReview()
         echoRed "[FAILED]"
         return 5
     fi
-    echoGreen "RTR PASSED: code is ready to review"
+    echo ""
+    echoGreen "===> RTR PASSED: code is ready to review <==="
+    echo ""
 }
 
 showHelp()
