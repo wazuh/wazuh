@@ -477,12 +477,14 @@ static void wraps_fim_db_decode_full_row() {
  * Successfully wrappes a wraps_fim_db_insert_data() call
  * */
 static void wraps_fim_db_insert_data_success(int row_id) {
-    will_return(__wrap_sqlite3_bind_int64, 0);
-
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_count(__wrap_sqlite3_bind_int, 0, 3);
+    will_return_count(__wrap_sqlite3_bind_text, 0, 9);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
     if (row_id == 0) {
+        will_return(__wrap_sqlite3_bind_int64, 0);
         will_return(__wrap_sqlite3_last_insert_rowid, 1);
     }
 }
@@ -491,8 +493,10 @@ static void wraps_fim_db_insert_data_success(int row_id) {
  * Successfully wrappes a wraps_fim_db_insert_data() call
  * */
 static void wraps_fim_db_insert_path_success() {
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_count(__wrap_sqlite3_bind_int, 0, 6);
+    will_return_count(__wrap_sqlite3_bind_text, 0, 2);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 }
 #endif
@@ -526,6 +530,7 @@ typedef struct _test_fim_db_insert_data {
     fdb_t *fim_sql;
     fim_entry *entry;
     fim_tmp_file *tmp_file;
+    fim_entry_data *saved;
 } test_fim_db_insert_data;
 
 typedef struct __test_fim_db_ctx_s {
@@ -541,6 +546,9 @@ static int test_fim_db_setup(void **state) {
     test_data->entry->data = calloc(1, sizeof(fim_entry_data));
     test_data->entry->path =  strdup("/test/path");
     test_data->fim_sql->transaction.last_commit = 1; //Set a time diferent than 0
+    test_data->saved = calloc(1, sizeof(fim_entry_data));
+    test_data->saved->inode = 100;
+    test_data->saved->dev = 100;
     *state = test_data;
     return 0;
 }
@@ -557,6 +565,7 @@ static int test_fim_db_teardown(void **state) {
     free(test_data->entry->data);
     free(test_data->entry);
     free(test_data->fim_sql);
+    free(test_data->saved);
     free(test_data);
     return 0;
 }
@@ -1107,7 +1116,7 @@ void test_fim_db_insert_error(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "Step error getting data row: ERROR MESSAGE");
 
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_MODIFICATION);
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, test_data->entry->data, FIM_MODIFICATION);
     assert_int_equal(ret, FIMDB_ERR);
 }
 
@@ -1117,7 +1126,7 @@ void test_fim_db_insert_invalid_type(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Couldn't insert '/test/path' entry into DB. Invalid event type: 1.");
 
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_DELETE);
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, test_data->entry->data, FIM_DELETE);
 
     assert_int_equal(ret, FIMDB_ERR);
 }
@@ -1137,7 +1146,7 @@ void test_fim_db_insert_db_full(void **state) {
 
     syscheck.database = test_data->fim_sql;
 
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_ADD);
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, test_data->entry->data, FIM_ADD);
 
     syscheck.database = NULL;
 
@@ -1147,12 +1156,24 @@ void test_fim_db_insert_db_full(void **state) {
 #ifndef TEST_WINAGENT
 void test_fim_db_insert_inode_id_nonull(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    will_return_always(__wrap_sqlite3_bind_text, 0);    // Needed for fim_db_insert_path()
 
+    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 4);
+    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 4);
+    will_return_count(__wrap_sqlite3_bind_int64, 0, 2);
+    will_return_count(__wrap_sqlite3_bind_int, 0, 3);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return_count(__wrap_sqlite3_step, SQLITE_ROW, 2);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 1);
+
+    wraps_fim_db_check_transaction();
+
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
 
@@ -1164,17 +1185,17 @@ void test_fim_db_insert_inode_id_nonull(void **state) {
     wraps_fim_db_check_transaction();
 
     int ret;
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_MODIFICATION);
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, test_data->saved, FIM_MODIFICATION);
     assert_int_equal(ret, 0);   // Success
 }
 
 void test_fim_db_insert_inode_id_null(void **state) {
     test_fim_db_insert_data *test_data = *state;
+
     will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
     will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_sqlite3_bind_int64, 0);
+    will_return_count(__wrap_sqlite3_bind_int64, 0, 2);
+    will_return_count(__wrap_sqlite3_bind_int, 0, 2);
 
     will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
 
@@ -1186,116 +1207,34 @@ void test_fim_db_insert_inode_id_null(void **state) {
     wraps_fim_db_check_transaction();
 
     int ret;
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_MODIFICATION);
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, test_data->entry->data, FIM_MODIFICATION);
     assert_int_equal(ret, 0);   // Success
 }
 
 void test_fim_db_insert_inode_id_null_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
-    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+
+    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 3);
+    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 3);
     will_return(__wrap_sqlite3_bind_int64, 0);
+    will_return_count(__wrap_sqlite3_bind_int, 0, 2);
+    will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
-
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error getting path inode '/test/path': ERROR MESSAGE");
-
-    int ret;
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_MODIFICATION);
-    assert_int_equal(ret, FIMDB_ERR);
-}
-
-void test_fim_db_insert_inode_id_null_delete(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 4);
-    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 4);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_sqlite3_bind_int64, 0);
-
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    expect_value(__wrap_sqlite3_column_int64, iCol, 0);
-    will_return(__wrap_sqlite3_column_int64, 1);
-
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    will_return_count(__wrap_sqlite3_step, SQLITE_ROW, 3);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
-
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    wraps_fim_db_check_transaction();
-
-    // Wrap functions for fim_db_insert_data() & fim_db_insert_path()
-    int inode_id = 0;
-    wraps_fim_db_insert_data_success(inode_id);
-    wraps_fim_db_insert_path_success();
-
-    wraps_fim_db_check_transaction();
-
-    int ret;
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_MODIFICATION);
-    assert_int_equal(ret, 0);   // Success
-}
-
-void test_fim_db_insert_inode_id_null_delete_error(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 4);
-    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 4);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_sqlite3_bind_int64, 0);
-
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    expect_value(__wrap_sqlite3_column_int64, iCol, 0);
-    will_return(__wrap_sqlite3_column_int64, 1);
-
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, 1);
-
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "Step error deleting data '/test/path' to insert in new row, the inode has changed: ERROR MESSAGE");
 
     int ret;
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_MODIFICATION);
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, test_data->saved, FIM_MODIFICATION);
     assert_int_equal(ret, FIMDB_ERR);
 }
 
-void test_fim_db_insert_inode_id_null_delete_row_error(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 3);
-    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 3);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_sqlite3_bind_int64, 0);
-
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    expect_value(__wrap_sqlite3_column_int64, iCol, 0);
-    will_return(__wrap_sqlite3_column_int64, 1);
-
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
-
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error getting inode ID for file path '/test/path': ERROR MESSAGE");
-
-    int ret;
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_MODIFICATION);
-    assert_int_equal(ret, FIMDB_ERR);
-}
 #endif
 
 /*-----------------------------------------*/
@@ -2799,9 +2738,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_nonull, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_null, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_null_error, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_null_delete, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_null_delete_error, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_null_delete_row_error, test_fim_db_setup, test_fim_db_teardown),
         #endif
         // fim_db_remove_path
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_no_entry, test_fim_db_setup, test_fim_db_teardown),

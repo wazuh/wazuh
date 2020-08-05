@@ -190,7 +190,7 @@ int __wrap_delete_target_file(const char *path) {
     return mock();
 }
 
-int __wrap_fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
+int __wrap_fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, fim_entry_data *saved, int alert_type) {
     check_expected_ptr(fim_sql);
     check_expected(file_path);
 
@@ -582,7 +582,7 @@ static void test_fim_json_event(void **state) {
 
     #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606061);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
     #endif
@@ -645,7 +645,7 @@ static void test_fim_json_event_whodata(void **state) {
 
     #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606061);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
     #endif
@@ -724,7 +724,7 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
 
     #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606061);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, paths);
     #endif
@@ -789,7 +789,7 @@ static void test_fim_json_event_hardlink_two_paths(void **state) {
 
     #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606061);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, paths);
     #endif
@@ -1435,6 +1435,13 @@ static void test_fim_file_add(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "file");
     will_return(__wrap_fim_db_get_path, NULL);
 
+    #ifndef TEST_WINAGENT
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 1234);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 2345);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+    #endif
+
     expect_string(__wrap_seechanges_addfile, filename, "file");
     will_return(__wrap_seechanges_addfile, strdup("diff"));
 
@@ -1525,8 +1532,8 @@ static void test_fim_file_modify(void **state) {
 
     #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 1234);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 2345);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
     #endif
 
@@ -1654,8 +1661,8 @@ static void test_fim_file_error_on_insert(void **state) {
 
     #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 1234);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 2345);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
     #endif
 
@@ -1850,6 +1857,13 @@ static void test_fim_checker_fim_regular(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
 
+    #ifndef TEST_WINAGENT
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+    #endif
+
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
     will_return(__wrap_fim_db_get_path, NULL);
@@ -1888,6 +1902,13 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
+
+    #ifndef TEST_WINAGENT
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+    #endif
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
@@ -2050,6 +2071,13 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
+
+    #ifndef TEST_WINAGENT
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+    #endif
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/test.file");
