@@ -79,10 +79,12 @@ DBSYNC_HANDLE dbsync_create(const HostType     host_type,
         {
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
         }
+        // LCOV_EXCL_START
         catch(...)
         {
             errorMessage += "Unrecognized error.";
         }
+        // LCOV_EXCL_STOP
     }
     log_message(errorMessage);
     return retVal;
@@ -125,10 +127,12 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
         {
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
         }
+        // LCOV_EXCL_START
         catch(...)
         {
             errorMessage += "Unrecognized error.";
         }
+        // LCOV_EXCL_STOP
     }
     log_message(errorMessage);
     return txn;
@@ -154,10 +158,12 @@ int dbsync_close_txn(const TXN_HANDLE txn)
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
             retVal = ex.id();
         }
+        // LCOV_EXCL_START
         catch(...)
         {
             errorMessage += "Unrecognized error.";
         }
+        // LCOV_EXCL_STOP
     }
     log_message(errorMessage);
     return retVal;
@@ -185,10 +191,12 @@ int dbsync_sync_txn_row(const TXN_HANDLE txn,
             error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
             retVal = ex.id();
         }
+        // LCOV_EXCL_START
         catch(...)
         {
             error_message += "Unrecognized error.";
         }
+        // LCOV_EXCL_STOP
     }
     log_message(error_message);
     return retVal;
@@ -236,10 +244,12 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
             errorMessage += "DB error, ";
             errorMessage += ex.what();
         }
+        // LCOV_EXCL_START
         catch(...)
         {
             errorMessage += "Unrecognized error.";
         }
+        // LCOV_EXCL_STOP
     }
     log_message(errorMessage);
 
@@ -273,10 +283,12 @@ int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
             retVal = ex.id();
         }
+        // LCOV_EXCL_START
         catch(...)
         {
             errorMessage += "Unrecognized error.";
         }
+        // LCOV_EXCL_STOP
     }
     log_message(errorMessage);
 
@@ -319,16 +331,12 @@ int dbsync_sync_row(const DBSYNC_HANDLE handle,
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
             retVal = ex.id();
         }
-        catch(const DbSync::max_rows_error& ex)
-        {
-            errorMessage += "DB error, ";
-            errorMessage += ex.what();
-            callback_data.callback(ReturnTypeCallback::MAX_ROWS, js_input, callback_data.user_data);
-        }
+        // LCOV_EXCL_START
         catch(...)
         {
             errorMessage += "Unrecognized error.";
         }
+        // LCOV_EXCL_STOP
     }
     log_message(errorMessage);
     return retVal;
@@ -370,10 +378,12 @@ int dbsync_select_rows(const DBSYNC_HANDLE handle,
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
             retVal = ex.id();
         }
+        // LCOV_EXCL_START
         catch(...)
         {
             errorMessage += "Unrecognized error.";
         }
+        // LCOV_EXCL_STOP
     }
     log_message(errorMessage);
     return retVal;
@@ -406,10 +416,12 @@ int dbsync_delete_rows(const DBSYNC_HANDLE handle,
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
             retVal = ex.id();
         }
+        // LCOV_EXCL_START
         catch(...)
         {
             errorMessage += "Unrecognized error.";
         }
+        // LCOV_EXCL_STOP
     }
     log_message(errorMessage);
     return retVal;
@@ -444,10 +456,12 @@ int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
             error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
             retVal = ex.id();
         }
+        // LCOV_EXCL_START
         catch(...)
         {
             error_message += "Unrecognized error.";
         }
+        // LCOV_EXCL_STOP
     }
     log_message(error_message);
 
@@ -502,10 +516,12 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
             errorMessage += "DB error, ";
             errorMessage += ex.what();
         }
+        // LCOV_EXCL_START
         catch(...)
         {
             errorMessage += "Unrecognized error.";
         }
+        // LCOV_EXCL_STOP
     }
     log_message(errorMessage);
     return retVal;
@@ -547,16 +563,12 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
             retVal = ex.id();
         }
-        catch(const DbSync::max_rows_error& ex)
-        {
-            errorMessage += "DB error, ";
-            errorMessage += ex.what();
-            callback_data.callback(ReturnTypeCallback::MAX_ROWS, js_snapshot, callback_data.user_data);
-        }
+        // LCOV_EXCL_START
         catch(...)
         {
             errorMessage += "Unrecognized error.";
         }
+        // LCOV_EXCL_STOP
     }
     log_message(errorMessage);
     return retVal;
