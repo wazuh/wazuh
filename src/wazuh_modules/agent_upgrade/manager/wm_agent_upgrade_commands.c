@@ -46,6 +46,17 @@ static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task)
  * */
 static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request);
 
+/**
+ * Send WPK file to agent and verify SHA1
+ * @param agent_task structure with the information of the agent and the WPK
+ * @return return_code
+ * @retval WM_UPGRADE_SUCCESS
+ * @retval WM_UPGRADE_WPK_SENDING_ERROR
+ * @retval WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH
+ * @retval WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST
+ * */
+static int wm_agent_upgrade_send_wpk_to_agent(wm_agent_task *agent_task);
+
 char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task) {
     char* response = NULL;
     int agent = 0;
@@ -224,13 +235,64 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
             agent_task = (wm_agent_task *)node->data;
             node = wm_agent_upgrade_get_next_node(&index, node);
 
+            if (WM_UPGRADE_SUCCESS == wm_agent_upgrade_send_wpk_to_agent(agent_task)) {
 
-            // TODO: Send WPK to agent and update task to UPDATING/ERROR
 
+                // TODO: Send update command to agent and update task to UPDATING
+
+
+            } else {
+
+
+                // TODO: Update task to UPDATING/ERROR
+
+
+            }
 
             wm_agent_upgrade_remove_entry(atoi(agent_key));
         }
     } else {
         mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_NO_AGENTS_TO_UPGRADE);
     }
+}
+
+static int wm_agent_upgrade_send_wpk_to_agent(wm_agent_task *agent_task) {
+    int result = WM_UPGRADE_SUCCESS;
+    wm_upgrade_task *upgrade_task = NULL;
+    wm_upgrade_custom_task *upgrade_custom_task = NULL;
+    char *file_path = NULL;
+    char *file_sha1 = NULL;
+    char *wpk_path = NULL;
+
+    if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
+        upgrade_task = agent_task->task_info->task;
+        // WPK file path
+        os_calloc(OS_SIZE_4096, sizeof(char), file_path);
+        snprintf(file_path, OS_SIZE_4096, "%s%s", WM_UPGRADE_WPK_DEFAULT_PATH, upgrade_task->wpk_file);
+        // WPK file sha1
+        os_strdup(upgrade_task->wpk_sha1, file_sha1);
+    } else {
+        upgrade_custom_task = agent_task->task_info->task;
+        // WPK custom file path
+        os_strdup(upgrade_custom_task->custom_file_path, file_path);
+        // WPK custom file sha1
+        os_calloc(41, sizeof(char), file_sha1);
+        OS_SHA1_File(file_path, file_sha1, OS_BINARY);
+    }
+
+    if (file_path && file_sha1) {
+        wpk_path = basename_ex(file_path);
+
+
+        // TODO: Send WPK and verify SHA1
+
+
+    } else {
+        result = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
+    }
+
+    os_free(file_path);
+    os_free(file_sha1);
+
+    return result;
 }

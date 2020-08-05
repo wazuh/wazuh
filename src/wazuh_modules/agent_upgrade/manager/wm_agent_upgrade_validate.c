@@ -101,8 +101,7 @@ int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *tas
             if (wm_agent_upgrade_compare_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT) < 0) {
                 return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
             } else if (WM_UPGRADE_UPGRADE == command) {
-                task = (wm_upgrade_task *)task;
-                return_code = wm_agent_upgrade_validate_non_custom_version(tmp_agent_version, agent_info, task);
+                return_code = wm_agent_upgrade_validate_non_custom_version(tmp_agent_version, agent_info, (wm_upgrade_task *)task);
             }
         }
     }
@@ -118,7 +117,7 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
     int req = 0;
     char *file_url = NULL;
     char *file_path = NULL;
-    os_sha1 sha1;
+    os_sha1 file_sha1;
 
     if (task && task->wpk_repository && task->wpk_file && task->wpk_sha1) {
         os_calloc(OS_SIZE_4096, sizeof(char), file_url);
@@ -128,7 +127,7 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
         snprintf(file_path, OS_SIZE_4096, "%s%s", WM_UPGRADE_WPK_DEFAULT_PATH, task->wpk_file);
 
         if (wpk_file = fopen(file_path, "rb"), wpk_file) {
-            if (!OS_SHA1_File(file_path, sha1, OS_BINARY) && !strcasecmp(sha1, task->wpk_sha1)) {
+            if (!OS_SHA1_File(file_path, file_sha1, OS_BINARY) && !strcasecmp(file_sha1, task->wpk_sha1)) {
                 // WPK already downloaded
                 exist = 1;
             }
@@ -141,7 +140,7 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
             // Download WPK file
             while (attempts++ < WM_UPGRADE_WPK_DOWNLOAD_ATTEMPTS) {
                 if (req = wurl_request(file_url, file_path, NULL, NULL, WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT), !req) {
-                    if (OS_SHA1_File(file_path, sha1, OS_BINARY) || strcasecmp(sha1, task->wpk_sha1)) {
+                    if (OS_SHA1_File(file_path, file_sha1, OS_BINARY) || strcasecmp(file_sha1, task->wpk_sha1)) {
                         return_code = WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH;
                     }
                     break;
