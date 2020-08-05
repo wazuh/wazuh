@@ -238,17 +238,18 @@
 #define FIM_REALTIME_CALLBACK               "(6346): Realtime watch deleted for '%s'"
 
 /* Modules messages */
-#define WM_UPGRADE_RESULT_AGENT_INFO        "(8151): Agent Information obtained: \n %s"
-#define WM_UPGRADE_RESULT_SHOW_RESULTS      "(8152): Upgrade results response: \n %s"
+#define WM_UPGRADE_RESULT_AGENT_INFO        "(8151): Agent Information obtained: '%s'"
 #define WM_UPGRADE_MODULE_DISABLED          "(8153): Module Agent Upgrade disabled. Exiting..."
 #define WM_UPGRADE_MODULE_STARTED           "(8154): Module Agent Upgrade started."
 #define WM_UPGRADE_MODULE_FINISHED          "(8155): Module Agent Upgrade finished."
 #define WM_UPGRADE_INCOMMING_MESSAGE        "(8156): Incomming message: '%s'"
 #define WM_UPGRADE_RESPONSE_MESSAGE         "(8157): Response message: '%s'"
 #define WM_UPGRADE_TASK_SEND_MESSAGE        "(8158): Sending message to task_manager module: '%s'"
-#define WM_UPGRADE_TASK_RECEIVE_MESSAGE     "(8159): Receiving message to task_manager module: '%s'"
+#define WM_UPGRADE_TASK_RECEIVE_MESSAGE     "(8159): Receiving message from task_manager module: '%s'"
 #define WM_UPGRADE_EMPTY_MESSAGE            "(8160): Empty message from local client."
-#define WM_UPGRADE_ACK_MESSAGE              "(8161): Sending upgrade ACK event: '%s'"
+#define WM_UPGRADE_NO_AGENTS_TO_UPGRADE     "(8161): There are no valid agents to upgrade."
+#define WM_UPGRADE_DOWNLOADING_WPK          "(8162): Downloading WPK file from: '%s'"
+#define WM_UPGRADE_ACK_MESSAGE              "(8163): Sending upgrade ACK event: '%s'"
 
 #define MOD_TASK_START                      "(8200): Module Task Manager started."
 #define MOD_TASK_FINISH                     "(8201): Module Task Manager finished."

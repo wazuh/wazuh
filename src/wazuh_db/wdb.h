@@ -311,9 +311,6 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
 /* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */
 int wdb_update_agent_keepalive(int id, long keepalive);
 
-/* Get last_keepalive from agent. The string must be freed after using. Returns NULL on error. */
-int wdb_agent_last_keepalive(int id);
-
 /* Update agent group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_group(int id,char *group);
 
@@ -340,6 +337,9 @@ char* wdb_agent_version(int id);
 
 /* Get group from agent. The string must be freed after using. Returns NULL on error. */
 char* wdb_agent_group(int id);
+
+/* Get the platform, os_major, os_minor, arch, version and last_keepalive from agent. Returns 0 on success or -1 on error. */
+int wdb_agent_info(int id, char **platform, char **os_major, char **os_minor, char **arch, char **version, int *last_keepalive);
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_create_agent_db(int id, const char *name);

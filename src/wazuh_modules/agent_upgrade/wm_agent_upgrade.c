@@ -33,7 +33,7 @@ const wm_context WM_AGENT_UPGRADE_CONTEXT = {
     (cJSON * (*)(const void *))wm_agent_upgrade_dump
 };
 
-void * wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
+static void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 
     // Check if module is enabled
     if (!upgrade_config->enabled) {
@@ -52,12 +52,12 @@ void * wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
     return NULL;
 }
 
-void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config) {
+static void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config) {
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_FINISHED);
     os_free(upgrade_config);
 }
 
-cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
+static cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_info = cJSON_CreateObject();
 

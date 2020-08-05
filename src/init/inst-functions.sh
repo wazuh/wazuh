@@ -622,16 +622,16 @@ WriteLocal()
     # Write osquery
     WriteOsquery "manager"
 
+    # Agent upgrade
+    cat ${AGENT_UPGRADE_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # Task Manager
     cat ${TASK_MANAGER_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Agent upgrade
-    cat ${AGENT_UPGRADE_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Write syscheck

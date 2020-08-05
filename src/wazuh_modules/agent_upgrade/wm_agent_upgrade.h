@@ -12,19 +12,8 @@
 #ifndef WM_AGENT_UPGRADE_H
 #define WM_AGENT_UPGRADE_H
 
-#include "defs.h"
-
 #define WM_AGENT_UPGRADE_LOGTAG ARGV0 ":" AGENT_UPGRADE_WM_NAME
 #define WM_AGENT_UPGRADE_MODULE_NAME "upgrade_module"
-#define WM_UPGRADE_MINIMAL_VERSION_SUPPORT "v3.0.0"
-#define WM_UPGRADE_SUCCESS_VALIDATE 0
-#define MANAGER_ID 0
-
-#ifdef WIN32
-    #define WM_AGENT_UPGRADE_RESULT_FILE UPGRADE_DIR "\\upgrade_result"
-#else 
-    #define WM_AGENT_UPGRADE_RESULT_FILE DEFAULTDIR UPGRADE_DIR "/upgrade_result"
-#endif
 
 typedef struct _wm_agent_upgrade {
     int enabled:1;
