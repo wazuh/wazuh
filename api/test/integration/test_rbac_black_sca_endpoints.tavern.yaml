@@ -25,11 +25,10 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
+    response: &permission_denied
+      status_code: 403
       json:
         code: 4000
-        detail: !anystr
 
   - name: Request sca for agent 002 (Allowed)
     request:
@@ -51,10 +50,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
-        detail: !anystr
+      <<: *permission_denied
 
   - name: Request sca for agent 004 (Allowed)
     request:
@@ -76,10 +72,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
-        detail: !anystr
+      <<: *permission_denied
 
 ---
 test_name: GET /sca/{agent_id}/checks/{policy_id}
@@ -106,7 +99,4 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
-        detail: !anystr
+      <<: *permission_denied

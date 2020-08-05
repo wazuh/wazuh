@@ -76,21 +76,21 @@ def test_get_status(mock_status):
 
 
 @pytest.mark.parametrize('tag, level, total_items, sort_by, sort_ascending, q', [
-    ('all', 'all', 13, None, None, ''),
-    ('all', 'all', 4, None, None, 'level=debug,level=error'),
-    ('wazuh-modulesd:database', 'all', 2, None, None, ''),
-    ('wazuh-modulesd:syscollector', 'all', 2, None, None, ''),
-    ('wazuh-modulesd:syscollector', 'all', 2, None, None, ''),
-    ('wazuh-modulesd:aws-s3', 'all', 5, None, None, ''),
-    ('ossec-execd', 'all', 1, None, None, ''),
-    ('ossec-csyslogd', 'all', 2, None, None, ''),
-    ('random', 'all', 0, ['timestamp'], True, ''),
-    ('all', 'info', 7, ['timestamp'], False, ''),
-    ('all', 'error', 2, ['level'], True, ''),
-    ('all', 'debug', 2, ['level'], False, ''),
-    ('all', 'all', 13, ['tag'], True, ''),
-    ('all', 'random', 0, None, True, ''),
-    ('all', 'warning', 2, None, False, '')
+    (None, None, 13, None, None, ''),
+    (None, None, 4, None, None, 'level=debug,level=error'),
+    ('wazuh-modulesd:database', None, 2, None, None, ''),
+    ('wazuh-modulesd:syscollector', None, 2, None, None, ''),
+    ('wazuh-modulesd:syscollector', None, 2, None, None, ''),
+    ('wazuh-modulesd:aws-s3', None, 5, None, None, ''),
+    ('ossec-execd', None, 1, None, None, ''),
+    ('ossec-csyslogd', None, 2, None, None, ''),
+    ('random', None, 0, ['timestamp'], True, ''),
+    (None, 'info', 7, ['timestamp'], False, ''),
+    (None, 'error', 2, ['level'], True, ''),
+    (None, 'debug', 2, ['level'], False, ''),
+    (None, None, 13, ['tag'], True, ''),
+    (None, 'random', 0, None, True, ''),
+    (None, 'warning', 2, None, False, '')
 ])
 def test_ossec_log(tag, level, total_items, sort_by, sort_ascending, q):
     """Test reading ossec.log file contents.
@@ -119,7 +119,7 @@ def test_ossec_log(tag, level, total_items, sort_by, sort_ascending, q):
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['total_affected_items'] == total_items
         assert all(log['description'][-1] != '\n' for log in result.render()['data']['affected_items'])
-        if tag != 'all' and level != 'wazuh-modulesd:syscollector':
+        if tag is not None and level != 'wazuh-modulesd:syscollector':
             assert all('\n' not in log['description'] for log in result.render()['data']['affected_items'])
         if sort_by:
             reversed_result = ossec_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=not sort_ascending, q=q)

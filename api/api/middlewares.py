@@ -7,6 +7,8 @@ from base64 import b64decode
 from json import loads
 from logging import getLogger
 from time import time
+from connexion.problem import problem as connexion_problem
+from connexion.exceptions import ProblemException, ExtraParameterProblem, OAuthProblem
 
 from aiohttp import web
 
@@ -58,6 +60,11 @@ async def prevent_bruteforce_attack(request, block_time=300, attempts=5):
             ip_block.add(request.remote)
 
 
+request_counter = 0
+current_time = None
+
+
+@web.middleware
 async def prevent_denial_of_service(request, max_requests=300):
     """This function checks that the maximum number of requests per minute set in the configuration is not exceeded"""
     if 'authenticate' not in request.path:
@@ -92,3 +99,37 @@ async def security_middleware(request, handler):
     response = await handler(request)
 
     return response
+
+
+@web.middleware
+async def response_postprocessing(request, handler):
+    """Remove unwanted fields from error responses like 400 or 403.
+
+    Additionally, it cleans the output given by connexion's exceptions. If no exception is raised during the
+    'await handler(request) it means the output will be a 200 response and no fields needs to be removed."""
+    def cleanup_detail_field(detail):
+        return ' '.join(str(detail).replace("\n\n", ". ").replace("\n", "").split())
+
+    def remove_unwanted_fields(fields_to_remove=['status', 'type']):
+        for field in fields_to_remove:
+            if field in problem.body:
+                del problem.body[field]
+        if 'detail' in problem.body and problem.body['detail'] == '':
+            del problem.body['detail']
+
+    problem = None
+
+    try:
+        return await handler(request)
+    except ProblemException as ex:
+        problem = connexion_problem(ex.__dict__['status'],
+                                    ex.__dict__['title'] if 'title' in ex.__dict__ and ex.__dict__['title'] else 'Bad Request',
+                                    type=ex.__dict__['type'] if 'type' in ex.__dict__ else 'about:blank',
+                                    detail=cleanup_detail_field(ex.__dict__['detail']) if 'detail' in ex.__dict__ else '',
+                                    ext=ex.__dict__['ext'] if 'ext' in ex.__dict__ else None)
+    except OAuthProblem:
+        problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="No authorization token provided")
+    finally:
+        if problem:
+            remove_unwanted_fields()
+            return problem

@@ -27,7 +27,6 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: All specified lists were shown
 
   - name: Try to show an specified filename (Allow)
     request:
@@ -49,7 +48,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: All specified lists were shown
 
   - name: Try to show an specified path (Deny)
     request:
@@ -62,17 +60,9 @@ stages:
         relative_dirname: etc/lists
         filename: audit-keys
     response:
-      status_code: 400
+      status_code: 403
       json:
         code: 4000
-        dapi_errors:
-          master-node:
-            error: !anystr
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
 ---
 test_name: GET LISTS FILES RBAC
@@ -97,4 +87,3 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: All specified paths were shown

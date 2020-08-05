@@ -29,16 +29,13 @@ stages:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
-      json: &permission_denied
+    response: &permission_denied
+      status_code: 403
+      json:
         code: 4000
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        dapi_errors:
+          unknown-node: # No permission to see node
+            error: !anystr
 
 ---
 test_name: GET /syscheck/000/last_scan
@@ -71,9 +68,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: PUT /syscheck
@@ -95,8 +90,7 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
-
+        
   - name: Try to run a syscheck scan on a list of agents
     request:
       verify: False
@@ -114,15 +108,12 @@ stages:
           failed_items:
             - error:
                 code: 4000
-                message: !anystr
-                remediation: !anystr
               id:
                 - '004'
                 - '008'
           total_affected_items: 3
           total_failed_items: 2
-        message: !anystr
-
+        
   - name: Try to run a syscheck scan on a list of agents
     request:
       verify: False
@@ -133,9 +124,7 @@ stages:
       params:
         list_agents: '004'
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: DELETE /syscheck
@@ -166,6 +155,4 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
