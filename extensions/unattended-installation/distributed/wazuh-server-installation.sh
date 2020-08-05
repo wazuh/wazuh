@@ -91,8 +91,6 @@ installFilebeat() {
 
 configureFilebeat() {
     
-    #conf="$(awk '{sub(/127.0.0.1/,"'$ip'")}1' /etc/filebeat/filebeat.yml)"
-    #echo "$conf" > /etc/filebeat/filebeat.yml
     echo "output.elasticsearch.hosts:" >> /etc/filebeat/filebeat.yml
     for i in "${!ips[@]}"; do
         echo "  - ${ips[i]}:9200" >> /etc/filebeat/filebeat.yml
