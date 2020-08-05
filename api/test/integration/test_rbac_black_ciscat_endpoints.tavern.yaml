@@ -21,7 +21,6 @@ stages:
           failed_items: !anything
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All CISCAT results loaded
 
   - name: Get ciscat result for agent 002 (denied)
     request:
@@ -31,10 +30,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 403
       json:
         code: 4000
-        detail: !anystr
 
   - name: Get ciscat result for agent 003 (allowed)
     request:
@@ -51,4 +49,3 @@ stages:
           failed_items: !anything
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All CISCAT results loaded

@@ -4,10 +4,10 @@
 
 from wazuh.core import common
 from wazuh.core.agent import get_agents_info
-from wazuh.core.syscollector import WazuhDBQuerySyscollector, get_valid_fields, Type
-from wazuh.core.exception import WazuhError
-from wazuh.rbac.decorators import expose_resources
+from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, merge
+from wazuh.core.syscollector import WazuhDBQuerySyscollector, get_valid_fields, Type
+from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=['syscollector:read'], resources=['agent:id:{agent_list}'])
@@ -35,12 +35,12 @@ def get_item_agent(agent_list, offset=0, limit=common.database_limit, select=Non
         sort_fields=['agent_id'] if sort is None else sort['fields'],
         sort_casting=['str'],
         sort_ascending=[sort['order'] == 'asc' for _ in sort['fields']] if sort is not None else ['True']
-        )
+    )
 
     for agent in agent_list:
         try:
             if agent not in get_agents_info():
-                raise WazuhError(1701)
+                raise WazuhResourceNotFound(1701)
             table, valid_select_fields = get_valid_fields(Type(element_type), agent_id=agent)
             db_query = WazuhDBQuerySyscollector(agent_id=agent, offset=offset, limit=limit, select=select,
                                                 search=search,
@@ -51,7 +51,7 @@ def get_item_agent(agent_list, offset=0, limit=common.database_limit, select=Non
                 item['agent_id'] = agent
                 result.affected_items.append(item)
             result.total_affected_items += data['totalItems']
-        except WazuhError as e:
+        except WazuhResourceNotFound as e:
             result.add_failed_item(id_=agent, error=e)
 
     result.affected_items = merge(*[[res] for res in result.affected_items],
