@@ -23,6 +23,9 @@
 typedef enum _task_query {
     WM_TASK_INSERT_TASK,
     WM_TASK_GET_MAX_TASK_ID,
+    WM_TASK_GET_LAST_AGENT_TASK,
+    WM_TASK_GET_TASK_STATUS,
+    WM_TASK_UPDATE_TASK_STATUS
 } task_query;
 
 typedef enum _task_status {
@@ -48,6 +51,24 @@ int wm_task_manager_check_db();
  * @return ID of the task recently created when succeed, <=0 otherwise.
  * */
 int wm_task_manager_insert_task(int agent_id, const char *module, const char *command);
+
+/**
+ * Get the status of a task from the tasks DB.
+ * @param agent_id ID of the agent where the task is being executed.
+ * @param module Name of the module where the message comes from.
+ * @param status String where the status of the task will be stored.
+ * @return 0 when succeed, !=0 otherwise.
+ * */
+int wm_task_manager_get_task_status(int agent_id, const char *module, char **status);
+
+/**
+ * Update the status of a task in the tasks DB.
+ * @param agent_id ID of the agent where the task is being executed.
+ * @param module Name of the module where the message comes from.
+ * @param status New status of the task.
+ * @return 0 when succeed, !=0 otherwise.
+ * */
+int wm_task_manager_update_task_status(int agent_id, const char *module, const char *status);
 
 #endif
 #endif
