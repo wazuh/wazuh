@@ -517,6 +517,7 @@
 #define MOD_TASK_PARSE_KEY_ERROR                    "(8259): Invalid message. '%s' not found at index '%d'"
 #define MOD_TASK_DB_ERROR                           "(8260): Database error at index '%d'"
 #define MOD_TASK_UNKNOWN_VALUE_ERROR                "(8261): Invalid '%s' at index '%d'"
+#define MOD_TASK_COULD_NOT_FIND_TASK                "(8262): Couldn't find task in DB at index '%d'"
 
 #define MOD_TASK_CREATE_DB_ERROR                    "(8275): DB couldn't be checked or created."
 #define MOD_TASK_OPEN_DB_ERROR                      "(8276): DB couldn't be opened."
