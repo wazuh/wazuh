@@ -409,3 +409,22 @@ int wm_agent_upgrade_parse_task_module_task_ids(cJSON *json_response, const cJSO
 
     return error;
 }
+
+int wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data, char **error) {
+    int error_code = OS_SUCCESS;
+
+    if (agent_response) {
+        if (!strncmp(agent_response, "ok", 2) && strchr(agent_response, ' ')) {
+            *data = strchr(agent_response, ' ') + 1;
+        } else {
+            if (!strncmp(agent_response, "err", 3) && strchr(agent_response, ' ')) {
+                *error = strchr(agent_response, ' ') + 1;
+            }
+            error_code = OS_INVALID;
+        }
+    } else {
+        error_code = OS_INVALID;
+    }
+
+    return error_code;
+}
