@@ -216,6 +216,10 @@ main() {
         then
             getHelp
         fi
+        if [ -z "$password" ]
+        then
+            getHelp
+        fi        
         if [ -n "$i" ]
         then
             echo "Health-check ignored."
