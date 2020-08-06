@@ -57,6 +57,13 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
  * */
 static int wm_agent_upgrade_send_wpk_to_agent(wm_agent_task *agent_task);
 
+/**
+ * Send a command to the agent and return the response
+ * @param command request command to agent
+ * @return response from agent
+ * */
+static char* wm_agent_upgrade_send_command_to_agent(const char *command);
+
 char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task) {
     char* response = NULL;
     int agent = 0;
@@ -295,4 +302,40 @@ static int wm_agent_upgrade_send_wpk_to_agent(wm_agent_task *agent_task) {
     os_free(file_sha1);
 
     return result;
+}
+
+static char* wm_agent_upgrade_send_command_to_agent(const char *command) {
+    char *response = NULL;
+    int length = 0;
+
+    const char *path = isChroot() ? REMOTE_REQ_SOCK : DEFAULTDIR REMOTE_REQ_SOCK;
+
+    int sock = OS_ConnectUnixDomain(path, SOCK_STREAM, OS_MAXSTR);
+
+    if (sock == OS_SOCKTERR) {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNREACHEABLE_REQUEST, path);
+    } else {
+        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUEST_SEND_MESSAGE, command);
+
+        OS_SendSecureTCP(sock, strlen(command), command);
+        os_calloc(OS_MAXSTR, sizeof(char), response);
+
+        switch (length = OS_RecvSecureTCP(sock, response, OS_MAXSTR), length) {
+            case OS_SOCKTERR:
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SOCKTERR_ERROR);
+                break;
+            case -1:
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RECV_ERROR, strerror(errno));
+                break;
+            default:
+                if (!response) {
+                    mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_EMPTY_AGENT_RESPONSE);
+                } else {
+                    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUEST_RECEIVE_MESSAGE, response);
+                }
+                break;
+        }
+    }
+
+    return response;
 }

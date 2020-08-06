@@ -504,6 +504,8 @@
 #define WM_UPGRADE_RECV_ERROR                       "(8111): Error in recv(): '%s'"
 #define WM_UPGRADE_SOCKTERR_ERROR                   "(8112): Response size is bigger than expected."
 #define WM_UPGRADE_QUEUE_FD                         "(8113): Could not open default queue to send upgrade notification."
+#define WM_UPGRADE_UNREACHEABLE_REQUEST             "(8114): Cannot connect to '%s'. Could not reach agent."
+#define WM_UPGRADE_EMPTY_AGENT_RESPONSE             "(8115): Response from agent is empty."
 
 #define MOD_TASK_CHECK_DB_ERROR                     "(8250): DB integrity is invalid. Exiting..."
 #define MOD_TASK_CREATE_SOCK_ERROR                  "(8251): Queue '%s' not accesible: '%s'. Exiting..."
