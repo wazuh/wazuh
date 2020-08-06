@@ -224,7 +224,8 @@ createCertificates() {
     startService "elasticsearch"
     logger "Initializing Elasticsearch..."
 
-    until $(curl -XGET https://${eip}:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
+    elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs)
+    until $(curl -XGET https://${elk}:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
         echo -ne $char
         sleep 10
     done    
