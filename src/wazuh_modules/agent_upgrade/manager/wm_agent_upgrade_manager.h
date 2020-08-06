@@ -196,4 +196,22 @@ int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task);
  * */
 char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upgrade_agent_status_task* task);
 
+/**
+ * Validates an update responde from the task manager module
+ * @param response JSON to be validated
+ * Example format:
+ * [{
+ *      "error": 0,
+ *      "data": "Success",
+ *      "agent": 1,
+ *      "status": "Done"
+ *  }, {
+ *      "error": 7,
+ *      "data": "No task in DB",
+ *      "agent": 2,
+ *      "status": "Done"
+ *  }]
+ * */
+bool wm_agent_upgrade_validate_task_update_message(const cJSON *response);
+
 #endif

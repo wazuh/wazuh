@@ -262,10 +262,32 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upg
     cJSON_AddStringToObject(message_object, "status", task->status);
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACK_RECEIVED, agent_id, task->error_code, task->message);
     cJSON_AddItemToArray(message_array, message_object);
+
+    // Send task update to task manager and bring back the response
     wm_agent_upgrade_parse_task_module_task_ids(response, message_array);
+    
+    if (wm_agent_upgrade_validate_task_update_message(response)) {
+        // If status update is successful, tell agent to erase results file
+        char *buffer = NULL;
+        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        sprintf(buffer, "%03d com clear_upgrade_result -1", agent_id);
+        char *agent_response = wm_agent_upgrade_send_command_to_agent(buffer); 
+        char *data = NULL;
+        char *error = NULL;
+        if (wm_agent_upgrade_parse_agent_response(agent_response, &data, &error) == OS_SUCCESS) {
+            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UPGRADE_FILE_AGENT);
+        } else {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RESULT_FILE_ERROR, data);
+        }
+        os_free(buffer);
+        os_free(agent_response);
+    }
+    
     char *message = cJSON_PrintUnformatted(response);
+    
     cJSON_Delete(response);
     cJSON_Delete(message_array);
+    
     return message;
 }
 
