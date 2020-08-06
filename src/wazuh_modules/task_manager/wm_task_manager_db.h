@@ -72,7 +72,30 @@ int wm_task_manager_get_task_status(int agent_id, const char *module, char **sta
  * */
 int wm_task_manager_update_task_status(int agent_id, const char *module, const char *status);
 
+/**
+ * Get task by agent_id and module from the tasks DB.
+ * @param agent_id ID of the agent where the task is being executed.
+ * @param module Name of the module where the task is stored.
+ * @param command String where the command of the task will be stored.
+ * @param status String where the status of the task will be stored.
+ * @param create_time Integer where the create_time of the task will be stored.
+ * @param last_update_time Integer where the last_update_time of the task will be stored.
+ * @return task_id when succeed, < 0 otherwise.
+ * */
 int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *module, char **command, char **status, int *create_time, int *last_update_time);
+
+/**
+ * Get task by task_id from the tasks DB.
+ * @param task_id ID of the task_id where the task is being executed.
+ * @param agent_id Integer where the agent_id of the task will be stored.
+ * @param module Name of the module where the task is stored.
+ * @param command String where the command of the task will be stored.
+ * @param status String where the status of the task will be stored.
+ * @param create_time Integer where the create_time of the task will be stored.
+ * @param last_update_time Integer where the last_update_time of the task will be stored.
+ * @return task_id when succeed, < 0 otherwise.
+ * */
+int wm_task_manager_get_task_by_task_id(int task_id, int *agent_id, char **module, char **command, char **status, int *create_time, int *last_update_time);
 
 #endif
 #endif

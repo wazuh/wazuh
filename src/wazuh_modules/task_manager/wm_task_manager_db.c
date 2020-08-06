@@ -318,4 +318,42 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
     return result;
 }
 
+int wm_task_manager_get_task_by_task_id(int task_id, int *agent_id, char **module, char **command, char **status, int *create_time, int *last_update_time) {
+    sqlite3 *db = NULL;
+    sqlite3_stmt *stmt = NULL;
+    int result = OS_INVALID;
+
+    if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READWRITE, NULL)) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
+        return wm_task_manager_sql_error(db, stmt);
+    }
+    if (wdb_prepare(db, task_queries[WM_TASK_GET_TASK], -1, &stmt, NULL) != SQLITE_OK) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
+        return wm_task_manager_sql_error(db, stmt);
+    }
+    sqlite3_bind_int(stmt, 1, task_id);
+    switch (wdb_step(stmt)) {
+    case SQLITE_ROW:
+        task_id = sqlite3_column_int(stmt, 0);
+        *agent_id = sqlite3_column_int(stmt, 1);
+        sqlite_strdup((char*)sqlite3_column_text(stmt, 2), *module);
+        sqlite_strdup((char*)sqlite3_column_text(stmt, 3), *command);
+        *create_time = sqlite3_column_int(stmt, 4);
+        *last_update_time = sqlite3_column_int(stmt, 5);
+        sqlite_strdup((char*)sqlite3_column_text(stmt, 6), *status);
+        result = task_id;
+        break;
+    case SQLITE_DONE:
+        result = OS_NOTFOUND;
+        break;
+    default:
+        result = OS_INVALID;
+    }
+    
+    wdb_finalize(stmt);
+
+    sqlite3_close_v2(db);
+    return result;
+}
+
 #endif

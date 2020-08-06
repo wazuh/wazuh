@@ -64,7 +64,8 @@ static const char *commands_list[] = {
     [WM_TASK_UPGRADE_CUSTOM] = "upgrade_custom",
     [WM_TASK_UPGRADE_GET_STATUS] = "upgrade_get_status",
     [WM_TASK_UPGRADE_UPDATE_STATUS] = "upgrade_update_status",
-    [WM_TASK_UPGRADE_RESULT] = "upgrade_result"
+    [WM_TASK_UPGRADE_RESULT] = "upgrade_result",
+    [WM_TASK_TASK_RESULT] = "task_result"
 };
 
 static const char *error_codes[] = {
@@ -77,7 +78,8 @@ static const char *error_codes[] = {
     [WM_TASK_INVALID_STATUS] = "Invalid status",
     [WM_TASK_DATABASE_NO_TASK] = "No task in DB",
     [WM_TASK_DATABASE_ERROR] = "Database error",
-    [WM_TASK_UNKNOWN_ERROR] = "Unknown error"
+    [WM_TASK_UNKNOWN_ERROR] = "Unknown error",
+    [WM_TASK_DATABASE_NO_AGENT] = "No task for agent in DB"
 };
 
 size_t wm_task_manager_dispatch(const char *msg, char **response) {
@@ -129,7 +131,7 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
             mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_COULD_NOT_FIND_TASK, task);
             break;
         case WM_TASK_DATABASE_NO_AGENT:
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_COULD_NOT_FIND_AGENT, json_keys[WM_TASK_AGENT_ID]);
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_COULD_NOT_FIND_AGENT, task);
             break;
         case WM_TASK_DATABASE_ERROR:
             mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_DB_ERROR, task);
@@ -215,8 +217,8 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
 
     int create_time = OS_INVALID;
     int last_update_time = OS_INVALID;
-    char *tmp_status = NULL;
     char *command_result = NULL;
+    char *module_result = NULL;
 
     if (tmp = cJSON_GetObjectItem(task_object, json_keys[WM_TASK_AGENT_ID]), tmp && tmp->type == cJSON_Number) {
         agent_id = tmp->valueint;
@@ -249,7 +251,7 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
 
             if (agent_id != OS_INVALID) {
                 // Get upgrade task status
-                if (result = wm_task_manager_get_task_status(agent_id, module, &status), result == OS_INVALID) {
+                if (result = wm_task_manager_get_task_status(agent_id, modules_list[WM_TASK_UPGRADE_MODULE], &status), result == OS_INVALID) {
                     *error_code = WM_TASK_DATABASE_ERROR;
                 } else if (result) {
                     *error_code = result;
@@ -262,11 +264,11 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
                 response = wm_task_manager_build_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
             }
 
-        } else if (!strcmp(commands_list[WM_TASK_UPGRADE_UPDATE_STATUS], command)) {
+        } else if (!strcmp(commands_list[WM_TASK_UPGRADE_UPDATE_STATUS], command) && !strcmp(modules_list[WM_TASK_UPGRADE_MODULE], module)) {
 
             if (agent_id != OS_INVALID) {
                 // Update upgrade task status
-                if (result = wm_task_manager_update_task_status(agent_id, module, status), result == OS_INVALID) {
+                if (result = wm_task_manager_update_task_status(agent_id, modules_list[WM_TASK_UPGRADE_MODULE], status), result == OS_INVALID) {
                     *error_code = WM_TASK_DATABASE_ERROR;
                 } else if (result) {
                     *error_code = result;
@@ -282,21 +284,34 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
         } else if (!strcmp(commands_list[WM_TASK_UPGRADE_RESULT], command)) {
             
             if (agent_id != OS_INVALID) {
-                if (result = wm_task_manager_get_task_by_agent_id_and_module(agent_id, module, &command_result, &tmp_status, &create_time, &last_update_time), result == OS_INVALID){
+                if (result = wm_task_manager_get_task_by_agent_id_and_module(agent_id, modules_list[WM_TASK_UPGRADE_MODULE], &command_result, &status, &create_time, &last_update_time), result == OS_INVALID){
                     *error_code = WM_TASK_DATABASE_ERROR;
                     response = wm_task_manager_build_response(WM_TASK_INVALID_AGENT_ID, agent_id, result, status);
                 } else if (result == OS_NOTFOUND || result == 0){
                     *error_code = WM_TASK_DATABASE_NO_AGENT;
-                    response = wm_task_manager_build_response(WM_TASK_INVALID_AGENT_ID, agent_id, OS_INVALID, status);
+                    response = wm_task_manager_build_response(WM_TASK_DATABASE_NO_AGENT, agent_id, OS_INVALID, status);
                 } else {
                     response = wm_task_manager_build_response(WM_TASK_SUCCESS, agent_id, result, NULL);
-                    wm_task_manager_build_response_result(response, module, command_result, tmp_status, create_time, last_update_time);
-                    os_free(tmp_status);
+                    wm_task_manager_build_response_result(response, modules_list[WM_TASK_UPGRADE_MODULE], command_result, status, create_time, last_update_time, command);
                     os_free(command_result);
                 }
             } else {
                 *error_code = WM_TASK_INVALID_AGENT_ID;
                 response = wm_task_manager_build_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
+            }
+        } else if (!strcmp(commands_list[WM_TASK_TASK_RESULT], command)) {
+
+            if (result = wm_task_manager_get_task_by_task_id(task_id, &agent_id, &module_result, &command_result, &status, &create_time, &last_update_time), result == OS_INVALID){
+                *error_code = WM_TASK_DATABASE_ERROR;
+                response = wm_task_manager_build_response(WM_TASK_INVALID_AGENT_ID, agent_id, result, status);
+            } else if (result == OS_NOTFOUND || result == 0){
+                *error_code = WM_TASK_DATABASE_NO_TASK;
+                response = wm_task_manager_build_response(WM_TASK_DATABASE_NO_TASK, OS_INVALID, task_id, status);
+            } else {
+                response = wm_task_manager_build_response(WM_TASK_SUCCESS, agent_id, result, NULL);
+                wm_task_manager_build_response_result(response, modules_list[WM_TASK_UPGRADE_MODULE], command_result, status, create_time, last_update_time, command);
+                os_free(command_result);
+                os_free(module_result);
             }
         } else {
             *error_code = WM_TASK_INVALID_COMMAND;
@@ -313,7 +328,7 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
     return response;
 }
 
-cJSON* wm_task_manager_build_response_result(cJSON *res, char *module, char *command, char *status, int create_time, int last_update_time) {
+cJSON* wm_task_manager_build_response_result(cJSON *res, const char *module, const char *command, char *status, int create_time, int last_update_time, char *request_command) {
     
     if (module != NULL) {
         cJSON_AddStringToObject(res, json_keys[WM_TASK_MODULE], module);
@@ -322,14 +337,20 @@ cJSON* wm_task_manager_build_response_result(cJSON *res, char *module, char *com
         cJSON_AddStringToObject(res, json_keys[WM_TASK_COMMAND], command);
     }
     if (status != NULL) {
-        if (!strcmp(task_statuses[WM_TASK_DONE], status)){
-            cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], upgrade_statuses[WM_TASK_UPGRADE_UPDATED]);
-        } else if (!strcmp(task_statuses[WM_TASK_IN_PROGRESS], status)){
-            cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], upgrade_statuses[WM_TASK_UPGRADE_UPDATING]);
-        } else if (!strcmp(task_statuses[WM_TASK_FAILED], status)){
-            cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], upgrade_statuses[WM_TASK_UPGRADE_ERROR]);
-        } else if (!strcmp(task_statuses[WM_TASK_NEW], status)){
-            cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], upgrade_statuses[WM_TASK_UPGRADE_OUTDATED]);
+
+        if (!strcmp(commands_list[WM_TASK_UPGRADE_RESULT], request_command)){
+            
+            if (!strcmp(task_statuses[WM_TASK_DONE], status)){
+                cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], upgrade_statuses[WM_TASK_UPGRADE_UPDATED]);
+            } else if (!strcmp(task_statuses[WM_TASK_IN_PROGRESS], status)){
+                cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], upgrade_statuses[WM_TASK_UPGRADE_UPDATING]);
+            } else if (!strcmp(task_statuses[WM_TASK_FAILED], status)){
+                cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], upgrade_statuses[WM_TASK_UPGRADE_ERROR]);
+            } else if (!strcmp(task_statuses[WM_TASK_NEW], status)){
+                cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], upgrade_statuses[WM_TASK_UPGRADE_OUTDATED]);
+            }
+        } else {
+            cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], status);
         }
     }
     if (create_time != OS_INVALID) {
