@@ -148,23 +148,9 @@ installElasticsearch() {
         logger "Done"
 
         logger "Configuring Elasticsearch..."
+        eval "curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/unattended-installation/distributed/templates/elasticsearch_unattended.yml --max-time 300 $debug"
 
-        eval "curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/elasticsearch/elasticsearch_all_in_one.yml --max-time 300 $debug"
-        eval "curl -so /usr/share/elasticsearch/instances.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/instances_aio.yml --max-time 300 $debug"
-        eval "/usr/share/elasticsearch/bin/elasticsearch-certutil cert ca --pem --in instances.yml --keep-ca-key --out ~/certs.zip $debug"
-        eval "unzip ~/certs.zip -d ~/certs $debug"
-        eval "mkdir /etc/elasticsearch/certs/ca -p $debug"
-        eval "cp -R ~/certs/ca/ ~/certs/elasticsearch/* /etc/elasticsearch/certs/ $debug"
-        eval "chown -R elasticsearch: /etc/elasticsearch/certs $debug"
-        eval "chmod -R 500 /etc/elasticsearch/certs $debug"
-        eval "chmod 400 /etc/elasticsearch/certs/ca/ca.* /etc/elasticsearch/certs/elasticsearch.* $debug"
-        if [  "$?" != 0  ]
-        then
-            echo "Error: certificates were not created"
-            exit 1;
-        else
-            logger "Certificates created"
-        fi     
+        awk -v RS='' '/## Elasticsearch/' ~/config.yml >> /etc/elasticsearch/elasticsearch.yml    
         
         # Configure JVM options for Elasticsearch
         ram_gb=$(free -g | awk '/^Mem:/{print $2}')
@@ -176,15 +162,13 @@ installElasticsearch() {
         eval "sed -i "s/-Xms1g/-Xms${ram}g/" /etc/elasticsearch/jvm.options $debug"
         eval "sed -i "s/-Xmx1g/-Xmx${ram}g/" /etc/elasticsearch/jvm.options $debug"     
 
-        # Start Elasticsearch
-        startService "elasticsearch"
-        echo "Initializing Elasticsearch..."
-        passwords=$(/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b)
-        password=$(echo $passwords | awk 'NF{print $NF; exit}')
-        until $(curl -XGET https://localhost:9200/ -elastic:"$password" -k --max-time 120 --silent --output /dev/null); do
-            echo -ne $char
-            sleep 10
-        done
+        # Create certificates
+        if [ -n "$single" ]
+        then
+            createCertificates
+        else
+            logger "Done"
+        fi      
 
         echo "Done"
     fi
@@ -192,54 +176,40 @@ installElasticsearch() {
 
 createCertificates() {
   
-
-    logger "Creating the certificates..."
-    eval "curl -so /etc/elasticsearch/certs/search-guard-tlstool-1.8.zip https://maven.search-guard.com/search-guard-tlstool/1.8/search-guard-tlstool-1.8.zip --max-time 300 $debug"
-    eval "unzip search-guard-tlstool-1.8.zip -d searchguard $debug"
-    eval "curl -so /etc/elasticsearch/certs/searchguard/search-guard.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/unattended-installation/distributed/templates/search-guard-unattended.yml --max-time 300 $debug"
-
-    awk -v RS='' '/## Certificates/' ~/config.yml >> /etc/elasticsearch/certs/searchguard/search-guard.yml
-
-    eval "chmod +x searchguard/tools/sgtlstool.sh $debug"
-    eval "./searchguard/tools/sgtlstool.sh -c ./searchguard/search-guard.yml -ca -crt -t /etc/elasticsearch/certs/ $debug            "
+    awk -v RS='' '/## Certificates/' ~/config.yml > /usr/share/elasticsearch/instances.yml
+    eval "/usr/share/elasticsearch/bin/elasticsearch-certutil cert ca --pem --in instances.yml --keep-ca-key --out ~/certs.zip $debug"
     if [  "$?" != 0  ]
     then
         echo "Error: certificates were no created"
         exit 1;
     else
         logger "Certificates created"
-        mv /etc/elasticsearch/certs/node-1.pem /etc/elasticsearch/certs/elasticsearch.pem
-        mv /etc/elasticsearch/certs/node-1.key /etc/elasticsearch/certs/elasticsearch.key
-        mv /etc/elasticsearch/certs/node-1_http.pem /etc/elasticsearch/certs/elasticsearch_http.pem
-        mv /etc/elasticsearch/certs/node-1_http.key /etc/elasticsearch/certs/elasticsearch_http.key            
-        eval "rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.8.zip -f $debug"
-    fi
-
-    if [[ -n "$c" ]] || [[ -n "$single" ]]
-    then
-        tar -cf certs.tar *
-        tar --delete -f certs.tar 'searchguard'
+        eval "unzip ~/certs.zip -d ~/certs $debug"
+        eval "mkdir /etc/elasticsearch/certs/ca -p $debug"
+        eval "cp -R ~/certs/ca/ ~/certs/elasticsearch/* /etc/elasticsearch/certs/ $debug"
+        eval "chown -R elasticsearch: /etc/elasticsearch/certs $debug"
+        eval "chmod -R 500 /etc/elasticsearch/certs $debug"
+        eval "chmod 400 /etc/elasticsearch/certs/ca/ca.* /etc/elasticsearch/certs/elasticsearch.* $debug"
     fi
 
     logger "Elasticsearch installed."  
 
     # Start Elasticsearch
-    logger "Starting Elasticsearch..."
     startService "elasticsearch"
-    logger "Initializing Elasticsearch..."
+    echo "Initializing Elasticsearch..."
+    passwords=$(/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b)
+    password=$(echo $passwords | awk 'NF{print $NF; exit}')
     elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs)
-    until $(curl -XGET https://${elk}:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
+    until $(curl -XGET https://${elk}:9200/ -elastic:"$password" -k --max-time 120 --silent --output /dev/null); do
         echo -ne $char
         sleep 10
-    done    
-
-    if [ -n "$single" ]
-    then
-        eval "cd /usr/share/elasticsearch/plugins/opendistro_security/tools/ $debug"
-        eval "./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key -h ${elk} $debug"
-    fi
+    done
 
     logger "Done"
+    echo $'\nDuring the installation of Elasticsearch the passwords for its user were generated. Please take note of them:'
+    echo "$passwords"
+    echo $'\nElasticsearch installation finished'
+    exit 0;    
 }
 
 ## Kibana
@@ -259,14 +229,14 @@ installKibana() {
     else   
         eval "curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/kibana/kibana_all_in_one.yml --max-time 300 $debug"
         eval "cd /usr/share/kibana $debug"
-        eval "sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-4.0.0_7.8.0.zip $debug"
+        eval "sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-4.0.0_7.8.1.zip $debug"
         if [  "$?" != 0  ]
         then
             echo "Error: Wazuh Kibana plugin could not be installed."
             exit 1;
         fi     
         eval "setcap 'cap_net_bind_service=+ep' /usr/share/kibana/node/bin/node $debug"
-        conf="$(awk '{sub("<elasticsearch_password>", "'"${password}"'")}1' /etc/kibana/kibana.yml)"
+        conf="$(awk '{sub("<elasticsearch_password>", "'"${epassword}"'")}1' /etc/kibana/kibana.yml)"
         echo "$conf" > /etc/kibana/kibana.yml     
         eval "mkdir /etc/kibana/certs/ca -p"
         echo "server.host: "$kip"" >> /etc/kibana/kibana.yml
@@ -307,14 +277,13 @@ initializeKibana() {
     startService "kibana"   
     logger "Initializing Kibana (this may take a while)" 
     elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs) 
-    until [[ "$(curl -XGET https://${elk}/status -I -uadmin:admin -k -s | grep "200 OK")" ]]; do
+    until [[ "$(curl -XGET https://${elk}/status -I -uelastic:"$epassword" -k -s | grep "200 OK")" ]]; do
         echo -ne $char
         sleep 10
     done     
     conf="$(awk '{sub("url: https://localhost", "url: https://'"${wip}"'")}1' /usr/share/kibana/optimize/wazuh/config/wazuh.yml)"
     echo "$conf" > /usr/share/kibana/optimize/wazuh/config/wazuh.yml  
   
-
 }
 
 ## Check nodes
@@ -333,7 +302,7 @@ healthCheck() {
     cores=$(cat /proc/cpuinfo | grep processor | wc -l)
     ram_gb=$(free -m | awk '/^Mem:/{print $2}')
 
-    if [[ $cores < "2" ]] || [[ $ram_gb < "4096" ]]
+    if [[ $cores < "2" ]] || [[ $ram_gb < "3500" ]]
     then
         echo "The system must have at least 4Gb of RAM and 2 CPUs"
         exit 1;
@@ -377,7 +346,12 @@ main() {
                 wip=$2          
                 shift
                 shift
-                ;;                                                
+                ;;  
+            "-p"|"--elastic-password") 
+                epassword=$2          
+                shift
+                shift
+                ;;                                                              
             "-i"|"--ignore-healthcheck") 
                 i=1          
                 shift 1
@@ -423,7 +397,7 @@ main() {
         fi
         if [ -n "$k" ]
         then
-            if [[ -z "$kip" ]] || [[ -z "$eip" ]] || [[ -z "$wip" ]]
+            if [[ -z "$kip" ]] || [[ -z "$eip" ]] || [[ -z "$wip" ]] || [[ -z "$epassword" ]]
             then
                 getHelp
             fi
