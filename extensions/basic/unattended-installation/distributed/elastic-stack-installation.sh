@@ -227,7 +227,7 @@ installKibana() {
         echo "Error: Kibana installation failed"
         exit 1;
     else   
-        eval "curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/kibana/kibana_all_in_one.yml --max-time 300 $debug"
+        eval "curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/unattended-installation/distributed/templates/kibana_unattended.yml --max-time 300 $debug"
         eval "cd /usr/share/kibana $debug"
         eval "sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-4.0.0_7.8.1.zip $debug"
         if [  "$?" != 0  ]
@@ -276,8 +276,7 @@ initializeKibana() {
     # Start Kibana
     startService "kibana"   
     logger "Initializing Kibana (this may take a while)" 
-    elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs) 
-    until [[ "$(curl -XGET https://${elk}/status -I -uelastic:"$epassword" -k -s | grep "200 OK")" ]]; do
+    until [[ "$(curl -XGET https://${eip}/status -I -uelastic:"$epassword" -k -s | grep "200 OK")" ]]; do
         echo -ne $char
         sleep 10
     done     
