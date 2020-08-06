@@ -60,6 +60,10 @@ class MockColumn : public SQLite::IColumn
                     type,
                     (),
                     (const override));
+        MOCK_METHOD(std::string,
+                    name,
+                    (),
+                    (const override));
         MOCK_METHOD(int32_t,
                     value,
                     (const int32_t&),
@@ -126,6 +130,10 @@ class MockStatement : public SQLite::IStatement
                     reset,
                     (),
                     (override));
+        MOCK_METHOD(int,
+                    columnsCount,
+                    (),
+                    (const override));
 };
 
 #endif //_MOCKSQLITEWRAPPER_TEST_H
