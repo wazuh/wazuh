@@ -21,6 +21,36 @@ using ::testing::Return;
 using ::testing::An;
 using ::testing::ByMove;
 
+static void initNoMetaDataMocks(std::unique_ptr<SQLiteDBEngine>& spEngine)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+
+    auto mockTransaction { std::make_unique<MockTransaction>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
+
+    auto mockStatement_1 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_1, step()).WillOnce(Return(0));
+    EXPECT_CALL(*mockFactory,
+        createStatement(_,"NNN"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_1))));
+
+    EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+
+    EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
+        mockFactory,
+        "1",
+        "NNN"));
+
+    auto mockStatement_2 { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_2, step())
+        .WillOnce(Return(SQLITE_DONE));
+    EXPECT_CALL(*mockFactory,
+        createStatement(_,"PRAGMA table_info(dummy);"))
+        .WillOnce(Return(ByMove(std::move(mockStatement_2))));
+}
 
 TEST_F(DBEngineTest, Initialization)
 {
@@ -62,7 +92,6 @@ TEST_F(DBEngineTest, InitializationEmptyFileName)
         "", 
         "NNN"), dbengine_error);
 }
-
 
 TEST_F(DBEngineTest, InitializeStatusField)
 {
@@ -260,10 +289,8 @@ TEST_F(DBEngineTest, InitializeStatusFieldPreExistent)
         createStatement(_,"UPDATE dummy SET db_status_field_dm=0;"))
         .WillOnce(Return(ByMove(std::move(mockStatement_4))));
  
-
     EXPECT_NO_THROW(spEngine->initializeStatusField(std::vector<std::string> {"dummy"}));
 }
-
 
 TEST_F(DBEngineTest, DeleteRowsByStatusField)
 {
@@ -282,7 +309,6 @@ TEST_F(DBEngineTest, DeleteRowsByStatusField)
         createStatement(_,"NNN"))
         .WillOnce(Return(ByMove(std::move(mockStatement_1))));
 
-    
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
 
@@ -343,13 +369,11 @@ TEST_F(DBEngineTest, DeleteRowsByStatusField)
     EXPECT_CALL(*mockStatement_3, 
         step())
         .WillOnce(Return(0));
-
         
     EXPECT_CALL(*mockFactory, 
         createStatement(_,"DELETE FROM dummy WHERE db_status_field_dm=0;"))
         .WillOnce(Return(ByMove(std::move(mockStatement_3))));
  
-
     EXPECT_NO_THROW(spEngine->deleteRowsByStatusField(std::vector<std::string> {"dummy"}));
 }
 
@@ -368,7 +392,6 @@ TEST_F(DBEngineTest, DeleteRowsByStatusFieldNoMetadata)
     EXPECT_CALL(*mockFactory, 
         createStatement(_,"NNN"))
         .WillOnce(Return(ByMove(std::move(mockStatement_1))));
-
     
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
@@ -401,7 +424,6 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusFieldNoMetadata)
     EXPECT_CALL(*mockFactory, 
         createStatement(_,"NNN"))
         .WillOnce(Return(ByMove(std::move(mockStatement_1))));
-
     
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
@@ -505,10 +527,45 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusField)
     EXPECT_CALL(*mockStatement_3, column(0))
         .WillOnce(Return(ByMove(std::move(mockColumn_9))));
 
-       
     EXPECT_CALL(*mockFactory, 
         createStatement(_,"SELECT PID FROM dummy WHERE db_status_field_dm=0;"))
         .WillOnce(Return(ByMove(std::move(mockStatement_3))));
 
     EXPECT_NO_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, [](ReturnTypeCallback, const nlohmann::json&){}));
+}
+
+TEST_F(DBEngineTest, syncTableRowDataWithoutMetadataShouldThrow)
+{
+    std::unique_ptr<SQLiteDBEngine> spEngine;
+    initNoMetaDataMocks(spEngine);
+
+    // Due to the no metadata this should throw
+    EXPECT_THROW(spEngine->syncTableRowData("dummy", {}, nullptr, false), dbengine_error);
+}
+
+TEST_F(DBEngineTest, deleteTableRowsDataWithoutMetadataShouldThrow)
+{
+    std::unique_ptr<SQLiteDBEngine> spEngine;
+    initNoMetaDataMocks(spEngine);
+
+    // Due to the no metadata this should throw
+    EXPECT_THROW(spEngine->deleteTableRowsData("dummy", {}), dbengine_error);
+}
+
+TEST_F(DBEngineTest, selectDataWithoutMetadataShouldThrow)
+{
+    std::unique_ptr<SQLiteDBEngine> spEngine;
+    initNoMetaDataMocks(spEngine);
+
+    // Due to the no metadata this should throw
+    EXPECT_THROW(spEngine->selectData("dummy", {}, nullptr), dbengine_error);
+}
+
+TEST_F(DBEngineTest, bulkInsertWithoutMetadataShouldThrow)
+{
+    std::unique_ptr<SQLiteDBEngine> spEngine;
+    initNoMetaDataMocks(spEngine);
+
+    // Due to the no metadata this should throw
+    EXPECT_THROW(spEngine->bulkInsert("dummy", nullptr), dbengine_error);
 }

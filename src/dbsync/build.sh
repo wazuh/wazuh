@@ -34,7 +34,7 @@ runTest()
             return -1
         fi
     done
-    echoGreen "PASSED"
+    echoGreen "[PASSED]"
     return 0
 }
 
@@ -61,7 +61,9 @@ checkCoverageValues()
     if [[ coverageOk -eq 0 ]]; then
         return -1
     fi
-    echoGreen PASSED
+    echoGreen "Lines Coverage: $lines"
+    echoGreen "Functions Coverage: $functions"
+    echoGreen [PASSED]
 }
 
 getCoverage()
@@ -74,7 +76,7 @@ getCoverage()
     folders="$folders --directory $Folder "
     done
     reportFolder=./coverage_report
-    lcov $folders --capture --output-file $reportFolder/code_coverage.info -rc lcov_branch_coverage=1 --exclude "*/tests/*" --include "*/dbsync/*" -q
+    lcov $folders --capture --output-file $reportFolder/code_coverage.info -rc lcov_branch_coverage=0 --exclude "*/tests/*" --include "*/dbsync/*" -q
     coverage=$(genhtml $reportFolder/code_coverage.info --branch-coverage --output-directory $reportFolder)
     echo "Report: $reportFolder/index.html"
     checkCoverageValues "$coverage"
@@ -89,7 +91,7 @@ runCppCheck()
         cppcheck --force --std=c++11 --quiet ./
         return -1
     fi
-    echoGreen "PASSED"
+    echoGreen "[PASSED]"
 }
 
 runValgrind()
@@ -102,6 +104,7 @@ runValgrind()
             return -1
         fi
     done
+    echoGreen "[PASSED]"
     return 0
 }
 configDbSync()
@@ -113,46 +116,56 @@ configDbSync()
 makeDbSync()
 {
     make
+    if [[ $? -ne 0 ]]; then
+        return -1
+    fi
+    echoGreen "[PASSED]"
 }
 
 remakeDbSync()
 {
     make clean
     make
+    if [[ $? -ne 0 ]]; then
+        return -1
+    fi
+    echoGreen "[PASSED]"
 }
 readyToReview()
 {
     echoYellow "====================== Compiling  ====================="
     makeDbSync
     if [[ $? -ne 0 ]]; then
-        echoRed "Compiling Failed"
+        echoRed "[FAILED]"
         return 1
     fi
     echoYellow "====================== Cppcheck  ====================="
     runCppCheck
     if [[ $? -ne 0 ]]; then
-        echoRed "cppcheck Failed"
+        echoRed "[FAILED]"
         return 2
     fi
     echoYellow "==================== Running Tests ===================="
     runTest
     if [[ $? -ne 0 ]]; then
-        echoRed "Tests Failed"
+        echoRed "[FAILED]"
         return 3
     fi
     echoYellow "====================== Valgrind  ====================="
     runValgrind
     if [[ $? -ne 0 ]]; then
-        echoRed "Valgrind Failed"
+        echoRed "[FAILED]"
         return 4
     fi
     echoYellow "==================== Running Coverage ================="
     getCoverage
     if [[ $? -ne 0 ]]; then
-        echoRed "Coverage Failed"
+        echoRed "[FAILED]"
         return 5
     fi
-    echoGreen "RTR PASSED: code is ready to review."
+    echo ""
+    echoGreen "===> RTR PASSED: code is ready to review <==="
+    echo ""
 }
 
 showHelp()
