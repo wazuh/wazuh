@@ -84,7 +84,7 @@ void *w_logtest_main(w_logtest_connection_t *connection) {
     char msg_received[OS_MAXSTR];
     int size_msg_received;
 
-    while(1) {
+    while (1) {
 
         w_mutex_lock(&connection->mutex);
 
@@ -113,7 +113,7 @@ void w_logtest_process_log(char *token) {
 }
 
 
-w_logtest_session_t *w_logtest_initialize_session(char *token, char **msg_error) {
+w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* log_msg) {
 
     w_logtest_session_t *session;
 
@@ -135,7 +135,7 @@ w_logtest_session_t *w_logtest_initialize_session(char *token, char **msg_error)
     files = Config.decoders;
 
     while (files && *files) {
-        if (!ReadDecodeXML(*files, &session->decoderlist_forpname, &session->decoderlist_nopname)) {
+        if (!ReadDecodeXML(*files, &session->decoderlist_forpname, &session->decoderlist_nopname, log_msg)) {
             return NULL;
         }
         files++;
@@ -162,7 +162,8 @@ w_logtest_session_t *w_logtest_initialize_session(char *token, char **msg_error)
     files = Config.includes;
 
     while (files && *files) {
-        if (Rules_OP_ReadRules(*files, &session->rule_list, &session->cdblistnode, &session->eventlist) < 0) {
+        if (Rules_OP_ReadRules(*files, &session->rule_list, &session->cdblistnode, 
+                            &session->eventlist, log_msg) < 0) {
             return NULL;
         }
         files++;
