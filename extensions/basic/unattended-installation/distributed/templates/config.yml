@@ -10,3 +10,6 @@ instances:
 - name: "elasticsearch"
   ip:
   - "<elasticsearch_ip>"
+- name: "filebeat"
+  ip:
+  - "<wazuh_server_ip>"  
