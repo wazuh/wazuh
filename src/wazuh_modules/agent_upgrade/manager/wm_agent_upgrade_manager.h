@@ -190,7 +190,6 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task);
 int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task);
 
 /**
- * @WIP
  * Process and agent_upgraded command
  * @param agent_ids List with id of the agents (In this case the list will contain only 1 id)
  * @param task Task with the update information
