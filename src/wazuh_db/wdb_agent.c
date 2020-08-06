@@ -446,6 +446,7 @@ long wdb_get_agent_offset(int id_agent, int type) {
 
     if (!root) {
         merror("Error querying Wazuh DB to get agent offset.");
+        os_free(column);
         return OS_INVALID;
     }
 
@@ -453,6 +454,8 @@ long wdb_get_agent_offset(int id_agent, int type) {
     output = json_offset ? json_offset -> valueint : OS_INVALID;
 
     cJSON_Delete(root);
+    os_free(column);
+
     return output;
 }
 
@@ -494,7 +497,7 @@ int wdb_set_agent_offset(int id_agent, int type, long offset) {
 /* Set agent updating status. Returns WDB_AGENT_*, or OS_INVALID on error. */
 int wdb_get_agent_status(int id_agent) {
     int output = -1;
-    const char *status = NULL;
+    char *status = NULL;
     char wdbquery[OS_BUFFER_SIZE] = "";
     char wdboutput[OS_BUFFER_SIZE] = "";
     cJSON *root = NULL;
@@ -505,6 +508,7 @@ int wdb_get_agent_status(int id_agent) {
 
     if (!root) {
         merror("Error querying Wazuh DB to get the agent status.");
+        os_free(status);
         return OS_INVALID;
     }
 
@@ -518,6 +522,8 @@ int wdb_get_agent_status(int id_agent) {
     }
 
     cJSON_Delete(root);
+    os_free(status);
+
     return output;
 }
 
