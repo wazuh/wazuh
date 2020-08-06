@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-#include "dodiff.h"
-
+#include "rules.h"
+#include "eventinfo.h"
 #include "shared.h"
 
 static int _add2last(const char *str, size_t strsize, const char *file)
@@ -65,7 +65,7 @@ static int _add2last(const char *str, size_t strsize, const char *file)
     return (1);
 }
 
-int doDiff(RuleInfo *rule, Eventinfo *lf)
+int doDiff(RuleInfo *rule, struct _Eventinfo *lf)
 {
     time_t date_of_change;
     char *htpt = NULL;
