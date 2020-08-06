@@ -12,12 +12,15 @@
 #define DECODER_H
 
 #include "shared.h"
+#include "../logmsg.h"
 #include "os_regex/os_regex.h"
 
 #define AFTER_PARENT    0x001   /* 1   */
 #define AFTER_PREMATCH  0x002   /* 2   */
 #define AFTER_PREVREGEX 0x004   /* 4   */
 #define AFTER_ERROR     0x010
+#define AFTER_ERR_VAL   (AFTER_ERROR << 1)
+#define AFTER_ERR_NAME  (AFTER_ERROR << 2)
 
 // JSON decoder flags
 // null treatment
@@ -95,12 +98,21 @@ void OS_CreateOSDecoderList(void);
  * @param npn_osdecodernode decoder list for events without program name
  * @return 1 on success, otherwise 0
  */
-int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode, OSDecoderNode **npn_osdecodernode);
+int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode, 
+                    OSDecoderNode **npn_osdecodernode, OSList* log_msg);
 
 OSDecoderNode *OS_GetFirstOSDecoder(const char *pname);
 int getDecoderfromlist(const char *name);
 char *GetGeoInfobyIP(char *ip_addr);
-int SetDecodeXML(void);
+
+/**
+ * @brief Read decoder files and save them in the decoder list.
+ * @param log_msg list to save log messages.
+ * @retval 0 in case of error.
+ * @retval 1 successful.
+ */
+int SetDecodeXML(OSList* log_msg);
+
 void HostinfoInit(void);
 int fim_init(void);
 void RootcheckInit(void);
@@ -108,7 +120,7 @@ void SyscollectorInit(void);
 void CiscatInit(void);
 void WinevtInit(void);
 void SecurityConfigurationAssessmentInit(void);
-int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn, OSDecoderNode **decoderlist_nopn);
+int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn, OSDecoderNode **decoderlist_nopn, OSList* log_msg);
 
 /**
  * @brief Remove decoder information

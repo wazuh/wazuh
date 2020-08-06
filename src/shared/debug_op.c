@@ -28,6 +28,7 @@ struct{
 
 static void _log(int level, const char *tag, const char * file, int line, const char * func, const char *msg, va_list args) __attribute__((format(printf, 5, 0))) __attribute__((nonnull));
 
+
 #ifdef WIN32
 void WinSetError();
 #endif

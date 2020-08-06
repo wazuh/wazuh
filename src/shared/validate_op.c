@@ -745,7 +745,6 @@ char *OS_IsValidDay(const char *day_str)
         }
 
         if (!days[i]) {
-            merror(INVALID_DAY, day_str);
             return (NULL);
         }
 
@@ -757,7 +756,6 @@ char *OS_IsValidDay(const char *day_str)
         } else if (*day_str == '\0') {
             break;
         } else {
-            merror(INVALID_DAY, day_str);
             return (NULL);
         }
     }
@@ -781,7 +779,6 @@ char *OS_IsValidDay(const char *day_str)
     /* At least one day must be checked */
     if (ng == 0) {
         free(ret);
-        merror(INVALID_DAY, day_str);
         return (NULL);
     }
 
