@@ -366,7 +366,7 @@ checkInstallation() {
     echo $'\nDuring the installation of Elasticsearch the passwords for its user were generated. Please take note of them:'
     echo "$passwords"
     echo $'\nInstallation finished'
-    exit 1;
+    exit 0;
 }
 
 main() {
