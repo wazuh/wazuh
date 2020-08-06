@@ -521,7 +521,8 @@ size_t wcom_upgrade_result(char ** output){
         }
         fclose(result_file);
     }
-    os_strdup("err Cannot read upgrade_result file.", *output);
+    os_malloc(OS_MAXSTR + 1, *output);
+    snprintf(*output, OS_MAXSTR, "err Cannot read upgrade_result file due to [(%d)-(%s)]", errno, strerror(errno));
     mdebug1("At WCOM upgrade_result: Cannot read file '%s'.", PATH);
     return strlen(*output);
 }
