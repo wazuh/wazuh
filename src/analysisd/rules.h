@@ -16,6 +16,7 @@
 #include "shared.h"
 #include "active-response.h"
 #include "lists.h"
+#include "logmsg.h"
 
 /* Event fields - stored on a u_int32_t */
 #define FIELD_SRCIP      0x01
@@ -216,7 +217,7 @@ typedef struct _RuleNode {
 
 
 RuleInfoDetail *zeroinfodetails(int type, const char *data);
-int get_info_attributes(char **attributes, char **values);
+int get_info_attributes(char **attributes, char **values, OSList* log_msg);
 
 /**
  * @brief Allocate memory and initialize attributes with default values
@@ -243,8 +244,16 @@ void OS_CreateRuleList(void);
 /* Add rule information to the list */
 int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node);
 
-/* Add rule information as a child */
-int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node);
+/**
+ * @brief Add rule information as a child.
+ * @param read_rule rule information.
+ * @param r_node node to add as a child rule information.
+ * @param log_msg List to save log messages.
+ * @retval -1 Critical errors.
+ * @retval  0 successful.
+ * @retval  1 for errors.
+ */
+int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg);
 
 /* Add an overwrite rule */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid);
@@ -300,9 +309,11 @@ void Rules_OP_CreateRules(void);
  * @param r_node reference to the rule list
  * @param l_node reference to the first list of the cdb lists
  * @param last_event_list reference to first node to the previous events list
+ * @param log_msg List to save log messages.
  * @return 0 on success, otherwise -1
  */
-int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, EventList **last_event_list);
+int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, 
+                       EventList **last_event_list, OSList* log_msg);
 
 int AddHash_Rule(RuleNode *node);
 

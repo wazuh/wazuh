@@ -92,7 +92,7 @@ void w_logtest_process_log(char * token);
  * @brief Create resources necessary to service client
  * @param fd File descriptor which represents the client
  */
-w_logtest_session_t *w_logtest_initialize_session(char * token, char ** msg_error);
+w_logtest_session_t *w_logtest_initialize_session(char * token, OSList* log_msg);
 
 /**
  * @brief Free resources after client closes connection

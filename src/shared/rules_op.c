@@ -323,6 +323,7 @@ int OS_ReadXMLRules(const char *rulefile,
                         OS_IsValidDay(rule_opt[k]->content);
 
                     if (!config_ruleinfo->week_day) {
+                        merror(INVALID_DAY, rule_opt[k]->content);
                         merror(INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
                         retval = -1;
                         goto cleanup;
