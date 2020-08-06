@@ -90,7 +90,7 @@ namespace Utils
         {
             if (!m_blocked)
             {
-                m_queue.push
+                m_queue.pushBack
                 (
                     [value, this]()
                     {
@@ -102,19 +102,24 @@ namespace Utils
 
         void rundown()
         {
-            if (!cancelled())
+            if (!cancelled() && !m_blocked)
             {
                 m_blocked = true;
-                std::promise<void> promise;
-                auto fut { promise.get_future() };
-                m_queue.push
-                (
-                    [&promise]()
-                    {
-                        promise.set_value();
-                    }
-                );
-                fut.wait();
+                std::function<void()> lastItem;
+                if (m_queue.popBack(lastItem, false))
+                {
+                    std::promise<void> promise;
+                    auto fut { promise.get_future() };
+                    m_queue.pushBack
+                    (
+                        [&promise, lastItem]()
+                        {
+                            lastItem();
+                            promise.set_value();
+                        }
+                    );
+                    fut.wait();
+                }
                 cancel();
             }
         }
@@ -140,7 +145,7 @@ namespace Utils
         void dispatch()
         {
             std::function<void()> fnc;
-            while(m_queue.pop(fnc))
+            while(m_queue.popFront(fnc))
             {
                 fnc();
             }
