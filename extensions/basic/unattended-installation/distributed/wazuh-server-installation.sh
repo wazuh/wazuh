@@ -1,0 +1,237 @@
+#!/bin/bash
+## Check if system is based on yum or apt-get
+ips=()
+debug='> /dev/null 2>&1'
+if [ -n "$(command -v yum)" ] 
+then
+    sys_type="yum"
+elif [ -n "$(command -v apt-get)" ] 
+then
+    sys_type="apt-get"
+fi
+
+logger() {
+    echo $1
+}
+
+## Show script usage
+getHelp() {
+   echo ""
+   echo "Usage: $0 arguments"
+   echo -e "\t-i    | --ignore-healthcheck Ignores the healthcheck"
+   echo -e "\t-ip   | --elasticsearch-ip <elasticsearch-ip> Indicates the IP of Elasticsearch. Can be added as many as necessary"
+   echo -e "\t-d   | --debug Shows the complete installation output"
+   echo -e "\t-h    | --help Shows help"
+   exit 1 # Exit script after printing help
+}
+
+## Install the required packages for the installation
+installPrerequisites() {
+    logger "Installing all necessary utilities for the installation..."
+
+    if [ $sys_type == "yum" ] 
+    then
+        eval "yum install zip unzip curl -y -q $debug"   
+    elif [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install zip unzip curl $debug"       
+    elif [ $sys_type == "apt-get" ] 
+    then
+        eval "apt-get install curl apt-transport-https zip unzip lsb-release gnupg2 libcap2-bin -y -q $debug"
+        eval "apt-get update -q $debug"
+    fi
+
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Prerequisites could not be installed"
+        exit 1;
+    else
+        logger "Done"
+    fi   
+}
+
+## Add the Elastic repository
+addElasticrepo() {
+    logger "Adding the Elasticsearch repository..."
+
+    if [ $sys_type == "yum" ] 
+    then
+        eval "rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch $debug"
+        echo -e '[elasticsearch-7.x]\nname=Elasticsearch repository for 7.x packages\nbaseurl=https://artifacts.elastic.co/packages/7.x/yum\ngpgcheck=1\ngpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch\nenabled=1\nautorefresh=1\ntype=rpm-md' > /etc/yum.repos.d/elastic.repo
+    elif [ $sys_type == "zypper" ] 
+    then
+        rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch > /dev/null 2>&1
+		cat > /etc/zypp/repos.d/elastic.repo <<- EOF
+        [elasticsearch-7.x]
+        name=Elasticsearch repository for 7.x packages
+        baseurl=https://artifacts.elastic.co/packages/7.x/yum
+        gpgcheck=1
+        gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        enabled=1
+        autorefresh=1
+        type=rpm-md
+		EOF
+        
+    elif [ $sys_type == "apt-get" ] 
+    then
+        eval "curl -s https://artifacts.elastic.co/GPG-KEY-elasticsearch --max-time 300 | apt-key add - $debug"
+        echo 'deb https://artifacts.elastic.co/packages/7.x/apt stable main' | eval "tee /etc/apt/sources.list.d/elastic-7.x.list $debug"
+        eval "apt-get update -q $debug"
+    fi    
+
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Elasticsearch repository could not be added"
+        exit 1;
+    else
+        logger "Done"
+    fi        
+}
+
+## Add the Wazuh repository
+addWazuhrepo() {
+    logger "Adding the Wazuh repository..."
+
+    if [ $sys_type == "yum" ] 
+    then
+        eval "rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH $debug"
+        eval "echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh_pre.repo $debug"
+    elif [ $sys_type == "zypper" ] 
+    then
+        rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH > /dev/null 2>&1
+		cat > /etc/zypp/repos.d/wazuh_pre.repo <<- EOF
+		[wazuh_repo]
+		gpgcheck=1
+		gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
+		enabled=1
+		name=Wazuh repository
+		baseurl=https://packages.wazuh.com/3.x/yum/
+		protect=1
+		EOF
+    
+    elif [ $sys_type == "apt-get" ] 
+    then
+        eval "curl -s https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH --max-time 300 | apt-key add - $debug"
+        eval "echo "deb https://packages-dev.wazuh.com/trash/apt/ unstable main" | tee -a /etc/apt/sources.list.d/wazuh_trash.list $debug"
+        eval "apt-get update -q $debug"
+    fi    
+
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Wazuh repository could not be added"
+        exit 1;
+    else
+        logger "Done"
+    fi        
+}
+
+## Wazuh manager
+installWazuh() {
+    logger "Installing the Wazuh manager..."
+
+    eval "$sys_type install wazuh-manager -y -q $debug"
+
+    logger "Done"
+}
+
+## Filebeat
+installFilebeat() {
+    
+    logger "Installing Filebeat..."
+
+    eval "$sys_type install filebeat -y -q  $debug"
+    eval "curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/unattended-installation/distributed/templates/filebeat.yml --max-time 300  $debug"
+    eval "curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.13.1/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300 $debug"
+    eval "chmod go+r /etc/filebeat/wazuh-template.json $debug"
+    eval "curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz --max-time 300 | tar -xvz -C /usr/share/filebeat/module $debug"
+    eval "mkdir /etc/filebeat/certs $debug"
+
+    logger "Done"
+}
+
+configureFilebeat() {
+    
+    echo "output.elasticsearch.hosts:" >> /etc/filebeat/filebeat.yml
+    for i in "${!ips[@]}"; do
+        echo "  - ${ips[i]}:9200" >> /etc/filebeat/filebeat.yml
+    done
+    conf="$(awk '{sub("<elasticsearch_password>", "'"${password}"'")}1' /etc/filebeat/filebeat.yml)"
+    echo "$conf" > /etc/filebeat/filebeat.yml  
+}
+
+## Health check
+healthCheck() {
+    cores=$(cat /proc/cpuinfo | grep processor | wc -l)
+    ram_gb=$(free -m | awk '/^Mem:/{print $2}')
+
+    if [[ $cores < "2" ]] || [[ $ram_gb < "4096" ]]
+    then
+        echo "The system must have at least 4Gb of RAM and 2 CPUs"
+        exit 1;
+    else
+        echo "Starting the installation..."
+    fi
+}
+
+## Main
+
+main() {
+  
+    
+    if [ -n "$1" ] 
+    then    
+        while [ -n "$1" ]
+        do
+            case "$1" in
+            "-i"|"--ignore-healthcheck")        
+                i=1
+                shift
+                ;;            
+            "-ip"|"--elasticsearch-ip")        
+                ips+=($2)
+                shift
+                shift
+                ;;
+            "-p"|"--elastic-password")        
+                password=$2
+                shift
+                shift
+                ;;                
+            "-d"|"--debug") 
+                d=1          
+                shift 1
+                ;;                 
+            "-h"|"--help")        
+                getHelp
+                ;;                
+            *)
+                exit 1
+            esac
+        done
+        if [ -n "$d" ]
+        then
+            debug=""
+        fi
+        if [ -z "$ips" ]
+        then
+            getHelp
+        fi
+        if [ -n "$i" ]
+        then
+            echo "Health-check ignored."
+
+        else
+            healthCheck
+        fi
+        installPrerequisites
+        addElasticrepo
+        addWazuhrepo
+        installWazuh
+        installFilebeat           
+        configureFilebeat $ips $password
+    else
+        getHelp
+    fi
+}
+
+main "$@"
