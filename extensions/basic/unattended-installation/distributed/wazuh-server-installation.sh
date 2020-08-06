@@ -150,7 +150,7 @@ installFilebeat() {
 }
 
 configureFilebeat() {
-    
+    mkdir /etc/filebeat/certs/ca -p
     echo "output.elasticsearch.hosts:" >> /etc/filebeat/filebeat.yml
     for i in "${!ips[@]}"; do
         echo "  - ${ips[i]}:9200" >> /etc/filebeat/filebeat.yml
