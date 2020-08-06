@@ -24,28 +24,44 @@ TEST_F(ThreadSafeQueueTest, Ctor)
     int ret_val{};
     EXPECT_TRUE(queue.empty());
     EXPECT_FALSE(queue.cancelled());
-    EXPECT_FALSE(queue.pop(ret_val, false));//non wait pop;
-    auto spValue{queue.pop(false)};
+    EXPECT_FALSE(queue.popFront(ret_val, false));//non wait pop;
+    auto spValue{queue.popFront(false)};
     EXPECT_FALSE(spValue);
 }
 
-TEST_F(ThreadSafeQueueTest, NonBlockingPop)
+TEST_F(ThreadSafeQueueTest, NonBlockingPopFront)
 {
     SafeQueue<int> queue;
-    queue.push(0);
+    queue.pushBack(0);
     int ret_val{};
-    EXPECT_TRUE(queue.pop(ret_val, false));//non wait pop;
+    EXPECT_TRUE(queue.popFront(ret_val, false));//non wait pop;
     EXPECT_EQ(0, ret_val);//non wait pop;
-    EXPECT_FALSE(queue.pop(ret_val, false));//non wait pop;
-    queue.push(1);
-    auto spValue{queue.pop(false)};
+    EXPECT_FALSE(queue.popFront(ret_val, false));//non wait pop;
+    queue.pushBack(1);
+    auto spValue{queue.popFront(false)};
     EXPECT_TRUE(spValue);
     EXPECT_EQ(1, *spValue);
-    spValue = queue.pop(false);
+    spValue = queue.popFront(false);
     EXPECT_FALSE(spValue);
 }
 
-TEST_F(ThreadSafeQueueTest, BlockingPopByRef)
+TEST_F(ThreadSafeQueueTest, NonBlockingPopBack)
+{
+    SafeQueue<int> queue;
+    queue.pushFront(0);
+    int ret_val{};
+    EXPECT_TRUE(queue.popBack(ret_val, false));//non wait pop;
+    EXPECT_EQ(0, ret_val);//non wait pop;
+    EXPECT_FALSE(queue.popBack(ret_val, false));//non wait pop;
+    queue.pushFront(1);
+    auto spValue{queue.popBack(false)};
+    EXPECT_TRUE(spValue);
+    EXPECT_EQ(1, *spValue);
+    spValue = queue.popBack(false);
+    EXPECT_FALSE(spValue);
+}
+
+TEST_F(ThreadSafeQueueTest, BlockingPopBackByRef)
 {
     SafeQueue<int> queue;
     std::thread t1
@@ -53,52 +69,86 @@ TEST_F(ThreadSafeQueueTest, BlockingPopByRef)
         [&queue]()
         {
             int ret_val{};
-            EXPECT_TRUE(queue.pop(ret_val));
+            EXPECT_TRUE(queue.popBack(ret_val));
             EXPECT_EQ(0, ret_val);
         }
     };
-    queue.push(0);
+    queue.pushBack(0);
     t1.join();
 }
 
-TEST_F(ThreadSafeQueueTest, BlockingPopBySmartPtr)
+TEST_F(ThreadSafeQueueTest, BlockingPopFontByRef)
 {
     SafeQueue<int> queue;
     std::thread t1
     {
         [&queue]()
         {
-            auto ret_val{queue.pop()};
+            int ret_val{};
+            EXPECT_TRUE(queue.popFront(ret_val));
+            EXPECT_EQ(0, ret_val);
+        }
+    };
+    queue.pushFront(0);
+    t1.join();
+}
+
+TEST_F(ThreadSafeQueueTest, BlockingPopBackBySmartPtr)
+{
+    SafeQueue<int> queue;
+    std::thread t1
+    {
+        [&queue]()
+        {
+            auto ret_val{queue.popBack()};
             EXPECT_TRUE(ret_val);
             EXPECT_EQ(0, *ret_val);
         }
     };
-    queue.push(0);
+    queue.pushBack(0);
+    t1.join();
+}
+
+TEST_F(ThreadSafeQueueTest, BlockingPopFrontBySmartPtr)
+{
+    SafeQueue<int> queue;
+    std::thread t1
+    {
+        [&queue]()
+        {
+            auto ret_val{queue.popFront()};
+            EXPECT_TRUE(ret_val);
+            EXPECT_EQ(0, *ret_val);
+        }
+    };
+    queue.pushFront(0);
     t1.join();
 }
 
 TEST_F(ThreadSafeQueueTest, Cancel)
 {
     SafeQueue<int> queue;
-    queue.push(0);
-    queue.push(1);
-    queue.push(2);
+    queue.pushBack(0);
+    queue.pushBack(1);
+    queue.pushFront(2);
     int ret_val{};
-    EXPECT_TRUE(queue.pop(ret_val, false));//non wait pop;
+    EXPECT_TRUE(queue.popFront(ret_val, false));//non wait pop;
+    EXPECT_TRUE(queue.popBack(ret_val, false));//non wait pop;
     queue.cancel();
-    EXPECT_FALSE(queue.pop(ret_val, false));//non wait pop;
-    EXPECT_FALSE(queue.pop(ret_val));//wait pop;
+    EXPECT_FALSE(queue.popFront(ret_val, false));//non wait pop;
+    EXPECT_FALSE(queue.popFront(ret_val));//wait pop;
+    EXPECT_FALSE(queue.popBack(ret_val));//wait pop;
     EXPECT_TRUE(queue.cancelled());
 }
 
-TEST_F(ThreadSafeQueueTest, CancelBlockingPop)
+TEST_F(ThreadSafeQueueTest, CancelBlockingPopBack)
 {
     SafeQueue<int> queue;
     std::thread t1
     {
         [&queue]()
         {
-            auto ret_val{queue.pop()};
+            auto ret_val{queue.popBack()};
             EXPECT_FALSE(ret_val);
             EXPECT_TRUE(queue.cancelled());
         }
@@ -108,7 +158,33 @@ TEST_F(ThreadSafeQueueTest, CancelBlockingPop)
         [&queue]()
         {
             int ret_val{};
-            EXPECT_FALSE(queue.pop(ret_val));
+            EXPECT_FALSE(queue.popBack(ret_val));
+            EXPECT_TRUE(queue.cancelled());
+        }
+    };
+    queue.cancel();
+    t1.join();
+    t2.join();
+}
+
+TEST_F(ThreadSafeQueueTest, CancelBlockingPopFront)
+{
+    SafeQueue<int> queue;
+    std::thread t1
+    {
+        [&queue]()
+        {
+            auto ret_val{queue.popFront()};
+            EXPECT_FALSE(ret_val);
+            EXPECT_TRUE(queue.cancelled());
+        }
+    };
+    std::thread t2
+    {
+        [&queue]()
+        {
+            int ret_val{};
+            EXPECT_FALSE(queue.popFront(ret_val));
             EXPECT_TRUE(queue.cancelled());
         }
     };
