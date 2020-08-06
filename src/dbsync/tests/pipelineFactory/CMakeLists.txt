@@ -16,7 +16,8 @@ include_directories(${CMAKE_SOURCE_DIR}/include/)
 link_directories(${CMAKE_BINARY_DIR}/lib)
 
 file(GLOB PIPELINE_FACTORY_SRC
-    "${CMAKE_SOURCE_DIR}/src/dbsyncPipelineFactory.cpp")
+    "${CMAKE_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sqlite/*.cpp")
 
 add_executable(dbsyncPipelineFactory_unit_test 
     "${PIPELINE_FACTORY_UNITTEST_SRC}"
