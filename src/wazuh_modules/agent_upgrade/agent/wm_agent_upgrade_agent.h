@@ -28,7 +28,8 @@ typedef enum _wm_upgrade_agent_state {
  * Checks if an agent has been recently upgraded, by reading upgrade_results file
  * If there has been an upgrade, dispatchs a message to notificate the manager.
  * This method will block the thread if the agent is not connected to the manager
+ * @param agent_config Agent configuration parameters
  * */
-void wm_agent_upgrade_check_status();
+void wm_agent_upgrade_check_status(wm_agent_configs agent_config);
 
 #endif

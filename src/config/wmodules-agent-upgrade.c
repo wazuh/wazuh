@@ -20,6 +20,11 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
         module->tag = strdup(module->context->name);
         os_calloc(1, sizeof(wm_agent_upgrade), data);
         data->enabled = 1;
+        #ifdef CLIENT
+        data->agent_config.upgrade_wait_start = 300;
+        data->agent_config.upgrade_wait_max = 3600;
+        data->agent_config.ugprade_wait_factor_increase = 2.0;
+        #endif
         module->data = data;
     }
 

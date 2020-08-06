@@ -17,8 +17,22 @@
 
 #define WM_UPGRADE_AGENT_UPDATED_COMMAND "upgrade_update_status"
 
+#ifdef CLIENT
+/**
+ * Configurations on agent side
+ */
+typedef struct _wm_agent_configs {
+    unsigned int upgrade_wait_start;
+    unsigned int upgrade_wait_max;
+    float ugprade_wait_factor_increase;
+} wm_agent_configs;
+#endif
+
 typedef struct _wm_agent_upgrade {
     int enabled:1;
+    #ifdef CLIENT
+    wm_agent_configs agent_config;
+    #endif
 } wm_agent_upgrade;
 
 // Parse XML configuration
