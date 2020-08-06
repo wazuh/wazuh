@@ -11,7 +11,7 @@
 
 #ifndef THREAD_SAFE_QUEUE_H
 #define THREAD_SAFE_QUEUE_H
-#include <deque>
+#include <queue>
 #include <mutex>
 #include <memory>
 #include <atomic>
@@ -39,29 +39,18 @@ namespace Utils
             cancel();
         }
 
-        void pushBack(const T& value)
+        void push(const T& value)
         {
             if (!m_canceled)
             {
                 Lock lock{ m_mutex };
-                m_queue.push_back(value);
+                m_queue.push(value);
                 lock.unlock();
                 m_cv.notify_one();
             }
         }
 
-        void pushFront(const T& value)
-        {
-            if (!m_canceled)
-            {
-                Lock lock{ m_mutex };
-                m_queue.push_front(value);
-                lock.unlock();
-                m_cv.notify_one();
-            }
-        }
-
-        bool popFront(T& value, const bool wait = true)
+        bool pop(T& value, const bool wait = true)
         {
             Lock lock{ m_mutex };
             if (wait)
@@ -72,12 +61,12 @@ namespace Utils
             if (ret)
             {
                 value = m_queue.front();
-                m_queue.pop_front();
+                m_queue.pop();
             }
             return ret;
         }
 
-        std::shared_ptr<T> popFront(const bool wait = true)
+        std::shared_ptr<T> pop(const bool wait = true)
         {
             Lock lock{ m_mutex };
             if (wait)
@@ -88,40 +77,7 @@ namespace Utils
             if (ret)
             {
                 const auto spData{ std::make_shared<T>(m_queue.front()) };
-                m_queue.pop_front();
-                return spData;
-            }
-            return nullptr;
-        }
-
-        bool popBack(T& value, const bool wait = true)
-        {
-            Lock lock{ m_mutex };
-            if (wait)
-            {
-                m_cv.wait(lock, [this](){return !m_queue.empty() || m_canceled;});
-            }
-            const bool ret {!m_canceled && !m_queue.empty()};
-            if (ret)
-            {
-                value = m_queue.back();
-                m_queue.pop_back();
-            }
-            return ret;
-        }
-
-        std::shared_ptr<T> popBack(const bool wait = true)
-        {
-            Lock lock{ m_mutex };
-            if (wait)
-            {
-                m_cv.wait(lock, [this](){return !m_queue.empty() || m_canceled;});
-            }
-            const bool ret {!m_canceled && !m_queue.empty()};
-            if (ret)
-            {
-                const auto spData{ std::make_shared<T>(m_queue.back()) };
-                m_queue.pop_back();
+                m_queue.pop();
                 return spData;
             }
             return nullptr;
@@ -156,7 +112,7 @@ namespace Utils
         mutable std::mutex m_mutex;
         std::condition_variable m_cv;
         std::atomic_bool m_canceled;
-        std::deque<T> m_queue;
+        std::queue<T> m_queue;
     };
 }//namespace Utils
 

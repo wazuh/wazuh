@@ -66,7 +66,7 @@ namespace Utils
     public:
         AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency())
         : m_functor{ functor }
-        , m_blocked{ false }
+        , m_running{ true }
         , m_numberOfThreads{ numberOfThreads }
         {
             m_threads.reserve(m_numberOfThreads);
@@ -79,18 +79,14 @@ namespace Utils
         AsyncDispatcher(AsyncDispatcher& other) = delete;
         ~AsyncDispatcher()
         {
-            m_queue.cancel();
-            for (auto& thread : m_threads)
-            {
-                thread.join();
-            }
+            cancel();
         }
 
         void push(const Type& value)
         {
-            if (!m_blocked)
+            if (m_running)
             {
-                m_queue.pushBack
+                m_queue.push
                 (
                     [value, this]()
                     {
@@ -102,35 +98,30 @@ namespace Utils
 
         void rundown()
         {
-            if (!cancelled() && !m_blocked)
+            if (m_running)
             {
-                m_blocked = true;
-                std::function<void()> lastItem;
-                if (m_queue.popBack(lastItem, false))
-                {
-                    std::promise<void> promise;
-                    auto fut { promise.get_future() };
-                    m_queue.pushBack
-                    (
-                        [&promise, lastItem]()
-                        {
-                            lastItem();
-                            promise.set_value();
-                        }
-                    );
-                    fut.wait();
-                }
+                std::promise<void> promise;
+                auto fut { promise.get_future() };
+                m_queue.push
+                (
+                    [&promise]()
+                    {
+                        promise.set_value();
+                    }
+                );
+                fut.wait();
                 cancel();
             }
         }
         void cancel()
         {
+            joinThreads();
             m_queue.cancel();
         }
 
         bool cancelled() const
         {
-            return m_queue.cancelled();
+            return !m_running;
         }
         unsigned int numberOfThreads() const
         {
@@ -144,16 +135,34 @@ namespace Utils
     private:
         void dispatch()
         {
-            std::function<void()> fnc;
-            while(m_queue.popFront(fnc))
+            while(m_running)
             {
-                fnc();
+                std::function<void()> fnc;
+                if(m_queue.pop(fnc, false))
+                {
+                    fnc();
+                }
+                std::this_thread::yield();
+            }
+        }
+        void joinThreads()
+        {
+            if (m_running)
+            {
+                m_running = false;
+                for (auto& thread : m_threads)
+                {
+                    if (thread.joinable())
+                    {
+                        thread.join();
+                    }
+                }
             }
         }
         Functor m_functor;
         SafeQueue<std::function<void()>> m_queue;
         std::vector<std::thread> m_threads;
-        std::atomic_bool m_blocked;
+        std::atomic_bool m_running;
         const unsigned int m_numberOfThreads;
     };
 
