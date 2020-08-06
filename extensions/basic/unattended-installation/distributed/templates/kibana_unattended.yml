@@ -1,5 +1,5 @@
 elasticsearch.password: <elasticsearch_password>
-
+server.port: 443
 # Elasticsearch from/to Kibana
 
 elasticsearch.ssl.certificateAuthorities: /etc/kibana/certs/ca/ca.crt
