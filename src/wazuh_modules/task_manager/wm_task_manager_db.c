@@ -18,13 +18,12 @@
 static int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt);
 
 static const char *task_queries[] = {
-    //[WM_TASK_INSERT_TASK] = "INSERT INTO " TASKS_TABLE " VALUES(NULL,?,?,?,?);",
+    [WM_TASK_INSERT_TASK] = "INSERT INTO " TASKS_TABLE " VALUES(NULL,?,?,?,?,?,?);",
     [WM_TASK_GET_MAX_TASK_ID] = "SELECT MAX(TASK_ID) FROM " TASKS_TABLE ";",
     [WM_TASK_GET_LAST_AGENT_TASK] = "SELECT MAX(TASK_ID) FROM " TASKS_TABLE " WHERE AGENT_ID = ? AND MODULE = ?;",
     [WM_TASK_GET_TASK_STATUS] = "SELECT STATUS FROM " TASKS_TABLE " WHERE TASK_ID = ?;",
-    [WM_TASK_UPDATE_TASK_STATUS] = "UPDATE " TASKS_TABLE " SET STATUS = ? WHERE TASK_ID = ?;",
-    [WM_TASK_INSERT_TASK] = "INSERT INTO " TASKS_TABLE " VALUES(NULL,?,?,?,?,?,?);",
-    [WM_TASK_GET_TASK_BY_AGENT_ID_AND_MODULE] = "SELECT TASK_ID, COMMAND, MAX(CREATE_TIME), LAST_UPDATE_TIME, STATUS FROM TASKS WHERE MODULE = ? AND AGENT_ID = ?;"
+    [WM_TASK_UPDATE_TASK_STATUS] = "UPDATE " TASKS_TABLE " SET STATUS = ?, LAST_UPDATE_TIME = ? WHERE TASK_ID = ?;",
+    [WM_TASK_GET_TASK_BY_AGENT_ID_AND_MODULE] = "SELECT TASK_ID, COMMAND, MAX(CREATE_TIME), LAST_UPDATE_TIME, STATUS FROM " TASKS_TABLE " WHERE MODULE = ? AND AGENT_ID = ?;"
 };
 
 static const char *task_statuses[] = {
@@ -118,7 +117,6 @@ int wm_task_manager_insert_task(int agent_id, const char *module, const char *co
     sqlite3_bind_text(stmt, 2, module, -1, NULL);
     sqlite3_bind_text(stmt, 3, command, -1, NULL);
     sqlite3_bind_int(stmt, 4, time(0));
-    //sqlite3_bind_int(stmt, 5, NULL);
     sqlite3_bind_text(stmt, 6, task_statuses[WM_TASK_NEW], -1, NULL);
 
     if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
@@ -266,7 +264,8 @@ int wm_task_manager_update_task_status(int agent_id, const char *module, const c
     }
 
     sqlite3_bind_text(stmt, 1, status, -1, NULL);
-    sqlite3_bind_int(stmt, 2, task_id);
+    sqlite3_bind_int(stmt, 2, time(0));
+    sqlite3_bind_int(stmt, 3, task_id);
 
     if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);

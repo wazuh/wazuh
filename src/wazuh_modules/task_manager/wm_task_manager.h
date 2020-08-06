@@ -19,6 +19,20 @@
 typedef struct _wm_task_manager {
     int enabled:1;
 } wm_task_manager;
+/*
+typedef enum _task_status {
+    WM_TASK_NEW = 0,
+    WM_TASK_IN_PROGRESS,
+    WM_TASK_DONE,
+    WM_TASK_FAILED
+} task_status;
+*/
+typedef enum _upgrade_status {
+    WM_TASK_UPGRADE_ERROR = 0,
+    WM_TASK_UPGRADE_UPDATING,
+    WM_TASK_UPGRADE_UPDATED,
+    WM_TASK_UPGRADE_OUTDATED
+} upgrade_status;
 
 typedef enum _json_key {
     WM_TASK_MODULE = 0,

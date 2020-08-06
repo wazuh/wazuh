@@ -37,8 +37,21 @@ static const char *json_keys[] = {
     [WM_TASK_ERROR] = "error",
     [WM_TASK_ERROR_DATA] = "data",
     [WM_TASK_CREATE_TIME] = "create",
-    [WM_TASK_LAST_UPDATE_TIME] = "update",
-    [WM_TASK_STATUS] = "status"
+    [WM_TASK_LAST_UPDATE_TIME] = "update"
+};
+
+static const char *task_statuses[] = {
+    [WM_TASK_NEW] = "New",
+    [WM_TASK_IN_PROGRESS] = "In progress",
+    [WM_TASK_DONE] = "Done",
+    [WM_TASK_FAILED] = "Failed"
+};
+
+static const char *upgrade_statuses[] = {
+    [WM_TASK_UPGRADE_ERROR] = "Error",
+    [WM_TASK_UPGRADE_UPDATING] = "Updating",
+    [WM_TASK_UPGRADE_UPDATED] = "Updated",
+    [WM_TASK_UPGRADE_OUTDATED] = "Outdated"
 };
 
 static const char *modules_list[] = {
@@ -271,7 +284,7 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
             } else {
                 response = wm_task_manager_build_response(WM_TASK_SUCCESS, agent_id, task, tmp_status);
                 wm_task_manager_build_response_result(response, module, comm, tmp_status, create_time, last_update_time);
-                os_free(status);
+                os_free(tmp_status);
                 os_free(comm);
             }
         } else {
@@ -298,10 +311,22 @@ cJSON* wm_task_manager_build_response_result(cJSON *res, char *module, char *com
         cJSON_AddStringToObject(res, json_keys[WM_TASK_COMMAND], command);
     }
     if (status != NULL) {
-        cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], status);
+        if (!strcmp(task_statuses[WM_TASK_DONE], status)){
+            cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], upgrade_statuses[WM_TASK_UPGRADE_UPDATED]);
+        } else if (!strcmp(task_statuses[WM_TASK_IN_PROGRESS], status)){
+            cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], upgrade_statuses[WM_TASK_UPGRADE_UPDATING]);
+        } else if (!strcmp(task_statuses[WM_TASK_FAILED], status)){
+            cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], upgrade_statuses[WM_TASK_UPGRADE_OUTDATED]);
+        } else if (!strcmp(task_statuses[WM_TASK_NEW], status)){
+            cJSON_AddStringToObject(res, json_keys[WM_TASK_STATUS], upgrade_statuses[WM_TASK_UPGRADE_ERROR]);
+        }
     }
     if (create_time != OS_INVALID) {
-        cJSON_AddNumberToObject(res, json_keys[WM_TASK_CREATE_TIME], create_time);
+        char timestamp[40];
+        struct tm tm = { .tm_sec = 0 };
+        localtime_r(&create_time, &tm);
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &tm);
+        cJSON_AddStringToObject(res, json_keys[WM_TASK_CREATE_TIME], timestamp);
     }
     if (last_update_time != OS_INVALID) {
         cJSON_AddNumberToObject(res, json_keys[WM_TASK_LAST_UPDATE_TIME], last_update_time);
