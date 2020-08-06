@@ -14,6 +14,7 @@
 
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "typedef.h"
 
 class DBSyncTest : public ::testing::Test 
 {
@@ -24,6 +25,12 @@ protected:
 
     void SetUp() override;
     void TearDown() override;
+};
+
+struct DummyContext
+{
+    DBSYNC_HANDLE handle;
+    TXN_HANDLE    txnContext;
 };
 
 #endif // _DBYSNC_TEST_H
