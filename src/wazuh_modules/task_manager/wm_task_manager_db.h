@@ -26,7 +26,8 @@ typedef enum _task_query {
     WM_TASK_GET_LAST_AGENT_TASK,
     WM_TASK_GET_TASK_STATUS,
     WM_TASK_UPDATE_TASK_STATUS,
-    WM_TASK_GET_TASK_BY_AGENT_ID_AND_MODULE
+    WM_TASK_GET_TASK_BY_AGENT_ID_AND_MODULE,
+    WM_TASK_GET_TASK
 } task_query;
 
 typedef enum _task_status {

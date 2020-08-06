@@ -19,14 +19,7 @@
 typedef struct _wm_task_manager {
     int enabled:1;
 } wm_task_manager;
-/*
-typedef enum _task_status {
-    WM_TASK_NEW = 0,
-    WM_TASK_IN_PROGRESS,
-    WM_TASK_DONE,
-    WM_TASK_FAILED
-} task_status;
-*/
+
 typedef enum _upgrade_status {
     WM_TASK_UPGRADE_ERROR = 0,
     WM_TASK_UPGRADE_UPDATING,
@@ -47,7 +40,8 @@ typedef enum _json_key {
 } json_key;
 
 typedef enum _module_list {
-    WM_TASK_UPGRADE_MODULE = 0
+    WM_TASK_UPGRADE_MODULE = 0,
+    WM_TASK_API_MODULE
 } module_list;
 
 typedef enum _command_list {
@@ -67,6 +61,7 @@ typedef enum _error_code {
     WM_TASK_INVALID_TASK_ID,
     WM_TASK_INVALID_STATUS,
     WM_TASK_DATABASE_NO_TASK,
+    WM_TASK_DATABASE_NO_AGENT,
     WM_TASK_DATABASE_ERROR,
     WM_TASK_UNKNOWN_ERROR
 } error_code;
