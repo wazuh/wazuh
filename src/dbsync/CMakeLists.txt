@@ -42,4 +42,5 @@ add_subdirectory(testtool)
 
 if(UNIT_TEST)
   add_subdirectory(tests)
+  add_subdirectory(integrationTests)
 endif(UNIT_TEST)

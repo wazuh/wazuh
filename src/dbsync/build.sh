@@ -25,7 +25,7 @@ echoMagenta()
 }
 runTest()
 {
-    for Test in ./bin/*_unit_test ; do
+    for Test in ./bin/*_test ; do
         echoGreen "Running $Test"
         "$Test" > /dev/null
         status=$?
@@ -96,7 +96,7 @@ runCppCheck()
 
 runValgrind()
 {
-    for Test in ./bin/*_unit_test ; do
+    for Test in ./bin/*_test ; do
         echoGreen "Running valgrind on $Test"
         result=$(valgrind --leak-check=full -q --error-exitcode=1 "$Test" > /dev/null)
         status=$?
