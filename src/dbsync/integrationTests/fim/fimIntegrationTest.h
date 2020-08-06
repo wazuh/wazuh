@@ -1,7 +1,7 @@
 /*
  * Wazuh DBSYNC
  * Copyright (C) 2015-2020, Wazuh Inc.
- * June 11, 2020.
+ * August 6, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -20,12 +20,11 @@ class DBSyncFimIntegrationTest : public ::testing::Test
 protected:
 
     DBSyncFimIntegrationTest();
-    virtual ~DBSyncFimIntegrationTest() = default;
+    virtual ~DBSyncFimIntegrationTest();
 
     void SetUp() override;
     void TearDown() override;
-    DBSYNC_HANDLE m_dbHandle;
-    const std::string m_fimSqlSchema;
+    const DBSYNC_HANDLE m_dbHandle;
 };
 
 #endif // _DBYSNC_FIM_INTEGRATION_TEST_H

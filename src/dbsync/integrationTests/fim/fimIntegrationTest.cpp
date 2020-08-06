@@ -1,7 +1,7 @@
 /*
  * Wazuh DBSYNC
  * Copyright (C) 2015-2020, Wazuh Inc.
- * July 11, 2020.
+ * August 6, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -13,15 +13,11 @@
 #include <iostream>
 #include "json.hpp"
 #include "dbsync.h"
-#include "fim_integration_test.h"
+#include "fimIntegrationTest.h"
+#include "fimDbDump.h"
 using ::testing::_;
 
 constexpr auto DATABASE_TEMP {"FIM_TEMP.db"};
-
-constexpr auto FIM_DB_SQL
-{
-    #include "fim_db.sql"
-};
 
 class CallbackMock
 {
@@ -65,27 +61,24 @@ static void logFunction(const char* msg)
 }
 
 DBSyncFimIntegrationTest::DBSyncFimIntegrationTest()
-: m_dbHandle{ nullptr }
-, m_fimSqlSchema{ FIM_DB_SQL}
+: m_dbHandle{ dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, FIM_SQL_DB_DUMP) }
 {
     dbsync_initialize(&logFunction);
 }
 
+DBSyncFimIntegrationTest::~DBSyncFimIntegrationTest()
+{
+    EXPECT_NO_THROW(dbsync_teardown());
+    std::remove(DATABASE_TEMP);
+}
+
 void DBSyncFimIntegrationTest::SetUp()
 {
-    m_dbHandle = dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, m_fimSqlSchema.c_str());
 };
 
 void DBSyncFimIntegrationTest::TearDown()
 {
-    EXPECT_NO_THROW(dbsync_teardown());
-    std::remove(DATABASE_TEMP);
 };
-
-TEST_F(DBSyncFimIntegrationTest, Initialization)
-{
-    ASSERT_NE(nullptr, m_dbHandle);
-}
 
 TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATH)
 {
