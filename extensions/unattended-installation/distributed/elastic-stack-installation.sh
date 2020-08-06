@@ -223,8 +223,8 @@ createCertificates() {
     logger "Starting Elasticsearch..."
     startService "elasticsearch"
     logger "Initializing Elasticsearch..."
-    elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs)
-    until $(curl -XGET https://${elk}:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
+
+    until $(curl -XGET https://${eip}:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
         echo -ne $char
         sleep 10
     done    
@@ -232,7 +232,7 @@ createCertificates() {
     if [ -n "$single" ]
     then
         eval "cd /usr/share/elasticsearch/plugins/opendistro_security/tools/ $debug"
-        eval "./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key -h ${elk} $debug"
+        eval "./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key -h ${eip} $debug"
     fi
 
     logger "Done"
@@ -291,8 +291,7 @@ initializeKibana() {
     # Start Kibana
     startService "kibana"   
     logger "Initializing Kibana (this may take a while)" 
-    elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs) 
-    until [[ "$(curl -XGET https://${elk}/status -I -uadmin:admin -k -s | grep "200 OK")" ]]; do
+    until [[ "$(curl -XGET https://${eip}/status -I -uadmin:admin -k -s | grep "200 OK")" ]]; do
         echo -ne $char
         sleep 10
     done     
