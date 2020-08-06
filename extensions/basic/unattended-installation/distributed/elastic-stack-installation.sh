@@ -279,7 +279,8 @@ initializeKibana() {
     until [[ "$(curl -XGET https://${eip}/status -I -uelastic:"$epassword" -k -s | grep "200 OK")" ]]; do
         echo -ne $char
         sleep 10
-    done     
+    done   
+    sleep 10  
     conf="$(awk '{sub("url: https://localhost", "url: https://'"${wip}"'")}1' /usr/share/kibana/optimize/wazuh/config/wazuh.yml)"
     echo "$conf" > /usr/share/kibana/optimize/wazuh/config/wazuh.yml  
   
