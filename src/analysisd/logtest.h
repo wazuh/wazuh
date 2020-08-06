@@ -107,25 +107,22 @@ int w_logtest_init_parameters();
 void *w_logtest_clients_handler();
 
 /**
- * @brief Process the log within req for user represented by session
- * @param req user request
- * @param session session for user request
- * @param list_msg list of \ref os_analysisd_log_msg_t for store messages.
- * @return output response or NULL on error
+ * @brief Process client's request
+ * @param token client identifier
  */
 cJSON* w_logtest_process_log(cJSON* req, w_logtest_session_t* session, OSList* list_msg);
 
 /**
  * @brief Create resources necessary to service client
- * @param token Token which represents the client
- * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
- * @return new session or NULL on error.
+ * @param token client identifier
+ * @param msg_error contains the message to send to the client in case of invalid rules or decoder otherwise, it's null
+ * @return NULL on failure, otherwise a w_logtest_session_t object which represents to the client
  */
 w_logtest_session_t *w_logtest_initialize_session(char * token, OSList * list_msg);
 
 /**
  * @brief Free resources after client closes connection
- * @param token Token which represents the client
+ * @param token client identifier
  */
 void w_logtest_remove_session(char * token);
 
