@@ -1,5 +1,4 @@
 ## General
-* Removed "v4" version string from the endpoingts (removed from the tests, spec.yaml, common.yaml and conftest.py). Changes on wazuh-apid.py in order to make aiohttp do it without error.
 * Date type use a standard format ISO-8601 defined by date-time format.
 * Deleted all return parameters **path**, new API don't show any absolute path in responses.
 * Changed search negation from `!` to `-`.
