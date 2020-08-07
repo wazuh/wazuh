@@ -338,17 +338,31 @@ void SQLiteDBEngine::selectData(const std::string& table,
     }
 }
 
-void SQLiteDBEngine::deleteTableRowsData(const std::string& table,
-                                         const nlohmann::json& data)
+void SQLiteDBEngine::deleteTableRowsData(const std::string&    table,
+                                         const nlohmann::json& jsDeletionData)
 {
     if (0 != loadTableData(table))
     {
-        std::vector<std::string> primaryKeyList;
-        if (getPrimaryKeysFromTable(table, primaryKeyList))
+        const auto& itData{ jsDeletionData.find("data")};
+        const auto& itFilter{ jsDeletionData.find("row_filter_opt")};
+
+        if(itData != jsDeletionData.end() && itData->size() > 0)
         {
+            // Deletion via primary keys on "data" json field.
             const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
-            deleteRows(table, data, primaryKeyList);
+            deleteRowsbyPK(table, jsDeletionData.at("data"));
             transaction->commit();
+        }
+        else if(itFilter != jsDeletionData.end() && !itFilter->get<std::string>().empty())
+        {
+            // Deletion via condition on "row_filter_opt" json field.
+            const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
+            deleteRowsByFilter(table, itFilter);
+            transaction->commit();
+        }
+        else
+        {
+            throw dbengine_error{ INVALID_DELETE_INFO };
         }
     }
     else
@@ -356,8 +370,6 @@ void SQLiteDBEngine::deleteTableRowsData(const std::string& table,
         throw dbengine_error { EMPTY_TABLE_METADATA };
     }
 }
-
-
 
 void SQLiteDBEngine::addTableRelationship(const nlohmann::json& data)
 {
@@ -376,8 +388,6 @@ void SQLiteDBEngine::addTableRelationship(const nlohmann::json& data)
         throw dbengine_error { EMPTY_TABLE_METADATA };
     }
 }
-
-
 
 ///
 /// Private functions section
@@ -820,39 +830,52 @@ bool SQLiteDBEngine::deleteRows(const std::string& table,
     return ret;
 }
 
-void SQLiteDBEngine::deleteRows(const std::string& table,
-                                const nlohmann::json& data,
-                                const std::vector<std::string>& primaryKeyList)
+void SQLiteDBEngine::deleteRowsbyPK(const std::string& table,
+                                    const nlohmann::json& data)
 {
-    const auto& tableFields { m_tableFields[table] };
+    std::vector<std::string> primaryKeyList;
+    if (getPrimaryKeysFromTable(table, primaryKeyList))
+    {
+        const auto& tableFields { m_tableFields[table] };
+        const auto& stmt
+        {
+            getStatement(buildDeleteBulkDataSqlQuery(table, primaryKeyList))
+        };
+
+        for (const auto& jsRow : data)
+        {
+            int32_t index { 1l };
+            for (const auto& pkValue : primaryKeyList)
+            {
+                const auto& it
+                {
+                    std::find_if(tableFields.begin(), tableFields.end(),
+                                    [&pkValue](const ColumnData& column)
+                                    {
+                                        return 0 == std::get<Name>(column).compare(pkValue);
+                                    })
+                };
+
+                if(it != tableFields.end())
+                {
+                    bindJsonData(stmt, *it, jsRow, index);
+                    ++index;
+                }
+            }
+            stmt->step();
+            stmt->reset();
+        }
+    }
+}
+
+void SQLiteDBEngine::deleteRowsByFilter(const std::string& table,
+                                        const nlohmann::json::const_iterator& itFilter)
+{
     const auto& stmt
     {
-        getStatement(buildDeleteBulkDataSqlQuery(table, primaryKeyList))
+        getStatement("DELETE FROM "+table+" "+itFilter->get<std::string>())
     };
-
-    for (const auto& jsRow : data)
-    {
-        int32_t index { 1l };
-        for (const auto& pkValue : primaryKeyList)
-        {
-            const auto& it
-            {
-                std::find_if(tableFields.begin(), tableFields.end(),
-                                [&pkValue](const ColumnData& column)
-                                {
-                                    return 0 == std::get<Name>(column).compare(pkValue);
-                                })
-            };
-
-            if(it != tableFields.end())
-            {
-                bindJsonData(stmt, *it, jsRow, index);
-                ++index;
-            }
-        }
-        stmt->step();
-        stmt->reset();
-    }
+    stmt->step();
 }
 
 void SQLiteDBEngine::bindFieldData(const std::unique_ptr<SQLite::IStatement>& stmt,
@@ -1504,7 +1527,7 @@ std::string SQLiteDBEngine::getSelectAllQuery(const std::string& table,
     }
 
     return retVal;
-} 
+}
 
 std::string SQLiteDBEngine::buildDeleteRelationTrigger(const nlohmann::json& data,
                                                        const std::string&    baseTable)
