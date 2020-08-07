@@ -172,7 +172,7 @@ int wm_task_manager_get_task_status(int agent_id, const char *module, char **sta
     if (!task_id) {
         wdb_finalize(stmt);
         sqlite3_close_v2(db);
-        return WM_TASK_DATABASE_NO_TASK;
+        return WM_TASK_SUCCESS;
     }
 
     wdb_finalize(stmt);
