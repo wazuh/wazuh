@@ -49,7 +49,8 @@ typedef enum _wm_upgrade_error_code {
 typedef enum _wm_upgrade_command {
     WM_UPGRADE_UPGRADE = 0,
     WM_UPGRADE_UPGRADE_CUSTOM,
-    WM_UPGRADE_AGENT_STATUS
+    WM_UPGRADE_AGENT_GET_STATUS,
+    WM_UPGRADE_AGENT_UPDATE_STATUS
 } wm_upgrade_command;
 
 /**
@@ -201,8 +202,9 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task);
 int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task);
 
 /**
- * Validates an update responde from the task manager module
+ * Validate a status response from the task manager module
  * @param response JSON to be validated
+ * @param status string to save the status of the task
  * Example format:
  * [{
  *      "error": 0,
@@ -216,6 +218,6 @@ int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task);
  *      "status": "Done"
  *  }]
  * */
-bool wm_agent_upgrade_validate_task_update_message(const cJSON *response);
+bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char **status);
 
 #endif

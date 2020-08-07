@@ -236,14 +236,14 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upg
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACK_RECEIVED, agent_id, task->error_code, task->message);
 
     // Send task update to task manager and bring back the response
-    cJSON *response = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_STATUS, agent_id, task->status);
+    cJSON *response = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_id, task->status);
 
-    if (wm_agent_upgrade_validate_task_update_message(response)) {
+    if (wm_agent_upgrade_validate_task_status_message(response, NULL)) {
         // If status update is successful, tell agent to erase results file
         char *buffer = NULL;
 
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
-        sprintf(buffer, "%03d com clear_upgrade_result -1", agent_id);
+        snprintf(buffer, OS_MAXSTR, "%03d com clear_upgrade_result -1", agent_id);
 
         char *agent_response = wm_agent_upgrade_send_command_to_agent(buffer, strlen(buffer)); 
         char *data = NULL;
@@ -304,6 +304,8 @@ static cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_
 
 static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task) {
     int validate_result = WM_UPGRADE_SUCCESS;
+    cJSON *status_json = NULL;
+    char *status = NULL;
 
     // Validate agent id
     validate_result = wm_agent_upgrade_validate_id(agent_task->agent_info->agent_id);
@@ -319,9 +321,18 @@ static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task)
         return validate_result;
     }
 
+    // Validate if there is a task in progress for this agent
+    status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_GET_STATUS, agent_task->agent_info->agent_id, NULL);
+    if (wm_agent_upgrade_validate_task_status_message(status_json, &status) && !strcmp(status, "In progress")) {
+        validate_result = WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS;
+    }
 
-    // TODO: Check if there isn't already a task for this agent with status UPDATING
+    cJSON_Delete(status_json);
+    os_free(status);
 
+    if (validate_result != WM_UPGRADE_SUCCESS) {
+        return validate_result;
+    }
 
     // Validate Wazuh version to upgrade
     validate_result = wm_agent_upgrade_validate_version(agent_task->agent_info, agent_task->task_info->task, agent_task->task_info->command);
