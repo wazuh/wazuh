@@ -41,9 +41,9 @@ INSERT INTO agent (id, ip, register_ip, name, date_add, last_keepalive, `group`)
 
 CREATE TABLE IF NOT EXISTS labels (
     id INTEGER,
-    label TEXT NOT NULL,
+    key TEXT NOT NULL,
     value TEXT NOT NULL,
-    PRIMARY KEY (id,label)
+    PRIMARY KEY (id,key)
 );
 
 CREATE TABLE IF NOT EXISTS info (
