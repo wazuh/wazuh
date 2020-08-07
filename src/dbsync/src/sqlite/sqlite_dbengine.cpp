@@ -365,10 +365,11 @@ void SQLiteDBEngine::addTableRelationship(const nlohmann::json& data)
     if (0 != loadTableData(baseTable))
     {
         std::vector<std::string> primaryKeys;
-        getPrimaryKeysFromTable(baseTable, primaryKeys);
-
-        m_sqliteConnection->execute(buildDeleteRelationTrigger(data, baseTable));
-        m_sqliteConnection->execute(buildUpdateRelationTrigger(data, baseTable, primaryKeys));
+        if (getPrimaryKeysFromTable(baseTable, primaryKeys))
+        {
+            m_sqliteConnection->execute(buildDeleteRelationTrigger(data, baseTable));
+            m_sqliteConnection->execute(buildUpdateRelationTrigger(data, baseTable, primaryKeys));
+        }        
     }
     else
     {
@@ -1535,13 +1536,14 @@ std::string SQLiteDBEngine::buildDeleteRelationTrigger(const nlohmann::json& dat
 
 std::string SQLiteDBEngine::buildUpdateRelationTrigger(const nlohmann::json&            data,
                                                        const std::string&               baseTable,
-                                                       const std::vector<std::string>   primaryKeys)
+                                                       const std::vector<std::string>&   primaryKeys)
 {
     const constexpr auto UPDATE_POSTFIX{"_update"};
 
-    std::string sqlUpdate;
-
-    sqlUpdate.append("CREATE TRIGGER IF NOT EXISTS " + baseTable + UPDATE_POSTFIX + " BEFORE UPDATE OF ");
+    auto sqlUpdate 
+    { 
+        "CREATE TRIGGER IF NOT EXISTS " + baseTable + UPDATE_POSTFIX + " BEFORE UPDATE OF " 
+    };
     for (const auto& pkName : primaryKeys)
     {
         sqlUpdate.append(pkName);
