@@ -106,7 +106,7 @@ EXPORTED int dbsync_sync_txn_row(const TXN_HANDLE txn,
  * @brief Generates triggers that execute actions to maintain consistency between tables.
  *
  * @param handle        Handle assigned as part of the \ref dbsync_create method.
- * @param js_input      JSON information with relationship between tables.
+ * @param js_input      JSON information with tables relationship.
  *
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.

@@ -4,7 +4,7 @@ This test represents a trigger action use case where the following steps will be
 2) Insert the `insertDataProcesses.json` file's data into the DB.
 3) Insert the `insertDataSocket.json` file's data into the DB.
 4) Add relationship in tables based on `addTableRelationship.json` file's data.
-5) Delete data in table processes, which should implicitly delete the data in the socket table. 
+5) Delete data in table processes based on `deleteRows.json`, which should implicitly delete the data in the socket table. 
 
 # Execution
 In order to execute this test it would be needed the `dbsync_test_tool` binary and the command line will look like the following one:

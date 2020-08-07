@@ -271,7 +271,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         
         std::string buildUpdateRelationTrigger(const nlohmann::json&            data,
                                                const std::string&               baseTable,
-                                               const std::vector<std::string>   primaryKeys);
+                                               const std::vector<std::string>&   primaryKeys);
 
         std::map<std::string, TableColumns> m_tableFields;
         std::map<std::string, std::unique_ptr<SQLite::IStatement>> m_statementsCache;
