@@ -252,6 +252,7 @@
 #define WM_UPGRADE_ACK_MESSAGE              "(8163): Sending upgrade ACK event: '%s'"
 #define WM_UPGRADE_REQUEST_SEND_MESSAGE     "(8164): Sending message to agent: '%s'"
 #define WM_UPGRADE_REQUEST_RECEIVE_MESSAGE  "(8165): Receiving message from agent: '%s'"
+#define WM_UPGRADE_SENDING_WPK_TO_AGENT     "(8166): Sending WPK to agent: '%.3d'"
 
 #define MOD_TASK_START                      "(8200): Module Task Manager started."
 #define MOD_TASK_FINISH                     "(8201): Module Task Manager finished."
