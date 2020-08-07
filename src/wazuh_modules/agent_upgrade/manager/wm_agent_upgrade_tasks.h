@@ -44,6 +44,12 @@ wm_agent_info* wm_agent_upgrade_init_agent_info();
 wm_agent_task* wm_agent_upgrade_init_agent_task();
 
 /**
+ * Initialization of wm_agent_task
+ * @param return an initialized wm_upgrade_agent_status_task structure
+ * */
+wm_upgrade_agent_status_task* wm_agent_upgrade_init_agent_status_task();
+
+/**
  * Deallocate wm_upgrade_task structure
  * @param upgrade_task wm_upgrade_task structure to be deallocated
  * */
@@ -72,6 +78,12 @@ void wm_agent_upgrade_free_agent_info(wm_agent_info* agent_info);
  * @param agent_task wm_upgrade_task structure to be deallocated
  * */
 void wm_agent_upgrade_free_agent_task(wm_agent_task* agent_task);
+
+/**
+ * Deallocate wm_upgrade_agent_status_task structure
+ * @param task wm_upgrade_agent_status_task to be deallocated
+ * */
+void wm_agent_upgrade_free_agent_status_task(wm_upgrade_agent_status_task* task);
 
 /**
  * Tasks hashmap initialization

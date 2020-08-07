@@ -12,6 +12,7 @@
 #include "wazuh_db/wdb.h"
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_manager.h"
+
 /**
  * Check if agent version is valid to upgrade to a non-customized version
  * @param agent_version Wazuh version of agent to validate
@@ -19,9 +20,9 @@
  * @param task pointer to wm_upgrade_task with the params
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS
- * @retval WM_UPGRADE_VERSION_SAME_MANAGER
  * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
- * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER)
+ * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER
+ * @retval WM_UPGRADE_VERSION_SAME_MANAGER
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
 static int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task);
@@ -101,8 +102,7 @@ int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *tas
             if (wm_agent_upgrade_compare_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT) < 0) {
                 return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
             } else if (WM_UPGRADE_UPGRADE == command) {
-                task = (wm_upgrade_task *)task;
-                return_code = wm_agent_upgrade_validate_non_custom_version(tmp_agent_version, agent_info, task);
+                return_code = wm_agent_upgrade_validate_non_custom_version(tmp_agent_version, agent_info, (wm_upgrade_task *)task);
             }
         }
     }
@@ -118,7 +118,7 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
     int req = 0;
     char *file_url = NULL;
     char *file_path = NULL;
-    os_sha1 sha1;
+    os_sha1 file_sha1;
 
     if (task && task->wpk_repository && task->wpk_file && task->wpk_sha1) {
         os_calloc(OS_SIZE_4096, sizeof(char), file_url);
@@ -128,7 +128,7 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
         snprintf(file_path, OS_SIZE_4096, "%s%s", WM_UPGRADE_WPK_DEFAULT_PATH, task->wpk_file);
 
         if (wpk_file = fopen(file_path, "rb"), wpk_file) {
-            if (!OS_SHA1_File(file_path, sha1, OS_BINARY) && !strcasecmp(sha1, task->wpk_sha1)) {
+            if (!OS_SHA1_File(file_path, file_sha1, OS_BINARY) && !strcasecmp(file_sha1, task->wpk_sha1)) {
                 // WPK already downloaded
                 exist = 1;
             }
@@ -141,7 +141,7 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
             // Download WPK file
             while (attempts++ < WM_UPGRADE_WPK_DOWNLOAD_ATTEMPTS) {
                 if (req = wurl_request(file_url, file_path, NULL, NULL, WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT), !req) {
-                    if (OS_SHA1_File(file_path, sha1, OS_BINARY) || strcasecmp(sha1, task->wpk_sha1)) {
+                    if (OS_SHA1_File(file_path, file_sha1, OS_BINARY) || strcasecmp(file_sha1, task->wpk_sha1)) {
                         return_code = WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH;
                     }
                     break;
@@ -272,7 +272,7 @@ static int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info
     }
 
     // Set repository
-    strncat(repository_url, task->wpk_repository, OS_SIZE_1024);
+    strncat(repository_url, task->wpk_repository, OS_SIZE_512);
     if (task->wpk_repository[strlen(task->wpk_repository) - 1] != '/') {
         strcat(repository_url, "/");
     }
@@ -391,4 +391,27 @@ static int wm_agent_upgrade_compare_versions(const char *version1, const char *v
     }
 
     return result;
+}
+
+bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char **status) {
+    if (response) {
+        cJSON *error_object = cJSON_GetObjectItem(response, "error");
+        cJSON *data_object = cJSON_GetObjectItem(response, "data");
+        cJSON *status_object = cJSON_GetObjectItem(response, "status");
+        if (error_object && error_object->type == cJSON_Number) {
+            if (error_object->valueint == 0) {
+                if (status && status_object && status_object->type == cJSON_String) {
+                    os_strdup(status_object->valuestring, *status);
+                }
+                return true;
+            } else {
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_UPDATE_ERROR, error_object->valueint, data_object->valuestring);
+            }
+        } else {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUIRED_PARAMETERS);
+        }
+    } else {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_TASK_MAN_JSON);
+    }
+    return false;
 }

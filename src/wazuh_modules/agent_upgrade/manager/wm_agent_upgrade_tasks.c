@@ -63,6 +63,12 @@ wm_agent_task* wm_agent_upgrade_init_agent_task() {
     return agent_task;
 }
 
+wm_upgrade_agent_status_task* wm_agent_upgrade_init_agent_status_task() {
+    wm_upgrade_agent_status_task *task = NULL;
+    os_calloc(1, sizeof(wm_upgrade_agent_status_task), task);
+    return task;
+}
+
 void wm_agent_upgrade_free_upgrade_task(wm_upgrade_task* upgrade_task) {
     if (upgrade_task) {
         os_free(upgrade_task->custom_version);
@@ -110,14 +116,28 @@ void wm_agent_upgrade_free_agent_info(wm_agent_info* agent_info) {
 }
 
 void wm_agent_upgrade_free_agent_task(wm_agent_task* agent_task) {
-    if (agent_task->agent_info) {
-        wm_agent_upgrade_free_agent_info(agent_task->agent_info);
+    if (agent_task) {
+        if (agent_task->agent_info) {
+            wm_agent_upgrade_free_agent_info(agent_task->agent_info);
+        }
+        if (agent_task->task_info) {
+            wm_agent_upgrade_free_task_info(agent_task->task_info);
+        }
+        os_free(agent_task);
+        agent_task = NULL;
     }
-    if (agent_task->task_info) {
-        wm_agent_upgrade_free_task_info(agent_task->task_info);
+}
+
+void wm_agent_upgrade_free_agent_status_task(wm_upgrade_agent_status_task* task) {
+    if (task) {
+        if (task->message) {
+            os_free(task->message);
+        }
+        if (task->status) {
+            os_free(task->status);
+        }
+        os_free(task);
     }
-    os_free(agent_task);
-    agent_task = NULL;
 }
 
 void wm_agent_upgrade_init_task_map() {
@@ -198,6 +218,8 @@ cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
                 break;
         }
         os_free(buffer);
+
+        close(sock);
     }
 
     return response;

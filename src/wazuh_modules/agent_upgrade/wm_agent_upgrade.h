@@ -15,8 +15,28 @@
 #define WM_AGENT_UPGRADE_LOGTAG ARGV0 ":" AGENT_UPGRADE_WM_NAME
 #define WM_AGENT_UPGRADE_MODULE_NAME "upgrade_module"
 
+#define WM_UPGRADE_AGENT_UPDATED_COMMAND "upgrade_update_status"
+
+#define WM_UPGRADE_STATUS_IN_PROGRESS "In progress"
+#define WM_UPGRADE_STATUS_DONE "Done"
+#define WM_UPGRADE_STATUS_FAILED "Failed"
+
+#ifdef CLIENT
+/**
+ * Configurations on agent side
+ */
+typedef struct _wm_agent_configs {
+    unsigned int upgrade_wait_start;
+    unsigned int upgrade_wait_max;
+    float ugprade_wait_factor_increase;
+} wm_agent_configs;
+#endif
+
 typedef struct _wm_agent_upgrade {
     int enabled:1;
+#ifdef CLIENT
+    wm_agent_configs agent_config;
+#endif
 } wm_agent_upgrade;
 
 // Parse XML configuration
