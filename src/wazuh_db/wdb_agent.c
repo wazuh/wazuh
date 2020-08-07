@@ -22,7 +22,9 @@ static const char *global_db_queries[] = {
     [SQL_UPDATE_AGENT_NAME] = "global sql UPDATE agent SET name = %Q WHERE id = %d;",
     [SQL_UPDATE_AGENT_VERSION] = "global sql UPDATE agent SET os_name = %Q, os_version = %Q, os_major = %Q, os_minor = %Q, os_codename = %Q, os_platform = %Q, os_build = %Q, os_uname = %s, os_arch = %Q, version = %Q, config_sum = %Q, merged_sum = %Q, manager_host = %Q, node_name = %Q, last_keepalive = STRFTIME('%s', 'NOW') WHERE id = %d;",
     [SQL_UPDATE_AGENT_VERSION_IP] = "global sql UPDATE agent SET os_name = %Q, os_version = %Q, os_major = %Q, os_minor = %Q, os_codename = %Q, os_platform = %Q, os_build = %Q, os_uname = %s, os_arch = %Q, version = %Q, config_sum = %Q, merged_sum = %Q, manager_host = %Q, node_name = %Q, last_keepalive = STRFTIME('%s', 'NOW'), ip = %Q WHERE id = %d;",
-    [SQL_UPDATE_AGENT_LABELS] = "global update-labels %d %s",
+    [WDB_GET_AGENT_LABELS] = "global get-labels %d",
+    [WDB_SET_AGENT_LABELS] = "global set-labels %d %s",
+    [SQL_SELECT_KEEPALIVE] = "global sql SELECT last_keepalive FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');",
     [SQL_UPDATE_AGENT_KEEPALIVE] = "global sql UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW') WHERE id = %d;",
     [SQL_DELETE_AGENT] = "global sql DELETE FROM agent WHERE id = %d;",
     [SQL_SELECT_AGENT] = "global sql SELECT name FROM agent WHERE id = %d;",
@@ -32,7 +34,7 @@ static const char *global_db_queries[] = {
     [SQL_SELECT_FIM_OFFSET] = "global sql SELECT fim_offset FROM agent WHERE id = %d;",
     [SQL_SELECT_REG_OFFSET] = "global sql SELECT reg_offset FROM agent WHERE id = %d;",
     [SQL_UPDATE_FIM_OFFSET] = "global sql UPDATE agent SET fim_offset = %lu WHERE id = %d;",
-    [SQL_UPDATE_REG_OFFSET] = "globL sql UPDATE agent SET reg_offset = %lu WHERE id = %d;",
+    [SQL_UPDATE_REG_OFFSET] = "global sql UPDATE agent SET reg_offset = %lu WHERE id = %d;",
     [SQL_SELECT_AGENT_STATUS] = "global sql SELECT status FROM agent WHERE id = %d;",
     [SQL_UPDATE_AGENT_STATUS] = "global sql UPDATE agent SET status = %Q WHERE id = %d;",
     [SQL_UPDATE_AGENT_GROUP] = "global sql UPDATE agent SET `group` = %Q WHERE id = %d;",
@@ -42,8 +44,7 @@ static const char *global_db_queries[] = {
     [SQL_DELETE_AGENT_BELONG] = "global sql DELETE FROM belongs WHERE id_agent = %d",
     [SQL_DELETE_GROUP_BELONG] = "global sql DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = %Q );", 
     [SQL_DELETE_GROUP] = "global sql DELETE FROM `group` WHERE name = %Q;",
-    [SQL_SELECT_GROUPS] = "global sql SELECT name FROM `group`;",
-    [SQL_SELECT_KEEPALIVE] = "global sql SELECT last_keepalive FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');"
+    [SQL_SELECT_GROUPS] = "global sql SELECT name FROM `group`;"
  };
 
 int wdb_sock_agent = -1;
@@ -152,21 +153,45 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
 }
 
 /**
+ * @brief Returns a JSON with all the agent's labels.
+ * 
+ * @param[in] id Id of the agent for whom the labels are requested.
+ * @return JSON* with the labels on success or NULL on failure.
+ */
+cJSON* wdb_get_agent_labels(int id) {
+    cJSON *root = NULL;
+    // Making use of a big buffer for the output because
+    // it will contain all the keys and values.
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_MAXSTR] = "";
+
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[WDB_GET_AGENT_LABELS], id);
+    root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!root) {
+        merror("Error querying Wazuh DB to get the agent's %d labels.", id);
+        return NULL;
+    }
+
+    return root;
+}
+
+/**
  * @brief Update agent's labels.
  * 
  * @param[in] id Id of the agent for whom the labels must be updated.
- * @param[in] labels String with the labels separated by EOL.
+ * @param[in] labels String with the key-values separated by EOL.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_labels(int id, const char *labels) {
+int wdb_set_agent_labels(int id, const char *labels) {
     int result = 0;
     // Making use of a big buffer for the query because it
-    // will contain all the labels and values.
+    // will contain all the keys and values.
     // The output will be just a JSON OK.
     char wdbquery[OS_MAXSTR] = "";
     char wdboutput[OS_BUFFER_SIZE] = "";
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_LABELS], id, labels);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[WDB_SET_AGENT_LABELS], id, labels);
 
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
@@ -211,6 +236,58 @@ int wdb_update_agent_keepalive(int id) {
     }
 
     return result;
+}
+
+/* Gets the agent last keepalive. Returns this value, 0 on NULL or OS_INVALID on error */
+time_t wdb_get_agent_keepalive (const char *name, const char *ip){
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    time_t output = 0;
+    cJSON *root = NULL;
+    cJSON *keepalive = NULL;
+    int wdb_sock = -1;
+
+    if(!name || !ip){
+        mdebug1("Empty agent name or ip when trying to get last keepalive. Agent: (%s) IP: (%s)", name, ip);
+        return OS_INVALID;
+    }
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_queries[SQL_SELECT_KEEPALIVE], name, ip, ip);
+    root = wdbc_query_parse_json(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!root) {
+        merror("Error querying Wazuh DB to get the last agent keepalive.");
+        return OS_INVALID;
+    }
+
+    keepalive = cJSON_GetObjectItem(cJSON_GetArrayItem(root, 0),"last_keepalive");
+    output = !keepalive ? 0 : keepalive->valueint;
+
+    cJSON_Delete(root);
+    os_free(keepalive);
+
+    return output;
+}
+
+/* Remove database for agent. Returns 0 on success or -1 on error. */
+int wdb_remove_agent_db(int id, const char * name) {
+    char path[PATH_MAX];
+    char path_aux[PATH_MAX];
+
+    snprintf(path, PATH_MAX, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
+
+    if (!remove(path)) {
+        snprintf(path_aux, PATH_MAX, "%s%s/agents/%03d-%s.db-shm", isChroot() ? "/" : "", WDB_DIR, id, name);
+        if (remove(path_aux) < 0) {
+            mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
+        }
+        snprintf(path_aux, PATH_MAX, "%s%s/agents/%03d-%s.db-wal", isChroot() ? "/" : "", WDB_DIR, id, name);
+        if (remove(path_aux) < 0) {
+            mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
+        }
+        return 0;
+    } else
+        return -1;
 }
 
 /* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
@@ -296,6 +373,82 @@ char* wdb_agent_name(int id) {
     return output;
 }
 
+/* Update agent multi group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_update_agent_multi_group(int id, char *group) {
+    int result = 0;
+
+    /* Wipe out the agent multi groups relation for this agent */
+    if (wdb_delete_agent_belongs(id) < 0) {
+        return OS_INVALID;
+    }
+
+    /* Update the belongs table if multi group */
+    const char delim[2] = ",";
+    if (group) {
+        char *multi_group;
+        char *save_ptr = NULL;
+
+        multi_group = strchr(group, MULTIGROUP_SEPARATOR);
+
+        if (multi_group) {
+
+            /* Get the first group */
+            multi_group = strtok_r(group, delim, &save_ptr);
+
+            while( multi_group != NULL ) {
+
+                /* Update de groups table */
+                int id_group = wdb_find_group(multi_group);
+
+                if(id_group <= 0){
+                    id_group = wdb_insert_group(multi_group);
+                }
+
+                if (wdb_update_agent_belongs(id_group,id) < 0){
+                    return -1;
+                }
+
+                multi_group = strtok_r(NULL, delim, &save_ptr);
+            }
+        } else {
+
+            /* Update de groups table */
+            int id_group = wdb_find_group(group);
+
+            if(id_group <= 0){
+                id_group = wdb_insert_group(group);
+            }
+
+            if ( wdb_update_agent_belongs(id_group,id) < 0){
+                return OS_INVALID;
+            }
+        }
+    }
+
+    return result;
+}
+
+int wdb_agent_belongs_first_time(){
+    int i;
+    char *group;
+    int *agents;
+
+    if ((agents = wdb_get_all_agents())) {
+
+        for (i = 0; agents[i] != -1; i++) {
+            group = wdb_agent_group(agents[i]);
+
+            if(group){
+                wdb_update_agent_multi_group(agents[i],group);
+                free(group);
+            }
+        }
+        free(agents);
+    }
+
+    return 0;
+}
+
 /* Get group from agent. The string must be freed after using. Returns NULL on error. */
 char* wdb_agent_group(int id) {
     char *output = NULL;
@@ -344,103 +497,6 @@ char* wdb_agent_group(int id) {
     }
 
     return output;
-}
-
-/* Create database for agent from profile. Returns 0 on success or -1 on error. */
-int wdb_create_agent_db(int id, const char *name) {
-    const char *ROOT = "root";
-    char path[OS_FLSIZE + 1];
-    char buffer[4096];
-    FILE *source;
-    FILE *dest;
-    size_t nbytes;
-    int result = 0;
-    uid_t uid;
-    gid_t gid;
-
-    if (!name)
-        return -1;
-
-    snprintf(path, OS_FLSIZE, "%s/%s", WDB_DIR, WDB_PROF_NAME);
-
-    if (!(source = fopen(path, "r"))) {
-        mdebug1("Profile database not found, creating.");
-
-        if (wdb_create_profile(path) < 0)
-            return -1;
-
-        // Retry to open
-
-        if (!(source = fopen(path, "r"))) {
-            merror("Couldn't open profile '%s'.", path);
-            return -1;
-        }
-    }
-
-    snprintf(path, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
-
-    if (!(dest = fopen(path, "w"))) {
-        fclose(source);
-        merror("Couldn't create database '%s'.", path);
-        return -1;
-    }
-
-    while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
-        if (fwrite(buffer, 1, nbytes, dest) != nbytes) {
-            result = -1;
-            break;
-        }
-    }
-
-    fclose(source);
-    if (fclose(dest) == -1) {
-        merror("Couldn't write/close file %s completely ", path);
-        return -1;
-    }
-
-    if (result < 0)
-        return -1;
-
-    uid = Privsep_GetUser(ROOT);
-    gid = Privsep_GetGroup(GROUPGLOBAL);
-
-    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror(USER_ERROR, ROOT, GROUPGLOBAL, strerror(errno), errno);
-        return -1;
-    }
-
-    if (chown(path, uid, gid) < 0) {
-        merror(CHOWN_ERROR, path, errno, strerror(errno));
-        return -1;
-    }
-
-    if (chmod(path, 0660) < 0) {
-        merror(CHMOD_ERROR, path, errno, strerror(errno));
-        return -1;
-    }
-
-    return 0;
-}
-
-/* Remove database for agent. Returns 0 on success or -1 on error. */
-int wdb_remove_agent_db(int id, const char * name) {
-    char path[PATH_MAX];
-    char path_aux[PATH_MAX];
-
-    snprintf(path, PATH_MAX, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
-
-    if (!remove(path)) {
-        snprintf(path_aux, PATH_MAX, "%s%s/agents/%03d-%s.db-shm", isChroot() ? "/" : "", WDB_DIR, id, name);
-        if (remove(path_aux) < 0) {
-            mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
-        }
-        snprintf(path_aux, PATH_MAX, "%s%s/agents/%03d-%s.db-wal", isChroot() ? "/" : "", WDB_DIR, id, name);
-        if (remove(path_aux) < 0) {
-            mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
-        }
-        return 0;
-    } else
-        return -1;
 }
 
 /* Get an array containing the ID of every agent (except 0), ended with -1 */
@@ -766,61 +822,6 @@ int wdb_update_agent_group(int id, char *group) {
     return result;
 }
 
-/* Update agent multi group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_multi_group(int id, char *group) {
-    int result = 0;
-
-    /* Wipe out the agent multi groups relation for this agent */
-    if (wdb_delete_agent_belongs(id) < 0) {
-        return OS_INVALID;
-    }
-
-    /* Update the belongs table if multi group */
-    const char delim[2] = ",";
-    if (group) {
-        char *multi_group;
-        char *save_ptr = NULL;
-
-        multi_group = strchr(group, MULTIGROUP_SEPARATOR);
-
-        if (multi_group) {
-
-            /* Get the first group */
-            multi_group = strtok_r(group, delim, &save_ptr);
-
-            while( multi_group != NULL ) {
-
-                /* Update de groups table */
-                int id_group = wdb_find_group(multi_group);
-
-                if(id_group <= 0){
-                    id_group = wdb_insert_group(multi_group);
-                }
-
-                if (wdb_update_agent_belongs(id_group,id) < 0){
-                    return -1;
-                }
-
-                multi_group = strtok_r(NULL, delim, &save_ptr);
-            }
-        } else {
-
-            /* Update de groups table */
-            int id_group = wdb_find_group(group);
-
-            if(id_group <= 0){
-                id_group = wdb_insert_group(group);
-            }
-
-            if ( wdb_update_agent_belongs(id_group,id) < 0){
-                return OS_INVALID;
-            }
-        }
-    }
-
-    return result;
-}
-
 /* Find group by name. Returns id if success or -1 on failure. */
 int wdb_find_group(const char *name) {
     int result = 0;
@@ -949,6 +950,61 @@ int wdb_delete_agent_belongs(int id_agent) {
     return result;
 }
 
+/* Delete group from belongs table. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_remove_group_from_belongs_db(const char *name) {
+    int result = 0;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_MAXSTR] = "";
+
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_DELETE_GROUP_BELONG], name);
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+  
+    switch (result){
+        case OS_SUCCESS:
+            break;
+        case OS_INVALID:
+            mdebug1("GLobal DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+        default:
+            mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+    }
+    
+    return result;
+}
+
+/* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_remove_group_db(const char *name) {
+    int result = 0;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_MAXSTR] = "";
+     
+    if(wdb_remove_group_from_belongs_db(name) == OS_INVALID){
+        merror("At wdb_remove_group_from_belongs_db(): couldn't delete '%s' from 'belongs' table.", name);
+        return OS_INVALID;
+    }
+
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_DELETE_GROUP], name);
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+  
+    switch (result){
+        case OS_SUCCESS:
+            break;
+        case OS_INVALID:
+            mdebug1("GLobal DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+        default:
+            mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+    }
+
+    return result;
+}
+
 int wdb_update_groups(const char *dirname) {
     int result =  0;
     int i = 0;
@@ -1056,77 +1112,77 @@ int wdb_update_groups(const char *dirname) {
     return result;
 }
 
-/* Delete group from belongs table. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_remove_group_from_belongs_db(const char *name) {
+/* Create database for agent from profile. Returns 0 on success or -1 on error. */
+int wdb_create_agent_db(int id, const char *name) {
+    const char *ROOT = "root";
+    char path[OS_FLSIZE + 1];
+    char buffer[4096];
+    FILE *source;
+    FILE *dest;
+    size_t nbytes;
     int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_MAXSTR] = "";
+    uid_t uid;
+    gid_t gid;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_DELETE_GROUP_BELONG], name);
-    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
-  
-    switch (result){
-        case OS_SUCCESS:
-            break;
-        case OS_INVALID:
-            mdebug1("GLobal DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-        default:
-            mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-    }
-    
-    return result;
-}
+    if (!name)
+        return -1;
 
-/* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_remove_group_db(const char *name) {
-    int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_MAXSTR] = "";
-     
-    if(wdb_remove_group_from_belongs_db(name) == OS_INVALID){
-        merror("At wdb_remove_group_from_belongs_db(): couldn't delete '%s' from 'belongs' table.", name);
-        return OS_INVALID;
-    }
+    snprintf(path, OS_FLSIZE, "%s/%s", WDB_DIR, WDB_PROF_NAME);
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_DELETE_GROUP], name);
-    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
-  
-    switch (result){
-        case OS_SUCCESS:
-            break;
-        case OS_INVALID:
-            mdebug1("GLobal DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-        default:
-            mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-    }
+    if (!(source = fopen(path, "r"))) {
+        mdebug1("Profile database not found, creating.");
 
-    return result;
-}
+        if (wdb_create_profile(path) < 0)
+            return -1;
 
-int wdb_agent_belongs_first_time(){
-    int i;
-    char *group;
-    int *agents;
+        // Retry to open
 
-    if ((agents = wdb_get_all_agents())) {
-
-        for (i = 0; agents[i] != -1; i++) {
-            group = wdb_agent_group(agents[i]);
-
-            if(group){
-                wdb_update_agent_multi_group(agents[i],group);
-                free(group);
-            }
+        if (!(source = fopen(path, "r"))) {
+            merror("Couldn't open profile '%s'.", path);
+            return -1;
         }
-        free(agents);
+    }
+
+    snprintf(path, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
+
+    if (!(dest = fopen(path, "w"))) {
+        fclose(source);
+        merror("Couldn't create database '%s'.", path);
+        return -1;
+    }
+
+    while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
+        if (fwrite(buffer, 1, nbytes, dest) != nbytes) {
+            result = -1;
+            break;
+        }
+    }
+
+    fclose(source);
+    if (fclose(dest) == -1) {
+        merror("Couldn't write/close file %s completely ", path);
+        return -1;
+    }
+
+    if (result < 0)
+        return -1;
+
+    uid = Privsep_GetUser(ROOT);
+    gid = Privsep_GetGroup(GROUPGLOBAL);
+
+    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+        merror(USER_ERROR, ROOT, GROUPGLOBAL, strerror(errno), errno);
+        return -1;
+    }
+
+    if (chown(path, uid, gid) < 0) {
+        merror(CHOWN_ERROR, path, errno, strerror(errno));
+        return -1;
+    }
+
+    if (chmod(path, 0660) < 0) {
+        merror(CHMOD_ERROR, path, errno, strerror(errno));
+        return -1;
     }
 
     return 0;
@@ -1206,36 +1262,5 @@ time_t get_agent_date_added(int agent_id) {
 
     fclose(fp);
     return 0;
-}
-
-/* Gets the agent last keepalive. Returns this value, 0 on NULL or OS_INVALID on error */
-time_t wdb_get_agent_keepalive (const char *name, const char *ip){
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    time_t output = 0;
-    cJSON *root = NULL;
-    cJSON *keepalive = NULL;
-    int wdb_sock = -1;
-
-    if(!name || !ip){
-        mdebug1("Empty agent name or ip when trying to get last keepalive. Agent: (%s) IP: (%s)", name, ip);
-        return OS_INVALID;
-    }
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_queries[SQL_SELECT_KEEPALIVE], name, ip, ip);
-    root = wdbc_query_parse_json(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!root) {
-        merror("Error querying Wazuh DB to get the last agent keepalive.");
-        return OS_INVALID;
-    }
-
-    keepalive = cJSON_GetObjectItem(cJSON_GetArrayItem(root, 0),"last_keepalive");
-    output = !keepalive ? 0 : keepalive->valueint;
-
-    cJSON_Delete(root);
-    os_free(keepalive);
-
-    return output;
 }
 
