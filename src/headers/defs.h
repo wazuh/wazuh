@@ -227,7 +227,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DIFF_DIR        "/queue/diff"
 #define DIFF_DIR_PATH   DEFAULTDIR DIFF_DIR
 #else
-#define DIFF_DIR        "/queue/diff"
+#define DIFF_DIR        "queue/diff"
 #define DIFF_DIR_PATH   DIFF_DIR
 #endif
 #define DIFF_NEW_FILE  "new-entry"
