@@ -184,11 +184,10 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             os_strdup(vu_feed_tag[FEED_STRETCH], upd->version);
             upd->dist_tag_ref = FEED_STRETCH;
             upd->dist_ext = vu_feed_ext[FEED_STRETCH];
-        } else if (!strcmp(version, "8") || strcasestr(version, vu_feed_tag[FEED_JESSIE])) {
-            os_index = CVE_JESSIE;
-            os_strdup(vu_feed_tag[FEED_JESSIE], upd->version);
-            upd->dist_tag_ref = FEED_JESSIE;
-            upd->dist_ext = vu_feed_ext[FEED_JESSIE];
+        } else if (!strcmp(version, "8") || strcasestr(version, "JESSIE")) {
+            mwarn("Debian Jessie is no longer supported.");
+            retval = OS_DEPRECATED;
+            goto end;
         } else if (!strcmp(version, "7") || strcasestr(version, "WHEEZY")) {
             mwarn("Debian Wheezy is no longer supported.");
             retval = OS_DEPRECATED;
