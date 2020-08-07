@@ -66,6 +66,9 @@ char **OS_StrBreak(char match, const char *_str, size_t size)
            (str_ant && *str_ant == '\\')) {
 
             aux_str = calloc(strlen(tmp_str)+1, sizeof(char));
+            if (aux_str == NULL) {
+                goto error;
+            }
             strncpy(aux_str, tmp_str, i-2);
             strcat(aux_str, str);
             strcpy(tmp_str, aux_str);

@@ -1227,12 +1227,14 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     }
                     else {
                         merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        OS_ClearNode(children);
                         return (OS_INVALID);
                     }
                 }
                 else if (strcmp(children[j]->element, xml_file_limit_entries) == 0) {
                     if (!OS_StrIsNum(children[j]->content)) {
                         merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        OS_ClearNode(children);
                         return (OS_INVALID);
                     }
 
@@ -1859,7 +1861,7 @@ static void process_option(char ***syscheck_option, xml_node *node) {
 
     /* We attempt to expand environment variables */
     if (new_opt = get_paths_from_env_variable(node->content), !new_opt) {
-        new_opt = (char **)calloc(2, sizeof(char *));
+        os_calloc(2, sizeof(char *), new_opt);
         os_strdup(node->content, new_opt[0]);
         new_opt[1] = NULL;
     }
