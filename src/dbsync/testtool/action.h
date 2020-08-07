@@ -360,4 +360,31 @@ struct SelectRowsAction final : public IAction
     }
 };
 
+struct AddTableRelationship final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsInput
+        {
+            cJSON_Parse(value.at("body").dump().c_str())
+        };
+
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+        const auto retVal
+        {
+            dbsync_add_table_relationship(ctx->handle,
+                               jsInput.get())
+        };
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"dbsync_add_table_relationship", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
+
+
+
 #endif //_ACTION_H

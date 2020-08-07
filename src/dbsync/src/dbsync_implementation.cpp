@@ -154,3 +154,11 @@ void DBSyncImplementation::selectData(const DBSYNC_HANDLE   handle,
                                 json.at(0).at("query"),
                                 callback);
 }
+
+void DBSyncImplementation::addTableRelationship(const DBSYNC_HANDLE   handle, 
+                                                const char*           jsonRaw)
+{
+    const auto ctx{ dbEngineContext(handle) };
+    const auto json { nlohmann::json::parse(jsonRaw) };
+    ctx->m_dbEngine->addTableRelationship(json.at(0));
+}
