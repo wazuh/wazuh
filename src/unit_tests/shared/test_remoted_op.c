@@ -432,7 +432,7 @@ void test_parse_agent_update_msg_ok_labels(void **state)
 {
     char *msg = "Linux |debian10 |4.19.0-9-amd64 |#1 SMP Debian 4.19.118-2+deb10u1 (2020-06-07) |x86_64 \
 [Debian GNU/Linux|debian: 10 (buster)] - Wazuh v3.13.0 / ab73af41699f13fdd81903b5f23d8d00\
-\n\"label1\":label1\n\"label2\":label2\n!\"hlabel1\":hlabel1\n!\"hlabel2\":hlabel2\
+\n\"key1\":value1\n\"key2\":value2\n!\"hkey1\":hvalue1\n!\"hkey2\":hvalue2\
 \nfd756ba04d9c32c8848d4608bec41251 merged.mg\n#\"_agent_ip\":192.168.0.143\n";
 
     char *version = NULL;
@@ -469,7 +469,7 @@ void test_parse_agent_update_msg_ok_labels(void **state)
     assert_string_equal("ab73af41699f13fdd81903b5f23d8d00",config_sum);
     assert_string_equal("fd756ba04d9c32c8848d4608bec41251",merged_sum);
     assert_string_equal("192.168.0.143",agent_ip);
-    assert_string_equal("\"label1\":label1\n\"label2\":label2\n!\"hlabel1\":hlabel1\n!\"hlabel2\":hlabel2",labels);
+    assert_string_equal("\"key1\":value1\n\"key2\":value2\n!\"hkey1\":hvalue1\n!\"hkey2\":hvalue2",labels);
 
     os_free(version);
     os_free(os_name);

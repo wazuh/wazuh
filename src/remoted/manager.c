@@ -236,7 +236,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 mwarn("Unable to update information in global.db for agent: %s", key->id);
 
             if (labels) {
-                result = wdb_update_agent_labels(agent_id, labels);
+                result = wdb_set_agent_labels(agent_id, labels);
 
                 if (OS_INVALID == result)
                     mwarn("Unable to update labels information in global.db for agent: %s", key->id);

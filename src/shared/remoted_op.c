@@ -168,7 +168,7 @@ void parse_uname_string (char *uname,
  * @param[Out] config_sum The hash of the config file.
  * @param[Out] merged_sum The hash of the merged.mg file.
  * @param[Out] agent_ip The agent IP address.
- * @param[Out] labels String with all the labels separated by EOL.
+ * @param[Out] labels String with all the key-values separated by EOL.
  * @retval -1 Error parsing the message.
  * @retval 0 Success.
  */
