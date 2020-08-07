@@ -72,6 +72,9 @@ namespace DbSync
                         const char*            jsonRaw,
                         const ResultCallback&  callback);
 
+        void addTableRelationship(const DBSYNC_HANDLE   handle, 
+                                  const char*           jsonRaw);
+
         void release();
     private:
 

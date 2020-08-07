@@ -202,14 +202,41 @@ int dbsync_sync_txn_row(const TXN_HANDLE txn,
     return retVal;
 }
 
-int dbsync_add_table_relationship(const DBSYNC_HANDLE /*handle*/,
-                                  const char*         /*table*/,
-                                  const char*         /*parent_table*/,
-                                  const char*         /*key_base*/,
-                                  const char*         /*parent_field*/)
+int dbsync_add_table_relationship(const DBSYNC_HANDLE handle,
+                                  const cJSON*        js_input)
 {
-    // Dummy function for now.
-    return 0;
+    auto retVal { -1 };
+    std::string errorMessage;
+    if (!handle || !js_input)
+    {
+        errorMessage += "Invalid parameters.";
+    }
+    else
+    {
+        try
+        {
+            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(js_input)};
+            DBSyncImplementation::instance().addTableRelationship(handle, spJsonBytes.get());
+            retVal = 0;
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            errorMessage += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
+            retVal = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+            retVal = ex.id();
+        }
+        catch(...)
+        {
+            errorMessage += "Unrecognized error.";
+        }
+    }
+    log_message(errorMessage);
+
+    return retVal;
 }
 
 int dbsync_insert_data(const DBSYNC_HANDLE handle,
