@@ -17,6 +17,9 @@
 #define chown(x, y, z) 0
 #endif
 
+#define WDBQUERY_SIZE OS_BUFFER_SIZE
+#define WDBOUTPUT_SIZE OS_MAXSTR
+
 static const char *global_db_queries[] = {
     [SQL_INSERT_AGENT] = "global sql INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (%d, %Q, %Q, %Q, %Q, %lu, %Q);",
     [SQL_UPDATE_AGENT_NAME] = "global sql UPDATE agent SET name = %Q WHERE id = %d;",
@@ -51,8 +54,8 @@ int wdb_sock_agent = -1;
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date) {
     int result = 0;
     time_t date = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
 
     if(keep_date) {
         date = get_agent_date_added(id);
@@ -83,8 +86,8 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
 /* Update agent name. It doesn't rename agent DB file. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_name(int id, const char *name) {
     int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_NAME], name, id);
     result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
@@ -108,8 +111,8 @@ int wdb_update_agent_name(int id, const char *name) {
 /* Update agent version. It opens and closes the DB. Returns 1 or -1 on error. */
 int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name, const char *agent_ip) {
     int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
     char os_uname_format[OS_BUFFER_SIZE] = "";
     char *keepalive_format = "%s";
      
@@ -153,8 +156,8 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
 /* Update agent's last keepalive time. Returns OS_SUCCESS or -1 on error. */
 int wdb_update_agent_keepalive(int id) {
     int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
     char *keepalive_format = "%s";
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_KEEPALIVE], keepalive_format, id);
@@ -179,8 +182,8 @@ int wdb_update_agent_keepalive(int id) {
 /* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_agent(int id) {
     int result = 0 ;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
     char * name = NULL;
 
     name = wdb_agent_name(id);
@@ -212,8 +215,8 @@ int wdb_remove_agent(int id) {
 /* Get name from agent. The string must be freed after using. Returns NULL on error. */
 char* wdb_agent_name(int id) {
     char *output = NULL;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
     cJSON *root = NULL;
     cJSON *json_name = NULL;
 
@@ -225,21 +228,20 @@ char* wdb_agent_name(int id) {
         return NULL;
     }
 
-    json_name = cJSON_GetObjectItem(cJSON_GetArrayItem(root, 0),"name");
-    if(json_name){
-        os_strdup(json_name->valuestring,output);
+    json_name = cJSON_GetObjectItemCaseSensitive(root->child,"name");
+    if(cJSON_IsString(json_name) && json_name->valuestring != NULL){
+        os_strdup(json_name->valuestring, output);
     }
-    
+
     cJSON_Delete(root);
-    
     return output;
 }
 
 /* Get group from agent. The string must be freed after using. Returns NULL on error. */
 char* wdb_agent_group(int id) {
     char *output = NULL;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
     cJSON *root = NULL;
     cJSON *json_group = NULL;
 
@@ -251,9 +253,9 @@ char* wdb_agent_group(int id) {
         return NULL;
     }
 
-    json_group = cJSON_GetObjectItem(cJSON_GetArrayItem(root, 0),"group");
-    if(json_group){
-        os_strdup(json_group->valuestring,output);
+    json_group = cJSON_GetObjectItemCaseSensitive(root->child,"name");
+    if(cJSON_IsString(json_group) && json_group->valuestring != NULL){
+        os_strdup(json_group->valuestring, output);
     }
 
     cJSON_Delete(root);
@@ -359,32 +361,39 @@ int wdb_remove_agent_db(int id, const char * name) {
 
 /* Get an array containing the ID of every agent (except 0), ended with -1 */
 int* wdb_get_all_agents() {
-    int i = 0;
     int n = 0;
     int *array = NULL;
     cJSON *json_id = NULL;
     cJSON *root = NULL;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_MAXSTR] = "";
+    cJSON *item = NULL;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery,"%s", global_db_queries[SQL_SELECT_AGENTS]);
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
-        merror("Error querying Wazuh DB to get the all agents.");
+        merror("Error querying Wazuh DB to get all agents.");
         return NULL;
     }
 
-    n = cJSON_GetArraySize(root);
-    os_calloc(n+1, sizeof(int),array);        
+    item = root->child;
+    os_calloc(n+1, sizeof(int), array);     
+
+    while (item)
+    {
+        json_id = cJSON_GetObjectItemCaseSensitive(item,"id");
         
-    for (i = 0; i < n; i++) {
-        json_id = cJSON_GetObjectItem(cJSON_GetArrayItem(root, i),"id");
-        if(json_id){
-            array[i]=json_id->valueint;
+        if(cJSON_IsNumber(json_id)){
+            array[n] = json_id->valueint;
+            n++;
+            os_realloc(array, n+1, array);        
         }
+
+        item=item->next;
     }
-    array[i] = -1;
+
+    array[n] = -1;
     cJSON_Delete(root);
     
     return array;
@@ -393,8 +402,8 @@ int* wdb_get_all_agents() {
 /* Find agent by name and address. Returns id if success, -1 on failure */
 int wdb_find_agent(const char *name, const char *ip) {
     int output = -1;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
     cJSON *root = NULL;
     cJSON *json_id = NULL;
 
@@ -411,11 +420,11 @@ int wdb_find_agent(const char *name, const char *ip) {
         return OS_INVALID;
     }
 
-    json_id = cJSON_GetObjectItem(cJSON_GetArrayItem(root, 0),"id");
-    if(json_id){
-        output = json_id -> valueint;
+    json_id = cJSON_GetObjectItemCaseSensitive(root->child,"id");
+    if(cJSON_IsNumber(json_id)){
+        output = json_id->valueint;
     }
-
+  
     cJSON_Delete(root);
     return output;
 }
@@ -423,8 +432,8 @@ int wdb_find_agent(const char *name, const char *ip) {
 /* Get the file offset. Returns -1 on error. */
 long wdb_get_agent_offset(int id_agent, int type) {
     long int output = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
     cJSON *root = NULL;
     cJSON *json_offset = NULL;
     char * column = NULL;
@@ -432,38 +441,34 @@ long wdb_get_agent_offset(int id_agent, int type) {
     switch (type) {
     case WDB_SYSCHECK:
         sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_SELECT_FIM_OFFSET], id_agent);
-        os_strdup("fim_offset",column);
+        column = "fim_offset";
         break;
     case WDB_SYSCHECK_REGISTRY:
         sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_SELECT_REG_OFFSET],id_agent);
-        os_strdup("reg_offset",column);
+        column = "reg_offset";
         break;
     default:
         return OS_INVALID;
     }
 
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
-
     if (!root) {
         merror("Error querying Wazuh DB to get agent offset.");
-        os_free(column);
         return OS_INVALID;
     }
 
-    json_offset = cJSON_GetObjectItem(cJSON_GetArrayItem(root, 0),column);
-    output = json_offset ? json_offset -> valueint : OS_INVALID;
+    json_offset = cJSON_GetObjectItemCaseSensitive(root->child,column);
+    output = cJSON_IsNumber(json_offset) ? json_offset->valueint : OS_INVALID;
 
     cJSON_Delete(root);
-    os_free(column);
-
     return output;
 }
 
 /* Set the file offset. Returns 1, or -1 on failure. */
 int wdb_set_agent_offset(int id_agent, int type, long offset) {
     int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
 
     switch (type) {
     case WDB_SYSCHECK:
@@ -497,9 +502,8 @@ int wdb_set_agent_offset(int id_agent, int type, long offset) {
 /* Set agent updating status. Returns WDB_AGENT_*, or OS_INVALID on error. */
 int wdb_get_agent_status(int id_agent) {
     int output = -1;
-    char *status = NULL;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
     cJSON *root = NULL;
     cJSON *json_status = NULL;
 
@@ -508,22 +512,18 @@ int wdb_get_agent_status(int id_agent) {
 
     if (!root) {
         merror("Error querying Wazuh DB to get the agent status.");
-        os_free(status);
         return OS_INVALID;
     }
 
-    json_status = cJSON_GetObjectItem(cJSON_GetArrayItem(root, 0),"status");
-    if(json_status){
-        os_strdup(json_status -> valuestring, status);
-        output = !strcmp(status, "empty") ? WDB_AGENT_EMPTY : !strcmp(status, "pending") ? WDB_AGENT_PENDING : WDB_AGENT_UPDATED;
+    json_status = cJSON_GetObjectItemCaseSensitive(root->child,"status");
+    if(cJSON_IsString(json_status) && json_status->valuestring != NULL){
+        output = !strcmp(json_status->valuestring, "empty") ? WDB_AGENT_EMPTY : !strcmp(json_status->valuestring, "pending") ? WDB_AGENT_PENDING : WDB_AGENT_UPDATED;
     
     } else{
         output = OS_INVALID;
     }
 
     cJSON_Delete(root);
-    os_free(status);
-
     return output;
 }
 
@@ -531,8 +531,8 @@ int wdb_get_agent_status(int id_agent) {
 int wdb_set_agent_status(int id_agent, int status) {
     int result = 0;
     const char *str_status = NULL;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
  
     switch (status) {
     case WDB_AGENT_EMPTY:
@@ -571,8 +571,8 @@ int wdb_set_agent_status(int id_agent, int status) {
 /* Update agent group. It opens and closes the DB. Returns 1 or -1 on error. */
 int wdb_update_agent_group(int id, char *group) {
     int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
      
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_GROUP], group, id);
     result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
@@ -655,8 +655,8 @@ int wdb_update_agent_multi_group(int id, char *group) {
 /* Find group by name. Returns id if success or -1 on failure. */
 int wdb_find_group(const char *name) {
     int output = -1;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
     cJSON *root = NULL;
     cJSON *json_group = NULL;
 
@@ -668,10 +668,8 @@ int wdb_find_group(const char *name) {
         return OS_INVALID;
     }
 
-    json_group = cJSON_GetObjectItem(cJSON_GetArrayItem(root, 0),"id");
-    if(json_group){
-        output = json_group -> valueint;
-    }
+    json_group = cJSON_GetObjectItemCaseSensitive(root->child,"id");
+    output = cJSON_IsNumber(json_group) ? json_group->valueint : OS_INVALID;
 
     cJSON_Delete(root);
     return output;
@@ -680,8 +678,8 @@ int wdb_find_group(const char *name) {
 /* Insert a new group. Returns id if success or -1 on failure. */
 int wdb_insert_group(const char *name) {
     int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
      
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_INSERT_AGENT_GROUP], name);
@@ -707,10 +705,9 @@ int wdb_insert_group(const char *name) {
 /* Update agent belongs table. It opens and closes the DB. Returns 1 or -1 on error. */
 int wdb_update_agent_belongs(int id_group, int id_agent) {
     int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
      
-
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_INSERT_AGENT_BELONG], id_group, id_agent);
     result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
@@ -734,10 +731,9 @@ int wdb_update_agent_belongs(int id_group, int id_agent) {
 /* Delete agent belongs table. It opens and closes the DB. Returns 1 or -1 on error. */
 int wdb_delete_agent_belongs(int id_agent) {
     int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
      
-
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_DELETE_AGENT_BELONG], id_agent);
     result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
  
@@ -760,33 +756,40 @@ int wdb_delete_agent_belongs(int id_agent) {
 
 int wdb_update_groups(const char *dirname) {
     int result = 0;
-    int i = 0;
     int n = 0;
+    int i = 0;
     char **array = NULL;
-    cJSON *elem = NULL;
-    cJSON *name = NULL;
+    cJSON *json_name = NULL;
+    cJSON *item = NULL;
     cJSON *root = NULL;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
      
     sqlite3_snprintf(sizeof(wdbquery), wdbquery,"%s", global_db_queries[SQL_SELECT_GROUPS]);
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
-        merror("Error querying Wazuh DB to update agent group.");
+        merror("Error querying Wazuh DB to update groups.");
         return OS_INVALID;
     }
 
-    n = cJSON_GetArraySize(root);
-    os_calloc(n+1, sizeof(char *),array);        
+    item = root->child;
+    os_calloc(n+1, sizeof(char *),array);
 
-    for (i = 0; i < n; i++) {
-        elem = cJSON_GetArrayItem(root, i);
-        name = cJSON_GetObjectItem(elem, "name");
-        os_strdup(name->valuestring,array[i]);
+    while (item)
+    {
+        json_name = cJSON_GetObjectItemCaseSensitive(item,"name");
+        
+        if(cJSON_IsString(json_name) && json_name->valuestring != NULL ){
+            os_strdup(json_name->valuestring, array[n]);
+            n++;
+            os_realloc(array, n+1, array);        
+        }
+
+        item=item->next;
     }
 
-    array[i] = NULL;
+    array[n] = NULL;
     cJSON_Delete(root);
 
     for(i=0;array[i];i++){
@@ -843,8 +846,8 @@ int wdb_update_groups(const char *dirname) {
 /* Delete group from belongs table. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_group_from_belongs_db(const char *name) {
     int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_DELETE_GROUP_BELONG], name);
     result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
@@ -868,8 +871,8 @@ int wdb_remove_group_from_belongs_db(const char *name) {
 /* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_group_db(const char *name) {
     int result = 0;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
      
     if(wdb_remove_group_from_belongs_db(name) == OS_INVALID){
         merror("At wdb_remove_group_from_belongs_db(): couldn't delete '%s' from 'belongs' table.", name);
@@ -994,11 +997,11 @@ time_t get_agent_date_added(int agent_id) {
 
 /* Gets the agent last keepalive. Returns this value, 0 on NULL or OS_INVALID on error */
 time_t wdb_get_agent_keepalive (const char *name, const char *ip){
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
     time_t output = 0;
     cJSON *root = NULL;
-    cJSON *keepalive = NULL;
+    cJSON *json_keepalive = NULL;
 
     if(!name || !ip){
         mdebug1("Empty agent name or ip when trying to get last keepalive. Agent: (%s) IP: (%s)", name, ip);
@@ -1012,13 +1015,11 @@ time_t wdb_get_agent_keepalive (const char *name, const char *ip){
         merror("Error querying Wazuh DB to get the last agent keepalive.");
         return OS_INVALID;
     }
-
-    keepalive = cJSON_GetObjectItem(cJSON_GetArrayItem(root, 0),"last_keepalive");
-    output = !keepalive ? 0 : keepalive->valueint;
+    
+    json_keepalive = cJSON_GetObjectItemCaseSensitive(root->child,"last_keepalive");
+    output = cJSON_IsNumber(json_keepalive) ? json_keepalive->valueint : 0;
 
     cJSON_Delete(root);
-    os_free(keepalive);
-
     return output;
 }
 
