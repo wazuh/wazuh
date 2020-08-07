@@ -405,7 +405,7 @@ int wdb_parse(char * input, char * output) {
 
         if (next = wstr_chr(query, ' '), !next) {
             mdebug1("Invalid DB query syntax.");
-            mdebug2("DB query error near: %s", query);
+            mdebug2("Global DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
             wdb_leave(wdb);
             return OS_INVALID;
@@ -431,18 +431,27 @@ int wdb_parse(char * input, char * output) {
                     result = OS_INVALID;
                 }
             }
-        } else if (strcmp(query, "update-labels") == 0) {
+        } else if (strcmp(query, "get-labels") == 0) {
             if (!next) {
-                mdebug1("Mitre DB Invalid DB query syntax.");
-                mdebug2("Mitre DB query error near: %s", query);
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
-                result = wdb_parse_global_labels_update(wdb, next, output);
+                result = wdb_parse_global_get_agent_labels(wdb, next, output);
+            }
+        } else if (strcmp(query, "set-labels") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_set_agent_labels(wdb, next, output);
             }
         } else {
             mdebug1("Invalid DB query syntax.");
-            mdebug2("DB query error near: %s", query);
+            mdebug2("Global DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
             result = OS_INVALID;
         }
@@ -3858,18 +3867,34 @@ int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output) {
     }
 }
 
-int wdb_parse_global_labels_update(wdb_t * wdb, char * input, char * output) {
+int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output) {
+    int agent_id = 0;
+    cJSON *labels = NULL;
+    char *out = NULL;
+
+    agent_id = atoi(input);
+
+    if (labels = wdb_global_get_agent_labels(wdb, agent_id), !labels) {
+        mdebug1("Error getting agent labels from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agent labels from global.db.");
+        return OS_INVALID;
+    }
+
+    out = cJSON_PrintUnformatted(labels);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(labels);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) {
     char *next = NULL;
     char *labels = NULL;
     char *label = NULL;
     char *value = NULL;
-    char *tuples = NULL;
-    char *tuple = NULL;
     cJSON *data = NULL;
     char *out = NULL;
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    const char *delete_query = "DELETE FROM labels WHERE id = %d;";
-    const char *insert_query = "INSERT INTO labels (id, label, value) VALUES %s;";
     char sdelim[] = { '\n', '\0' };
 
     if (next = wstr_chr(input, ' '), !next) {
@@ -3889,22 +3914,15 @@ int wdb_parse_global_labels_update(wdb_t * wdb, char * input, char * output) {
         return OS_INVALID;
     } else {
         // Removing old labels from the labels table
-        sqlite3_snprintf(sizeof(wdbquery), wdbquery, delete_query, agent_id);
-
-        if (data = wdb_exec(wdb->db, wdbquery), !data) {
+        if (OS_SUCCESS != wdb_global_del_agent_labels(wdb, agent_id)) {
             mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
-            mdebug2("Global DB SQL query: %s", wdbquery);
             snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
             return OS_INVALID;
         }
 
-        cJSON_Delete(data);
-        data = NULL;
-
         labels = next;
 
-        // Transforming the labes string from "label1:value1\nlabel2:value2"
-        // to the tuples string "(agent_id,label1,value1),(agent_id,label2,value2)"
+        // Parsing the labes string "key1:value1\nkey2:value2"
         for (label = strtok(labels, sdelim); label; label = strtok(NULL, sdelim)) {
             if (value = strstr(label, ":"), value) {
                 *value = '\0';
@@ -3914,23 +3932,14 @@ int wdb_parse_global_labels_update(wdb_t * wdb, char * input, char * output) {
                 continue;
             }
 
-            os_calloc(OS_BUFFER_SIZE, sizeof(char), tuple);
-            sqlite3_snprintf(OS_BUFFER_SIZE, tuple, "(%d,%Q,%Q)", agent_id, label, value);
+            // Inserting new labels in the database
+            if (OS_SUCCESS != wdb_global_set_agent_label(wdb, agent_id, label, value)) {
+                mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                return OS_INVALID;
+            }
 
-            wm_strcat(&tuples, tuple, tuples ? ',' : 0);
-
-            os_free(tuple);
             value = NULL;
-        }
-
-        // Inserting new labels in the database
-        sqlite3_snprintf(sizeof(wdbquery), wdbquery, insert_query, tuples);
-
-        if (data = wdb_exec(wdb->db, wdbquery), !data) {
-            mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-            return OS_INVALID;
         }
 
         out = cJSON_PrintUnformatted(data);
