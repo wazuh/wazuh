@@ -356,13 +356,13 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
     OSHashNode *node = NULL;
     char *agent_key = NULL;
     wm_agent_task *agent_task = NULL;
-    cJSON *status_json = NULL;
 
     // Send request to task module and store task ids
     if (!wm_agent_upgrade_parse_task_module_task_ids(json_response, task_module_request)) {
         node = wm_agent_upgrade_get_first_node(&index);
 
         while (node) {
+            cJSON *status_json = NULL;
             agent_key = node->key;
             agent_task = (wm_agent_task *)node->data;
             node = wm_agent_upgrade_get_next_node(&index, node);
@@ -380,6 +380,8 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
             wm_agent_upgrade_validate_task_status_message(status_json, NULL);
 
             wm_agent_upgrade_remove_entry(atoi(agent_key));
+
+            cJSON_Delete(status_json);
         }
     } else {
         mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_NO_AGENTS_TO_UPGRADE);
