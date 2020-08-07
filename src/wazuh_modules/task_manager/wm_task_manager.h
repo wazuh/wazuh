@@ -88,12 +88,32 @@ size_t wm_task_manager_dispatch(const char *msg, char **response);
 cJSON* wm_task_manager_parse_message(const char *msg);
 
 /**
- * Analyze a task by module and command. Update the tasks DB when necessary.
+ * Analyze a task by module and call appropiate analyze function.
  * @param task_object JSON object with a task to be analyzed.
  * @param error_code Variable to store an error code if something is wrong.
  * @return JSON object with the response for this task.
  * */
 cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code);
+
+/**
+ * Analyze a api task command.
+ * @param task_object JSON object with a task to be analyzed.
+ * @param error_code Variable to store an error code if something is wrong.
+ * @param agent_id Agent id extracted from task_object.
+ * @param task_id Task id extracted from task_object. 
+ * @return JSON object with the response for this task.
+ * */
+cJSON* wm_task_manager_analyze_task_api_module(const cJSON *task_object, int *error_code);
+
+/**
+ * Analyze a upgrade_module task by command. Update the tasks DB when necessary.
+ * @param task_object JSON object with a task to be analyzed.
+ * @param error_code Variable to store an error code if something is wrong.
+ * @param agent_id Agent id extracted from task_object.
+ * @param task_id Task id extracted from task_object.
+ * @return JSON object with the response for this task.
+ * */
+cJSON* wm_task_manager_analyze_task_upgrade_module(const cJSON *task_object, int *error_code);
 
 /**
  * Build a JSON object response.

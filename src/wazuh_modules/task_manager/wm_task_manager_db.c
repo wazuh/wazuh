@@ -152,6 +152,10 @@ int wm_task_manager_get_task_status(int agent_id, const char *module, char **sta
     int result = 0;
     int task_id = OS_INVALID;
 
+    if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READWRITE, NULL)) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
+        return wm_task_manager_sql_error(db, stmt);
+    }
 
     if (wdb_prepare(db, task_queries[WM_TASK_GET_LAST_AGENT_TASK], -1, &stmt, NULL) != SQLITE_OK) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
@@ -296,21 +300,24 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
     int task_id;
     sqlite3_bind_text(stmt, 1, module, -1, NULL);
     sqlite3_bind_int(stmt, 2, agent_id);
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-        task_id = sqlite3_column_int(stmt, 0);
-        sqlite_strdup((char*)sqlite3_column_text(stmt, 1), *command);
-        *create_time = sqlite3_column_int(stmt, 2);
-        *last_update_time = sqlite3_column_int(stmt, 3);
-        sqlite_strdup((char*)sqlite3_column_text(stmt, 4), *status);
-        result = task_id;
-        break;
-    case SQLITE_DONE:
-        result = OS_NOTFOUND;
-        break;
-    default:
-        result = OS_INVALID;
+
+    if (result = wdb_step(stmt), result != SQLITE_ROW) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
+        return wm_task_manager_sql_error(db, stmt);
     }
+
+    task_id = sqlite3_column_int(stmt, 0);
+
+    if (!task_id) {
+        wdb_finalize(stmt);
+        sqlite3_close_v2(db);
+        return OS_NOTFOUND;
+    }
+    sqlite_strdup((char*)sqlite3_column_text(stmt, 1), *command);
+    *create_time = sqlite3_column_int(stmt, 2);
+    *last_update_time = sqlite3_column_int(stmt, 3);
+    sqlite_strdup((char*)sqlite3_column_text(stmt, 4), *status);
+    result = task_id;
     
     wdb_finalize(stmt);
 
@@ -332,6 +339,7 @@ int wm_task_manager_get_task_by_task_id(int task_id, int *agent_id, char **modul
         return wm_task_manager_sql_error(db, stmt);
     }
     sqlite3_bind_int(stmt, 1, task_id);
+    
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         task_id = sqlite3_column_int(stmt, 0);
@@ -347,6 +355,7 @@ int wm_task_manager_get_task_by_task_id(int task_id, int *agent_id, char **modul
         result = OS_NOTFOUND;
         break;
     default:
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
         result = OS_INVALID;
     }
     
