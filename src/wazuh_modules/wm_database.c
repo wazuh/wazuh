@@ -416,10 +416,10 @@ void wm_sync_agents() {
             }
         }
 
-        free(agents);
+        os_free(agents);
     }
 
-    free(group);
+    os_free(group);
     OS_FreeKeys(&keys);
     mtdebug1(WM_DATABASE_LOGTAG, "Agent sync completed.");
     gettime(&spec1);

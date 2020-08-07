@@ -910,10 +910,10 @@ int wdb_agent_belongs_first_time(){
 
             if(group){
                 wdb_update_agent_multi_group(agents[i],group);
-                free(group);
+                os_free(group);
             }
         }
-        free(agents);
+        os_free(agents);
     }
 
     return 0;
