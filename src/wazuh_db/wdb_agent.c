@@ -790,7 +790,6 @@ int wdb_update_groups(const char *dirname) {
     }
 
     array[n] = NULL;
-    cJSON_Delete(root);
 
     for(i=0;array[i];i++){
         /* Check if the group exists in dir */
@@ -808,6 +807,7 @@ int wdb_update_groups(const char *dirname) {
         if (!dp) {
             if (wdb_remove_group_db((char *)array[i]) < 0) {
                 free_strarray(array);
+                cJSON_Delete(root);
                 return OS_INVALID;
             }
         } else {
@@ -816,6 +816,7 @@ int wdb_update_groups(const char *dirname) {
     }
 
     free_strarray(array);
+    cJSON_Delete(root);
 
     /* Add new groups from the folder /etc/shared if they dont exists on database */
     DIR *dir;
