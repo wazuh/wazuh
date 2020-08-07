@@ -358,6 +358,26 @@ void SQLiteDBEngine::deleteTableRowsData(const std::string& table,
 }
 
 
+
+void SQLiteDBEngine::addTableRelationship(const nlohmann::json& data)
+{
+    const auto baseTable { data.at("base_table").get<std::string>() };
+    if (0 != loadTableData(baseTable))
+    {
+        std::vector<std::string> primaryKeys;
+        getPrimaryKeysFromTable(baseTable, primaryKeys);
+
+        m_sqliteConnection->execute(buildDeleteRelationTrigger(data, baseTable));
+        m_sqliteConnection->execute(buildUpdateRelationTrigger(data, baseTable, primaryKeys));
+    }
+    else
+    {
+        throw dbengine_error { EMPTY_TABLE_METADATA };
+    }
+}
+
+
+
 ///
 /// Private functions section
 ///
@@ -1484,3 +1504,76 @@ std::string SQLiteDBEngine::getSelectAllQuery(const std::string& table,
 
     return retVal;
 } 
+
+std::string SQLiteDBEngine::buildDeleteRelationTrigger(const nlohmann::json& data,
+                                                       const std::string&    baseTable)
+{
+    const constexpr auto DELETE_POSTFIX{"_delete"};
+
+    auto sqlDelete
+    {
+        "CREATE TRIGGER IF NOT EXISTS " + baseTable + DELETE_POSTFIX + " BEFORE DELETE ON " + baseTable
+    };
+
+    sqlDelete.append(" BEGIN ");
+    for (const auto& jsonValue : data.at("relationed_tables"))
+    {
+        sqlDelete.append("DELETE FROM "+ jsonValue.at("table").get<std::string>() + " WHERE ");
+        for (const auto& match : jsonValue.at("field_match").items())
+        {
+            sqlDelete.append(match.key());
+            sqlDelete.append(" = OLD.");
+            sqlDelete.append(match.value());
+            sqlDelete.append(" AND ");
+        }
+        sqlDelete = sqlDelete.substr(0, sqlDelete.size()-5);
+        sqlDelete.append(";");
+    }
+    sqlDelete.append("END;");
+    return sqlDelete;
+}
+
+std::string SQLiteDBEngine::buildUpdateRelationTrigger(const nlohmann::json&            data,
+                                                       const std::string&               baseTable,
+                                                       const std::vector<std::string>   primaryKeys)
+{
+    const constexpr auto UPDATE_POSTFIX{"_update"};
+
+    std::string sqlUpdate;
+
+    sqlUpdate.append("CREATE TRIGGER IF NOT EXISTS " + baseTable + UPDATE_POSTFIX + " BEFORE UPDATE OF ");
+    for (const auto& pkName : primaryKeys)
+    {
+        sqlUpdate.append(pkName);
+        sqlUpdate.append(",");
+    }
+    sqlUpdate = sqlUpdate.substr(0, sqlUpdate.size()-1);
+
+    sqlUpdate.append(" ON " + baseTable);
+
+    sqlUpdate.append(" BEGIN ");
+    for (const auto& jsonValue : data.at("relationed_tables"))
+    {
+        sqlUpdate.append("UPDATE " + jsonValue.at("table").get<std::string>() + " SET ");
+
+        auto sqlUpdateWhere { std::string(" WHERE ") };
+        for (const auto& match : jsonValue.at("field_match").items())
+        {
+            sqlUpdate.append(match.key());
+            sqlUpdate.append(" = NEW.");
+            sqlUpdate.append(match.value());
+            sqlUpdate.append(",");
+
+            sqlUpdateWhere.append(match.key());
+            sqlUpdateWhere.append(" = OLD.");
+            sqlUpdateWhere.append(match.value());
+            sqlUpdateWhere.append(" AND ");
+        }
+        sqlUpdate = sqlUpdate.substr(0, sqlUpdate.size()-1);
+        sqlUpdateWhere = sqlUpdateWhere.substr(0, sqlUpdateWhere.size()-5);
+        sqlUpdate.append(sqlUpdateWhere);
+        sqlUpdate.append(";");
+    }
+    sqlUpdate.append("END;");
+    return sqlUpdate;
+}

@@ -103,22 +103,16 @@ EXPORTED int dbsync_sync_txn_row(const TXN_HANDLE txn,
                                  const cJSON*     js_input);
 
 /**
- * @brief Inserts into an auxiliary table the information to be associated accordingly.
+ * @brief Generates triggers that execute actions to maintain consistency between tables.
  *
  * @param handle        Handle assigned as part of the \ref dbsync_create method.
- * @param table         Table to be added.
- * @param parent_table  Parent table to be associated with \p table one.
- * @param key_base      Unique key to be assigned.
- * @param parent_field  Parent table field to be associated.
+ * @param js_input      JSON information with relationship between tables.
  *
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
 EXPORTED int dbsync_add_table_relationship(const DBSYNC_HANDLE handle,
-                                           const char*         table,
-                                           const char*         parent_table,
-                                           const char*         key_base,
-                                           const char*         parent_field);
+                                           const cJSON*        js_input);
 
 /**
  * @brief Insert the \p js_insert data in the database.

@@ -154,7 +154,7 @@ TEST_F(DBSyncTest, closeTxnNullptr)
 
 TEST_F(DBSyncTest, dbsyncAddTableRelationshipDummy)
 {
-    ASSERT_EQ(0, dbsync_add_table_relationship(nullptr, nullptr, nullptr, nullptr, nullptr));
+    ASSERT_EQ(-1, dbsync_add_table_relationship(nullptr, nullptr));
 }
 
 TEST_F(DBSyncTest, InsertData)

@@ -134,6 +134,8 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         void deleteTableRowsData(const std::string& table,
                                  const nlohmann::json& data) override;
+        
+        void addTableRelationship(const nlohmann::json& data) override;
 
     private:
         void initialize(const std::string& path,
@@ -263,6 +265,13 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         std::string getSelectAllQuery(const std::string& table, 
                                       const TableColumns& tableFields) const;
+
+        std::string buildDeleteRelationTrigger(const nlohmann::json& data,
+                                               const std::string&    baseTable);
+        
+        std::string buildUpdateRelationTrigger(const nlohmann::json&            data,
+                                               const std::string&               baseTable,
+                                               const std::vector<std::string>   primaryKeys);
 
         std::map<std::string, TableColumns> m_tableFields;
         std::map<std::string, std::unique_ptr<SQLite::IStatement>> m_statementsCache;
