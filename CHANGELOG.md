@@ -1,6 +1,29 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.0.0] -
+
+### Added
+
+- Added improved support for monitoring paths from environment variables. ([#4961](https://github.com/wazuh/wazuh/pull/4961))
+
+### Changed
+
+- FIM Windows events handling refactored. ([#5144](https://github.com/wazuh/wazuh/pull/5144))
+
+### Fixed
+
+- Added support for monitoring directories which contain commas. ([#4961](https://github.com/wazuh/wazuh/pull/4961))
+- Fixed a bug where configuring a directory to be monitored as realtime and whodata resulted in realtime prevailing. ([#4961](https://github.com/wazuh/wazuh/pull/4961))
+- Fixed using an incorrect mutex while deleting inotify watches. ([#5126](https://github.com/wazuh/wazuh/pull/5126))
+- Fixed a bug which could cause multiple FIM threads to request the same temporary file. ([#5213](https://github.com/wazuh/wazuh/issues/5213))
+- Fixed a bug where deleting a file permanently in Windows would not trigger an alert. ([#5144](https://github.com/wazuh/wazuh/pull/5144))
+- Fixed a typo in the file monitoring options log entry. ([#5591](https://github.com/wazuh/wazuh/pull/5591))
+- Fixed an error where monitoring a drive in Windows under scheduled or realtime mode would generate alerts from the recycle bin. ([#4771](https://github.com/wazuh/wazuh/pull/4771))
+- When monitoring a drive in Windows in the format `U:`, it will monitor `U:\` instead of the agent's working directory. ([#5259](https://github.com/wazuh/wazuh/pull/5259))
+- Fixed a bug where monitoring a drive in Windows with recursion_level set to 0 would trigger alerts from files inside its subdirectories. ([#5235](https://github.com/wazuh/wazuh/pull/5235))
+
+
 ## [v3.13.1] - 2020-07-14
 
 ### Added
