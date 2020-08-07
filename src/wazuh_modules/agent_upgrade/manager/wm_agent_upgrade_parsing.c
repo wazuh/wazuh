@@ -413,25 +413,6 @@ int wm_agent_upgrade_parse_task_module_task_ids(cJSON *json_response, const cJSO
     return error;
 }
 
-cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task) {
-    cJSON *response = NULL;
-    cJSON *message_object = wm_agent_upgrade_parse_task_module_request(command, agent_id, status_task);
-    cJSON *message_array = cJSON_CreateArray();
-    cJSON_AddItemToArray(message_array, message_object);
-
-    cJSON* task_module_response = wm_agent_upgrade_send_tasks_information(message_array);
-
-    if (task_module_response && (task_module_response->type == cJSON_Array) && (cJSON_GetArraySize(task_module_response) == 1)) {
-        response = cJSON_DetachItemFromArray(task_module_response, 0);
-        cJSON_Delete(task_module_response);
-    } else {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_TASK_MAN_JSON);
-        response = task_module_response;
-    }
-    cJSON_Delete(message_array);
-    return response;
-}
-
 int wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data, char **error) {
     int error_code = OS_SUCCESS;
 
