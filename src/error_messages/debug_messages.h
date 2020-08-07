@@ -236,5 +236,6 @@
 #define FIM_INOTIFY_WATCH_DELETED           "(6344): Inotify watch deleted for '%s'"
 #define FIM_NUM_WATCHES                     "(6345): Folders monitored with real-time engine: %u"
 #define FIM_REALTIME_CALLBACK               "(6346): Realtime watch deleted for '%s'"
+#define FIM_DIR_RECURSION_LEVEL             "(6347): Directory '%s' is already on the max recursion_level (%d), it will not be scanned."
 
 #endif /* DEBUG_MESSAGES_H */

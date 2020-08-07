@@ -15,7 +15,7 @@ current_path = os.path.dirname(os.path.abspath(__file__))
 
 with open('common.yaml', 'r') as stream:
     common = yaml.safe_load(stream)['variables']
-login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['version']}{common['login_endpoint']}"
+login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['login_endpoint']}"
 basic_auth = f"{common['user']}:{common['pass']}".encode()
 login_headers = {'Content-Type': 'application/json',
                  'Authorization': f'Basic {b64encode(basic_auth).decode()}'}

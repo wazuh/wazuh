@@ -161,6 +161,13 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
     int node;
     int depth;
 
+#ifdef WIN32
+    // Ignore the recycle bin.
+    if (check_removed_file(path)){
+        return;
+    }
+#endif
+
     if (item->mode == FIM_SCHEDULED) {
         // If the directory have another configuration will come back
         if (node = fim_configuration_directory(path, "file"), node < 0 || item->index != node) {
@@ -218,8 +225,8 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
     if (w_evt && w_evt->scan_directory == 1) {
         if (w_update_sacl(path)) {
             mdebug1(FIM_SCAL_NOREFRESH, path);
-            }
         }
+    }
 #endif
 
     if (HasFilesystem(path, syscheck.skip_fs)) {
@@ -246,6 +253,10 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         break;
 
     case FIM_DIRECTORY:
+        if (depth == syscheck.recursion_level[node]) {
+            mdebug2(FIM_DIR_RECURSION_LEVEL, path, depth);
+            return;
+        }
 #ifndef WIN32
         if (item->configuration & REALTIME_ACTIVE) {
             realtime_adddir(path, 0, (item->configuration & CHECK_FOLLOW) ? 1 : 0);
@@ -674,6 +685,18 @@ int fim_check_depth(char * path, int dir_position) {
     if (parent_path_size > strlen(path)) {
         return -1;
     }
+
+#ifdef WIN32
+    // Check for monitoring of 'U:\'
+    if(parent_path_size == 3 && path[2] == '\\') {
+        depth = 0;
+    }
+#else
+    // Check for monitoring of '/'
+    if(parent_path_size == 1) {
+        depth = 0;
+    }
+#endif
 
     pos = path + parent_path_size;
     while (pos) {
