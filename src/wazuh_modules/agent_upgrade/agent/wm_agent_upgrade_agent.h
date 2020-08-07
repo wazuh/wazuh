@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#ifdef CLIENT
 
 #ifndef WM_AGENT_UPGRADE_AGENT_H
 #define WM_AGENT_UPGRADE_AGENT_H
@@ -17,8 +18,6 @@
 #else
     #define WM_AGENT_UPGRADE_RESULT_FILE DEFAULTDIR UPGRADE_DIR "/upgrade_result"
 #endif
-
-#define WM_UPGRADE_AGENT_UPDATED_COMMAND "agent_status"
 
 typedef enum _wm_upgrade_agent_state {
     WM_UPGRADE_SUCCESSFULL = 0,
@@ -30,7 +29,10 @@ typedef enum _wm_upgrade_agent_state {
  * Checks if an agent has been recently upgraded, by reading upgrade_results file
  * If there has been an upgrade, dispatchs a message to notificate the manager.
  * This method will block the thread if the agent is not connected to the manager
+ * @param agent_config Agent configuration parameters
  * */
-void wm_agent_upgrade_check_status();
+void wm_agent_upgrade_check_status(wm_agent_configs agent_config);
+
+#endif
 
 #endif

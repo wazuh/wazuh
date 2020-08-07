@@ -20,6 +20,7 @@
 #define WM_UPGRADE_WPK_DOWNLOAD_ATTEMPTS 5
 #define MANAGER_ID 0
 
+
 typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_SUCCESS = 0,
     WM_UPGRADE_PARSING_ERROR,
@@ -45,7 +46,8 @@ typedef enum _wm_upgrade_error_code {
 
 typedef enum _wm_upgrade_command {
     WM_UPGRADE_UPGRADE = 0,
-    WM_UPGRADE_UPGRADE_CUSTOM
+    WM_UPGRADE_UPGRADE_CUSTOM,
+    WM_UPGRADE_AGENT_STATUS
 } wm_upgrade_command;
 
 /**
@@ -67,6 +69,15 @@ typedef struct _wm_upgrade_custom_task {
     char *custom_file_path;      ///> sets a custom file path. Should be available in all worker nodes
     char *custom_installer;      ///> sets a custom installer script. Should be available in all worker nodes
 } wm_upgrade_custom_task;
+
+/**
+ * Definition of an agent status update task
+ * */
+typedef struct _wm_upgrade_agent_status_task {
+    unsigned int error_code;
+    char *message;
+    char *status;
+} wm_upgrade_agent_status_task;
 
 /**
  * Definition of the structure that will represent a certain task
@@ -177,5 +188,30 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task);
  * @retval WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST
  * */
 int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task);
+
+/**
+ * Process and agent_upgraded command
+ * @param agent_ids List with id of the agents (In this case the list will contain only 1 id)
+ * @param task Task with the update information
+ * */
+char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upgrade_agent_status_task* task);
+
+/**
+ * Validates an update responde from the task manager module
+ * @param response JSON to be validated
+ * Example format:
+ * [{
+ *      "error": 0,
+ *      "data": "Success",
+ *      "agent": 1,
+ *      "status": "Done"
+ *  }, {
+ *      "error": 7,
+ *      "data": "No task in DB",
+ *      "agent": 2,
+ *      "status": "Done"
+ *  }]
+ * */
+bool wm_agent_upgrade_validate_task_update_message(const cJSON *response);
 
 #endif
