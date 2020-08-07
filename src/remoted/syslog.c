@@ -52,7 +52,7 @@ void HandleSyslog()
     memset(&peer_info, 0, sizeof(struct sockaddr_in));
 
     /* Connect to the message queue infinitely */
-    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, MAX_OPENQ_ATTEMPS)) < 0) {
+    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
@@ -101,7 +101,7 @@ void HandleSyslog()
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
             // Try to reconnect infinitely
-            logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, MAX_OPENQ_ATTEMPS);
+            logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
             minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
 

@@ -97,7 +97,7 @@ void wm_oscap_setup(wm_oscap *_oscap) {
 
     // Connect to socket
 
-    queue_fd = StartMQ(DEFAULTQPATH, WRITE, MAX_OPENQ_ATTEMPS);
+    queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
     if (queue_fd < 0) {
         mterror(WM_OSCAP_LOGTAG, "Can't connect to queue.");
