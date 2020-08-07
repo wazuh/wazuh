@@ -510,6 +510,7 @@ void os_remove_ruleinfo(RuleInfo *ruleinfo) {
             os_free(ruleinfo->ar[i]->ar_cmd->name);
             os_free(ruleinfo->ar[i]->ar_cmd->executable);
             os_free(ruleinfo->ar[i]->ar_cmd->extra_args);
+            os_free(ruleinfo->ar[i]->ar_cmd);
             os_free(ruleinfo->ar[i]);
         }
     }
