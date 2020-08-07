@@ -506,6 +506,9 @@
 #define WM_UPGRADE_QUEUE_FD                         "(8113): Could not open default queue to send upgrade notification."
 #define WM_UPGRADE_UNREACHEABLE_REQUEST             "(8114): Cannot connect to '%s'. Could not reach agent."
 #define WM_UPGRADE_EMPTY_AGENT_RESPONSE             "(8115): Response from agent is empty."
+#define WM_UPGRADE_AGENT_RESPONSE_MESSAGE_ERROR     "(8116): Error response from agent: '%s'"
+#define WM_UPGRADE_AGENT_RESPONSE_UNKNOWN_ERROR     "(8117): Unknown error from agent."
+#define WM_UPGRADE_AGENT_RESPONSE_SHA1_ERROR        "(8118): The SHA1 of the file doesn't match in the agent."
 
 #define MOD_TASK_CHECK_DB_ERROR                     "(8250): DB integrity is invalid. Exiting..."
 #define MOD_TASK_CREATE_SOCK_ERROR                  "(8251): Queue '%s' not accesible: '%s'. Exiting..."

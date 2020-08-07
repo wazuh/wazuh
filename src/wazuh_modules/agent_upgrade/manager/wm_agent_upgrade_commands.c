@@ -53,16 +53,16 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_WPK_SENDING_ERROR
  * @retval WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH
- * @retval WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST
  * */
-static int wm_agent_upgrade_send_wpk_to_agent(wm_agent_task *agent_task);
+static int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task);
 
 /**
  * Send a command to the agent and return the response
  * @param command request command to agent
+ * @param command_size size of the command
  * @return response from agent
  * */
-static char* wm_agent_upgrade_send_command_to_agent(const char *command);
+static char* wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size);
 
 char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task) {
     char* response = NULL;
@@ -263,13 +263,19 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
     }
 }
 
-static int wm_agent_upgrade_send_wpk_to_agent(wm_agent_task *agent_task) {
-    int result = WM_UPGRADE_SUCCESS;
+static int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task) {
+    int result = WM_UPGRADE_WPK_SENDING_ERROR;
     wm_upgrade_task *upgrade_task = NULL;
     wm_upgrade_custom_task *upgrade_custom_task = NULL;
     char *file_path = NULL;
     char *file_sha1 = NULL;
     char *wpk_path = NULL;
+    char *command = NULL;
+    char *response = NULL;
+    char *data = NULL;
+    char *error = NULL;
+
+    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SENDING_WPK_TO_AGENT, agent_task->agent_info->agent_id);
 
     if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
         upgrade_task = agent_task->task_info->task;
@@ -287,24 +293,93 @@ static int wm_agent_upgrade_send_wpk_to_agent(wm_agent_task *agent_task) {
         OS_SHA1_File(file_path, file_sha1, OS_BINARY);
     }
 
-    if (file_path && file_sha1) {
-        wpk_path = basename_ex(file_path);
+    wpk_path = basename_ex(file_path);
+    os_calloc(OS_MAXSTR, sizeof(char), command);
 
+    // lock_restart
+    snprintf(command, OS_MAXSTR, "%.3d com lock_restart -1", agent_task->agent_info->agent_id);
+    response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
+    if (!wm_agent_upgrade_parse_agent_response(response, &data, &error)) {
+        int open_retries = 0;
 
-        // TODO: Send WPK and verify SHA1
+        // open wb
+        snprintf(command, OS_MAXSTR, "%.3d com open wb %s", agent_task->agent_info->agent_id, wpk_path);
+        for (open_retries = 0; open_retries < WM_UPGRADE_WPK_OPEN_ATTEMPTS; ++open_retries) {
+            os_free(response);
+            response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
+            if (!wm_agent_upgrade_parse_agent_response(response, &data, &error)) {
+                break;
+            }
+        }
 
+        if (open_retries < WM_UPGRADE_WPK_OPEN_ATTEMPTS) {
+            FILE *file = NULL;
+            unsigned char buffer[WM_UPGRADE_WPK_CHUNK_SIZE];
+            size_t bytes = 0;
+            size_t command_size = 0;
+            size_t byte = 0;
 
-    } else {
-        result = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
+            // write
+            if (file = fopen(file_path, "rb"), file) {
+                while (bytes = fread(buffer, 1, sizeof(buffer), file), bytes) {
+                    snprintf(command, OS_MAXSTR, "%.3d com write %ld %s ", agent_task->agent_info->agent_id, bytes, wpk_path);
+                    command_size = strlen(command);
+                    for (byte = 0; byte < bytes; ++byte) {
+                        sprintf(&command[command_size++], "%c", buffer[byte]);
+                    }
+                    os_free(response);
+                    response = wm_agent_upgrade_send_command_to_agent(command, command_size);
+                    if (wm_agent_upgrade_parse_agent_response(response, &data, &error) == OS_INVALID) {
+                        break;
+                    }
+                }
+                fclose(file);
+
+                if (!bytes) {
+
+                    // close
+                    snprintf(command, OS_MAXSTR, "%.3d com close %s", agent_task->agent_info->agent_id, wpk_path);
+                    os_free(response);
+                    response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
+                    if (!wm_agent_upgrade_parse_agent_response(response, &data, &error)) {
+
+                        // sha1
+                        snprintf(command, OS_MAXSTR, "%.3d com sha1 %s", agent_task->agent_info->agent_id, wpk_path);
+                        os_free(response);
+                        response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
+                        if (!wm_agent_upgrade_parse_agent_response(response, &data, &error)) {
+
+                            if (!strcmp(file_sha1, data)) {
+                                result = WM_UPGRADE_SUCCESS;
+                            } else {
+                                result = WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
+    if (WM_UPGRADE_WPK_SENDING_ERROR == result) {
+        if (error) {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_MESSAGE_ERROR, error);
+        } else {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_UNKNOWN_ERROR);
+        }
+    } else if (WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH == result) {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_SHA1_ERROR);
+    }
+
+    os_free(command);
+    os_free(response);
     os_free(file_path);
     os_free(file_sha1);
 
     return result;
 }
 
-static char* wm_agent_upgrade_send_command_to_agent(const char *command) {
+static char* wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size) {
     char *response = NULL;
     int length = 0;
 
@@ -315,9 +390,9 @@ static char* wm_agent_upgrade_send_command_to_agent(const char *command) {
     if (sock == OS_SOCKTERR) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNREACHEABLE_REQUEST, path);
     } else {
-        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUEST_SEND_MESSAGE, command);
+        mtdebug2(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUEST_SEND_MESSAGE, command);
 
-        OS_SendSecureTCP(sock, strlen(command), command);
+        OS_SendSecureTCP(sock, command_size, command);
         os_calloc(OS_MAXSTR, sizeof(char), response);
 
         switch (length = OS_RecvSecureTCP(sock, response, OS_MAXSTR), length) {
@@ -331,10 +406,12 @@ static char* wm_agent_upgrade_send_command_to_agent(const char *command) {
                 if (!response) {
                     mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_EMPTY_AGENT_RESPONSE);
                 } else {
-                    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUEST_RECEIVE_MESSAGE, response);
+                    mtdebug2(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUEST_RECEIVE_MESSAGE, response);
                 }
                 break;
         }
+
+        close(sock);
     }
 
     return response;
