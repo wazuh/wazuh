@@ -13,6 +13,24 @@ API_PATH=${PREFIX}/api
 API_PATH_BACKUP=${PREFIX}/~api
 
 
+
+stop_api_3x(){
+    # stop api process if its still running
+    OLD_API_PID=$(pgrep -f "${API_PATH}/app.js")
+    if [ -n "$OLD_API_PID" ]; then
+        echo "killing old api process: ${OLD_API_PID}"
+        kill -9 "${OLD_API_PID}"
+    fi
+}
+
+
+
+stop_api_4x() {
+    "${PREFIX}"/bin/wazuh-apid stop
+}
+
+
+
 backup_old_api() {
 
     if [ $# -ne 1 ]; then
@@ -27,19 +45,16 @@ backup_old_api() {
 
     # check current REVISION and perform the applicable backup
     if [ "$1" -ge 40000 ]; then
+        stop_api_4x
         backup_old_api_4x
     else
-        # stop api process if its still running
-        OLD_API_PID=$(pgrep -f "${API_PATH}/app.js")
-        if [ -n "$OLD_API_PID" ]; then
-            echo "killing old api process: ${OLD_API_PID}"
-            kill -9 "${OLD_API_PID}"
-        fi
+        stop_api_3x
     fi
 
     # remove old API directory
     rm -rf "${API_PATH}"
 }
+
 
 
 backup_old_api_4x() {
@@ -73,6 +88,7 @@ backup_old_api_4x() {
         fi
     fi
 }
+
 
 
 restore_old_api() {
