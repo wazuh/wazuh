@@ -2,9 +2,9 @@ network.host: <elasticsearch_ip>
 node.name: <node-X>
 cluster.name: <elastic_cluster>
 cluster.initial_master_nodes:
-        - <master_node_1>
-        - <master_node_2>
-        - <master_node_3>
+        - node-1
+        - node-2
+        - node-3
 discovery.seed_hosts:
         - <elasticsearch_ip_node1>
         - <elasticsearch_ip_node2>
