@@ -330,7 +330,6 @@ void os_remove_cdblist(ListNode **l_node) {
         os_free(tmp);
     }
 
-    os_free(*l_node);
 }
 
 void os_remove_cdbrules(ListRule **l_rule) {
@@ -349,5 +348,4 @@ void os_remove_cdbrules(ListRule **l_rule) {
         os_free(tmp);
     }
 
-    os_free(*l_rule);
 }
