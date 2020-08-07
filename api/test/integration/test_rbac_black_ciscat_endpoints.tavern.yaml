@@ -9,7 +9,7 @@ stages:
   - name: Get ciscat result for agent 001 (allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/001/results"
+      url: "{protocol:s}://{host:s}:{port:d}/ciscat/001/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -25,7 +25,7 @@ stages:
   - name: Get ciscat result for agent 002 (denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/002/results"
+      url: "{protocol:s}://{host:s}:{port:d}/ciscat/002/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -37,7 +37,7 @@ stages:
   - name: Get ciscat result for agent 003 (allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/003/results"
+      url: "{protocol:s}://{host:s}:{port:d}/ciscat/003/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

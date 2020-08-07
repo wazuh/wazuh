@@ -15,7 +15,7 @@ info:
     url: 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
 
 servers:
-  - url: '{protocol}://{host}:{port}/v4'
+  - url: '{protocol}://{host}:{port}'
     variables:
       protocol:
         default: https
