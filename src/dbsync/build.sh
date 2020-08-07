@@ -98,9 +98,10 @@ runValgrind()
 {
     for Test in ./bin/*_test ; do
         echoGreen "Running valgrind on $Test"
-        result=$(valgrind --leak-check=full -q --error-exitcode=1 "$Test" > /dev/null)
+        result=$(valgrind --leak-check=full --show-leak-kinds=all -q --error-exitcode=1 "$Test" > /dev/null)
         status=$?
         if [[ status -ne 0 ]]; then
+            echo $result
             return -1
         fi
     done

@@ -26,12 +26,12 @@ namespace DbSync
                  const unsigned int threadNumber,
                  const unsigned int maxQueueSize,
                  const ResultCallback callback)
-        : m_spDispatchNode{ maxQueueSize ? getDispatchNode(threadNumber) : nullptr }
-        , m_spSyncNode{ maxQueueSize ? getSyncNode(threadNumber) : nullptr}
-        , m_handle{ handle }
+        : m_handle{ handle }
         , m_txnContext{ DBSyncImplementation::instance().createTransaction(handle, tables) }
         , m_maxQueueSize{ maxQueueSize }
         , m_callback{ callback }
+        , m_spDispatchNode{ maxQueueSize ? getDispatchNode(threadNumber) : nullptr }
+        , m_spSyncNode{ maxQueueSize ? getSyncNode(threadNumber) : nullptr}
         {
             if (!m_callback || !m_handle || !m_txnContext)
             {
@@ -136,12 +136,12 @@ namespace DbSync
                 m_callback(result.first, value);
             }
         }
-        const std::shared_ptr<DispatchCallbackNode> m_spDispatchNode;
-        const std::shared_ptr<SyncRowNode> m_spSyncNode;
         const DBSYNC_HANDLE m_handle;
         const TXN_HANDLE m_txnContext;
         const unsigned int m_maxQueueSize;
         const ResultCallback m_callback;
+        const std::shared_ptr<DispatchCallbackNode> m_spDispatchNode;
+        const std::shared_ptr<SyncRowNode> m_spSyncNode;
     };
 //----------------------------------------------------------------------------------------
     PipelineFactory& PipelineFactory::instance() noexcept

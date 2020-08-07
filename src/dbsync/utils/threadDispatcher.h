@@ -66,7 +66,7 @@ namespace Utils
     public:
         AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency())
         : m_functor{ functor }
-        , m_blocked{ false }
+        , m_running{ true }
         , m_numberOfThreads{ numberOfThreads }
         {
             m_threads.reserve(m_numberOfThreads);
@@ -79,16 +79,12 @@ namespace Utils
         AsyncDispatcher(AsyncDispatcher& other) = delete;
         ~AsyncDispatcher()
         {
-            m_queue.cancel();
-            for (auto& thread : m_threads)
-            {
-                thread.join();
-            }
+            cancel();
         }
 
         void push(const Type& value)
         {
-            if (!m_blocked)
+            if (m_running)
             {
                 m_queue.push
                 (
@@ -102,9 +98,8 @@ namespace Utils
 
         void rundown()
         {
-            if (!cancelled())
+            if (m_running)
             {
-                m_blocked = true;
                 std::promise<void> promise;
                 auto fut { promise.get_future() };
                 m_queue.push
@@ -120,12 +115,13 @@ namespace Utils
         }
         void cancel()
         {
+            joinThreads();
             m_queue.cancel();
         }
 
         bool cancelled() const
         {
-            return m_queue.cancelled();
+            return !m_running;
         }
         unsigned int numberOfThreads() const
         {
@@ -139,16 +135,34 @@ namespace Utils
     private:
         void dispatch()
         {
-            std::function<void()> fnc;
-            while(m_queue.pop(fnc))
+            while(m_running)
             {
-                fnc();
+                std::function<void()> fnc;
+                if(m_queue.pop(fnc, false))
+                {
+                    fnc();
+                }
+                std::this_thread::yield();
+            }
+        }
+        void joinThreads()
+        {
+            if (m_running)
+            {
+                m_running = false;
+                for (auto& thread : m_threads)
+                {
+                    if (thread.joinable())
+                    {
+                        thread.join();
+                    }
+                }
             }
         }
         Functor m_functor;
         SafeQueue<std::function<void()>> m_queue;
         std::vector<std::thread> m_threads;
-        std::atomic_bool m_blocked;
+        std::atomic_bool m_running;
         const unsigned int m_numberOfThreads;
     };
 
