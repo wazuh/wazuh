@@ -187,6 +187,11 @@ createCertificates() {
         eval "unzip ~/certs.zip -d ~/certs $debug"
         eval "mkdir /etc/elasticsearch/certs/ca -p $debug"
         eval "cp -R ~/certs/ca/ ~/certs/elasticsearch/* /etc/elasticsearch/certs/ $debug"
+        if [[ -n "$master" ]] 
+        then
+            eval "mv ~/certs/elasticsearch-1/elasticsearch-1.crt /etc/elasticsearch/certs/elasticsearch.crt $debug"
+            eval "mv ~/certs/elasticsearch-1/elasticsearch-1.key /etc/elasticsearch/certs/elasticsearch.key $debug"
+        fi
         eval "chown -R elasticsearch: /etc/elasticsearch/certs $debug"
         eval "chmod -R 500 /etc/elasticsearch/certs $debug"
         eval "chmod 400 /etc/elasticsearch/certs/ca/ca.* /etc/elasticsearch/certs/elasticsearch.* $debug"
@@ -196,18 +201,21 @@ createCertificates() {
 
     # Start Elasticsearch
     startService "elasticsearch"
-    echo "Initializing Elasticsearch..."
-    passwords=$(/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b)
-    password=$(echo $passwords | awk 'NF{print $NF; exit}')
-    elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs)
-    until $(curl -XGET https://${elk}:9200/ -elastic:"$password" -k --max-time 120 --silent --output /dev/null); do
-        echo -ne $char
-        sleep 10
-    done
+    if [ -n "$single" ]
+    then
+        echo "Initializing Elasticsearch..."
+        passwords=$(/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b)
+        password=$(echo $passwords | awk 'NF{print $NF; exit}')
+        elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs)
+        until $(curl -XGET https://${elk}:9200/ -elastic:"$password" -k --max-time 120 --silent --output /dev/null); do
+            echo -ne $char
+            sleep 10
+        done
 
-    logger "Done"
-    echo $'\nDuring the installation of Elasticsearch the passwords for its user were generated. Please take note of them:'
-    echo "$passwords"
+        logger "Done"
+        echo $'\nDuring the installation of Elasticsearch the passwords for its user were generated. Please take note of them:'
+        echo "$passwords"
+    fi
     echo $'\nElasticsearch installation finished'
     exit 0;    
 }
@@ -244,7 +252,7 @@ installKibana() {
         logger "Kibana installed."
         
         checkKibanacerts kc
-        if [ "$kc" -eq "0" ]
+        if [[ "$kc" -eq "0" ]] && [[ -n "$single" ]]
         then
             exit
         else
@@ -302,7 +310,7 @@ healthCheck() {
     cores=$(cat /proc/cpuinfo | grep processor | wc -l)
     ram_gb=$(free -m | awk '/^Mem:/{print $2}')
 
-    if [[ $cores < "2" ]] || [[ $ram_gb < "3500" ]]
+    if [[ $cores < "2" ]] || [[ $ram_gb < "3700" ]]
     then
         echo "The system must have at least 4Gb of RAM and 2 CPUs"
         exit 1;
