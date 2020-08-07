@@ -8,6 +8,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#ifdef CLIENT
+
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_agent.h"
 
@@ -129,3 +131,5 @@ static bool wm_upgrade_agent_search_upgrade_result(int queue_fd) {
     }
     return false;
 }
+
+#endif

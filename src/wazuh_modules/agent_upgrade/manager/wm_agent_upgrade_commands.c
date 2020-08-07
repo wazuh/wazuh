@@ -175,7 +175,7 @@ static cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_
             int result = wm_agent_upgrade_create_task_entry(agent_id, agent_task);
 
             if (result == OSHASH_SUCCESS) {
-                task_request = wm_agent_upgrade_parse_task_module_request(agent_task->task_info->command, agent_id);
+                task_request = wm_agent_upgrade_parse_task_module_request(agent_task->task_info->command, agent_id, NULL);
             } else if (result == OSHASH_DUPLICATED) {
                 *error_code = WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS;
             } else {
@@ -254,18 +254,13 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
 }
 
 char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upgrade_agent_status_task* task) {
-    cJSON *response = cJSON_CreateArray();
-    cJSON *message_array = cJSON_CreateArray();
     // Only one id of agent will reach at a time
     int agent_id = agent_ids[0];
-    cJSON *message_object = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_STATUS, agent_id);
-    cJSON_AddStringToObject(message_object, "status", task->status);
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACK_RECEIVED, agent_id, task->error_code, task->message);
-    cJSON_AddItemToArray(message_array, message_object);
 
     // Send task update to task manager and bring back the response
-    wm_agent_upgrade_parse_task_module_task_ids(response, message_array);
-    
+    cJSON *response = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_STATUS, agent_id, task->status);
+
     if (wm_agent_upgrade_validate_task_update_message(response)) {
         // If status update is successful, tell agent to erase results file
         char *buffer = NULL;
@@ -286,8 +281,6 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upg
     char *message = cJSON_PrintUnformatted(response);
     
     cJSON_Delete(response);
-    cJSON_Delete(message_array);
-    
     return message;
 }
 

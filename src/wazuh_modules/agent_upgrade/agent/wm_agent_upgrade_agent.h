@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#ifdef CLIENT
 
 #ifndef WM_AGENT_UPGRADE_AGENT_H
 #define WM_AGENT_UPGRADE_AGENT_H
@@ -31,5 +32,7 @@ typedef enum _wm_upgrade_agent_state {
  * @param agent_config Agent configuration parameters
  * */
 void wm_agent_upgrade_check_status(wm_agent_configs agent_config);
+
+#endif
 
 #endif

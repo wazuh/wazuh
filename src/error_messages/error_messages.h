@@ -506,8 +506,8 @@
 #define WM_UPGRADE_QUEUE_FD                         "(8113): Could not open default queue to send upgrade notification."
 #define WM_UPGRADE_UNREACHEABLE_REQUEST             "(8114): Cannot connect to '%s'. Could not reach agent."
 #define WM_UPGRADE_EMPTY_AGENT_RESPONSE             "(8115): Response from agent is empty."
-#define WM_UPGRADE_TASK_UPDATE_ERROR                "(8116): There has been an error updating task state. Error code: %d, message: %s"
-#define WM_UPGRADE_RESULT_FILE_ERROR                "(8117): Agent was unable to errase upgrade_result file. Reason: %s"
+#define WM_UPGRADE_TASK_UPDATE_ERROR                "(8116): There has been an error updating task state. Error code: '%d', message: '%s'"
+#define WM_UPGRADE_RESULT_FILE_ERROR                "(8117): Agent was unable to erase upgrade_result file. Reason: '%s'"
 
 #define MOD_TASK_CHECK_DB_ERROR                     "(8250): DB integrity is invalid. Exiting..."
 #define MOD_TASK_CREATE_SOCK_ERROR                  "(8251): Queue '%s' not accesible: '%s'. Exiting..."

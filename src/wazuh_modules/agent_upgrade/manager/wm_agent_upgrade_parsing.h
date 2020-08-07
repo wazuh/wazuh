@@ -43,9 +43,10 @@ cJSON* wm_agent_upgrade_parse_response_message(int error_id, const char* message
  * Parse a message to be sent to the task module
  * @param command task command
  * @param agent_id agent id
+ * @param status optional status string
  * @return json to be sent
  * */
-cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id);
+cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id,  const char* status);
 
 /**
  * Send a request to the task module and parse the response with the task ids
@@ -56,6 +57,15 @@ cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, in
  * @retval OS_INVALID on errors
  * */
 int wm_agent_upgrade_parse_task_module_task_ids(cJSON *json_response, const cJSON* task_module_request);
+
+/**
+ * Send a single message to the task module and returns a response
+ * @param command wm_upgrade_command that will be used to generate the message
+ * @param agent_id id of the agent
+ * @param status in case the comand is and upgdate of statuos
+ * @return cJSON with the response from the task manager
+ * */
+cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task);
 
 /**
  * Parse a response message from the agent

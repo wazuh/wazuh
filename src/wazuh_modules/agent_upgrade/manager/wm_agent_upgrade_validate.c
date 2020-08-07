@@ -395,14 +395,13 @@ static int wm_agent_upgrade_compare_versions(const char *version1, const char *v
 
 
 bool wm_agent_upgrade_validate_task_update_message(const cJSON *response) {
-    if (response->type == cJSON_Array && cJSON_GetArraySize(response) > 0) {
-        cJSON *item = cJSON_GetArrayItem(response, 0);
-        cJSON *error_object = cJSON_GetObjectItem(item, "error");
+    if (response) {
+        cJSON *error_object = cJSON_GetObjectItem(response, "error");
         if (error_object && error_object->type == cJSON_Number) {
             if (error_object->valueint == 0) {
                 return true;
             } else {
-                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_UPDATE_ERROR, error_object->valueint, cJSON_GetObjectItem(item, "data")->valuestring);
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_UPDATE_ERROR, error_object->valueint, cJSON_GetObjectItem(response, "data")->valuestring);
             }
         } else {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUIRED_PARAMETERS);

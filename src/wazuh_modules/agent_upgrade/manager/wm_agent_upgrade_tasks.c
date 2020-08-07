@@ -116,24 +116,28 @@ void wm_agent_upgrade_free_agent_info(wm_agent_info* agent_info) {
 }
 
 void wm_agent_upgrade_free_agent_task(wm_agent_task* agent_task) {
-    if (agent_task->agent_info) {
-        wm_agent_upgrade_free_agent_info(agent_task->agent_info);
+    if (agent_task) {
+        if (agent_task->agent_info) {
+            wm_agent_upgrade_free_agent_info(agent_task->agent_info);
+        }
+        if (agent_task->task_info) {
+            wm_agent_upgrade_free_task_info(agent_task->task_info);
+        }
+        os_free(agent_task);
+        agent_task = NULL;
     }
-    if (agent_task->task_info) {
-        wm_agent_upgrade_free_task_info(agent_task->task_info);
-    }
-    os_free(agent_task);
-    agent_task = NULL;
 }
 
 void wm_agent_upgrade_free_agent_status_task(wm_upgrade_agent_status_task* task) {
-    if (task->message) {
-        os_free(task->message);
+    if (task) {
+        if (task->message) {
+            os_free(task->message);
+        }
+        if (task->status) {
+            os_free(task->status);
+        }
+        os_free(task);
     }
-    if (task->status) {
-        os_free(task->status);
-    }
-    os_free(task);
 }
 
 void wm_agent_upgrade_init_task_map() {
