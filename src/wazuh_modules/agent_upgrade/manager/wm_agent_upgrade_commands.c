@@ -323,7 +323,7 @@ static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task)
 
     // Validate if there is a task in progress for this agent
     status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_GET_STATUS, agent_task->agent_info->agent_id, NULL);
-    if (wm_agent_upgrade_validate_task_status_message(status_json, &status) && !strcmp(status, "In progress")) {
+    if (wm_agent_upgrade_validate_task_status_message(status_json, &status) && status && !strcmp(status, WM_UPGRADE_STATUS_IN_PROGRESS)) {
         validate_result = WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS;
     }
 
@@ -356,6 +356,7 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
     OSHashNode *node = NULL;
     char *agent_key = NULL;
     wm_agent_task *agent_task = NULL;
+    cJSON *status_json = NULL;
 
     // Send request to task module and store task ids
     if (!wm_agent_upgrade_parse_task_module_task_ids(json_response, task_module_request)) {
@@ -368,17 +369,15 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
 
             if (!wm_agent_upgrade_send_wpk_to_agent(agent_task)) {
 
-
-                // TODO: Send update command to agent and update task to UPDATING
-
-
+                // Update task to "In progress"
+                status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, WM_UPGRADE_STATUS_IN_PROGRESS);
             } else {
 
-
-                // TODO: Update task to ERROR
-
-
+                // Update task to "Failed"
+                status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, WM_UPGRADE_STATUS_FAILED);
             }
+
+            wm_agent_upgrade_validate_task_status_message(status_json, NULL);
 
             wm_agent_upgrade_remove_entry(atoi(agent_key));
         }
