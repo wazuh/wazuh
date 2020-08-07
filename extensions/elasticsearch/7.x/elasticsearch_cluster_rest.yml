@@ -1,5 +1,5 @@
 network.host: <elasticsearch_ip>
-node.name: node-1
+node.name: <node-X>
 cluster.name: <elastic_cluster>
 cluster.initial_master_nodes:
         - <master_node_1>
