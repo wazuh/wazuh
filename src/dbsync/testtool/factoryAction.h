@@ -59,6 +59,10 @@ public:
         {
             return std::make_unique<SelectRowsAction>();
         }
+        else if (0 == actionCode.compare("dbsync_add_table_relationship"))
+        {
+            return std::make_unique<AddTableRelationship>();
+        }
         else
         {
             throw std::runtime_error { "Invalid action: " + actionCode };
