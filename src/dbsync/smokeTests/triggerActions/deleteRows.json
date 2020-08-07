@@ -1,0 +1,11 @@
+{
+    "action": "dbsync_delete_rows",
+        "body": {
+            "table": "processes",
+            "data":[
+                {
+                    "pid":4
+                }      
+            ]
+        }
+    } 
