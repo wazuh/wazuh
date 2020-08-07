@@ -122,7 +122,7 @@ static bool wm_upgrade_agent_search_upgrade_result(int queue_fd) {
         wm_upgrade_agent_state state;
         for(state = 0; state < WM_UPGRADE_MAX_STATE; state++) {
             // File can either be "0\n" or "2\n", so we are expecting a positive match
-            if (strcmp(buffer, upgrade_values[state]) >= 0) {
+            if (strstr(buffer, upgrade_values[state]) != NULL) {
                 // Matched value, send message
                 wm_upgrade_agent_send_ack_message(queue_fd, state);
                 return true;
