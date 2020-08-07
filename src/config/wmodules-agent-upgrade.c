@@ -55,7 +55,7 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
         }
-#ifdef CLIENT
+        #ifdef CLIENT
         // Agent configurations
         else if (!strcmp(nodes[i]->element, XML_WAIT_START)) {
             int wait_start = strtol(nodes[i]->content, NULL, 10);
@@ -84,7 +84,7 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
         }
-#endif
+        #endif
         else {
             mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_AGENT_UPGRADE_CONTEXT.name);
         }

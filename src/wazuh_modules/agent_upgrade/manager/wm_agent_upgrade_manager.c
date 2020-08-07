@@ -122,7 +122,7 @@ void wm_agent_upgrade_listen_messages(int timeout_sec) {
                     os_free(agent_ids);
                 }
                 break;
-            case WM_UPGRADE_AGENT_STATUS:
+            case WM_UPGRADE_AGENT_UPDATE_STATUS:
                 if (task && agent_ids) {
                     message = wm_agent_upgrade_process_agent_result_command(agent_ids, (wm_upgrade_agent_status_task *)task);
                     wm_agent_upgrade_free_agent_status_task(task);

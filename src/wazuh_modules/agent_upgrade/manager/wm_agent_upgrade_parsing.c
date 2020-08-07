@@ -62,7 +62,8 @@ static wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
 const char* upgrade_commands[] = {
     [WM_UPGRADE_UPGRADE] = "upgrade",
     [WM_UPGRADE_UPGRADE_CUSTOM] = "upgrade_custom",
-    [WM_UPGRADE_AGENT_STATUS] = WM_UPGRADE_AGENT_UPDATED_COMMAND
+    [WM_UPGRADE_AGENT_GET_STATUS] = "upgrade_get_status",
+    [WM_UPGRADE_AGENT_UPDATE_STATUS] = WM_UPGRADE_AGENT_UPDATED_COMMAND
 };
 
 int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error) {
@@ -102,12 +103,12 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
                         retval = WM_UPGRADE_UPGRADE_CUSTOM;
                     }
                 }
-            } else if (strcmp(command->valuestring, upgrade_commands[WM_UPGRADE_AGENT_STATUS]) == 0) {
+            } else if (strcmp(command->valuestring, upgrade_commands[WM_UPGRADE_AGENT_UPDATE_STATUS]) == 0) {
                 *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
                 if (!error_message) {
                     *task = (wm_upgrade_agent_status_task*)wm_agent_upgrade_parse_upgrade_agent_status(params, &error_message);
                     if (!error_message) {
-                        retval = WM_UPGRADE_AGENT_STATUS;
+                        retval = WM_UPGRADE_AGENT_UPDATE_STATUS;
                     }
                 }
             } else {
