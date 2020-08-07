@@ -10,6 +10,7 @@
  */
 
 #include "shared.h"
+#include "wazuh_db/wdb.h"
 
 /* Append a new label into an array of (size) labels at the moment of inserting. Returns the new pointer. */
 wlabel_t* labels_add(wlabel_t *labels, size_t * size, const char *key, const char *value, label_flags_t flags, int overwrite) {
@@ -94,85 +95,85 @@ int labels_format(const wlabel_t *labels, char *str, size_t size) {
 }
 
 /*
- * Parse labels from agent-info file.
+ * Parse labels from Wazuh DB - global.db - labels table.
  * Returns pointer to new null-key terminated array.
- * If no such file, returns NULL.
+ * If there are no labels for the agent, returns NULL.
  * Free resources with labels_free().
  */
-wlabel_t* labels_parse(const char *path) {
-    char buffer[OS_MAXSTR];
-    char *key;
-    char *value;
-    char *end;
-    size_t size = 0;
+wlabel_t* labels_parse(int agent_id) {
+    cJSON *json_labels = NULL;
+    cJSON *json_row_it = NULL;
+    char * str_key = NULL;
+    char * str_value = NULL;
+    char * key_start = NULL;
+    char * key_end = NULL;
     wlabel_t *labels;
     label_flags_t flags;
-    FILE *fp;
+    size_t size = 0;
 
-    if (!(fp = fopen(path, "r"))) {
-        if (errno == ENOENT) {
-            mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
-        } else {
-            merror(FOPEN_ERROR, path, errno, strerror(errno));
-        }
+    json_labels = wdb_get_agent_labels(agent_id);
 
-        return NULL;
-    }
+    if (json_labels && json_labels->child) {
+        os_calloc(1, sizeof(wlabel_t), labels);
 
-    os_calloc(1, sizeof(wlabel_t), labels);
+        /*
+        "key1":value1\n
+        !"key2":value2\n
+        #"key3":_value3\n
+        */
 
-    /*
-    "key1":value1\n
-    !"key2":value2\n
-    #"key3":_value3\n
-    */
+        os_calloc(OS_BUFFER_SIZE, sizeof(char), str_key);
+        os_calloc(OS_BUFFER_SIZE, sizeof(char), str_value);
 
-    while (fgets(buffer, OS_MAXSTR, fp)) {
-        switch (*buffer) {
-        case '!':
-            if (buffer[1] == '\"') {
-                flags.hidden = 1;
-                flags.system = 0;
-                key = buffer + 2;
-            } else {
+        cJSON_ArrayForEach (json_row_it, json_labels) {
+            key_start = NULL;
+            key_end = NULL;
+            os_strdup(cJSON_GetObjectItem(json_row_it, "key")->valuestring, str_key);
+            os_strdup(cJSON_GetObjectItem(json_row_it, "value")->valuestring, str_value);
+
+            switch (*str_key) {
+            case '!': // Hidden labels
+                if (str_key[1] == '\"') {
+                    flags.hidden = 1;
+                    flags.system = 0;
+                    key_start = str_key + 2;
+                } else {
+                    continue;
+                }
+
+                break;
+            case '#': // Internal labels
+                if (str_key[1] == '\"') {
+                    flags.system = 1;
+                    flags.hidden = 0;
+                    key_start = str_key + 2;
+                } else {
+                    continue;
+                }
+
+                break;
+            case '\"':
+                flags.hidden = flags.system = 0;
+                key_start = str_key + 1;
+                break;
+            default:
                 continue;
             }
 
-            break;
-        case '#':   // Internal labels
-            if (buffer[1] == '\"') {
-                flags.system = 1;
-                flags.hidden = 0;
-                key = buffer + 2;
-            } else {
+            if (!(key_end = strstr(key_start, "\""))) {
                 continue;
             }
 
-            break;
-        case '\"':
-            flags.hidden = flags.system = 0;
-            key = buffer + 1;
-            break;
-        default:
-            continue;
+            *key_end = '\0';
+
+            labels = labels_add(labels, &size, key_start, str_value, flags, 0);
         }
 
-        if (!(value = strstr(key, "\":"))) {
-            continue;
-        }
-
-        *value = '\0';
-        value += 2;
-
-        if (!(end = strchr(value, '\n'))) {
-            continue;
-        }
-
-        *end = '\0';
-        labels = labels_add(labels, &size, key, value, flags, 0);
+        os_free(str_key);
+        os_free(str_value);
+        cJSON_Delete(json_labels);
     }
 
-    fclose(fp);
     return labels;
 }
 

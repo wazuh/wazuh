@@ -10,6 +10,7 @@
  */
 
 #include "headers/shared.h"
+#include "wazuh_db/wdb.h"
 #include "eventinfo.h"
 #include "config.h"
 #include "labels.h"
@@ -39,12 +40,11 @@ int labels_init() {
 
 /* Find the label array for an agent. Returns NULL if no such agent file found. */
 wlabel_t* labels_find(const Eventinfo *lf) {
-    char path[PATH_MAX];
-    char hostname[OS_MAXSTR];
-    char *ip;
-    char *end;
-    wlabel_data_t *data;
-    wlabel_t *ret_labels;
+    char hostname[OS_BUFFER_SIZE] = "";
+    char *ip = NULL;
+    char *end = NULL;
+    wlabel_data_t *data = NULL;
+    wlabel_t *ret_labels = NULL;
 
     if (strcmp(lf->agent_id, "000") == 0) {
         return Config.labels;
@@ -54,8 +54,8 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         return NULL;
     }
 
-    strncpy(hostname, lf->location + 1, OS_MAXSTR - 1);
-    hostname[OS_MAXSTR - 1] = '\0';
+    strncpy(hostname, lf->location + 1, OS_BUFFER_SIZE - 1);
+    hostname[OS_BUFFER_SIZE - 1] = '\0';
 
     if (!(ip = strstr(hostname, ") "))) {
         return NULL;
@@ -67,37 +67,32 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         *end = '\0';
     }
 
-    if (snprintf(path, PATH_MAX, AGENTINFO_DIR "/%s-%s", hostname, ip) >= PATH_MAX) {
-        merror("at labels_find(): path too long.");
-        return NULL;
-    }
-
     w_mutex_lock(&label_mutex);
-    if (data = (wlabel_data_t*)OSHash_Get(label_cache, path), !data) {
+    if (data = (wlabel_data_t*)OSHash_Get(label_cache, lf->agent_id), !data) {
         // Data not cached
 
         os_calloc(1, sizeof(wlabel_data_t), data);
-        data->labels = labels_parse(path);
+        data->labels = labels_parse(atoi(lf->agent_id));
 
         if (!data->labels) {
-            mdebug1("Couldn't parse labels for agent %s (%s). Info file may not exist.", hostname, ip);
+            mdebug1("Couldn't parse labels for agent %s. Info file may not exist.", lf->agent_id);
             free(data);
             w_mutex_unlock(&label_mutex);
             return NULL;
         }
 
-        data->mtime = File_DateofChange(path);
+        data->mtime = wdb_get_agent_keepalive(lf->agent_id, ip);
 
         if (data->mtime == -1) {
-            merror("Getting stats for agent %s (%s). Cannot parse labels.", hostname, ip);
+            merror("Getting stats for agent %s. Cannot parse labels.", lf->agent_id);
             labels_free(data->labels);
             free(data);
             w_mutex_unlock(&label_mutex);
             return NULL;
         }
 
-        if (OSHash_Add(label_cache, path, data) != 2) {
-            merror("Couldn't store labels for agent %s (%s) on cache.", hostname, ip);
+        if (OSHash_Add(label_cache, lf->agent_id, data) != 2) {
+            merror("Couldn't store labels for agent %s on cache.", lf->agent_id);
             labels_free(data->labels);
             free(data);
             w_mutex_unlock(&label_mutex);
@@ -107,15 +102,15 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         // Data cached, check modification time
 
         wlabel_data_t *new_data;
-        time_t mtime = File_DateofChange(path);;
+        time_t mtime = wdb_get_agent_keepalive(lf->agent_id, ip);
 
         if (mtime == -1) {
             if (!data->error_flag) {
                 if (errno == ENOENT) {
-                    mdebug1("Cannot get agent-info file for agent %s (%s). It could have been removed.", hostname, ip);
+                    mdebug1("Cannot get agent-info file for agent %s. It could have been removed.", lf->agent_id);
 
                 } else {
-                    minfo("Cannot get agent-info file for agent %s (%s). Using old labels.", hostname, ip);
+                    minfo("Cannot get agent-info file for agent %s. Using old labels.", lf->agent_id);
                 }
                 data->error_flag = 1;
             }
@@ -123,11 +118,11 @@ wlabel_t* labels_find(const Eventinfo *lf) {
             // Update file, keep old to return in case of error
 
             os_calloc(1, sizeof(wlabel_data_t), new_data);
-            new_data->labels = labels_parse(path);
+            new_data->labels = labels_parse(atoi(lf->agent_id));
             new_data->mtime = mtime;
 
-            if (!OSHash_Update(label_cache, path, new_data)) {
-                merror("Couldn't update labels for agent %s (%s) on cache.", hostname, ip);
+            if (!OSHash_Update(label_cache, lf->agent_id, new_data)) {
+                merror("Couldn't update labels for agent %s on cache.", lf->agent_id);
                 labels_free(new_data->labels);
                 free(new_data);
                 w_mutex_unlock(&label_mutex);

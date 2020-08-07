@@ -23,6 +23,7 @@
 #endif
 #include "alerts/alerts.h"
 #include "alerts/getloglocation.h"
+#include "wazuh_db/wdb.h"
 #include "os_execd/execd.h"
 #include "os_regex/os_regex.h"
 #include "os_net/os_net.h"

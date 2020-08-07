@@ -43,11 +43,11 @@ int labels_format(const wlabel_t *labels, char *str, size_t size);
 wlabel_t * labels_dup(const wlabel_t * labels);
 
 /*
- * Parse labels from agent-info file.
+ * Parse labels from Wazuh DB - global.db - labels table.
  * Returns pointer to new null-key terminated array.
- * If no such file, returns NULL.
+ * If there are no labels for the agent, returns NULL.
  * Free resources with labels_free().
  */
-wlabel_t* labels_parse(const char *path);
+wlabel_t* labels_parse(int agent_id);
 
 #endif
