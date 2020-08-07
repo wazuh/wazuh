@@ -1536,7 +1536,7 @@ std::string SQLiteDBEngine::buildDeleteRelationTrigger(const nlohmann::json& dat
 
 std::string SQLiteDBEngine::buildUpdateRelationTrigger(const nlohmann::json&            data,
                                                        const std::string&               baseTable,
-                                                       const std::vector<std::string>&   primaryKeys)
+                                                       const std::vector<std::string>&  primaryKeys)
 {
     const constexpr auto UPDATE_POSTFIX{"_update"};
 
