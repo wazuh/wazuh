@@ -10,9 +10,11 @@
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_ENABLED = "enabled";
-static const char *XML_WAIT_START = "notification_wait_start"; 
-static const char *XML_WAIT_MAX = "notification_wait_max"; 
-static const char *XML_WAIT_FACTOR = "notification_wait_factor"; 
+#ifdef CLIENT
+static const char *XML_WAIT_START = "notification_wait_start";
+static const char *XML_WAIT_MAX = "notification_wait_max";
+static const char *XML_WAIT_FACTOR = "notification_wait_factor";
+#endif
 
 int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
     wm_agent_upgrade* data = NULL;

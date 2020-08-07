@@ -24,6 +24,7 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_GLOBAL_DB_FAILURE] = "Agent information not found in database.",
     [WM_UPGRADE_INVALID_ACTION_FOR_MANAGER] = "Action not available for Manager (agent 000).",
     [WM_UPGRADE_AGENT_IS_NOT_ACTIVE] = "Agent is not active.",
+    [WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading.",
     [WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED] = "Remote upgrade is not available for this agent version.",
     [WM_UPGRADE_SYSTEM_NOT_SUPPORTED] = "The WPK for this platform is not available.",
     [WM_UPGRADE_URL_NOT_FOUND] = "The repository is not reachable.",
@@ -33,7 +34,6 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_VERSION_SAME_MANAGER] = "Agent and manager have the same version. No need to upgrade.",
     [WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST] = "The WPK file does not exist.",
     [WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH] = "The WPK sha1 of the file is not valid.",
-    [WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading.",
     [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start."
 };
 
@@ -122,7 +122,7 @@ void wm_agent_upgrade_listen_messages(int timeout_sec) {
                     os_free(agent_ids);
                 }
                 break;
-            case WM_UPGRADE_AGENT_STATUS:
+            case WM_UPGRADE_AGENT_UPDATE_STATUS:
                 if (task && agent_ids) {
                     message = wm_agent_upgrade_process_agent_result_command(agent_ids, (wm_upgrade_agent_status_task *)task);
                     wm_agent_upgrade_free_agent_status_task(task);

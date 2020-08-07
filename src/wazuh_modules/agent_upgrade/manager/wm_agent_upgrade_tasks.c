@@ -218,6 +218,8 @@ cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
                 break;
         }
         os_free(buffer);
+
+        close(sock);
     }
 
     return response;

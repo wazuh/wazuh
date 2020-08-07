@@ -25,10 +25,9 @@ const char* upgrade_messages[] = {
 
 /* TODO: This was copied from task-manager, but should be in common location */
 static const char *task_statuses[] = {
-    [WM_UPGRADE_SUCCESSFULL] = "Done",
-    [WM_UPGRADE_FAILED] = "Failed"
+    [WM_UPGRADE_SUCCESSFULL] = WM_UPGRADE_STATUS_DONE,
+    [WM_UPGRADE_FAILED] = WM_UPGRADE_STATUS_FAILED
 };
-
 
 /**
  * Reads the upgrade_result file if it is present and sends the upgrade result message to the manager.
@@ -108,7 +107,6 @@ static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_sta
     os_free(msg_string);
     cJSON_Delete(root);
 }
-
 
 static bool wm_upgrade_agent_search_upgrade_result(int queue_fd) {
     char buffer[20];

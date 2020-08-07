@@ -69,6 +69,4 @@ int wm_agent_upgrade_parse_task_module_task_ids(cJSON *json_response, const cJSO
  * */
 int wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data, char **error);
 
-extern const char* upgrade_commands[];
-
 #endif
