@@ -19,9 +19,9 @@
  * @param task pointer to wm_upgrade_task with the params
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS
- * @retval WM_UPGRADE_VERSION_SAME_MANAGER
  * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
- * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER)
+ * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER
+ * @retval WM_UPGRADE_VERSION_SAME_MANAGER
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
 static int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task);
