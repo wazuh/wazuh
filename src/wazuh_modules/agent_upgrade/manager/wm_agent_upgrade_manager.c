@@ -34,7 +34,6 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_VERSION_SAME_MANAGER] = "Agent and manager have the same version. No need to upgrade.",
     [WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST] = "The WPK file does not exist.",
     [WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH] = "The WPK sha1 of the file is not valid.",
-    [WM_UPGRADE_WPK_SENDING_ERROR] = "Error while sending WPK to agent.",
     [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start."
 };
 
