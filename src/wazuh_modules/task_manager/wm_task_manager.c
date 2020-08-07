@@ -78,7 +78,6 @@ static const char *error_codes[] = {
     [WM_TASK_INVALID_TASK_ID] = "Invalid task ID",
     [WM_TASK_INVALID_STATUS] = "Invalid status",
     [WM_TASK_DATABASE_NO_TASK] = "No task in DB",
-    [WM_TASK_DATABASE_NO_AGENT] = "No upgrade task for agent in DB",
     [WM_TASK_DATABASE_ERROR] = "Database error",
     [WM_TASK_UNKNOWN_ERROR] = "Unknown error"
     
@@ -131,9 +130,6 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
             break;
         case WM_TASK_DATABASE_NO_TASK:
             mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_COULD_NOT_FIND_TASK, task);
-            break;
-        case WM_TASK_DATABASE_NO_AGENT:
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_COULD_NOT_FIND_AGENT, task);
             break;
         case WM_TASK_DATABASE_ERROR:
             mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_DB_ERROR, task);
@@ -353,8 +349,8 @@ cJSON* wm_task_manager_analyze_task_api_module(const cJSON *task_object, int *er
                 *error_code = WM_TASK_DATABASE_ERROR;
                 response = wm_task_manager_build_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
             } else if (task_id == OS_NOTFOUND || task_id == 0) {
-                *error_code = WM_TASK_DATABASE_NO_AGENT;
-                response = wm_task_manager_build_response(WM_TASK_DATABASE_NO_AGENT, agent_id, OS_INVALID, status);
+                *error_code = WM_TASK_DATABASE_NO_TASK;
+                response = wm_task_manager_build_response(WM_TASK_DATABASE_NO_TASK, agent_id, OS_INVALID, status);
             } else {
                 response = wm_task_manager_build_response(WM_TASK_SUCCESS, agent_id, task_id, NULL);
                 wm_task_manager_build_response_result(response, modules_list[WM_TASK_UPGRADE_MODULE], command_result, status, create_time, last_update_time, command);
