@@ -12,6 +12,7 @@
 #include "wazuh_db/wdb.h"
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_manager.h"
+
 /**
  * Check if agent version is valid to upgrade to a non-customized version
  * @param agent_version Wazuh version of agent to validate
@@ -390,4 +391,23 @@ static int wm_agent_upgrade_compare_versions(const char *version1, const char *v
     }
 
     return result;
+}
+
+bool wm_agent_upgrade_validate_task_update_message(const cJSON *response) {
+    if (response) {
+        cJSON *error_object = cJSON_GetObjectItem(response, "error");
+        cJSON *data_object = cJSON_GetObjectItem(response, "data");
+        if (error_object && error_object->type == cJSON_Number) {
+            if (error_object->valueint == 0) {
+                return true;
+            } else {
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_UPDATE_ERROR, error_object->valueint, data_object->valuestring);
+            }
+        } else {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUIRED_PARAMETERS);
+        }
+    } else {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_TASK_MAN_JSON);
+    }
+    return false;
 }

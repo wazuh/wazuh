@@ -59,6 +59,7 @@ size_t wcom_unmerge(const char *file_path, char **output);
 size_t wcom_uncompress(const char * source, const char * target, char ** output);
 size_t wcom_upgrade(const char * package, const char * installer, char ** output);
 size_t wcom_upgrade_result(char **output);
+size_t wcom_clear_upgrade_result(char **output);
 size_t wcom_restart(char **output);
 size_t wcom_dispatch(char *command, size_t length, char **output);
 size_t lock_restart(int timeout);
