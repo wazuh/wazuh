@@ -193,9 +193,6 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         void deleteRowsbyPK(const std::string& table,
                             const nlohmann::json& data);
 
-        void deleteRowsByFilter(const std::string& table,
-                                const nlohmann::json::const_iterator& itFilter);
-
         void getTableData(std::unique_ptr<SQLite::IStatement>const & stmt,
                           const int32_t index,
                           const ColumnType& type,

@@ -357,7 +357,7 @@ void SQLiteDBEngine::deleteTableRowsData(const std::string&    table,
         {
             // Deletion via condition on "row_filter_opt" json field.
             const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
-            deleteRowsByFilter(table, itFilter);
+            m_sqliteConnection->execute("DELETE FROM "+table+" "+itFilter->get<std::string>());
             transaction->commit();
         }
         else
@@ -866,16 +866,6 @@ void SQLiteDBEngine::deleteRowsbyPK(const std::string& table,
             stmt->reset();
         }
     }
-}
-
-void SQLiteDBEngine::deleteRowsByFilter(const std::string& table,
-                                        const nlohmann::json::const_iterator& itFilter)
-{
-    const auto& stmt
-    {
-        getStatement("DELETE FROM "+table+" "+itFilter->get<std::string>())
-    };
-    stmt->step();
 }
 
 void SQLiteDBEngine::bindFieldData(const std::unique_ptr<SQLite::IStatement>& stmt,
