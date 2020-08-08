@@ -350,7 +350,7 @@ void SQLiteDBEngine::deleteTableRowsData(const std::string&    table,
         {
             // Deletion via primary keys on "data" json field.
             const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
-            deleteRowsbyPK(table, jsDeletionData.at("data"));
+            deleteRowsbyPK(table, *itData);
             transaction->commit();
         }
         else if(itFilter != jsDeletionData.end() && !itFilter->get<std::string>().empty())
