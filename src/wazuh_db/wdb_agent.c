@@ -378,7 +378,7 @@ int* wdb_get_all_agents() {
     }
 
     item = root->child;
-    os_calloc(cJSON_GetArraySize(root), sizeof(int), array);
+    os_calloc(cJSON_GetArraySize(root) + 1, sizeof(int), array);
 
     while (item)
     {
@@ -773,7 +773,7 @@ int wdb_update_groups(const char *dirname) {
     }
 
     item = root->child;
-    os_calloc(cJSON_GetArraySize(root), sizeof(char *),array);
+    os_calloc(cJSON_GetArraySize(root) + 1 , sizeof(char *),array);
 
     while (item)
     {

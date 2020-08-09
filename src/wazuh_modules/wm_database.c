@@ -141,7 +141,6 @@ void* wm_database_main(wm_database *data) {
 #ifndef LOCAL
             if (!strcmp(path, KEYSFILE_PATH)) {
                 wm_sync_agents();
-                mwarn("TEST wm_sync_agents() inside wm_database_main() ");
             } else
 #endif // !LOCAL
             {
@@ -332,7 +331,6 @@ void wm_check_agents() {
         if (buffer.st_mtime != timestamp || buffer.st_ino != inode) {
             /* Synchronize */
             wm_sync_agents();
-            mwarn("TEST wm_sync_agents() inside wm_check_agents() ");
             timestamp = buffer.st_mtime;
             inode = buffer.st_ino;
         }
@@ -1134,7 +1132,6 @@ void wm_inotify_setup(wm_database * data) {
         mtdebug2(WM_DATABASE_LOGTAG, "wd_shared_groups='%d'", wd_shared_groups);
 
         wm_sync_agents();
-        mwarn("TEST wm_sync_agents() before wm_sync_multi_groups()");
         wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
         wdb_agent_belongs_first_time();
     }
