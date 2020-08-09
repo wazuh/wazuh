@@ -378,7 +378,7 @@ int* wdb_get_all_agents() {
     }
 
     item = root->child;
-    os_calloc(n+1, sizeof(int), array);     
+    os_calloc(cJSON_GetArraySize(root), sizeof(int), array);
 
     while (item)
     {
@@ -387,7 +387,6 @@ int* wdb_get_all_agents() {
         if(cJSON_IsNumber(json_id)){
             array[n] = json_id->valueint;
             n++;
-            os_realloc(array, n+1, array);        
         }
 
         item=item->next;
@@ -774,7 +773,7 @@ int wdb_update_groups(const char *dirname) {
     }
 
     item = root->child;
-    os_calloc(n+1, sizeof(char *),array);
+    os_calloc(cJSON_GetArraySize(root), sizeof(char *),array);
 
     while (item)
     {
@@ -783,13 +782,13 @@ int wdb_update_groups(const char *dirname) {
         if(cJSON_IsString(json_name) && json_name->valuestring != NULL ){
             os_strdup(json_name->valuestring, array[n]);
             n++;
-            os_realloc(array, n+1, array);        
         }
 
         item=item->next;
     }
 
     array[n] = NULL;
+    cJSON_Delete(root);
 
     for(i=0;array[i];i++){
         /* Check if the group exists in dir */
@@ -807,7 +806,6 @@ int wdb_update_groups(const char *dirname) {
         if (!dp) {
             if (wdb_remove_group_db((char *)array[i]) < 0) {
                 free_strarray(array);
-                cJSON_Delete(root);
                 return OS_INVALID;
             }
         } else {
@@ -816,7 +814,6 @@ int wdb_update_groups(const char *dirname) {
     }
 
     free_strarray(array);
-    cJSON_Delete(root);
 
     /* Add new groups from the folder /etc/shared if they dont exists on database */
     DIR *dir;
