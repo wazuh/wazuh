@@ -16,7 +16,6 @@ from shutil import copyfile, rmtree
 from time import time, sleep
 
 import requests
-
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
@@ -42,7 +41,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                               filters=filters, fields=Agent.fields, default_sort_field=default_sort_field,
                               default_sort_order='ASC', query=query, backend=backend,
                               min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'}, distinct=distinct)
+                              date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'},
+                              distinct=distinct)
         self.remove_extra_fields = remove_extra_fields
 
     def _filter_status(self, status_filter):
@@ -1043,7 +1043,8 @@ class Agent:
         agent_ver = self.version
 
         if manager_ver < WazuhVersion(agent_new_ver) and not force:
-            raise WazuhError(1717, extra_message="Manager: {0} / Agent: {1} -> {2}".format(manager_ver, agent_ver, agent_new_ver))
+            raise WazuhError(1717, extra_message="Manager: {0} / Agent: {1} -> {2}".format(manager_ver, agent_ver,
+                                                                                           agent_new_ver))
 
         if WazuhVersion(agent_ver) >= WazuhVersion(agent_new_ver) and not force:
             raise WazuhError(1749, extra_message="Agent: {0} -> {1}".format(agent_ver, agent_new_ver))
@@ -1271,7 +1272,10 @@ class Agent:
             raise WazuhInternalError(1721, extra_message=self.os['name'])
 
         if wpk_repo is None:
-            wpk_repo = common.wpk_repo_url
+            if WazuhVersion(version) >= WazuhVersion("4.0.0"):
+                wpk_repo = common.wpk_repo_url_4_x
+            else:
+                wpk_repo = common.wpk_repo_url
 
         if not wpk_repo.endswith('/'):
             wpk_repo = wpk_repo + '/'
