@@ -38,7 +38,6 @@ int labels_init() {
     return (1);
 }
 
-/* Find the label array for an agent. Returns NULL if no such agent file found. */
 wlabel_t* labels_find(const Eventinfo *lf) {
     char hostname[OS_BUFFER_SIZE] = "";
     char *ip = NULL;
@@ -75,7 +74,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         data->labels = labels_parse(atoi(lf->agent_id));
 
         if (!data->labels) {
-            mdebug1("Couldn't parse labels for agent %s. Info file may not exist.", lf->agent_id);
+            mdebug1("Couldn't parse labels for agent %s.", lf->agent_id);
             free(data);
             w_mutex_unlock(&label_mutex);
             return NULL;
@@ -84,7 +83,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         data->mtime = wdb_get_agent_keepalive(hostname, ip);
 
         if (data->mtime == -1) {
-            merror("Getting stats for agent %s. Cannot parse labels.", lf->agent_id);
+            merror("Getting last keepalive for agent %s. Cannot parse labels.", lf->agent_id);
             labels_free(data->labels);
             free(data);
             w_mutex_unlock(&label_mutex);
@@ -107,10 +106,10 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         if (mtime == -1) {
             if (!data->error_flag) {
                 if (errno == ENOENT) {
-                    mdebug1("Cannot get agent-info file for agent %s. It could have been removed.", lf->agent_id);
+                    mdebug1("Cannot get last keepalive for agent %s. It could have been removed.", lf->agent_id);
 
                 } else {
-                    minfo("Cannot get agent-info file for agent %s. Using old labels.", lf->agent_id);
+                    minfo("Cannot get last keepalive for agent %s. Using old labels.", lf->agent_id);
                 }
                 data->error_flag = 1;
             }

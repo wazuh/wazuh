@@ -103,6 +103,8 @@ int labels_format(const wlabel_t *labels, char *str, size_t size) {
 wlabel_t* labels_parse(int agent_id) {
     cJSON *json_labels = NULL;
     cJSON *json_row_it = NULL;
+    cJSON *json_key = NULL;
+    cJSON *json_value = NULL;
     char * str_key = NULL;
     char * str_value = NULL;
     char * key_start = NULL;
@@ -122,55 +124,60 @@ wlabel_t* labels_parse(int agent_id) {
         #"key3":_value3\n
         */
 
-        os_calloc(OS_BUFFER_SIZE, sizeof(char), str_key);
-        os_calloc(OS_BUFFER_SIZE, sizeof(char), str_value);
-
         cJSON_ArrayForEach (json_row_it, json_labels) {
             key_start = NULL;
             key_end = NULL;
-            os_strdup(cJSON_GetObjectItem(json_row_it, "key")->valuestring, str_key);
-            os_strdup(cJSON_GetObjectItem(json_row_it, "value")->valuestring, str_value);
+            json_key = cJSON_GetObjectItemCaseSensitive(json_row_it, "key");
+            json_value = cJSON_GetObjectItemCaseSensitive(json_row_it, "value");
 
-            switch (*str_key) {
-            case '!': // Hidden labels
-                if (str_key[1] == '\"') {
-                    flags.hidden = 1;
-                    flags.system = 0;
-                    key_start = str_key + 2;
-                } else {
+            if (cJSON_IsString(json_key) && json_key->valuestring != NULL &&
+                cJSON_IsString(json_value) && json_value->valuestring != NULL) {
+
+                os_strdup(json_key->valuestring, str_key);
+                os_strdup(json_value->valuestring, str_value);
+
+                switch (*str_key) {
+                case '!': // Hidden labels
+                    if (str_key[1] == '\"') {
+                        flags.hidden = 1;
+                        flags.system = 0;
+                        key_start = str_key + 2;
+                    } else {
+                        continue;
+                    }
+
+                    break;
+                case '#': // Internal labels
+                    if (str_key[1] == '\"') {
+                        flags.system = 1;
+                        flags.hidden = 0;
+                        key_start = str_key + 2;
+                    } else {
+                        continue;
+                    }
+
+                    break;
+                case '\"':
+                    flags.hidden = flags.system = 0;
+                    key_start = str_key + 1;
+                    break;
+                default:
                     continue;
                 }
 
-                break;
-            case '#': // Internal labels
-                if (str_key[1] == '\"') {
-                    flags.system = 1;
-                    flags.hidden = 0;
-                    key_start = str_key + 2;
-                } else {
+                if (!(key_end = strstr(key_start, "\""))) {
                     continue;
                 }
 
-                break;
-            case '\"':
-                flags.hidden = flags.system = 0;
-                key_start = str_key + 1;
-                break;
-            default:
-                continue;
+                *key_end = '\0';
+
+                labels = labels_add(labels, &size, key_start, str_value, flags, 0);
+
+                os_free(str_key);
+                os_free(str_value);
             }
-
-            if (!(key_end = strstr(key_start, "\""))) {
-                continue;
-            }
-
-            *key_end = '\0';
-
-            labels = labels_add(labels, &size, key_start, str_value, flags, 0);
         }
 
-        os_free(str_key);
-        os_free(str_value);
         cJSON_Delete(json_labels);
     }
 

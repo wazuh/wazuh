@@ -3908,14 +3908,14 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) 
     int agent_id = atoi(input);
 
     if (!next) {
-        mdebug1("Mitre DB Invalid DB query syntax.");
-        mdebug2("Mitre DB query error near: %s", input);
+        mdebug1("Global DB Invalid query syntax.");
+        mdebug2("Global DB query error near: %s", input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
         return OS_INVALID;
     } else {
         // Removing old labels from the labels table
         if (OS_SUCCESS != wdb_global_del_agent_labels(wdb, agent_id)) {
-            mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
             snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
             return OS_INVALID;
         }
@@ -3934,7 +3934,7 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) 
 
             // Inserting new labels in the database
             if (OS_SUCCESS != wdb_global_set_agent_label(wdb, agent_id, label, value)) {
-                mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 return OS_INVALID;
             }
