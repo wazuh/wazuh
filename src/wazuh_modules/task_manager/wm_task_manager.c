@@ -42,13 +42,6 @@ static const char *modules_list[] = {
     [WM_TASK_UPGRADE_MODULE] = "upgrade_module"
 };
 
-static const char *commands_list[] = {
-    [WM_TASK_UPGRADE] = "upgrade",
-    [WM_TASK_UPGRADE_CUSTOM] = "upgrade_custom",
-    [WM_TASK_UPGRADE_GET_STATUS] = "upgrade_get_status",
-    [WM_TASK_UPGRADE_UPDATE_STATUS] = "upgrade_update_status"
-};
-
 static const char *error_codes[] = {
     [WM_TASK_SUCCESS] = "Success",
     [WM_TASK_INVALID_MESSAGE] = "Invalid message",
@@ -204,7 +197,7 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
 
     if (!strcmp(modules_list[WM_TASK_UPGRADE_MODULE], module)) {
 
-        if (!strcmp(commands_list[WM_TASK_UPGRADE], command) || !strcmp(commands_list[WM_TASK_UPGRADE_CUSTOM], command)) {
+        if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE], command) || !strcmp(task_manager_commands_list[WM_TASK_UPGRADE_CUSTOM], command)) {
 
             if (agent_id != OS_INVALID) {
                 // Insert upgrade task into DB
@@ -218,7 +211,7 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
                 response = wm_task_manager_build_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
             }
 
-        } else if (!strcmp(commands_list[WM_TASK_UPGRADE_GET_STATUS], command)) {
+        } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_GET_STATUS], command)) {
 
             if (agent_id != OS_INVALID) {
                 // Get upgrade task status
@@ -235,7 +228,7 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
                 response = wm_task_manager_build_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
             }
 
-        } else if (!strcmp(commands_list[WM_TASK_UPGRADE_UPDATE_STATUS], command)) {
+        } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_UPDATE_STATUS], command)) {
 
             if (agent_id != OS_INVALID) {
                 // Update upgrade task status
