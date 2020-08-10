@@ -91,16 +91,22 @@ void *w_logtest_main(w_logtest_connection_t *connection) {
     cJSON * json_log_processed;
     char * str_response;
 
-    /* error & message handlers */
-    int error_code;
-    OSList * list_msg = OSList_Create();
-    OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
-
     /* trigger alert */
     uint8_t rule_level;
     int alert;
 
-    while (1) {
+    /* error & message handlers */
+    int error_code; // error >= W_LOGTEST_RCODE_SUCCESS, means it can continue
+    OSList * list_msg;
+
+    if (list_msg = OSList_Create(), !list_msg) {
+        merror(LIST_ERROR);
+        return NULL;
+    }
+    OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+
+    while (FOREVER()) {
+
         json_response = cJSON_CreateObject();
         error_code = W_LOGTEST_RCODE_SUCCESS;
         current_session = NULL;
@@ -129,42 +135,43 @@ void *w_logtest_main(w_logtest_connection_t *connection) {
 
             w_logtest_add_msg_response(json_response, list_msg, &error_code);
             error_code = W_LOGTEST_RCODE_ERROR_INPUT;
-
-            goto response;
         }
 
         /* Get session */
-        current_session = w_logtest_get_session(json_request, list_msg);
-        w_logtest_add_msg_response(json_response, list_msg, &error_code);
-        if (!current_session || error_code == W_LOGTEST_RCODE_ERROR_PROCESS) {
+        if (error_code >= W_LOGTEST_RCODE_SUCCESS) {
 
-            goto response;
+            current_session = w_logtest_get_session(json_request, list_msg);
+            if (current_session) {
+                cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_TOKEN, current_session->token);
+            }
+
+            w_logtest_add_msg_response(json_response, list_msg, &error_code);
         }
-        cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_TOKEN, current_session->token);
 
         /* Proccess log */
-        json_log_processed = w_logtest_process_log(json_request, current_session, list_msg);
-        w_logtest_add_msg_response(json_response, list_msg, &error_code);
-        if (error_code == W_LOGTEST_RCODE_ERROR_PROCESS) { // or !json_log_processed
+        if (error_code >= W_LOGTEST_RCODE_SUCCESS) {
 
-            goto response;
+            json_log_processed = w_logtest_process_log(json_request, current_session, list_msg);
+            if (json_log_processed) {
+                cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_OUTPUT, json_log_processed);
+            } else {
+                smerror(list_msg, LOGTEST_ERROR_PROCESS_EVENT);
+                mdebug1(LOGTEST_ERROR_PROCESS_EVENT);
+            }
+
+            w_logtest_add_msg_response(json_response, list_msg, &error_code);
         }
-        cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_OUTPUT, json_log_processed);
 
         /* Check alert level */
-        rule_level = (uint8_t) w_logtest_get_rule_level(json_log_processed);
-        alert = (Config.logbylevel <= rule_level) ? 1 : 0;
-        cJSON_AddBoolToObject(json_response, W_LOGTEST_JSON_ALERT, alert);
-
-response:
+        if (error_code >= W_LOGTEST_RCODE_SUCCESS) {
+            rule_level = (uint8_t) w_logtest_get_rule_level(json_log_processed);
+            alert = (Config.logbylevel <= rule_level) ? 1 : 0;
+            cJSON_AddBoolToObject(json_response, W_LOGTEST_JSON_ALERT, alert);
+        }
 
         cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_CODE, error_code);
 
-        if (isDebug()) {
-            str_response = cJSON_Print(json_response);
-        } else {
-            str_response = cJSON_PrintUnformatted(json_response);
-        }
+        str_response = cJSON_PrintUnformatted(json_response);
 
         if (send(client, str_response, strlen(str_response) + 1, 0) == -1) {
             merror(LOGTEST_ERROR_RESPONSE, errno, strerror(errno));
@@ -308,7 +315,7 @@ void *w_logtest_check_inactive_sessions(__attribute__((unused)) void * arg) {
     unsigned int inode_it = 0;
     time_t current_time;
 
-    while (1) {
+    while (FOREVER()) {
 
         sleep(w_logtest_conf.session_timeout);
 
@@ -368,8 +375,6 @@ int w_logtest_fts_init(OSList **fts_list, OSHash **fts_store) {
 
 int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
 
-    int ret = OS_INVALID;
-
     /* Nodes JSON input */
     cJSON * root;
     cJSON * location;
@@ -400,7 +405,7 @@ int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
         smerror(list_msg, LOGTEST_ERROR_JSON_PARSE_POS, (int) (jsonErrPtr - input_json), slice_json);
 
         os_free(slice_json);
-        goto finish;
+        return OS_INVALID;
     }
 
     /* Check JSON fields */
@@ -409,7 +414,7 @@ int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
 
         mdebug1(LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOCATION);
         smerror(list_msg, LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOCATION);
-        goto finish;
+        return OS_INVALID;
     }
 
     log_format = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_LOGFORMAT);
@@ -417,7 +422,7 @@ int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
 
         mdebug1(LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOGFORMAT);
         smerror(list_msg, LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOGFORMAT);
-        goto finish;
+        return OS_INVALID;
     }
 
     event = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_EVENT);
@@ -425,7 +430,7 @@ int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
 
         mdebug1(LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_EVENT);
         smerror(list_msg, LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_EVENT);
-        goto finish;
+        return OS_INVALID;
     }
 
     token = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
@@ -436,10 +441,7 @@ int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
         cJSON_DeleteItemFromObjectCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
     }
 
-    ret = OS_SUCCESS;
-
-finish:
-    return ret;
+    return OS_SUCCESS;
 }
 
 w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg) {
@@ -447,7 +449,7 @@ w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg) {
     w_logtest_session_t * session = NULL;
 
     cJSON * j_token;
-    char * s_token = NULL; // Prevent false positive in scan-build
+    char * s_token = NULL;
 
     if (j_token = cJSON_GetObjectItemCaseSensitive(req, W_LOGTEST_JSON_TOKEN), j_token) {
         s_token = j_token->valuestring;
@@ -481,7 +483,12 @@ w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg) {
     sminfo(list_msg, LOGTEST_INFO_TOKEN_NEW, s_token);
 
     session = w_logtest_initialize_session(s_token, list_msg);
-    OSHash_Add(w_logtest_sessions, s_token, session);
+    if (session) {
+        OSHash_Add(w_logtest_sessions, s_token, session);
+    } else {
+        smerror(list_msg, LOGTEST_ERROR_INITIALIZE_SESSION, s_token);
+        mdebug1(LOGTEST_ERROR_INITIALIZE_SESSION, s_token);
+    }
 
     return session;
 }
