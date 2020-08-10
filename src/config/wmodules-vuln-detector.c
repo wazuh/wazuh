@@ -804,6 +804,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
 
         updates[os_index]->multi_path = p_options.multi_path;
         updates[os_index]->multi_url = p_options.multi_url;
+        updates[os_index]->url = p_options.multi_url; // Used by MSU.
         updates[os_index]->multi_url_start = p_options.multi_url_start;
         updates[os_index]->multi_url_end = p_options.multi_url_end;
         updates[os_index]->port = p_options.port;
