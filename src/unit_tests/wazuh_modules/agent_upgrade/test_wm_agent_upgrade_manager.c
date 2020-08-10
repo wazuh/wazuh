@@ -17,7 +17,7 @@
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_manager.h"
 #include "../../headers/shared.h"
 
-#ifndef CLIENT
+#ifdef TEST_SERVER
 
 void test_test(void **state)
 {
@@ -28,7 +28,7 @@ void test_test(void **state)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-#ifndef CLIENT
+#ifdef TEST_SERVER
         cmocka_unit_test(test_test)
 #endif
     };
