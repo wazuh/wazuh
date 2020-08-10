@@ -30,6 +30,16 @@ typedef enum _module_list {
 } module_list;
 
 /**
+ * Enumeration of the possible task statuses
+ * */
+typedef enum _task_status {
+    WM_TASK_NEW = 0,
+    WM_TASK_IN_PROGRESS,
+    WM_TASK_DONE,
+    WM_TASK_FAILED
+} task_status;
+
+/**
  * List containing all the command names
  * */
 extern const char *task_manager_commands_list[];
@@ -38,5 +48,10 @@ extern const char *task_manager_commands_list[];
  * List containing the module names
  * */
 extern const char *task_manager_modules_list[];
+
+/**
+ * List of possible task statuses
+ * */
+extern const char *task_statuses[];
 
 #endif

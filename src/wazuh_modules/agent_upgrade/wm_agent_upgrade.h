@@ -16,10 +16,6 @@
 
 #define WM_UPGRADE_AGENT_UPDATED_COMMAND "upgrade_update_status"
 
-#define WM_UPGRADE_STATUS_IN_PROGRESS "In progress"
-#define WM_UPGRADE_STATUS_DONE "Done"
-#define WM_UPGRADE_STATUS_FAILED "Failed"
-
 #ifdef CLIENT
 /**
  * Configurations on agent side

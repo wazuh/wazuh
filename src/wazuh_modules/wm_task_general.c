@@ -21,3 +21,10 @@ const char *task_manager_commands_list[] = {
 const char *task_manager_modules_list[] = {
     [WM_TASK_UPGRADE_MODULE] = "upgrade_module"
 };
+
+const char *task_statuses[] = {
+    [WM_TASK_NEW] = "New",
+    [WM_TASK_IN_PROGRESS] = "In progress",
+    [WM_TASK_DONE] = "Done",
+    [WM_TASK_FAILED] = "Failed"
+};

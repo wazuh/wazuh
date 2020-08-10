@@ -23,10 +23,9 @@ const char* upgrade_messages[] = {
     [WM_UPGRADE_FAILED]      = "Upgrade failed"
 };
 
-/* TODO: This was copied from task-manager, but should be in common location */
-static const char *task_statuses[] = {
-    [WM_UPGRADE_SUCCESSFULL] = WM_UPGRADE_STATUS_DONE,
-    [WM_UPGRADE_FAILED] = WM_UPGRADE_STATUS_FAILED
+static const char *task_statuses_map[] = {
+    [WM_UPGRADE_SUCCESSFULL] = task_statuses[WM_TASK_DONE],
+    [WM_UPGRADE_FAILED] = task_statuses[WM_TASK_FAILED]
 };
 
 /**
@@ -95,7 +94,7 @@ static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_sta
     cJSON_AddStringToObject(root, "command", WM_UPGRADE_AGENT_UPDATED_COMMAND);
     cJSON_AddNumberToObject(params, "error", atoi(upgrade_values[state]));
     cJSON_AddStringToObject(params, "message", upgrade_messages[state]);
-    cJSON_AddStringToObject(params, "status", task_statuses[state]);
+    cJSON_AddStringToObject(params, "status", task_statuses_map[state]);
     cJSON_AddItemToObject(root, "params", params);
 
     char *msg_string = cJSON_PrintUnformatted(root);

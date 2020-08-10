@@ -25,13 +25,6 @@ static const char *task_queries[] = {
     [WM_TASK_UPDATE_TASK_STATUS] = "UPDATE " TASKS_TABLE " SET STATUS = ? WHERE TASK_ID = ?;"
 };
 
-static const char *task_statuses[] = {
-    [WM_TASK_NEW] = "New",
-    [WM_TASK_IN_PROGRESS] = "In progress",
-    [WM_TASK_DONE] = "Done",
-    [WM_TASK_FAILED] = "Failed"
-};
-
 int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt) {
     mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_ERROR, sqlite3_errmsg(db));
     wdb_finalize(stmt);

@@ -323,7 +323,7 @@ static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task)
 
     // Validate if there is a task in progress for this agent
     status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_GET_STATUS, agent_task->agent_info->agent_id, NULL);
-    if (wm_agent_upgrade_validate_task_status_message(status_json, &status) && status && !strcmp(status, WM_UPGRADE_STATUS_IN_PROGRESS)) {
+    if (wm_agent_upgrade_validate_task_status_message(status_json, &status) && status && !strcmp(status, task_statuses[WM_TASK_IN_PROGRESS])) {
         validate_result = WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS;
     }
 
@@ -370,11 +370,11 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
             if (!wm_agent_upgrade_send_wpk_to_agent(agent_task)) {
 
                 // Update task to "In progress"
-                status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, WM_UPGRADE_STATUS_IN_PROGRESS);
+                status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_IN_PROGRESS]);
             } else {
 
                 // Update task to "Failed"
-                status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, WM_UPGRADE_STATUS_FAILED);
+                status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_FAILED]);
             }
 
             wm_agent_upgrade_validate_task_status_message(status_json, NULL);

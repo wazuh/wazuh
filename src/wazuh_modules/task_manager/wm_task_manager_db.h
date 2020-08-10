@@ -28,13 +28,6 @@ typedef enum _task_query {
     WM_TASK_UPDATE_TASK_STATUS
 } task_query;
 
-typedef enum _task_status {
-    WM_TASK_NEW = 0,
-    WM_TASK_IN_PROGRESS,
-    WM_TASK_DONE,
-    WM_TASK_FAILED
-} task_status;
-
 extern char *schema_task_manager_sql;
 
 /**
