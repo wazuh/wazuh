@@ -1,7 +1,8 @@
 {
     "action": "dbsync_delete_rows",
-        "body": {
-            "table": "processes",
+    "body": {
+        "table":"processes",
+        "query": {
             "data":[
                 {
                     "pid":4,
@@ -34,8 +35,8 @@
                     "elapsed_time":-1,
                     "handle_count":-1,
                     "percent_processor_time":-1
-                 },
-                 {
+                },
+                {
                     "pid":6,
                     "name":"System",
                     "path":"/usr/lib",
@@ -66,7 +67,8 @@
                     "elapsed_time":-1,
                     "handle_count":-1,
                     "percent_processor_time":-1
-                }       
-            ]
+                }],
+            "row_filter_opt":"pid>=4"
         }
-    } 
+    }
+}
