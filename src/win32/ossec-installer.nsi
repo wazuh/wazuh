@@ -20,8 +20,13 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
+<<<<<<< HEAD
+!define VERSION "4.0.0"
+!define REVISION "40000"
+=======
 !define VERSION "3.13.1"
 !define REVISION "31309"
+>>>>>>> master
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
