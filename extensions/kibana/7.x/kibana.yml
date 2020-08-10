@@ -10,3 +10,5 @@ opendistro_security.readonly_mode.roles: ["kibana_read_only"]
 server.ssl.enabled: true
 server.ssl.key: "/etc/kibana/certs/kibana.key"
 server.ssl.certificate: "/etc/kibana/certs/kibana.pem"
+server.defaultRoute: /app/wazuh/
+
