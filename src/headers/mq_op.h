@@ -32,7 +32,7 @@
 #define CISCAT_MQ        'e'
 #define WIN_EVT_MQ       'f'
 
-#define MAX_OPENQ_ATTEMPS 0
+#define INFINITE_OPENQ_ATTEMPTS 0
 
 extern int sock_fail_time;
 /**
