@@ -81,7 +81,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
             return NULL;
         }
 
-        data->mtime = wdb_get_agent_keepalive(lf->agent_id, ip);
+        data->mtime = wdb_get_agent_keepalive(hostname, ip);
 
         if (data->mtime == -1) {
             merror("Getting stats for agent %s. Cannot parse labels.", lf->agent_id);
@@ -102,7 +102,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         // Data cached, check modification time
 
         wlabel_data_t *new_data;
-        time_t mtime = wdb_get_agent_keepalive(lf->agent_id, ip);
+        time_t mtime = wdb_get_agent_keepalive(hostname, ip);
 
         if (mtime == -1) {
             if (!data->error_flag) {
