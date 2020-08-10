@@ -1,0 +1,57 @@
+# Generate vulnerability detector library
+file(GLOB upgrade_files
+    ${SRC_FOLDER}/wazuh_modules/*.o
+    ${SRC_FOLDER}/wazuh_modules/agent_upgrade/*.o
+    ${SRC_FOLDER}/wazuh_modules/agent_upgrade/agent/*.o
+    ${SRC_FOLDER}/wazuh_modules/agent_upgrade/manager/*.o)
+list(REMOVE_ITEM upgrade_files ${SRC_FOLDER}/wazuh_modules/main.o)
+
+add_library(UPGRADE_O STATIC ${upgrade_files})
+
+set_source_files_properties(
+    ${upgrade_files}
+    PROPERTIES
+    EXTERNAL_OBJECT true
+    GENERATED true
+)
+
+set_target_properties(
+    UPGRADE_O
+    PROPERTIES
+    LINKER_LANGUAGE C
+)
+
+target_link_libraries(UPGRADE_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+
+# Generate agent upgrade tests
+list(APPEND upgrade_names "test_wm_agent_upgrade_agent")
+list(APPEND upgrade_flags " ")
+
+list(APPEND upgrade_names "test_wm_agent_upgrade_manager")
+list(APPEND upgrade_flags " ")
+
+# Compilig tests
+list(LENGTH upgrade_names count)
+math(EXPR count "${count} - 1")
+foreach(counter RANGE ${count})
+    list(GET upgrade_names ${counter} test_name)
+    list(GET upgrade_flags ${counter} test_flags)
+
+    add_executable(${test_name} ${test_name}.c)
+
+    target_link_libraries(
+        ${test_name}
+        ${WAZUHLIB}
+        ${WAZUHEXT}
+        UPGRADE_O
+        ${TEST_DEPS}
+    )
+
+    if(NOT test_flags STREQUAL " ")
+        target_link_libraries(
+            ${test_name}
+            ${test_flags}
+        )
+    endif()
+    add_test(NAME ${test_name} COMMAND ${test_name})
+endforeach()
