@@ -18,7 +18,7 @@ from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.exception import WazuhPermissionError, WazuhException
+from wazuh.core.exception import WazuhPermissionError, WazuhException, WazuhInternalError
 from wazuh.core.security import revoke_tokens
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac import preprocessor
@@ -384,6 +384,22 @@ async def update_role(request, role_id: int, pretty: bool = False, wait_for_comp
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def get_rules(request):
+    pass
+
+
+async def add_rule(request):
+    pass
+
+
+async def remove_rules(request):
+    pass
+
+
+async def modify_rule(request):
+    pass
 
 
 async def get_policies(request, policy_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,

@@ -1556,6 +1556,10 @@ components:
       type: string
       description: "Role ID|all"
       format: numbers_delete
+    Security_rule_id:
+      type: string
+      format: numbers
+      description: "Rule ID"
     Policy_id:
       type: string
       format: numbers
@@ -1675,14 +1679,10 @@ components:
       type: object
       required:
         - name
-        - rule
       properties:
         name:
           type: string
           description: "Role name"
-        rule:
-          type: object
-          description: "Role rule"
     RolesRequest_no_required:
       type: object
       properties:
@@ -1692,6 +1692,18 @@ components:
         rule:
           type: object
           description: "Role rule"
+    SecurityRulesRequest:
+      type: object
+      required:
+        - name
+        - rule
+      properties:
+        name:
+          type: string
+          description: "Rule name"
+        rule:
+          type: object
+          description: "Rule body"
     UsersResponse:
       type: object
       properties:
@@ -3981,6 +3993,14 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Role_id_DELETE'
+    security_rule_ids:
+      in: query
+      name: 'rule_ids'
+      description: "List of rule IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Security_rule_id'
     security_position:
       in: query
       name: 'position'
@@ -13041,6 +13061,198 @@ paths:
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /security/rules:
+    get:
+      tags:
+        - security
+      summary: "Get all security rules"
+      description: "Get a list of security rules from the system or all of them. These rules must be mapped with roles to obtain certain access privileges. For a specific list, indicate the ids separated by commas. Example: ?rule_ids=1,2,3"
+      operationId: api.controllers.security_controller.get_rules
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:read'
+      parameters:
+        - $ref: '#/components/parameters/security_rule_ids'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Return a list of rules"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRoles'
+              example:
+                data:
+                  # TODO
+                  todo
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    post:
+      tags:
+        - security
+      summary: "Add a new rule to the system"
+      description: "Add a new rule, all fields need to be specified"
+      operationId: api.controllers.security_controller.add_rule
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:create'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecurityRulesRequest'
+            example:
+              name: "normal"
+              rule:
+                MATCH:
+                  definition: "normalRule"
+      responses:
+        '200':
+          description: "Return the information of the new rule"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRoles'
+              example:
+                data:
+                  # TODO
+                  todo
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    delete:
+      tags:
+        - security
+      summary: "Delete a list of rules or all rules in the system"
+      description: "Policies linked to roles are not going to be removed"
+      operationId: api.controllers.security_controller.remove_rules
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
+      parameters:
+        - $ref: '#/components/parameters/security_rule_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Remove result"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRoles'
+              example:
+                data:
+                  # TODO
+                  todo
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /security/rules/{rule_id}:
+    put:
+      tags:
+        - security
+      summary: "Modify a rule"
+      description: "Modify a rule by specifying its ID"
+      operationId: api.controllers.security_controller.modify_rule
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:update'
+      parameters:
+        - $ref: '#/components/parameters/user_id_required'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  maxLength: 64
+                  minLength: 8
+                  format: password
+              required:
+                - password
+      responses:
+        '200':
+          description: "User updated successful"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseUsers'
+                example:
+                  data:
+                    affected_items:
+                      - username: wazuh-wui
+                        roles:
+                          - 2
+                    total_affected_items: 1
+                    total_failed_items: 0
+                    failed_items: []
+                  message: User modified correctly
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
