@@ -1032,12 +1032,34 @@ TEST_F(DBSyncTest, deleteSingleAndComposedData)
                                                             {"pid":7,"name":"System", "tid":103},
                                                             {"pid":8,"name":"System", "tid":104}]})"};
 
-    const auto singleRowToDelete{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":101}]})"};
-    const auto composedRowsToDelete{ R"({"table":"processes","data":[{"pid":5,"name":"Systemmm", "tid":105},
-                                                                     {"pid":7,"name":"Systemmm", "tid":105},
-                                                                     {"pid":8,"name":"Systemmm", "tid":105}]})"};
-    const auto unexistentRowToDelete{ R"({"table":"processes","data":[{"pid":9,"name":"Systemmm", "tid":101}]})"};
-    const auto dataWithoutTable{ R"({"data":[{"pid":9,"name":"Systemmm", "tid":101}]})"};
+    const auto singleRowToDelete
+    {
+        R"({"table":"processes",
+           "query":{"data":[{"pid":4,"name":"System", "tid":101}],
+           "where_filter_opt":""}})"
+    };
+
+    const auto composedRowsToDelete
+    {
+        R"({"table":"processes",
+           "query":{"data":[{"pid":5,"name":"Systemmm", "tid":101},
+                            {"pid":7,"name":"Systemmm", "tid":103},
+                            {"pid":8,"name":"Systemmm", "tid":104}],
+                    "where_filter_opt":""}})"
+    };
+
+    const auto unexistentRowToDelete
+    {
+        R"({"table":"processes",
+           "query":{"data":[{"pid":9,"name":"Systemmm", "tid":101}],
+           "where_filter_opt":""}})"
+    };
+
+    const auto dataWithoutTable
+    {
+        R"({"query":{"data":[{"pid":9,"name":"Systemmm", "tid":101}],
+           "where_filter_opt":""})"
+    };
 
     callback_data_t callbackData { callback, &wrapper };
     const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
@@ -1047,6 +1069,7 @@ TEST_F(DBSyncTest, deleteSingleAndComposedData)
     const std::unique_ptr<cJSON, smartDeleterJson> jsWithoutTable{ cJSON_Parse(dataWithoutTable) };
 
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
+
     EXPECT_EQ(0, dbsync_delete_rows(handle, jsSingleDeletion.get()));
     EXPECT_EQ(0, dbsync_delete_rows(handle, jsComposedDeletion.get()));
     EXPECT_EQ(0, dbsync_delete_rows(handle, jsUnexistentDeletion.get()));
@@ -1055,4 +1078,189 @@ TEST_F(DBSyncTest, deleteSingleAndComposedData)
     EXPECT_NE(0, dbsync_delete_rows(handle, nullptr));
     EXPECT_NE(0, dbsync_delete_rows(handle, jsWithoutTable.get()));
     EXPECT_NE(0, dbsync_delete_rows(reinterpret_cast<void *>(0xffffffff), jsSingleDeletion.get()));
+}
+
+TEST_F(DBSyncTest, deleteRowsByFilter)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(INSERTED,
+                nlohmann::json::parse(R"([{"pid":4,"name":"System", "tid":100},
+                                          {"pid":5,"name":"User1", "tid":101},
+                                          {"pid":6,"name":"User2", "tid":102},
+                                          {"pid":7,"name":"User3", "tid":103},
+                                          {"pid":8,"name":"User4", "tid":104}])"))).Times(1);
+
+    const auto initialData{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":100},
+                                                            {"pid":5,"name":"User1", "tid":101},
+                                                            {"pid":6,"name":"User2", "tid":102},
+                                                            {"pid":7,"name":"User3", "tid":103},
+                                                            {"pid":8,"name":"User4", "tid":104}]})"};
+
+    const auto rowDeleteByPIDFilter
+    {
+        R"({"table":"processes",
+           "query":{"data":[],
+           "where_filter_opt":"pid=5"}})"
+    };
+
+    const auto rowDeleteByTIDFilter
+    {
+        R"({"table":"processes",
+           "query":{"data":[],
+           "where_filter_opt":"tid>=103"}})"
+    };
+
+    const auto rowDeleteByNameFilter
+    {
+        R"({"table":"processes",
+           "query":{"data":[],
+           "where_filter_opt":"name LIKE '%User2%'"}})"
+    };
+
+    callback_data_t callbackData { callback, &wrapper };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsrowDeleteByPIDFilter{ cJSON_Parse(rowDeleteByPIDFilter) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsrowDeleteByTIDFilter{ cJSON_Parse(rowDeleteByTIDFilter) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsrowDeleteByNameFilter{ cJSON_Parse(rowDeleteByNameFilter) };
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsrowDeleteByPIDFilter.get()));
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsrowDeleteByTIDFilter.get()));
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsrowDeleteByNameFilter.get()));
+}
+
+TEST_F(DBSyncTest, deleteRowsWithDataMorePriorityThanFilter)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(INSERTED,
+                nlohmann::json::parse(R"([{"pid":4,"name":"System", "tid":100},
+                                          {"pid":5,"name":"User1", "tid":101},
+                                          {"pid":6,"name":"User2", "tid":102},
+                                          {"pid":7,"name":"User3", "tid":103},
+                                          {"pid":8,"name":"User4", "tid":104}])"))).Times(1);
+
+    const auto initialData{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":100},
+                                                            {"pid":5,"name":"User1", "tid":101},
+                                                            {"pid":6,"name":"User2", "tid":102},
+                                                            {"pid":7,"name":"User3", "tid":103},
+                                                            {"pid":8,"name":"User4", "tid":104}]})"};
+
+    const auto rowDeletePID4
+    {
+        R"({"table":"processes",
+           "query":{"data":[{"pid":4,"name":"System", "tid":100}],
+           "where_filter_opt":""}})"
+    };
+
+    const auto rowDeletePID6
+    {
+        R"({"table":"processes",
+           "query":{"data":[{"pid":6,"name":"User2", "tid":102}],
+           "where_filter_opt":"tid>=103"}})"
+    };
+
+    const auto rowDeletePID8
+    {
+        R"({"table":"processes",
+           "query":{"data":[{"pid":8,"name":"User4", "tid":104}],
+           "where_filter_opt":"name LIKE '%User2%'"}})"
+    };
+
+    callback_data_t callbackData { callback, &wrapper };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsRowDeletePID4{ cJSON_Parse(rowDeletePID4) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsRowDeletePID6{ cJSON_Parse(rowDeletePID6) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsRowDeletePID8{ cJSON_Parse(rowDeletePID8) };
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsRowDeletePID4.get()));
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsRowDeletePID6.get()));
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsRowDeletePID8.get()));
+}
+
+TEST_F(DBSyncTest, deleteRowsWithNoDataAndFilterShouldFail)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(INSERTED,
+                nlohmann::json::parse(R"([{"pid":4,"name":"System", "tid":100},
+                                          {"pid":5,"name":"User1", "tid":101},
+                                          {"pid":6,"name":"User2", "tid":102},
+                                          {"pid":7,"name":"User3", "tid":103},
+                                          {"pid":8,"name":"User4", "tid":104}])"))).Times(1);
+
+    const auto initialData{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":100},
+                                                            {"pid":5,"name":"User1", "tid":101},
+                                                            {"pid":6,"name":"User2", "tid":102},
+                                                            {"pid":7,"name":"User3", "tid":103},
+                                                            {"pid":8,"name":"User4", "tid":104}]})"};
+
+    const auto rowEmpty
+    {
+        R"({"table":"processes",
+           "query":{"data":[],
+           "where_filter_opt":""}})"
+    };
+
+    callback_data_t callbackData { callback, &wrapper };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsRowEmpty{ cJSON_Parse(rowEmpty) };
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
+    EXPECT_NE(0, dbsync_delete_rows(handle, jsRowEmpty.get()));
+}
+
+TEST_F(DBSyncTest, deleteRowsWithWhereInFilterShouldFail)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(INSERTED,
+                nlohmann::json::parse(R"([{"pid":4,"name":"System", "tid":100},
+                                          {"pid":5,"name":"User1", "tid":101},
+                                          {"pid":6,"name":"User2", "tid":102},
+                                          {"pid":7,"name":"User3", "tid":103},
+                                          {"pid":8,"name":"User4", "tid":104}])"))).Times(1);
+
+    const auto initialData{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":100},
+                                                            {"pid":5,"name":"User1", "tid":101},
+                                                            {"pid":6,"name":"User2", "tid":102},
+                                                            {"pid":7,"name":"User3", "tid":103},
+                                                            {"pid":8,"name":"User4", "tid":104}]})"};
+
+    const auto rowWithWhere
+    {
+        R"({"table":"processes",
+           "query":{"data":[],
+           "where_filter_opt":"WHERE name LIKE '%User2%'"}})"
+    };
+
+    const auto rowWithSpace
+    {
+        R"({"table":"processes",
+           "query":{"data":[],
+           "where_filter_opt":" "}})"
+    };
+
+    callback_data_t callbackData { callback, &wrapper };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsRowWithWhere{ cJSON_Parse(rowWithWhere) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsRowWithSpace{ cJSON_Parse(rowWithSpace) };
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
+    EXPECT_NE(0, dbsync_delete_rows(handle, jsRowWithWhere.get())); // WHERE in 'where_filter_opt' should fail
+    EXPECT_NE(0, dbsync_delete_rows(handle, jsRowWithSpace.get())); // space in 'where_filter_opt' should fail
 }

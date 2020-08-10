@@ -133,7 +133,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                         const DbSync::ResultCallback& callback) override;
 
         void deleteTableRowsData(const std::string& table,
-                                 const nlohmann::json& data) override;
+                                 const nlohmann::json& jsDeletionData) override;
         
         void addTableRelationship(const nlohmann::json& data) override;
 
@@ -176,7 +176,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         bool getRowDiff(const std::vector<std::string>& primaryKeyList,
                         const std::string& table,
                         const nlohmann::json& data,
-                        nlohmann::json& jsResult);                              
+                        nlohmann::json& jsResult);
 
         bool insertNewRows(const std::string& table,
                            const std::vector<std::string>& primaryKeyList,
@@ -189,6 +189,9 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         void deleteRows(const std::string& table,
                         const nlohmann::json& data,
                         const std::vector<std::string>& primaryKeyList);
+
+        void deleteRowsbyPK(const std::string& table,
+                            const nlohmann::json& data);
 
         void getTableData(std::unique_ptr<SQLite::IStatement>const & stmt,
                           const int32_t index,

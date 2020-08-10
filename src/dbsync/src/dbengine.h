@@ -53,7 +53,7 @@ namespace DbSync
                                 const ResultCallback& callback) = 0;
 
         virtual void deleteTableRowsData(const std::string& table,
-                                         const nlohmann::json& data) = 0;
+                                         const nlohmann::json& jsDeletionData) = 0;
 
         virtual void addTableRelationship(const nlohmann::json& data) = 0;
 
