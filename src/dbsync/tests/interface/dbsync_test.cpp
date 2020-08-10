@@ -1036,7 +1036,7 @@ TEST_F(DBSyncTest, deleteSingleAndComposedData)
     {
         R"({"table":"processes",
            "query":{"data":[{"pid":4,"name":"System", "tid":101}],
-           "row_filter_opt":""}})"
+           "where_filter_opt":""}})"
     };
 
     const auto composedRowsToDelete
@@ -1045,20 +1045,20 @@ TEST_F(DBSyncTest, deleteSingleAndComposedData)
            "query":{"data":[{"pid":5,"name":"Systemmm", "tid":101},
                             {"pid":7,"name":"Systemmm", "tid":103},
                             {"pid":8,"name":"Systemmm", "tid":104}],
-                    "row_filter_opt":""}})"
+                    "where_filter_opt":""}})"
     };
 
     const auto unexistentRowToDelete
     {
         R"({"table":"processes",
            "query":{"data":[{"pid":9,"name":"Systemmm", "tid":101}],
-           "row_filter_opt":""}})"
+           "where_filter_opt":""}})"
     };
 
     const auto dataWithoutTable
     {
         R"({"query":{"data":[{"pid":9,"name":"Systemmm", "tid":101}],
-           "row_filter_opt":""})"
+           "where_filter_opt":""})"
     };
 
     callback_data_t callbackData { callback, &wrapper };
@@ -1104,21 +1104,21 @@ TEST_F(DBSyncTest, deleteRowsByFilter)
     {
         R"({"table":"processes",
            "query":{"data":[],
-           "row_filter_opt":"WHERE pid=5"}})"
+           "where_filter_opt":"pid=5"}})"
     };
 
     const auto rowDeleteByTIDFilter
     {
         R"({"table":"processes",
            "query":{"data":[],
-           "row_filter_opt":"WHERE tid>=103"}})"
+           "where_filter_opt":"tid>=103"}})"
     };
 
     const auto rowDeleteByNameFilter
     {
         R"({"table":"processes",
            "query":{"data":[],
-           "row_filter_opt":"WHERE name LIKE '%User2%'"}})"
+           "where_filter_opt":"name LIKE '%User2%'"}})"
     };
 
     callback_data_t callbackData { callback, &wrapper };
@@ -1157,21 +1157,21 @@ TEST_F(DBSyncTest, deleteRowsWithDataMorePriorityThanFilter)
     {
         R"({"table":"processes",
            "query":{"data":[{"pid":4,"name":"System", "tid":100}],
-           "row_filter_opt":""}})"
+           "where_filter_opt":""}})"
     };
 
     const auto rowDeletePID6
     {
         R"({"table":"processes",
            "query":{"data":[{"pid":6,"name":"User2", "tid":102}],
-           "row_filter_opt":"WHERE tid>=103"}})"
+           "where_filter_opt":"tid>=103"}})"
     };
 
     const auto rowDeletePID8
     {
         R"({"table":"processes",
            "query":{"data":[{"pid":8,"name":"User4", "tid":104}],
-           "row_filter_opt":"WHERE name LIKE '%User2%'"}})"
+           "where_filter_opt":"name LIKE '%User2%'"}})"
     };
 
     callback_data_t callbackData { callback, &wrapper };
@@ -1210,7 +1210,7 @@ TEST_F(DBSyncTest, deleteRowsWithNoDataAndFilterShouldFail)
     {
         R"({"table":"processes",
            "query":{"data":[],
-           "row_filter_opt":""}})"
+           "where_filter_opt":""}})"
     };
 
     callback_data_t callbackData { callback, &wrapper };
@@ -1219,4 +1219,48 @@ TEST_F(DBSyncTest, deleteRowsWithNoDataAndFilterShouldFail)
 
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
     EXPECT_NE(0, dbsync_delete_rows(handle, jsRowEmpty.get()));
+}
+
+TEST_F(DBSyncTest, deleteRowsWithWhereInFilterShouldFail)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(INSERTED,
+                nlohmann::json::parse(R"([{"pid":4,"name":"System", "tid":100},
+                                          {"pid":5,"name":"User1", "tid":101},
+                                          {"pid":6,"name":"User2", "tid":102},
+                                          {"pid":7,"name":"User3", "tid":103},
+                                          {"pid":8,"name":"User4", "tid":104}])"))).Times(1);
+
+    const auto initialData{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":100},
+                                                            {"pid":5,"name":"User1", "tid":101},
+                                                            {"pid":6,"name":"User2", "tid":102},
+                                                            {"pid":7,"name":"User3", "tid":103},
+                                                            {"pid":8,"name":"User4", "tid":104}]})"};
+
+    const auto rowWithWhere
+    {
+        R"({"table":"processes",
+           "query":{"data":[],
+           "where_filter_opt":"WHERE name LIKE '%User2%'"}})"
+    };
+
+    const auto rowWithSpace
+    {
+        R"({"table":"processes",
+           "query":{"data":[],
+           "where_filter_opt":" "}})"
+    };
+
+    callback_data_t callbackData { callback, &wrapper };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsRowWithWhere{ cJSON_Parse(rowWithWhere) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsRowWithSpace{ cJSON_Parse(rowWithSpace) };
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
+    EXPECT_NE(0, dbsync_delete_rows(handle, jsRowWithWhere.get())); // WHERE in 'where_filter_opt' should fail
+    EXPECT_NE(0, dbsync_delete_rows(handle, jsRowWithSpace.get())); // space in 'where_filter_opt' should fail
 }

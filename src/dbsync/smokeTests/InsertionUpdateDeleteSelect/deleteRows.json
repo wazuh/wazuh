@@ -68,7 +68,7 @@
                     "handle_count":-1,
                     "percent_processor_time":-1
                 }],
-            "row_filter_opt":"WHERE pid>=4"
+            "row_filter_opt":"pid>=4"
         }
     }
 }

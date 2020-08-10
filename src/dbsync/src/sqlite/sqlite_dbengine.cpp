@@ -344,7 +344,7 @@ void SQLiteDBEngine::deleteTableRowsData(const std::string&    table,
     if (0 != loadTableData(table))
     {
         const auto& itData{ jsDeletionData.find("data")};
-        const auto& itFilter{ jsDeletionData.find("row_filter_opt")};
+        const auto& itFilter{ jsDeletionData.find("where_filter_opt")};
 
         if(itData != jsDeletionData.end() && itData->size() > 0)
         {
@@ -356,9 +356,7 @@ void SQLiteDBEngine::deleteTableRowsData(const std::string&    table,
         else if(itFilter != jsDeletionData.end() && !itFilter->get<std::string>().empty())
         {
             // Deletion via condition on "row_filter_opt" json field.
-            const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
-            m_sqliteConnection->execute("DELETE FROM "+table+" "+itFilter->get<std::string>());
-            transaction->commit();
+            m_sqliteConnection->execute("DELETE FROM "+table+" WHERE "+itFilter->get<std::string>());
         }
         else
         {
