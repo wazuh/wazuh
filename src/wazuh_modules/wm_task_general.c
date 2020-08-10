@@ -17,3 +17,7 @@ const char *task_manager_commands_list[] = {
     [WM_TASK_UPGRADE_GET_STATUS] = "upgrade_get_status",
     [WM_TASK_UPGRADE_UPDATE_STATUS] = "upgrade_update_status"
 };
+
+const char *task_manager_modules_list[] = {
+    [WM_TASK_UPGRADE_MODULE] = "upgrade_module"
+};

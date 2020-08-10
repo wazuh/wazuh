@@ -30,10 +30,6 @@ typedef enum _json_key {
     WM_TASK_ERROR_DATA
 } json_key;
 
-typedef enum _module_list {
-    WM_TASK_UPGRADE_MODULE = 0
-} module_list;
-
 typedef enum _error_code {
     WM_TASK_SUCCESS = 0,
     WM_TASK_INVALID_MESSAGE,

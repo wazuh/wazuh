@@ -99,7 +99,7 @@ static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_sta
     cJSON_AddItemToObject(root, "params", params);
 
     char *msg_string = cJSON_PrintUnformatted(root);
-    if (wm_sendmsg(msg_delay, queue_fd, msg_string, WM_AGENT_UPGRADE_MODULE_NAME, UPGRADE_MQ) < 0) {
+    if (wm_sendmsg(msg_delay, queue_fd, msg_string, task_manager_modules_list[WM_TASK_UPGRADE_MODULE], UPGRADE_MQ) < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 

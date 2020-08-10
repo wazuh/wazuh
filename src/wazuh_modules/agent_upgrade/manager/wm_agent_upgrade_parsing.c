@@ -335,7 +335,7 @@ cJSON* wm_agent_upgrade_parse_response_message(int error_id, const char* message
 
 cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status) {
     cJSON * response = cJSON_CreateObject();
-    cJSON_AddStringToObject(response, "module", WM_AGENT_UPGRADE_MODULE_NAME);
+    cJSON_AddStringToObject(response, "module", task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     cJSON_AddStringToObject(response, "command", task_manager_commands_list[command]);
     cJSON_AddNumberToObject(response, "agent", agent_id);
     if (status) {

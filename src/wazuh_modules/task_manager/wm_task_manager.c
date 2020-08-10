@@ -38,10 +38,6 @@ static const char *json_keys[] = {
     [WM_TASK_ERROR_DATA] = "data"
 };
 
-static const char *modules_list[] = {
-    [WM_TASK_UPGRADE_MODULE] = "upgrade_module"
-};
-
 static const char *error_codes[] = {
     [WM_TASK_SUCCESS] = "Success",
     [WM_TASK_INVALID_MESSAGE] = "Invalid message",
@@ -195,7 +191,7 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
         os_strdup(tmp->valuestring, status);
     }
 
-    if (!strcmp(modules_list[WM_TASK_UPGRADE_MODULE], module)) {
+    if (!strcmp(task_manager_modules_list[WM_TASK_UPGRADE_MODULE], module)) {
 
         if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE], command) || !strcmp(task_manager_commands_list[WM_TASK_UPGRADE_CUSTOM], command)) {
 

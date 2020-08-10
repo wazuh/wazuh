@@ -23,8 +23,20 @@ typedef enum _command_list {
 } command_list;
 
 /**
+ * Enumeration of the modules orchestrated by the task manager
+ * */
+typedef enum _module_list {
+    WM_TASK_UPGRADE_MODULE = 0
+} module_list;
+
+/**
  * List containing all the command names
  * */
 extern const char *task_manager_commands_list[];
+
+/**
+ * List containing the module names
+ * */
+extern const char *task_manager_modules_list[];
 
 #endif
