@@ -1272,7 +1272,9 @@ class Agent:
             raise WazuhInternalError(1721, extra_message=self.os['name'])
 
         if wpk_repo is None:
-            if WazuhVersion(version) >= WazuhVersion("4.0.0"):
+            if not version:
+                wpk_repo = common.wpk_repo_url_4_x
+            elif WazuhVersion(version) >= WazuhVersion("4.0.0"):
                 wpk_repo = common.wpk_repo_url_4_x
             else:
                 wpk_repo = common.wpk_repo_url
