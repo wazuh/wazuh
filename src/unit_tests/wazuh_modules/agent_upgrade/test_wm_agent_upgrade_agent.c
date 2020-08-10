@@ -17,14 +17,20 @@
 #include "../../wazuh_modules/agent_upgrade/agent/wm_agent_upgrade_agent.h"
 #include "../../headers/shared.h"
 
+#ifdef CLIENT
+
 void test_test(void **state)
 {
     assert_int_equal(1, 1);
 }
 
+#endif
+
 int main(void) {
     const struct CMUnitTest tests[] = {
+#ifdef CLIENT
         cmocka_unit_test(test_test)
+#endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
