@@ -786,7 +786,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         version: 4.0.0
-        wpk_repo: "packages.wazuh.com/4.x/wpk/"
         force: true
         wait_for_complete: 'true'
     response:
@@ -806,7 +805,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         version: 3.11.1
-        wpk_repo: "packages.wazuh.com/wpk/"
         force: true
         wait_for_complete: 'true'
     response:

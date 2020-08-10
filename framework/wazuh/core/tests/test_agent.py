@@ -1872,16 +1872,16 @@ def test_agent_send_wpk_file_ko(_get_wpk_mock, get_req_mock, stat_mock, ossec_so
             agent._send_wpk_file(debug=True)
 
 
-@pytest.mark.parametrize('agent_id, agent_id2, platform', [
-    ('001', '002', 'Ubuntu'),
-    ('002', '008', 'Ubuntu'),
-    ('008', '001', 'Windows'),
+@pytest.mark.parametrize('agent_id, platform', [
+    ('001', 'Ubuntu'),
+    ('002', 'Ubuntu'),
+    ('008', 'Windows'),
 ])
 @patch('wazuh.core.agent.OssecSocket')
 @patch('wazuh.core.agent.Agent._send_wpk_file')
 @patch('socket.socket.sendto', return_value=1)
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'global.db'))
-def test_agent_upgrade(socket_sendto, _send_wpk_file, ossec_socket_mock, agent_id, agent_id2, platform):
+def test_agent_upgrade(socket_sendto, _send_wpk_file, ossec_socket_mock, agent_id, platform):
     """Test upgrade method returns expected message and call socket.sendto with correct params
 
     Parameters
@@ -1893,23 +1893,51 @@ def test_agent_upgrade(socket_sendto, _send_wpk_file, ossec_socket_mock, agent_i
 
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
-        
         agent = Agent(agent_id)
         result = agent.upgrade(wpk_repo='packages.wazuh.com/4.x/wpk', debug=True)
 
         assert result == 'Upgrade procedure started'
+        ossec_socket_mock.return_value.send.assert_called_once()
+        socket_sendto.assert_called_with(f'1:wazuh-upgrade:wazuh: Upgrade procedure on agent {agent_id} ({agent.name}):'
+                                         f' started. Current version: {agent.version}'.encode(),
+                                         path.join(test_data_path, 'queue', 'ossec', 'queue'))
+
+
+@pytest.mark.parametrize('agent_id, agent_id2, platform', [
+    ('001', '002', 'Ubuntu'),
+    ('002', '008', 'Ubuntu'),
+    ('008', '001', 'Windows'),
+])
+@patch('wazuh.core.agent.OssecSocket')
+@patch('wazuh.core.agent.Agent._send_wpk_file')
+@patch('socket.socket.sendto', return_value=1)
+@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'global.db'))
+def test_agent_upgrade_test_wpk_file(socket_sendto, _send_wpk_file, ossec_socket_mock, agent_id, agent_id2, platform):
+    """Test upgrade method returns expected message and call socket.sendto with correct params
+
+    Parameters
+    ----------
+    agent_id : str
+        Id of the agent.
+    """
+    ossec_socket_mock.return_value.receive.return_value = b'ok'
+
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+
+        agent = Agent(agent_id)
+        agent.upgrade(version='4.0.0', debug=True)
+        _send_wpk_file.assert_called_with(wpk_repo=common.wpk_repo_url_4_x, debug=True, version='4.0.0', force=False, show_progress=None, chunk_size=None, rl_timeout=-1, use_http=False)
         socket_sendto.assert_called_with(f'1:wazuh-upgrade:wazuh: Upgrade procedure on agent {agent_id} ({agent.name}):'
                                          f' started. Current version: {agent.version}'.encode(),
                                          path.join(test_data_path, 'queue', 'ossec', 'queue'))
 
         agent2 = Agent(agent_id2)
-        result2 = agent2.upgrade(wpk_repo='packages.wazuh.com/wpk', debug=True)
-
-        assert result2 == 'Upgrade procedure started'
-        socket_sendto.assert_called_with(
-            f'1:wazuh-upgrade:wazuh: Upgrade procedure on agent {agent_id2} ({agent2.name}):'
-            f' started. Current version: {agent2.version}'.encode(),
-            path.join(test_data_path, 'queue', 'ossec', 'queue'))
+        agent2.upgrade(version='3.10.1', debug=True)
+        _send_wpk_file.assert_called_with(wpk_repo=common.wpk_repo_url, debug=True, version='3.10.1', force=False, show_progress=None, chunk_size=None, rl_timeout=-1, use_http=False)
+        socket_sendto.assert_called_with(f'1:wazuh-upgrade:wazuh: Upgrade procedure on agent {agent_id2} ({agent2.name}):'
+                                         f' started. Current version: {agent2.version}'.encode(),
+                                         path.join(test_data_path, 'queue', 'ossec', 'queue'))
 
         ossec_socket_mock.return_value.send.assert_called()
 
