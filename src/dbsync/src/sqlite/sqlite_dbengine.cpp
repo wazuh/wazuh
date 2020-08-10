@@ -355,7 +355,7 @@ void SQLiteDBEngine::deleteTableRowsData(const std::string&    table,
         }
         else if(itFilter != jsDeletionData.end() && !itFilter->get<std::string>().empty())
         {
-            // Deletion via condition on "row_filter_opt" json field.
+            // Deletion via condition on "where_filter_opt" json field.
             m_sqliteConnection->execute("DELETE FROM "+table+" WHERE "+itFilter->get<std::string>());
         }
         else
