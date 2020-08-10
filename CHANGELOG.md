@@ -1,7 +1,18 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.13.0]
+## [v3.13.1]
+
+### Added
+
+- Added two new settings <max_retries> and <retry_interval> to adjust the agent failover interval. ([#5433](https://github.com/wazuh/wazuh/pull/5433))
+
+### Fixed
+
+- Fixed a crash in Modulesd caused by Vulnerability Detector when skipping a kernel package if the agent has OS info disabled. ([#5467](https://github.com/wazuh/wazuh/pull/5467))
+
+
+## [v3.13.0] - 2020-06-29
 
 ### Added
 
@@ -31,7 +42,6 @@ All notable changes to this project will be documented in this file.
 - Changed `same/different_systemname` for `same/different_system_name` in Analysisd static filters. ([#5131](https://github.com/wazuh/wazuh/pull/5131))
 - Updated the internal Python interpreter from v3.7.2 to v3.8.2. ([#5030](https://github.com/wazuh/wazuh/pull/5030))
 
-
 ### Fixed
 
 - Fixed a bug that, in some cases, kept the memory reserved when deleting monitored directories in FIM. ([#5115](https://github.com/wazuh/wazuh/issues/5115))
@@ -55,7 +65,6 @@ All notable changes to this project will be documented in this file.
 - Avoid duplicate descriptors using wildcards in 'localfile' configuration. ([#4977](https://github.com/wazuh/wazuh/pull/4977))
 - Added guarantee that all processes are killed when service stops. ([#4975](https://github.com/wazuh/wazuh/pull/4975))
 - Fixed mismatch in integration scripts when the debug flag is set to active. ([#4800](https://github.com/wazuh/wazuh/pull/4800))
-
 
 
 ## [v3.12.3] - 2020-04-30
