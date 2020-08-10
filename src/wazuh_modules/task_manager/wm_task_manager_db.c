@@ -27,7 +27,7 @@ static const char *task_queries[] = {
     [WM_TASK_GET_TASK] = "SELECT * FROM " TASKS_TABLE " WHERE TASK_ID = ?;"
 };
 
-static const char *task_statuses[] = {
+const char *task_statuses[] = {
     [WM_TASK_NEW] = "New",
     [WM_TASK_IN_PROGRESS] = "In progress",
     [WM_TASK_DONE] = "Done",
@@ -288,6 +288,7 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
     sqlite3 *db = NULL;
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;
+    int task_id;
 
     if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READWRITE, NULL)) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
@@ -297,7 +298,7 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
-    int task_id;
+    
     sqlite3_bind_text(stmt, 1, module, -1, NULL);
     sqlite3_bind_int(stmt, 2, agent_id);
 
@@ -309,26 +310,25 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
     task_id = sqlite3_column_int(stmt, 0);
 
     if (!task_id) {
-        wdb_finalize(stmt);
-        sqlite3_close_v2(db);
-        return OS_NOTFOUND;
+        result = OS_NOTFOUND;
+    } else {
+        sqlite_strdup((char*)sqlite3_column_text(stmt, 1), *command);
+        *create_time = sqlite3_column_int(stmt, 2);
+        *last_update_time = sqlite3_column_int(stmt, 3);
+        sqlite_strdup((char*)sqlite3_column_text(stmt, 4), *status);
+        result = task_id;
     }
-    sqlite_strdup((char*)sqlite3_column_text(stmt, 1), *command);
-    *create_time = sqlite3_column_int(stmt, 2);
-    *last_update_time = sqlite3_column_int(stmt, 3);
-    sqlite_strdup((char*)sqlite3_column_text(stmt, 4), *status);
-    result = task_id;
     
     wdb_finalize(stmt);
-
     sqlite3_close_v2(db);
     return result;
 }
 
-int wm_task_manager_get_task_by_task_id(int task_id, int *agent_id, char **module, char **command, char **status, int *create_time, int *last_update_time) {
+int wm_task_manager_get_task_by_task_id(int task_id, char **module, char **command, char **status, int *create_time, int *last_update_time) {
     sqlite3 *db = NULL;
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;
+    int agent_id;
 
     if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READWRITE, NULL)) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
@@ -342,21 +342,20 @@ int wm_task_manager_get_task_by_task_id(int task_id, int *agent_id, char **modul
     
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
-        task_id = sqlite3_column_int(stmt, 0);
-        *agent_id = sqlite3_column_int(stmt, 1);
+        agent_id = sqlite3_column_int(stmt, 1);
         sqlite_strdup((char*)sqlite3_column_text(stmt, 2), *module);
         sqlite_strdup((char*)sqlite3_column_text(stmt, 3), *command);
         *create_time = sqlite3_column_int(stmt, 4);
         *last_update_time = sqlite3_column_int(stmt, 5);
         sqlite_strdup((char*)sqlite3_column_text(stmt, 6), *status);
-        result = task_id;
+        result = agent_id;
         break;
     case SQLITE_DONE:
         result = OS_NOTFOUND;
         break;
     default:
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
-        result = OS_INVALID;
+        return wm_task_manager_sql_error(db, stmt);
     }
     
     wdb_finalize(stmt);

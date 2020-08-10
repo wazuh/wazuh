@@ -62,12 +62,13 @@ typedef enum _error_code {
     WM_TASK_INVALID_TASK_ID,
     WM_TASK_INVALID_STATUS,
     WM_TASK_DATABASE_NO_TASK,
-    WM_TASK_DATABASE_NO_AGENT,
     WM_TASK_DATABASE_ERROR,
     WM_TASK_UNKNOWN_ERROR
 } error_code;
 
 extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
+
+extern const char* task_statuses[];
 
 // Parse XML configuration
 int wm_task_manager_read(xml_node **nodes, wmodule *module);
@@ -103,7 +104,7 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code);
  * @param task_id Task id extracted from task_object. 
  * @return JSON object with the response for this task.
  * */
-cJSON* wm_task_manager_analyze_task_api_module(const cJSON *task_object, int *error_code);
+cJSON* wm_task_manager_analyze_task_api_module(const cJSON *task_object, int *error_code, int agent_id, int task_id);
 
 /**
  * Analyze a upgrade_module task by command. Update the tasks DB when necessary.
@@ -111,9 +112,10 @@ cJSON* wm_task_manager_analyze_task_api_module(const cJSON *task_object, int *er
  * @param error_code Variable to store an error code if something is wrong.
  * @param agent_id Agent id extracted from task_object.
  * @param task_id Task id extracted from task_object.
+ * @param status Status extracted from task_object.
  * @return JSON object with the response for this task.
  * */
-cJSON* wm_task_manager_analyze_task_upgrade_module(const cJSON *task_object, int *error_code);
+cJSON* wm_task_manager_analyze_task_upgrade_module(const cJSON *task_object, int *error_code, int agent_id, int task_id, char *status);
 
 /**
  * Build a JSON object response.
@@ -161,7 +163,36 @@ cJSON* wm_task_manager_build_response(int error_code, int agent_id, int task_id,
 
 /**
  * Add data to a JSON object response.
- * @param res JSON object response
+ * 
+ * Example 1: On upgrade_result request
+ * 
+ * {
+ *     "error":0,
+ *     "data":"Success",
+ *     "agent":4,
+ *     "task_id":2,
+ *     "module":"upgrade_module",
+ *     "command":"upgrade",
+ *     "status":"Updating"
+ *     "create_time":"2020-08-06 22:51:44"
+ *     "update_time":"2020-08-06 22:53:21"
+ * }
+ * 
+ * Example 1: On task_result request
+ * 
+ * {
+ *     "error":0,
+ *     "data":"Success",
+ *     "agent":4,
+ *     "task_id":2,
+ *     "module":"upgrade_module",
+ *     "command":"upgrade",
+ *     "status":"In progress"
+ *     "create_time":"2020-08-06 22:51:44"
+ *     "update_time":"2020-08-06 22:53:21"
+ * }
+ * 
+ * @param response JSON object response
  * @param module Module of the task when receiving a request for a specific task.
  * @param command Command of the task when receiving a request for a specific task.
  * @param status Status of the task when receiving a request for a specific task.
@@ -170,7 +201,7 @@ cJSON* wm_task_manager_build_response(int error_code, int agent_id, int task_id,
  * @param request_command Command that requested the query.
  * @return JSON object.
  * */
-cJSON* wm_task_manager_build_response_result(cJSON *res, const char *module, const char *command, char *status, int create_time, int last_update_time, char *request_command);
+cJSON* wm_task_manager_build_response_result(cJSON *response, const char *module, const char *command, char *status, int create_time, int last_update_time, char *request_command);
 
 #endif
 #endif

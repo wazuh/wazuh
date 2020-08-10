@@ -87,15 +87,17 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
 /**
  * Get task by task_id from the tasks DB.
  * @param task_id ID of the task_id where the task is being executed.
- * @param agent_id Integer where the agent_id of the task will be stored.
  * @param module Name of the module where the task is stored.
  * @param command String where the command of the task will be stored.
  * @param status String where the status of the task will be stored.
  * @param create_time Integer where the create_time of the task will be stored.
  * @param last_update_time Integer where the last_update_time of the task will be stored.
- * @return task_id when succeed, < 0 otherwise.
+ * @return result
+ * @retval OS_INVALID on errors
+ * @retval agent_id if the task was found
+ * @retval OS_NOTFOUND if the task was not found
  * */
-int wm_task_manager_get_task_by_task_id(int task_id, int *agent_id, char **module, char **command, char **status, int *create_time, int *last_update_time);
+int wm_task_manager_get_task_by_task_id(int task_id, char **module, char **command, char **status, int *create_time, int *last_update_time);
 
 #endif
 #endif
