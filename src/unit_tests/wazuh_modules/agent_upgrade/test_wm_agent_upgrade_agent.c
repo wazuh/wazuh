@@ -19,9 +19,140 @@
 
 #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
 
-void test_test(void **state)
+void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state);
+
+// Setup / teardown
+
+static int setup_test_executions(void **state) {
+    wm_max_eps = 1;
+    return 0;
+}
+
+// Wrappers
+
+void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    check_expected(tag);
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
+void __wrap__mtdebug1(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    check_expected(tag);
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
+int __wrap_wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
+    check_expected(usec);
+    check_expected(queue);
+    check_expected(message);
+    check_expected(locmsg);
+    check_expected(loc);
+
+    return mock();
+}
+
+// Tests
+
+void test_wm_upgrade_agent_send_ack_message_successful(void **state)
 {
-    assert_int_equal(1, 1);
+    (void) state;
+    int queue = 0;
+    int result = 0;
+    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_SUCCESSFULL;
+
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, queue);
+    expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
+                                               "\"params\":{\"error\":0," 
+                                                           "\"message\":\"Upgrade was successful\","
+                                                           "\"status\":\"Done\"}}");
+    expect_string(__wrap_wm_sendmsg, locmsg, WM_AGENT_UPGRADE_MODULE_NAME);
+    expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
+
+    will_return(__wrap_wm_sendmsg, result);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
+                                                   "'{\"command\":\"upgrade_update_status\","
+                                                     "\"params\":{\"error\":0," 
+                                                                 "\"message\":\"Upgrade was successful\","
+                                                                 "\"status\":\"Done\"}}'");
+
+    wm_upgrade_agent_send_ack_message(queue, upgrade_state);
+}
+
+void test_wm_upgrade_agent_send_ack_message_failed(void **state)
+{
+    (void) state;
+    int queue = 0;
+    int result = 0;
+    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_FAILED;
+
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, queue);
+    expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
+                                               "\"params\":{\"error\":2,"
+                                                           "\"message\":\"Upgrade failed\","
+                                                           "\"status\":\"Failed\"}}");
+    expect_string(__wrap_wm_sendmsg, locmsg, WM_AGENT_UPGRADE_MODULE_NAME);
+    expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
+
+    will_return(__wrap_wm_sendmsg, result);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
+                                                   "'{\"command\":\"upgrade_update_status\","
+                                                     "\"params\":{\"error\":2,"
+                                                                 "\"message\":\"Upgrade failed\","
+                                                                 "\"status\":\"Failed\"}}'");
+
+    wm_upgrade_agent_send_ack_message(queue, upgrade_state);
+}
+
+void test_wm_upgrade_agent_send_ack_message_error(void **state)
+{
+    (void) state;
+    int queue = 0;
+    int result = -1;
+    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_FAILED;
+
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, queue);
+    expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
+                                               "\"params\":{\"error\":2,"
+                                                           "\"message\":\"Upgrade failed\","
+                                                           "\"status\":\"Failed\"}}");
+    expect_string(__wrap_wm_sendmsg, locmsg, WM_AGENT_UPGRADE_MODULE_NAME);
+    expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
+
+    will_return(__wrap_wm_sendmsg, result);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(1210): Queue '/queue/ossec/queue' not accessible: 'Success'");
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
+                                                   "'{\"command\":\"upgrade_update_status\","
+                                                     "\"params\":{\"error\":2,"
+                                                                 "\"message\":\"Upgrade failed\","
+                                                                 "\"status\":\"Failed\"}}'");
+
+    wm_upgrade_agent_send_ack_message(queue, upgrade_state);
 }
 
 #endif
@@ -29,7 +160,9 @@ void test_test(void **state)
 int main(void) {
     const struct CMUnitTest tests[] = {
 #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
-        cmocka_unit_test(test_test)
+        cmocka_unit_test_setup(test_wm_upgrade_agent_send_ack_message_successful, setup_test_executions),
+        cmocka_unit_test_setup(test_wm_upgrade_agent_send_ack_message_failed, setup_test_executions),
+        cmocka_unit_test_setup(test_wm_upgrade_agent_send_ack_message_error, setup_test_executions)
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

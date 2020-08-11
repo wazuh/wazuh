@@ -25,7 +25,7 @@ target_link_libraries(UPGRADE_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Generate agent upgrade tests
 list(APPEND upgrade_names "test_wm_agent_upgrade_agent")
-list(APPEND upgrade_flags " ")
+list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wm_sendmsg")
 
 list(APPEND upgrade_names "test_wm_agent_upgrade_manager")
 list(APPEND upgrade_flags " ")

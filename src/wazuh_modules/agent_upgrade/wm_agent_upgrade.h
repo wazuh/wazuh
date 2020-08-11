@@ -21,7 +21,6 @@
 #define WM_UPGRADE_STATUS_DONE "Done"
 #define WM_UPGRADE_STATUS_FAILED "Failed"
 
-#ifdef CLIENT
 /**
  * Configurations on agent side
  */
@@ -30,7 +29,6 @@ typedef struct _wm_agent_configs {
     unsigned int upgrade_wait_max;
     float ugprade_wait_factor_increase;
 } wm_agent_configs;
-#endif
 
 typedef struct _wm_agent_upgrade {
     int enabled:1;
