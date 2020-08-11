@@ -12,8 +12,6 @@
 
 void *w_logtest_init() {
 
-    w_logtest_connection_t connection;
-
     if (w_logtest_init_parameters() == OS_INVALID) {
         merror(LOGTEST_ERROR_INV_CONF);
         return NULL;
@@ -24,7 +22,7 @@ void *w_logtest_init() {
         return NULL;
     }
 
-    if (connection.sock = OS_BindUnixDomain(LOGTEST_SOCK, SOCK_STREAM, OS_MAXSTR), connection.sock < 0) {
+    if (w_logtest_connection.sock = OS_BindUnixDomain(LOGTEST_SOCK, SOCK_STREAM, OS_MAXSTR), w_logtest_connection.sock < 0) {
         merror(LOGTEST_ERROR_BIND_SOCK, LOGTEST_SOCK, errno, strerror(errno));
         return NULL;
     }
@@ -39,23 +37,22 @@ void *w_logtest_init() {
         return NULL;
     }
 
-    w_mutex_init(&connection.mutex, NULL);
+    w_mutex_init(&w_logtest_connection.mutex, NULL);
+    w_logtest_connection.active_threads = w_logtest_conf.threads;
 
     minfo(LOGTEST_INITIALIZED);
 
     for (int i = 1; i < w_logtest_conf.threads; i++) {
-        w_create_thread(w_logtest_main, &connection);
+        w_create_thread(w_logtest_clients_handler, NULL);
     }
 
     w_create_thread(w_logtest_check_inactive_sessions, NULL);
-    w_logtest_main(&connection);
+    w_logtest_clients_handler(w_logtest_connection);
 
-    close(connection.sock);
+    close(w_logtest_connection.sock);
     if (unlink(LOGTEST_SOCK)) {
         merror(DELETE_ERROR, LOGTEST_SOCK, errno, strerror(errno));
     }
-
-    w_mutex_destroy(&connection.mutex);
 
     return NULL;
 }
@@ -77,108 +74,76 @@ int w_logtest_init_parameters() {
     return OS_SUCCESS;
 }
 
-
-void *w_logtest_main(w_logtest_connection_t *connection) {
+void * w_logtest_clients_handler() {
 
     int client;
     char msg_received[OS_MAXSTR];
     int size_msg_received;
-    w_logtest_session_t * current_session;
 
     /* input-ouput */
     cJSON * json_request;
     cJSON * json_response;
-    cJSON * json_log_processed;
     char * str_response;
-
-    /* trigger alert */
-    uint8_t rule_level;
-    int alert;
+    bool valid_request;
 
     /* error & message handlers */
-    int error_code; // error >= W_LOGTEST_RCODE_SUCCESS, means it can continue
-    OSList * list_msg;
-
-    if (list_msg = OSList_Create(), !list_msg) {
+    OSList * list_msg = OSList_Create();
+    
+    if (!list_msg) {
         merror(LIST_ERROR);
+        w_logtest_close_client_handler();
         return NULL;
     }
+
     OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
 
     while (FOREVER()) {
 
-        json_response = cJSON_CreateObject();
-        error_code = W_LOGTEST_RCODE_SUCCESS;
-        current_session = NULL;
         str_response = NULL;
         json_request = NULL;
 
         /* Wait for client */
-        w_mutex_lock(&connection->mutex);
+        w_mutex_lock(&w_logtest_connection.mutex);
+        if (client = accept(w_logtest_connection.sock, (struct sockaddr *) NULL, NULL), client < 0) {
+            int err_accept = errno;
+            w_mutex_unlock(&w_logtest_connection.mutex);
+            merror(LOGTEST_ERROR_ACCEPT_CONN, strerror(err_accept));
 
-        if (client = accept(connection->sock, (struct sockaddr *) NULL, NULL), client < 0) {
-            merror(LOGTEST_ERROR_ACCEPT_CONN, strerror(errno));
-            w_mutex_unlock(&connection->mutex);
-            goto cleanup;
+            /* check if socket is closed */
+            if (err_accept == EBADF) {
+                os_free(list_msg);
+                w_logtest_close_client_handler();
+                return NULL;
+            }
+            continue;
         }
-
-        w_mutex_unlock(&connection->mutex);
+        w_mutex_unlock(&w_logtest_connection.mutex);
 
         if (size_msg_received = recv(client, msg_received, OS_MAXSTR - 1, 0), size_msg_received < 0) {
             merror(LOGTEST_ERROR_RECV_MSG, strerror(errno));
-            goto cleanup;
+            continue;
         }
         msg_received[size_msg_received] = '\0';
 
         /* Check message and generate a request */
-        if (w_logtest_check_input(msg_received, &json_request, list_msg) == OS_INVALID) {
+        valid_request = w_logtest_check_input(msg_received, &json_request, list_msg);
 
-            w_logtest_add_msg_response(json_response, list_msg, &error_code);
-            error_code = W_LOGTEST_RCODE_ERROR_INPUT;
+        /* Generate response */
+        if (valid_request) {
+            json_response = w_logtest_process_request(json_request, list_msg);
+        } else {
+            int retval = 0;
+            json_response = cJSON_CreateObject();
+            w_logtest_add_msg_response(json_response, list_msg, &retval);
+            cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_CODE, W_LOGTEST_RCODE_ERROR_INPUT);
         }
-
-        /* Get session */
-        if (error_code >= W_LOGTEST_RCODE_SUCCESS) {
-
-            current_session = w_logtest_get_session(json_request, list_msg);
-            if (current_session) {
-                cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_TOKEN, current_session->token);
-            }
-
-            w_logtest_add_msg_response(json_response, list_msg, &error_code);
-        }
-
-        /* Proccess log */
-        if (error_code >= W_LOGTEST_RCODE_SUCCESS) {
-
-            json_log_processed = w_logtest_process_log(json_request, current_session, list_msg);
-            if (json_log_processed) {
-                cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_OUTPUT, json_log_processed);
-            } else {
-                smerror(list_msg, LOGTEST_ERROR_PROCESS_EVENT);
-                mdebug1(LOGTEST_ERROR_PROCESS_EVENT);
-            }
-
-            w_logtest_add_msg_response(json_response, list_msg, &error_code);
-        }
-
-        /* Check alert level */
-        if (error_code >= W_LOGTEST_RCODE_SUCCESS) {
-            rule_level = (uint8_t) w_logtest_get_rule_level(json_log_processed);
-            alert = (Config.logbylevel <= rule_level) ? 1 : 0;
-            cJSON_AddBoolToObject(json_response, W_LOGTEST_JSON_ALERT, alert);
-        }
-
-        cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_CODE, error_code);
 
         str_response = cJSON_PrintUnformatted(json_response);
-
         if (send(client, str_response, strlen(str_response) + 1, 0) == -1) {
             merror(LOGTEST_ERROR_RESPONSE, errno, strerror(errno));
         }
 
-cleanup:
-
+        /* Frees resourse of requeset */
         cJSON_Delete(json_response);
         cJSON_Delete(json_request);
         os_free(str_response);
@@ -373,7 +338,7 @@ int w_logtest_fts_init(OSList **fts_list, OSHash **fts_store) {
     return 1;
 }
 
-int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
+bool w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
 
     /* Nodes JSON input */
     cJSON * root;
@@ -382,9 +347,10 @@ int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
     cJSON * event;
     cJSON * token;
 
-    const char * jsonErrPtr;
+    bool retval = true;
 
     /* Parse raw JSON input */
+    const char * jsonErrPtr;
     root = cJSON_ParseWithOpts(input_json, &jsonErrPtr, 0);
     *req = root;
     if (!root) {
@@ -405,7 +371,7 @@ int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
         smerror(list_msg, LOGTEST_ERROR_JSON_PARSE_POS, (int) (jsonErrPtr - input_json), slice_json);
 
         os_free(slice_json);
-        return OS_INVALID;
+        return false;
     }
 
     /* Check JSON fields */
@@ -414,7 +380,7 @@ int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
 
         mdebug1(LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOCATION);
         smerror(list_msg, LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOCATION);
-        return OS_INVALID;
+        retval = false;
     }
 
     log_format = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_LOGFORMAT);
@@ -422,7 +388,7 @@ int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
 
         mdebug1(LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOGFORMAT);
         smerror(list_msg, LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOGFORMAT);
-        return OS_INVALID;
+        retval = false;
     }
 
     event = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_EVENT);
@@ -430,7 +396,7 @@ int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
 
         mdebug1(LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_EVENT);
         smerror(list_msg, LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_EVENT);
-        return OS_INVALID;
+        retval = false;
     }
 
     token = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
@@ -441,7 +407,7 @@ int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
         cJSON_DeleteItemFromObjectCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
     }
 
-    return OS_SUCCESS;
+    return retval;
 }
 
 w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg) {
@@ -537,9 +503,9 @@ void w_logtest_add_msg_response(cJSON * response, OSList * list_msg, int * error
         return;
     }
     /* check if exist messages in the response */
-    else if (json_arr_msg = cJSON_GetObjectItemCaseSensitive(response, W_LOGTEST_JSON_MESSAGE), !json_arr_msg) {
+    else if (json_arr_msg = cJSON_GetObjectItemCaseSensitive(response, W_LOGTEST_JSON_MESSAGES), !json_arr_msg) {
         json_arr_msg = cJSON_CreateArray();
-        cJSON_AddItemToObject(response, W_LOGTEST_JSON_MESSAGE, json_arr_msg);
+        cJSON_AddItemToObject(response, W_LOGTEST_JSON_MESSAGES, json_arr_msg);
     }
 
     while (node_log_msg) {
@@ -583,6 +549,68 @@ void w_logtest_add_msg_response(cJSON * response, OSList * list_msg, int * error
     }
 
     *error_code = ret_level;
+    return;
+}
+
+cJSON * w_logtest_process_request(cJSON * json_request, OSList * list_msg) {
+
+    cJSON * json_response = cJSON_CreateObject();
+    cJSON * json_log_processed = NULL;
+    w_logtest_session_t * current_session = NULL;
+    int retval = W_LOGTEST_RCODE_SUCCESS;
+
+    /* trigger alert */
+    uint8_t rule_level = 0;
+    int alert = 0;
+
+    /* Get session */
+    current_session = w_logtest_get_session(json_request, list_msg);
+    if (current_session) {
+        cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_TOKEN, current_session->token);
+    }
+
+    w_logtest_add_msg_response(json_response, list_msg, &retval);
+
+    /* Proccess log */
+    if (retval >= W_LOGTEST_RCODE_SUCCESS) {
+
+        json_log_processed = w_logtest_process_log(json_request, current_session, list_msg);
+        if (json_log_processed) {
+            cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_OUTPUT, json_log_processed);
+        } else {
+            smerror(list_msg, LOGTEST_ERROR_PROCESS_EVENT);
+            mdebug1(LOGTEST_ERROR_PROCESS_EVENT);
+        }
+
+        w_logtest_add_msg_response(json_response, list_msg, &retval);
+    }
+
+    /* Check alert level */
+    if (retval >= W_LOGTEST_RCODE_SUCCESS) {
+        rule_level = (uint8_t) w_logtest_get_rule_level(json_log_processed);
+        alert = (Config.logbylevel <= rule_level) ? 1 : 0;
+        cJSON_AddBoolToObject(json_response, W_LOGTEST_JSON_ALERT, alert);
+    }
+
+    cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_CODE, retval);
+
+    return json_response;
+}
+
+void w_logtest_close_client_handler() {
+    
+    w_mutex_lock(&w_logtest_connection.mutex);
+    w_logtest_connection.active_threads--;
+    
+    /* The last active thread */
+    if (w_logtest_connection.active_threads == 0) {
+        w_mutex_unlock(&w_logtest_connection.mutex);
+
+        w_mutex_destroy(&w_logtest_connection.mutex);
+        return;
+    }
+
+    w_mutex_unlock(&w_logtest_connection.mutex);
     return;
 }
 

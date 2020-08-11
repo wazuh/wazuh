@@ -28,7 +28,7 @@
 #define W_LOGTEST_JSON_LOGFORMAT   "log_format"   ///< Log format field name of json input.
 #define W_LOGTEST_JSON_LOCATION      "location"   ///< Location field name of json input.
 #define W_LOGTEST_JSON_ALERT            "alert"   ///< Alert field name of json output (boolean).
-#define W_LOGTEST_JSON_MESSAGE        "message"   ///< Message format field name of json output.
+#define W_LOGTEST_JSON_MESSAGES      "messages"   ///< Message format field name of json output.
 #define W_LOGTEST_JSON_CODE           "codemsg"   ///< Code of message field name of json output (number)
 #define W_LOGTEST_JSON_OUTPUT          "output"   ///< Output field name of json output.
 
@@ -80,12 +80,18 @@ typedef struct w_logtest_connection_t {
 
     pthread_mutex_t mutex;      ///< Mutex to prevent race condition in accept syscall
     int sock;                   ///< The open connection with logtest queue
+    int active_threads;         ///< Keep track of active threads
 
 } w_logtest_connection_t;
 
 /**
+ * @brief Connection data of the logtest socket
+ */
+w_logtest_connection_t w_logtest_connection;
+
+/**
  * @brief Initialize Wazuh Logtest. Initialize the listener and create threads
- * Then, call function w_logtest_main
+ * Then, call function w_logtest_clients_handler
  */
 void *w_logtest_init();
 
@@ -101,9 +107,8 @@ int w_logtest_init_parameters();
  *
  * Listen and treat connections with clients
  *
- * @param connection The listener where clients connect
  */
-void *w_logtest_main(w_logtest_connection_t * connection);
+void *w_logtest_clients_handler();
 
 /**
  * @brief Process the log within req for user represented by session
@@ -149,14 +154,14 @@ int w_logtest_fts_init(OSList **fts_list, OSHash **fts_store);
  * @param req Client request information.
  * @param input_json Raw JSON input of requeset.
  * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
- * @return OS_SUCCESS on success, otherwise OS_INVALID
+ * @return true on valid input, otherwise false
  */
-int w_logtest_check_input(char* input_json, cJSON** req, OSList* list_msg);
+bool w_logtest_check_input(char* input_json, cJSON** req, OSList* list_msg);
 
 /**
  * @brief Add the messages to the json array and clear the list.
  *
- * Add the messages to the \ref W_LOGTEST_JSON_MESSAGE json array of response,
+ * Add the messages to the \ref W_LOGTEST_JSON_MESSAGES json array of response,
  * clear the list and set maximun error level:
  * \ref W_LOGTEST_RCODE_SUCCESS If the list is empty or there are only info messages.
  * \ref W_LOGTEST_RCODE_WARNING If there are warning messages.
@@ -190,3 +195,10 @@ w_logtest_session_t* w_logtest_get_session(cJSON* req, OSList* list_msg);
  * @return level rule
  */
 int w_logtest_get_rule_level(cJSON* json_log_processed);
+
+/**
+ * @brief Close the client handler, if it is the last one, frees the resources
+ */
+void w_logtest_close_client_handler();
+
+cJSON * w_logtest_process_request(cJSON * json_request, OSList * list_msg);
