@@ -23,6 +23,8 @@ relationships:
         - sca_read
         - syscheck_all
         - syscollector_read
+      rule_ids:
+        - administrator
 
     readonly:
       policy_ids:
@@ -35,23 +37,35 @@ relationships:
         - sca_read
         - syscheck_read
         - syscollector_read
+      rule_ids:
+        - readonly
 
     users_admin:
       policy_ids:
         - users_all
+      rule_ids:
+        - users_admin
 
     agents_readonly:
       policy_ids:
         - agents_read
+      rule_ids:
+        - agents_readonly
 
     agents_admin:
       policy_ids:
         - agents_all
+      rule_ids:
+        - agents_admin
 
     cluster_readonly:
       policy_ids:
         - cluster_read
+      rule_ids:
+        - cluster_readonly
 
     cluster_admin:
       policy_ids:
         - cluster_all
+      rule_ids:
+        - cluster_admin
