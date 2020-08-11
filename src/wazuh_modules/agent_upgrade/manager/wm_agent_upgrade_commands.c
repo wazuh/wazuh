@@ -12,6 +12,7 @@
 #include "wm_agent_upgrade_manager.h"
 #include "wm_agent_upgrade_parsing.h"
 #include "wm_agent_upgrade_tasks.h"
+#include "wm_agent_upgrade_validate.h"
 #include "wazuh_db/wdb.h"
 #include "os_net/os_net.h"
 
@@ -141,6 +142,14 @@ static char* wm_agent_upgrade_send_command_to_agent(const char *command, const s
  * */
 static cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task);
 
+/**
+ * Callback function for task manager mensaje, if task manager was able to update task status 
+ * then it will send a message to the agent telling it to erase its upgrade_result file
+ * @param error pointer to the error flag
+ * @param input_json single response object from task manager
+ * */
+static cJSON* wm_agent_ugprade_clean_upgrade_result_file(int *error, cJSON* input_json);
+
 char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task) {
     char* response = NULL;
     int agent = 0;
@@ -231,37 +240,22 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
 
 char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upgrade_agent_status_task* task) {
     // Only one id of agent will reach at a time
-    int agent_id = agent_ids[0];
+    int agent_id = 0;
+    int agent = 0;
+    cJSON* json_response = cJSON_CreateArray();
+    cJSON *json_task_module_request = cJSON_CreateArray();
+    
+    while (agent_id = agent_ids[agent++], agent_id != OS_INVALID) {
+        mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACK_RECEIVED, agent_id, task->error_code, task->message);
 
-    mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACK_RECEIVED, agent_id, task->error_code, task->message);
+        // Send task update to task manager and bring back the response
+        cJSON *request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_id, task->status);
+        cJSON_AddItemToArray(json_task_module_request, request);        
+    }    
 
-    // Send task update to task manager and bring back the response
-    cJSON *response = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_id, task->status);
+    wm_agent_upgrade_task_module_callback(json_response, json_task_module_request, wm_agent_ugprade_clean_upgrade_result_file, wm_agent_upgrade_error_callback);
 
-    if (wm_agent_upgrade_validate_task_status_message(response, NULL)) {
-        // If status update is successful, tell agent to erase results file
-        char *buffer = NULL;
-
-        os_calloc(OS_MAXSTR, sizeof(char), buffer);
-        snprintf(buffer, OS_MAXSTR, "%03d com clear_upgrade_result -1", agent_id);
-
-        char *agent_response = wm_agent_upgrade_send_command_to_agent(buffer, strlen(buffer)); 
-        char *data = NULL;
-        char *error = NULL;
-
-        if (wm_agent_upgrade_parse_agent_response(agent_response, &data, &error) == OS_SUCCESS) {
-            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UPGRADE_FILE_AGENT);
-        } else {
-            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RESULT_FILE_ERROR, data);
-        }
-
-        os_free(buffer);
-        os_free(agent_response);
-    }
-
-    char *message = cJSON_PrintUnformatted(response);
-
-    cJSON_Delete(response);
+    char *message = cJSON_PrintUnformatted(json_response);
     return message;
 }
 
@@ -705,4 +699,33 @@ static cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int 
     }
     cJSON_Delete(message_array);
     return response;
+}
+
+static cJSON* wm_agent_ugprade_clean_upgrade_result_file(int *error, cJSON* input_json) {
+    cJSON *agent_json = cJSON_GetObjectItem(input_json, "agent");
+
+    if (wm_agent_upgrade_validate_task_status_message(input_json, NULL) && agent_json) {
+        // If status update is successful, tell agent to erase results file
+        char *buffer = NULL;
+
+        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        snprintf(buffer, OS_MAXSTR, "%03d com clear_upgrade_result -1", agent_json->valueint);
+
+        char *agent_response = wm_agent_upgrade_send_command_to_agent(buffer, strlen(buffer)); 
+        char *data = NULL;
+        char *error = NULL;
+
+        if (wm_agent_upgrade_parse_agent_response(agent_response, &data, &error) == OS_SUCCESS) {
+            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UPGRADE_FILE_AGENT);
+        } else {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RESULT_FILE_ERROR, data);
+            *error = OS_INVALID;
+        }
+
+        os_free(buffer);
+        os_free(agent_response);   
+    } else {
+        *error = OS_INVALID;
+    }
+    return NULL;
 }
