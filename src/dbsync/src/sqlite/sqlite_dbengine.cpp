@@ -75,10 +75,10 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
 void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
                                       const DbSync::ResultCallback callback)
 {
-    const std::string table { data["table"].is_string() ? data["table"].get_ref<const std::string&>() : "" };
+    const std::string table { data.at("table").is_string() ? data.at("table").get_ref<const std::string&>() : "" };
     if (createCopyTempTable(table))
     {
-        bulkInsert(table + TEMP_TABLE_SUBFIX, data["data"]);
+        bulkInsert(table + TEMP_TABLE_SUBFIX, data.at("data"));
         if (0 != loadTableData(table))
         {
             std::vector<std::string> primaryKeyList;
@@ -153,10 +153,10 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
         {
             ReturnTypeCallback resultCbType{ MODIFIED };
             nlohmann::json jsResult;
-            const bool diffExist { getRowDiff(primaryKeyList, table, data[0], jsResult) };
+            const bool diffExist { getRowDiff(primaryKeyList, table, data.at(0), jsResult) };
             if (diffExist)
             {
-                const nlohmann::json jsDataToUpdate{getDataToUpdate(primaryKeyList, jsResult, data[0], inTransaction)};
+                const nlohmann::json jsDataToUpdate{getDataToUpdate(primaryKeyList, jsResult, data.at(0), inTransaction)};
                 if (!jsDataToUpdate[0].empty())
                 {
                     const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
@@ -487,7 +487,7 @@ bool SQLiteDBEngine::loadFieldData(const std::string& table)
             m_tableFields[table].push_back(std::make_tuple(stmt->column(0)->value(int32_t{}),
                                            fieldName,
                                            columnTypeName(stmt->column(2)->value(std::string{})),
-                                           1 == stmt->column(5)->value(int32_t{}),
+                                           0 != stmt->column(5)->value(int32_t{}),
                                            InternalColumnNames.end() != std::find(InternalColumnNames.begin(), 
                                            InternalColumnNames.end(), fieldName)));
         }
@@ -1004,7 +1004,7 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
 
         if(it != tableFields.end())
         {
-            jsResult[pkValue] = data[pkValue];
+            jsResult[pkValue] = data.at(pkValue);
             bindJsonData(stmt, *it, data, index);
             ++index;
         }
