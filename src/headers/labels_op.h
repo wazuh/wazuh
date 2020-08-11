@@ -42,11 +42,13 @@ int labels_format(const wlabel_t *labels, char *str, size_t size);
 // Duplicate label array
 wlabel_t * labels_dup(const wlabel_t * labels);
 
-/*
- * Parse labels from Wazuh DB - global.db - labels table.
- * Returns pointer to new null-key terminated array.
- * If there are no labels for the agent, returns NULL.
- * Free resources with labels_free().
+/**
+ * @brief Function to parse labels from Wazuh DB - global.db - labels table.
+ * If there are no labels for the agent, returns NULL. Free resources 
+ * with labels_free().
+ * 
+ * @param agent_id The ID of the agent.
+ * @retval A wlabel_t structure with all the labels on sucess. Null on error or when no labels.
  */
 wlabel_t* labels_parse(int agent_id);
 

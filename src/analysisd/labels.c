@@ -83,7 +83,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         data->mtime = wdb_get_agent_keepalive(hostname, ip);
 
         if (data->mtime == -1) {
-            merror("Getting last keepalive for agent %s. Cannot parse labels.", lf->agent_id);
+            merror("Getting last keepalive for agent %s. Cannot update labels.", lf->agent_id);
             labels_free(data->labels);
             free(data);
             w_mutex_unlock(&label_mutex);
@@ -101,16 +101,11 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         // Data cached, check modification time
 
         wlabel_data_t *new_data;
-        time_t mtime = wdb_get_agent_keepalive(hostname, ip);
+        time_t mtime = time(NULL);
 
         if (mtime == -1) {
             if (!data->error_flag) {
-                if (errno == ENOENT) {
-                    mdebug1("Cannot get last keepalive for agent %s. It could have been removed.", lf->agent_id);
-
-                } else {
-                    minfo("Cannot get last keepalive for agent %s. Using old labels.", lf->agent_id);
-                }
+                minfo("Can't determine current time to compare with last keepalive for agent %s. Using old labels.", lf->agent_id);
                 data->error_flag = 1;
             }
         } else if (mtime > data->mtime + Config.label_cache_maxage) {
@@ -118,7 +113,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
 
             os_calloc(1, sizeof(wlabel_data_t), new_data);
             new_data->labels = labels_parse(atoi(lf->agent_id));
-            new_data->mtime = mtime;
+            new_data->mtime = wdb_get_agent_keepalive(hostname, ip);
 
             if (!OSHash_Update(label_cache, lf->agent_id, new_data)) {
                 merror("Couldn't update labels for agent %s on cache.", lf->agent_id);

@@ -94,23 +94,13 @@ int labels_format(const wlabel_t *labels, char *str, size_t size) {
     return 0;
 }
 
-/*
- * Parse labels from Wazuh DB - global.db - labels table.
- * Returns pointer to new null-key terminated array.
- * If there are no labels for the agent, returns NULL.
- * Free resources with labels_free().
- */
 wlabel_t* labels_parse(int agent_id) {
     cJSON *json_labels = NULL;
     cJSON *json_row_it = NULL;
     cJSON *json_key = NULL;
     cJSON *json_value = NULL;
-    char * str_key = NULL;
-    char * str_value = NULL;
-    char * key_start = NULL;
-    char * key_end = NULL;
-    wlabel_t *labels;
-    label_flags_t flags;
+    wlabel_t *labels = NULL;
+    label_flags_t flags = {0};
     size_t size = 0;
 
     json_labels = wdb_get_agent_labels(agent_id);
@@ -125,13 +115,16 @@ wlabel_t* labels_parse(int agent_id) {
         */
 
         cJSON_ArrayForEach (json_row_it, json_labels) {
-            key_start = NULL;
-            key_end = NULL;
             json_key = cJSON_GetObjectItemCaseSensitive(json_row_it, "key");
             json_value = cJSON_GetObjectItemCaseSensitive(json_row_it, "value");
 
             if (cJSON_IsString(json_key) && json_key->valuestring != NULL &&
                 cJSON_IsString(json_value) && json_value->valuestring != NULL) {
+
+                char *key_start = NULL;
+                char *key_end = NULL;
+                char *str_key = NULL;
+                char *str_value = NULL;
 
                 os_strdup(json_key->valuestring, str_key);
                 os_strdup(json_value->valuestring, str_value);
