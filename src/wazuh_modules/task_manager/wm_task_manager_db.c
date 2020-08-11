@@ -294,11 +294,12 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
+
     if (wdb_prepare(db, task_queries[WM_TASK_GET_TASK_BY_AGENT_ID_AND_MODULE], -1, &stmt, NULL) != SQLITE_OK) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
-    
+
     sqlite3_bind_text(stmt, 1, module, -1, NULL);
     sqlite3_bind_int(stmt, 2, agent_id);
 
@@ -318,9 +319,11 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
         sqlite_strdup((char*)sqlite3_column_text(stmt, 4), *status);
         result = task_id;
     }
-    
+
     wdb_finalize(stmt);
+
     sqlite3_close_v2(db);
+
     return result;
 }
 
@@ -334,12 +337,14 @@ int wm_task_manager_get_task_by_task_id(int task_id, char **module, char **comma
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
+
     if (wdb_prepare(db, task_queries[WM_TASK_GET_TASK], -1, &stmt, NULL) != SQLITE_OK) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
+
     sqlite3_bind_int(stmt, 1, task_id);
-    
+
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         agent_id = sqlite3_column_int(stmt, 1);
@@ -357,10 +362,11 @@ int wm_task_manager_get_task_by_task_id(int task_id, char **module, char **comma
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
-    
+
     wdb_finalize(stmt);
 
     sqlite3_close_v2(db);
+
     return result;
 }
 
