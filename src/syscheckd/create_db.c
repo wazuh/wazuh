@@ -56,6 +56,7 @@ void fim_scan() {
     struct timespec end;
     clock_t cputime_start;
     unsigned int nodes_count;
+    int deleted;
 
     cputime_start = clock();
     gettime(&start);
@@ -86,14 +87,14 @@ void fim_scan() {
         os_winreg_check();
 #endif
 
-    check_deleted_files();
+    deleted = check_deleted_files();
 
     if (syscheck.file_limit_enabled) {
         w_mutex_lock(&syscheck.fim_entry_mutex);
         nodes_count = fim_db_get_count_entry_path(syscheck.database);
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-        if (nodes_count < syscheck.file_limit) {
+        if ((nodes_count < syscheck.file_limit) && (nodes_count + deleted == syscheck.file_limit)) {
             it = 0;
 
             w_mutex_lock(&syscheck.fim_scan_mutex);
@@ -882,14 +883,16 @@ void fim_get_checksum (fim_entry_data * data) {
     free(checksum);
 }
 
-void check_deleted_files() {
+int check_deleted_files() {
     fim_tmp_file *file = NULL;
-
+    int deleted;
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
     if (fim_db_get_not_scanned(syscheck.database, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_RM_NOT_SCANNED);
     }
+
+    deleted = file != NULL ? file->elements : 0;
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
@@ -900,6 +903,8 @@ void check_deleted_files() {
     w_mutex_lock(&syscheck.fim_entry_mutex);
     fim_db_set_all_unscanned(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    return deleted;
 }
 
 
