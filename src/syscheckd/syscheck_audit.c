@@ -37,7 +37,7 @@
 // Global variables
 W_Vector *audit_added_rules;
 W_Vector *audit_added_dirs;
-W_Vector *audit_loaded_rules;
+OSList *audit_pending_events;
 pthread_mutex_t audit_mutex;
 pthread_mutex_t audit_hc_mutex;
 pthread_mutex_t audit_rules_mutex;
@@ -469,6 +469,13 @@ int audit_init(void) {
     // Add Audit rules
     audit_added_rules = W_Vector_init(10);
     audit_added_dirs = W_Vector_init(20);
+
+    audit_pending_events = OSList_Create();
+
+    if (audit_pending_events == NULL) {
+        merror("Failed creating whodata pending events list.");
+        return -1;
+    }
 
     add_audit_rules_syscheck(true);
     atexit(clean_rules);
@@ -1138,6 +1145,49 @@ void *audit_reload_thread() {
 }
 // LCOV_EXCL_STOP
 
+// LCOV_EXCL_START
+void *audit_checker_thread() {
+    OSListNode *node;
+    whodata_evt *w_evt;
+    struct stat file_stat;
+
+    while (audit_thread_active) {
+        sleep(1);
+
+        node = OSList_GetFirstNode(audit_pending_events);
+        while (node != NULL) {
+            w_evt = node->data;
+
+            if (w_stat(w_evt->path, &file_stat) < 0) {
+                free_whodata_event(w_evt);
+
+                OSList_DeleteCurrentlyNode(audit_pending_events);
+                node = OSList_GetCurrentlyNode(audit_pending_events);
+                continue;
+            }
+
+            if (file_stat.st_size == w_evt->size) {
+                fim_element item = { .mode = FIM_WHODATA };
+
+                fim_checker(w_evt->path, &item, w_evt, 1);
+
+                free_whodata_event(w_evt);
+
+                OSList_DeleteCurrentlyNode(audit_pending_events);
+                node = OSList_GetCurrentlyNode(audit_pending_events);
+                continue;
+            }
+
+            w_evt->size = file_stat.st_size;
+
+            node = OSList_GetNextNode(audit_pending_events);
+        }
+
+    }
+
+    return NULL;
+}
+// LCOV_EXCL_STOP
 
 // LCOV_EXCL_START
 void *audit_healthcheck_thread(int *audit_sock) {
@@ -1174,6 +1224,9 @@ void * audit_main(int *audit_sock) {
 
     // Start rules reloading thread
     w_create_thread(audit_reload_thread, NULL);
+
+    // Start the event checker thread
+    w_create_thread(audit_checker_thread, NULL);
 
     minfo(FIM_WHODATA_STARTED);
 

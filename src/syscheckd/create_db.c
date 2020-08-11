@@ -404,12 +404,49 @@ void fim_realtime_event(char *file) {
 }
 
 void fim_whodata_event(whodata_evt * w_evt) {
-
     struct stat file_stat;
+    long int prev_size;
 
     // If the file exists, generate add or modify events.
-    if(w_stat(w_evt->path, &file_stat) >= 0) {
+    if (w_stat(w_evt->path, &file_stat) >= 0) {
         fim_rt_delay();
+
+#ifndef WIN32
+        prev_size = file_stat.st_size;
+
+        if (w_stat(w_evt->path, &file_stat) < 0) {
+            // The file has been deleted, another event should occur.
+            return;
+        }
+
+        if (file_stat.st_size != prev_size) {
+            whodata_evt *w_evt_copy;
+
+            os_malloc(sizeof(whodata_evt), w_evt_copy);
+            os_strdup(w_evt->user_id, w_evt_copy->user_id);
+            os_strdup(w_evt->user_name, w_evt_copy->user_name);
+            os_strdup(w_evt->process_name, w_evt_copy->process_name);
+            os_strdup(w_evt->path, w_evt_copy->path);
+            os_strdup(w_evt->group_id, w_evt_copy->group_id);
+            os_strdup(w_evt->group_name, w_evt_copy->group_name);
+            os_strdup(w_evt->audit_uid, w_evt_copy->audit_uid);
+            os_strdup(w_evt->audit_name, w_evt_copy->audit_name);
+            os_strdup(w_evt->effective_uid, w_evt_copy->effective_uid);
+            os_strdup(w_evt->effective_name, w_evt_copy->effective_name);
+            os_strdup(w_evt->inode, w_evt_copy->inode);
+            os_strdup(w_evt->dev, w_evt_copy->dev);
+            os_strdup(w_evt->parent_name, w_evt_copy->parent_name);
+            os_strdup(w_evt->parent_cwd, w_evt_copy->parent_cwd);
+            w_evt_copy->ppid = w_evt->ppid;
+            os_strdup(w_evt->cwd, w_evt_copy->cwd);
+            w_evt_copy->process_id = w_evt->process_id;
+            w_evt_copy->size = file_stat.st_size;
+
+            OSList_AddData(audit_pending_events, w_evt_copy);
+
+            return;
+        }
+#endif
 
         fim_element item = { .mode = FIM_WHODATA };
         fim_checker(w_evt->path, &item, w_evt, 1);

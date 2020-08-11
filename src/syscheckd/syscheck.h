@@ -558,6 +558,8 @@ extern pthread_cond_t audit_thread_started;
 extern pthread_cond_t audit_hc_started;
 extern pthread_cond_t audit_db_consistency;
 
+extern OSList *audit_pending_events;
+
 #elif WIN32
 /**
  * @brief Initializes the whodata scan mode

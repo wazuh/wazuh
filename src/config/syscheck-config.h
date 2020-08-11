@@ -142,6 +142,7 @@ typedef struct whodata_evt {
     int ppid;  // Linux
     char *cwd; // Linux
     unsigned int process_id;
+    long int size;
 #else
     unsigned __int64 process_id;
     unsigned int mask;
@@ -168,10 +169,6 @@ typedef struct whodata {
     char **device;                       // Hard disk devices
     char **drive;                        // Drive letter
 } whodata;
-
-#endif /* End WIN32*/
-
-#ifdef WIN32
 
 typedef struct registry {
     char *entry;
