@@ -143,7 +143,7 @@ struct _EventNode {
     EventNode *prev;
 };
 
-typedef struct EventList {
+struct EventList {
     EventNode *first_node;
     EventNode *last_node;
     EventNode *last_added_node;
@@ -152,7 +152,7 @@ typedef struct EventList {
     int _memorymaxsize;
     int _max_freq;
     pthread_mutex_t event_mutex;
-} EventList;
+};
 
 #ifdef TESTRULE
 extern int full_output;
