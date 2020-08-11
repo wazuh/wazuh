@@ -54,6 +54,7 @@ typedef enum fdb_stmt {
 #define MAX_DIR_ENTRY   128
 #define SYSCHECK_WAIT   1
 #define MAX_FILE_LIMIT  2147483647
+#define MIN_COMP_ESTIM  0.4         // Minimum value to be taken by syscheck.comp_estimation_perc
 
 /* Checking options */
 #define CHECK_SIZE          00000001
@@ -298,6 +299,7 @@ typedef struct _config {
     int file_size_limit;            /* Avoids generating a backup from a file bigger than this limit (in KB) */
     int *diff_size_limit;           /* Apply the file size limit option in a specific directory */
     float diff_folder_size;         /* Save size of queue/diff/local folder */
+    float comp_estimation_perc;     /* Estimation of the percentage of compression each file will have */   
 
     char **nodiff;                  /* list of files/dirs to never output diff */
     OSMatch **nodiff_regex;         /* regex of files/dirs to never output diff */

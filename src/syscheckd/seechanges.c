@@ -249,8 +249,14 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
 
 #ifdef WIN32
     tmp_diff_size -= (FileSizeWin(compressed_file) / 1024);
+    if (syscheck.disk_quota_enabled && seechanges_estimate_compression(FileSizeWin(filename_abs) / 1024)) {
+        return NULL;
+    }
 #else
     tmp_diff_size -= (FileSize(compressed_file) / 1024);
+    if (syscheck.disk_quota_enabled && seechanges_estimate_compression(FileSize(filename_abs) / 1024)) {
+        return NULL;
+    }
 #endif
 
     if (!seechanges_createpath(tmp_location)) {
@@ -268,7 +274,13 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
 #endif
 
         if (tmp_diff_size > syscheck.disk_quota_limit) {
-            minfo(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
+            mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
+
+#ifdef WIN32
+        seechanges_modify_estimation_percentage(FileSizeWin(compressed_tmp) / 1024, FileSizeWin(filename) / 1024);
+#else
+        seechanges_modify_estimation_percentage(FileSize(compressed_tmp) / 1024, FileSize(filename) / 1024);
+#endif
 
             seechanges_delete_compressed_file(filename_abs);
 
@@ -525,6 +537,31 @@ void seechanges_delete_compressed_file(const char *path){
     }
 }
 
+int seechanges_estimate_compression(const float file_size) {
+    float uncompressed_size = file_size;
+    float compressed_estimation = 0.0;
+    int result = -1;
+
+    compressed_estimation = uncompressed_size - (syscheck.comp_estimation_perc * uncompressed_size);
+    result = (syscheck.diff_folder_size + compressed_estimation) <= syscheck.disk_quota_limit;
+
+    return result;
+}
+
+void seechanges_modify_estimation_percentage(const float compressed_size, const float uncompressed_size) {
+    float compression_rate = 1 - (compressed_size / uncompressed_size);
+
+    if (compression_rate < 0.1) {
+        return;     // Small compression rates won't update the estimation value
+    }
+
+    syscheck.comp_estimation_perc = (compression_rate + syscheck.comp_estimation_perc) / 2;
+
+    if (syscheck.comp_estimation_perc < MIN_COMP_ESTIM) {
+        syscheck.comp_estimation_perc = MIN_COMP_ESTIM;
+    }
+}
+
 char *seechanges_addfile(const char *filename) {
     time_t old_date_of_change;
     time_t new_date_of_change;
@@ -593,10 +630,14 @@ char *seechanges_addfile(const char *filename) {
 
     if (syscheck.file_size_enabled) {
         if (file_size > syscheck.diff_size_limit[it]) {
-            minfo(FIM_BIG_FILE_REPORT_CHANGES, filename_abs);
+            mdebug2(FIM_BIG_FILE_REPORT_CHANGES, filename_abs);
             seechanges_delete_compressed_file(filename_abs);
             return NULL;
         }
+    }
+
+    if (syscheck.disk_quota_enabled && !seechanges_estimate_compression(file_size)) {
+        return NULL;
     }
 
     snprintf(
@@ -688,7 +729,8 @@ char *seechanges_addfile(const char *filename) {
                 }
             }
             else {
-                minfo(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
+                mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
+                seechanges_modify_estimation_percentage(compressed_new_size, file_size);
 
 #ifdef WIN32
                 abspath(containing_folder, abs_path, sizeof(abs_path));

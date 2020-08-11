@@ -389,6 +389,22 @@ void seechanges_delete_compressed_file(const char *path);
  */
 char *seechanges_get_diff_path(char *path);
 
+/**
+ * @brief Estimate whether the compressed file will fit in the disk_quota limit
+ * 
+ * @param file_size Uncompressed file size
+ * @return true for files which compressed version could fit, false otherwise
+ */
+int seechanges_estimate_compression(const float file_size);
+
+/**
+ * @brief Changed the value of syscheck.comp_estimation_perc based on the actual compression rate
+ * 
+ * @param compressed_size Size of the compressed file
+ * @param uncompressed_size Size of the file before the compression
+ */
+void seechanges_modify_estimation_percentage(const float compressed_size, const float uncompressed_size);
+
 #ifndef WIN32
 
 /**

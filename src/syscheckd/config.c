@@ -72,6 +72,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.file_size_enabled = true;
     syscheck.file_size_limit = 50 * 1024; // 50 MB
     syscheck.diff_folder_size = 0;
+    syscheck.comp_estimation_perc = 0.9;    // 90%
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
 
