@@ -152,7 +152,8 @@ void parse_uname_string (char *uname,
 /**
  * @brief Parses an agent update message to get the information by fields. All
  *        the OUT parameters are pointers to allocated memory that must be
- *        de-allocated by the caller.
+ *        de-allocated by the caller. If the information is not found for an
+ *        OUT parameter, it returns pointing to NULL.
  *
  * @param[in] msg The agent update message string to be parsed.
  * @param[Out] version The Wazuh version.
@@ -191,13 +192,30 @@ int parse_agent_update_msg (char *msg,
     char *msg_tmp = NULL;
     char *str_tmp = NULL;
     char *line = NULL;
+    char *savedptr = NULL;
     char sdelim[] = { '\n', '\0' };
     const char * AGENT_IP_LABEL = "#\"_agent_ip\":";
+
+    // Setting pointers to NULL to guarantee the return value specification
+    *version = NULL;
+    *os_name = NULL;
+    *os_major = NULL;
+    *os_minor = NULL;
+    *os_build = NULL;
+    *os_version = NULL;
+    *os_codename = NULL;
+    *os_platform = NULL;
+    *os_arch = NULL;
+    *uname = NULL;
+    *config_sum = NULL;
+    *merged_sum = NULL;
+    *agent_ip = NULL;
+    *labels = NULL;
 
     // Temporary coping the msg string
     os_strdup(msg, msg_tmp);
 
-    for (line = strtok(msg_tmp, sdelim); line; line = strtok(NULL, sdelim)) {
+    for (line = strtok_r(msg_tmp, sdelim, &savedptr); line; line = strtok_r(NULL, sdelim, &savedptr)) {
         switch (*line) {
         case '#':  // System label
         case '!':  // Hidden label
@@ -236,10 +254,7 @@ int parse_agent_update_msg (char *msg,
                 *str_tmp = '\0';
                 str_tmp++;
 
-                if (strncmp(str_tmp, SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME)-1) != 0) {
-                    *merged_sum = NULL;
-                }
-                else {
+                if (strncmp(str_tmp, SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME)-1) == 0) {
                     os_strdup(line, *merged_sum);
                 }
             }
