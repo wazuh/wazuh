@@ -16,3 +16,4 @@ server.ssl.key: /etc/kibana/certs/kibana.key
 # Elasticsearch authentication
 xpack.security.enabled: true
 elasticsearch.username: elastic
+server.defaultRoute: /app/wazuh/
