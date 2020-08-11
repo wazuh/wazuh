@@ -42,6 +42,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
     char hostname[OS_BUFFER_SIZE] = "";
     char *ip = NULL;
     char *end = NULL;
+    cJSON *json_labels = NULL;
     wlabel_data_t *data = NULL;
     wlabel_t *ret_labels = NULL;
 
@@ -70,8 +71,18 @@ wlabel_t* labels_find(const Eventinfo *lf) {
     if (data = (wlabel_data_t*)OSHash_Get(label_cache, lf->agent_id), !data) {
         // Data not cached
 
+        json_labels = wdb_get_agent_labels(atoi(lf->agent_id));
+
+        if (!json_labels) {
+            mdebug1("No labels in Wazuh DB for agent %s.", lf->agent_id);
+            w_mutex_unlock(&label_mutex);
+            return NULL;
+        }
+
         os_calloc(1, sizeof(wlabel_data_t), data);
-        data->labels = labels_parse(atoi(lf->agent_id));
+        data->labels = labels_parse(json_labels);
+
+        cJSON_Delete(json_labels);
 
         if (!data->labels) {
             mdebug1("Couldn't parse labels for agent %s.", lf->agent_id);
@@ -111,8 +122,19 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         } else if (mtime > data->mtime + Config.label_cache_maxage) {
             // Update file, keep old to return in case of error
 
+            json_labels = wdb_get_agent_labels(atoi(lf->agent_id));
+
+            if (!json_labels) {
+                mdebug1("No labels in Wazuh DB for agent %s.", lf->agent_id);
+                w_mutex_unlock(&label_mutex);
+                return NULL;
+            }
+
             os_calloc(1, sizeof(wlabel_data_t), new_data);
-            new_data->labels = labels_parse(atoi(lf->agent_id));
+            new_data->labels = labels_parse(json_labels);
+
+            cJSON_Delete(json_labels);
+
             new_data->mtime = wdb_get_agent_keepalive(hostname, ip);
 
             if (!OSHash_Update(label_cache, lf->agent_id, new_data)) {

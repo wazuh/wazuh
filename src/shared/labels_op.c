@@ -10,7 +10,6 @@
  */
 
 #include "shared.h"
-#include "wazuh_db/wdb.h"
 
 /* Append a new label into an array of (size) labels at the moment of inserting. Returns the new pointer. */
 wlabel_t* labels_add(wlabel_t *labels, size_t * size, const char *key, const char *value, label_flags_t flags, int overwrite) {
@@ -94,16 +93,13 @@ int labels_format(const wlabel_t *labels, char *str, size_t size) {
     return 0;
 }
 
-wlabel_t* labels_parse(int agent_id) {
-    cJSON *json_labels = NULL;
+wlabel_t* labels_parse(cJSON *json_labels) {
     cJSON *json_row_it = NULL;
     cJSON *json_key = NULL;
     cJSON *json_value = NULL;
     wlabel_t *labels = NULL;
     label_flags_t flags = {0};
     size_t size = 0;
-
-    json_labels = wdb_get_agent_labels(agent_id);
 
     if (json_labels && json_labels->child) {
         os_calloc(1, sizeof(wlabel_t), labels);
@@ -170,8 +166,6 @@ wlabel_t* labels_parse(int agent_id) {
                 os_free(str_value);
             }
         }
-
-        cJSON_Delete(json_labels);
     }
 
     return labels;
