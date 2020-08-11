@@ -7,17 +7,18 @@ import socket
 import time
 
 from aiohttp import web
-
-from api.encoder import dumps
+from api.encoder import dumps, prettify
 from api.models.basic_info import BasicInfo
 from wazuh.core.security import load_spec
 
 logger = logging.getLogger('wazuh')
 
 
-async def default_info():
+async def default_info(pretty=False):
     """Get basicinfo
 
+    :param pretty: Show results in human-readable format
+    
     Returns various basic information about the API
     """
     info_data = load_spec()
@@ -33,4 +34,4 @@ async def default_info():
     }
     response = BasicInfo.from_dict(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)

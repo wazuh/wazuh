@@ -22,6 +22,7 @@
 
 ## Default
 ### GET     /
+* Added **pretty** parameter.
 * New endpoint. Returns basic information about the API.
 
 ## Active Response
