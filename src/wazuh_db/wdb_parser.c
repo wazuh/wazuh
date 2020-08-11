@@ -431,6 +431,15 @@ int wdb_parse(char * input, char * output) {
                     result = -1;
                 }
             }
+        } else if (strcmp(query, "update-unsynced-agents") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_update_unsynced_agents(wdb, next, output);
+            }
         } else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("DB query error near: %s", query);
@@ -3847,4 +3856,102 @@ int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output) {
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
         return -1;
     }
+}
+
+int wdb_parse_global_update_unsynced_agents(wdb_t * wdb, char * input, char * output){
+    char *next = NULL;
+    char *out = NULL;
+    const char **error = NULL;
+    char **agent_info = NULL;
+    char **labels_key = NULL;
+    char **labels_value = NULL;
+    int array_size = 0;
+    int i = 0;
+    cJSON *root = NULL;
+    cJSON *json_agent = NULL;
+    cJSON *json_field = NULL;
+    cJSON *json_label = NULL;
+    cJSON *json_labels = NULL;
+    cJSON *json_key = NULL;
+    cJSON *json_value = NULL;
+
+    if (next = wstr_chr(input, ' '), !next) {
+        mdebug1("Invalid DB query syntax.");
+        mdebug2("DB query error near: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
+        return OS_INVALID;
+    }
+    *next++ = '\0';
+
+    if (!next) {
+        mdebug1("Global DB Invalid query syntax.");
+        mdebug2("Global DB query error near: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
+        return OS_INVALID;
+
+    } else {
+        /* 
+        * The cJSON_GetErrorPtr() method is not thread safe, using cJSON_ParseWithOpts() instead,
+        * error indicates where the string caused an error
+        * The third arguments is TRUE and it will give an error if the input string contains data after the JSON
+        */ 
+        root = cJSON_ParseWithOpts(next, error, TRUE);
+        if (!root) {
+            mdebug1("Global DB Invalid JSON syntax updating unsynced agents.");
+            mdebug2("Global DB JSON error near: %s", *error);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+            return OS_INVALID;
+
+        } else {
+            /*
+            * Iterating over the array with cJSON_ArrayForEach() 
+            * is recommended in cJSON docs by Dave Gamble
+            */
+            cJSON_ArrayForEach(json_agent, root){
+                // sync_status is not considered, agent_info ends with a NULL string
+                os_calloc(GLOBAL_DB_AGENT_FIELDS_SIZE + 1 , sizeof(char *), agent_info);
+
+                for (i = 0 ; i < GLOBAL_DB_AGENT_FIELDS_SIZE ; i++){
+                    json_field = cJSON_GetObjectItemCaseSensitive(json_agent, global_db_agent_fields[i]);
+                    if (cJSON_IsString(json_field) && json_field->valuestring != NULL) {
+                        os_strdup(json_field->valuestring, agent_info[i]);
+                    }
+                    else{
+                        agent_info[i] = NULL;
+                    }
+                }
+                agent_info[i] = NULL;
+
+                json_labels = cJSON_GetObjectItemCaseSensitive(json_agent, "labels");
+                if(cJSON_IsArray(json_labels)){
+                    array_size = cJSON_GetArraySize(json_labels) + 1 ;
+                    os_calloc(array_size, sizeof(char *), labels_key);
+                    os_calloc(array_size, sizeof(char *), labels_value);
+
+                    i = 0;
+                    cJSON_ArrayForEach(json_label, json_labels){
+                        json_key = cJSON_GetObjectItemCaseSensitive(json_label, "key");
+                        json_value = cJSON_GetObjectItemCaseSensitive(json_label, "value");
+                        if(cJSON_IsString(json_key) && json_key->valuestring != NULL){
+                            if(cJSON_IsString(json_value) && json_value->valuestring != NULL){
+                                os_strdup(json_key->valuestring, labels_key[i]);
+                                os_strdup(json_value->valuestring, labels_value[i]);
+                                i++;
+                            }
+                        }
+                    }
+                    labels_value[i] = NULL;
+                    labels_key[i] = NULL;
+                }
+            }
+        }
+
+        snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+        cJSON_Delete(root);
+    }
+    free_strarray(agent_info);
+    free_strarray(labels_key);
+    free_strarray(labels_value);
+
+    return OS_SUCCESS;
 }

@@ -173,6 +173,36 @@ typedef struct wdb_config {
     int open_db_limit;
 } wdb_config;
 
+// List of agent information fields in global DB and its size
+#define GLOBAL_DB_AGENT_FIELDS_SIZE 25
+const char *global_db_agent_fields[] = { 
+        "config_sum",
+        "date_add",
+        "fim_offset",
+        "group",
+        "id",
+        "internal_key",
+        "ip",
+        "last_keepalive",
+        "manager_host",
+        "merged_sum",
+        "name",
+        "node_name",
+        "os_arch",
+        "os_build",
+        "os_codename",
+        "os_major",
+        "os_minor",
+        "os_name",
+        "os_platform",
+        "os_uname",
+        "os_version",
+        "reg_offset",
+        "register_ip",
+        "status",
+        "version"
+};
+
 /// Enumeration of components supported by the integrity library.
 typedef enum {
     WDB_FIM         ///< File integrity monitoring.
@@ -710,6 +740,17 @@ int wdb_journal_wal(sqlite3 *db);
  * @retval -1 On error: invalid DB query syntax.
  */
 int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
+
+/**
+ * @brief Function to update the agents info from workers.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with the agents information in JSON format.
+ * @param output Response of the query in JSON format.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_update_unsynced_agents(wdb_t * wdb, char * input, char * output);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
