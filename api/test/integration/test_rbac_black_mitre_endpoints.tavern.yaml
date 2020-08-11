@@ -9,11 +9,11 @@ stages:
   - name: Request MITRE attacks (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/mitre"
+      url: "{protocol:s}://{host:s}:{port:d}/mitre"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 403
       json:
         code: 4000

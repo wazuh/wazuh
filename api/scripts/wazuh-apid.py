@@ -16,19 +16,24 @@ import aiohttp_cors
 import connexion
 import psutil
 import uvloop
-from aiohttp_swagger import setup_swagger
 from aiohttp_cache import setup_cache
+from aiohttp_swagger import setup_swagger
 
+import wazuh.security
 from api import alogging, configuration, __path__ as api_path
 # noinspection PyUnresolvedReferences
 from api import validator
-from api.api_exception import APIException
+from api.api_exception import APIError
 from api.configuration import generate_self_signed_certificate, generate_private_key
 from api.constants import CONFIG_FILE_PATH, API_LOG_FILE_PATH
-from api.middlewares import set_user_name, check_experimental
+from api.middlewares import set_user_name, security_middleware, response_postprocessing
+from api.uri_parser import APIUriParser
 from api.util import to_relative_path
 from wazuh.core import pyDaemonModule, common
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
+
+# We load the SPEC file into memory to use as a reference for future calls
+wazuh.security.load_spec()
 
 
 def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
@@ -81,10 +86,10 @@ def start(foreground, root, config_file):
             ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
                                         keyfile=api_conf['https']['key'])
         except ssl.SSLError as e:
-            raise APIException(2003, details='Private key does not match with the certificate')
+            raise APIError(2003, details='Private key does not match with the certificate')
         except OSError as e:
             if e.errno == 22:
-                raise APIException(2003, details='PEM phrase is not correct')
+                raise APIError(2003, details='PEM phrase is not correct')
 
     # Foreground/Daemon
     if not foreground:
@@ -108,7 +113,8 @@ def start(foreground, root, config_file):
     app = connexion.AioHttpApp(__name__, host=api_conf['host'],
                                port=api_conf['port'],
                                specification_dir=os.path.join(api_path[0], 'spec'),
-                               options={"swagger_ui": False}
+                               options={"swagger_ui": False, 'uri_parser_class': APIUriParser},
+                               only_one_api=True
                                )
     app.add_api('spec.yaml',
                 arguments={'title': 'Wazuh API',
@@ -119,7 +125,7 @@ def start(foreground, root, config_file):
                 strict_validation=True,
                 validate_responses=True,
                 pass_context_arg_name='request',
-                options={"middlewares": [set_user_name, check_experimental]})
+                options={"middlewares": [set_user_name, security_middleware, response_postprocessing]})
 
     # Enable CORS
     if cors['enabled']:
@@ -165,11 +171,12 @@ def start(foreground, root, config_file):
                     ssl_context.load_verify_locations(api_conf['https']['ca'])
                 ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
                                             keyfile=api_conf['https']['key'])
-            except ssl.SSLError as e:
-                raise APIException(2003, details='Private key does not match with the certificate')
-            except IOError as e:
-                raise APIException(2003, details='Please, ensure if path to certificates is correct in the configuration '
-                                                 f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
+            except ssl.SSLError:
+                raise APIError(2003, details='Private key does not match with the certificate')
+            except IOError:
+                raise APIError(2003,
+                               details='Please, ensure if path to certificates is correct in the configuration '
+                                       f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
 
     app.run(port=api_conf['port'],
             host=api_conf['host'],
@@ -185,6 +192,7 @@ def stop():
 
     This function applies when the API is running in daemon mode.
     """
+
     def on_terminate(p):
         print(f"Wazuh API process {p.pid} terminated.")
 

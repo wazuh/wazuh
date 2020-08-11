@@ -29,31 +29,12 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     /* Initialize sender */
     sender_init();
 
-    // Resolve hostnames
-    rc = 0;
-    while (rc < agt->rip_id) {
-        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
-            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
-            resolveHostname(&agt->server[rc].rip, 5);
-            int rip_l = strlen(agt->server[rc].rip);
-            mdebug2("Server hostname resolved: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
-        }
-        rc++;
-    }
-
     /* Going Daemon */
     if (!run_foreground) {
         nowDaemon();
         goDaemon();
     }
-
-    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
-
-    if (!getuname()) {
-        merror(MEM_ERROR, errno, strerror(errno));
-    } else
-        minfo("Version detected -> %s", getuname());
-
+    
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
@@ -63,11 +44,43 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
+    if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+        // If autoenrollment is enabled, we will avoid exit if there is no valid key
+        OS_PassEmptyKeyfile();
+    } else {
+        /* Check auth keys */
+        if (!OS_CheckKeys()) {
+            merror_exit(AG_NOKEYS_EXIT);
+        }
+    }
+    /* Read private keys  */
+    minfo(ENC_READ);    
+    OS_ReadKeys(&keys, 1, 0, 0); 
+
+    // Resolve hostnames
+    rc = 0;
+    while (rc < agt->server_count) {
+        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
+            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
+            resolveHostname(&agt->server[rc].rip, 5);
+            int rip_l = strlen(agt->server[rc].rip);
+            mdebug2("Server hostname resolved: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
+        }
+        rc++;
+    }
+
+    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
+
+    if (!getuname()) {
+        merror(MEM_ERROR, errno, strerror(errno));
+    } else
+        minfo("Version detected -> %s", getuname());
+
     /* Try to connect to server */
     os_setwait();
 
     /* Create the queue and read from it. Exit if fails. */
-    if ((agt->m_queue = StartMQ(DEFAULTQPATH, READ)) < 0) {
+    if ((agt->m_queue = StartMQ(DEFAULTQPATH, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
     }
 
@@ -87,35 +100,13 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         merror_exit(PID_ERROR);
     }
 
-    /* Read private keys  */
-    minfo(ENC_READ);
-
-    OS_StartCounter(&keys);
-
-    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
-                        agt->profile);
-
-    /*Set the crypto method for the agent */
-    os_set_agent_crypto_method(&keys,agt->crypto_method);
-
-    switch (agt->crypto_method) {
-        case W_METH_AES:
-            minfo("Using AES as encryption method.");
-            break;
-        case W_METH_BLOWFISH:
-            minfo("Using Blowfish as encryption method.");
-            break;
-        default:
-            merror("Invalid encryption method.");
-    }
-
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
 
     os_random();
 
     /* Ignore SIGPIPE, it will be detected on recv */
-    signal(SIGPIPE, SIG_IGN);
+    signal(SIGPIPE, SIG_IGN);    
 
     /* Launch rotation thread */
 
@@ -135,18 +126,13 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     }
     /* Connect remote */
     rc = 0;
-    while (rc < agt->rip_id) {
+    while (rc < agt->server_count) {
         int rip_l = strlen(agt->server[rc].rip);
         minfo("Server IP Address: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
         rc++;
     }
 
     w_create_thread(state_main, NULL);
-
-    /* Try to connect to the server */
-    if (!connect_server(0)) {
-        merror_exit(UNABLE_CONN);
-    }
 
     /* Set max fd for select */
     if (agt->sock > maxfd) {
@@ -155,13 +141,13 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
     /* Connect to the execd queue */
     if (agt->execdq == 0) {
-        if ((agt->execdq = StartMQ(EXECQUEUEPATH, WRITE)) < 0) {
+        if ((agt->execdq = StartMQ(EXECQUEUEPATH, WRITE, 1)) < 0) {
             minfo("Unable to connect to the active response "
                    "queue (disabled).");
             agt->execdq = -1;
         }
     }
-
+    
     start_agent(1);
 
     os_delwait();

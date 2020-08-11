@@ -175,22 +175,12 @@ int main(int argc, char **argv)
     }
 
     /* Connect to the queue */
-    if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-        minfo(FIM_WAITING_QUEUE, DEFAULTQPATH, errno, strerror(errno), 5);
 
-        sleep(5);
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            /* more 10 seconds of wait */
-            minfo(FIM_WAITING_QUEUE, DEFAULTQPATH, errno, strerror(errno), 10);
-            sleep(10);
-            if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-            }
-        }
+    if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+        merror_exit(QUEUE_FATAL, DEFAULTQPATH);
     }
 
     if (!syscheck.disabled) {
-
         /* Start up message */
         minfo(STARTUP_MSG, (int)getpid());
 

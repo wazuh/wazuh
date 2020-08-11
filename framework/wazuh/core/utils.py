@@ -20,7 +20,7 @@ from xml.etree.ElementTree import fromstring
 
 from wazuh.core import common
 from wazuh.core.database import Connection
-from wazuh.core.exception import WazuhError, WazuhException
+from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
 
 # Python 2/3 compatibility
@@ -49,25 +49,24 @@ def execute(command):
     :param command: Command as list.
     :return: If output.error !=0 returns output.data, otherwise launches a WazuhException with output.error as error code and output.message as description.
     """
-
     try:
         output = check_output(command)
     except CalledProcessError as error:
         output = error.output
     except Exception as e:
-        raise WazuhException(1002, "{0}: {1}".format(command, e))  # Error executing command
+        raise WazuhInternalError(1002, "{0}: {1}".format(command, e))  # Error executing command
 
     try:
         output_json = json.loads(output)
     except Exception as e:
-        raise WazuhException(1003, command)  # Command output not in json
+        raise WazuhInternalError(1003, command)  # Command output not in json
 
     keys = output_json.keys()  # error and (data or message)
     if 'error' not in keys or ('data' not in keys and 'message' not in keys):
-        raise WazuhException(1004, command)  # Malformed command output
+        raise WazuhInternalError(1004, command)  # Malformed command output
 
     if output_json['error'] != 0:
-        raise WazuhException(output_json['error'], output_json['message'], True)
+        raise WazuhInternalError(output_json['error'], output_json['message'], True)
     else:
         return output_json['data']
 
@@ -131,9 +130,9 @@ def cut_array(array, offset=0, limit=common.database_limit):
     limit = int(limit)
 
     if offset < 0:
-        raise WazuhException(1400)
+        raise WazuhError(1400)
     elif limit < 1:
-        raise WazuhException(1401)
+        raise WazuhError(1401)
     else:
         return array[offset:offset + limit]
 
@@ -499,7 +498,7 @@ def _get_hashing_algorithm(hash_algorithm):
     # check hash algorithm
     algorithm_list = hashlib.algorithms_available
     if hash_algorithm not in algorithm_list:
-        raise WazuhException(1723, "Available algorithms are {0}.".format(', '.join(algorithm_list)))
+        raise WazuhError(1723, "Available algorithms are {0}.".format(', '.join(algorithm_list)))
 
     return hashlib.new(hash_algorithm)
 
@@ -719,7 +718,7 @@ def get_timeframe_in_seconds(timeframe):
     """
     if not timeframe.isdigit():
         if 'h' not in timeframe and 'd' not in timeframe and 'm' not in timeframe and 's' not in timeframe:
-            raise WazuhException(1411, timeframe)
+            raise WazuhError(1411, timeframe)
 
         regex, seconds = re.compile(r'(\d+)(\w)'), 0
         time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's': 1}
@@ -741,7 +740,6 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     :return: list with processed query
     """
-
     def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
         """
         Checks an operation between value1 and value2. 'value1' could be an
@@ -773,7 +771,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             return False
 
     # compile regular expression only one time when function is called
-    re_get_elements = re.compile(r'([\w\-.]+)(=|!=|<|>|~)([\w\-./]+)')  # regex for getting elements in a clause
+    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-]*))(=|!=|<|>|~)([\w\-./:]+)') # get elements in a clause
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
@@ -787,16 +785,25 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             for and_clause in and_clauses:
                 # get elements in a clause
                 try:
-                    field_name, op, value = re_get_elements.match(and_clause).groups()
+                    field_name, field_subname, op, value = re_get_elements.match(and_clause).groups()
                 except AttributeError:
                     raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
 
                 # check if a clause is satisfied
-                if field_name in elem and check_clause(elem[field_name], op, value):
-                    continue
+                if field_subname:
+                    if field_name in elem and field_subname in elem[field_name] and \
+                            check_clause(elem[field_name][field_subname], op, value):
+                        continue
+                    else:
+                        match = False
+                        break
                 else:
-                    match = False
-                    break
+                    if field_name in elem and check_clause(elem[field_name], op, value):
+                        continue
+                    else:
+                        match = False
+                        break
+
             # if match = True, add element to output and break the loop
             if match:
                 output_array.append(elem)
@@ -830,7 +837,7 @@ class SQLiteBackend(AbstractDatabaseBackend):
 
     def connect_to_db(self):
         if not glob.glob(self.db_path):
-            raise WazuhException(1600)
+            raise WazuhInternalError(1600)
         return Connection(self.db_path)
 
     def _get_data(self):
@@ -926,6 +933,8 @@ class WazuhDBQuery(object):
         self.min_select_fields = min_select_fields
         self.query_operators = {"=": "=", "!=": "!=", "<": "<", ">": ">", "~": 'LIKE'}
         self.query_separators = {',': 'OR', ';': 'AND', '': ''}
+        self.special_characters = "\'\""
+        self.wildcard_equal_fields = set()
         # To correctly turn a query into SQL, a regex is used. This regex will extract all necessary information:
         # For example, the following regex -> (name!=wazuh;id>5),group=webserver <- would return 3 different matches:
         #   (name != wazuh ;
@@ -946,6 +955,17 @@ class WazuhDBQuery(object):
         self.legacy_filters = filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
         self.backend = backend
+
+    def _clean_filter(self, query_filter):
+        # Replace special characters with wildcards
+        for sp_char in self.special_characters:
+            if isinstance(query_filter['value'], str) and sp_char in query_filter['value']:
+                if query_filter['operator'] != 'LIKE':
+                    # If original operator was not LIKE, do not append % at the beginning and end of the string
+                    self.wildcard_equal_fields.add(query_filter['field'])
+
+                query_filter['value'] = query_filter['value'].replace(sp_char, '_')
+                query_filter['operator'] = 'LIKE'
 
     def _add_limit_to_query(self):
         if self.limit:
@@ -982,7 +1002,7 @@ class WazuhDBQuery(object):
                 f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)' for x in
                 self.fields.values()) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
-            self.request['search'] = "%{0}%".format(self.search['value'])
+            self.request['search'] = "%{0}%".format(re.sub(f"[{self.special_characters}]", '_', self.search['value']))
 
     def _parse_select_filter(self, select_fields):
         if select_fields:
@@ -1016,7 +1036,7 @@ class WazuhDBQuery(object):
         :return: A list with processed query (self.fields)
         """
         if not self.query_regex.match(self.q):
-            raise WazuhException(1407, self.q)
+            raise WazuhError(1407, self.q)
 
         level = 0
         for open_level, field, operator, value, close_level, separator in self.query_regex.findall(self.q):
@@ -1042,9 +1062,10 @@ class WazuhDBQuery(object):
     def _parse_legacy_filters(self):
         """Parses legacy filters."""
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
+        self.legacy_filters.get('older_than', None) == '0s' and self.legacy_filters.pop('older_than')
         legacy_filters_as_list = {
-            name: value.split(',') if isinstance(value, str) else (value if isinstance(value, list) else [value])
-            for name, value in self.legacy_filters.items()}
+            name: value if isinstance(value, list) else [value] for name, value in self.legacy_filters.items()
+        }
         # each filter is represented using a dictionary containing the following fields:
         #   * Value     -> Value to filter by
         #   * Field     -> Field to filter by. Since there can be multiple filters over the same field, a numeric ID
@@ -1086,7 +1107,7 @@ class WazuhDBQuery(object):
             if q_filter['value'] is not None:
                 self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
                     r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
-                if q_filter['operator'] == 'LIKE':
+                if q_filter['operator'] == 'LIKE' and q_filter['field'] not in self.wildcard_equal_fields:
                     self.request[field_filter] = "%{}%".format(self.request[field_filter])
                 self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'],
                                                  field_filter)
@@ -1100,6 +1121,7 @@ class WazuhDBQuery(object):
         self._parse_filters()
         curr_level = 0
         for q_filter in self.query_filters:
+            self._clean_filter(q_filter)
             field_name = q_filter['field'].split('$', 1)[0]
             field_filter = q_filter['field'].replace('.', '_')
 
@@ -1146,7 +1168,7 @@ class WazuhDBQuery(object):
                                                                     date_filter['operator'], date_filter['field'])
             self.request[date_filter['field']] = date_filter['value']
         else:
-            raise WazuhException(1412, date_filter['value'])
+            raise WazuhError(1412, date_filter['value'])
 
     def run(self):
         """Builds the query and runs it on the database"""
@@ -1201,7 +1223,7 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
 
     def _add_select_to_query(self):
         if len(self.select) > 1:
-            raise WazuhException(1410)
+            raise WazuhError(1410)
 
         WazuhDBQuery._add_select_to_query(self)
 

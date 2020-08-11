@@ -158,7 +158,8 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - PUT /agents/{agent_id}/restart
-          - PUT /groups/{group_id}/restart
+          - PUT /agents/group/{group_id}/restart
+          - PUT /agents/node/{node_id}/restart
           - PUT /agents/restart
       agent:upgrade:
         description: Upgrade the version of an agent
@@ -242,18 +243,19 @@ get_rbac_actions:
         related_endpoints:
           - GET /ciscat/{agent_id}/results
           - GET /experimental/ciscat/results
-      cluster:read_config:
+      cluster:read:
         description: Read Wazuh's cluster configuration
         resources:
           - node:id
         example:
           actions:
-            - cluster:read_config
+            - cluster:read
           resources:
             - node:id:worker1
             - node:id:worker3
           effect: deny
         related_endpoints:
+          - PUT /agents/node/{node_id}/restart
           - GET /cluster/local/info
           - GET /cluster/nodes
           - GET /cluster/healthcheck
@@ -268,6 +270,10 @@ get_rbac_actions:
           - GET /cluster/{node_id}/stats/remoted
           - GET /cluster/{node_id}/logs
           - GET /cluster/{node_id}/logs/summary
+          - GET /cluster/{node_id}/files
+          - PUT /cluster/{node_id}/files
+          - DELETE /cluster/{node_id}/files
+          - PUT /cluster/restart
           - GET /cluster/configuration/validation
           - GET /cluster/{node_id}/configuration/{component}/{configuration}
       cluster:status:
@@ -375,13 +381,13 @@ get_rbac_actions:
         related_endpoints:
           - GET /lists
           - GET /lists/files
-      manager:read_config:
+      manager:read:
         description: Read Wazuh manager configuration
         resources:
           - "*:*"
         example:
           actions:
-            - manager:read_config
+            - manager:read
           resources:
             - "*:*:*"
           effect: allow
@@ -396,6 +402,10 @@ get_rbac_actions:
           - GET /manager/stats/remoted
           - GET /manager/logs
           - GET /manager/logs/summary
+          - GET /manager/files
+          - PUT /manager/files
+          - DELETE /manager/files
+          - PUT /manager/restart
           - GET /manager/configuration/validation
           - GET /manager/configuration/{component}/{configuration}
       manager:read_file:
@@ -645,7 +655,7 @@ get_rbac_actions:
           - DELETE /security/roles
           - DELETE /security/policies
           - DELETE /security/roles/{role_id}/policies
-          - DELETE /security/users/{username}/roles
+          - DELETE /security/users/{user_id}/roles
           - DELETE /security/users
       security:update:
         description: Allow update the information of system's security resources
@@ -665,7 +675,7 @@ get_rbac_actions:
           - PUT /security/roles/{role_id}
           - PUT /security/policies/{policy_id}
           - POST /security/roles/{role_id}/policies
-          - POST /security/users/{username}/roles
+          - POST /security/users/{user_id}/roles
           - PUT /security/users/{user_id}
       security:create_user:
         description: Create new system user

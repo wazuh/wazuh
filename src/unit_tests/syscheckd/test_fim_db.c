@@ -320,6 +320,10 @@ int __wrap_sqlite3_bind_int64(sqlite3_stmt *stmt, int index, sqlite3_int64 value
     return mock();
 }
 
+int __wrap_os_random(void) {
+    return 123456;
+}
+
 sqlite3_int64 __wrap_sqlite3_column_int64(sqlite3_stmt* stmt, int iCol) {
     check_expected(iCol);
     return mock();
@@ -1711,9 +1715,9 @@ void test_fim_db_get_path_range_failed(void **state) {
 
     will_return(__wrap_fopen, 0);
     #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345'");
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345123456'");
     #else
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_1928374652345'");
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_1928374652345123456'");
     #endif
 
     int ret = fim_db_get_path_range(test_data->fim_sql, "start", "stop", &file, syscheck.database_store);
@@ -1734,9 +1738,9 @@ void test_fim_db_get_path_range_success(void **state) {
     wraps_fim_db_check_transaction();
 
     #ifndef TEST_WINAGENT
-    expect_string(__wrap_remove, filename, "/var/ossec/tmp/tmp_1928374652345");
+    expect_string(__wrap_remove, filename, "/var/ossec/tmp/tmp_1928374652345123456");
     #else
-    expect_string(__wrap_remove, filename, "tmp/tmp_1928374652345");
+    expect_string(__wrap_remove, filename, "tmp/tmp_1928374652345123456");
     #endif
     will_return(__wrap_remove, 0);
 
@@ -1754,9 +1758,9 @@ void test_fim_db_get_not_scanned_failed(void **state) {
 
     will_return(__wrap_fopen, 0);
     #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345'");
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345123456'");
     #else
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_1928374652345'");
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_1928374652345123456'");
     #endif
 
     int ret = fim_db_get_not_scanned(test_data->fim_sql, &file, syscheck.database_store);
@@ -1773,9 +1777,9 @@ void test_fim_db_get_not_scanned_success(void **state) {
     wraps_fim_db_check_transaction();
 
     #ifndef TEST_WINAGENT
-    expect_string(__wrap_remove, filename, "/var/ossec/tmp/tmp_1928374652345");
+    expect_string(__wrap_remove, filename, "/var/ossec/tmp/tmp_1928374652345123456");
     #else
-    expect_string(__wrap_remove, filename, "tmp/tmp_1928374652345");
+    expect_string(__wrap_remove, filename, "tmp/tmp_1928374652345123456");
     #endif
     will_return(__wrap_remove, 0);
 
@@ -2733,15 +2737,15 @@ void test_fim_db_create_temp_file_disk(void **state) {
 
     assert_non_null(ret);
     assert_non_null(ret->fd);
-    assert_string_equal(ret->path, FIM_DB_TMPDIR"tmp_1928374652345");
+    assert_string_equal(ret->path, FIM_DB_TMPDIR"tmp_1928374652345123456");
 }
 
 void test_fim_db_create_temp_file_disk_error(void **state) {
     will_return(__wrap_fopen, 0);
     #ifdef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_1928374652345'");
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_1928374652345123456'");
     #else
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345'");
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345123456'");
     #endif
 
 

@@ -2,33 +2,28 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import fcntl
-import json
 import re
-import socket
-from datetime import timezone
 from os import remove
 from os.path import exists, join
 
 from wazuh import Wazuh
 from wazuh.core import common, configuration
-from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
-from wazuh.core.manager import status, get_ossec_log_fields, upload_xml, upload_list, validate_xml, validate_cdb_list, \
-    parse_execd_output, get_api_conf, update_api_conf
+from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
-from wazuh.rbac.decorators import expose_resources
+from wazuh.core.manager import status, upload_xml, upload_list, validate_xml, validate_cdb_list, \
+    get_api_conf, update_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.core.utils import previous_month, tail, process_array
+from wazuh.core.utils import process_array
+from wazuh.rbac.decorators import expose_resources
 
 allowed_api_fields = {'behind_proxy_server', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
-execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")
 cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_status():
     """Wrapper for status().
@@ -48,15 +43,14 @@ def get_status():
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort_by=None,
+def ossec_log(level=None, tag=None, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
     """Gets logs from ossec.log.
 
-    :param type_log: Filters by log type: all, error or info.
-    :param category: Filters by log category (i.e. ossec-remoted).
-    :param months: Returns logs of the last n months. By default is 3 months.
+    :param level: Filters by log level: all, error or info.
+    :param tag: Filters by log category/tag (i.e. ossec-remoted).
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort_by: Fields to sort the items by
@@ -73,60 +67,28 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
                                       none_msg=f"Could not read logs"
                                                f"{' in specified node' if node_id != 'manager' else ''}"
                                       )
-    logs = []
+    logs = get_ossec_logs()
 
-    first_date = previous_month(months)
-    statfs_error = "ERROR: statfs('******') produced error: No such file or directory"
-
-    for line in tail(common.ossec_log, 2000):
-        log_fields = get_ossec_log_fields(line)
-        if log_fields:
-            log_date, log_category, level, description = log_fields
-
-            if log_date < first_date:
-                continue
-
-            if category != 'all':
-                if log_category:
-                    if log_category != category:
-                        continue
-                else:
-                    continue
-            # We transform local time (ossec.log) to UTC with ISO8601 maintaining time integrity
-            log_line = {'timestamp': log_date.astimezone(timezone.utc),
-                        'tag': log_category, 'level': level, 'description': description}
-
-            if type_log == 'all':
-                logs.append(log_line)
-            elif type_log.lower() == level.lower():
-                if "ERROR: statfs(" in line:
-                    if statfs_error in logs:
-                        continue
-                    else:
-                        logs.append(statfs_error)
-                else:
-                    logs.append(log_line)
-            else:
-                continue
-        else:
-            if logs and line and log_category == logs[-1]['tag'] and level == logs[-1]['level']:
-                logs[-1]['description'] += "\n" + line
+    query = []
+    level and query.append(f'level={level}')
+    tag and query.append(f'tag={tag}')
+    q and query.append(q)
+    query = ';'.join(query)
 
     data = process_array(logs, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by,
-                         sort_ascending=sort_ascending, offset=offset, limit=limit, q=q)
+                         sort_ascending=sort_ascending, offset=offset, limit=limit, q=query)
     result.affected_items.extend(data['items'])
     result.total_affected_items = data['totalItems']
 
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def ossec_log_summary(months=3):
-    """ Summary of ossec.log.
+def ossec_log_summary():
+    """Summary of ossec.log.
 
-    :param months: Check logs of the last n months. By default is 3 months.
     :return: AffectedItemsWazuhResult
     """
     result = AffectedItemsWazuhResult(all_msg=f"Log summarized successfully"
@@ -135,38 +97,10 @@ def ossec_log_summary(months=3):
                                       none_msg=f"Could not summarize the log"
                                                f"{' in specified node' if node_id != 'manager' else ''}"
                                       )
-    categories = dict()
 
-    first_date = previous_month(months)
+    logs_summary = get_logs_summary()
 
-    with open(common.ossec_log, errors='ignore') as f:
-        lines_count = 0
-        for line in f:
-            if lines_count > 50000:
-                break
-            lines_count = lines_count + 1
-
-            line = get_ossec_log_fields(line)
-
-            # Multiline logs
-            if line is None:
-                continue
-
-            log_date, category, log_type, _, = line
-
-            if log_date < first_date:
-                break
-
-            if category:
-                if category in categories:
-                    categories[category]['all'] += 1
-                else:
-                    categories[category] = {'all': 1, 'info': 0, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0}
-                categories[category][log_type] += 1
-            else:
-                continue
-
-    for k, v in categories.items():
+    for k, v in logs_summary.items():
         result.affected_items.append({k: v})
     result.affected_items = sorted(result.affected_items, key=lambda i: list(i.keys())[0])
     result.total_affected_items = len(result.affected_items)
@@ -174,6 +108,8 @@ def ossec_log_summary(months=3):
     return result
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:upload_file"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def upload_file(path=None, content=None, overwrite=False):
@@ -188,13 +124,14 @@ def upload_file(path=None, content=None, overwrite=False):
                                       none_msg='Could not upload file'
                                       )
     try:
+        if len(content) == 0:
+            raise WazuhError(1112)
+
         # If file already exists and overwrite is False, raise exception
         if not overwrite and exists(join(common.ossec_path, path)):
             raise WazuhError(1905)
         elif overwrite and exists(join(common.ossec_path, path)):
             delete_file(path=path)
-        if len(content) == 0:
-            raise WazuhError(1112)
 
         # For CDB lists
         if re.match(r'^etc/lists', path):
@@ -209,6 +146,8 @@ def upload_file(path=None, content=None, overwrite=False):
     return result
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_file"],
                   resources=[f'node:id:{node_id}&file:path:{{path}}'] if cluster_enabled else ['file:path:{path}'],
                   post_proc_func=None)
@@ -242,6 +181,8 @@ def get_file(path, validate=False):
     return WazuhResult({'contents': output})
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:delete_file"],
                   resources=[f'node:id:{node_id}&file:path:{{path}}'] if cluster_enabled else ['file:path:{path}'])
 def delete_file(path):
@@ -352,6 +293,8 @@ _restart_default_result_kwargs = {
 }
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:restart"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': _restart_default_result_kwargs})
@@ -377,7 +320,7 @@ _validation_default_result_kwargs = {
 }
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': _validation_default_result_kwargs})
 def validation():
@@ -387,85 +330,17 @@ def validation():
     """
     result = AffectedItemsWazuhResult(**_validation_default_result_kwargs)
 
-    lock_file = open(execq_lockfile, 'a+')
-    fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
-        # Sockets path
-        api_socket_relative_path = join('queue', 'alerts', 'execa')
-        api_socket_path = join(common.ossec_path, api_socket_relative_path)
-        execq_socket_path = common.EXECQ
-        # Message for checking Wazuh configuration
-        execq_msg = 'check-manager-configuration '
-
-        # Remove api_socket if exists
-        try:
-            remove(api_socket_path)
-        except OSError as e:
-            if exists(api_socket_path):
-                extra_msg = f'Socket: WAZUH_PATH/{api_socket_relative_path}. Error: {e.strerror}'
-                raise WazuhInternalError(1014, extra_message=extra_msg)
-
-        # up API socket
-        try:
-            api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            api_socket.bind(api_socket_path)
-            # Timeout
-            api_socket.settimeout(5)
-        except OSError as e:
-            extra_msg = f'Socket: WAZUH_PATH/{api_socket_relative_path}. Error: {e.strerror}'
-            raise WazuhInternalError(1013, extra_message=extra_msg)
-
-        # Connect to execq socket
-        if exists(execq_socket_path):
-            try:
-                execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                execq_socket.connect(execq_socket_path)
-            except OSError as e:
-                extra_msg = f'Socket: WAZUH_PATH/queue/alerts/execq. Error {e.strerror}'
-                raise WazuhInternalError(1013, extra_message=extra_msg)
-        else:
-            raise WazuhInternalError(1901)
-
-        # Send msg to execq socket
-        try:
-            execq_socket.send(execq_msg.encode())
-            execq_socket.close()
-        except socket.error as e:
-            raise WazuhInternalError(1014, extra_message=str(e))
-        finally:
-            execq_socket.close()
-
-        # If api_socket receives a message, configuration is OK
-        try:
-            buffer = bytearray()
-            # Receive data
-            datagram = api_socket.recv(4096)
-            buffer.extend(datagram)
-        except socket.timeout as e:
-            raise WazuhInternalError(1014, extra_message=str(e))
-        finally:
-            api_socket.close()
-            # Remove api_socket
-            if exists(api_socket_path):
-                remove(api_socket_path)
-
-        try:
-            response = parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
-        except (KeyError, json.decoder.JSONDecodeError) as e:
-            raise WazuhInternalError(1904, extra_message=str(e))
-
+        response = validate_ossec_conf()
         result.affected_items.append({'name': node_id, **response})
         result.total_affected_items += 1
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
-    finally:
-        fcntl.lockf(lock_file, fcntl.LOCK_UN)
-        lock_file.close()
 
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_config(component=None, config=None):
     """ Wrapper for get_active_configuration
@@ -491,7 +366,7 @@ def get_config(component=None, config=None):
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def read_ossec_conf(section=None, field=None):
     """ Wrapper for get_ossec_conf
@@ -516,7 +391,7 @@ def read_ossec_conf(section=None, field=None):
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_basic_info():
     """ Wrapper for Wazuh().to_dict

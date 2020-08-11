@@ -59,7 +59,7 @@ void Monitord()
 #endif
 
     /* Connect to the message queue or exit */
-    if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
+    if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
@@ -82,6 +82,18 @@ void Monitord()
 #ifndef LOCAL
         /* Check for unavailable agents, every two minutes */
         if (mond.monitor_agents && counter >= 120) {
+            if (mond.a_queue < 0) {
+                /* Connect to the message queue */
+                if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) > 0) {
+                    /* Send startup message */
+                    snprintf(str, OS_SIZE_1024 - 1, OS_AD_STARTED);
+                    if (SendMSG(mond.a_queue, str, ARGV0,
+                                LOCALFILE_MQ) < 0) {
+                        mond.a_queue = -1;  // We keep trying to reconnect next time.
+                        merror(QUEUE_SEND);
+                    }
+                }
+            }
             monitor_agents();
             counter = 0;
         }

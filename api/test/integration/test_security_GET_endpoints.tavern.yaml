@@ -10,7 +10,7 @@ stages:
   - name: Try to show the roles of the system
     request: &all_roles_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -30,7 +30,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   # GET /security/roles
   - name: Try to show the roles of the system, offset = 0
@@ -88,11 +87,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json: &error_response
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: "about:blank"
 
   # GET /security/roles
   - name: Sort the roles
@@ -148,7 +142,7 @@ stages:
   - name: Search in roles
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -186,8 +180,6 @@ stages:
         sort: +noexist
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   # GET /security/roles
   - name: Search without limit, non existent role
@@ -209,11 +201,6 @@ stages:
         noexist: nothing
     response:
       status_code: 400
-      json: &error_null
-        detail: "Extra query parameter(s) noexist not in spec"
-        status: 400
-        title: null
-        type: "about:blank"
 
   # GET /security/roles
   - name: Invalid parameters - Extra fields
@@ -224,8 +211,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
   # GET /security/roles
   - name: Try to show the roles of the system with a non-existent search
@@ -247,7 +232,7 @@ stages:
   - name: Try to show the policies of the system
     request: &all_policies_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -319,8 +304,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   # GET /security/policies
   - name: Sort the policies
@@ -401,8 +384,6 @@ stages:
         noexist: nothing
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
   # GET /security/policies
   - name: Invalid parameters - Extra fields
@@ -413,8 +394,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
   # GET /security/policies
   - name: Try to show the policies of the system with a non-existent search
@@ -461,8 +440,6 @@ stages:
           failed_items:
             - error:
                 code: !anyint
-                message: !anystr
-                remediation: !anystr
               id:
                 - '999'
           total_affected_items: 0
@@ -506,7 +483,7 @@ stages:
   - name: Get all users in the system
     request: &all_users_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -545,7 +522,6 @@ stages:
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: GET /security/users/me
@@ -555,7 +531,7 @@ stages:
   - name: Get information about the current user
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/me"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/me"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -574,7 +550,6 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: GET /security/users
@@ -616,11 +591,6 @@ stages:
         user_ids: "!!!"
     response:
       status_code: 400
-      json:
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
 
   - name: Get an user by its id (invalid id)
     request:
@@ -629,11 +599,6 @@ stages:
         user_ids: "####@@@|#|"
     response:
       status_code: 400
-      json:
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
 
   - name: Get an non-existent user by its id
     request:
@@ -648,13 +613,10 @@ stages:
           failed_items:
             - error:
                 code: 5001
-                message: !anystr
-                remediation: !anystr
               id:
                 - '10000'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Get two non-existent users by their ids
     request:
@@ -669,14 +631,11 @@ stages:
           failed_items:
             - error:
                 code: 5001
-                message: !anystr
-                remediation: !anystr
               id:
                 - '10000'
                 - '10001'
           total_affected_items: 0
           total_failed_items: 2
-        message: !anystr
 
   - name: Get two non-existent users and an existing one by their ids
     request:
@@ -693,14 +652,11 @@ stages:
           failed_items:
             - error:
                 code: 5001
-                message: !anystr
-                remediation: !anystr
               id:
                 - '10000'
                 - '10001'
           total_affected_items: 1
           total_failed_items: 2
-        message: !anystr
 
   - name: Get two non-existent users and two existent by their ids
     request:
@@ -719,14 +675,11 @@ stages:
           failed_items:
             - error:
                 code: 5001
-                message: !anystr
-                remediation: !anystr
               id:
                 - '10000'
                 - '10001'
           total_affected_items: 2
           total_failed_items: 2
-        message: !anystr
 ---
 test_name: GET /security/users/?search
 
@@ -752,7 +705,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Testing complementary search
     request:
@@ -800,7 +752,6 @@ stages:
           total_affected_items: 7
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: GET /security/users/?sort
@@ -860,7 +811,6 @@ stages:
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   - name: Testing sort
     request:
@@ -916,7 +866,6 @@ stages:
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: GET /security/users/?limit,offset
@@ -963,8 +912,6 @@ stages:
               roles: []
           total_affected_items: 9
           total_failed_items: 0
-          failed_items: []
-        message: !anystr
 
   - name: Testing limit
     request:
@@ -983,7 +930,6 @@ stages:
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: GET /security/actions
@@ -992,7 +938,7 @@ stages:
   - name: Testing RBAC's actions catalog
     request: &rbac_actions_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/actions"
+      url: "{protocol:s}://{host:s}:{port:d}/security/actions"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1042,7 +988,7 @@ stages:
   - name: Testing RBAC's actions catalog
     request: &rbac_resources_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/resources"
+      url: "{protocol:s}://{host:s}:{port:d}/security/resources"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1092,7 +1038,7 @@ stages:
   - name: Get current security configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      url: "{protocol:s}://{host:s}:{port:d}/security/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

@@ -238,7 +238,6 @@ void wm_aws_destroy(wm_aws *aws_config) {
 // Setup module
 
 void wm_aws_setup(wm_aws *_aws_config) {
-    int i;
 
     aws_config = _aws_config;
     wm_aws_check();
@@ -250,10 +249,9 @@ void wm_aws_setup(wm_aws *_aws_config) {
 
     // Connect to socket
 
-    for (i = 0; (aws_config->queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        w_time_delay(1000 * WM_MAX_WAIT);
+    aws_config->queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-    if (i == WM_MAX_ATTEMPTS) {
+    if (aws_config->queue_fd < 0) {
         mterror(WM_AWS_LOGTAG, "Can't connect to queue.");
         pthread_exit(NULL);
     }

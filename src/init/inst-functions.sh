@@ -929,8 +929,18 @@ InstallLocal()
 
     ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
 
+    ### Backup old API
+    if [ "X${update_only}" = "Xyes" ]; then
+      ${MAKEBIN} --quiet -C ../api backup PREFIX=${PREFIX} REVISION=${REVISION}
+    fi
+
     ### Install API
     ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
+
+    ### restore old API
+    if [ "X${update_only}" = "Xyes" ]; then
+      ${MAKEBIN} --quiet -C ../api restore PREFIX=${PREFIX} REVISION=${REVISION}
+    fi
 
     ### Install API service
     if [ "X${INSTALL_API_DAEMON}" = "X" ] || [ "X${INSTALL_API_DAEMON}" = "Xy" ]; then

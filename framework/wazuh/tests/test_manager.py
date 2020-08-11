@@ -3,15 +3,14 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import os
-import pathlib
+import socket
 import sys
-from functools import wraps
-from datetime import datetime
 from unittest.mock import patch, MagicMock, mock_open
+import json
 
 import pytest
 
-from wazuh.core.tests.test_manager import get_ossec_log
+from wazuh.core.tests.test_manager import get_logs
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
@@ -76,30 +75,31 @@ def test_get_status(mock_status):
     assert result.render()['data']['total_failed_items'] == 0
 
 
-@pytest.mark.parametrize('category, type_log, total_items, sort_by, sort_ascending', [
-    ('all', 'all', 12, None, None),
-    ('wazuh-modulesd:database', 'all', 1, None, None),
-    ('wazuh-modulesd:syscollector', 'all', 2, None, None),
-    ('wazuh-modulesd:syscollector', 'all', 2, None, None),
-    ('wazuh-modulesd:aws-s3', 'all', 5, None, None),
-    ('ossec-execd', 'all', 1, None, None),
-    ('ossec-csyslogd', 'all', 2, None, None),
-    ('random', 'all', 0, ['timestamp'], True),
-    ('all', 'info', 7, ['timestamp'], False),
-    ('all', 'error', 2, ['level'], True),
-    ('all', 'debug', 1, ['level'], False),
-    ('all', 'random', 0, None, True),
-    ('all', 'warning', 2, None, False),
+@pytest.mark.parametrize('tag, level, total_items, sort_by, sort_ascending, q', [
+    (None, None, 13, None, None, ''),
+    (None, None, 4, None, None, 'level=debug,level=error'),
+    ('wazuh-modulesd:database', None, 2, None, None, ''),
+    ('wazuh-modulesd:syscollector', None, 2, None, None, ''),
+    ('wazuh-modulesd:syscollector', None, 2, None, None, ''),
+    ('wazuh-modulesd:aws-s3', None, 5, None, None, ''),
+    ('ossec-execd', None, 1, None, None, ''),
+    ('ossec-csyslogd', None, 2, None, None, ''),
+    ('random', None, 0, ['timestamp'], True, ''),
+    (None, 'info', 7, ['timestamp'], False, ''),
+    (None, 'error', 2, ['level'], True, ''),
+    (None, 'debug', 2, ['level'], False, ''),
+    (None, None, 13, ['tag'], True, ''),
+    (None, 'random', 0, None, True, ''),
+    (None, 'warning', 2, None, False, '')
 ])
-@patch("wazuh.manager.previous_month", return_value=datetime.strptime('2019-03-01 00:00:00', '%Y-%m-%d %H:%M:%S'))
-def test_ossec_log(mock_month, type_log, category, total_items, sort_by, sort_ascending):
+def test_ossec_log(tag, level, total_items, sort_by, sort_ascending, q):
     """Test reading ossec.log file contents.
 
     Parameters
     ----------
-    type_log : str
+    level : str
         Filters by log type: all, error or info.
-    category : str
+    tag : str
         Filters by log category (i.e. ossec-remoted).
     total_items : int
         Expected items to be returned after calling ossec_log.
@@ -108,50 +108,30 @@ def test_ossec_log(mock_month, type_log, category, total_items, sort_by, sort_as
     sort_ascending : boolean
         Sort in ascending (true) or descending (false) order.
     """
-    with patch('wazuh.manager.tail') as tail_patch:
+    with patch('wazuh.core.manager.tail') as tail_patch:
         # Return ossec_log_file when calling tail() method
-        ossec_log_file = get_ossec_log()
+        ossec_log_file = get_logs()
         tail_patch.return_value = ossec_log_file.splitlines()
 
-        result = ossec_log(type_log=type_log, category=category, sort_by=sort_by, sort_ascending=sort_ascending)
+        result = ossec_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=sort_ascending, q=q)
 
         # Assert type, number of items and presence of trailing characters
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['total_affected_items'] == total_items
         assert all(log['description'][-1] != '\n' for log in result.render()['data']['affected_items'])
-        if category != 'all' and category != 'wazuh-modulesd:syscollector':
+        if tag is not None and level != 'wazuh-modulesd:syscollector':
             assert all('\n' not in log['description'] for log in result.render()['data']['affected_items'])
+        if sort_by:
+            reversed_result = ossec_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=not sort_ascending, q=q)
+            for i in range(total_items):
+                assert result.render()['data']['affected_items'][i][sort_by[0]] == \
+                       reversed_result.render()['data']['affected_items'][total_items - 1 - i][sort_by[0]]
 
 
-def test_ossec_log_ko():
-    """Test reading ossec.log file contents."""
-    error_log = ("2019/04/11 12:53:37 wazuh-modulesd:aws-s3: "
-                 "ERROR: statfs('******') produced error: No such file or directory"
-                 "db_maintenance() got an unexpected keyword argument 'aws_account_id'")
-
-    with patch('wazuh.manager.tail') as tail_patch:
-        tail_patch.return_value = error_log.splitlines()
-
-        # Check it doesn't read logs older than a specific date
-        result = ossec_log(type_log='all', category='all')
-        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-        assert result.render()['message'] == 'Could not read logs'
-
-        with patch("wazuh.manager.previous_month",
-                   return_value=datetime.strptime('2019-03-01 00:00:00', '%Y-%m-%d %H:%M:%S')):
-            # Check it finds ERROR tag in log
-            result = ossec_log(category='all', type_log='error')
-            assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-            assert 'ERROR: statfs(' in result.render()['data']['affected_items'][0], \
-                'Expected message not found in result'
-
-
-@patch("wazuh.manager.previous_month", return_value=datetime.strptime('2019-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'))
-def test_ossec_log_summary(mock_month):
+def test_ossec_log_summary():
     """Tests ossec_log_summary function works and returned data match with expected"""
-    ossec_log_file = get_ossec_log()
-    m = mock_open(read_data=ossec_log_file)
-    with patch('builtins.open', m):
+    logs = get_logs().splitlines()
+    with patch('wazuh.core.manager.tail', return_value=logs):
         result = ossec_log_summary()
 
         # Assert data match what was expected and type of the result.
@@ -163,18 +143,6 @@ def test_ossec_log_summary(mock_month):
         assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['critical'] == 0
         assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['warning'] == 0
         assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['debug'] == 0
-
-
-@patch("wazuh.manager.previous_month", return_value=datetime.strptime('2020-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'))
-def test_ossec_log_summary_ko(mock_month):
-    """Tests ossec_log_summary function doesn't read logs older than a specific date"""
-    ossec_log_file = get_ossec_log()
-    m = mock_open(read_data=ossec_log_file)
-    with patch('builtins.open', m):
-        result = ossec_log_summary()
-
-        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-        assert result.render()['data']['total_failed_items'] == 0
 
 
 @pytest.mark.parametrize('path, overwrite', [
@@ -200,6 +168,10 @@ def test_upload_file(mock_list, mock_xml, mock_delete, path, overwrite):
     # Assert data match what was expected, type of the result and correct parameters in delete() method.
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['affected_items'][0] == path, 'Expected item not found'
+    if re.match(r'^etc/lists', path):
+        mock_list.assert_called_once_with('test', path)
+    else:
+        mock_xml.assert_called_once_with('test', path)
     if overwrite:
         mock_delete.assert_called_once_with(path=path), 'delete_file method not called with expected parameter'
 
@@ -358,10 +330,10 @@ def test_restart_ko_socket(mock_exist, mock_fcntl, mock_open):
         "'use_source_i'.\n2019/02/27 11:30:24 ossec-authd: ERROR: (1202): Configuration error at "
         "'/var/ossec/etc/ossec.conf'.")
 ])
-@patch('wazuh.manager.open')
-@patch('wazuh.manager.fcntl')
-@patch("wazuh.manager.exists", return_value=True)
-@patch("wazuh.manager.remove", return_value=True)
+@patch('wazuh.core.manager.open')
+@patch('wazuh.core.manager.fcntl')
+@patch("wazuh.core.manager.exists", return_value=True)
+@patch("wazuh.core.manager.remove", return_value=True)
 def test_validation(mock_remove, mock_exists, mock_fcntl, mock_open, error_flag, error_msg):
     """Test validation() method works as expected
 
@@ -388,16 +360,16 @@ def test_validation(mock_remove, mock_exists, mock_fcntl, mock_open, error_flag,
         assert result.render()['data']['total_failed_items'] == error_flag
 
 
-@patch('wazuh.manager.open')
-@patch('wazuh.manager.fcntl')
-@patch("wazuh.manager.exists", return_value=True)
+@patch('wazuh.core.manager.open')
+@patch('wazuh.core.manager.fcntl')
+@patch("wazuh.core.manager.exists", return_value=True)
 def test_validation_ko(mosck_exists, mock_lockf, mock_open):
     # Remove api_socket raise OSError
-    with patch('wazuh.manager.remove', side_effect=OSError):
+    with patch('wazuh.core.manager.remove', side_effect=OSError):
         with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
             validation()
 
-    with patch('wazuh.manager.remove'):
+    with patch('wazuh.core.manager.remove'):
         # Socket creation raise socket.error
         with patch('socket.socket', side_effect=socket.error):
             with pytest.raises(WazuhInternalError, match='.* 1013 .*'):
@@ -410,7 +382,7 @@ def test_validation_ko(mosck_exists, mock_lockf, mock_open):
                     validation()
 
             # execq_socket_path not exists
-            with patch("wazuh.manager.exists", return_value=False):
+            with patch("wazuh.core.manager.exists", return_value=False):
                  with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
                     validation()
 
@@ -428,9 +400,16 @@ def test_validation_ko(mosck_exists, mock_lockf, mock_open):
 
                     # _parse_execd_output raise KeyError
                     with patch('socket.socket.recv'):
-                        with patch('wazuh.manager.parse_execd_output', side_effect=KeyError):
+                        with patch('wazuh.core.manager.parse_execd_output', side_effect=KeyError):
                             with pytest.raises(WazuhInternalError, match='.* 1904 .*'):
                                 validation()
+
+                    # _parse_execd_output raise WazuhError
+                    with patch('socket.socket') as sock:
+                        json_response = json.dumps({'error': 1, 'message': 'test_error'}).encode()
+                        sock.return_value.recv.return_value = json_response
+                        result = validation()
+                        assert result.total_failed_items == 1
 
 
 @patch('wazuh.core.configuration.get_active_configuration')
