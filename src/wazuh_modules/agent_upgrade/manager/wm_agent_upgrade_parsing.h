@@ -49,14 +49,17 @@ cJSON* wm_agent_upgrade_parse_response_message(int error_id, const char* message
 cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id,  const char* status);
 
 /**
- * Send a request to the task module and parse the response with the task ids
+ * Send a request to the task module and executes a callback for all the given responses
  * @param json_response cJSON array where the task responses will be stored
  * @param task_module_request cJSON to be sent to the task module
+ * @param success_callback function receives pointer to the error flag and a json and return the response json
+ * @param error_callback function that generates an action when the communication with task module fails
  * @return error code
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
+ * 
  * */
-int wm_agent_upgrade_parse_task_module_task_ids(cJSON *json_response, const cJSON* task_module_request);
+int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request, cJSON* (*success_callback)(int *error, cJSON* input_json), cJSON *(*error_callback)(int agent_id));
 
 /**
  * Parse a response message from the agent

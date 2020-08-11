@@ -224,3 +224,33 @@ cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
 
     return response;
 }
+
+cJSON* wm_agent_ugprade_insert_tasks_ids_callback(int *error, cJSON* input_json) {
+    cJSON *response = NULL;
+    cJSON *agent_json = cJSON_GetObjectItem(input_json, "agent");
+    cJSON *data_json = cJSON_GetObjectItem(input_json, "data");
+    cJSON *task_json = cJSON_GetObjectItem(input_json, "task_id");
+
+    if (agent_json && (agent_json->type == cJSON_Number) && data_json && (data_json->type == cJSON_String)) {
+        int agent_id = agent_json->valueint;
+
+        if (task_json && (task_json->type == cJSON_Number)) {
+            // Store task_id
+            wm_agent_upgrade_insert_task_id(agent_id, task_json->valueint);
+            response = input_json;
+        } else {
+            // Remove from table since upgrade will not be started
+            wm_agent_upgrade_remove_entry(agent_id);
+            response = wm_agent_upgrade_parse_response_message(WM_UPGRADE_TASK_MANAGER_FAILURE, data_json->valuestring, &agent_id, NULL, NULL);
+        }
+    } else {
+        *error = OS_INVALID;
+    }
+    return response;
+}
+
+cJSON* wm_agent_upgrade_error_callback(int agent_id) {
+    wm_agent_upgrade_remove_entry(agent_id);
+    cJSON* response = wm_agent_upgrade_parse_response_message(WM_UPGRADE_TASK_MANAGER_COMMUNICATION, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION], &agent_id, NULL, NULL);            
+    return response;
+}

@@ -358,7 +358,7 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
     wm_agent_task *agent_task = NULL;
 
     // Send request to task module and store task ids
-    if (!wm_agent_upgrade_parse_task_module_task_ids(json_response, task_module_request)) {
+    if (!wm_agent_upgrade_task_module_callback(json_response, task_module_request, wm_agent_ugprade_insert_tasks_ids_callback, wm_agent_upgrade_error_callback)) {
         node = wm_agent_upgrade_get_first_node(&index);
 
         while (node) {
@@ -697,7 +697,7 @@ static cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int 
     cJSON* task_module_response = wm_agent_upgrade_send_tasks_information(message_array);
 
     if (task_module_response && (task_module_response->type == cJSON_Array) && (cJSON_GetArraySize(task_module_response) == 1)) {
-        response = cJSON_DetachItemFromArray(task_module_response, 0);
+        
         cJSON_Delete(task_module_response);
     } else {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_TASK_MAN_JSON);

@@ -156,4 +156,9 @@ OSHashNode* wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNode *curr
  * */
 cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object);
 
+
+cJSON* wm_agent_ugprade_insert_tasks_ids_callback(int *error, cJSON* input_json);
+
+
+cJSON* wm_agent_upgrade_error_callback(int agent_id);
 #endif
