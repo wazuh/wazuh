@@ -91,7 +91,7 @@ REQUEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'request')
 
 # Agent upgrading variables
 wpk_repo_url_4_x = "packages.wazuh.com/4.x/wpk/"
-wpk_repo_url = "packages.wazuh.com/wpk/"
+wpk_repo_url_3_x = "packages.wazuh.com/wpk/"
 
 wpk_chunk_size = 512
 
