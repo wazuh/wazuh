@@ -18,7 +18,7 @@ async def default_info(pretty=False):
     """Get basicinfo
 
     :param pretty: Show results in human-readable format
-    
+
     Returns various basic information about the API
     """
     info_data = load_spec()
