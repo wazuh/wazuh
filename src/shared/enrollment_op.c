@@ -115,7 +115,7 @@ void w_enrollment_destroy(w_enrollment_ctx *cfg) {
 int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address) {
     assert(cfg != NULL);
     int ret = -1;
-    minfo("Starting enrollment process to server: %s", server_address ? server_address : cfg->target_cfg->manager_name);
+    minfo("Requesting a key to server: %s", server_address ? server_address : cfg->target_cfg->manager_name);
     int socket = w_enrollment_connect(cfg, server_address ? server_address : cfg->target_cfg->manager_name);
     if ( socket >= 0) {
         w_enrollment_load_pass(cfg->cert_cfg);
@@ -236,7 +236,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
         return ENROLLMENT_CONNECTION_FAILURE;
     }
 
-    minfo("Connected to %s:%d", ip_address, cfg->target_cfg->port);
+    mdebug1("Connected to %s:%d", ip_address, cfg->target_cfg->port);
 
     w_enrollment_verify_ca_certificate(cfg->ssl, cfg->cert_cfg->ca_cert, server_address);
     
@@ -296,7 +296,7 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
             os_free(lhostname);
         return -1;
     }
-    minfo("Request sent to manager");
+    mdebug1("Request sent to manager");
 
     os_free(buf);
     if(lhostname != cfg->target_cfg->agent_name)
@@ -337,7 +337,6 @@ static int w_enrollment_process_response(SSL *ssl) {
                 }
             }
         } else if (strncmp(buf, "OSSEC K:'", 9) == 0) {
-            minfo("Received response with agent key");
             status = w_enrollment_process_agent_key(buf);
             break;
         }
@@ -348,7 +347,7 @@ static int w_enrollment_process_response(SSL *ssl) {
     {
     case SSL_ERROR_NONE:
     case SSL_ERROR_ZERO_RETURN:
-        minfo("Connection closed.");
+        mdebug1("Connection closed.");
         break;
     default:
         if(!manager_error) {
@@ -434,11 +433,11 @@ static int w_enrollment_process_agent_key(char *buffer) {
             OS_IsValidIP(entrys[ENTRY_IP], NULL) && OS_IsValidName(entrys[ENTRY_KEY])) {
         if( !w_enrollment_store_key_entry(keys) ) {
             // Key was stored
-            minfo("Valid key created. Finished.");
+            minfo("Valid key received");
             ret = 0;
         }
     } else {
-        merror("One of the received key parameters does not have a valid format.");
+        merror("One of the received key parameters does not have a valid format");
     }
     int i;
     for(i=0; i<4; i++){
@@ -460,13 +459,13 @@ static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_ce
     if (ca_cert) {
         minfo("Verifying manager's certificate");
         if (check_x509_cert(ssl, hostname) != VERIFY_TRUE) {
-            merror("Unable to verify server certificate.");
+            merror("Unable to verify server certificate");
         } else {
             minfo("Manager has been verified successfully");
         }
     }
     else {
-        minfo("Registering agent to unverified manager.");
+        minfo("Registering agent to unverified manager");
     }
 }
 
@@ -551,7 +550,7 @@ static void w_enrollment_load_pass(w_enrollment_cert *cert_cfg) {
         }
 
         if (!cert_cfg->authpass) {
-            minfo("No authentication password provided.");
+            minfo("No authentication password provided");
         }
     }
 }
