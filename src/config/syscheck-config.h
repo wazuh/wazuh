@@ -111,7 +111,6 @@ typedef enum fdb_stmt {
 #include "external/sqlite/sqlite3.h"
 
 #ifdef WIN32
-typedef struct whodata_event_node whodata_event_node;
 typedef struct whodata_dir_status whodata_dir_status;
 #endif
 
@@ -127,10 +126,11 @@ typedef struct _rtfim {
 typedef struct whodata_evt {
     char *user_id;
     char *user_name;
-    char *group_id;  // Linux
-    char *group_name;  // Linux
     char *process_name;
     char *path;
+#ifndef WIN32
+    char *group_id;  // Linux
+    char *group_name;  // Linux
     char *audit_uid;  // Linux
     char *audit_name;  // Linux
     char *effective_uid;  // Linux
@@ -141,16 +141,12 @@ typedef struct whodata_evt {
     char *parent_cwd;
     int ppid;  // Linux
     char *cwd; // Linux
-#ifndef WIN32
     unsigned int process_id;
 #else
     unsigned __int64 process_id;
     unsigned int mask;
-    int dir_position;
-    char deleted;
-    char ignore_remove_event;
     char scan_directory;
-    whodata_event_node *wnode;
+    int config_node;
 #endif
 } whodata_evt;
 
@@ -162,32 +158,7 @@ typedef struct whodata_dir_status {
     SYSTEMTIME last_check;
 } whodata_dir_status;
 
-typedef struct whodata_event_node {
-    struct whodata_event_node *next;
-    struct whodata_event_node *prev;
-    char *id;
-    time_t insert_time;
-} whodata_event_node;
-
-typedef struct whodata_event_list {
-    whodata_event_node *first;
-    whodata_event_node *last;
-    union {
-        struct {
-            size_t current_size;
-            size_t max_size;
-            size_t alert_threshold;
-            size_t max_remove;
-            char alerted;
-        };
-        time_t queue_time;
-    };
-} whodata_event_list;
-
-typedef struct whodata_directory {
-    SYSTEMTIME timestamp;
-    int position;
-} whodata_directory;
+typedef ULARGE_INTEGER whodata_directory;
 
 typedef struct whodata {
     OSHash *fd;                         // Open file descriptors
@@ -316,7 +287,6 @@ typedef struct _config {
     registry *registry;                         /* array of registry entries to be scanned */
     int max_fd_win_rt;
     whodata wdata;
-    whodata_event_list w_clist; // List of events cached from Whodata mode in the last seconds
 #endif
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
     char **audit_key;               // Listen audit keys

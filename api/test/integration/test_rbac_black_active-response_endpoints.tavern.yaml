@@ -9,7 +9,7 @@ stages:
   - name: Runs an Active Response command on a specified agent (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -19,16 +19,15 @@ stages:
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
         list_agents: '001'
-    response:
-      status_code: 400
+    response: &permission_denied
+      status_code: 403
       json:
         code: 4000
-        detail: !anystr
 
   - name: Send a message to an agent (Status=Active) (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -47,12 +46,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: Command sent to all agents
 
   - name: Send a message to a list of agents
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -72,26 +70,21 @@ stages:
           failed_items:
             - error:
                 code: 1651
-                message: !anystr
-                remediation: !anything
               id:
                 - '010'
             - error:
                 code: 4000
-                message: !anystr
-                remediation: !anystr
               id:
                 - '004'
                 - '007'
                 - '011'
           total_affected_items: 2
           total_failed_items: 4
-        message: Could not send command to some agents
 
   - name: Try to send a message to an agent (status=disconnected/never_connected) (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -102,15 +95,12 @@ stages:
       params:
         list_agents: '009'
     response:
-      status_code: 400
-      json:
-        code: 4000
-        detail: !anystr
+      <<: *permission_denied
 
   - name: Try to send a message to an unexisting agent (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -128,14 +118,11 @@ stages:
           failed_items:
             - error:
                 code: 1701
-                message: !anystr
-                remediation: !anystr
               id:
                 - '251'
                 - '252'
           total_affected_items: 0
           total_failed_items: 2
-        message: Could not send command to any agent
 
 ---
 test_name: PUT /active-response
@@ -146,7 +133,7 @@ stages:
   - name: Runs an Active Response command on all agents
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -162,11 +149,8 @@ stages:
           failed_items:
             - error:
                 code: 1651
-                message: !anystr
-                remediation: !anything
               id:
                 - '010'
                 - '012'
           total_affected_items: 5
           total_failed_items: 2
-        message: Could not send command to some agents

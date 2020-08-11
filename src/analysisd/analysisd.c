@@ -720,7 +720,7 @@ int main_analysisd(int argc, char **argv)
     }
 
     /* Set the queue */
-    if ((m_queue = StartMQ(DEFAULTQUEUE, READ)) < 0) {
+    if ((m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 
@@ -833,7 +833,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
 #ifndef LOCAL
         if (Config.ar & REMOTE_AR) {
-            if ((arq = StartMQ(ARQUEUE, WRITE)) < 0) {
+            if ((arq = StartMQ(ARQUEUE, WRITE, 1)) < 0) {
                 merror(ARQ_ERROR);
 
                 /* If LOCAL_AR is set, keep it there */
@@ -860,7 +860,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 #endif
 
         if (Config.ar & LOCAL_AR) {
-            if ((execdq = StartMQ(EXECQUEUE, WRITE)) < 0) {
+            if ((execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
                 merror(ARQ_ERROR);
 
                 /* If REMOTE_AR is set, keep it there */
@@ -2608,7 +2608,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     }
 
                     if (do_ar && execdq >= 0) {
-                        OS_Exec(execdq, arq, lf, *rule_ar);
+                        OS_Exec(execdq, &arq, lf, *rule_ar);
                     }
                     rule_ar++;
                 }

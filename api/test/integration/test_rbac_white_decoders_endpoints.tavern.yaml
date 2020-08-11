@@ -9,7 +9,7 @@ stages:
   - name: Try to show the decoders of the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -34,12 +34,11 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
-
+        
   - name: Try to show the decoders of the system (try q parameter to bypass a denied resource)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -53,12 +52,11 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
-
+        
   - name: Try to show the decoders of the system (list)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -80,14 +78,11 @@ stages:
           failed_items:
             - error:
                 code: 1504
-                message: !anystr
-                remediation: !anystr
               id:
                 - netinfo
           total_affected_items: !anyint
           total_failed_items: 1
-        message: !anystr
-
+        
 ---
 test_name: GET DECODERS FILES RBAC
 
@@ -96,7 +91,7 @@ stages:
   - name: Try to show the decoders files of the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -114,12 +109,11 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
-
+        
   - name: Try to show the decoders files of the system (list)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -139,29 +133,23 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
-
+        
   - name: Try to show the decoders files of the system (no permissions)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
         filename: 0064-cisco-asa_decoders.xml,0100-fortigate_decoders.xml
-    response:
-      status_code: 400
-      json: &permissions_denied
+    response: &permission_denied
+      status_code: 403
+      json:
         code: 4000
         dapi_errors:
-          unknown-node:
+          unknown-node: # No permission to see node
             error: !anystr
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
 ---
 test_name: GET DECODERS FILES RBAC (Download)
@@ -171,7 +159,7 @@ stages:
   - name: Try to get one decoder file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/0005-wazuh_decoders.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -183,14 +171,12 @@ stages:
   - name: Try to get one decoder file (no permissions)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/0064-cisco-asa_decoders.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0064-cisco-asa_decoders.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
-      status_code: 400
-      json:
-        <<: *permissions_denied
+      <<: *permission_denied
 
 ---
 test_name: GET DECODERS PARENTS RBAC
@@ -200,7 +186,7 @@ stages:
   - name: Try to show the groups of rules in the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/parents"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/parents"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -212,4 +198,3 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr

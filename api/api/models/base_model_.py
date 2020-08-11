@@ -1,13 +1,12 @@
 import pprint
-from json import JSONDecodeError
-
-import six
 import typing
-
-from api import util
+from json import JSONDecodeError
 from typing import List, Dict  # noqa: F401
 
-from api.api_exception import APIError
+import six
+from connexion import ProblemException
+
+from api import util
 from api.util import raise_if_exc
 from wazuh import WazuhError
 
@@ -197,13 +196,13 @@ class Body(Model):
         try:
             dikt = request if isinstance(request, dict) else await request.json()
             f_kwargs = util.deserialize_model(dikt, cls).to_dict()
-        except JSONDecodeError as e:
-            raise_if_exc(APIError(code=2005, details=e.msg))
+        except JSONDecodeError:
+            raise_if_exc(WazuhError(code=1018))
 
         invalid = {key for key in dikt.keys() if key not in list(f_kwargs.keys())}
 
         if invalid:
-            raise_if_exc(WazuhError(5005, extra_message='Invalid field found {}'.format(invalid)))
+            raise ProblemException(status=400, title='Bad Request', detail='Invalid field found {}'.format(invalid))
 
         if additional_kwargs is not None:
             f_kwargs.update(additional_kwargs)
@@ -230,3 +229,8 @@ class Body(Model):
         except AttributeError:
             raise_if_exc(WazuhError(attribute_error))
         return body
+
+    @classmethod
+    def validate_content_type(cls, request, expected_content_type):
+        if request.content_type != expected_content_type:
+            raise_if_exc(WazuhError(6002), code=406)

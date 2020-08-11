@@ -17,7 +17,7 @@ with patch('wazuh.common.ossec_uid'):
         del sys.modules['api']
 
 ossec_cdb_list = "172.16.19.:\n172.16.19.:\n192.168.:"
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager')
 ossec_log_path = '{0}/ossec_log.log'.format(test_data_path)
 
 
@@ -44,7 +44,7 @@ def test_manager():
     return test_manager
 
 
-def get_ossec_log():
+def get_logs():
     with open(ossec_log_path) as f:
         return f.read()
 
@@ -94,16 +94,38 @@ def test_get_status(manager_glob, manager_exists, test_manager, process_status):
 
 def test_get_ossec_log_fields():
     """Test get_ossec_log_fields() method returns a tuple"""
-    with open(ossec_log_path) as f:
-        ossec_log = f.readline()
-    result = get_ossec_log_fields(ossec_log)
+    result = get_ossec_log_fields('2020/07/14 06:10:40 rootcheck: INFO: Ending rootcheck scan.')
     assert isinstance(result, tuple), 'The result is not a tuple'
+    assert result[0] == datetime(2020, 7, 14, 6, 10, 40)
+    assert result[1] == 'ossec-rootcheck'
+    assert result[2] == 'info'
+    assert result[3] == ' Ending rootcheck scan.'
 
 
 def test_get_ossec_log_fields_ko():
     """Test get_ossec_log_fields() method returns None when nothing matches """
     result = get_ossec_log_fields('DEBUG')
     assert not result
+
+
+def test_get_ossec_logs():
+    """Test get_ossec_logs() method returns result with expected information"""
+    logs = get_logs().splitlines()
+
+    with patch('wazuh.core.manager.tail', return_value=logs):
+        result = get_ossec_logs()
+        assert all(key in log for key in ('timestamp', 'tag', 'level', 'description') for log in result)
+
+
+def test_get_logs_summary():
+    """Test get_logs_summary() method returns result with expected information"""
+    logs = get_logs().splitlines()
+    with patch('wazuh.core.manager.tail', return_value=logs):
+        result = get_logs_summary()
+        assert all(key in log for key in ('all', 'info', 'error', 'critical', 'warning', 'debug')
+                   for log in result.values())
+        assert result['wazuh-modulesd:database'] == {'all': 2, 'info': 0, 'error': 0, 'critical': 0, 'warning': 0,
+                                                     'debug': 2}
 
 
 @patch('time.time', return_value=0)
@@ -192,7 +214,7 @@ def test_upload_list(mock_safe, mock_chmod, mock_random, mock_time, mock_validat
     """Tests upload_list function works and methods inside are called with expected parameters"""
     input_file, output_file = getattr(test_manager, 'input_rules_file'), getattr(test_manager, 'output_rules_file')
 
-    ossec_log_file = get_ossec_log()
+    ossec_log_file = get_logs()
 
     m = mock_open(read_data=ossec_log_file)
     with patch('builtins.open', m):
@@ -237,7 +259,7 @@ def test_upload_list_ko(mock_chmod, mock_random, mock_time, test_manager):
     """Tests upload_list function exception works and methods inside are called with expected parameters"""
     input_file, output_file = getattr(test_manager, 'input_rules_file'), getattr(test_manager, 'output_rules_file')
 
-    ossec_log_file = get_ossec_log()
+    ossec_log_file = get_logs()
 
     m = mock_open(read_data=ossec_log_file)
     with patch('builtins.open', m):
@@ -306,7 +328,7 @@ def test_validate_cdb_list_ko(mock_match):
     """Tests validate_cdb function exceptions works"""
     # Match error
 
-    ossec_log_file = get_ossec_log()
+    ossec_log_file = get_logs()
 
     m = mock_open(read_data=ossec_log_file)
     with patch('wazuh.core.manager.open', m):
@@ -318,6 +340,77 @@ def test_validate_cdb_list_ko(mock_match):
     with patch('wazuh.core.manager.open', side_effect=IOError):
         with pytest.raises(WazuhException, match=f'.* 1005 .*'):
             validate_cdb_list('path')
+
+
+@pytest.mark.parametrize('error_flag, error_msg', [
+    (0, ""),
+    (1, "2019/02/27 11:30:07 wazuh-clusterd: ERROR: [Cluster] [Main] Error 3004 - Error in cluster configuration: "
+        "Unspecified key"),
+    (1, "2019/02/27 11:30:24 ossec-authd: ERROR: (1230): Invalid element in the configuration: "
+        "'use_source_i'.\n2019/02/27 11:30:24 ossec-authd: ERROR: (1202): Configuration error at "
+        "'/var/ossec/etc/ossec.conf'.")
+])
+@patch('wazuh.core.manager.open')
+@patch('wazuh.core.manager.fcntl')
+@patch("wazuh.core.manager.exists", return_value=True)
+@patch("wazuh.core.manager.remove", return_value=True)
+def test_validate_ossec_conf(mock_remove, mock_exists, mock_fcntl, mock_open, error_flag, error_msg):
+    with patch('socket.socket') as sock:
+        # Mock sock response
+        json_response = json.dumps({'error': 0, 'message': ""}).encode()
+        sock.return_value.recv.return_value = json_response
+        result = validate_ossec_conf()
+
+        assert result == {'status': 'OK'}
+        assert mock_fcntl.lockf.call_count == 2
+        mock_remove.assert_called_with(join(common.ossec_path, 'queue', 'alerts', 'execa'))
+        mock_exists.assert_called_with(join(common.ossec_path, 'queue', 'alerts', 'execa'))
+        mock_open.assert_called_once_with(join(common.ossec_path, "var", "run", ".api_execq_lock"), 'a+')
+
+
+@patch('wazuh.core.manager.open')
+@patch('wazuh.core.manager.fcntl')
+@patch("wazuh.core.manager.exists", return_value=True)
+def test_validation_ko(mosck_exists, mock_lockf, mock_open):
+    # Remove api_socket raise OSError
+    with patch('wazuh.core.manager.remove', side_effect=OSError):
+        with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
+            validate_ossec_conf()
+
+    with patch('wazuh.core.manager.remove'):
+        # Socket creation raise socket.error
+        with patch('socket.socket', side_effect=socket.error):
+            with pytest.raises(WazuhInternalError, match='.* 1013 .*'):
+                validate_ossec_conf()
+
+        with patch('socket.socket.bind'):
+            # Socket connection raise socket.error
+            with patch('socket.socket.connect', side_effect=socket.error):
+                with pytest.raises(WazuhInternalError, match='.* 1013 .*'):
+                    validate_ossec_conf()
+
+            # execq_socket_path not exists
+            with patch("wazuh.core.manager.exists", return_value=False):
+                 with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
+                    validate_ossec_conf()
+
+            with patch('socket.socket.connect'):
+                # Socket send raise socket.error
+                with patch('socket.socket.send', side_effect=socket.error):
+                    with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
+                        validate_ossec_conf()
+
+                with patch('socket.socket.send'):
+                    # Socket recv raise socket.error
+                    with patch('socket.socket.recv', side_effect=socket.timeout):
+                        with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
+                            validate_ossec_conf()
+
+                    # _parse_execd_output raise KeyError
+                    with patch('socket.socket.recv'):
+                        with patch('wazuh.core.manager.parse_execd_output', side_effect=KeyError):
+                            with pytest.raises(WazuhInternalError, match='.* 1904 .*'):
+                                validate_ossec_conf()
 
 
 @pytest.mark.parametrize('error_flag, error_msg', [

@@ -410,9 +410,10 @@ fim_tmp_file *fim_db_create_temp_file(int storage) {
     if (storage == FIM_DB_DISK) {
         os_calloc(PATH_MAX, sizeof(char), file->path);
         //Create random name unique to this thread
-        sprintf(file->path, "%stmp_%lu%d", FIM_DB_TMPDIR,
+        sprintf(file->path, "%stmp_%lu%d%u", FIM_DB_TMPDIR,
                     (unsigned long)time(NULL),
-                    getpid());
+                    getpid(),
+                    os_random());
 
         file->fd = fopen(file->path, "w+");
         if (file->fd == NULL) {
