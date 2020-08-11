@@ -247,7 +247,6 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
     }else if (strcasestr(feed, vu_feed_tag[FEED_MSU])) {
         os_index = CVE_MSU;
         upd->dist_tag_ref = FEED_MSU;
-        upd->interval = WM_VULNDETECTOR_ONLY_ONE_UPD;
         upd->dist_ext = vu_feed_ext[FEED_MSU];
         upd->dist_ref = FEED_MSU;
         upd->json_format = 1;
