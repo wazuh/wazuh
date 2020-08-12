@@ -103,7 +103,7 @@ def fill_dict(default: Dict, config: Dict) -> Dict:
 
     for k, val in filter(lambda x: isinstance(x[1], dict), config.items()):
         for item, value in config[k].items():
-            config[k][item] = default[k][item] if value is "" else config[k][item]
+            config[k][item] = default[k][item] if value == "" else config[k][item]
         config[k] = {**default[k], **config[k]}
 
     return {**default, **config}
