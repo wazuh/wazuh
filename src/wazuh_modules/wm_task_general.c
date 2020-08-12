@@ -15,11 +15,14 @@ const char *task_manager_commands_list[] = {
     [WM_TASK_UPGRADE] = "upgrade",
     [WM_TASK_UPGRADE_CUSTOM] = "upgrade_custom",
     [WM_TASK_UPGRADE_GET_STATUS] = "upgrade_get_status",
-    [WM_TASK_UPGRADE_UPDATE_STATUS] = "upgrade_update_status"
+    [WM_TASK_UPGRADE_UPDATE_STATUS] = "upgrade_update_status",
+    [WM_TASK_UPGRADE_RESULT] = "upgrade_result",
+    [WM_TASK_TASK_RESULT] = "task_result"
 };
 
 const char *task_manager_modules_list[] = {
-    [WM_TASK_UPGRADE_MODULE] = "upgrade_module"
+    [WM_TASK_UPGRADE_MODULE] = "upgrade_module",
+    [WM_TASK_API_MODULE] = "api"
 };
 
 const char *task_statuses[] = {

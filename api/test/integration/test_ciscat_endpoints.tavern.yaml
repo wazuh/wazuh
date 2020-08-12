@@ -11,7 +11,7 @@ stages:
     request: &get_ciscat_results_001
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/001/results"
+      url: "{protocol:s}://{host:s}:{port:d}/ciscat/001/results"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -250,7 +250,7 @@ stages:
     request: &get_ciscat_results_002
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/002/results"
+      url: "{protocol:s}://{host:s}:{port:d}/ciscat/002/results"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -472,7 +472,7 @@ stages:
     request: &get_ciscat_results_003
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/003/results"
+      url: "{protocol:s}://{host:s}:{port:d}/ciscat/003/results"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

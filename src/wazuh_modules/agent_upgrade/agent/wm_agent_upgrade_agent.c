@@ -58,7 +58,7 @@ void wm_agent_upgrade_check_status(wm_agent_configs agent_config) {
      *  StartMQ will wait until agent connection which is when the pkg_install.sh will write 
      *  the upgrade result
     */
-    int queue_fd = StartMQ(DEFAULTQPATH, WRITE, MAX_OPENQ_ATTEMPS);
+    int queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
     if (queue_fd < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_QUEUE_FD);

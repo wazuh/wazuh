@@ -11,7 +11,7 @@ stages:
     request: &get_mitre
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/mitre"
+      url: "{protocol:s}://{host:s}:{port:d}/mitre"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

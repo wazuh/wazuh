@@ -19,14 +19,17 @@ typedef enum _command_list {
     WM_TASK_UPGRADE = 0,
     WM_TASK_UPGRADE_CUSTOM,
     WM_TASK_UPGRADE_GET_STATUS,
-    WM_TASK_UPGRADE_UPDATE_STATUS
+    WM_TASK_UPGRADE_UPDATE_STATUS,
+    WM_TASK_UPGRADE_RESULT,
+    WM_TASK_TASK_RESULT
 } command_list;
 
 /**
  * Enumeration of the modules orchestrated by the task manager
  * */
 typedef enum _module_list {
-    WM_TASK_UPGRADE_MODULE = 0
+    WM_TASK_UPGRADE_MODULE = 0,
+    WM_TASK_API_MODULE
 } module_list;
 
 /**
