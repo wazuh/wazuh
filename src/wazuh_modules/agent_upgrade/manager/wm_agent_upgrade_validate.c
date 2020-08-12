@@ -416,17 +416,26 @@ bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char *
     return false;
 }
 
-bool wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *agent_id) {
-    cJSON *agent_json = cJSON_GetObjectItem(input_json, "agent");
-    cJSON *data_json = cJSON_GetObjectItem(input_json, "data");
-    cJSON *task_json = cJSON_GetObjectItem(input_json, "task_id");
+bool wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *agent_id, int *task_id, char* data) {
+    if (input_json) {
+        cJSON *agent_json = cJSON_GetObjectItem(input_json, "agent");
+        cJSON *data_json = cJSON_GetObjectItem(input_json, "data");
+        cJSON *task_json = cJSON_GetObjectItem(input_json, "task_id");
 
-    if (agent_json && (agent_json->type == cJSON_Number) && data_json && (data_json->type == cJSON_String)) {
-        agent_id = &agent_json->valueint;
+        if (agent_json && (agent_json->type == cJSON_Number)) {
+            *agent_id = agent_json->valueint;
+        } else {
+            return false;
+        }
+
+        if (data_json && (data_json->type == cJSON_String)) {
+            os_strdup(data_json->valuestring, data);
+        }
 
         if (task_json && (task_json->type == cJSON_Number)) {
-            return true;
+            *task_id = task_json->valueint;
         }
+        return true;
     }
     return false;
 }

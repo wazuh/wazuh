@@ -72,20 +72,20 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
 }
 
 cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json) {
-    int *agent_id = NULL;
+    int agent_id;
+    int task_id;
+    char data[OS_MAXSTR];
     cJSON *response = NULL;
-    cJSON *data_json = cJSON_GetObjectItem(input_json, "data");
-    cJSON *task_json = cJSON_GetObjectItem(input_json, "task_id");
-
-    if (wm_agent_upgrade_validate_task_ids_message(input_json, agent_id)) {
-        if(*agent_id) {
+    
+    if (wm_agent_upgrade_validate_task_ids_message(input_json, &agent_id, &task_id, data)) {
+        if(task_id) {
             // Store task_id
-            wm_agent_upgrade_insert_task_id(*agent_id, task_json->valueint);
+            wm_agent_upgrade_insert_task_id(agent_id, task_id);
             response = input_json;
         } else {
             // Remove from table since upgrade will not be started
-            wm_agent_upgrade_remove_entry(*agent_id);
-            response = wm_agent_upgrade_parse_response_message(WM_UPGRADE_TASK_MANAGER_FAILURE, data_json->valuestring, agent_id, NULL, NULL);
+            wm_agent_upgrade_remove_entry(agent_id);
+            response = wm_agent_upgrade_parse_response_message(WM_UPGRADE_TASK_MANAGER_FAILURE, data, &agent_id, NULL, NULL);
         }
     } else {
         // We cannot know which agent is the one failing so we have to abort the whole process
