@@ -12,4 +12,7 @@ instances:
   - "<elasticsearch_ip>"
 - name: "filebeat"
   ip:
-  - "<wazuh_server_ip>"  
+  - "<wazuh_server_ip>" 
+- name: "kibana"
+  ip:
+  - "<kibana_ip>"     

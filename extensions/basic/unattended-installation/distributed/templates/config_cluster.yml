@@ -27,3 +27,6 @@ instances:
 - name: "filebeat"
   ip:
   - "<wazuh_server_ip>"
+  - name: "kibana"
+  ip:
+  - "<kibana_ip>"
