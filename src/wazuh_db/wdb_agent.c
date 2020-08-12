@@ -25,6 +25,8 @@ static const char *global_db_queries[] = {
     [SQL_UPDATE_AGENT_NAME] = "global sql UPDATE agent SET name = %Q WHERE id = %d;",
     [SQL_UPDATE_AGENT_VERSION] = "global sql UPDATE agent SET os_name = %Q, os_version = %Q, os_major = %Q, os_minor = %Q, os_codename = %Q, os_platform = %Q, os_build = %Q, os_uname = %s, os_arch = %Q, version = %Q, config_sum = %Q, merged_sum = %Q, manager_host = %Q, node_name = %Q, last_keepalive = STRFTIME('%s', 'NOW'), sync_status = %d WHERE id = %d;",
     [SQL_UPDATE_AGENT_VERSION_IP] = "global sql UPDATE agent SET os_name = %Q, os_version = %Q, os_major = %Q, os_minor = %Q, os_codename = %Q, os_platform = %Q, os_build = %Q, os_uname = %s, os_arch = %Q, version = %Q, config_sum = %Q, merged_sum = %Q, manager_host = %Q, node_name = %Q, last_keepalive = STRFTIME('%s', 'NOW'), ip = %Q, sync_status = %d WHERE id = %d;",
+    [SQL_GET_AGENT_LABELS] = "global get-labels %d",
+    [SQL_SET_AGENT_LABELS] = "global set-labels %d %s",
     [SQL_UPDATE_AGENT_KEEPALIVE] = "global sql UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), sync_status = %d WHERE id = %d;",
     [SQL_DELETE_AGENT] = "global sql DELETE FROM agent WHERE id = %d;",
     [SQL_SELECT_AGENT] = "global sql SELECT name FROM agent WHERE id = %d;",
@@ -34,7 +36,7 @@ static const char *global_db_queries[] = {
     [SQL_SELECT_FIM_OFFSET] = "global sql SELECT fim_offset FROM agent WHERE id = %d;",
     [SQL_SELECT_REG_OFFSET] = "global sql SELECT reg_offset FROM agent WHERE id = %d;",
     [SQL_UPDATE_FIM_OFFSET] = "global sql UPDATE agent SET fim_offset = %lu WHERE id = %d;",
-    [SQL_UPDATE_REG_OFFSET] = "globL sql UPDATE agent SET reg_offset = %lu WHERE id = %d;",
+    [SQL_UPDATE_REG_OFFSET] = "global sql UPDATE agent SET reg_offset = %lu WHERE id = %d;",
     [SQL_SELECT_AGENT_STATUS] = "global sql SELECT status FROM agent WHERE id = %d;",
     [SQL_UPDATE_AGENT_STATUS] = "global sql UPDATE agent SET status = %Q WHERE id = %d;",
     [SQL_UPDATE_AGENT_GROUP] = "global sql UPDATE agent SET `group` = %Q WHERE id = %d;",
@@ -162,6 +164,65 @@ int wdb_update_agent_version (int id,
             break;
         default:
             mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            result = OS_INVALID;
+    }
+
+    return result;
+}
+
+/**
+ * @brief Returns a JSON with all the agent's labels.
+ * 
+ * @param[in] id Id of the agent for whom the labels are requested.
+ * @return JSON* with the labels on success or NULL on failure.
+ */
+cJSON* wdb_get_agent_labels(int id) {
+    cJSON *root = NULL;
+    // Making use of a big buffer for the output because
+    // it will contain all the keys and values.
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_MAXSTR] = "";
+
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_GET_AGENT_LABELS], id);
+    root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!root) {
+        merror("Error querying Wazuh DB to get the agent's %d labels.", id);
+        return NULL;
+    }
+
+    return root;
+}
+
+/**
+ * @brief Update agent's labels.
+ * 
+ * @param[in] id Id of the agent for whom the labels must be updated.
+ * @param[in] labels String with the key-values separated by EOL.
+ * @return OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_set_agent_labels(int id, const char *labels) {
+    int result = 0;
+    // Making use of a big buffer for the query because it
+    // will contain all the keys and values.
+    // The output will be just a JSON OK.
+    char wdbquery[OS_MAXSTR] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_SET_AGENT_LABELS], id, labels);
+
+    result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+
+    switch (result){
+        case OS_SUCCESS:
+            break;
+        case OS_INVALID:
+            mdebug1("GLobal DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            break;
+        default:
+            mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
     }

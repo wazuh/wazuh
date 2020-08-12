@@ -101,6 +101,9 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYNC_UPDATE_ATTEMPT] = "UPDATE sync_info SET last_attempt = ?, n_attempts = n_attempts + 1 WHERE component = ?;",
     [WDB_STMT_SYNC_UPDATE_COMPLETION] = "UPDATE sync_info SET last_attempt = ?, last_completion = ?, n_attempts = n_attempts + 1, n_completions = n_completions + 1 WHERE component = ?;",
     [WDB_STMT_MITRE_NAME_GET] = "SELECT name FROM attack WHERE id = ?;",
+    [WDB_STMT_GLOBAL_LABELS_GET] = "SELECT * FROM labels WHERE id = ?;",
+    [WDB_STMT_GLOBAL_LABELS_DEL] = "DELETE FROM labels WHERE id = ?;",
+    [WDB_STMT_GLOBAL_LABELS_SET] = "INSERT INTO labels (id, key, value) VALUES (?,?,?);",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
 };
 
@@ -754,17 +757,15 @@ void wdb_close_old() {
     w_mutex_unlock(&pool_mutex);
 }
 
-cJSON * wdb_exec(sqlite3 * db, const char * sql) {
+cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
     int r;
     int count;
     int i;
-    sqlite3_stmt * stmt;
     cJSON * result;
     cJSON * row;
 
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
-        mdebug2("SQL: %s", sql);
+    if (!stmt) {
+        mdebug1("Invalid SQL statement.");
         return NULL;
     }
 
@@ -797,9 +798,28 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
     }
 
     if (r != SQLITE_DONE) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(db));
+        mdebug1("SQL statement execution failed");
         cJSON_Delete(result);
         result = NULL;
+    }
+
+    return result;
+}
+
+cJSON * wdb_exec(sqlite3 * db, const char * sql) {
+    sqlite3_stmt * stmt = NULL;
+    cJSON * result = NULL;
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+        mdebug2("SQL: %s", sql);
+        return NULL;
+    }
+
+    result = wdb_exec_stmt(stmt);
+
+    if (!result) {
+        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(db));
     }
 
     sqlite3_finalize(stmt);
