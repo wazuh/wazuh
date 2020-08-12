@@ -970,7 +970,8 @@ class Agent:
 
         return protocol
 
-    def _get_versions(self, wpk_repo=common.wpk_repo_url_3_x, version=None, use_http=False):
+    def _get_versions(self, wpk_repo_3_x=common.wpk_repo_url_3_x, wpk_repo_4_x=common.wpk_repo_url_4_x, version=None,
+                      use_http=False):
         """Generates a list of available versions for its distribution and version.
         """
         invalid_platforms = ["darwin", "solaris", "aix", "hpux", "bsd"]
@@ -981,8 +982,17 @@ class Agent:
             error = "The WPK for this platform is not available."
             raise WazuhInternalError(1713, extra_message=str(error))
 
-        protocol = self._get_protocol(wpk_repo, use_http)
-        if (version is None or WazuhVersion(version) >= WazuhVersion("v3.4.0")) and self.os['platform'] != "windows":
+        protocol_3_x = self._get_protocol(wpk_repo_3_x, use_http)
+        protocol_4_x = self._get_protocol(wpk_repo_4_x, use_http)
+
+        if (version is None) or (WazuhVersion(version) >= WazuhVersion("v4.0.0")):
+            protocol = protocol_4_x
+            wpk_repo = wpk_repo_4_x
+        elif WazuhVersion(version) < WazuhVersion("v4.0.0"):
+            protocol = protocol_3_x
+            wpk_repo = wpk_repo_3_x
+
+        if (version is None or WazuhVersion(version) >= WazuhVersion("v3.4.0")) and (self.os['platform'] != "windows"):
             versions_url = protocol + wpk_repo + "linux/" + self.os['arch'] + "/versions"
         else:
             if self.os['platform'] == "windows":
@@ -1009,7 +1019,7 @@ class Agent:
 
         return versions
 
-    def _get_wpk_file(self, wpk_repo=common.wpk_repo_url_3_x, debug=False, version=None, force=False, use_http=False):
+    def _get_wpk_file(self, wpk_repo=common.wpk_repo_url_4_x, debug=False, version=None, force=False, use_http=False):
         """
         Search latest Wazuh WPK file for its distribution and version.
         Downloads the WPK if it is not in the upgrade folder.
@@ -1123,7 +1133,7 @@ class Agent:
 
         return [wpk_file, sha1hash]
 
-    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url_3_x, debug=False, version=None, force=False,
+    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url_4_x, debug=False, version=None, force=False,
                        show_progress=None,
                        chunk_size=None, rl_timeout=-1, timeout=common.open_retries, use_http=False):
         """

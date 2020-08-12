@@ -1571,7 +1571,8 @@ def test_agent_get_protocol(wpk_repo, use_http, protocol):
 
 
 @pytest.mark.parametrize('agent_id, platform, version, expected_url', [
-    ('001', 'ubuntu', None, 'https://packages.wazuh.com/wpk/linux/x86_64/versions'),
+    ('001', 'ubuntu', None, 'https://packages.wazuh.com/4.x/wpk/linux/x86_64/versions'),
+    ('001', 'windows', 'v4.0.0', 'https://packages.wazuh.com/4.x/wpk/windows/versions'),
     ('002', 'ubuntu', 'v3.3.0', 'https://packages.wazuh.com/wpk/ubuntu/16.04/x86_64/versions'),
     ('002', 'windows', 'v3.3.0', 'https://packages.wazuh.com/wpk/windows/versions'),
     ('002', 'debian', 'v3.3.0', 'https://packages.wazuh.com/wpk/debian/16/x86_64/versions')
@@ -1629,7 +1630,7 @@ def test_agent_get_versions_ko():
 
         # Requests raises exception
         with pytest.raises(WazuhInternalError, match='.* 1713 .*'):
-            agent._get_versions(wpk_repo='ñ*-^ç¨¨çÇ}{')
+            agent._get_versions(wpk_repo_4_x='ñ*-^ç¨¨çÇ}{')
 
         # Platform is not valid
         agent.os['platform'] = 'solaris'
