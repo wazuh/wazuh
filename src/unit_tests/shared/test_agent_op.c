@@ -78,6 +78,7 @@ static void test_create_agent_add_payload(void **state) {
     cJSON_Delete(payload); 
 }
 
+#ifndef WIN32 
 static void test_create_agent_remove_payload(void **state) {
     char* id = "001";
     int purge = 1;
@@ -142,6 +143,29 @@ static void test_create_sendsync_payload(void **state) {
     cJSON_Delete(payload);  
 }
 
+static void test_parse_agent_remove_response(void **state) { 
+    char* success_response = "{\"error\":0}";
+    char* error_response = "{\"error\":9009,\"message\":\"ERROR_MESSAGE\"}";
+    char* unknown_response = "{\"message \":\"any_message\"}";
+    int err = 0;
+    char err_response[OS_MAXSTR + 1];
+       
+    /* Success parse */
+    err = w_parse_agent_remove_response(success_response, err_response, FALSE, FALSE);
+    assert_int_equal(err, 0);
+  
+    /* Error parse */    
+    err = w_parse_agent_remove_response(error_response, err_response, FALSE, FALSE);
+    assert_int_equal(err, -1);
+    assert_string_equal(err_response, "ERROR: ERROR_MESSAGE"); 
+
+    /* Unknown parse */    
+    err = w_parse_agent_remove_response(unknown_response, err_response, FALSE, FALSE);
+    assert_int_equal(err, -2);
+    assert_string_equal(err_response, "ERROR: Invalid message format");
+}
+#endif
+
 static void test_parse_agent_add_response(void **state) {     
     char* success_response = "{\"error\":0,\"data\":{\"id\":\"001\",\"name\":\"agent1\",\"ip\":\"any\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}";
     char* missingdata_response = "{\"error\":0}";
@@ -194,36 +218,15 @@ static void test_parse_agent_add_response(void **state) {
     assert_string_equal(err_response, "ERROR: Invalid message format");
 }
 
-static void test_parse_agent_remove_response(void **state) { 
-    char* success_response = "{\"error\":0}";
-    char* error_response = "{\"error\":9009,\"message\":\"ERROR_MESSAGE\"}";
-    char* unknown_response = "{\"message \":\"any_message\"}";
-    int err = 0;
-    char err_response[OS_MAXSTR + 1];
-       
-    /* Success parse */
-    err = w_parse_agent_remove_response(success_response, err_response, FALSE, FALSE);
-    assert_int_equal(err, 0);
-  
-    /* Error parse */    
-    err = w_parse_agent_remove_response(error_response, err_response, FALSE, FALSE);
-    assert_int_equal(err, -1);
-    assert_string_equal(err_response, "ERROR: ERROR_MESSAGE"); 
-
-    /* Unknown parse */    
-    err = w_parse_agent_remove_response(unknown_response, err_response, FALSE, FALSE);
-    assert_int_equal(err, -2);
-    assert_string_equal(err_response, "ERROR: Invalid message format");
-}
-
-
 int main(void) {   
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_create_agent_add_payload),
-        cmocka_unit_test(test_create_agent_remove_payload),
-        cmocka_unit_test(test_create_sendsync_payload),
         cmocka_unit_test(test_parse_agent_add_response),
+        #ifndef WIN32
+        cmocka_unit_test(test_create_agent_remove_payload),        
+        cmocka_unit_test(test_create_sendsync_payload),
         cmocka_unit_test(test_parse_agent_remove_response),
+        #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

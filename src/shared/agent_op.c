@@ -27,22 +27,22 @@ static struct {
 #ifndef WIN32
 //Sends message thru the cluster
 static int w_send_clustered_message(const char* command, const char* payload, char* response);
-#endif
 
 //Alloc and create sendsync command payload
 static cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 
-//Alloc and create an agent addition command payload
-static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id);
-
 //Alloc and create an agent removal command payload
 static cJSON* w_create_agent_remove_payload(const char *id, const int purge);
+
+//Parse an agent removal response
+static int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error);
+#endif
 
 //Parse an agent addition response
 static int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error);
 
-//Parse an agent removal response
-static int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error);
+//Alloc and create an agent addition command payload
+static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id);
 
 /* Check if syscheck is to be executed/restarted
  * Returns 1 on success or 0 on failure (shouldn't be executed now)
@@ -644,15 +644,6 @@ int auth_close(int sock) {
     return (sock >= 0) ? close(sock) : 0;
 }
 
-static cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message) {
-    cJSON * request = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(request, "daemon_name", daemon_name);
-    cJSON_AddItemToObject(request, "message", message);
-    
-    return request;
-}
-
 static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id) {    
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
@@ -678,20 +669,6 @@ static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const
         cJSON_AddNumberToObject(arguments, "force", force);
     }
 
-    return request;
-}
-
-static cJSON* w_create_agent_remove_payload(const char *id, const int purge) {    
-    cJSON* request = cJSON_CreateObject();
-    cJSON* arguments = cJSON_CreateObject();
-    
-    cJSON_AddItemToObject(request, "arguments", arguments);
-    cJSON_AddStringToObject(request, "function", "remove");    
-    cJSON_AddStringToObject(arguments, "id", id);
-    if (purge >= 0) {
-        cJSON_AddNumberToObject(arguments, "purge", purge);
-    }
-   
     return request;
 }
 
@@ -787,6 +764,30 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
     return result;
 }
 
+#ifndef WIN32
+static cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message) {
+    cJSON * request = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(request, "daemon_name", daemon_name);
+    cJSON_AddItemToObject(request, "message", message);
+    
+    return request;
+}
+
+static cJSON* w_create_agent_remove_payload(const char *id, const int purge) {    
+    cJSON* request = cJSON_CreateObject();
+    cJSON* arguments = cJSON_CreateObject();
+    
+    cJSON_AddItemToObject(request, "arguments", arguments);
+    cJSON_AddStringToObject(request, "function", "remove");    
+    cJSON_AddStringToObject(arguments, "id", id);
+    if (purge >= 0) {
+        cJSON_AddNumberToObject(arguments, "purge", purge);
+    }
+   
+    return request;
+}
+
 static int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error) { 
     int result = 0;
     cJSON* response = NULL;    
@@ -836,47 +837,6 @@ static int w_parse_agent_remove_response(const char* buffer, char *err_response,
     return result;
 }
 
-//Send a local agent add request.
-int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, const int force, const int json_format, const char *agent_id, int exit_on_error){
-    int result; 
-
-    cJSON* payload = w_create_agent_add_payload(name, ip, groups, key, force, agent_id);  
-    char* output = cJSON_PrintUnformatted(payload);
-    cJSON_Delete(payload); 
-
-    if (OS_SendSecureTCP(sock, strlen(output), output) < 0) {
-        if(exit_on_error){
-            merror_exit("OS_SendSecureTCP(): %s", strerror(errno));
-        }        
-        free(output);
-        result = -2;
-        return result;
-    }    
-    free(output);
-
-    char response[OS_MAXSTR + 1];
-    ssize_t length;
-    if (length = OS_RecvSecureTCP(sock, response, OS_MAXSTR), length < 0) {
-        if(exit_on_error){
-            merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
-        }
-        result = -1;
-        return result;
-    } else if (length == 0) {
-        if(exit_on_error){
-            merror_exit("Empty message from local server.");
-        }
-        result = -1;
-        return result;
-    } else {
-        response[length] = '\0';
-        result = w_parse_agent_add_response(response, NULL, id, NULL, json_format, exit_on_error);
-    }
-
-    return result; 
-}
-
-#ifndef WIN32
 static int w_send_clustered_message(const char* command, const char* payload, char* response) {
     char sockname[PATH_MAX + 1] = {0};
     int sock = -1;
@@ -977,6 +937,47 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
     return result;
 }
 #endif //!WIN32
+
+//Send a local agent add request.
+int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, const int force, const int json_format, const char *agent_id, int exit_on_error){
+    int result; 
+
+    cJSON* payload = w_create_agent_add_payload(name, ip, groups, key, force, agent_id);  
+    char* output = cJSON_PrintUnformatted(payload);
+    cJSON_Delete(payload); 
+
+    if (OS_SendSecureTCP(sock, strlen(output), output) < 0) {
+        if(exit_on_error){
+            merror_exit("OS_SendSecureTCP(): %s", strerror(errno));
+        }        
+        free(output);
+        result = -2;
+        return result;
+    }    
+    free(output);
+
+    char response[OS_MAXSTR + 1];
+    ssize_t length;
+    if (length = OS_RecvSecureTCP(sock, response, OS_MAXSTR), length < 0) {
+        if(exit_on_error){
+            merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
+        }
+        result = -1;
+        return result;
+    } else if (length == 0) {
+        if(exit_on_error){
+            merror_exit("Empty message from local server.");
+        }
+        result = -1;
+        return result;
+    } else {
+        response[length] = '\0';
+        result = w_parse_agent_add_response(response, NULL, id, NULL, json_format, exit_on_error);
+    }
+
+    return result; 
+}
+
 
 char * get_agent_id_from_name(const char *agent_name) {
 
