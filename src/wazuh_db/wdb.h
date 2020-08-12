@@ -121,6 +121,9 @@ typedef enum wdb_stmt {
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
     WDB_STMT_MITRE_NAME_GET,
+    WDB_STMT_GLOBAL_LABELS_DEL,
+    WDB_STMT_GLOBAL_LABELS_SET,
+    WDB_STMT_GLOBAL_UPDATE_UNSYNCED_AGENTS,
     WDB_STMT_SIZE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
@@ -172,36 +175,6 @@ typedef struct wdb_config {
     int commit_time_max;
     int open_db_limit;
 } wdb_config;
-
-// List of agent information fields in global DB and its size
-#define GLOBAL_DB_AGENT_FIELDS_SIZE 25
-const char *global_db_agent_fields[] = { 
-        "config_sum",
-        "date_add",
-        "fim_offset",
-        "group",
-        "id",
-        "internal_key",
-        "ip",
-        "last_keepalive",
-        "manager_host",
-        "merged_sum",
-        "name",
-        "node_name",
-        "os_arch",
-        "os_build",
-        "os_codename",
-        "os_major",
-        "os_minor",
-        "os_name",
-        "os_platform",
-        "os_uname",
-        "os_version",
-        "reg_offset",
-        "register_ip",
-        "status",
-        "version"
-};
 
 /// Enumeration of components supported by the integrity library.
 typedef enum {
@@ -742,6 +715,28 @@ int wdb_journal_wal(sqlite3 *db);
 int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
 
 /**
+ * @brief Function to insert a label of a particular agent.
+ * 
+ * @param wdb The Global struct database.
+ * @param id The agent ID
+ * @param key A string with the label key.
+ * @param value A string with the label value.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
+
+/**
+  * @brief Function to delete the labels of a particular agent.
+  * 
+  * @param wdb the Global struct database.
+  * @param id Agent id.
+  * @retval 0 On success.
+  * @retval -1 On error.
+  */
+ int wdb_global_del_agent_labels(wdb_t *wdb, int id);
+
+/**
  * @brief Function to update the agents info from workers.
  * 
  * @param wdb the global struct database.
@@ -751,6 +746,17 @@ int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
  * @retval -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_update_unsynced_agents(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to update the information of an agent.
+ * 
+ * @param wdb The Global struct database.
+ * @param id The agent ID
+ * @param agent_info A string array with the agent information.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_global_update_unsynced_agents(wdb_t *wdb, int id, char** agent_info);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
