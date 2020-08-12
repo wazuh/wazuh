@@ -11,6 +11,18 @@
 
 #include "wm_task_general.h"
 
+const char *task_manager_json_keys[] = {
+    [WM_TASK_MODULE] = "module",
+    [WM_TASK_COMMAND] = "command",
+    [WM_TASK_AGENT_ID] = "agent",
+    [WM_TASK_TASK_ID] = "task_id",
+    [WM_TASK_STATUS] = "status",
+    [WM_TASK_ERROR] = "error",
+    [WM_TASK_ERROR_DATA] = "data",
+    [WM_TASK_CREATE_TIME] = "create_time",
+    [WM_TASK_LAST_UPDATE_TIME] = "update_time"
+};
+
 const char *task_manager_commands_list[] = {
     [WM_TASK_UPGRADE] = "upgrade",
     [WM_TASK_UPGRADE_CUSTOM] = "upgrade_custom",

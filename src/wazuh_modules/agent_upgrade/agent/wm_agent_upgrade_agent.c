@@ -91,10 +91,10 @@ static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_sta
     cJSON* root = cJSON_CreateObject();
     cJSON* params = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(root, "command", WM_UPGRADE_AGENT_UPDATED_COMMAND);
-    cJSON_AddNumberToObject(params, "error", atoi(upgrade_values[state]));
-    cJSON_AddStringToObject(params, "message", upgrade_messages[state]);
-    cJSON_AddStringToObject(params, "status", task_statuses_map[state]);
+    cJSON_AddStringToObject(root, task_manager_json_keys[WM_TASK_COMMAND], WM_UPGRADE_AGENT_UPDATED_COMMAND);
+    cJSON_AddNumberToObject(params, task_manager_json_keys[WM_TASK_ERROR], atoi(upgrade_values[state]));
+    cJSON_AddStringToObject(params, task_manager_json_keys[WM_TASK_ERROR_DATA], upgrade_messages[state]);
+    cJSON_AddStringToObject(params,  task_manager_json_keys[WM_TASK_STATUS], task_statuses_map[state]);
     cJSON_AddItemToObject(root, "params", params);
 
     char *msg_string = cJSON_PrintUnformatted(root);

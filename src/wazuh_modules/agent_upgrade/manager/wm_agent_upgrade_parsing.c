@@ -282,21 +282,21 @@ static wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
 
     while(!error_flag && params && (param_index < cJSON_GetArraySize(params))) {
         cJSON *item = cJSON_GetArrayItem(params, param_index++);
-        if(strcmp(item->string, "error") == 0) {
+        if(strcmp(item->string, task_manager_json_keys[WM_TASK_ERROR]) == 0) {
             if (item->type == cJSON_Number) {
                 task->error_code = item->valueint;
             } else {
                 sprintf(output, "Parameter \"%s\" should be a number", item->string);
                 error_flag = 1;
             }
-        } else if(strcmp(item->string, "message") == 0) {
+        } else if(strcmp(item->string, task_manager_json_keys[WM_TASK_ERROR_DATA]) == 0) {
             if (item->type == cJSON_String) {
                 os_strdup(item->valuestring, task->message);
             } else {
                 sprintf(output, "Parameter \"%s\" should be a string", item->string);
                 error_flag = 1;
             }
-        } else if(strcmp(item->string, "status") == 0) {
+        } else if(strcmp(item->string, task_manager_json_keys[WM_TASK_STATUS]) == 0) {
             if (item->type == cJSON_String) {
                 os_strdup(item->valuestring, task->status);
             } else {
@@ -319,27 +319,27 @@ static wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
 
 cJSON* wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
     cJSON * response = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response, "error", error_id);
-    cJSON_AddStringToObject(response, "data", message);
+    cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_ERROR], error_id);
+    cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_DATA], message);
     if(agent_id) {
-        cJSON_AddNumberToObject(response, "agent", *agent_id);
+        cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_AGENT_ID], *agent_id);
     }
     if (task_id) {
-       cJSON_AddNumberToObject(response, "task_id", *task_id); 
+       cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_TASK_ID], *task_id); 
     } 
     if (status) {
-        cJSON_AddStringToObject(response, "status", status);
+        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_STATUS], status);
     }
     return response;
 }
 
 cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status) {
     cJSON * response = cJSON_CreateObject();
-    cJSON_AddStringToObject(response, "module", task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
-    cJSON_AddStringToObject(response, "command", task_manager_commands_list[command]);
-    cJSON_AddNumberToObject(response, "agent", agent_id);
+    cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_MODULE], task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
+    cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_COMMAND], task_manager_commands_list[command]);
+    cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_AGENT_ID], agent_id);
     if (status) {
-        cJSON_AddStringToObject(response, "status", status);
+        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_STATUS], status);
     }
     return response;
 }

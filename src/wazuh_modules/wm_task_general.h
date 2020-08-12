@@ -13,6 +13,21 @@
 #define WM_TASK_GENERAL_H
 
 /**
+ * Enumeration of all available keys that could be used in the messages
+ * */
+typedef enum _task_manager_json_key {
+    WM_TASK_MODULE = 0,
+    WM_TASK_COMMAND,
+    WM_TASK_AGENT_ID,
+    WM_TASK_TASK_ID,
+    WM_TASK_STATUS,
+    WM_TASK_ERROR,
+    WM_TASK_ERROR_DATA,
+    WM_TASK_CREATE_TIME,
+    WM_TASK_LAST_UPDATE_TIME
+} task_manager_json_key;
+
+/**
  * Enumeration of the available commands
  * */
 typedef enum _command_list {
@@ -41,6 +56,11 @@ typedef enum _task_status {
     WM_TASK_DONE,
     WM_TASK_FAILED
 } task_status;
+
+/**
+ * List containing all the possible json_keys
+ * */
+extern const char *task_manager_json_keys[];
 
 /**
  * List containing all the command names
