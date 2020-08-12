@@ -52,6 +52,8 @@ x-rbac-catalog:
       description: "Reference security roles via its id (i.e. role:id:1)"
     'user:id':
       description: "Reference security users via its id (i.e. user:id:1)"
+    'rule:id':
+      description: "Reference security rules via its id (i.e. rule:id:1)"
   actions:
     'active-response:command':
       description: "Allow to execute active response commands in the agents"
@@ -1560,6 +1562,10 @@ components:
       type: string
       format: numbers
       description: "Rule ID"
+    Security_rule_id_DELETE:
+      type: string
+      format: numbers_delete
+      description: "Rule ID|all"
     Policy_id:
       type: string
       format: numbers
@@ -1689,18 +1695,11 @@ components:
         name:
           type: string
           description: "Role name"
-        rule:
-          type: object
-          description: "Role rule"
     SecurityRulesRequest:
       type: object
       required:
-        - name
         - rule
       properties:
-        name:
-          type: string
-          description: "Rule name"
         rule:
           type: object
           description: "Rule body"
@@ -3993,6 +3992,13 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Role_id_DELETE'
+    security_rule_id:
+      in: path
+      name: 'rule_id'
+      description: "Specify a rule ID"
+      required: true
+      schema:
+        $ref: '#/components/schemas/Security_rule_id'
     security_rule_ids:
       in: query
       name: 'rule_ids'
@@ -4001,6 +4007,15 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Security_rule_id'
+    security_rule_ids_delete:
+      in: query
+      name: 'rule_ids'
+      description: "List of rule IDs (separated by comma), use the keyword 'all' to select all rules"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Security_rule_id_DELETE'
     security_position:
       in: query
       name: 'position'
@@ -12845,24 +12860,20 @@ paths:
                     - id: 1
                       name: 'administrator'
                       policies:
-                        id: 1
-                        name: wazuhPolicy
-                        policy:
-                          actions:
-                            - "agent:read"
-                            - "agent:delete"
-                          effect: allow
-                          resources:
-                            - "agent:id:*"
+                        - 1
+                      users:
+                        - 1
                       rule:
-                        FIND:
-                          r'^auth[a-zA-Z]+$':
-                            - "administrator"
+                        - 1
                     - id: 2
                       name: 'normal_user'
+                      policies:
+                        - 4
+                        - 5
+                      users:
+                        - 3
                       rule:
-                        MATCH:
-                          privileges: 'limit_access'
+                        - 3
                   total_affected_items: 2
                 message: "All available roles were shown"
         '400':
@@ -12894,9 +12905,6 @@ paths:
               $ref: '#/components/schemas/RolesRequest'
             example:
               name: "normal"
-              rule:
-                MATCH:
-                  definition: "normalRule"
       responses:
         '200':
           description: "Return the information of the new role"
@@ -13023,9 +13031,6 @@ paths:
               $ref: '#/components/schemas/RolesRequest_no_required'
             example:
               name: "normal"
-              rule:
-                MATCH:
-                  definition: "normalRule"
       responses:
         '200':
           description: "Information of role modified"
@@ -13095,8 +13100,18 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseRoles'
               example:
                 data:
-                  # TODO
-                  todo
+                  affected_items:
+                    - id: 1
+                      rule:
+                        FIND:
+                          r'^auth[a-zA-Z]+$':
+                            - "administrator"
+                    - id: 2
+                      rule:
+                        MATCH:
+                          privileges: 'limit_access'
+                  total_affected_items: 2
+                message: "All available rules were shown"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13125,7 +13140,6 @@ paths:
             schema:
               $ref: '#/components/schemas/SecurityRulesRequest'
             example:
-              name: "normal"
               rule:
                 MATCH:
                   definition: "normalRule"
@@ -13169,7 +13183,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
-        - $ref: '#/components/parameters/security_rule_ids'
+        - $ref: '#/components/parameters/security_rule_ids_delete'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -13205,24 +13219,22 @@ paths:
         - security
       summary: "Modify a rule"
       description: "Modify a rule by specifying its ID"
-      operationId: api.controllers.security_controller.modify_rule
+      operationId: api.controllers.security_controller.update_rule
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
-        - $ref: '#/components/parameters/user_id_required'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/security_rule_id'
       requestBody:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                password:
-                  type: string
-                  maxLength: 64
-                  minLength: 8
-                  format: password
-              required:
-                - password
+              $ref: '#/components/schemas/SecurityRulesRequest'
+            example:
+              rule:
+                MATCH:
+                  definition: "normalRule"
       responses:
         '200':
           description: "User updated successful"
@@ -13620,6 +13632,120 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                 message: All policies were unlinked from role 3
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /security/roles/{role_id}/rules:
+    post:
+      tags:
+        - security
+      summary: "Create a relation between one role and one or more rules"
+      description: "Create a specify relation role-rule, one role may have multiples rules"
+      operationId: api.controllers.security_controller.set_role_rule
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:update'
+      parameters:
+        - $ref: '#/components/parameters/role_id'
+        - $ref: '#/components/parameters/security_rule_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Role information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - id: 3
+                      name: normal
+                      policies:
+                        - id: 2
+                          name: normal_policy
+                          policy:
+                            actions:
+                              - agent:delete
+                            effect: allow
+                            resources:
+                              - agent:id:001
+                              - agent:id:002
+                              - agent:id:003
+                        - id: 3
+                          name: normal_policy1
+                          policy:
+                            actions:
+                              - agent:delete1
+                            effect: allow
+                            resources:
+                              - agent:id:001
+                              - agent:id:002
+                              - agent:id:003
+                      rules:
+                        - id: 1
+                          rule:
+                            MATCH:
+                              definition: normalRule
+                      users: []
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: All rules were linked to role 3
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    delete:
+      tags:
+        - security
+      summary: "Delete a specific relation role-rule"
+      description: "Delete a specific relation role-rule"
+      operationId: api.controllers.security_controller.remove_role_rule
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
+      parameters:
+        - $ref: '#/components/parameters/role_id'
+        - $ref: '#/components/parameters/security_rule_ids_delete'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Role information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - id: 3
+                      name: normal
+                      policies: []
+                      rule: []
+                      users: []
+                  failed_items: []
+                  total_affected_items: 2
+                  total_failed_items: 0
+                message: All rules were unlinked from role 3
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
