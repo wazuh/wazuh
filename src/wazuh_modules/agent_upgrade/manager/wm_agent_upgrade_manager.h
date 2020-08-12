@@ -146,4 +146,12 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
  * */
 char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upgrade_agent_status_task* task);
 
+/**
+ * Send a command to the agent and return the response
+ * @param command request command to agent
+ * @param command_size size of the command
+ * @return response from agent
+ * */
+char* wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size);
+
 #endif
