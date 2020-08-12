@@ -560,4 +560,22 @@ char * abspath(const char * path, char * buffer, size_t size);
  */
 char * w_get_file_content(const char * path, int max_size);
 
+/**
+ * @brief Check if a file is gzip compressed.
+ *
+ * @param path File location.
+ * @retval 0 The file is not gzip compressed.
+ * @retval 1 The file is gzip compressed.
+ */
+int w_is_compressed_gz_file(const char * path);
+
+/**
+ * @brief Check if a file is bzip2 compressed.
+ * 
+ * @param path File location.
+ * @retval 0 The file is not bzip2 compressed.
+ * @retval 1 The file is bzip2 compressed.
+ */
+int w_is_compressed_bz2_file(const char * path);
+
 #endif /* FILE_OP_H */

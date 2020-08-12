@@ -3111,3 +3111,37 @@ end:
 
     return buffer;
 }
+
+/* Check if a file is gzip compressed. */
+int w_is_compressed_gz_file(const char * path) {
+    unsigned char buf[2];
+    FILE *fp;
+
+    fp = fopen(path, "rb");
+    /* Magic number: 1f 8b */
+    if (fp && fread(buf, 1, 2, fp) == 2) {
+        if (buf[0] == 0x1f && buf[1] == 0x8b) {
+            fclose(fp);
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+/* Check if a file is bzip2 compressed. */
+int w_is_compressed_bz2_file(const char * path) {
+    unsigned char buf[3];
+    FILE *fp;
+
+    fp = fopen(path, "rb");
+    /* Magic number: 42 5a 68 */
+    if (fp && fread(buf, 1, 3, fp) == 3) {
+        if (buf[0] == 0x42 && buf[1] == 0x5a && buf[2] == 68) {
+            fclose(fp);
+            return 1;
+        }
+    }
+
+    return 0;
+}
