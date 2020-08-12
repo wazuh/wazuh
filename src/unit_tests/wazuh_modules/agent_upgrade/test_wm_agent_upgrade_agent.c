@@ -112,10 +112,12 @@ int __wrap_StartMQ(const char *path, short int type) {
     return mock();
 }
 
+#ifndef TEST_WINAGENT
 int __wrap_sleep(unsigned int seconds) {
     check_expected(seconds);
     return mock();
 }
+#endif
 
 int __wrap_close() {
     return 1;
@@ -354,8 +356,10 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_start);
     will_return(__wrap_sleep, 1);
+    #endif
 
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
@@ -402,8 +406,10 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_start);
     will_return(__wrap_sleep, 1);
+    #endif
 
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
@@ -429,8 +435,10 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_start * config->ugprade_wait_factor_increase);
     will_return(__wrap_sleep, 1);
+    #endif
 
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
@@ -456,8 +464,10 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_start * config->ugprade_wait_factor_increase * config->ugprade_wait_factor_increase);
     will_return(__wrap_sleep, 1);
+    #endif
 
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
@@ -483,8 +493,10 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_max);
     will_return(__wrap_sleep, 1);
+    #endif
 
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);

@@ -89,9 +89,9 @@ void wm_agent_upgrade_check_status(wm_agent_configs agent_config) {
                 }
             }
         }
-#ifndef WIN32
+    #ifndef WIN32
         close(queue_fd);
-#endif
+    #endif
     }
 }
 
