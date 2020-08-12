@@ -78,7 +78,7 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
         merror(QUEUE_SEND);
 
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE, MAX_OPENQ_ATTEMPS)) < 0) {
+        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             merror_exit(QUEUE_FATAL, DEFAULTQPATH);
         }
 

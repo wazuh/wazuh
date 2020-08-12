@@ -249,7 +249,7 @@ void wm_aws_setup(wm_aws *_aws_config) {
 
     // Connect to socket
 
-    aws_config->queue_fd = StartMQ(DEFAULTQPATH, WRITE, MAX_OPENQ_ATTEMPS);
+    aws_config->queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
     if (aws_config->queue_fd < 0) {
         mterror(WM_AWS_LOGTAG, "Can't connect to queue.");

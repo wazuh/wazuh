@@ -658,7 +658,7 @@ int main_analysisd(int argc, char **argv)
     }
 
     /* Set the queue */
-    if ((m_queue = StartMQ(DEFAULTQUEUE, READ, MAX_OPENQ_ATTEMPS)) < 0) {
+    if ((m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 
