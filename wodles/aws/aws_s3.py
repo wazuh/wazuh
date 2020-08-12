@@ -2471,11 +2471,22 @@ class AWSCloudWatchLogs(AWSService):
 
             token = response['nextForwardToken']
 
+            try:
+                task_definition_name, container_name, task_id = log_stream.split("/")
+            except ValueError:
+                task_definition_name, container_name, task_id = None, None, None
+
             # Send events to Analysisd
             for event in response['events']:
                 debug('+++ Sending events to Analysd...', 1)
-                debug('The message is "{}"'.format(event['message']), 2)
-                self.send_msg(event['message'], dump_json=False)
+
+                message = event['message'] if not task_id else {"log": event['message'],
+                                                                'task_definition_name': task_definition_name,
+                                                                'container_name': container_name, 'task_id': task_id}
+                dump_json = False if not task_id else True
+
+                debug('The message is "{}"'.format(message), 2)
+                self.send_msg(message, dump_json=dump_json)
 
                 if min_start_time is None:
                     min_start_time = event['timestamp']
