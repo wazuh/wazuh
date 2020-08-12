@@ -80,14 +80,9 @@ typedef struct w_logtest_connection_t {
 
     pthread_mutex_t mutex;      ///< Mutex to prevent race condition in accept syscall
     int sock;                   ///< The open connection with logtest queue
-    int active_threads;         ///< Keep track of active threads
 
 } w_logtest_connection_t;
 
-/**
- * @brief Connection data of the logtest socket
- */
-w_logtest_connection_t w_logtest_connection;
 
 /**
  * @brief Initialize Wazuh Logtest. Initialize the listener and create threads
@@ -197,8 +192,8 @@ w_logtest_session_t* w_logtest_get_session(cJSON* req, OSList* list_msg);
 int w_logtest_get_rule_level(cJSON* json_log_processed);
 
 /**
- * @brief Close the client handler, if it is the last one, frees the resources
+ * @brief Processes a client input request
+ * @param raw_request client request
+ * @return string (json format) with the result of the request
  */
-void w_logtest_close_client_handler();
-
-cJSON * w_logtest_process_request(cJSON * json_request, OSList * list_msg);
+char * w_logtest_process_request(char * raw_request);

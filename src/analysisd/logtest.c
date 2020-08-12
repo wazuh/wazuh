@@ -12,17 +12,22 @@
 
 void *w_logtest_init() {
 
+    w_logtest_connection_t connection;
+    pthread_t * logtest_threads = NULL;
+    int num_extra_treads;
+
     if (w_logtest_init_parameters() == OS_INVALID) {
         merror(LOGTEST_ERROR_INV_CONF);
         return NULL;
     }
+    num_extra_treads = w_logtest_conf.threads - 1;
 
     if (!w_logtest_conf.enabled) {
         minfo(LOGTEST_DISABLED);
         return NULL;
     }
 
-    if (w_logtest_connection.sock = OS_BindUnixDomain(LOGTEST_SOCK, SOCK_STREAM, OS_MAXSTR), w_logtest_connection.sock < 0) {
+    if (connection.sock = OS_BindUnixDomain(LOGTEST_SOCK, SOCK_STREAM, OS_MAXSTR), connection.sock < 0) {
         merror(LOGTEST_ERROR_BIND_SOCK, LOGTEST_SOCK, errno, strerror(errno));
         return NULL;
     }
@@ -37,22 +42,35 @@ void *w_logtest_init() {
         return NULL;
     }
 
-    w_mutex_init(&w_logtest_connection.mutex, NULL);
-    w_logtest_connection.active_threads = w_logtest_conf.threads;
+    w_mutex_init(&connection.mutex, NULL);
 
     minfo(LOGTEST_INITIALIZED);
 
-    for (int i = 1; i < w_logtest_conf.threads; i++) {
-        w_create_thread(w_logtest_clients_handler, NULL);
+    if (num_extra_treads > 0) {
+        os_malloc(sizeof(pthread_t) * (num_extra_treads), logtest_threads);
+
+        for (int i = 0; i < num_extra_treads; i++) {
+            if(CreateThreadJoinable(logtest_threads + i, w_logtest_clients_handler, &connection)){
+                merror_exit(THREAD_ERROR);
+            }
+        }
     }
 
     w_create_thread(w_logtest_check_inactive_sessions, NULL);
-    w_logtest_clients_handler(w_logtest_connection);
+    w_logtest_clients_handler(&connection);
 
-    close(w_logtest_connection.sock);
+    for (int i = 0; i < num_extra_treads; i++) {
+        pthread_join(logtest_threads[i], NULL);
+    }
+
+    os_free(logtest_threads)
+
+    close(connection.sock);
     if (unlink(LOGTEST_SOCK)) {
         merror(DELETE_ERROR, LOGTEST_SOCK, errno, strerror(errno));
     }
+
+    w_mutex_destroy(&connection.mutex);
 
     return NULL;
 }
@@ -74,78 +92,48 @@ int w_logtest_init_parameters() {
     return OS_SUCCESS;
 }
 
-void * w_logtest_clients_handler() {
+void * w_logtest_clients_handler(w_logtest_connection_t * connection) {
 
     int client;
     char msg_received[OS_MAXSTR];
     int size_msg_received;
-
-    /* input-ouput */
-    cJSON * json_request;
-    cJSON * json_response;
     char * str_response;
-    bool valid_request;
-
-    /* error & message handlers */
-    OSList * list_msg = OSList_Create();
-    
-    if (!list_msg) {
-        merror(LIST_ERROR);
-        w_logtest_close_client_handler();
-        return NULL;
-    }
-
-    OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
 
     while (FOREVER()) {
 
         str_response = NULL;
-        json_request = NULL;
 
         /* Wait for client */
-        w_mutex_lock(&w_logtest_connection.mutex);
-        if (client = accept(w_logtest_connection.sock, (struct sockaddr *) NULL, NULL), client < 0) {
+        w_mutex_lock(&connection->mutex);
+        if (client = accept(connection->sock, (struct sockaddr *) NULL, NULL), client < 0) {
             int err_accept = errno;
-            w_mutex_unlock(&w_logtest_connection.mutex);
+            w_mutex_unlock(&connection->mutex);
             merror(LOGTEST_ERROR_ACCEPT_CONN, strerror(err_accept));
 
             /* check if socket is closed */
             if (err_accept == EBADF) {
-                os_free(list_msg);
-                w_logtest_close_client_handler();
                 return NULL;
             }
             continue;
         }
-        w_mutex_unlock(&w_logtest_connection.mutex);
+        w_mutex_unlock(&connection->mutex);
 
         if (size_msg_received = recv(client, msg_received, OS_MAXSTR - 1, 0), size_msg_received < 0) {
             merror(LOGTEST_ERROR_RECV_MSG, strerror(errno));
+            close(client);
             continue;
         }
         msg_received[size_msg_received] = '\0';
 
-        /* Check message and generate a request */
-        valid_request = w_logtest_check_input(msg_received, &json_request, list_msg);
-
-        /* Generate response */
-        if (valid_request) {
-            json_response = w_logtest_process_request(json_request, list_msg);
-        } else {
-            int retval = 0;
-            json_response = cJSON_CreateObject();
-            w_logtest_add_msg_response(json_response, list_msg, &retval);
-            cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_CODE, W_LOGTEST_RCODE_ERROR_INPUT);
+        if (str_response = w_logtest_process_request(msg_received), !str_response) {
+            return NULL;
         }
 
-        str_response = cJSON_PrintUnformatted(json_response);
         if (send(client, str_response, strlen(str_response) + 1, 0) == -1) {
             merror(LOGTEST_ERROR_RESPONSE, errno, strerror(errno));
         }
 
         /* Frees resourse of requeset */
-        cJSON_Delete(json_response);
-        cJSON_Delete(json_request);
         os_free(str_response);
         close(client);
     }
@@ -552,25 +540,38 @@ void w_logtest_add_msg_response(cJSON * response, OSList * list_msg, int * error
     return;
 }
 
-cJSON * w_logtest_process_request(cJSON * json_request, OSList * list_msg) {
+char * w_logtest_process_request(char * raw_request) {
 
-    cJSON * json_response = cJSON_CreateObject();
+    char * str_response = NULL;
+    cJSON * json_request = NULL;
+    cJSON * json_response = NULL;
     cJSON * json_log_processed = NULL;
+
     w_logtest_session_t * current_session = NULL;
+
+    /* error & message handlers */
     int retval = W_LOGTEST_RCODE_SUCCESS;
+    OSList * list_msg = OSList_Create();
+    if (!list_msg) {
+        merror(LIST_ERROR);
+        return NULL;
+    }
+    OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
 
-    /* trigger alert */
-    uint8_t rule_level = 0;
-    int alert = 0;
-
-    /* Get session */
-    current_session = w_logtest_get_session(json_request, list_msg);
-    if (current_session) {
-        cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_TOKEN, current_session->token);
+    /* Check message and generate a request */
+    json_response = cJSON_CreateObject();
+    if (!w_logtest_check_input(raw_request, &json_request, list_msg)) {
+        retval = W_LOGTEST_RCODE_ERROR_INPUT;
     }
 
-    w_logtest_add_msg_response(json_response, list_msg, &retval);
+    /* Get session */
+    if (retval >= W_LOGTEST_RCODE_SUCCESS) {
 
+        current_session = w_logtest_get_session(json_request, list_msg);
+        if (current_session) {
+            cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_TOKEN, current_session->token);
+        }
+    }
     /* Proccess log */
     if (retval >= W_LOGTEST_RCODE_SUCCESS) {
 
@@ -581,37 +582,24 @@ cJSON * w_logtest_process_request(cJSON * json_request, OSList * list_msg) {
             smerror(list_msg, LOGTEST_ERROR_PROCESS_EVENT);
             mdebug1(LOGTEST_ERROR_PROCESS_EVENT);
         }
-
-        w_logtest_add_msg_response(json_response, list_msg, &retval);
     }
 
     /* Check alert level */
     if (retval >= W_LOGTEST_RCODE_SUCCESS) {
-        rule_level = (uint8_t) w_logtest_get_rule_level(json_log_processed);
-        alert = (Config.logbylevel <= rule_level) ? 1 : 0;
+        uint8_t rule_level = (uint8_t) w_logtest_get_rule_level(json_log_processed);
+        int alert = (Config.logbylevel <= rule_level) ? 1 : 0;
         cJSON_AddBoolToObject(json_response, W_LOGTEST_JSON_ALERT, alert);
     }
 
+    w_logtest_add_msg_response(json_response, list_msg, &retval);
     cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_CODE, retval);
 
-    return json_response;
-}
+    str_response = cJSON_PrintUnformatted(json_response);
+    cJSON_Delete(json_response);
+    cJSON_Delete(json_request);
+    os_free(list_msg);
 
-void w_logtest_close_client_handler() {
-    
-    w_mutex_lock(&w_logtest_connection.mutex);
-    w_logtest_connection.active_threads--;
-    
-    /* The last active thread */
-    if (w_logtest_connection.active_threads == 0) {
-        w_mutex_unlock(&w_logtest_connection.mutex);
-
-        w_mutex_destroy(&w_logtest_connection.mutex);
-        return;
-    }
-
-    w_mutex_unlock(&w_logtest_connection.mutex);
-    return;
+    return str_response;
 }
 
 cJSON * w_logtest_process_log(cJSON * req, w_logtest_session_t * session, OSList * list_msg) { return NULL; }
