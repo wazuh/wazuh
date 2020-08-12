@@ -240,6 +240,7 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upg
     wm_agent_upgrade_task_module_callback(json_response, json_task_module_request, wm_agent_upgrade_update_status_success_callback, NULL);
 
     char *message = cJSON_PrintUnformatted(json_response);
+    cJSON_Delete(json_response);
     return message;
 }
 

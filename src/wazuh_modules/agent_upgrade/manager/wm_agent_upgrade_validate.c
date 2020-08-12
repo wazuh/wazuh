@@ -422,7 +422,7 @@ bool wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *ag
     cJSON *task_json = cJSON_GetObjectItem(input_json, "task_id");
 
     if (agent_json && (agent_json->type == cJSON_Number) && data_json && (data_json->type == cJSON_String)) {
-        agent_id = agent_json->valueint;
+        agent_id = &agent_json->valueint;
 
         if (task_json && (task_json->type == cJSON_Number)) {
             return true;

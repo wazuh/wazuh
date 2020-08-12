@@ -76,7 +76,7 @@ void wm_agent_upgrade_check_status(wm_agent_configs agent_config) {
             if(result_available) {
                 sleep(wait_time);
 
-                wait_time *= agent_config.ugprade_wait_factor_increase;
+                wait_time *= agent_config.upgrade_wait_factor_increase;
                 if (wait_time > agent_config.upgrade_wait_max) {
                     wait_time = agent_config.upgrade_wait_max;
                 }
