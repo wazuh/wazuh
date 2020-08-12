@@ -173,7 +173,9 @@ TEST_F(DBSyncTest, InsertData)
 TEST_F(DBSyncTest, InsertDataWithCompoundPKs)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`, `tid`)) WITHOUT ROWID;"};
-    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":"100"}]})"};
+    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":"100"},
+                                                                 {"pid":5,"name":"User1", "tid":101},
+                                                                 {"pid":6,"name":"User2", "tid":102}]})"};
     
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
@@ -1133,8 +1135,8 @@ TEST_F(DBSyncTest, deleteSingleDataByCompoundPK)
     const std::unique_ptr<cJSON, smartDeleterJson> jsMissingPKPID{ cJSON_Parse(singleRowWithoutCompleteCompoundPK) };
 
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
-    EXPECT_EQ(0, dbsync_delete_rows(handle, jsSingleDeletion.get())); // It succeed and deletes the row.
-    EXPECT_EQ(0, dbsync_delete_rows(handle, jsMissingPKPID.get()));   // It succeed but doesn't delete the row.
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsSingleDeletion.get()));
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsMissingPKPID.get()));
 }
 
 TEST_F(DBSyncTest, deleteRowsByFilter)

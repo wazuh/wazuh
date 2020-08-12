@@ -507,11 +507,12 @@ ColumnType SQLiteDBEngine::columnTypeName(const std::string& type)
     return retVal;
 }
 
-void SQLiteDBEngine::bindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt, 
+bool SQLiteDBEngine::bindJsonData(const std::unique_ptr<SQLite::IStatement>& stmt,
                                   const ColumnData& cd, 
                                   const nlohmann::json::value_type& valueType,
                                   const unsigned int cid)
 {
+    bool retVal { true };
     const auto type { std::get<TableHeader::Type>(cd) };
     const auto name { std::get<TableHeader::Name>(cd) };
     const auto& it  { valueType.find(name) };
@@ -576,6 +577,11 @@ void SQLiteDBEngine::bindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt
             throw dbengine_error { INVALID_COLUMN_TYPE };
         }
     }
+    else
+    {
+        retVal = false;
+    }
+    return retVal;
 }
 
 bool SQLiteDBEngine::createCopyTempTable(const std::string& table)
@@ -773,7 +779,8 @@ bool SQLiteDBEngine::getPKListLeftOnly(const std::string& t1,
 }
 
 std::string SQLiteDBEngine::buildDeleteBulkDataSqlQuery(const std::string& table,
-                                                        const std::vector<std::string>& primaryKeyList)
+                                                        const std::vector<std::string>& primaryKeyList,
+                                                        const nlohmann::json& jsData)
 {
     std::string sql{ "DELETE FROM " };
     sql.append(table);
@@ -782,8 +789,11 @@ std::string SQLiteDBEngine::buildDeleteBulkDataSqlQuery(const std::string& table
     {
         for (const auto& value : primaryKeyList)
         {
-            sql.append(value);
-            sql.append("=? AND ");
+            if(jsData.empty() || jsData.find(value) != jsData.end())
+            {
+                sql.append(value);
+                sql.append("=? AND ");
+            }
         }
         sql = sql.substr(0, sql.size()-5);
         sql.append(";");
@@ -837,7 +847,7 @@ void SQLiteDBEngine::deleteRowsbyPK(const std::string& table,
         const auto& tableFields { m_tableFields[table] };
         const auto& stmt
         {
-            getStatement(buildDeleteBulkDataSqlQuery(table, primaryKeyList))
+            getStatement(buildDeleteBulkDataSqlQuery(table, primaryKeyList, data.at(0)))
         };
 
         for (const auto& jsRow : data)
@@ -856,8 +866,10 @@ void SQLiteDBEngine::deleteRowsbyPK(const std::string& table,
 
                 if(it != tableFields.end())
                 {
-                    bindJsonData(stmt, *it, jsRow, index);
-                    ++index;
+                    if (bindJsonData(stmt, *it, jsRow, index))
+                    {
+                        ++index;
+                    }
                 }
             }
             stmt->step();
