@@ -43,8 +43,6 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
-
 static int setup_test_executions(void **state) {
     wm_max_eps = 1;
     return 0;
@@ -122,6 +120,8 @@ int __wrap_sleep(unsigned int seconds) {
 int __wrap_close() {
     return 1;
 }
+
+#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
 
 // Tests
 
