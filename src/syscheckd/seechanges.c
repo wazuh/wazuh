@@ -249,12 +249,12 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
 
 #ifdef WIN32
     tmp_diff_size -= (FileSizeWin(compressed_file) / 1024);
-    if (syscheck.disk_quota_enabled && seechanges_estimate_compression(FileSizeWin(filename_abs) / 1024)) {
+    if (syscheck.disk_quota_enabled && !seechanges_estimate_compression(FileSizeWin(filename_abs) / 1024)) {
         return NULL;
     }
 #else
     tmp_diff_size -= (FileSize(compressed_file) / 1024);
-    if (syscheck.disk_quota_enabled && seechanges_estimate_compression(FileSize(filename_abs) / 1024)) {
+    if (syscheck.disk_quota_enabled && !seechanges_estimate_compression(FileSize(filename_abs) / 1024)) {
         return NULL;
     }
 #endif

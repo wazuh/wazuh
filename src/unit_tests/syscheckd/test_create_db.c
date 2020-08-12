@@ -462,6 +462,10 @@ static int setup_group(void **state) {
 
     unit_testing = false;
 
+#ifndef TEST_WINAGENT
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+#endif
+
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck.conf");
 
@@ -479,6 +483,10 @@ static int setup_root_group(void **state) {
         return -1;
 
     unit_testing = false;
+
+#ifndef TEST_WINAGENT
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+#endif
 
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck_top_level.conf");
@@ -2107,7 +2115,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6347): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 7);
@@ -2178,7 +2186,7 @@ static void test_fim_scan_no_realtime(void **state) {
     expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6347): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 6);
@@ -2229,8 +2237,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6347): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
-
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 6);
@@ -2296,7 +2303,7 @@ static void test_fim_scan_realtime_enabled(void **state) {
     expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6347): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 6);
@@ -2356,7 +2363,7 @@ static void test_fim_scan_db_free(void **state) {
     expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6347): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 6);
@@ -2426,7 +2433,7 @@ static void test_fim_scan_no_limit(void **state) {
     expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6347): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 6);
@@ -2905,7 +2912,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap_DirSize, path, "queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6347): Size of 'queue/diff' folder: 0.00000 KB.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_stat, 0, 11);
@@ -2975,7 +2982,7 @@ static void test_fim_scan_db_full_double_scan_winreg_check(void **state) {
     expect_string(__wrap_DirSize, path, "queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6347): Size of 'queue/diff' folder: 0.00000 KB.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_stat, 0, 10);
@@ -3055,7 +3062,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_string(__wrap_DirSize, path, "queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6347): Size of 'queue/diff' folder: 0.00000 KB.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_stat, 0, 10);
@@ -3117,7 +3124,7 @@ static void test_fim_scan_db_free(void **state) {
     expect_string(__wrap_DirSize, path, "queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6347): Size of 'queue/diff' folder: 0.00000 KB.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_stat, 0, 10);
@@ -3202,7 +3209,7 @@ static void test_fim_scan_no_limit(void **state) {
     expect_string(__wrap_DirSize, path, "queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6347): Size of 'queue/diff' folder: 0.00000 KB.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_stat, 0, 10);

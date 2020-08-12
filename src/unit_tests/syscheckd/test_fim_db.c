@@ -517,17 +517,24 @@ static void wraps_fim_db_insert_path_success() {
 static int setup_group(void **state) {
     (void) state;
     expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck2.conf'");
+
 #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck2.conf]");
 #endif
+
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap__mdebug2);
+#endif
+
     Read_Syscheck_Config("test_syscheck2.conf");
+
     syscheck.database_store = 0;    // disk
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
     test_mode = 1;
 
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     time_mock_value = 192837465;
-    #endif
+#endif
     return 0;
 }
 
@@ -1478,14 +1485,14 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
 #endif
 
     cJSON * json = cJSON_CreateObject();
-    
+
     will_return(__wrap_fim_json_event, json);
     expect_function_call(__wrap__mdebug2);
     wraps_fim_db_check_transaction();
-    
+
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
     int alert = 1;
-    
+
     syscheck.opts[1] |= CHECK_SEECHANGES;
 
 #ifndef TEST_WINAGENT
@@ -1505,7 +1512,7 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
 #endif
 
     fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, &alert, (void *) FIM_WHODATA, NULL);
-    
+
     syscheck.opts[1] &= ~CHECK_SEECHANGES;
     // Last commit time should change
     assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);

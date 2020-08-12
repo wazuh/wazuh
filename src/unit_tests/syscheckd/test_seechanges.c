@@ -284,7 +284,13 @@ int __wrap_system(const char *__command) {
 
 static int setup_group(void **state) {
     (void) state;
+
+#ifndef TEST_WINAGENT
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+#endif
+
     Read_Syscheck_Config("test_syscheck.conf");
+
     test_mode = 1;
     return 0;
 }
@@ -641,9 +647,13 @@ void test_gen_diff_alert(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
     will_return(__wrap_FileSize, 1024 * 1024);
+    expect_string(__wrap_FileSize, path, "/folder/test.file");
+    will_return(__wrap_FileSize, 10);
 #else
     expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
     will_return(__wrap_FileSizeWin, 1024 * 1024);
+    expect_string(__wrap_FileSizeWin, file, "c\\folder\\test.file");
+    will_return(__wrap_FileSizeWin, 10);
 #endif
 
     // seechanges_createpath
@@ -759,9 +769,13 @@ void test_gen_diff_alert_big_size(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
     will_return(__wrap_FileSize, 1024 * 1024);
+    expect_string(__wrap_FileSize, path, "/folder/test.file");
+    will_return(__wrap_FileSize, 10);
 #else
     expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
     will_return(__wrap_FileSizeWin, 1024 * 1024);
+    expect_string(__wrap_FileSizeWin, file, "c\\folder\\test.file");
+    will_return(__wrap_FileSizeWin, 10);
 #endif
 
     // seechanges_createpath
@@ -894,9 +908,13 @@ void test_gen_diff_alert_fopen_error(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
     will_return(__wrap_FileSize, 1024 * 1024);
+	expect_string(__wrap_FileSize, path, "/folder/test.file");
+    will_return(__wrap_FileSize, 10);
 #else
     expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
     will_return(__wrap_FileSizeWin, 1024 * 1024);
+    expect_string(__wrap_FileSizeWin, file, "c\\folder\\test.file");
+    will_return(__wrap_FileSizeWin, 10);
 #endif
 
     // seechanges_createpath
@@ -979,9 +997,13 @@ void test_gen_diff_alert_fread_error(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
     will_return(__wrap_FileSize, 1024 * 1024);
+	expect_string(__wrap_FileSize, path, "/folder/test.file");
+    will_return(__wrap_FileSize, 10);
 #else
     expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
     will_return(__wrap_FileSizeWin, 1024 * 1024);
+    expect_string(__wrap_FileSizeWin, file, "c\\folder\\test.file");
+    will_return(__wrap_FileSizeWin, 10);
 #endif
 
     // seechanges_createpath
@@ -1065,9 +1087,13 @@ void test_gen_diff_alert_compress_error(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
     will_return(__wrap_FileSize, 1024 * 1024);
+	expect_string(__wrap_FileSize, path, "/folder/test.file");
+    will_return(__wrap_FileSize, 10);
 #else
     expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
     will_return(__wrap_FileSizeWin, 1024 * 1024);
+    expect_string(__wrap_FileSizeWin, file, "c\\folder\\test.file");
+    will_return(__wrap_FileSizeWin, 10);
 #endif
 
     // seechanges_createpath
@@ -1185,9 +1211,13 @@ void test_gen_diff_alert_exceed_disk_quota_limit(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
     will_return(__wrap_FileSize, 1024 * 1024);
+	expect_string(__wrap_FileSize, path, "/folder/test.file");
+    will_return(__wrap_FileSize, 10);
 #else
     expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
     will_return(__wrap_FileSizeWin, 1024 * 1024);
+    expect_string(__wrap_FileSizeWin, file, "c\\folder\\test.file");
+    will_return(__wrap_FileSizeWin, 10);
 #endif
 
     // seechanges_createpath
@@ -1209,7 +1239,12 @@ void test_gen_diff_alert_exceed_disk_quota_limit(void **state) {
     expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
     will_return(__wrap_FileSize, syscheck.disk_quota_limit * 1024 + 1024 * 2);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6043): The maximum configured size for the '/var/ossec/queue/diff' folder has been reached, the diff operation cannot be performed.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6350): The maximum configured size for the '/var/ossec/queue/diff' folder has been reached, the diff operation cannot be performed.");
+
+	expect_string(__wrap_FileSize, path, "/folder/test.file");
+    will_return(__wrap_FileSize, syscheck.disk_quota_limit * 1024 + 1024 * 2);
+	expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
+    will_return(__wrap_FileSize, syscheck.disk_quota_limit * 1024 + 1024 * 2);
 #else
     expect_string(__wrap_w_compress_gzfile, filesrc, "c:\\folder\\test.file");
     expect_string(__wrap_w_compress_gzfile, filedst, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
@@ -1218,7 +1253,11 @@ void test_gen_diff_alert_exceed_disk_quota_limit(void **state) {
     expect_string(__wrap_FileSizeWin, file, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
     will_return(__wrap_FileSizeWin, syscheck.disk_quota_limit * 1024 + 1024 * 2);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6043): The maximum configured size for the 'queue/diff' folder has been reached, the diff operation cannot be performed.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6350): The maximum configured size for the 'queue/diff' folder has been reached, the diff operation cannot be performed.");
+	expect_string(__wrap_FileSizeWin, file, "c:\\folder\\test.file");
+    will_return(__wrap_FileSizeWin, syscheck.disk_quota_limit * 1024 + 1024 * 2);
+	expect_string(__wrap_FileSizeWin, file, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
+    will_return(__wrap_FileSizeWin, syscheck.disk_quota_limit * 1024 + 1024 * 2);
 #endif
 
     // seechanges_delete_compressed_file
@@ -1244,7 +1283,7 @@ void test_gen_diff_alert_exceed_disk_quota_limit(void **state) {
 
     expect_string(__wrap_abspath, path, containing_folder);
     will_return(__wrap_abspath, 1);
-    
+
     expect_string(__wrap_abspath, path, last_entry_file);
     will_return(__wrap_abspath, 1);
 #endif
@@ -1473,7 +1512,7 @@ void test_seechanges_addfile(void **state) {
                                        "---\n"
                                        "> First Line 123\n"
                                        "> Last line\n";
-    
+
     char *dirs_tmp[] = {
         "queue",
         "queue/diff",
@@ -1604,9 +1643,13 @@ void test_seechanges_addfile(void **state) {
     will_return(__wrap_w_compress_gzfile, 0);
 
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_FileSize, path, file_name);
+    will_return(__wrap_FileSize, 10);
     expect_string(__wrap_FileSize, path, last_entry_gz_tmp);
     will_return(__wrap_FileSize, 1024 * 1024);
 #else
+    expect_string(__wrap_FileSizeWin, file, file_name_abs);
+    will_return(__wrap_FileSizeWin, 1024 * 1024);
     expect_string(__wrap_FileSizeWin, file, last_entry_gz_tmp);
     will_return(__wrap_FileSizeWin, 1024 * 1024);
 #endif
@@ -1768,8 +1811,12 @@ void test_seechanges_addfile_run_diff(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_FileSize, path, last_entry_gz);
     will_return(__wrap_FileSize, 1024 * 1024);
+    expect_string(__wrap_FileSize, path, file_name);
+    will_return(__wrap_FileSize, 10);
 #else
     expect_string(__wrap_FileSizeWin, file, last_entry_gz);
+    will_return(__wrap_FileSizeWin, 1024 * 1024);
+    expect_string(__wrap_FileSizeWin, file, file_name_abs);
     will_return(__wrap_FileSizeWin, 1024 * 1024);
 #endif
 
@@ -1876,7 +1923,7 @@ void test_seechanges_addfile_create_gz_file(void **state) {
         "queue/diff/local/c/windows/system32/drivers/etc/test_",
         NULL
     };
-    
+
     char *dirs_tmp[] = {
         "queue",
         "queue/diff",
@@ -2385,7 +2432,7 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     const char * file_name = "/home/test";
     const char * file_name_abs = file_name;
     const char * default_path = "/var/ossec/";
-    
+
     char *dirs_tmp[] = {
         "/var",
         "/var/ossec",
@@ -2513,8 +2560,12 @@ void test_seechanges_addfile_fwrite_error(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/home/test/last-entry.gz");
     will_return(__wrap_FileSize, 1024 * 1024);
+    expect_string(__wrap_FileSize, path, "/home/test");
+    will_return(__wrap_FileSize, 10);
 #else
     expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\windows\\system32\\drivers\\etc\\test_/last-entry.gz");
+    will_return(__wrap_FileSizeWin, 1024 * 1024);
+    expect_string(__wrap_FileSizeWin, file, "c\\windows\\system32\\drivers\\etc\\test_");
     will_return(__wrap_FileSizeWin, 1024 * 1024);
 #endif
 
@@ -2690,9 +2741,9 @@ void test_seechanges_addfile_file_size_exceeded(void **state) {
 #endif
 
     char info_msg[OS_SIZE_128];
-    snprintf(info_msg, OS_SIZE_128, "(6042): File \'%s\' is too big for configured maximum size to perform diff operation.", file_name_abs);
-    
-    expect_string(__wrap__minfo, formatted_msg, info_msg);
+    snprintf(info_msg, OS_SIZE_128, "(6349): File \'%s\' is too big for configured maximum size to perform diff operation.", file_name_abs);
+
+    expect_string(__wrap__mdebug2, formatted_msg, info_msg);
 
     // seechanges_delete_compressed_file
     const char * diff_folder = "queue/diff";
@@ -2709,7 +2760,7 @@ void test_seechanges_addfile_file_size_exceeded(void **state) {
 
     expect_string(__wrap_abspath, path, containing_folder);
     will_return(__wrap_abspath, 1);
-    
+
     expect_string(__wrap_abspath, path, last_entry_file);
     will_return(__wrap_abspath, 1);
 #endif
@@ -2777,7 +2828,7 @@ void test_seechanges_addfile_disk_quota_exceeded(void **state) {
                                        "---\n"
                                        "> First Line 123\n"
                                        "> Last line\n";
-    
+
     char *dirs[] = {
         "queue",
         "queue/diff",
@@ -2870,7 +2921,7 @@ void test_seechanges_addfile_disk_quota_exceeded(void **state) {
     char info_msg[OS_SIZE_512];
     snprintf(info_msg, OS_SIZE_512, FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
 
-    expect_string(__wrap__minfo, formatted_msg, info_msg);
+    expect_string(__wrap__mdebug2, formatted_msg, info_msg);
 
 #ifndef TEST_WINAGENT
     expect_string(__wrap_rmdir_ex, path, "/var/ossec/queue/diff/local/home/test");
@@ -2943,7 +2994,7 @@ void test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error1(void **state) {
                                        "---\n"
                                        "> First Line 123\n"
                                        "> Last line\n";
-    
+
     char *dirs[] = {
         "queue",
         "queue/diff",
@@ -3036,7 +3087,7 @@ void test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error1(void **state) {
     char info_msg[OS_SIZE_512];
     snprintf(info_msg, OS_SIZE_512, FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
 
-    expect_string(__wrap__minfo, formatted_msg, info_msg);
+    expect_string(__wrap__mdebug2, formatted_msg, info_msg);
 
     char containing_folder[OS_SIZE_128];
     char containing_folder_tmp[OS_SIZE_128];
@@ -3118,7 +3169,7 @@ void test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error2(void **state) {
                                        "---\n"
                                        "> First Line 123\n"
                                        "> Last line\n";
-    
+
     char *dirs[] = {
         "queue",
         "queue/diff",
@@ -3211,7 +3262,7 @@ void test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error2(void **state) {
     char info_msg[OS_SIZE_512];
     snprintf(info_msg, OS_SIZE_512, FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
 
-    expect_string(__wrap__minfo, formatted_msg, info_msg);
+    expect_string(__wrap__mdebug2, formatted_msg, info_msg);
 
     char containing_folder[OS_SIZE_128];
     char containing_folder_tmp[OS_SIZE_128];
@@ -3293,7 +3344,7 @@ void test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error3(void **state) {
                                        "---\n"
                                        "> First Line 123\n"
                                        "> Last line\n";
-    
+
     char *dirs[] = {
         "queue",
         "queue/diff",
@@ -3386,7 +3437,7 @@ void test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error3(void **state) {
     char info_msg[OS_SIZE_512];
     snprintf(info_msg, OS_SIZE_512, FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
 
-    expect_string(__wrap__minfo, formatted_msg, info_msg);
+    expect_string(__wrap__mdebug2, formatted_msg, info_msg);
 
     char containing_folder[OS_SIZE_128];
     char containing_folder_tmp[OS_SIZE_128];
@@ -3449,7 +3500,7 @@ void test_seechanges_delete_compressed_file_not_dir(void **state) {
 
     expect_string(__wrap_abspath, path, containing_folder);
     will_return(__wrap_abspath, 1);
-    
+
     expect_string(__wrap_abspath, path, last_entry_file);
     will_return(__wrap_abspath, 1);
 #endif
@@ -3483,7 +3534,7 @@ void test_seechanges_delete_compressed_file_rm_error(void **state) {
 
     expect_string(__wrap_abspath, path, containing_folder);
     will_return(__wrap_abspath, 1);
-    
+
     expect_string(__wrap_abspath, path, last_entry_file);
     will_return(__wrap_abspath, 1);
 #endif
@@ -3536,7 +3587,7 @@ void test_seechanges_delete_compressed_file_successful(void **state) {
 
     expect_string(__wrap_abspath, path, containing_folder);
     will_return(__wrap_abspath, 1);
-    
+
     expect_string(__wrap_abspath, path, last_entry_file);
     will_return(__wrap_abspath, 1);
 #endif
@@ -3590,7 +3641,7 @@ int main(void) {
         #ifndef TEST_WINAGENT
         // filter
         cmocka_unit_test_teardown(test_filter, teardown_free_string),
-        
+
         // symlink_to_dir
         cmocka_unit_test(test_symlink_to_dir),
         cmocka_unit_test(test_symlink_to_dir_no_link),
@@ -3598,7 +3649,7 @@ int main(void) {
         cmocka_unit_test(test_symlink_to_dir_lstat_error),
         cmocka_unit_test(test_symlink_to_dir_stat_error),
         #endif
-        
+
         // gen_diff_alert
         cmocka_unit_test_teardown(test_gen_diff_alert, teardown_free_string),
         cmocka_unit_test_teardown(test_gen_diff_alert_big_size, teardown_free_string),
@@ -3636,7 +3687,7 @@ int main(void) {
         cmocka_unit_test(test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error3),
         cmocka_unit_test_teardown(test_seechanges_addfile_fwrite_error, teardown_free_string),
         cmocka_unit_test(test_seechanges_addfile_run_diff_system_error),
-        
+
         // seechanges_delete_compressed_file
         cmocka_unit_test(test_seechanges_delete_compressed_file_not_dir),
         cmocka_unit_test(test_seechanges_delete_compressed_file_rm_error),
