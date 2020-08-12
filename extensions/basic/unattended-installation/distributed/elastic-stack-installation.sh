@@ -87,7 +87,7 @@ installPrerequisites() {
         eval "zypper -n install zip unzip curl $debug"       
     elif [ $sys_type == "apt-get" ] 
     then
-        eval "apt-get install curl apt-transport-https zip unzip lsb-release gnupg2 libcap2-bin -y -q $debug"
+        eval "apt-get install curl apt-transport-https zip unzip lsb-release libcap2-bin -y -q $debug"
         eval "apt-get update -q $debug"
     fi
 
@@ -194,8 +194,8 @@ createCertificates() {
         eval "cp -R ~/certs/ca/ ~/certs/elasticsearch/* /etc/elasticsearch/certs/ $debug"
         if [[ -n "$master" ]] 
         then
-            eval "mv ~/certs/elasticsearch-1/elasticsearch-1.crt /etc/elasticsearch/certs/elasticsearch.crt $debug"
-            eval "mv ~/certs/elasticsearch-1/elasticsearch-1.key /etc/elasticsearch/certs/elasticsearch.key $debug"
+            eval "mv ~/certs/elasticsearch/elasticsearch.crt /etc/elasticsearch/certs/elasticsearch.crt $debug"
+            eval "mv ~/certs/elasticsearch/elasticsearch.key /etc/elasticsearch/certs/elasticsearch.key $debug"
         fi
         eval "chown -R elasticsearch: /etc/elasticsearch/certs $debug"
         eval "chmod -R 500 /etc/elasticsearch/certs $debug"
@@ -206,7 +206,7 @@ createCertificates() {
 
     # Start Elasticsearch
     startService "elasticsearch"
-    if [ -n "$single" ]
+    if [[ -n "$single" ]] || [[ -n "$c" ]]
     then
         echo "Initializing Elasticsearch..."
         passwords=$(/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b)
