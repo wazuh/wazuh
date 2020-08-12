@@ -3893,8 +3893,7 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) 
     char *labels = NULL;
     char *label = NULL;
     char *value = NULL;
-    cJSON *data = NULL;
-    char *out = NULL;
+    char *savedptr = NULL;
     char sdelim[] = { '\n', '\0' };
 
     if (next = wstr_chr(input, ' '), !next) {
@@ -3923,7 +3922,7 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) 
         labels = next;
 
         // Parsing the labes string "key1:value1\nkey2:value2"
-        for (label = strtok(labels, sdelim); label; label = strtok(NULL, sdelim)) {
+        for (label = strtok_r(labels, sdelim, &savedptr); label; label = strtok_r(NULL, sdelim, &savedptr)) {
             if (value = strstr(label, ":"), value) {
                 *value = '\0';
                 value++;
@@ -3942,10 +3941,7 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) 
             value = NULL;
         }
 
-        out = cJSON_PrintUnformatted(data);
-        snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-        os_free(out);
-        cJSON_Delete(data);
+        snprintf(output, OS_MAXSTR + 1, "ok");
     }
 
     return OS_SUCCESS;
