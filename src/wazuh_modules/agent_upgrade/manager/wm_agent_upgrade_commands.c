@@ -302,7 +302,9 @@ static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task)
 
     // Validate if there is a task in progress for this agent
     status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_GET_STATUS, agent_task->agent_info->agent_id, NULL);
-    if (wm_agent_upgrade_validate_task_status_message(status_json, &status) && status && !strcmp(status, task_statuses[WM_TASK_IN_PROGRESS])) {
+    if (!wm_agent_upgrade_validate_task_status_message(status_json, &status)) {
+        validate_result = WM_UPGRADE_TASK_MANAGER_COMMUNICATION;
+    } else if (status && !strcmp(status, task_statuses[WM_TASK_IN_PROGRESS])) {
         validate_result = WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS;
     }
 
@@ -621,20 +623,16 @@ char* wm_agent_upgrade_send_command_to_agent(const char *command, const size_t c
 }
 
 static cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task) {
-    cJSON *response = NULL;
     cJSON *message_object = wm_agent_upgrade_parse_task_module_request(command, agent_id, status_task);
     cJSON *message_array = cJSON_CreateArray();
     cJSON_AddItemToArray(message_array, message_object);
 
-    cJSON* task_module_response = wm_agent_upgrade_send_tasks_information(message_array);
-
-    if (task_module_response && (task_module_response->type == cJSON_Array) && (cJSON_GetArraySize(task_module_response) == 1)) {
-        
-        cJSON_Delete(task_module_response);
-    } else {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_TASK_MAN_JSON);
-        response = task_module_response;
-    }
+    cJSON* task_module_response = cJSON_CreateArray();
+    wm_agent_upgrade_task_module_callback(task_module_response, message_array, NULL, NULL);
+    
     cJSON_Delete(message_array);
+    
+    cJSON* response = cJSON_DetachItemFromArray(task_module_response, 0);
+    cJSON_Delete(task_module_response);
     return response;
 }

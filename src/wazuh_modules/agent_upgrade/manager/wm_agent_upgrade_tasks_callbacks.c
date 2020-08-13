@@ -96,7 +96,7 @@ cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json) 
 }
 
 cJSON* wm_agent_upgrade_update_status_success_callback(int *error, cJSON* input_json) {
-    cJSON *agent_json = cJSON_GetObjectItem(input_json, "agent");
+    cJSON *agent_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_AGENT_ID]);
 
     if (wm_agent_upgrade_validate_task_status_message(input_json, NULL) && agent_json) {
         // If status update is successful, tell agent to erase results file
