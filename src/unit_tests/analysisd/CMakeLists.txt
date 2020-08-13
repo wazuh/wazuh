@@ -49,7 +49,9 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap
                              -Wl,--wrap,OSHash_Free -Wl,--wrap,os_remove_rules_list -Wl,--wrap,os_remove_decoders_list \
                              -Wl,--wrap,os_remove_cdblist -Wl,--wrap,os_remove_cdbrules -Wl,--wrap,os_remove_eventlist \
                              -Wl,--wrap,sleep -Wl,--wrap,OSHash_Begin -Wl,--wrap,time -Wl,--wrap,difftime -Wl,--wrap,OSHash_Next \
-                             -Wl,--wrap,FOREVER")
+                             -Wl,--wrap,FOREVER -Wl,--wrap,OS_CreateEventList -Wl,--wrap,ReadDecodeXML -Wl,--wrap,Lists_OP_LoadList \
+                             -Wl,--wrap,Lists_OP_MakeAll -Wl,--wrap,Rules_OP_ReadRules -Wl,--wrap,OS_ListLoadRules \
+                             -Wl,--wrap,_setlevels -Wl,--wrap,AddHash_Rule -Wl,--wrap,Accumulate_Init")
 
 LIST(APPEND analysisd_names "test_logtest-config")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 -Wl,--wrap,get_nproc -Wl,--wrap,cJSON_CreateObject \

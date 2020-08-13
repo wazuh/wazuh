@@ -169,6 +169,43 @@ OSHashNode *__wrap_OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *
     return mock_type(OSHashNode *);
 }
 
+void __wrap_OS_CreateEventList(int maxsize, EventList *list) {
+    return;
+}
+
+int __wrap_ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn, 
+                         OSDecoderNode **decoderlist_nopn, OSList* log_msg) {
+    return mock_type(int);
+}
+
+int __wrap_Lists_OP_LoadList(char * files, ListNode ** cdblistnode) {
+    return mock_type(int);
+}
+
+void __wrap_Lists_OP_MakeAll(int force, int show_message, ListNode **lnode) {
+    return;
+}
+
+int __wrap_Rules_OP_ReadRules(char * file, RuleNode ** rule_list, ListNode ** cbd , EventList ** evet , OSList * msg) {
+    return mock_type(int);
+}
+
+void __wrap_OS_ListLoadRules(ListNode **l_node, ListRule **lrule) {
+    return;
+}
+
+int __wrap__setlevels(RuleNode *node, int nnode) {
+    return mock_type(int);
+}
+
+int __wrap_AddHash_Rule(RuleNode *node) {
+    return mock_type(int);
+}
+
+int __wrap_Accumulate_Init(OSHash **acm_store, int *acm_lookups, time_t *acm_purge_ts) {
+    return mock_type(int);
+}
+
 /* tests */
 
 /* w_logtest_init_parameters */
@@ -492,6 +529,266 @@ void test_w_logtest_check_inactive_sessions_remove(void **state)
 
 }
 
+/* w_logtest_initialize_session */
+void test_w_logtest_initialize_session_error_decoders(void ** state) {
+
+    char * token = "test";
+    OSList * msg = (OSList *) 1;
+    w_logtest_session_t * session;
+
+    char * decoder_file = "test.xml";
+    Config.decoders = calloc(2, sizeof(char *));
+    Config.decoders[0] = decoder_file;
+
+    will_return(__wrap_time, 0);
+    will_return(__wrap_ReadDecodeXML, 0);
+
+    session = w_logtest_initialize_session(token, msg);
+
+    assert_null(session);
+    
+    os_free(Config.decoders);
+
+}
+
+void test_w_logtest_initialize_session_error_cbd_list(void ** state) {
+
+    char * token = "test";
+    OSList * msg = (OSList *) 1;
+    w_logtest_session_t * session;
+    
+    char * decoder_file = "test.xml";
+    Config.decoders = calloc(2, sizeof(char *));
+    Config.decoders[0] = decoder_file;
+
+    char * cbd_file = "test.xml";
+    Config.lists = calloc(2, sizeof(char *));
+    Config.lists[0] = cbd_file;
+
+    will_return(__wrap_time, 0);
+    will_return(__wrap_ReadDecodeXML, 1);
+    will_return(__wrap_Lists_OP_LoadList, -1);
+
+    session = w_logtest_initialize_session(token, msg);
+
+    assert_null(session);
+    
+    os_free(Config.decoders);
+    os_free(Config.lists);
+
+}
+
+void test_w_logtest_initialize_session_error_rules(void ** state) {
+
+    char * token = "test";
+    OSList * msg = (OSList *) 1;
+    w_logtest_session_t * session;
+    
+    char * decoder_file = "test.xml";
+    Config.decoders = calloc(2, sizeof(char *));
+    Config.decoders[0] = decoder_file;
+
+    char * cbd_file = "test.xml";
+    Config.lists = calloc(2, sizeof(char *));
+    Config.lists[0] = cbd_file;
+
+    char * include_file = "test.xml";
+    Config.includes = calloc(2, sizeof(char *));
+    Config.includes[0] = include_file;
+
+    will_return(__wrap_time, 0);
+    will_return(__wrap_ReadDecodeXML, 1);
+    will_return(__wrap_Lists_OP_LoadList, 0);
+    will_return(__wrap_Rules_OP_ReadRules, -1);
+
+    session = w_logtest_initialize_session(token, msg);
+
+    assert_null(session);
+
+
+    os_free(Config.includes);
+    os_free(Config.decoders);
+    os_free(Config.lists);
+
+}
+
+void test_w_logtest_initialize_session_error_hash_rules(void ** state) {
+
+    char * token = "test";
+    OSList * msg = (OSList *) 1;
+    w_logtest_session_t * session;
+
+    char * decoder_file = "test.xml";
+    Config.decoders = calloc(2, sizeof(char *));
+    Config.decoders[0] = decoder_file;
+
+    char * cbd_file = "test.xml";
+    Config.lists = calloc(2, sizeof(char *));
+    Config.lists[0] = cbd_file;
+
+    char * include_file = "test.xml";
+    Config.includes = calloc(2, sizeof(char *));
+    Config.includes[0] = include_file;
+
+    will_return(__wrap_time, 0);
+    will_return(__wrap_ReadDecodeXML, 1);
+    will_return(__wrap_Lists_OP_LoadList, 0);
+    will_return(__wrap_Rules_OP_ReadRules, 0);
+    will_return(__wrap__setlevels, 0);
+    will_return(__wrap_OSHash_Create, 0);
+
+    session = w_logtest_initialize_session(token, msg);
+
+    assert_null(session);
+
+    os_free(Config.includes);
+    os_free(Config.decoders);
+    os_free(Config.lists);
+}
+
+void test_w_logtest_initialize_session_error_fts_init(void ** state) {
+
+    char * token = "test";
+    OSList * msg = (OSList *) 1;
+    w_logtest_session_t * session;
+
+    char * decoder_file = "test.xml";
+    Config.decoders = calloc(2, sizeof(char *));
+    Config.decoders[0] = decoder_file;
+
+    char * cbd_file = "test.xml";
+    Config.lists = calloc(2, sizeof(char *));
+    Config.lists[0] = cbd_file;
+
+    char * include_file = "test.xml";
+    Config.includes = calloc(2, sizeof(char *));
+    Config.includes[0] = include_file;
+
+    will_return(__wrap_time, 0);
+    will_return(__wrap_ReadDecodeXML, 1);
+    will_return(__wrap_Lists_OP_LoadList, 0);
+    will_return(__wrap_Rules_OP_ReadRules, 0);
+    will_return(__wrap__setlevels, 0);
+    will_return(__wrap_OSHash_Create, 1);
+    will_return(__wrap_AddHash_Rule, 0);
+
+    /* FTS init fail */
+    OSList * fts_list;
+    OSHash * fts_store;
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_OSList_Create, NULL);
+    expect_string(__wrap__merror, formatted_msg, "(1290): Unable to create a new list (calloc).");
+
+    session = w_logtest_initialize_session(token, msg);
+
+    assert_null(session);
+
+    os_free(Config.includes);
+    os_free(Config.decoders);
+    os_free(Config.lists);
+
+}
+
+void test_w_logtest_initialize_session_error_accumulate_init(void ** state) {
+
+    char * token = "test";
+    OSList * msg = (OSList *) 1;
+    w_logtest_session_t * session;
+
+    char * decoder_file = "test.xml";
+    Config.decoders = calloc(2, sizeof(char *));
+    Config.decoders[0] = decoder_file;
+
+    char * cbd_file = "test.xml";
+    Config.lists = calloc(2, sizeof(char *));
+    Config.lists[0] = cbd_file;
+
+    char * include_file = "test.xml";
+    Config.includes = calloc(2, sizeof(char *));
+    Config.includes[0] = include_file;
+
+    will_return(__wrap_time, 0);
+    will_return(__wrap_ReadDecodeXML, 1);
+    will_return(__wrap_Lists_OP_LoadList, 0);
+    will_return(__wrap_Rules_OP_ReadRules, 0);
+    will_return(__wrap__setlevels, 0);
+    will_return(__wrap_OSHash_Create, 1);
+    will_return(__wrap_AddHash_Rule, 0);
+
+    /* FTS init success */
+    OSList *fts_list;
+    OSHash *fts_store;
+    OSList *list = (OSList *) 1;
+    OSHash *hash = (OSHash *) 1;
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_OSList_Create, list);
+    will_return(__wrap_OSList_SetMaxSize, 1);
+    will_return(__wrap_OSHash_Create, hash);
+    expect_value(__wrap_OSHash_setSize, new_size, 2048);
+    will_return(__wrap_OSHash_setSize, 1);
+
+    will_return(__wrap_Accumulate_Init, 0);
+
+    session = w_logtest_initialize_session(token, msg);
+
+    assert_null(session);
+
+    os_free(Config.includes);
+    os_free(Config.decoders);
+    os_free(Config.lists);
+
+}
+
+void test_w_logtest_initialize_session_success(void ** state) {
+
+    char * token = "test";
+    OSList * msg = (OSList *) 1;
+    w_logtest_session_t * session;
+
+    char * decoder_file = "test.xml";
+    Config.decoders = calloc(2, sizeof(char *));
+    Config.decoders[0] = decoder_file;
+
+    char * cbd_file = "test.xml";
+    Config.lists = calloc(2, sizeof(char *));
+    Config.lists[0] = cbd_file;
+
+    char * include_file = "test.xml";
+    Config.includes = calloc(2, sizeof(char *));
+    Config.includes[0] = include_file;
+
+    will_return(__wrap_time, 0);
+    will_return(__wrap_ReadDecodeXML, 1);
+    will_return(__wrap_Lists_OP_LoadList, 0);
+    will_return(__wrap_Rules_OP_ReadRules, 0);
+    will_return(__wrap__setlevels, 0);
+    will_return(__wrap_OSHash_Create, 1);
+    will_return(__wrap_AddHash_Rule, 0);
+
+    /* FTS init success */
+    OSList *fts_list;
+    OSHash *fts_store;
+    OSList *list = (OSList *) 1;
+    OSHash *hash = (OSHash *) 1;
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_OSList_Create, list);
+    will_return(__wrap_OSList_SetMaxSize, 1);
+    will_return(__wrap_OSHash_Create, hash);
+    expect_value(__wrap_OSHash_setSize, new_size, 2048);
+    will_return(__wrap_OSHash_setSize, 1);
+
+    will_return(__wrap_Accumulate_Init, 1);
+    
+    session = w_logtest_initialize_session(token, msg);
+
+    assert_non_null(session);
+
+    os_free(Config.includes);
+    os_free(Config.decoders);
+    os_free(Config.lists);
+
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -514,7 +811,15 @@ int main(void)
         cmocka_unit_test(test_w_logtest_remove_session_OK),
         // Tests w_logtest_check_inactive_sessions
         cmocka_unit_test(test_w_logtest_check_inactive_sessions_no_remove),
-        cmocka_unit_test(test_w_logtest_check_inactive_sessions_remove)
+        cmocka_unit_test(test_w_logtest_check_inactive_sessions_remove),
+        // w_logtest_initialize_session
+        cmocka_unit_test(test_w_logtest_initialize_session_error_decoders),
+        cmocka_unit_test(test_w_logtest_initialize_session_error_cbd_list),
+        cmocka_unit_test(test_w_logtest_initialize_session_error_rules),
+        cmocka_unit_test(test_w_logtest_initialize_session_error_hash_rules),
+        cmocka_unit_test(test_w_logtest_initialize_session_error_fts_init),
+        cmocka_unit_test(test_w_logtest_initialize_session_error_accumulate_init),
+        cmocka_unit_test(test_w_logtest_initialize_session_success)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
