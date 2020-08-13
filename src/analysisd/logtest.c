@@ -14,13 +14,11 @@ void *w_logtest_init() {
 
     w_logtest_connection_t connection;
     pthread_t * logtest_threads = NULL;
-    int num_extra_treads;
 
     if (w_logtest_init_parameters() == OS_INVALID) {
         merror(LOGTEST_ERROR_INV_CONF);
         return NULL;
     }
-    num_extra_treads = w_logtest_conf.threads - 1;
 
     if (!w_logtest_conf.enabled) {
         minfo(LOGTEST_DISABLED);
@@ -46,10 +44,12 @@ void *w_logtest_init() {
 
     minfo(LOGTEST_INITIALIZED);
 
-    if (num_extra_treads > 0) {
-        os_malloc(sizeof(pthread_t) * (num_extra_treads), logtest_threads);
+    int num_extra_threads = w_logtest_conf.threads - 1;
 
-        for (int i = 0; i < num_extra_treads; i++) {
+    if (num_extra_threads > 0) {
+        os_calloc(num_extra_threads, sizeof(pthread_t), logtest_threads);
+
+        for (int i = 0; i < num_extra_threads; i++) {
             if(CreateThreadJoinable(logtest_threads + i, w_logtest_clients_handler, &connection)){
                 merror_exit(THREAD_ERROR);
             }
@@ -59,7 +59,7 @@ void *w_logtest_init() {
     w_create_thread(w_logtest_check_inactive_sessions, NULL);
     w_logtest_clients_handler(&connection);
 
-    for (int i = 0; i < num_extra_treads; i++) {
+    for (int i = 0; i < num_extra_threads; i++) {
         pthread_join(logtest_threads[i], NULL);
     }
 
@@ -285,11 +285,14 @@ void *w_logtest_check_inactive_sessions(__attribute__((unused)) void * arg) {
             current_time = time(NULL);
             if (difftime(current_time, session->last_connection) >= w_logtest_conf.session_timeout) {
                 session->expired = true;
-                w_mutex_unlock(&session->mutex);
-                w_logtest_remove_session(token_session);
-            } else {
-                w_mutex_unlock(&session->mutex);
             }
+
+            w_mutex_unlock(&session->mutex);
+
+            if(session->expired){
+                w_logtest_remove_session(token_session);
+            }
+            
 
             hash_node = OSHash_Next(w_logtest_sessions, &inode_it, hash_node);
         }
@@ -345,7 +348,7 @@ bool w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
         char * slice_json;
         char * pos;
 
-        os_malloc(W_LOGTEST_ERROR_JSON_PARSE_NSTR + 1, slice_json);
+        os_calloc(W_LOGTEST_ERROR_JSON_PARSE_NSTR + 1, sizeof(char), slice_json);
         pos = (char *) (jsonErrPtr - W_LOGTEST_ERROR_JSON_PARSE_NSTR / 2 < input_json
                             ? input_json
                             : jsonErrPtr - W_LOGTEST_ERROR_JSON_PARSE_NSTR / 2);
@@ -452,7 +455,7 @@ char * w_logtest_generate_token() {
     char * str_token;
     int32_t int_token;
 
-    os_malloc(W_LOGTEST_TOKEN_LENGH + 1, str_token);
+    os_calloc(W_LOGTEST_TOKEN_LENGH + 1, sizeof(char), str_token);
     randombytes((void *) &int_token, sizeof(int32_t));
     snprintf(str_token, W_LOGTEST_TOKEN_LENGH + 1, "%08x", int_token);
 
