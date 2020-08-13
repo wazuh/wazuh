@@ -15,7 +15,7 @@ discovery.seed_hosts:
 
 ## Certificates creation
 instances:
-- name: "elasticsearch-1"
+- name: "elasticsearch"
   ip:
   - "<elasticsearch_ip-1>"
 - name: "elasticsearch-2"
