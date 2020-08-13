@@ -1796,14 +1796,22 @@ w_message_t * w_msg_queue_pop(w_msg_queue_t * msg){
     return message;
 }
 
+#ifdef WIN32
+DWORD WINAPI w_output_thread(void * args) {
+#else
 void * w_output_thread(void * args){
+#endif
     char *queue_name = args;
     w_message_t *message;
     w_msg_queue_t *msg_queue;
 
     if (msg_queue = OSHash_Get(msg_queues_table, queue_name), !msg_queue) {
         mwarn("Could not found the '%s'.", queue_name);
+    #ifdef WIN32
+        exit(1);
+    #else
         return NULL;
+    #endif
     }
 
     while(1)
@@ -1823,19 +1831,18 @@ void * w_output_thread(void * args){
                 merror("Unable to send message to '%s' (ossec-analysisd might be down). Attempting to reconnect.", DEFAULTQPATH);
                 #endif
 
-                while(1) {
-                    if(logr_queue = StartMQ(DEFAULTQPATH, WRITE), logr_queue >= 0) {
-                        if (SendMSG(logr_queue, message->buffer, message->file, message->queue_mq) == 0) {
-                            minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
-                            break;  //  We sent the message successfully, we can go on.
-                        }
-                    }
+                // Retry to connect infinitely.
+                logr_queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-                    sleep(sleep_time);
+                minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
 
-                    // If we failed, we will wait longer before reattempting to connect
-                    if(sleep_time < 300)
-                        sleep_time += 5;
+                if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) != 0) {
+                    // We reconnected but are still unable to send the message, notify it and go on.
+                    #ifdef CLIENT
+                    merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
+                    #else
+                    merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
+                    #endif
                 }
             }
 
@@ -1864,7 +1871,9 @@ void * w_output_thread(void * args){
         free(message);
     }
 
+#ifndef WIN32
     return NULL;
+#endif
 }
 
 void w_create_output_threads(){
@@ -1882,7 +1891,7 @@ void w_create_output_threads(){
 #else
                 w_create_thread(NULL,
                     0,
-                    (LPTHREAD_START_ROUTINE)w_output_thread,
+                    w_output_thread,
                     curr_node->key,
                     0,
                     NULL);
@@ -1892,7 +1901,11 @@ void w_create_output_threads(){
     }
 }
 
+#ifdef WIN32
+DWORD WINAPI w_input_thread(__attribute__((unused)) void * t_id) {
+#else
 void * w_input_thread(__attribute__((unused)) void * t_id){
+#endif
     logreader *current;
     int i = 0, r = 0, j = -1;
     IT_control f_control = 0;
@@ -2147,7 +2160,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
         }
     }
 
+#ifndef WIN32
     return NULL;
+#endif
 }
 
 void w_create_input_threads(){
@@ -2166,7 +2181,7 @@ void w_create_input_threads(){
 #else
         w_create_thread(NULL,
                      0,
-                     (LPTHREAD_START_ROUTINE)w_input_thread,
+                     w_input_thread,
                      NULL,
                      0,
                      NULL);

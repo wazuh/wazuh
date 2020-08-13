@@ -9,6 +9,8 @@ from aiohttp import web
 import wazuh.ciscat as ciscat
 import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
+from api import configuration
+from api.api_exception import APIError
 from api.encoder import dumps, prettify
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -16,7 +18,7 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 logger = logging.getLogger('wazuh')
 
 
-async def clear_syscheck_database(request, pretty=False, wait_for_complete=False, list_agents='*'):
+async def clear_syscheck_database(request, pretty=False, wait_for_complete=False, list_agents=None):
     """ Clear the syscheck database for all agents.
 
     :param pretty: Show results in human-readable format
@@ -24,6 +26,11 @@ async def clear_syscheck_database(request, pretty=False, wait_for_complete=False
     :param list_agents: List of agent's IDs.
     :return: AllItemsResponseAgentIDs
     """
+    if 'all' in list_agents:
+        list_agents = '*'
+    if not configuration.api_conf['experimental_features']:
+        raise_if_exc(APIError(code=2008))
+
     f_kwargs = {'agent_list': list_agents}
 
     dapi = DistributedAPI(f=syscheck.clear,
@@ -63,6 +70,9 @@ async def get_cis_cat_results(request, pretty=False, wait_for_complete=False, li
     :param score: Filters by final score
     :return: AllItemsResponseCiscatResult
     """
+    if not configuration.api_conf['experimental_features']:
+        raise_if_exc(APIError(code=2008))
+
     f_kwargs = {'agent_list': list_agents,
                 'offset': offset,
                 'limit': limit,
@@ -111,6 +121,9 @@ async def get_hardware_info(request, pretty=False, wait_for_complete=False, list
     :param board_serial: Filters by board_serial
     :return: AllItemsResponseSyscollectorHardware
     """
+    if not configuration.api_conf['experimental_features']:
+        raise_if_exc(APIError(code=2008))
+
     filters = {
         'board_serial': board_serial
         }
@@ -163,6 +176,9 @@ async def get_network_address_info(request, pretty=False, wait_for_complete=Fals
     :param netmask: Filters by netmask
     :return: AllItemsResponseSyscollectorNetwork
     """
+    if not configuration.api_conf['experimental_features']:
+        raise_if_exc(APIError(code=2008))
+
     f_kwargs = {'agent_list': list_agents,
                 'offset': offset,
                 'limit': limit,
@@ -212,6 +228,9 @@ async def get_network_interface_info(request, pretty=False, wait_for_complete=Fa
     :param mtu: Filters by mtu
     :return: AllItemsResponseSyscollectorInterface
     """
+    if not configuration.api_conf['experimental_features']:
+        raise_if_exc(APIError(code=2008))
+
     filters = {
         'adapter': adapter,
         'type': request.query.get('type', None),
@@ -266,6 +285,9 @@ async def get_network_protocol_info(request, pretty=False, wait_for_complete=Fal
     :param dhcp: Filters by dhcp
     :return: AllItemsResponseSyscollectorProtocol
     """
+    if not configuration.api_conf['experimental_features']:
+        raise_if_exc(APIError(code=2008))
+
     f_kwargs = {'agent_list': list_agents,
                 'offset': offset,
                 'limit': limit,
@@ -316,6 +338,9 @@ async def get_os_info(request, pretty=False, wait_for_complete=False, list_agent
     :param release: Filters by release
     :return: AllItemsResponseSyscollectorOS
     """
+    if not configuration.api_conf['experimental_features']:
+        raise_if_exc(APIError(code=2008))
+
     f_kwargs = {'agent_list': list_agents,
                 'offset': offset,
                 'limit': limit,
@@ -365,6 +390,9 @@ async def get_packages_info(request, pretty=False, wait_for_complete=False, list
     :param version: Filters by format
     :return: AllItemsResponseSyscollectorPackages
     """
+    if not configuration.api_conf['experimental_features']:
+        raise_if_exc(APIError(code=2008))
+
     f_kwargs = {'agent_list': list_agents,
                 'offset': offset,
                 'limit': limit,
@@ -416,6 +444,9 @@ async def get_ports_info(request, pretty=False, wait_for_complete=False, list_ag
     :param process: Filters by process
     :return: AllItemsResponseSyscollectorPorts
     """
+    if not configuration.api_conf['experimental_features']:
+        raise_if_exc(APIError(code=2008))
+
     filters = {
         'pid': pid,
         'protocol': protocol,
@@ -483,6 +514,9 @@ async def get_processes_info(request, pretty=False, wait_for_complete=False, lis
     :param suser: Filters by process suser
     :return: AllItemsResponseSyscollectorProcesses
     """
+    if not configuration.api_conf['experimental_features']:
+        raise_if_exc(APIError(code=2008))
+
     f_kwargs = {'agent_list': list_agents,
                 'offset': offset,
                 'limit': limit,
@@ -538,6 +572,8 @@ async def get_hotfixes_info(request, pretty=False, wait_for_complete=False, list
     :param hotfix: Filters by hotfix in Windows agents
     :return:AllItemsResponseSyscollectorHotfixes
     """
+    if not configuration.api_conf['experimental_features']:
+        raise_if_exc(APIError(code=2008))
 
     filters = {'hotfix': hotfix}
 

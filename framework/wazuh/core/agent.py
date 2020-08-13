@@ -21,7 +21,7 @@ from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.database import Connection
-from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.ossec_queue import OssecQueue
 from wazuh.core.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
@@ -97,18 +97,18 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
         selected_fields |= {'id'}
         self._data = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
-                      for key, value in item.items() if key in selected_fields} for item in self._data]
+                       for key, value in item.items() if key in selected_fields} for item in self._data]
 
         self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in self._data]
 
         return super()._format_data_into_dictionary()
 
     def _parse_legacy_filters(self):
-        if 'older_than' in self.legacy_filters:
+        if 'older_than' in self.legacy_filters and self.legacy_filters['older_than'] != '0s':
             if self.legacy_filters['older_than']:
                 self.q = (self.q + ';' if self.q else '') + \
-                          "(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)".format(
-                              self.legacy_filters['older_than'])
+                         "(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)".format(
+                             self.legacy_filters['older_than'])
             del self.legacy_filters['older_than']
         WazuhDBQuery._parse_legacy_filters(self)
 
@@ -135,7 +135,8 @@ class WazuhDBQueryGroup(WazuhDBQuery):
         if min_select_fields is None:
             min_select_fields = {'name'}
         backend = SQLiteBackend(common.database_path_global)
-        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='`group`', sort=sort, search=search, select=select,
+        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='`group`', sort=sort, search=search,
+                              select=select,
                               filters=filters, fields={'name': 'name'},
                               default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               backend=backend, min_select_fields=min_select_fields, count=count, get_data=get_data)
@@ -232,12 +233,12 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
     def __init__(self, group_id, query='', *args, **kwargs):
         self.group_id = group_id
-        query = 'group={}'.format(group_id) + (';'+query if query else '')
+        query = 'group={}'.format(group_id) + (';' + query if query else '')
         WazuhDBQueryAgents.__init__(self, query=query, *args, **kwargs)
 
     def _default_query(self):
         return "SELECT {0} FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent" if self.group_id != "null" \
-                                                                                  else "SELECT {0} FROM agent a"
+            else "SELECT {0} FROM agent a"
 
     def _default_count_query(self):
         return 'COUNT(DISTINCT a.id)'
@@ -312,7 +313,7 @@ class Agent:
         try:
             data = db_query.run()['items'][0]
         except IndexError:
-            raise WazuhError(1701)
+            raise WazuhResourceNotFound(1701)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
@@ -354,7 +355,7 @@ class Agent:
         # Check if agent has active-response enabled
         agent_conf = self.getconfig('com', 'active-response')
         if agent_conf['active-response']['disabled'] == 'yes':
-            raise WazuhException(1750)
+            raise WazuhError(1750)
 
         return send_restart_command(self.id)
 
@@ -799,7 +800,7 @@ class Agent:
                 raise WazuhError(1703)
 
             if not Agent.group_exists(group_id):
-                raise WazuhError(1710)
+                raise WazuhResourceNotFound(1710)
 
         # Get agent's group
         group_path = path.join(common.groups_path, agent_id)
@@ -861,7 +862,6 @@ class Agent:
 
         return remove_agent
 
-
     @staticmethod
     def group_exists(group_id):
         """Checks if the group exists
@@ -877,7 +877,6 @@ class Agent:
             return True
         else:
             return False
-
 
     @staticmethod
     def get_agents_group_file(agent_id):
@@ -903,7 +902,6 @@ class Agent:
                 chmod(agent_group_path, 0o660)
         except Exception as e:
             raise WazuhInternalError(1005, extra_message=str(e))
-
 
     @staticmethod
     def check_multigroup_limit(agent_id):
@@ -938,7 +936,7 @@ class Agent:
                 raise WazuhError(1703)
 
             if not Agent.group_exists(group_id):
-                raise WazuhError(1710)
+                raise WazuhResourceNotFound(1710)
 
         # Get agent's group
         group_name = Agent.get_agents_group_file(agent_id)
@@ -1150,7 +1148,7 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhException(1715, data.replace("err ", ""))
+            raise WazuhInternalError(1715, data.replace("err ", ""))
 
         # Open file on agent
         s = OssecSocket(common.REQUEST_SOCKET)
@@ -1438,7 +1436,7 @@ class Agent:
                 data = s.receive().decode()
                 s.close()
                 if not data.startswith('ok'):
-                    raise WazuhException(1715, data.replace("err ", ""))
+                    raise WazuhInternalError(1715, data.replace("err ", ""))
                 bytes_read = file.read(chunk_size)
                 file_sha1.update(bytes_read)
                 if show_progress:
@@ -1482,7 +1480,8 @@ class Agent:
         else:
             raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
 
-    def upgrade_custom(self, file_path, installer=None, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1):
+    def upgrade_custom(self, file_path, installer=None, debug=False, show_progress=None, chunk_size=None,
+                       rl_timeout=-1):
         """
         Upgrade agent using a custom WPK file.
         """
@@ -1493,7 +1492,7 @@ class Agent:
 
         # Check if agent is active.
         if self.status.lower() != 'active':
-            raise WazuhException(1720)
+            raise WazuhError(1720)
 
         # Send file to agent
         sending_result = self._send_custom_wpk_file(file_path, debug, show_progress, chunk_size, rl_timeout)

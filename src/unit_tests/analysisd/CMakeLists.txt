@@ -1,6 +1,9 @@
 # Generate analysisd library
 file(GLOB analysisd_files
     ${SRC_FOLDER}/analysisd/*.o
+    ${SRC_FOLDER}/analysisd/alerts/*.o
+    ${SRC_FOLDER}/analysisd/output/*.o
+    ${SRC_FOLDER}/analysisd/format/*.o
     ${SRC_FOLDER}/analysisd/cdb/*.o
     ${SRC_FOLDER}/analysisd/decoders/*.o
     ${SRC_FOLDER}/analysisd/decoders/plugins/*.o
@@ -42,11 +45,30 @@ LIST(APPEND analysisd_names "test_logtest")
 LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OSHash_Create \
                              -Wl,--wrap,pthread_mutex_init -Wl,--wrap,_minfo -Wl,--wrap,_w_mutex_init -Wl,--wrap,w_create_thread \
                              -Wl,--wrap,mutex_destroy -Wl,--wrap,close -Wl,--wrap,getDefine_Int -Wl,--wrap,OSList_Create \
-                             -Wl,--wrap,OSList_SetMaxSize -Wl,--wrap,OSHash_setSize")
+                             -Wl,--wrap,OSList_SetMaxSize -Wl,--wrap,OSHash_setSize -Wl,--wrap,OSHash_Delete_ex \
+                             -Wl,--wrap,OSHash_Free -Wl,--wrap,os_remove_rules_list -Wl,--wrap,os_remove_decoders_list \
+                             -Wl,--wrap,os_remove_cdblist -Wl,--wrap,os_remove_cdbrules -Wl,--wrap,os_remove_eventlist \
+                             -Wl,--wrap,sleep -Wl,--wrap,OSHash_Begin -Wl,--wrap,time -Wl,--wrap,difftime -Wl,--wrap,OSHash_Next \
+                             -Wl,--wrap,FOREVER")
 
 LIST(APPEND analysisd_names "test_logtest-config")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 -Wl,--wrap,get_nproc -Wl,--wrap,cJSON_CreateObject \
                              -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddNumberToObject -Wl,--wrap,cJSON_AddItemToObject")
+
+LIST(APPEND analysisd_names "test_decoder_list")
+LIST(APPEND analysisd_flags "-Wl,--wrap,FreeDecoderInfo")
+
+LIST(APPEND analysisd_names "test_decode-xml")
+LIST(APPEND analysisd_flags "")
+
+LIST(APPEND analysisd_names "test_lists_list")
+LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern")
+
+LIST(APPEND analysisd_names "test_rule_list")
+LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,os_remove_cdbrules")
+
+LIST(APPEND analysisd_names "test_eventinfo_list")
+LIST(APPEND analysisd_flags "-Wl,--wrap,Free_Eventinfo")
 
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")

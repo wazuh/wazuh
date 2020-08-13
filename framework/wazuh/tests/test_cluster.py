@@ -3,6 +3,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from wazuh.core import common
+
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
@@ -16,7 +18,7 @@ with patch('wazuh.common.ossec_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh import cluster
-        from wazuh.core.exception import WazuhError
+        from wazuh.core.exception import WazuhError, WazuhResourceNotFound
         from wazuh.core.cluster.local_client import LocalClient
 
 default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
@@ -64,6 +66,7 @@ def test_get_status_json():
 @patch('wazuh.core.cluster.local_client.LocalClient.start', side_effect=None)
 async def test_get_health_nodes(mock_unix_connection):
     """Verify that get_health_nodes returns the health of all nodes."""
+
     async def async_mock(lc=None, filter_node=None):
         return {'nodes': {'manager': {'info': {'name': 'master'}}}}
 
@@ -78,12 +81,17 @@ async def test_get_health_nodes(mock_unix_connection):
 @pytest.mark.asyncio
 async def test_get_nodes_info():
     """Verify that get_nodes_info returns the information of all nodes."""
-    async def async_mock(lc=None, filter_node=None):
+
+    async def valid_node(lc=None, filter_node=None):
         return {'items': ['master', 'worker1'], 'totalItems': 2}
 
     local_client = LocalClient()
-    with patch('wazuh.cluster.get_nodes', side_effect=async_mock):
-        result = await cluster.get_nodes_info(lc=local_client)
-    expected = await async_mock()
+    common.cluster_nodes.set(['master', 'worker1', 'worker2'])
+    with patch('wazuh.cluster.get_nodes', side_effect=valid_node):
+        result = await cluster.get_nodes_info(lc=local_client, filter_node=['master', 'worker1', 'noexists'])
+    expected = await valid_node()
 
     assert result.affected_items == expected['items']
+    assert result.total_affected_items == expected['totalItems']
+    assert result.failed_items[WazuhResourceNotFound(1730)] == {'noexists'}
+    assert result.total_failed_items == 1

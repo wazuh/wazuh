@@ -292,7 +292,7 @@ def test_WazuhDBQueryAgents_parse_legacy_filters(mock_socket_conn, mock_isfile, 
 @pytest.mark.parametrize('field_name, field_filter, q_filter', [
     ('group', 'field', {'value': '1', 'operator': 'LIKE'}),
     ('group', 'test', {'value': '1', 'operator': 'LIKE'}),
-    ('os.name', 'field', {'value': '1', 'operator': 'LIKE'}),
+    ('os.name', 'field', {'value': '1', 'operator': 'LIKE', 'field': 'status$0'}),
 ])
 @patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
@@ -573,7 +573,7 @@ def test_agent_load_info_from_db_ko():
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
 
-        with pytest.raises(WazuhError, match='.* 1701 .*'):
+        with pytest.raises(WazuhResourceNotFound, match='.* 1701 .*'):
             agent = Agent(id=11250)
             agent.load_info_from_db()
 
@@ -818,65 +818,6 @@ def test_agent_remove_manual(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, sa
                 backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any')
             makedirs_mock.assert_called_once_with(backup_path)
             chmod_r_mock.assert_called_once_with(backup_path, 0o750)
-
-
-@pytest.mark.parametrize('agent_id, expected_exception', [
-    ('001', 1746),
-    ('006', 1701),
-    ('001', 1600),
-    ('001', 1748),
-    ('001', 1747)
-])
-@patch('wazuh.core.agent.WazuhDBBackend.connect_to_db')
-@patch('wazuh.core.agent.remove')
-@patch('wazuh.core.agent.rmtree')
-@patch('wazuh.core.agent.chown')
-@patch('wazuh.core.agent.chmod')
-@patch('wazuh.core.agent.stat')
-@patch('wazuh.core.agent.glob')
-@patch("wazuh.common.client_keys", new=os.path.join(test_data_path, 'etc', 'client.keys'))
-@patch('wazuh.core.agent.path.exists', side_effect=lambda x: not (common.backup_path in x))
-@patch('wazuh.core.database.isfile', return_value=True)
-@patch('wazuh.core.agent.path.isdir', return_value=True)
-@patch('wazuh.core.agent.safe_move')
-@patch('wazuh.core.agent.makedirs')
-@patch('wazuh.core.agent.chmod_r')
-@freeze_time('1975-01-01')
-@patch("wazuh.common.ossec_uid", return_value=getpwnam("root"))
-@patch("wazuh.common.ossec_gid", return_value=getgrnam("root"))
-@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path,  'global.db'))
-def test_agent_remove_manual_ko(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, safe_move_mock, isdir_mock,
-                                isfile_mock,   exists_mock, glob_mock, stat_mock, chmod_mock, chown_mock, rmtree_mock,
-                                remove_mock, wdb_mock, agent_id, expected_exception):
-    """Test the _remove_manual function error cases.
-
-    Parameters
-    ----------
-    agent_id : str
-        Id of the agent to be searched.
-    expected_exception : int
-        Error code that is expected.
-    """
-    client_keys_text = '\n'.join([f'{str(row["id"]).zfill(3) if expected_exception != 1701 else "100"} '
-                                  f'{row["name"]} '
-                                  f'{row["register_ip"]} '
-                                  f'{row["internal_key"] + "" if expected_exception != 1746 else " random"}' for row in
-                                  test_data.global_db.execute(
-                                      'select id, name, register_ip, internal_key from agent where id > 0')])
-
-    glob_mock.return_value = ['/var/db/global.db'] if expected_exception != 1600 else []
-    rmtree_mock.side_effect = Exception("Boom!")
-
-    with patch('wazuh.core.agent.open', mock_open(read_data=client_keys_text)) as m:
-        with patch('sqlite3.connect') as mock_db:
-            mock_db.return_value = test_data.global_db
-            if expected_exception == 1747:
-                mock_db.return_value.execute("drop table belongs")
-            with pytest.raises(WazuhException, match=f".* {expected_exception} .*"):
-                Agent(agent_id)._remove_manual()
-
-    if expected_exception == 1746:
-        remove_mock.assert_any_call('{0}/etc/client.keys.tmp'.format(test_data_path))
 
 
 @pytest.mark.parametrize("authd_status", [
@@ -1170,13 +1111,13 @@ def test_agent_get_agents_overview_default():
     ({'id', 'dateAdd'}, 'all', None, 0),
     ({'id', 'ip', 'registerIP'}, 'all', None, 1),
     ({'id', 'registerIP'}, 'all', None, 1),
-    ({'id', 'ip', 'lastKeepAlive'}, 'active,pending', None, 0),
+    ({'id', 'ip', 'lastKeepAlive'}, 'active', None, 0),
     ({'id', 'ip', 'lastKeepAlive'}, 'disconnected', None, 1),
     ({'id', 'ip', 'lastKeepAlive'}, 'disconnected', '1s', 1),
     ({'id', 'ip', 'lastKeepAlive'}, 'disconnected', '2h', 0),
     ({'id', 'ip', 'lastKeepAlive'}, 'all', '15m', 2),
     ({'id', 'ip', 'lastKeepAlive'}, 'active', '15m', 0),
-    ({'id', 'ip', 'lastKeepAlive'}, 'active,pending', '15m', 1),
+    ({'id', 'ip', 'lastKeepAlive'}, 'pending', '15m', 1),
     ({'id', 'ip', 'lastKeepAlive'}, ['active', 'pending'], '15m', 1)
 ])
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path,  'global.db'))
@@ -1255,7 +1196,7 @@ def test_agent_get_agents_overview_query(query, totalItems):
 @pytest.mark.parametrize("status, older_than, totalItems, exception", [
     ('active', '9m', 4, None),
     ('all', '1s', 8, None),
-    ('pending,never_connected', '30m', 1, None),
+    ('never_connected', '30m', 1, None),
     (55, '30m', 0, 1729)
 ])
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path,  'global.db'))
@@ -1374,7 +1315,7 @@ def test_agent_add_group_to_agent_ko():
             Agent.add_group_to_agent('test_group', '000')
 
         # Group does not exists
-        with pytest.raises(WazuhError, match='.* 1710 .*'):
+        with pytest.raises(WazuhResourceNotFound, match='.* 1710 .*'):
             Agent.add_group_to_agent('test_group', '002')
 
         with patch('os.path.exists', return_value=True):
@@ -1591,7 +1532,7 @@ def test_agent_unset_single_group_agent_ko():
             Agent.unset_single_group_agent('000', 'test_group')
 
         # Group does not exists
-        with pytest.raises(WazuhError, match='.* 1710 .*'):
+        with pytest.raises(WazuhResourceNotFound, match='.* 1710 .*'):
             Agent.unset_single_group_agent('002', 'test_group')
 
         with patch('os.path.exists', return_value=True):
@@ -2294,3 +2235,109 @@ def test_send_restart_command(mock_ossec_queue):
     """Test that restart_command calls send_msg_to_agent with correct params"""
     send_restart_command('001')
     mock_ossec_queue.return_value.send_msg_to_agent.assert_called_once_with(ANY, '001')
+
+
+@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path,  'global.db'))
+def test_get_agents_info():
+    """Test that get_agents_info() returns expected agent IDs"""
+    expected_result = {'005', '003', '008', '000', '004', '001', '006', '002', '007'}
+
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+
+        result = get_agents_info()
+        assert result == expected_result
+
+
+@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path,  'global.db'))
+def test_get_groups():
+    """Test that get_groups() returns expected agent groups"""
+    expected_result = {'group-1', 'group-2'}
+
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+
+        result = get_groups()
+        assert result == expected_result
+
+
+@pytest.mark.parametrize('group, expected_agents', [
+    ('group-1', {'000'}),
+    ('group-2', {'001'}),
+    ('*', {'006', '008', '000', '002', '005', '007', '001'})
+])
+@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path,  'global.db'))
+def test_expand_group(group, expected_agents):
+    """Test that expand_group() returns expected agent IDs
+
+    Parameters
+    ----------
+    group : str
+        Name of the group to be expanded
+    expected_agents : set
+        Expected agent IDs for the selected group
+    """
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+
+        result = expand_group(group)
+        assert result == expected_agents
+
+
+@pytest.mark.parametrize('agent_id, expected_exception', [
+    ('001', 1746),
+    ('006', 1701),
+    ('001', 1600),
+    ('001', 1748),
+    ('001', 1747)
+])
+@patch('wazuh.core.agent.WazuhDBBackend.connect_to_db')
+@patch('wazuh.core.agent.remove')
+@patch('wazuh.core.agent.rmtree')
+@patch('wazuh.core.agent.chown')
+@patch('wazuh.core.agent.chmod')
+@patch('wazuh.core.agent.stat')
+@patch('wazuh.core.agent.glob')
+@patch("wazuh.common.client_keys", new=os.path.join(test_data_path, 'etc', 'client.keys'))
+@patch('wazuh.core.agent.path.exists', side_effect=lambda x: not (common.backup_path in x))
+@patch('wazuh.core.database.isfile', return_value=True)
+@patch('wazuh.core.agent.path.isdir', return_value=True)
+@patch('wazuh.core.agent.safe_move')
+@patch('wazuh.core.agent.makedirs')
+@patch('wazuh.core.agent.chmod_r')
+@freeze_time('1975-01-01')
+@patch("wazuh.common.ossec_uid", return_value=getpwnam("root"))
+@patch("wazuh.common.ossec_gid", return_value=getgrnam("root"))
+@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path,  'global.db'))
+def test_agent_remove_manual_ko(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, safe_move_mock, isdir_mock,
+                                isfile_mock,   exists_mock, glob_mock, stat_mock, chmod_mock, chown_mock, rmtree_mock,
+                                remove_mock, wdb_mock, agent_id, expected_exception):
+    """Test the _remove_manual function error cases.
+
+    Parameters
+    ----------
+    agent_id : str
+        Id of the agent to be searched.
+    expected_exception : int
+        Error code that is expected.
+    """
+    client_keys_text = '\n'.join([f'{str(row["id"]).zfill(3) if expected_exception != 1701 else "100"} '
+                                  f'{row["name"]} '
+                                  f'{row["register_ip"]} '
+                                  f'{row["internal_key"] + "" if expected_exception != 1746 else " random"}' for row in
+                                  test_data.global_db.execute(
+                                      'select id, name, register_ip, internal_key from agent where id > 0')])
+
+    glob_mock.return_value = ['/var/db/global.db'] if expected_exception != 1600 else []
+    rmtree_mock.side_effect = Exception("Boom!")
+
+    with patch('wazuh.core.agent.open', mock_open(read_data=client_keys_text)) as m:
+        with patch('sqlite3.connect') as mock_db:
+            mock_db.return_value = test_data.global_db
+            if expected_exception == 1747:
+                mock_db.return_value.execute("drop table belongs")
+            with pytest.raises(WazuhException, match=f".* {expected_exception} .*"):
+                Agent(agent_id)._remove_manual()
+
+    if expected_exception == 1746:
+        remove_mock.assert_any_call('{0}/etc/client.keys.tmp'.format(test_data_path))

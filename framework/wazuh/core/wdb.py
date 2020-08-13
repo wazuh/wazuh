@@ -169,13 +169,16 @@ class WazuhDBConnection:
                 raise WazuhError(2004, "Update query is wrong")
             return self._send(query_lower)
 
+        # Remove text inside 'where' clause to prevent finding reserved words (offset/count)
+        query_without_where = re.sub(r'where \(.*\)', 'where ()', query_lower)
+
         # if the query has already a parameter limit / offset, divide using it
         offset = 0
-        if 'offset' in query_lower:
+        if 'offset' in query_without_where:
             offset = int(re.compile(r".* offset (\d+)").match(query_lower).group(1))
             query_lower = query_lower.replace(" offset {}".format(offset), "")
 
-        if 'count' not in query_lower:
+        if not re.search(r'.?count\(.*\).?', query_without_where):
             lim = 0
             if 'limit' in query_lower:
                 lim = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))

@@ -264,6 +264,7 @@ void w_logtest_remove_session(char *token) {
 
 
 void *w_logtest_check_inactive_sessions(__attribute__((unused)) void * arg) {
+
     OSHashNode *hash_node;
     unsigned int inode_it = 0;
     time_t current_time;
@@ -298,6 +299,8 @@ void *w_logtest_check_inactive_sessions(__attribute__((unused)) void * arg) {
         }
 
     }
+
+    return NULL;
 
 }
 

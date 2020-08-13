@@ -193,7 +193,7 @@ int main(int argc, char **argv)
     }
 
     /* Start exec queue */
-    if ((m_queue = StartMQ(EXECQUEUEPATH, READ)) < 0) {
+    if ((m_queue = StartMQ(EXECQUEUEPATH, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
     }
 
@@ -409,7 +409,7 @@ static void ExecdStart(int q)
             int rc;
             /* Start api socket */
             int api_sock;
-            if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE)) < 0) {
+            if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE, 1)) < 0) {
                 merror(QUEUE_ERROR, EXECQUEUEPATHAPI, strerror(errno));
                 os_free(output);
                 continue;
