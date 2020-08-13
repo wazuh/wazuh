@@ -51,19 +51,16 @@ class UpdateUserModel(CreateUserModel):
 
 class RoleModel(Body):
     """Security role model."""
-    def __init__(self, name: str = None, rule: dict = None):
+    def __init__(self, name: str = None):
         self.swagger_types = {
-            'name': str,
-            'rule': dict,
+            'name': str
         }
 
         self.attribute_map = {
-            'name': 'name',
-            'rule': 'rule'
+            'name': 'name'
         }
 
         self._name = name
-        self._rule = rule
 
     @property
     def name(self):
@@ -72,6 +69,20 @@ class RoleModel(Body):
     @name.setter
     def name(self, name):
         self._name = name
+
+
+class RuleModel(Body):
+    """Security rule model."""
+    def __init__(self, rule: dict = None):
+        self.swagger_types = {
+            'rule': dict
+        }
+
+        self.attribute_map = {
+            'rule': 'rule'
+        }
+
+        self._rule = rule
 
     @property
     def rule(self):
