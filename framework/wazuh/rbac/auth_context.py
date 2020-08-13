@@ -47,17 +47,23 @@ class RBAChecker:
             with orm.RolesManager() as rm:
                 self.roles_list = rm.get_roles()
                 for role in self.roles_list:
-                    role.rule = json.loads(role.rule)
+                    with orm.RolesRulesManager() as rrum:
+                        role.rule = {k: v for rule in rrum.get_all_rules_from_role(role.id)
+                                     for k, v in json.loads(rule.rule).items()}
         else:
             # One single role
             if not isinstance(role, list):
                 self.roles_list = [role]
-                self.roles_list[0].rule = json.loads(role.rule)
+                with orm.RolesRulesManager() as rrum:
+                    role.rule = {k: v for rule in rrum.get_all_rules_from_role(role.id)
+                                 for k, v in json.loads(rule.rule).items()}
             # role is a list of roles
             elif isinstance(role, list):
                 self.roles_list = role
                 for role in self.roles_list:
-                    role.rule = json.loads(role.rule)
+                    with orm.RolesRulesManager() as rrum:
+                        role.rule = {k: v for rule in rrum.get_all_rules_from_role(role.id)
+                                     for k, v in json.loads(rule.rule).items()}
 
     def get_authorization_context(self):
         """Return the authorization context

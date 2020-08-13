@@ -3,7 +3,7 @@ default_rules:
     id: 1
     description: Admin permissions for Elastic administrator.
     rule:
-      MATCH$:
+      FIND$:
         elastic:
           - administrator
 
@@ -11,6 +11,6 @@ default_rules:
     id: 2
     description: OpenDistro permissions for Elastic administrator.
     rule:
-      MATCH$:
+      FIND$:
         admin:
           - administrator
