@@ -113,7 +113,7 @@ void w_logtest_process_log(char *token) {
 }
 
 
-w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* log_msg) {
+w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* list_msg) {
 
     w_logtest_session_t *session;
 
@@ -131,15 +131,19 @@ w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* log_msg) 
     /* Load decoders */
     session->decoderlist_forpname = NULL;
     session->decoderlist_nopname = NULL;
+    session->decoder_store = NULL;
 
     files = Config.decoders;
 
     while (files && *files) {
-        if (!ReadDecodeXML(*files, &session->decoderlist_forpname, &session->decoderlist_nopname, log_msg)) {
+        if (!ReadDecodeXML(*files, &session->decoderlist_forpname,
+            &session->decoderlist_nopname, &session->decoder_store, list_msg)) {
             return NULL;
         }
         files++;
     }
+
+    SetDecodeXML(list_msg, &session->decoder_store, &session->decoderlist_nopname, &session->decoderlist_forpname);
 
     /* Load CDB list */
     session->cdblistnode = NULL;
@@ -163,7 +167,7 @@ w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* log_msg) 
 
     while (files && *files) {
         if (Rules_OP_ReadRules(*files, &session->rule_list, &session->cdblistnode, 
-                            &session->eventlist, log_msg) < 0) {
+                            &session->eventlist, &session->decoder_store, list_msg) < 0) {
             return NULL;
         }
         files++;
@@ -209,8 +213,9 @@ void w_logtest_remove_session(char *token) {
     os_remove_rules_list(session->rule_list);
     OSHash_Free(session->g_rules_hash);
 
-    /* Remove decoder list */
+    /* Remove decoder lists */
     os_remove_decoders_list(session->decoderlist_forpname, session->decoderlist_nopname);
+    OSStore_Free(session->decoder_store);
 
     /* Remove cdblistnode and cdblistrule */
     os_remove_cdblist(&session->cdblistnode);

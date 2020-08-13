@@ -31,33 +31,46 @@
  */
 static char *_loadmemory(char *at, char* str, OSList* log_msg);
 
-static int addDecoder2list(const char *name);
-static int os_setdecoderids(const char *p_name);
+/**
+ * @brief Save internal decoder 'name' in 'decoder_store' list
+ * @param name name of internal decoder
+ * @param decoder_store Decoder list which save the internals decoder
+ * @return 1 on success, otherwise return 0
+ */
+static int addDecoder2list(const char *name, OSStore **decoder_store);
+
+/**
+ * @brief Set decoders ids
+ * @param decoderlist xml decoder list
+ * @param decoder_store all decoder list
+ * @return 1 on success, otherwise return 0
+ */
+static int os_setdecoderids(OSDecoderNode **decoderlist, OSStore **decoder_list);
+
 static int ReadDecodeAttrs(char *const *names, char *const *values);
-static OSStore *os_decoder_store = NULL;
 
 
-int getDecoderfromlist(const char *name)
-{
-    if (os_decoder_store) {
-        return (OSStore_GetPosition(os_decoder_store, name));
+int getDecoderfromlist(const char *name, OSStore **decoder_store) {
+
+    if (*decoder_store) {
+        return (OSStore_GetPosition(*decoder_store, name));
     }
 
     return (0);
 }
 
-static int addDecoder2list(const char *name)
+static int addDecoder2list(const char *name, OSStore **decoder_store)
 {
-    if (os_decoder_store == NULL) {
-        os_decoder_store = OSStore_Create();
-        if (os_decoder_store == NULL) {
+    if (*decoder_store == NULL) {
+        *decoder_store = OSStore_Create();
+        if (*decoder_store == NULL) {
             merror(LIST_ERROR);
             return (0);
         }
     }
 
     /* Store data */
-    if (!OSStore_Put(os_decoder_store, name, NULL)) {
+    if (!OSStore_Put(*decoder_store, name, NULL)) {
         merror(LIST_ADD_ERROR);
         return (0);
     }
@@ -65,16 +78,14 @@ static int addDecoder2list(const char *name)
     return (1);
 }
 
-static int os_setdecoderids(const char *p_name)
+static int os_setdecoderids(OSDecoderNode **decoderlist, OSStore **decoder_list)
 {
     OSDecoderNode *node;
     OSDecoderNode *child_node;
     OSDecoderInfo *nnode;
 
-    node = OS_GetFirstOSDecoder(p_name);
-
-    if (!node) {
-        return (0);
+    if (node = *decoderlist, !node) {
+        return 0;
     }
 
     do {
@@ -82,7 +93,7 @@ static int os_setdecoderids(const char *p_name)
         char *tmp_name;
 
         nnode = node->osdecoder;
-        nnode->id = getDecoderfromlist(nnode->name);
+        nnode->id = getDecoderfromlist(nnode->name, decoder_list);
 
         /* Id cannot be 0 */
         if (nnode->id == 0) {
@@ -104,7 +115,7 @@ static int os_setdecoderids(const char *p_name)
             nnode = child_node->osdecoder;
 
             if (nnode->use_own_name) {
-                nnode->id = getDecoderfromlist(nnode->name);
+                nnode->id = getDecoderfromlist(nnode->name, decoder_list);
             } else {
                 nnode->id = p_id;
 
@@ -157,7 +168,9 @@ static int ReadDecodeAttrs(char *const *names, char *const *values)
     return (AFTER_ERROR | AFTER_ERR_NAME );
 }
 
-int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn, OSDecoderNode **decoderlist_nopn, OSList* log_msg) {
+int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
+                  OSDecoderNode **decoderlist_nopn, OSStore **decoder_list,
+                  OSList* log_msg) {
 
     OS_XML xml;
     XML_NODE node = NULL;
@@ -316,7 +329,7 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn, OSDecoderNod
         }
 
         /* Add decoder */
-        if (!addDecoder2list(pi->name)) {
+        if (!addDecoder2list(pi->name, decoder_list)) {
             merror(MEM_ERROR, errno, strerror(errno));
             goto cleanup;
         }
@@ -804,26 +817,26 @@ cleanup:
     return retval;
 }
 
-int SetDecodeXML(OSList* log_msg)
+int SetDecodeXML(OSList* log_msg, OSStore **decoder_list, OSDecoderNode **decoderlist_npn, OSDecoderNode **decoderlist_pn)
 {
-    /* Add rootcheck decoder to list */
-    addDecoder2list(ROOTCHECK_MOD);
-    addDecoder2list(SYSCHECK_MOD);
-    addDecoder2list(SYSCHECK_NEW);
-    addDecoder2list(SYSCHECK_DEL);
-    addDecoder2list(HOSTINFO_NEW);
-    addDecoder2list(HOSTINFO_MOD);
-    addDecoder2list(SYSCOLLECTOR_MOD);
-    addDecoder2list(CISCAT_MOD);
-    addDecoder2list(WINEVT_MOD);
-    addDecoder2list(SCA_MOD);
+    /* Add internal decoders to list */
+    addDecoder2list(ROOTCHECK_MOD, decoder_list);
+    addDecoder2list(SYSCHECK_MOD, decoder_list);
+    addDecoder2list(SYSCHECK_NEW, decoder_list);
+    addDecoder2list(SYSCHECK_DEL, decoder_list);
+    addDecoder2list(HOSTINFO_NEW, decoder_list);
+    addDecoder2list(HOSTINFO_MOD, decoder_list);
+    addDecoder2list(SYSCOLLECTOR_MOD, decoder_list);
+    addDecoder2list(CISCAT_MOD, decoder_list);
+    addDecoder2list(WINEVT_MOD, decoder_list);
+    addDecoder2list(SCA_MOD, decoder_list);
 
     /* Set ids - for our two lists */
-    if (!os_setdecoderids(NULL)) {
+    if (!os_setdecoderids(decoderlist_npn, decoder_list)) {
         smerror(log_msg, DECODER_ERROR);
         return (0);
     }
-    if (!os_setdecoderids(ARGV0)) {
+    if (!os_setdecoderids(decoderlist_pn, decoder_list)) {
         smerror(log_msg, DECODER_ERROR);
         return (0);
     }
