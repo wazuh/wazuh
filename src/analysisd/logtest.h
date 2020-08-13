@@ -32,6 +32,7 @@ typedef struct w_logtest_session_t {
     RuleNode *rule_list;                    ///< Rule list
     OSDecoderNode *decoderlist_forpname;    ///< Decoder list to match logs which have a program name
     OSDecoderNode *decoderlist_nopname;     ///< Decoder list to match logs which haven't a program name
+    OSStore *decoder_store;                  ///< Decoder list to save internals decoders
     ListNode *cdblistnode;                  ///< List of CDB lists
     ListRule *cdblistrule;                  ///< List to attach rules and CDB lists
     EventList *eventlist;                   ///< Previous events list
@@ -92,7 +93,7 @@ void w_logtest_process_log(char * token);
  * @brief Create resources necessary to service client
  * @param fd File descriptor which represents the client
  */
-w_logtest_session_t *w_logtest_initialize_session(char * token, OSList* log_msg);
+w_logtest_session_t *w_logtest_initialize_session(char * token, OSList* list_msg);
 
 /**
  * @brief Free resources after client closes connection
