@@ -12,7 +12,7 @@ from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
 from api.models.configuration import SecurityConfigurationModel
-from api.models.security import CreateUserModel, UpdateUserModel, RoleModel, PolicyModel
+from api.models.security import CreateUserModel, UpdateUserModel, RoleModel, PolicyModel, RuleModel
 from api.models.token_response import TokenResponseModel
 from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
@@ -386,20 +386,136 @@ async def update_role(request, role_id: int, pretty: bool = False, wait_for_comp
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_rules(request):
-    pass
+async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                    offset: int = 0, limit: int = None, search: str = None, sort: str = None):
+    """
+    Parameters
+    ----------
+    request : connexion.request
+    rule_ids : list, optional
+        List of roles ids to be obtained
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+    offset : int, optional
+        First item to return
+    limit : int, optional
+        Maximum number of items to return
+    search : str, optional
+        Looks for elements with the specified string
+    sort : str, optional
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order
+
+    Returns
+    -------
+    Roles information
+    """
+    f_kwargs = {'rule_ids': rule_ids, 'offset': offset, 'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
+                }
+
+    dapi = DistributedAPI(f=security.get_rules,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def add_rule(request):
-    pass
+async def add_rule(request, pretty: bool = False, wait_for_complete: bool = False):
+    """Add one specified rule.
+
+    Parameters
+    ----------
+    request : request.connexion
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Rule information
+    """
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await RuleModel.get_kwargs(request)
+
+    dapi = DistributedAPI(f=security.add_rule,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def remove_rules(request):
-    pass
+async def update_rule(request, rule_id: int, pretty: bool = False, wait_for_complete: bool = False):
+    """Update the information of one specified rule.
+
+    Parameters
+    ----------
+    request : connexion.request
+    rule_id : int
+        Specific rule id in the system to be updated
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Rule information updated
+    """
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await RuleModel.get_kwargs(request, additional_kwargs={'rule_id': rule_id})
+
+    dapi = DistributedAPI(f=security.update_rule,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def modify_rule(request):
-    pass
+async def remove_rules(request, rule_ids: list = None, pretty: bool = False, wait_for_complete: bool = False):
+    """TODO
+    """
+    if 'all' in rule_ids:
+        rule_ids = None
+    f_kwargs = {'rule_ids': rule_ids}
+
+    dapi = DistributedAPI(f=security.remove_rules,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_policies(request, policy_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
@@ -683,6 +799,76 @@ async def remove_role_policy(request, role_id: int, policy_ids: list, pretty: bo
     f_kwargs = {'role_id': role_id, 'policy_ids': policy_ids}
 
     dapi = DistributedAPI(f=security.remove_role_policy,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def set_role_rule(request, role_id, rule_ids, pretty=False, wait_for_complete=False):
+    """Add a list of rules to one specified role.
+
+    Parameters
+    ----------
+    role_id : int
+        Role ID
+    rule_ids : list of int
+        List of rule IDs
+    pretty : bool
+        Show results in human-readable format
+    wait_for_complete : bool
+        Disable timeout response
+
+    Returns
+    -------
+    dict
+        Role information
+    """
+    f_kwargs = {'role_id': role_id, 'rule_ids': rule_ids}
+
+    dapi = DistributedAPI(f=security.set_role_rule,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def remove_role_rule(request, role_id: int, rule_ids: list, pretty: bool = False,
+                           wait_for_complete: bool = False):
+    """Delete a list of rules of one specified role.
+
+    Parameters
+    ----------
+    request : request.connexion
+    role_id : int
+    policy_ids : list
+        List of policy ids
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Role information
+    """
+    if 'all' in rule_ids:
+        rule_ids = None
+    f_kwargs = {'role_id': role_id, 'rule_ids': rule_ids}
+
+    dapi = DistributedAPI(f=security.remove_role_rule,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
