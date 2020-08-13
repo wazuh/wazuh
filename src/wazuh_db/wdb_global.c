@@ -11,6 +11,30 @@
 
 #include "wdb.h"
 
+// List of agent information fields in global DB
+static const char *global_db_agent_fields[] = { 
+        "config_sum",
+        "ip",
+        "manager_host",
+        "merged_sum",
+        "name",
+        "node_name",
+        "os_arch",
+        "os_build",
+        "os_codename",
+        "os_major",
+        "os_minor",
+        "os_name",
+        "os_platform",
+        "os_uname",
+        "os_version",
+        "version",
+        "last_keepalive",
+        "fim_offset",
+        "reg_offset",
+        NULL
+};
+
 int wdb_global_del_agent_labels(wdb_t *wdb, int id) {
     sqlite3_stmt *stmt = NULL;
 
@@ -81,10 +105,11 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value) {
     }
 }
 
-int wdb_global_update_unsynced_agents(wdb_t *wdb, int id, char** agent_info){
+int wdb_global_update_unsynced_agents(wdb_t *wdb,cJSON * json_agent){
     sqlite3_stmt *stmt = NULL;
-    int i = 0;
-    int result = 0;
+    int n = 0;
+    int agent_id = 0;
+    cJSON *json_field = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
@@ -98,20 +123,38 @@ int wdb_global_update_unsynced_agents(wdb_t *wdb, int id, char** agent_info){
 
     stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_UNSYNCED_AGENTS];
 
-    for(i = 0; agent_info[i]; i++){
-        if(strcmp(agent_info[i],"NULL")){
-            result = sqlite3_bind_text(stmt, i+1, agent_info[i], -1, NULL);
-        } else {
-            result = sqlite3_bind_null(stmt, i+1);
-        }
-
-        if (result != SQLITE_OK) {
-            merror("DB(%s) sqlite3_bind(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-            return OS_INVALID;
+     for (n = 0 ; global_db_agent_fields[n] ; n++){
+        // Every column name of Global DB is stored in global_db_agent_fields 
+        json_field = cJSON_GetObjectItemCaseSensitive(json_agent, global_db_agent_fields[n]);
+        if (cJSON_IsNumber(json_field)){
+            if (sqlite3_bind_int(stmt, n + 1 , json_field->valueint) != SQLITE_OK) {
+                merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                return OS_INVALID;
+            }
+       
+        } else if (cJSON_IsString(json_field) && json_field->valuestring != NULL) {
+            if (sqlite3_bind_text(stmt, n + 1 , json_field->valuestring, -1, NULL) != SQLITE_OK) {
+                merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                return OS_INVALID;
+            }
+        
+        } else{
+            if (sqlite3_bind_null(stmt, n+1) != SQLITE_OK) {
+                merror("DB(%s) sqlite3_bind_null(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                return OS_INVALID;
+            }
         }
     }
 
-    if (sqlite3_bind_int(stmt, i+1, id) != SQLITE_OK) {
+    if (sqlite3_bind_int(stmt, n+1, WDB_SYNCED) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    json_field = cJSON_GetObjectItemCaseSensitive(json_agent, "id");
+    agent_id = cJSON_IsNumber(json_field) ? json_field->valueint : -1; 
+
+    if (sqlite3_bind_int(stmt, n+2, agent_id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }

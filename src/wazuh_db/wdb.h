@@ -751,12 +751,13 @@ int wdb_parse_global_update_unsynced_agents(wdb_t * wdb, char * input, char * ou
  * @brief Function to update the information of an agent.
  * 
  * @param wdb The Global struct database.
- * @param id The agent ID
- * @param agent_info A string array with the agent information.
+ * @param agent_info A JSON array with the agent information.
  * @retval 0 On success.
  * @retval -1 On error.
  */
-int wdb_global_update_unsynced_agents(wdb_t *wdb, int id, char** agent_info);
+int wdb_global_update_unsynced_agents(wdb_t *wdb, cJSON *agent_info);
+
+void i_am_a_test_function();
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

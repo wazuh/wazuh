@@ -103,7 +103,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_MITRE_NAME_GET] = "SELECT name FROM attack WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_DEL] = "DELETE FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_SET] = "INSERT INTO labels (id, key, value) VALUES (?,?,?);",
-    [WDB_STMT_GLOBAL_UPDATE_UNSYNCED_AGENTS] = "UPDATE agent SET config_sum = ?, date_add = ?, fim_offset = ?, group = ?, internal_key = ?, ip = ?, last_keepalive = ?, manager_host = ?, merged_sum = ?, name = ?, node_name = ?, os_arch = ?, os_build = ?, os_codename = ?, os_major = ?, os_minor = ?, os_name = ?, os_platform = ?, os_uname = ?, os_version = ?, reg_offset = ?, register_ip = ?, status = ?, version = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_UNSYNCED_AGENTS] = "UPDATE agent SET config_sum = ?, ip = ?, manager_host = ?, merged_sum = ?, name = ?, node_name = ?, os_arch = ?, os_build = ?, os_codename = ?, os_major = ?, os_minor = ?, os_name = ?, os_platform = ?, os_uname = ?, os_version = ?, version = ?, last_keepalive = ?, fim_offset = ?,  reg_offset = ?, sync_status = ? WHERE id = ?;",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
 };
 
