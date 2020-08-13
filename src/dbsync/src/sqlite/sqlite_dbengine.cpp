@@ -299,7 +299,7 @@ void SQLiteDBEngine::selectData(const std::string& table,
 {
     if (0 != loadTableData(table))
     {
-        const auto& stmt { getStatement(buildSelectQuery(table, query)) };
+        const auto& stmt { m_sqliteFactory->createStatement(m_sqliteConnection, buildSelectQuery(table, query)) };
 
         while (SQLITE_ROW == stmt->step())
         {
