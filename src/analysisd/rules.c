@@ -45,7 +45,7 @@ void Rules_OP_CreateRules() {
 }
 
 int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, 
-                       EventList **last_event_list, OSList* log_msg)
+                       EventList **last_event_list, OSStore **decoder_list, OSList* log_msg)
 {
     OS_XML xml;
     XML_NODE node = NULL;
@@ -416,7 +416,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                        rule_opt[k]->content, log_msg);
                     } else if (strcasecmp(rule_opt[k]->element, xml_decoded) == 0) {
                         config_ruleinfo->decoded_as =
-                            getDecoderfromlist(rule_opt[k]->content);
+                            getDecoderfromlist(rule_opt[k]->content, decoder_list);
 
                         if (config_ruleinfo->decoded_as == 0) {
                             smerror(log_msg, "Invalid decoder name: '%s'.", rule_opt[k]->content);
