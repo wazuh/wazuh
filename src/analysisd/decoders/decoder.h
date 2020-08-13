@@ -102,16 +102,27 @@ int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode,
                     OSDecoderNode **npn_osdecodernode, OSList* log_msg);
 
 OSDecoderNode *OS_GetFirstOSDecoder(const char *pname);
-int getDecoderfromlist(const char *name);
+
+/**
+ * @brief Get decoder from list
+ * @param name decoder name
+ * @param decoder_store decoder list
+ * @return decoder position on success, otherwise 0
+ */
+int getDecoderfromlist(const char *name, OSStore **decoder_store);
+
 char *GetGeoInfobyIP(char *ip_addr);
 
 /**
- * @brief Read decoder files and save them in the decoder list.
+ * @brief Add internal decoders to decoder_list and set ids to xml decoders
  * @param log_msg list to save log messages.
+ * @param decoder_list list to save all decoders (internals and xml decoders)
+ * @param decoderlist_npn list of decoders which haven't program_name
+ * @param decoderlist_pn list of decoders which have program_name
  * @retval 0 in case of error.
  * @retval 1 successful.
  */
-int SetDecodeXML(OSList* log_msg);
+int SetDecodeXML(OSList* log_msg, OSStore **decoder_list, OSDecoderNode **decoderlist_npn, OSDecoderNode **decoderlist_pn);
 
 void HostinfoInit(void);
 int fim_init(void);
@@ -120,7 +131,19 @@ void SyscollectorInit(void);
 void CiscatInit(void);
 void WinevtInit(void);
 void SecurityConfigurationAssessmentInit(void);
-int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn, OSDecoderNode **decoderlist_nopn, OSList* log_msg);
+
+/**
+ * @brief Read decoder files and save them in the decoder list
+ * @param file name of file which read
+ * @param decoderlist_pn list of decoders which have program_name
+ * @param decoderlist_nopn list of decoders which haven't program_name
+ * @param decoder_store list to save all decoders (internals and xml decoders)
+ * @param log_msg list to save log messages
+ * @return
+ */
+int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
+                  OSDecoderNode **decoderlist_nopn, OSStore **decoder_list,
+                  OSList* log_msg);
 
 /**
  * @brief Remove decoder information

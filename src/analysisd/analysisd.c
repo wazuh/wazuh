@@ -538,7 +538,7 @@ int main_analysisd(int argc, char **argv)
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
                     if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn, 
-                                        &os_analysisd_decoderlist_nopn, list_msg)) {
+                                        &os_analysisd_decoderlist_nopn, &os_analysisd_decoder_store, list_msg)) {
                         node_log_msg = OSList_GetFirstNode(list_msg);
 
                         while (node_log_msg) {
@@ -558,7 +558,7 @@ int main_analysisd(int argc, char **argv)
             }
 
             /* Load decoders */
-            SetDecodeXML(list_msg);
+            SetDecodeXML(list_msg, &os_analysisd_decoder_store, &os_analysisd_decoderlist_nopn, &os_analysisd_decoderlist_pn);
             node_log_msg = OSList_GetFirstNode(list_msg);
             while (node_log_msg) {
                 os_analysisd_log_msg_t * data_msg = node_log_msg->data;
@@ -629,7 +629,8 @@ int main_analysisd(int argc, char **argv)
                     }
 
                     if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist,
-                                           &os_analysisd_cdblists, &os_analysisd_last_events, list_msg) < 0) {
+                                           &os_analysisd_cdblists, &os_analysisd_last_events,
+                                           &os_analysisd_decoder_store, list_msg) < 0) {
                         error_exit = 1;
                     }
 

@@ -39,7 +39,7 @@ static int first_time = 0;
 void WinevtInit(){
 
     os_calloc(1, sizeof(OSDecoderInfo), winevt_decoder);
-    winevt_decoder->id = getDecoderfromlist(WINEVT_MOD);
+    winevt_decoder->id = getDecoderfromlist(WINEVT_MOD, &os_analysisd_decoder_store);
     winevt_decoder->name = WINEVT_MOD;
     winevt_decoder->type = OSSEC_RL;
     winevt_decoder->fts = 0;
