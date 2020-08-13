@@ -430,6 +430,24 @@ int wdb_parse(char * input, char * output) {
                     result = -1;
                 }
             }
+        } else if (strcmp(query, "get-labels") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_get_agent_labels(wdb, next, output);
+            }
+        } else if (strcmp(query, "set-labels") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_set_agent_labels(wdb, next, output);
+            }
         } else if (strcmp(query, "update-unsynced-agents") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax.");
@@ -3855,6 +3873,86 @@ int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output) {
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
         return -1;
     }
+}
+
+int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output) {
+    int agent_id = 0;
+    cJSON *labels = NULL;
+    char *out = NULL;
+
+    agent_id = atoi(input);
+
+    if (labels = wdb_global_get_agent_labels(wdb, agent_id), !labels) {
+        mdebug1("Error getting agent labels from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agent labels from global.db.");
+        return OS_INVALID;
+    }
+
+    out = cJSON_PrintUnformatted(labels);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(labels);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) {
+    char *next = NULL;
+    char *labels = NULL;
+    char *label = NULL;
+    char *value = NULL;
+    char *savedptr = NULL;
+    char sdelim[] = { '\n', '\0' };
+
+    if (next = wstr_chr(input, ' '), !next) {
+        mdebug1("Invalid DB query syntax.");
+        mdebug2("DB query error near: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
+        return OS_INVALID;
+    }
+    *next++ = '\0';
+
+    int agent_id = atoi(input);
+
+    if (!next) {
+        mdebug1("Global DB Invalid query syntax.");
+        mdebug2("Global DB query error near: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
+        return OS_INVALID;
+    } else {
+        // Removing old labels from the labels table
+        if (OS_SUCCESS != wdb_global_del_agent_labels(wdb, agent_id)) {
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+            snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+            return OS_INVALID;
+        }
+
+        labels = next;
+
+        // Parsing the labes string "key1:value1\nkey2:value2"
+        for (label = strtok_r(labels, sdelim, &savedptr); label; label = strtok_r(NULL, sdelim, &savedptr)) {
+            if (value = strstr(label, ":"), value) {
+                *value = '\0';
+                value++;
+            }
+            else {
+                continue;
+            }
+
+            // Inserting new labels in the database
+            if (OS_SUCCESS != wdb_global_set_agent_label(wdb, agent_id, label, value)) {
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                return OS_INVALID;
+            }
+
+            value = NULL;
+        }
+
+        snprintf(output, OS_MAXSTR + 1, "ok");
+    }
+
+    return OS_SUCCESS;
 }
 
 int wdb_parse_global_update_unsynced_agents(wdb_t * wdb, char * input, char * output){

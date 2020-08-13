@@ -101,6 +101,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYNC_UPDATE_ATTEMPT] = "UPDATE sync_info SET last_attempt = ?, n_attempts = n_attempts + 1 WHERE component = ?;",
     [WDB_STMT_SYNC_UPDATE_COMPLETION] = "UPDATE sync_info SET last_attempt = ?, last_completion = ?, n_attempts = n_attempts + 1, n_completions = n_completions + 1 WHERE component = ?;",
     [WDB_STMT_MITRE_NAME_GET] = "SELECT name FROM attack WHERE id = ?;",
+    [WDB_STMT_GLOBAL_LABELS_GET] = "SELECT * FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_DEL] = "DELETE FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_SET] = "INSERT INTO labels (id, key, value) VALUES (?,?,?);",
     [WDB_STMT_GLOBAL_UPDATE_UNSYNCED_AGENTS] = "UPDATE agent SET config_sum = ?, ip = ?, manager_host = ?, merged_sum = ?, name = ?, node_name = ?, os_arch = ?, os_build = ?, os_codename = ?, os_major = ?, os_minor = ?, os_name = ?, os_platform = ?, os_uname = ?, os_version = ?, version = ?, last_keepalive = ?, fim_offset = ?,  reg_offset = ?, sync_status = ? WHERE id = ?;",
@@ -755,6 +756,55 @@ void wdb_close_old() {
     }
 
     w_mutex_unlock(&pool_mutex);
+}
+
+cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
+    int r;
+    int count;
+    int i;
+    cJSON * result;
+    cJSON * row;
+
+    if (!stmt) {
+        mdebug1("Invalid SQL statement.");
+        return NULL;
+    }
+
+    result = cJSON_CreateArray();
+
+    while (r = sqlite3_step(stmt), r == SQLITE_ROW) {
+        if (count = sqlite3_column_count(stmt), count > 0) {
+            row = cJSON_CreateObject();
+
+            for (i = 0; i < count; i++) {
+                switch (sqlite3_column_type(stmt, i)) {
+                case SQLITE_INTEGER:
+                case SQLITE_FLOAT:
+                    cJSON_AddNumberToObject(row, sqlite3_column_name(stmt, i), sqlite3_column_double(stmt, i));
+                    break;
+
+                case SQLITE_TEXT:
+                case SQLITE_BLOB:
+                    cJSON_AddStringToObject(row, sqlite3_column_name(stmt, i), (const char *)sqlite3_column_text(stmt, i));
+                    break;
+
+                case SQLITE_NULL:
+                default:
+                    ;
+                }
+            }
+
+            cJSON_AddItemToArray(result, row);
+        }
+    }
+
+    if (r != SQLITE_DONE) {
+        mdebug1("SQL statement execution failed");
+        cJSON_Delete(result);
+        result = NULL;
+    }
+
+    return result;
 }
 
 cJSON * wdb_exec(sqlite3 * db, const char * sql) {
