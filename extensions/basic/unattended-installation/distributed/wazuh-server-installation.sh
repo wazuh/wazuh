@@ -5,9 +5,12 @@ debug='> /dev/null 2>&1'
 if [ -n "$(command -v yum)" ] 
 then
     sys_type="yum"
+elif [ -n "$(command -v zypper)" ] 
+then
+    sys_type="zypper"     
 elif [ -n "$(command -v apt-get)" ] 
 then
-    sys_type="apt-get"
+    sys_type="apt-get"   
 fi
 
 logger() {
@@ -129,25 +132,45 @@ addWazuhrepo() {
 ## Wazuh manager
 installWazuh() {
     logger "Installing the Wazuh manager..."
-
-    eval "$sys_type install wazuh-manager -y -q $debug"
-
-    logger "Done"
+    if [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install wazuh-manager $debug"
+    else
+        eval "$sys_type install wazuh-manager -y -q $debug"
+    fi
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Wazuh installation failed"
+        exit 1;
+    else
+        logger "Done"
+    fi     
 }
 
 ## Filebeat
 installFilebeat() {
     
     logger "Installing Filebeat..."
+    
+    if [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install filebeat $debug"
+    else
+        eval "$sys_type install filebeat -y -q  $debug"
+    fi
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Filebeat installation failed"
+        exit 1;
+    else
+        eval "curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/unattended-installation/distributed/templates/filebeat.yml --max-time 300  $debug"
+        eval "curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.13.1/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300 $debug"
+        eval "chmod go+r /etc/filebeat/wazuh-template.json $debug"
+        eval "curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz --max-time 300 | tar -xvz -C /usr/share/filebeat/module $debug"
+        eval "mkdir /etc/filebeat/certs $debug"
 
-    eval "$sys_type install filebeat -y -q  $debug"
-    eval "curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/unattended-installation/distributed/templates/filebeat.yml --max-time 300  $debug"
-    eval "curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.13.1/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300 $debug"
-    eval "chmod go+r /etc/filebeat/wazuh-template.json $debug"
-    eval "curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz --max-time 300 | tar -xvz -C /usr/share/filebeat/module $debug"
-    eval "mkdir /etc/filebeat/certs $debug"
-
-    logger "Done"
+        logger "Done"
+    fi        
 }
 
 configureFilebeat() {
