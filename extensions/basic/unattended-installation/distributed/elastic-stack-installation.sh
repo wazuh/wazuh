@@ -7,9 +7,12 @@ passwords=""
 if [ -n "$(command -v yum)" ] 
 then
     sys_type="yum"
+elif [ -n "$(command -v zypper)" ] 
+then
+    sys_type="zypper"     
 elif [ -n "$(command -v apt-get)" ] 
 then
-    sys_type="apt-get"
+    sys_type="apt-get"   
 fi
 
 ## Prints information
@@ -104,7 +107,6 @@ installPrerequisites() {
 addElasticrepo() {
     logger "Adding the Elasticsearch repository..."
 
-
     if [ $sys_type == "yum" ] 
     then
         eval "rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch $debug"
@@ -112,7 +114,16 @@ addElasticrepo() {
     elif [ $sys_type == "zypper" ] 
     then
         rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch > /dev/null 2>&1
-        echo -e '[elasticsearch-7.x]\nname=Elasticsearch repository for 7.x packages\nbaseurl=https://artifacts.elastic.co/packages/7.x/yum\ngpgcheck=1\ngpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch\nenabled=1\nautorefresh=1\ntype=rpm-md' > /etc/zypp/repos.d/elastic.repo
+		cat > /etc/zypp/repos.d/elastic.repo <<- EOF
+        [elasticsearch-7.x]
+        name=Elasticsearch repository for 7.x packages
+        baseurl=https://artifacts.elastic.co/packages/7.x/yum
+        gpgcheck=1
+        gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        enabled=1
+        autorefresh=1
+        type=rpm-md
+		EOF
         
     elif [ $sys_type == "apt-get" ] 
     then
