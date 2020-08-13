@@ -1,5 +1,4 @@
 /* Copyright (C) 2015-2020, Wazuh Inc.
- * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -36,9 +35,9 @@ const char *__wrap_OSRegex_Execute(const char *str, OSRegex *reg) {
         if (str) {
             check_expected(str);
         }
-        
+
         reg->d_sub_strings = d_sub_strings;
-        
+
         return mock_type(const char *);
     }
 

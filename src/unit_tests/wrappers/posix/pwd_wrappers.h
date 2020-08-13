@@ -1,5 +1,4 @@
 /* Copyright (C) 2015-2020, Wazuh Inc.
- * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -16,7 +15,7 @@
 #include <stddef.h>
 #include <pwd.h>
 
-int __wrap_getpwnam_r(const char *name, 
+int __wrap_getpwnam_r(const char *name,
                       struct passwd *pwd,
                       char *buf,
                       size_t buflen,

@@ -156,7 +156,7 @@ static int setup_group(void **state) {
     if(setup_fim_data(state) != 0)
         return -1;
 
-    unit_testing = false;
+    test_mode = 0;
 
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck.conf");
@@ -183,13 +183,13 @@ static int setup_root_group(void **state) {
     syscheck.max_depth = 256;
     syscheck.file_max_size = 1024;
 
-    unit_testing = true;
+    test_mode = 1;
 
     return 0;
 }
 
 static int teardown_group(void **state) {
-    unit_testing = false;
+    test_mode = 0;
 
     if(teardown_fim_data(state) != 0)
         return -1;

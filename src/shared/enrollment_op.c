@@ -20,14 +20,10 @@
     extern void mock_assert(const int result, const char* const expression,
                             const char * const file, const int line);
     #undef assert
-    #define assert(expression) \
-        mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+    #define assert(expression) mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 
     #ifdef WIN32
-        #include "unit_tests/wrappers/shared/enrollment_op.h"
-
-        #define gethostname   wrap_enrollment_op_gethostname
-        #define fprintf   wrap_enrollment_op_fprintf
+        #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
     #endif
 #endif
 

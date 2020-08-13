@@ -1,5 +1,4 @@
 /* Copyright (C) 2015-2020, Wazuh Inc.
- * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -52,7 +51,7 @@ int __wrap_sqlite3_close_v2() {
     return mock();
 }
 
-double __wrap_sqlite3_column_double(__attribute__((unused)) sqlite3_stmt *pStmt, 
+double __wrap_sqlite3_column_double(__attribute__((unused)) sqlite3_stmt *pStmt,
                                     int i) {
     check_expected(i);
     return mock_type(double);

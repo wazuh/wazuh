@@ -1,5 +1,4 @@
 /* Copyright (C) 2015-2020, Wazuh Inc.
- * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -28,12 +27,12 @@
 
 WINBOOL wrap_IsValidSid (PSID pSid);
 
-WINBOOL wrap_GetSecurityDescriptorDacl (PSECURITY_DESCRIPTOR pSecurityDescriptor, 
+WINBOOL wrap_GetSecurityDescriptorDacl (PSECURITY_DESCRIPTOR pSecurityDescriptor,
                                         LPBOOL lpbDaclPresent,
                                         PACL *pDacl,
                                         LPBOOL lpbDaclDefaulted);
 
-WINBOOL wrap_GetAclInformation (PACL pAcl, 
+WINBOOL wrap_GetAclInformation (PACL pAcl,
                                 LPVOID pAclInformation,
                                 DWORD nAclInformationLength,
                                 ACL_INFORMATION_CLASS dwAclInformationClass);
@@ -42,13 +41,13 @@ WINBOOL wrap_GetAce (PACL pAcl,
                      DWORD dwAceIndex,
                      LPVOID *pAce);
 
-WINBOOL wrap_AdjustTokenPrivileges (HANDLE TokenHandle, 
+WINBOOL wrap_AdjustTokenPrivileges (HANDLE TokenHandle,
                                     WINBOOL DisableAllPrivileges,
                                     PTOKEN_PRIVILEGES NewState,
                                     DWORD BufferLength,
                                     PTOKEN_PRIVILEGES PreviousState,
                                     PDWORD ReturnLength);
-                                    
+
 WINBOOL wrap_AllocateAndInitializeSid(PSID_IDENTIFIER_AUTHORITY pIdentifierAuthority,
                                       BYTE nSubAuthorityCount,
                                       DWORD nSubAuthority0,

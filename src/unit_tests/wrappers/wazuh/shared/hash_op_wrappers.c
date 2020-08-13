@@ -1,5 +1,4 @@
 /* Copyright (C) 2015-2020, Wazuh Inc.
- * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -66,11 +65,14 @@ void *__wrap_OSHash_Delete_ex(OSHash *self, const char *key) {
     return __real_OSHash_Delete_ex(self, key);
 }
 
+void *__real_OSHash_Get(const OSHash *self, const char *key);
 void *__wrap_OSHash_Get(const OSHash *self, const char *key) {
-    check_expected(self);
-    check_expected(key);
-
-    return mock_type(void*);
+    if (test_mode){
+        check_expected(self);
+        check_expected(key);
+        return mock_type(void*);
+    }
+    return __real_OSHash_Get(self, key);
 }
 
 void *__wrap_OSHash_Get_ex(const OSHash *self, const char *key) {

@@ -1,5 +1,4 @@
 /* Copyright (C) 2015-2020, Wazuh Inc.
- * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -22,7 +21,7 @@ int __wrap_close();
 
 extern int __real_getpid();
 int __wrap_getpid();
-    
+
 #ifndef WIN32
 void __wrap_sleep(unsigned int seconds);
 #endif

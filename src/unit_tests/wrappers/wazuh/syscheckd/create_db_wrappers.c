@@ -1,5 +1,4 @@
 /* Copyright (C) 2015-2020, Wazuh Inc.
- * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -54,12 +53,14 @@ int __wrap_fim_whodata_event(whodata_evt * w_evt)
 {
     if (w_evt->process_id) check_expected(w_evt->process_id);
     if (w_evt->user_id) check_expected(w_evt->user_id);
-    if (w_evt->group_id) check_expected(w_evt->group_id);
     if (w_evt->process_name) check_expected(w_evt->process_name);
     if (w_evt->path) check_expected(w_evt->path);
+#ifndef WIN32
+    if (w_evt->group_id) check_expected(w_evt->group_id);
     if (w_evt->audit_uid) check_expected(w_evt->audit_uid);
     if (w_evt->effective_uid) check_expected(w_evt->effective_uid);
     if (w_evt->inode) check_expected(w_evt->inode);
     if (w_evt->ppid) check_expected(w_evt->ppid);
+#endif
     return 1;
 }
