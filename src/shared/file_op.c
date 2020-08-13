@@ -3137,11 +3137,29 @@ int w_is_compressed_bz2_file(const char * path) {
     fp = fopen(path, "rb");
     /* Magic number: 42 5a 68 */
     if (fp && fread(buf, 1, 3, fp) == 3) {
-        if (buf[0] == 0x42 && buf[1] == 0x5a && buf[2] == 68) {
+        if (buf[0] == 0x42 && buf[1] == 0x5a && buf[2] == 0x68) {
             fclose(fp);
             return 1;
         }
     }
 
     return 0;
+}
+
+int w_check_compress_type_file(const char * path, const char * dest) {
+    int result = 1;
+
+    if (w_is_compressed_bz2_file(path)) {
+        result = bzip2_uncompress(path, dest);
+    }
+
+    if (w_is_compressed_gz_file(path)) {
+        result = w_uncompress_gzfile(path, dest);
+    }
+
+    if (!result) {
+        mdebug1("The file '%s' was successfully uncompressed into '%s'", path, dest);
+    }
+
+    return result;
 }

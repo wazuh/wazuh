@@ -314,13 +314,20 @@ int wurl_request_bz2(const char * url, const char * dest, const char * header, c
 // Check the compression type of the file and try to download and uncompress it.
 int wurl_request_check_compression_types(const char * url, const char * dest, const long timeout) {
     int res_url_request;
+    int compress = 0;
 
     if (wstr_end((char *)url, ".gz")) {
+        compress = 1;
         res_url_request = wurl_request_gz(url, dest, NULL, NULL, timeout);
     } else if (wstr_end((char *)url, ".bz2")) {
+        compress = 1;
         res_url_request = wurl_request_bz2(url, dest, NULL, NULL, timeout);
     } else {
         res_url_request = wurl_request(url, dest, NULL, NULL, timeout);
+    }
+
+    if (compress == 1 && !res_url_request) {
+        mdebug1("The file from url '%s' was successfully uncompressed into '%s'", url, dest);
     }
 
     return res_url_request;
