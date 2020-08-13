@@ -313,7 +313,7 @@ void Rules_OP_CreateRules(void);
  * @return 0 on success, otherwise -1
  */
 int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, 
-                       EventList **last_event_list, OSList* log_msg);
+                       EventList **last_event_list, OSStore **decoder_list, OSList* log_msg);
 
 int AddHash_Rule(RuleNode *node);
 

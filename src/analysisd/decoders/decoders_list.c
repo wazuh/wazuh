@@ -25,6 +25,7 @@ void OS_CreateOSDecoderList() {
 
     os_analysisd_decoderlist_pn = NULL;
     os_analysisd_decoderlist_nopn = NULL;
+    os_analysisd_decoder_store = NULL;
 }
 
 /* Get first osdecoder */
