@@ -48,6 +48,7 @@ void wm_agent_upgrade_listen_messages(int timeout_sec) {
     int sock = OS_BindUnixDomain(WM_UPGRADE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
     if (sock < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_BIND_SOCK_ERROR, WM_UPGRADE_SOCK_PATH, strerror(errno));
+        wm_agent_upgrade_destroy_task_map();
         return;
     }
 
@@ -60,8 +61,9 @@ void wm_agent_upgrade_listen_messages(int timeout_sec) {
         switch (select(sock + 1, &fdset, NULL, NULL, &timeout)) {
         case -1:
             if (errno != EINTR) {
-                merror(WM_UPGRADE_SELECT_ERROR, strerror(errno));
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SELECT_ERROR, strerror(errno));
                 close(sock);
+                wm_agent_upgrade_destroy_task_map();
                 return;
             }
             continue;
@@ -73,11 +75,11 @@ void wm_agent_upgrade_listen_messages(int timeout_sec) {
         int peer;
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
-                merror(WM_UPGRADE_ACCEPT_ERROR, strerror(errno));
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACCEPT_ERROR, strerror(errno));
             }
             continue;
         }
-        
+
         // Get request string
         char *buffer = NULL;
 
@@ -110,42 +112,48 @@ void wm_agent_upgrade_listen_messages(int timeout_sec) {
                 // Upgrade command
                 if (task && agent_ids) {
                     message = wm_agent_upgrade_process_upgrade_command(agent_ids, (wm_upgrade_task *)task);
-                    wm_agent_upgrade_free_upgrade_task(task);
-                    os_free(agent_ids);
                 }
+                wm_agent_upgrade_free_upgrade_task(task);
                 break;
             case WM_UPGRADE_UPGRADE_CUSTOM:
                 // Upgrade custom command
                 if (task && agent_ids) {
                     message = wm_agent_upgrade_process_upgrade_custom_command(agent_ids, (wm_upgrade_custom_task *)task);
-                    wm_agent_upgrade_free_upgrade_custom_task(task);
-                    os_free(agent_ids);
                 }
+                wm_agent_upgrade_free_upgrade_custom_task(task);
                 break;
             case WM_UPGRADE_AGENT_UPDATE_STATUS:
                 if (task && agent_ids) {
                     message = wm_agent_upgrade_process_agent_result_command(agent_ids, (wm_upgrade_agent_status_task *)task);
-                    wm_agent_upgrade_free_agent_status_task(task);
-                    os_free(agent_ids);
                 }
+                wm_agent_upgrade_free_agent_status_task(task);
                 break;
             default:
                 // Parsing error
                 if (!message) {
-                    os_strdup(upgrade_error_codes[WM_UPGRADE_UNKNOWN_ERROR], message);
+                    cJSON *error_json = wm_agent_upgrade_parse_response_message(WM_UPGRADE_UNKNOWN_ERROR, upgrade_error_codes[WM_UPGRADE_UNKNOWN_ERROR], NULL, NULL, NULL);
+                    message = cJSON_PrintUnformatted(error_json);
+                    cJSON_Delete(error_json);
                 }
                 break;
             }
 
             mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RESPONSE_MESSAGE, message);
             OS_SendSecureTCP(peer, strlen(message), message);
+            os_free(agent_ids);
             os_free(message);
             break;
         }
 
-        free(buffer);
+        os_free(buffer);
         close(peer);
+
+    #ifdef UNIT_TESTING
+        break;
+    #endif
     }
+
+    close(sock);
 
     // Destroy task hashmap
     wm_agent_upgrade_destroy_task_map();

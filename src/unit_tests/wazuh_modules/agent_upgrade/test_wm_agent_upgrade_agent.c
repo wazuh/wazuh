@@ -89,6 +89,7 @@ int __wrap_wm_sendmsg(int usec, int queue, const char *message, const char *locm
 extern FILE* __real_fopen(const char* path, const char* mode);
 FILE* __wrap_fopen(const char* path, const char* mode) {
     if(unit_testing) {
+        check_expected(path);
         check_expected(mode);
         return mock_ptr_type(FILE*);
     }
@@ -219,6 +220,7 @@ void test_wm_upgrade_agent_search_upgrade_result_successful(void **state)
     int result = 0;
     wm_upgrade_agent_state upgrade_state = WM_UPGRADE_SUCCESSFULL;
 
+    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -255,6 +257,7 @@ void test_wm_upgrade_agent_search_upgrade_result_failed(void **state)
     int result = 0;
     wm_upgrade_agent_state upgrade_state = WM_UPGRADE_FAILED;
 
+    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -291,6 +294,7 @@ void test_wm_upgrade_agent_search_upgrade_result_error_open(void **state)
     int result = 0;
     wm_upgrade_agent_state upgrade_state = WM_UPGRADE_FAILED;
 
+    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
@@ -306,6 +310,7 @@ void test_wm_upgrade_agent_search_upgrade_result_error_code(void **state)
     int result = 0;
     wm_upgrade_agent_state upgrade_state = WM_UPGRADE_FAILED;
 
+    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -332,6 +337,7 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, queue);
 
+    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -361,6 +367,7 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     will_return(__wrap_sleep, 1);
     #endif
 
+    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
@@ -382,6 +389,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, queue);
 
+    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -411,6 +419,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     will_return(__wrap_sleep, 1);
     #endif
 
+    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -440,6 +449,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     will_return(__wrap_sleep, 1);
     #endif
 
+    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -469,6 +479,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     will_return(__wrap_sleep, 1);
     #endif
 
+    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -498,6 +509,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     will_return(__wrap_sleep, 1);
     #endif
 
+    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 

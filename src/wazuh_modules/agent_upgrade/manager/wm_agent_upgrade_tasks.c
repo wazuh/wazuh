@@ -77,7 +77,6 @@ void wm_agent_upgrade_free_upgrade_task(wm_upgrade_task* upgrade_task) {
         os_free(upgrade_task->wpk_sha1);
         os_free(upgrade_task);
     }
-    upgrade_task = NULL;
 }
 
 void wm_agent_upgrade_free_upgrade_custom_task(wm_upgrade_custom_task* upgrade_custom_task) {
@@ -86,7 +85,6 @@ void wm_agent_upgrade_free_upgrade_custom_task(wm_upgrade_custom_task* upgrade_c
         os_free(upgrade_custom_task->custom_installer);
         os_free(upgrade_custom_task);
     }
-    upgrade_custom_task = NULL;
 }
 
 void wm_agent_upgrade_free_task_info(wm_task_info* task_info) {
@@ -100,7 +98,6 @@ void wm_agent_upgrade_free_task_info(wm_task_info* task_info) {
         }
         os_free(task_info);
     }
-    task_info = NULL;
 }
 
 void wm_agent_upgrade_free_agent_info(wm_agent_info* agent_info) {
@@ -112,7 +109,6 @@ void wm_agent_upgrade_free_agent_info(wm_agent_info* agent_info) {
         os_free(agent_info->wazuh_version);
         os_free(agent_info);
     }
-    agent_info = NULL;
 }
 
 void wm_agent_upgrade_free_agent_task(wm_agent_task* agent_task) {
@@ -124,7 +120,6 @@ void wm_agent_upgrade_free_agent_task(wm_agent_task* agent_task) {
             wm_agent_upgrade_free_task_info(agent_task->task_info);
         }
         os_free(agent_task);
-        agent_task = NULL;
     }
 }
 
