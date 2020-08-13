@@ -476,6 +476,25 @@ stages:
         <<: *response_error
 
 ---
+test_name: GET /security/user/authenticate
+
+stages:
+
+  - name: Get an API token
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate"
+      headers:
+        Authorization: "Basic {basic_auth:s}"
+      params:
+        raw: True
+      method: GET
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_token_raw_format
+
+---
 test_name: GET /security/users
 
 stages:
