@@ -75,10 +75,10 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
 void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
                                       const DbSync::ResultCallback callback)
 {
-    const std::string table { data["table"].is_string() ? data["table"].get_ref<const std::string&>() : "" };
+    const std::string table { data.at("table").is_string() ? data.at("table").get_ref<const std::string&>() : "" };
     if (createCopyTempTable(table))
     {
-        bulkInsert(table + TEMP_TABLE_SUBFIX, data["data"]);
+        bulkInsert(table + TEMP_TABLE_SUBFIX, data.at("data"));
         if (0 != loadTableData(table))
         {
             std::vector<std::string> primaryKeyList;
@@ -153,10 +153,10 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
         {
             ReturnTypeCallback resultCbType{ MODIFIED };
             nlohmann::json jsResult;
-            const bool diffExist { getRowDiff(primaryKeyList, table, data[0], jsResult) };
+            const bool diffExist { getRowDiff(primaryKeyList, table, data.at(0), jsResult) };
             if (diffExist)
             {
-                const nlohmann::json jsDataToUpdate{getDataToUpdate(primaryKeyList, jsResult, data[0], inTransaction)};
+                const nlohmann::json jsDataToUpdate{getDataToUpdate(primaryKeyList, jsResult, data.at(0), inTransaction)};
                 if (!jsDataToUpdate[0].empty())
                 {
                     const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
@@ -487,7 +487,7 @@ bool SQLiteDBEngine::loadFieldData(const std::string& table)
             m_tableFields[table].push_back(std::make_tuple(stmt->column(0)->value(int32_t{}),
                                            fieldName,
                                            columnTypeName(stmt->column(2)->value(std::string{})),
-                                           1 == stmt->column(5)->value(int32_t{}),
+                                           0 != stmt->column(5)->value(int32_t{}),
                                            InternalColumnNames.end() != std::find(InternalColumnNames.begin(), 
                                            InternalColumnNames.end(), fieldName)));
         }
@@ -507,11 +507,12 @@ ColumnType SQLiteDBEngine::columnTypeName(const std::string& type)
     return retVal;
 }
 
-void SQLiteDBEngine::bindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt, 
+bool SQLiteDBEngine::bindJsonData(const std::unique_ptr<SQLite::IStatement>& stmt,
                                   const ColumnData& cd, 
                                   const nlohmann::json::value_type& valueType,
                                   const unsigned int cid)
 {
+    bool retVal { true };
     const auto type { std::get<TableHeader::Type>(cd) };
     const auto name { std::get<TableHeader::Name>(cd) };
     const auto& it  { valueType.find(name) };
@@ -576,6 +577,11 @@ void SQLiteDBEngine::bindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt
             throw dbengine_error { INVALID_COLUMN_TYPE };
         }
     }
+    else
+    {
+        retVal = false;
+    }
+    return retVal;
 }
 
 bool SQLiteDBEngine::createCopyTempTable(const std::string& table)
@@ -773,7 +779,8 @@ bool SQLiteDBEngine::getPKListLeftOnly(const std::string& t1,
 }
 
 std::string SQLiteDBEngine::buildDeleteBulkDataSqlQuery(const std::string& table,
-                                                        const std::vector<std::string>& primaryKeyList)
+                                                        const std::vector<std::string>& primaryKeyList,
+                                                        const nlohmann::json& jsData)
 {
     std::string sql{ "DELETE FROM " };
     sql.append(table);
@@ -782,8 +789,11 @@ std::string SQLiteDBEngine::buildDeleteBulkDataSqlQuery(const std::string& table
     {
         for (const auto& value : primaryKeyList)
         {
-            sql.append(value);
-            sql.append("=? AND ");
+            if(jsData.empty() || jsData.find(value) != jsData.end())
+            {
+                sql.append(value);
+                sql.append("=? AND ");
+            }
         }
         sql = sql.substr(0, sql.size()-5);
         sql.append(";");
@@ -837,7 +847,7 @@ void SQLiteDBEngine::deleteRowsbyPK(const std::string& table,
         const auto& tableFields { m_tableFields[table] };
         const auto& stmt
         {
-            getStatement(buildDeleteBulkDataSqlQuery(table, primaryKeyList))
+            getStatement(buildDeleteBulkDataSqlQuery(table, primaryKeyList, data.at(0)))
         };
 
         for (const auto& jsRow : data)
@@ -856,8 +866,10 @@ void SQLiteDBEngine::deleteRowsbyPK(const std::string& table,
 
                 if(it != tableFields.end())
                 {
-                    bindJsonData(stmt, *it, jsRow, index);
-                    ++index;
+                    if (bindJsonData(stmt, *it, jsRow, index))
+                    {
+                        ++index;
+                    }
                 }
             }
             stmt->step();
@@ -1004,7 +1016,7 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
 
         if(it != tableFields.end())
         {
-            jsResult[pkValue] = data[pkValue];
+            jsResult[pkValue] = data.at(pkValue);
             bindJsonData(stmt, *it, data, index);
             ++index;
         }

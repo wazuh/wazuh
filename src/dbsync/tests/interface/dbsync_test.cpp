@@ -161,6 +161,21 @@ TEST_F(DBSyncTest, InsertData)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
     const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
+
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+
+    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
+}
+
+TEST_F(DBSyncTest, InsertDataWithCompoundPKs)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`, `tid`)) WITHOUT ROWID;"};
+    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":"100"},
+                                                                 {"pid":5,"name":"User1", "tid":101},
+                                                                 {"pid":6,"name":"User2", "tid":102}]})"};
     
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
@@ -1078,6 +1093,50 @@ TEST_F(DBSyncTest, deleteSingleAndComposedData)
     EXPECT_NE(0, dbsync_delete_rows(handle, nullptr));
     EXPECT_NE(0, dbsync_delete_rows(handle, jsWithoutTable.get()));
     EXPECT_NE(0, dbsync_delete_rows(reinterpret_cast<void *>(0xffffffff), jsSingleDeletion.get()));
+}
+
+TEST_F(DBSyncTest, deleteSingleDataByCompoundPK)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`, `tid`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(INSERTED,
+                nlohmann::json::parse(R"([{"pid":4,"name":"System", "tid":100},
+                                          {"pid":5,"name":"System", "tid":101},
+                                          {"pid":6,"name":"System", "tid":102},
+                                          {"pid":7,"name":"System", "tid":103},
+                                          {"pid":8,"name":"System", "tid":104}])"))).Times(1);
+
+    const auto initialData{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":100},
+                                                            {"pid":5,"name":"System", "tid":101},
+                                                            {"pid":6,"name":"System", "tid":102},
+                                                            {"pid":7,"name":"System", "tid":103},
+                                                            {"pid":8,"name":"System", "tid":104}]})"};
+
+    const auto singleRowToDelete
+    {
+        R"({"table":"processes",
+           "query":{"data":[{"pid":4, "tid":100}],
+           "where_filter_opt":""}})"
+    };
+
+    const auto singleRowWithoutCompleteCompoundPK
+    {
+        R"({"table":"processes",
+           "query":{"data":[{"tid":101}],
+                    "where_filter_opt":""}})"
+    };
+
+    callback_data_t callbackData { callback, &wrapper };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsSingleDeletion{ cJSON_Parse(singleRowToDelete) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsMissingPKPID{ cJSON_Parse(singleRowWithoutCompleteCompoundPK) };
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsSingleDeletion.get()));
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsMissingPKPID.get()));
 }
 
 TEST_F(DBSyncTest, deleteRowsByFilter)
