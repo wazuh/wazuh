@@ -290,12 +290,12 @@ void *w_logtest_check_inactive_sessions(__attribute__((unused)) void * arg) {
 
             w_mutex_unlock(&session->mutex);
 
+            hash_node = OSHash_Next(w_logtest_sessions, &inode_it, hash_node);
+            
             if(session->expired){
                 w_logtest_remove_session(token_session);
             }
             
-
-            hash_node = OSHash_Next(w_logtest_sessions, &inode_it, hash_node);
         }
 
     }
@@ -417,7 +417,7 @@ w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg) {
 
     /* Search an active session */
     if (s_token) {
-        if (session = OSHash_Get(w_logtest_sessions, s_token), session) {
+        if (session = OSHash_Get_ex(w_logtest_sessions, s_token), session) {
 
             w_mutex_lock(&session->mutex);
             if (!session->expired) {
@@ -437,14 +437,14 @@ w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg) {
     do {
         os_free(s_token);
         s_token = w_logtest_generate_token();
-    } while (OSHash_Get(w_logtest_sessions, s_token) != NULL);
+    } while (OSHash_Get_ex(w_logtest_sessions, s_token) != NULL);
 
     mdebug1(LOGTEST_INFO_TOKEN_NEW, s_token);
     sminfo(list_msg, LOGTEST_INFO_TOKEN_NEW, s_token);
 
     session = w_logtest_initialize_session(s_token, list_msg);
     if (session) {
-        OSHash_Add(w_logtest_sessions, s_token, session);
+        OSHash_Add_ex(w_logtest_sessions, s_token, session);
     } else {
         smerror(list_msg, LOGTEST_ERROR_INITIALIZE_SESSION, s_token);
         mdebug1(LOGTEST_ERROR_INITIALIZE_SESSION, s_token);
