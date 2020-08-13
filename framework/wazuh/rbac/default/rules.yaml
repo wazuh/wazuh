@@ -1,56 +1,16 @@
 default_rules:
-  administrator:
+  elastic_admin:
     id: 1
-    description: Administrator role of the system, this role have full access to the system.
+    description: Admin permissions for Elastic administrator.
     rule:
-      FIND:
-        r'^auth[a-zA-Z]+$':
-          - full_admin
+      MATCH$:
+        elastic:
+          - administrator
 
-  readonly:
+  opendistro_admin:
     id: 2
-    description: Read only role, this role can read all the information of the system.
+    description: OpenDistro permissions for Elastic administrator.
     rule:
-      FIND:
-        r'^auth[a-zA-Z]+$':
-          - readonly
-
-  users_admin:
-    id: 3
-    description: Users administrator of the system, this role have full access to all users related functionalities.
-    rule:
-      FIND:
-        r'^auth[a-zA-Z]+$':
-          - users_admin
-
-  agents_readonly:
-    id: 4
-    description: Read only role for agents related functionalities.
-    rule:
-      FIND:
-        r'^auth[a-zA-Z]+$':
-          - agents_readonly
-
-  agents_admin:
-    id: 5
-    description: Agents administrator of the system, this role have full access to all agents related functionalities.
-    rule:
-      FIND:
-        r'^auth[a-zA-Z]+$':
-          - agents_admin
-
-  cluster_readonly:
-    id: 6
-    description: Read only role for manager related functionalities.
-    rule:
-      FIND:
-        r'^auth[a-zA-Z]+$':
-          - cluster_readonly
-
-  cluster_admin:
-    id: 7
-    description: Manager administrator of the system, this role have full access to all manager related functionalities.
-    rule:
-      FIND:
-        r'^auth[a-zA-Z]+$':
-          - cluster_admin
+      MATCH$:
+        admin:
+          - administrator

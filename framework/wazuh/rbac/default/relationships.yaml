@@ -24,7 +24,8 @@ relationships:
         - syscheck_all
         - syscollector_read
       rule_ids:
-        - administrator
+        - elastic_admin
+        - opendistro_admin
 
     readonly:
       policy_ids:
@@ -37,35 +38,29 @@ relationships:
         - sca_read
         - syscheck_read
         - syscollector_read
-      rule_ids:
-        - readonly
+      rule_ids: []
 
     users_admin:
       policy_ids:
         - users_all
-      rule_ids:
-        - users_admin
+      rule_ids: []
 
     agents_readonly:
       policy_ids:
         - agents_read
-      rule_ids:
-        - agents_readonly
+      rule_ids: []
 
     agents_admin:
       policy_ids:
         - agents_all
-      rule_ids:
-        - agents_admin
+      rule_ids: []
 
     cluster_readonly:
       policy_ids:
         - cluster_read
-      rule_ids:
-        - cluster_readonly
+      rule_ids: []
 
     cluster_admin:
       policy_ids:
         - cluster_all
-      rule_ids:
-        - cluster_admin
+      rule_ids: []
