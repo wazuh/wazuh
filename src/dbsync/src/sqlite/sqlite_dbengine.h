@@ -150,13 +150,15 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         std::string buildInsertBulkDataSqlQuery(const std::string& table);
 
         std::string buildDeleteBulkDataSqlQuery(const std::string& table, 
-                                                const std::vector<std::string>& primaryKeyList);
+                                                const std::vector<std::string>& primaryKeyList,
+                                                const nlohmann::json& jsData = {});
+
         std::string buildSelectQuery(const std::string& table,
                                      const nlohmann::json& jsQuery);
 
         ColumnType columnTypeName(const std::string& type);
 
-        void bindJsonData(std::unique_ptr<SQLite::IStatement>const & stmt, 
+        bool bindJsonData(const std::unique_ptr<SQLite::IStatement>& stmt,
                           const ColumnData& cd,
                           const nlohmann::json::value_type& valueType,
                           const unsigned int cid);

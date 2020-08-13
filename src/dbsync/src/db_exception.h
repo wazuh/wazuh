@@ -26,7 +26,7 @@ constexpr auto INVALID_PK_DATA          { std::make_pair(10, "Primary key not fo
 constexpr auto INVALID_COLUMN_TYPE      { std::make_pair(11, "Invalid column field type.") };
 constexpr auto INVALID_DATA_BIND        { std::make_pair(12, "Invalid data to bind.") };
 constexpr auto INVALID_TABLE            { std::make_pair(13, "Invalid table.") };
-constexpr auto INVALID_DELETE_INFO      { std::make_pair(13, "Invalid information provided for deletion.") };
+constexpr auto INVALID_DELETE_INFO      { std::make_pair(14, "Invalid information provided for deletion.") };
 
 namespace DbSync
 {
