@@ -180,7 +180,6 @@ cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json);
 /**
  * Callback function for task manager mensaje, if task manager was able to update task status 
  * then it will send a message to the agent telling it to erase its upgrade_result file
- * @param error pointer to the error flag
  * @param error if there is any error processing the information, it will be set to OS_INVALID
  * @param input_json response from the task manager
  * @return cJSON containing the message that should be included as part of the ugprade response

@@ -126,10 +126,10 @@ static int wm_agent_upgrade_send_sha1(int agent_id, const char *wpk_file, const 
 static int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, const char *installer);
 
 /**
- * Send a single message to the task module and returns a response
+ * Sends a single message to the task module and returns a response
  * @param command wm_upgrade_command that will be used to generate the message
  * @param agent_id id of the agent
- * @param status in case the comand is and upgdate of statuos
+ * @param status in case the command is an status update
  * @return cJSON with the response from the task manager
  * */
 static cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task);
@@ -302,7 +302,7 @@ static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task)
 
     // Validate if there is a task in progress for this agent
     status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_GET_STATUS, agent_task->agent_info->agent_id, NULL);
-    if (!wm_agent_upgrade_validate_task_status_message(status_json, &status)) {
+    if (!wm_agent_upgrade_validate_task_status_message(status_json, &status, NULL)) {
         validate_result = WM_UPGRADE_TASK_MANAGER_COMMUNICATION;
     } else if (status && !strcmp(status, task_statuses[WM_TASK_IN_PROGRESS])) {
         validate_result = WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS;
@@ -335,7 +335,6 @@ static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task)
 static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request) {
     unsigned int index = 0;
     OSHashNode *node = NULL;
-    char *agent_key = NULL;
     wm_agent_task *agent_task = NULL;
 
     // Send request to task module and store task ids
@@ -344,7 +343,7 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
 
         while (node) {
             cJSON *status_json = NULL;
-            agent_key = node->key;
+            int agent_id;
             agent_task = (wm_agent_task *)node->data;
             node = wm_agent_upgrade_get_next_node(&index, node);
 
@@ -358,9 +357,9 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
                 status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_FAILED]);
             }
 
-            wm_agent_upgrade_validate_task_status_message(status_json, NULL);
+            wm_agent_upgrade_validate_task_status_message(status_json, NULL, &agent_id);
 
-            wm_agent_upgrade_remove_entry(atoi(agent_key));
+            wm_agent_upgrade_remove_entry(agent_id);
 
             cJSON_Delete(status_json);
         }

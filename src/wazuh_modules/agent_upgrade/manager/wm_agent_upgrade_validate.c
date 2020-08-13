@@ -393,12 +393,20 @@ static int wm_agent_upgrade_compare_versions(const char *version1, const char *v
     return result;
 }
 
-bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char **status) {
+bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char **status, int *agent_id) {
     if (response) {
         cJSON *error_object = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_ERROR]);
         cJSON *data_object = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_ERROR_DATA]);
         cJSON *status_object = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_STATUS]);
-        if (error_object && error_object->type == cJSON_Number) {
+        cJSON *agent_json = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_AGENT_ID]);
+        
+        if (error_object && (error_object->type == cJSON_Number) && data_object && (data_object->type == cJSON_String) && agent_json
+            && (agent_json->type == cJSON_Number)) {
+            
+            if (agent_id) {
+                *agent_id = agent_json->valueint;
+            }
+            
             if (error_object->valueint == WM_UPGRADE_SUCCESS) {
                 if (status && status_object && status_object->type == cJSON_String) {
                     os_strdup(status_object->valuestring, *status);

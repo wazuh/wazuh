@@ -72,6 +72,7 @@ int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task);
  * Validate a status response from the task manager module
  * @param response JSON to be validated
  * @param status string to save the status of the task
+ * @param agent_id (optional) pointer to variable where the agent_id will be extracted and stored
  * Example formats:
  * 1. {
  *      "error": 0,
@@ -86,7 +87,7 @@ int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task);
  *      "status": "Done"
  *  }
  * */
-bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char **status);
+bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char **status, int *agent_id);
 
 /**
  * Validate an upgrade response from the task manager module
