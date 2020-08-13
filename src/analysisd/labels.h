@@ -21,7 +21,12 @@ typedef struct wlabel_data_t {
 /* Initialize label cache */
 int labels_init();
 
-/* Find the label array for an agent. Returns NULL if no such agent file found. */
+/**
+ * @brief Finds the label array of an agent that generated an event.
+ * 
+ * @param lf The Eventinfo data structure.
+ * @retval The agent's labels array on success. NULL on error.
+ */
 wlabel_t* labels_find(const Eventinfo *lf);
 
 #endif

@@ -40,22 +40,27 @@ CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
 
 INSERT INTO agent (id, ip, register_ip, name, date_add, last_keepalive, `group`) VALUES (0, '127.0.0.1', '127.0.0.1', 'localhost', strftime('%s','now'), 253402300799, NULL);
 
+CREATE TABLE IF NOT EXISTS labels (
+    id INTEGER,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (id,key)
+);
+
 CREATE TABLE IF NOT EXISTS info (
     key TEXT PRIMARY KEY,
     value TEXT
 );
 
-CREATE TABLE IF NOT EXISTS `group`
-    (
+CREATE TABLE IF NOT EXISTS `group` (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT
-    );
+);
 
-CREATE TABLE IF NOT EXISTS belongs
-    (
+CREATE TABLE IF NOT EXISTS belongs (
     id_agent INTEGER,
     id_group INTEGER,
     PRIMARY KEY (id_agent, id_group)
-    );
+);
 
 PRAGMA journal_mode=WAL;

@@ -808,12 +808,8 @@ cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
 }
 
 cJSON * wdb_exec(sqlite3 * db, const char * sql) {
-    int r;
-    int count;
-    int i;
-    sqlite3_stmt * stmt;
-    cJSON * result;
-    cJSON * row;
+    sqlite3_stmt * stmt = NULL;
+    cJSON * result = NULL;
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
         mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
@@ -821,38 +817,10 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
         return NULL;
     }
 
-    result = cJSON_CreateArray();
+    result = wdb_exec_stmt(stmt);
 
-    while (r = sqlite3_step(stmt), r == SQLITE_ROW) {
-        if (count = sqlite3_column_count(stmt), count > 0) {
-            row = cJSON_CreateObject();
-
-            for (i = 0; i < count; i++) {
-                switch (sqlite3_column_type(stmt, i)) {
-                case SQLITE_INTEGER:
-                case SQLITE_FLOAT:
-                    cJSON_AddNumberToObject(row, sqlite3_column_name(stmt, i), sqlite3_column_double(stmt, i));
-                    break;
-
-                case SQLITE_TEXT:
-                case SQLITE_BLOB:
-                    cJSON_AddStringToObject(row, sqlite3_column_name(stmt, i), (const char *)sqlite3_column_text(stmt, i));
-                    break;
-
-                case SQLITE_NULL:
-                default:
-                    ;
-                }
-            }
-
-            cJSON_AddItemToArray(result, row);
-        }
-    }
-
-    if (r != SQLITE_DONE) {
+    if (!result) {
         mdebug1("sqlite3_step(): %s", sqlite3_errmsg(db));
-        cJSON_Delete(result);
-        result = NULL;
     }
 
     sqlite3_finalize(stmt);
@@ -1031,9 +999,7 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
     return response;
 }
 
-
 // Set the database journal mode to write-ahead logging
-
 int wdb_journal_wal(sqlite3 *db) {
     char *sql_error = NULL;
 

@@ -134,6 +134,8 @@ typedef enum global_db_query {
     SQL_UPDATE_AGENT_NAME,
     SQL_UPDATE_AGENT_VERSION,
     SQL_UPDATE_AGENT_VERSION_IP,
+    SQL_GET_AGENT_LABELS,
+    SQL_SET_AGENT_LABELS,
     SQL_UPDATE_AGENT_KEEPALIVE,
     SQL_DELETE_AGENT,
     SQL_SELECT_AGENT,
@@ -361,6 +363,23 @@ int wdb_update_agent_version(int id,
                              const char *node_name,
                              const char *agent_ip,
                              wdb_sync_status_t sync_status);
+
+/**
+ * @brief Returns a JSON with all the agent's labels.
+ * 
+ * @param[in] id Id of the agent for whom the labels are requested.
+ * @return JSON* with the labels on success or NULL on failure.
+ */
+cJSON* wdb_get_agent_labels(int id);
+
+/**
+ * @brief Update agent's labels.
+ * 
+ * @param[in] id Id of the agent for whom the labels must be updated.
+ * @param[in] labels String with the key-values separated by EOL.
+ * @return OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_set_agent_labels(int id, const char *labels);
 
 /* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */
 int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status);

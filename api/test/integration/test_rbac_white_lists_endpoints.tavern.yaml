@@ -9,7 +9,7 @@ stages:
   - name: Try to show the lists of the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -31,7 +31,7 @@ stages:
   - name: Try to show an specified filename (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -52,7 +52,7 @@ stages:
   - name: Try to show an specified path (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -74,7 +74,7 @@ stages:
   - name: Try to show the lists files of the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists/files"
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

@@ -22,10 +22,10 @@ int wdbc_connect() {
     char sockname[PATH_MAX + 1];
 
     if (isChroot()) {
-		strcpy(sockname, WDB_LOCAL_SOCK);
-	} else {
-		strcpy(sockname, DEFAULTDIR WDB_LOCAL_SOCK);
-	}
+        strcpy(sockname, WDB_LOCAL_SOCK);
+    } else {
+        strcpy(sockname, DEFAULTDIR WDB_LOCAL_SOCK);
+    }
 
     for (attempts = 1; attempts <= 3 && (wdb_socket = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_SIZE_6144)) < 0; attempts++) {
         switch (errno) {

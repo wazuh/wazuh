@@ -42,12 +42,10 @@ char * get_os_arch(char * os_header) {
 }
 
 /**
- * @brief Parses an agent update message to get the information by fields. All
- *        the OUT parameters are pointers to allocated memory that must be
- *        de-allocated by the caller.
+ * @brief Parses an OS uname string. All the OUT parameters are pointers
+ *        to allocated memory that must be de-allocated by the caller.
  *
  * @param[in] msg The agent update message string to be parsed.
- * @param[Out] version The Wazuh version.
  * @param[Out] os_name The OS name.
  * @param[Out] os_major The OS major version.
  * @param[Out] os_minor The OS minor version.
@@ -56,69 +54,26 @@ char * get_os_arch(char * os_header) {
  * @param[Out] os_codename The OS codename.
  * @param[Out] os_platform The OS platform.
  * @param[Out] os_arch The OS architecture.
- * @param[Out] uname The OS uname string.
- * @param[Out] config_sum The hash of the config file.
- * @param[Out] merged_sum The hash of the merged.mg file.
- * @param[Out] agent_ip The agent IP address.
- * @retval -1 Error parsing the message.
- * @retval 0 Success.
  */
-int parse_agent_update_msg (char *msg,
-                            char **version,
-                            char **os_name,
-                            char **os_major,
-                            char **os_minor,
-                            char **os_build,
-                            char **os_version,
-                            char **os_codename,
-                            char **os_platform,
-                            char **os_arch,
-                            char **uname,
-                            char **config_sum,
-                            char **merged_sum,
-                            char **agent_ip)
+void parse_uname_string (char *uname,
+                        char **os_name,
+                        char **os_major,
+                        char **os_minor,
+                        char **os_build,
+                        char **os_version,
+                        char **os_codename,
+                        char **os_platform,
+                        char **os_arch)
 {
-    char *msg_tmp = NULL;
     char *str_tmp = NULL;
-    char *end_line = NULL;
     regmatch_t match[2] = { 0 };
     int match_size = 0;
 
-    // Temporary coping the msg string
-    os_strdup(msg, msg_tmp);
-
-    if (!msg_tmp)
-        return OS_INVALID; 
-
-    if (end_line = strstr(msg_tmp, "\n"), end_line){
-        *end_line = '\0';
-    } else {
-        mwarn("Corrupt data parsing agent update msg. Returning.");
-        os_free(msg_tmp);
-        return OS_INVALID;
-    }
-
-    if (str_tmp = strstr(msg_tmp, " / "), str_tmp){
-        *str_tmp = '\0';
-        str_tmp += 3;
-        os_strdup(str_tmp, *config_sum);
-    }
-
-    if (str_tmp = strstr(msg_tmp, " - "), str_tmp){
-        *str_tmp = '\0';
-        str_tmp += 3;
-        os_strdup(str_tmp, *version);
-    } else {
-        merror("Corrupt data parsing agent update msg. Returning.");
-        os_free(msg_tmp);
-        return OS_INVALID;
-    }
-
     // [Ver: os_major.os_minor.os_build]
-    if (str_tmp = strstr(msg_tmp, " [Ver: "), str_tmp){
+    if (str_tmp = strstr(uname, " [Ver: "), str_tmp){
         *str_tmp = '\0';
         str_tmp += 7;
-        os_strdup(msg_tmp, *os_name);
+        os_strdup(uname, *os_name);
         *(str_tmp + strlen(str_tmp) - 1) = '\0';
 
         // Get os_major
@@ -146,7 +101,7 @@ int parse_agent_update_msg (char *msg,
         os_strdup("windows", *os_platform);
     }
     else {
-        if (str_tmp = strstr(msg_tmp, " ["), str_tmp){
+        if (str_tmp = strstr(uname, " ["), str_tmp){
             *str_tmp = '\0';
             str_tmp += 2;
             os_strdup(str_tmp, *os_name);
@@ -188,44 +143,122 @@ int parse_agent_update_msg (char *msg,
                 os_strdup(str_tmp, *os_platform);
             }
         }
-        str_tmp = get_os_arch(msg_tmp);
+        str_tmp = get_os_arch(uname);
         os_strdup(str_tmp, *os_arch);
         os_free(str_tmp);
     }
+}
 
-    os_strdup(msg_tmp, *uname);
+/**
+ * @brief Parses an agent update message to get the information by fields. All
+ *        the OUT parameters are pointers to allocated memory that must be
+ *        de-allocated by the caller. If the information is not found for an
+ *        OUT parameter, it returns pointing to NULL.
+ *
+ * @param[in] msg The agent update message string to be parsed.
+ * @param[Out] version The Wazuh version.
+ * @param[Out] os_name The OS name.
+ * @param[Out] os_major The OS major version.
+ * @param[Out] os_minor The OS minor version.
+ * @param[Out] os_build The OS build number.
+ * @param[Out] os_version The OS full version.
+ * @param[Out] os_codename The OS codename.
+ * @param[Out] os_platform The OS platform.
+ * @param[Out] os_arch The OS architecture.
+ * @param[Out] uname The OS uname string.
+ * @param[Out] config_sum The hash of the config file.
+ * @param[Out] merged_sum The hash of the merged.mg file.
+ * @param[Out] agent_ip The agent IP address.
+ * @param[Out] labels String with all the key-values separated by EOL.
+ * @retval -1 Error parsing the message.
+ * @retval 0 Success.
+ */
+int parse_agent_update_msg (char *msg,
+                            char **version,
+                            char **os_name,
+                            char **os_major,
+                            char **os_minor,
+                            char **os_build,
+                            char **os_version,
+                            char **os_codename,
+                            char **os_platform,
+                            char **os_arch,
+                            char **uname,
+                            char **config_sum,
+                            char **merged_sum,
+                            char **agent_ip,
+                            char **labels)
+{
+    char *msg_tmp = NULL;
+    char *str_tmp = NULL;
+    char *line = NULL;
+    char *savedptr = NULL;
+    char sdelim[] = { '\n', '\0' };
+    const char * AGENT_IP_LABEL = "#\"_agent_ip\":";
 
-    // Get merged.mg sum
-    str_tmp = end_line + 1;
-    if (*str_tmp != '\"' && *str_tmp != '!' && (end_line = strchr(str_tmp, ' '), end_line)) {
-        *end_line = '\0';
-        end_line++;
+    // Setting pointers to NULL to guarantee the return value specification
+    *version = NULL;
+    *os_name = NULL;
+    *os_major = NULL;
+    *os_minor = NULL;
+    *os_build = NULL;
+    *os_version = NULL;
+    *os_codename = NULL;
+    *os_platform = NULL;
+    *os_arch = NULL;
+    *uname = NULL;
+    *config_sum = NULL;
+    *merged_sum = NULL;
+    *agent_ip = NULL;
+    *labels = NULL;
 
-        if (strncmp(end_line, SHAREDCFG_FILENAME "\n", sizeof(SHAREDCFG_FILENAME "\n")-1) != 0) {
-            *merged_sum = NULL;
+    // Temporary coping the msg string
+    os_strdup(msg, msg_tmp);
+
+    for (line = strtok_r(msg_tmp, sdelim, &savedptr); line; line = strtok_r(NULL, sdelim, &savedptr)) {
+        switch (*line) {
+        case '#':  // System label
+        case '!':  // Hidden label
+        case '\"': // Regular label
+            // The _agent_ip will not be appended to the labels string.
+            // Instead it will be returned in the agent_ip parameter.
+            if(!strncmp(line, AGENT_IP_LABEL, strlen(AGENT_IP_LABEL))) {
+                os_strdup(line + strlen(AGENT_IP_LABEL), *agent_ip);
+            }
+            else {
+                wm_strcat(labels, line, '\n');
+            }
+            break;
+        default:
+            // uname - wazuh version / config sum
+            if (str_tmp = strstr(line, " / "), str_tmp)
+            {
+                *str_tmp = '\0';
+                str_tmp += 3;
+                os_strdup(str_tmp, *config_sum);
+
+                if (str_tmp = strstr(line, " - "), str_tmp){
+                    *str_tmp = '\0';
+                    str_tmp += 3;
+                    os_strdup(str_tmp, *version);
+                }
+
+                parse_uname_string(line, os_name, os_major, os_minor, os_build,
+                                   os_version, os_codename, os_platform, os_arch);
+
+                os_strdup(line, *uname);
+            }
+            // merged sum
+            else if (str_tmp = strchr(line, ' '), str_tmp)
+            {
+                *str_tmp = '\0';
+                str_tmp++;
+
+                if (strncmp(str_tmp, SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME)-1) == 0) {
+                    os_strdup(line, *merged_sum);
+                }
+            }
         }
-        else {
-            os_strdup(str_tmp, *merged_sum);
-        }
-    }
-    else { // If we didn't find merged.mg we should keep the end line
-        end_line = str_tmp;
-    }
-
-    // Get the agent ip
-    const char * AGENT_IP_TAG = "#\"_agent_ip\":";
-    str_tmp = end_line;
-
-    end_line = strchr(str_tmp, '\n') + 1;
-    if (end_line && !strncmp(end_line, AGENT_IP_TAG, strlen(AGENT_IP_TAG))) {
-        os_strdup(end_line + strlen(AGENT_IP_TAG), *agent_ip);
-
-        if (end_line = strchr(*agent_ip, '\n'), end_line){
-            *end_line = '\0';
-        }
-    }
-    else {
-        agent_ip = NULL;
     }
 
     os_free(msg_tmp);

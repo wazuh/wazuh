@@ -113,7 +113,8 @@ def start(foreground, root, config_file):
     app = connexion.AioHttpApp(__name__, host=api_conf['host'],
                                port=api_conf['port'],
                                specification_dir=os.path.join(api_path[0], 'spec'),
-                               options={"swagger_ui": False, 'uri_parser_class': APIUriParser}
+                               options={"swagger_ui": False, 'uri_parser_class': APIUriParser},
+                               only_one_api=True
                                )
     app.add_api('spec.yaml',
                 arguments={'title': 'Wazuh API',
@@ -124,7 +125,7 @@ def start(foreground, root, config_file):
                 strict_validation=True,
                 validate_responses=True,
                 pass_context_arg_name='request',
-                options={"middlewares": [set_user_name, security_middleware, response_postprocessing]})
+                options={"middlewares": [response_postprocessing, set_user_name, security_middleware]})
 
     # Enable CORS
     if cors['enabled']:

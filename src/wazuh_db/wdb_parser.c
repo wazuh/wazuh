@@ -399,15 +399,15 @@ int wdb_parse(char * input, char * output) {
         if (wdb = wdb_open_global(), !wdb) {
             mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
-            return -1;
+            return OS_INVALID;
         }
 
         if (next = wstr_chr(query, ' '), !next) {
             mdebug1("Invalid DB query syntax.");
-            mdebug2("DB query error near: %s", query);
+            mdebug2("Global DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
             wdb_leave(wdb);
-            return -1;
+            return OS_INVALID;
         }
         *next++ = '\0';
 
@@ -416,7 +416,7 @@ int wdb_parse(char * input, char * output) {
                 mdebug1("Global DB Invalid DB query syntax.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = -1;
+                result = OS_INVALID;
             } else {
                 if (data = wdb_exec(wdb->db, next), data) {
                     out = cJSON_PrintUnformatted(data);
@@ -427,7 +427,7 @@ int wdb_parse(char * input, char * output) {
                     mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
                     mdebug2("Global DB SQL query: %s", next);
                     snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-                    result = -1;
+                    result = OS_INVALID;
                 }
             }
         } else if (strcmp(query, "get-labels") == 0) {
@@ -459,16 +459,16 @@ int wdb_parse(char * input, char * output) {
             }
         } else {
             mdebug1("Invalid DB query syntax.");
-            mdebug2("DB query error near: %s", query);
+            mdebug2("Global DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-            result = -1;
+            result = OS_INVALID;
         }
         wdb_leave(wdb);
         return result;
     } else {
         mdebug1("DB(%s) Invalid DB query actor: %s", sagent_id, actor);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query actor: '%.32s'", actor);
-        return -1;
+        return OS_INVALID;
     }
 }
 

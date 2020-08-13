@@ -11,7 +11,6 @@ variables:
   port: 55000
   user: testing
   pass: wazuh
-  version: v4
   login_endpoint: /security/user/authenticate
 
   # delays
