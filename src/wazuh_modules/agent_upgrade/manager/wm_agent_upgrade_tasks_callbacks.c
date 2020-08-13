@@ -74,10 +74,10 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
 cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json) {
     int agent_id;
     int task_id;
-    char data[OS_MAXSTR];
+    char *data = NULL;
     cJSON *response = NULL;
     
-    if (wm_agent_upgrade_validate_task_ids_message(input_json, &agent_id, &task_id, data)) {
+    if (wm_agent_upgrade_validate_task_ids_message(input_json, &agent_id, &task_id, &data)) {
         if(task_id) {
             // Store task_id
             wm_agent_upgrade_insert_task_id(agent_id, task_id);
@@ -91,7 +91,7 @@ cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json) 
         // We cannot know which agent is the one failing so we have to abort the whole process
         *error = OS_INVALID;
     }
-
+    os_free(data);
     return response;
 }
 

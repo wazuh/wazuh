@@ -416,7 +416,7 @@ bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char *
     return false;
 }
 
-bool wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *agent_id, int *task_id, char* data) {
+bool wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *agent_id, int *task_id, char** data) {
     if (input_json) {
         cJSON *agent_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_AGENT_ID]);
         cJSON *data_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_ERROR_DATA]);
@@ -429,7 +429,7 @@ bool wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *ag
         }
 
         if (data_json && (data_json->type == cJSON_String)) {
-            os_strdup(data_json->valuestring, data);
+            os_strdup(data_json->valuestring, *data);
         }
 
         if (task_json && (task_json->type == cJSON_Number)) {

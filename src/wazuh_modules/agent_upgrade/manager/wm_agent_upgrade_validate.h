@@ -105,6 +105,6 @@ bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char *
  *      "task_id": 201
  *  }
  * */
-bool wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *agent_id, int *task_id, char* data);
+bool wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *agent_id, int *task_id, char** data);
 
 #endif
