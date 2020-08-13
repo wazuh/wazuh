@@ -286,3 +286,42 @@ char * wurl_http_get(const char * url) {
 
     return chunk.memory;
 }
+
+// Request a download of a bzip2 file and uncompress it.
+int wurl_request_bz2(const char * url, const char * dest, const char * header, const char * data, const long timeout) {
+    char compressed_file[OS_SIZE_6144 + 1];
+    int retval = OS_INVALID;
+
+    snprintf(compressed_file, OS_SIZE_6144, "tmp/req-%u", os_random());
+
+    if (wurl_request(url, compressed_file, header, data, timeout)) {
+        return retval;
+    } else {
+        if (bzip2_uncompress(compressed_file, dest)) {
+            merror("Could not uncompress the file downloaded from '%s'.", url);
+        } else {
+            retval = 0;
+        }
+    }
+
+    if (remove(compressed_file) < 0) {
+        mdebug1("Could not remove '%s'. Error: %d.", compressed_file, errno);
+    }
+
+    return retval;
+}
+
+// Check the compression type of the file and try to download and uncompress it.
+int wurl_request_check_compression_types(const char * url, const char * dest, const long timeout) {
+    int res_url_request;
+
+    if (wstr_end((char *)url, ".gz")) {
+        res_url_request = wurl_request_gz(url, dest, NULL, NULL, timeout);
+    } else if (wstr_end((char *)url, ".bz2")) {
+        res_url_request = wurl_request_bz2(url, dest, NULL, NULL, timeout);
+    } else {
+        res_url_request = wurl_request(url, dest, NULL, NULL, timeout);
+    }
+
+    return res_url_request;
+}
