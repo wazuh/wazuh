@@ -418,8 +418,6 @@ bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char *
         } else {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUIRED_PARAMETERS);
         }
-    } else {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_TASK_MAN_JSON);
     }
     return false;
 }

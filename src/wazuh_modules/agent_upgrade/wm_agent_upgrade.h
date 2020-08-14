@@ -14,8 +14,6 @@
 
 #define WM_AGENT_UPGRADE_LOGTAG ARGV0 ":" AGENT_UPGRADE_WM_NAME
 
-#define WM_UPGRADE_AGENT_UPDATED_COMMAND "upgrade_update_status"
-
 #ifdef CLIENT
 /**
  * Configurations on agent side

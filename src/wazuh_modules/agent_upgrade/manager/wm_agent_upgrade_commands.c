@@ -230,8 +230,9 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upg
     cJSON *json_task_module_request = cJSON_CreateArray();
     
     while (agent_id = agent_ids[agent++], agent_id != OS_INVALID) {
-        mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACK_RECEIVED, agent_id, task->error_code, task->message);
-
+        if (task->message) {
+            mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACK_RECEIVED, agent_id, task->error_code, task->message);
+        }
         // Send task update to task manager and bring back the response
         cJSON *request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_id, task->status);
         cJSON_AddItemToArray(json_task_module_request, request);        
@@ -240,6 +241,7 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upg
     wm_agent_upgrade_task_module_callback(json_response, json_task_module_request, wm_agent_upgrade_update_status_success_callback, NULL);
 
     char *message = cJSON_PrintUnformatted(json_response);
+    cJSON_Delete(json_task_module_request);
     cJSON_Delete(json_response);
     return message;
 }
@@ -335,6 +337,7 @@ static int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task)
 static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request) {
     unsigned int index = 0;
     OSHashNode *node = NULL;
+    char *agent_key = NULL;
     wm_agent_task *agent_task = NULL;
 
     // Send request to task module and store task ids
@@ -343,6 +346,7 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
 
         while (node) {
             cJSON *status_json = NULL;
+            agent_key = node->key;
             int agent_id;
             agent_task = (wm_agent_task *)node->data;
             node = wm_agent_upgrade_get_next_node(&index, node);
@@ -359,7 +363,7 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
 
             wm_agent_upgrade_validate_task_status_message(status_json, NULL, &agent_id);
 
-            wm_agent_upgrade_remove_entry(agent_id);
+            wm_agent_upgrade_remove_entry(atoi(agent_key));
 
             cJSON_Delete(status_json);
         }
