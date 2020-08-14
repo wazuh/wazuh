@@ -14,6 +14,7 @@
 
 #define smerror(list, msg, ...) _os_analysisd_add_logmsg(list, LOGLEVEL_ERROR, __LINE__, __func__, __FILE__, msg, ##__VA_ARGS__)
 #define smwarn(list, msg, ...) _os_analysisd_add_logmsg(list, LOGLEVEL_WARNING, __LINE__, __func__, __FILE__, msg, ##__VA_ARGS__)
+#define sminfo(list, msg, ...) _os_analysisd_add_logmsg(list, LOGLEVEL_INFO, __LINE__, __func__, __FILE__, msg, ##__VA_ARGS__)
 
 #define ERRORLIST_MAXSIZE   50 ///< Max size of log messages list
 

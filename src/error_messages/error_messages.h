@@ -504,6 +504,13 @@
 #define LOGTEST_ERROR_INIT_HASH                     "(7303): Failure to initialize all_sesssions hash"
 #define LOGTEST_ERROR_INV_CONF                      "(7304): Invalid wazuh-logtest configuration"
 #define LOGTEST_ERROR_SIZE_HASH                     "(7305): Failure to resize all_sesssions hash"
+#define LOGTEST_ERROR_JSON_PARSE                    "(7306): Error parsing JSON"
+#define LOGTEST_ERROR_JSON_PARSE_POS                "(7307): Error in position %i, ... %s ..."
+#define LOGTEST_ERROR_JSON_REQUIRED_SFIELD          "(7308): '%s' JSON field is required and must be a string"
+#define LOGTEST_ERROR_TOKEN_INVALID                 "(7309): '%s' is not a valid token"
+#define LOGTEST_ERROR_RESPONSE                      "(7310): Failure to sending response to client [%i] %s."
+#define LOGTEST_ERROR_INITIALIZE_SESSION            "(7311): Failure to initializing session '%s'"
+#define LOGTEST_ERROR_PROCESS_EVENT                 "(7312): Failed to process the event"
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
