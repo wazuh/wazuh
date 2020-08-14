@@ -194,8 +194,7 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
 
                 //Print Agent info
                 char *agent_str = cJSON_PrintUnformatted(json_agent);
-                unsigned agent_len = strlen(agent_str);                
-                cJSON_Delete(sql_agents_response);                                
+                unsigned agent_len = strlen(agent_str);
                 
                 //Check if new agent fits in response                
                 if (response_size+agent_len+1 < WDB_MAX_RESPONSE_SIZE) { 
@@ -218,11 +217,13 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
                     status = WDB_CHUNKS_BUFFER_FULL;
                 }
                 os_free(agent_str);                      
-            }
+            }            
         }
         else {
+            //All agents has being obtained
             status = WDB_CHUNKS_COMPLETE;
         }
+        cJSON_Delete(sql_agents_response);
     }    
     //Add array end
     *(response_aux-1) = ']';
