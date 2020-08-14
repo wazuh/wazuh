@@ -14,11 +14,14 @@ then
 fi
 
 logger() {
+
     echo $1
+    
 }
 
 ## Show script usage
 getHelp() {
+
    echo ""
    echo "Usage: $0 arguments"
    echo -e "\t-i    | --ignore-healthcheck Ignores the healthcheck"
@@ -27,10 +30,12 @@ getHelp() {
    echo -e "\t-d   | --debug Shows the complete installation output"
    echo -e "\t-h    | --help Shows help"
    exit 1 # Exit script after printing help
+
 }
 
 ## Install the required packages for the installation
 installPrerequisites() {
+
     logger "Installing all necessary utilities for the installation..."
 
     if [ $sys_type == "yum" ] 
@@ -52,10 +57,12 @@ installPrerequisites() {
     else
         logger "Done"
     fi   
+
 }
 
 ## Add the Elastic repository
 addElasticrepo() {
+
     logger "Adding the Elasticsearch repository..."
 
     if [ $sys_type == "yum" ] 
@@ -90,10 +97,12 @@ addElasticrepo() {
     else
         logger "Done"
     fi        
+
 }
 
 ## Add the Wazuh repository
 addWazuhrepo() {
+
     logger "Adding the Wazuh repository..."
 
     if [ $sys_type == "yum" ] 
@@ -126,11 +135,13 @@ addWazuhrepo() {
         exit 1;
     else
         logger "Done"
-    fi        
+    fi   
+
 }
 
 ## Wazuh manager
 installWazuh() {
+
     logger "Installing the Wazuh manager..."
     if [ $sys_type == "zypper" ] 
     then
@@ -144,7 +155,8 @@ installWazuh() {
         exit 1;
     else
         logger "Done"
-    fi     
+    fi  
+
 }
 
 ## Filebeat
@@ -170,10 +182,12 @@ installFilebeat() {
         eval "mkdir /etc/filebeat/certs $debug"
 
         logger "Done"
-    fi        
+    fi 
+
 }
 
 configureFilebeat() {
+
     mkdir /etc/filebeat/certs/ca -p
     echo "output.elasticsearch.hosts:" >> /etc/filebeat/filebeat.yml
     for i in "${!ips[@]}"; do
@@ -181,10 +195,12 @@ configureFilebeat() {
     done
     conf="$(awk '{sub("<elasticsearch_password>", "'"${password}"'")}1' /etc/filebeat/filebeat.yml)"
     echo "$conf" > /etc/filebeat/filebeat.yml  
+
 }
 
 ## Health check
 healthCheck() {
+
     cores=$(cat /proc/cpuinfo | grep processor | wc -l)
     ram_gb=$(free -m | awk '/^Mem:/{print $2}')
 
@@ -195,13 +211,13 @@ healthCheck() {
     else
         echo "Starting the installation..."
     fi
+
 }
 
 ## Main
 
 main() {
   
-    
     if [ -n "$1" ] 
     then    
         while [ -n "$1" ]
@@ -260,6 +276,7 @@ main() {
     else
         getHelp
     fi
+    
 }
 
 main "$@"
