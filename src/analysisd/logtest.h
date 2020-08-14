@@ -56,6 +56,7 @@ typedef struct w_logtest_session_t {
     RuleNode *rule_list;                    ///< Rule list
     OSDecoderNode *decoderlist_forpname;    ///< Decoder list to match logs which have a program name
     OSDecoderNode *decoderlist_nopname;     ///< Decoder list to match logs which haven't a program name
+    OSStore *decoder_store;                  ///< Decoder list to save internals decoders
     ListNode *cdblistnode;                  ///< List of CDB lists
     ListRule *cdblistrule;                  ///< List to attach rules and CDB lists
     EventList *eventlist;                   ///< Previous events list

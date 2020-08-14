@@ -50,6 +50,11 @@ OSDecoderNode *os_analysisd_decoderlist_pn;
 OSDecoderNode *os_analysisd_decoderlist_nopn;
 
 /**
+ * @brief Decoder list to save internals decoders
+ */
+OSStore *os_analysisd_decoder_store;
+
+/**
  * @brief Structure to save all rules read in starting.
  */
 RuleNode *os_analysisd_rulelist;
