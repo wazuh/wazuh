@@ -9,6 +9,13 @@
  * Foundation.
  */
 
+#ifdef UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_parsing.h"
 #include "wm_agent_upgrade_tasks.h"
@@ -19,7 +26,7 @@
  * @param error_message message in case of error
  * @return pointer to array of agent ids
  * */
-static int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message);
+STATIC int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message);
 
 /**
  * Parses upgrade command and returns an upgrade task from the information
@@ -35,7 +42,7 @@ static int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_mess
  * @param error_message message in case of error
  * @return upgrade task if there is no error, NULL otherwise
  * */
-static wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char** error_message);
+STATIC wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char** error_message);
 
 /**
  * Parses upgrade custom command and returns an upgrade task from the information
@@ -49,7 +56,7 @@ static wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
  * @param error_message message in case of error
  * @return upgrade task if there is no error, NULL otherwise
  * */
-static wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message);
+STATIC wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message);
 
 /**
  * Parses upgrade agent status and return an agent status task from the information
@@ -57,7 +64,7 @@ static wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(con
  * @param error_message message in case of error
  * @return upgrade task if there is no error, NULL otherwise
  * */
-static wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status(const cJSON* params, char** error_message);
+STATIC wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status(const cJSON* params, char** error_message);
 
 int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error) {
     int retval = OS_INVALID;
@@ -129,7 +136,7 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
     return retval;
 }
 
-static int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message) {
+STATIC int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message) {
     char *output = NULL;
     int *agent_ids = NULL;
     int agents_size = 0;
@@ -167,7 +174,7 @@ static int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_mess
     return agent_ids;
 }
 
-static wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char** error_message) {
+STATIC wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char** error_message) {
     char *output = NULL;
     int param_index = 0;
     int error_flag = 0;
@@ -229,7 +236,7 @@ static wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
     return task;
 }
 
-static wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message) {
+STATIC wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message) {
     char *output = NULL;
     int param_index = 0;
     int error_flag = 0;
@@ -271,7 +278,7 @@ static wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(con
     return task;
 }
 
-static wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status(const cJSON* params, char** error_message) {
+STATIC wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status(const cJSON* params, char** error_message) {
     char *output = NULL;
     int param_index = 0;
     int error_flag = 0;

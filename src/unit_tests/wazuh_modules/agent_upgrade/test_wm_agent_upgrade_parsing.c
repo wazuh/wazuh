@@ -17,17 +17,34 @@
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_parsing.h"
 #include "../../headers/shared.h"
 
-#if defined(TEST_SERVER)
+#ifdef TEST_SERVER
 
-
+int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message);
+wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char** error_message);
+wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message);
+wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status(const cJSON* params, char** error_message);
 
 #endif
 
 // Setup / teardown
 
 static int teardown_json(void **state) {
-    cJSON *json = *state;
-    cJSON_Delete(json);
+    if (*state) {
+        cJSON *json = *state;
+        cJSON_Delete(json);
+    }
+    return 0;
+}
+
+static int teardown_parse_agents(void **state) {
+    if (state[0]) {
+        int *ids = (int*)state[0];
+        os_free(ids);
+    }
+    if (state[1]) {
+        char *error = (char*)state[1];
+        os_free(error);
+    }
     return 0;
 }
 
@@ -255,6 +272,78 @@ void test_wm_agent_upgrade_parse_agent_response_invalid_response(void **state)
     assert_null(data);
 }
 
+void test_wm_agent_upgrade_parse_agents_success(void **state)
+{
+    char *error = NULL;
+
+    cJSON *agents = cJSON_CreateArray();
+    cJSON *agent1 = cJSON_CreateNumber(15);
+    cJSON *agent2 = cJSON_CreateNumber(23);
+    cJSON *agent3 = cJSON_CreateNumber(8);
+    cJSON_AddItemToArray(agents, agent1);
+    cJSON_AddItemToArray(agents, agent2);
+    cJSON_AddItemToArray(agents, agent3);
+
+    int* agent_ids = wm_agent_upgrade_parse_agents(agents, &error);
+
+    cJSON_Delete(agents);
+
+    state[0] = (void*)agent_ids;
+    state[1] = (void*)error;
+    state[2] = NULL;
+
+    assert_int_equal(agent_ids[0], 15);
+    assert_int_equal(agent_ids[1], 23);
+    assert_int_equal(agent_ids[2], 8);
+    assert_int_equal(agent_ids[3], -1);
+    assert_null(error);
+}
+
+void test_wm_agent_upgrade_parse_agents_type_error(void **state)
+{
+    char *error = NULL;
+
+    cJSON *agents = cJSON_CreateArray();
+    cJSON *agent1 = cJSON_CreateNumber(15);
+    cJSON *agent2 = cJSON_CreateString("23");
+    cJSON *agent3 = cJSON_CreateNumber(8);
+    cJSON_AddItemToArray(agents, agent1);
+    cJSON_AddItemToArray(agents, agent2);
+    cJSON_AddItemToArray(agents, agent3);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Agent id not recognized'");
+
+    int* agent_ids = wm_agent_upgrade_parse_agents(agents, &error);
+
+    cJSON_Delete(agents);
+
+    state[0] = (void*)agent_ids;
+    state[1] = (void*)error;
+    state[2] = NULL;
+
+    assert_null(agent_ids);
+    assert_string_equal(error, "Agent id not recognized");
+}
+
+void test_wm_agent_upgrade_parse_agents_empty(void **state)
+{
+    char *error = NULL;
+
+    cJSON *agents = cJSON_CreateArray();
+
+    int* agent_ids = wm_agent_upgrade_parse_agents(agents, &error);
+
+    cJSON_Delete(agents);
+
+    state[0] = (void*)agent_ids;
+    state[1] = (void*)error;
+    state[2] = NULL;
+
+    assert_int_equal(agent_ids[0], -1);
+    assert_null(error);
+}
+
 #endif
 
 int main(void) {
@@ -271,7 +360,10 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_err_with_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_err_without_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_unknown_response),
-        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_invalid_response)
+        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_invalid_response),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_agents_success, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_agents_type_error, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_agents_empty, teardown_parse_agents),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
