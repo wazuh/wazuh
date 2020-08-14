@@ -14,7 +14,7 @@ from aiohttp import web
 
 from api.authentication import get_api_conf
 from api.util import raise_if_exc
-from wazuh.core.exception import WazuhError
+from wazuh.core.exception import WazuhError, WazuhTooManyRequests, WazuhPermissionError
 
 logger = getLogger('wazuh')
 pool = concurrent.futures.ThreadPoolExecutor()
@@ -47,7 +47,7 @@ async def prevent_bruteforce_attack(request, block_time=300, attempts=5):
 
         if request.remote in ip_block:
             logger.warning(f'P blocked due to exceeded number of logins attempts: {request.remote}')
-            raise_if_exc(WazuhError(6000))
+            raise_if_exc(WazuhPermissionError(6000))
 
         if request.remote not in ip_stats.keys():
             ip_stats[request.remote] = dict()
@@ -86,7 +86,7 @@ async def prevent_denial_of_service(request, max_requests=300):
                 payload = dict(request.raw_headers)[b'authorization'].decode().split('.')[1]
             payload += "=" * ((4 - len(payload) % 4) % 4)
             request['user'] = loads(b64decode(payload).decode())['sub']
-            raise_if_exc(WazuhError(6001), code=429)
+            raise_if_exc(WazuhTooManyRequests(6001))
 
 
 @web.middleware

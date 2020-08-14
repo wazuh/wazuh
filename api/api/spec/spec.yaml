@@ -4941,6 +4941,8 @@ paths:
       summary: 'Root-endpoint info'
       description: "Return basic information about the API"
       operationId: api.controllers.default_controller.default_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
       responses:
         '200':
           description: "API default info"
