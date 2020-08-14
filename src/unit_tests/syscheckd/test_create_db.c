@@ -560,6 +560,24 @@ static int teardown_file_limit(void **state) {
     return 0;
 }
 
+static int setup_fim_tmp_file(void **state) {
+    fim_tmp_file *tmpfile;
+
+    if (tmpfile = calloc(1, sizeof(fim_tmp_file)), tmpfile == NULL) {
+        return -1;
+    }
+
+    tmpfile->elements = 5000;
+    *state = tmpfile;
+    return 0;
+}
+
+static int teardown_fim_tmp_file(void **state) {
+    fim_tmp_file *tmpfile = *state;
+    free(tmpfile);
+    return 0;
+}
+
 #ifndef TEST_WINAGENT
 static int teardown_fim_scan_realtime(void **state) {
     int *dir_opts = *state;
@@ -2098,6 +2116,8 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 }
 
 static void test_fim_scan_db_full_double_scan(void **state) {
+    fim_tmp_file *file = *state;
+
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
@@ -2115,14 +2135,17 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap_realtime_adddir, dir, "/boot");
     expect_string(__wrap_realtime_adddir, dir, "/home");
     expect_string(__wrap_realtime_adddir, dir, "/media");
-
+    // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
-    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, file);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
 
     will_return(__wrap_fim_db_get_count_entry_path, 45000);
 
@@ -2338,20 +2361,6 @@ static void test_fim_scan_db_free(void **state) {
 
     // fim_scan
     will_return(__wrap_fim_db_get_count_entry_path, 1000);
-
-    will_return_count(__wrap_lstat, 0, 6);
-    expect_string(__wrap_HasFilesystem, path, "/boot");
-    expect_string(__wrap_HasFilesystem, path, "/etc");
-    expect_string(__wrap_HasFilesystem, path, "/home");
-    expect_string(__wrap_HasFilesystem, path, "/media");
-    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
-    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
-    will_return_count(__wrap_HasFilesystem, 0, 6);
-
-    will_return_count(__wrap_fim_db_get_count_entry_path, 1000, 6);
-
-    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_set_all_unscanned, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
 
@@ -2815,6 +2824,8 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 }
 
 static void test_fim_scan_db_full_double_scan(void **state) {
+    fim_tmp_file *file = *state;
+
     char expanded_dirs[10][OS_SIZE_1024];
     char directories[10][OS_SIZE_256] = {
         "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
@@ -2848,8 +2859,10 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
-    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, file);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+    expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
 
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
@@ -2876,6 +2889,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 }
 
 static void test_fim_scan_db_full_double_scan_winreg_check(void **state) {
+    fim_tmp_file *file = *state;
     char expanded_dirs[10][OS_SIZE_1024];
     char directories[10][OS_SIZE_256] = {
         "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
@@ -2909,8 +2923,10 @@ static void test_fim_scan_db_full_double_scan_winreg_check(void **state) {
     // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
-    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, file);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+    expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
 
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
@@ -3041,25 +3057,6 @@ static void test_fim_scan_db_free(void **state) {
 
     // fim_scan
     will_return(__wrap_fim_db_get_count_entry_path, 1000);
-
-    // In fim_checker
-    will_return_count(__wrap_stat, 0, 10);
-
-    for(i = 0; i < 10; i++) {
-        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
-            fail();
-
-        str_lowercase(expanded_dirs[i]);
-        expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
-    }
-
-    will_return_count(__wrap_HasFilesystem, 0, 10);
-
-    // fim_scan
-    will_return_count(__wrap_fim_db_get_count_entry_path, 1000, 11);
-
-    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_set_all_unscanned, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
 
@@ -4168,9 +4165,9 @@ int main(void) {
         cmocka_unit_test_setup(test_fim_file_error_on_insert, setup_fim_entry),
 
         /* fim_scan */
-        cmocka_unit_test(test_fim_scan_db_full_double_scan),
+        cmocka_unit_test_setup_teardown(test_fim_scan_db_full_double_scan, setup_fim_tmp_file, teardown_fim_tmp_file),
         #ifdef TEST_WINAGENT
-        cmocka_unit_test(test_fim_scan_db_full_double_scan_winreg_check),
+        cmocka_unit_test_setup_teardown(test_fim_scan_db_full_double_scan_winreg_check, setup_fim_tmp_file, teardown_fim_tmp_file),
         #endif
         cmocka_unit_test(test_fim_scan_db_full_not_double_scan),
         cmocka_unit_test(test_fim_scan_db_free),
