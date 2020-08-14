@@ -178,6 +178,75 @@ void test_wm_agent_upgrade_parse_task_module_request_without_status(void **state
     assert_null(cJSON_GetObjectItem(response, "status"));
 }
 
+void test_wm_agent_upgrade_parse_agent_response_ok_with_data(void **state)
+{
+    (void) state;
+    char *response = "ok 1234567890";
+    char *data = NULL;
+    char *error = NULL;
+
+    int ret = wm_agent_upgrade_parse_agent_response(response, &data, &error);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data, "1234567890");
+    assert_null(error);
+}
+
+void test_wm_agent_upgrade_parse_agent_response_ok_without_data(void **state)
+{
+    (void) state;
+    char *response = "ok ";
+    char *data = NULL;
+    char *error = NULL;
+
+    int ret = wm_agent_upgrade_parse_agent_response(response, &data, &error);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data, "");
+    assert_null(error);
+}
+
+void test_wm_agent_upgrade_parse_agent_response_err_with_data(void **state)
+{
+    (void) state;
+    char *response = "err invalid request";
+    char *data = NULL;
+    char *error = NULL;
+
+    int ret = wm_agent_upgrade_parse_agent_response(response, &data, &error);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(error, "invalid request");
+    assert_null(data);
+}
+
+void test_wm_agent_upgrade_parse_agent_response_err_without_data(void **state)
+{
+    (void) state;
+    char *response = "err ";
+    char *data = NULL;
+    char *error = NULL;
+
+    int ret = wm_agent_upgrade_parse_agent_response(response, &data, &error);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(error, "");
+    assert_null(data);
+}
+
+void test_wm_agent_upgrade_parse_agent_response_invalid_response(void **state)
+{
+    (void) state;
+    char *data = NULL;
+    char *error = NULL;
+
+    int ret = wm_agent_upgrade_parse_agent_response(NULL, &data, &error);
+
+    assert_int_equal(ret, -1);
+    assert_null(error);
+    assert_null(data);
+}
+
 #endif
 
 int main(void) {
@@ -188,7 +257,12 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_response_message_without_task_id, teardown_json),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_response_message_without_agent_id, teardown_json),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_complete, teardown_json),
-        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_without_status, teardown_json)
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_without_status, teardown_json),
+        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_ok_with_data),
+        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_ok_without_data),
+        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_err_with_data),
+        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_err_without_data),
+        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_invalid_response)
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
