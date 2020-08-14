@@ -27,32 +27,6 @@ typedef enum _upgrade_status {
     WM_TASK_UPGRADE_OUTDATED
 } upgrade_status;
 
-typedef enum _json_key {
-    WM_TASK_MODULE = 0,
-    WM_TASK_COMMAND,
-    WM_TASK_AGENT_ID,
-    WM_TASK_TASK_ID,
-    WM_TASK_STATUS,
-    WM_TASK_ERROR,
-    WM_TASK_ERROR_DATA,
-    WM_TASK_CREATE_TIME,
-    WM_TASK_LAST_UPDATE_TIME
-} json_key;
-
-typedef enum _module_list {
-    WM_TASK_UPGRADE_MODULE = 0,
-    WM_TASK_API_MODULE
-} module_list;
-
-typedef enum _command_list {
-    WM_TASK_UPGRADE = 0,
-    WM_TASK_UPGRADE_CUSTOM,
-    WM_TASK_UPGRADE_GET_STATUS,
-    WM_TASK_UPGRADE_UPDATE_STATUS,
-    WM_TASK_UPGRADE_RESULT,
-    WM_TASK_TASK_RESULT
-} command_list;
-
 typedef enum _error_code {
     WM_TASK_SUCCESS = 0,
     WM_TASK_INVALID_MESSAGE,
