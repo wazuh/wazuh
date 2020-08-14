@@ -5,9 +5,12 @@ debug='> /dev/null 2>&1'
 if [ -n "$(command -v yum)" ] 
 then
     sys_type="yum"
+elif [ -n "$(command -v zypper)" ] 
+then
+    sys_type="zypper"     
 elif [ -n "$(command -v apt-get)" ] 
 then
-    sys_type="apt-get"
+    sys_type="apt-get"   
 fi
 
 logger() {
@@ -49,12 +52,26 @@ installPrerequisites() {
 
 ## Add the Wazuh repository
 addWazuhrepo() {
+
     logger "Adding the Wazuh repository..."
 
     if [ $sys_type == "yum" ] 
     then
         eval "rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH $debug"
         eval "echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh_pre.repo $debug"
+    elif [ $sys_type == "zypper" ] 
+    then
+        rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH > /dev/null 2>&1
+		cat > /etc/zypp/repos.d/wazuh_pre.repo <<- EOF
+		[wazuh_repo]
+		gpgcheck=1
+		gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
+		enabled=1
+		name=Wazuh repository
+		baseurl=https://packages.wazuh.com/3.x/yum/
+		protect=1
+		EOF
+    
     elif [ $sys_type == "apt-get" ] 
     then
         eval "curl -s https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH --max-time 300 | apt-key add - $debug"
@@ -62,24 +79,47 @@ addWazuhrepo() {
         eval "apt-get update -q $debug"
     fi    
 
-    logger "Done" 
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Wazuh repository could not be added"
+        exit 1;
+    else
+        logger "Done"
+    fi   
+
 }
 
-## Wazuh manager and API
+## Wazuh manager
 installWazuh() {
+
     logger "Installing the Wazuh manager..."
+    if [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install wazuh-manager $debug"
+    else
+        eval "$sys_type install wazuh-manager -y -q $debug"
+    fi
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Wazuh installation failed"
+        exit 1;
+    else
+        logger "Done"
+    fi  
 
-    eval "$sys_type install wazuh-manager -y -q $debug"
-
-    logger "Done"
 }
 
 ## Filebeat
 installFilebeat() {
     
     logger "Installing Filebeat..."
-
-    eval "$sys_type install filebeat -y -q  $debug"
+    
+    if [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install filebeat $debug"
+    else
+        eval "$sys_type install filebeat -y -q  $debug"
+    fi
     if [  "$?" != 0  ]
     then
         echo "Error: Filebeat installation failed"
