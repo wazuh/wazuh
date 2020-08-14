@@ -27,6 +27,7 @@ constexpr auto INVALID_COLUMN_TYPE      { std::make_pair(11, "Invalid column fie
 constexpr auto INVALID_DATA_BIND        { std::make_pair(12, "Invalid data to bind.") };
 constexpr auto INVALID_TABLE            { std::make_pair(13, "Invalid table.") };
 constexpr auto INVALID_DELETE_INFO      { std::make_pair(14, "Invalid information provided for deletion.") };
+constexpr auto BIND_FIELDS_DOES_MATCH   { std::make_pair(15, "Invalid information provided for statement creation.") };
 
 namespace DbSync
 {

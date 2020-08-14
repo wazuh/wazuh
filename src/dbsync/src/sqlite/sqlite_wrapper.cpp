@@ -158,36 +158,47 @@ Statement::Statement(std::shared_ptr<IConnection>& connection,
                      const std::string& query)
 : m_connection{ connection }
 , m_stmt{ prepareSQLiteStatement(m_connection, query), [](sqlite3_stmt* p){ sqlite3_finalize(p); } }
+, m_bindParametersCount{ sqlite3_bind_parameter_count(m_stmt.get()) }
+, m_bindParametersIndex{ 0 }
 {}
 
 int32_t Statement::step()
 {
-    const auto ret { sqlite3_step(m_stmt.get()) };
-    if (SQLITE_ROW != ret && SQLITE_DONE != ret)
+    auto ret { SQLITE_ERROR };
+    if(m_bindParametersIndex == m_bindParametersCount)
     {
-        checkSqliteResult(ret, sqlite3_errmsg(m_connection->db().get()));
+        ret = sqlite3_step(m_stmt.get());
+        if (SQLITE_ROW != ret && SQLITE_DONE != ret)
+        {
+            checkSqliteResult(ret, sqlite3_errmsg(m_connection->db().get()));
+        }
     }
     return ret;
 }
+
 void Statement::reset()
 {
     sqlite3_reset(m_stmt.get());
+    m_bindParametersIndex = 0;
 }
 
 void Statement::bind(const int32_t index, const int32_t value)
 {
     const auto result{ sqlite3_bind_int(m_stmt.get(), index, value) };
     checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
+    ++m_bindParametersIndex;
 }
 void Statement::bind(const int32_t index, const uint64_t value)
 {
     const auto result{ sqlite3_bind_int64(m_stmt.get(), index, value) };
     checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
+    ++m_bindParametersIndex;
 }
 void Statement::bind(const int32_t index, const int64_t value)
 {
     const auto result{ sqlite3_bind_int64(m_stmt.get(), index, value) };
     checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
+    ++m_bindParametersIndex;
 }
 void Statement::bind(const int32_t index, const std::string& value)
 {
@@ -200,11 +211,13 @@ void Statement::bind(const int32_t index, const std::string& value)
                           SQLITE_TRANSIENT)
     };
     checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
+    ++m_bindParametersIndex;
 }
 void Statement::bind(const int32_t index, const double value)
 {
     const auto result{ sqlite3_bind_double(m_stmt.get(), index, value) };
     checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
+    ++m_bindParametersIndex;
 }
 
 std::string Statement::expand()
