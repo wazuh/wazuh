@@ -122,7 +122,7 @@ then
     # Documentation config file
 
     sed -E -i'' -e "s/PROJECT_NUMBER         = \".+\"/PROJECT_NUMBER         = \"$version\"/g" $VERSION_DOCU
-    
+
     # Ruleset version
 
     sed -E -i'' -e "s/RULESET_VERSION=\".+\"/RULESET_VERSION=\"$version\"/g" $RULESET_VERSION
