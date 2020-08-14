@@ -1,6 +1,5 @@
 default_rules:
   elastic_admin:
-    id: 1
     description: Admin permissions for Elastic administrator.
     rule:
       FIND$:
@@ -8,7 +7,6 @@ default_rules:
           - administrator
 
   opendistro_admin:
-    id: 2
     description: OpenDistro permissions for Elastic administrator.
     rule:
       FIND$:

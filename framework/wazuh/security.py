@@ -470,22 +470,23 @@ def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None
 
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'])
-def add_rule(rule=None):
+def add_rule(name=None, rule=None):
     """Creates a role in the system
 
+    :param name: The new rule name
     :param rule: The new rule
     :return Rule information
     """
     result = AffectedItemsWazuhResult(none_msg='Rule could not be created',
                                       all_msg='Rule created correctly')
     with RulesManager() as rum:
-        status = rum.add_rule(rule=rule)
+        status = rum.add_rule(name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
             result.add_failed_item(id_=json.dumps(rule), error=WazuhError(4005))
         elif status == SecurityError.INVALID:
             result.add_failed_item(id_=json.dumps(rule), error=WazuhError(4003))
         else:
-            result.affected_items.append(rum.get_rules()[-1].get_rule())
+            result.affected_items.append(rum.get_rule_name(name))
             result.total_affected_items += 1
 
     return result
@@ -525,10 +526,11 @@ def remove_rules(rule_ids=None):
 
 
 @expose_resources(actions=['security:update'], resources=['rule:id:{rule_id}'])
-def update_rule(rule_id=None, rule=None):
+def update_rule(rule_id=None, name=None, rule=None):
     """Updates a rule in the system
 
     :param rule_id: Rule id to be updated
+    :param name: The new name
     :param rule: The new rule
     :return Rule information
     """
@@ -537,7 +539,7 @@ def update_rule(rule_id=None, rule=None):
     result = AffectedItemsWazuhResult(none_msg='Rule could not be updated',
                                       all_msg='Rule updated correctly')
     with RulesManager() as rum:
-        status = rum.update_rule(rule_id=rule_id[0], rule=rule)
+        status = rum.update_rule(rule_id=rule_id[0], name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
             result.add_failed_item(id_=rule_id[0], error=WazuhError(4005))
         elif status == SecurityError.INVALID:

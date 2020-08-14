@@ -283,6 +283,7 @@ class Rules(_Base):
 
     # Schema
     id = Column('id', Integer, primary_key=True)
+    name = Column('name', String(20))
     rule = Column('rule', TEXT)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('rule', name='rule_definition'),)
@@ -291,7 +292,8 @@ class Rules(_Base):
     roles = relationship("Roles", secondary='roles_rules',
                          backref=backref("ruless", cascade="all, delete", order_by=id), lazy='dynamic')
 
-    def __init__(self, rule):
+    def __init__(self, name, rule):
+        self.name = name
         self.rule = rule
         self.created_at = datetime.utcnow()
 
@@ -300,14 +302,14 @@ class Rules(_Base):
 
         :return: Dict with the information of the rule
         """
-        return {'id': self.id, 'rule': json.loads(self.rule)}
+        return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule)}
 
     def to_dict(self):
         """Return the information of one rule and its roles
 
         :return: Dict with the information
         """
-        return {'id': self.id, 'rule': json.loads(self.rule),
+        return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule),
                 'roles': [role.id for role in self.roles]}
 
 
@@ -839,12 +841,12 @@ class RulesManager:
         except IntegrityError:
             return SecurityError.RULE_NOT_EXIST
 
-    def add_rule(self, rule: dict):
+    def add_rule(self, name: str, rule: dict):
         """TODO"""
         try:
             if rule is not None and not json_validator(rule):
                 return SecurityError.INVALID
-            self.session.add(Rules(rule=json.dumps(rule)))
+            self.session.add(Rules(name=name, rule=json.dumps(rule)))
             self.session.commit()
             return True
         except IntegrityError:
@@ -887,7 +889,7 @@ class RulesManager:
             self.session.rollback()
             return False
 
-    def update_rule(self, rule_id: int, rule: dict):
+    def update_rule(self, rule_id: int, name: str, rule: dict):
         """TODO"""
         try:
             rule_to_update = self.session.query(Rules).filter_by(id=rule_id).first()
@@ -898,6 +900,8 @@ class RulesManager:
                     if rule is not None and not json_validator(rule):
                         return SecurityError.INVALID
                     # Change the rule
+                    if name is not None:
+                        rule_to_update.name = name
                     if rule is not None:
                         rule_to_update.rule = json.dumps(rule)
                     self.session.commit()
@@ -1824,7 +1828,7 @@ with open(os.path.join(default_path, 'rules.yaml'), 'r') as stream:
 
     with RulesManager() as rum:
         for d_rule_name, payload in default_rules[next(iter(default_rules))].items():
-            rum.add_rule(rule=payload['rule'])
+            rum.add_rule(name=d_rule_name, rule=payload['rule'])
 
 # Create default policies if they don't exist yet
 with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
@@ -1860,6 +1864,5 @@ with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
     with RolesRulesManager() as rrum:
         for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
             for d_rule_name in payload['rule_ids']:
-                rule = default_rules[next(iter(default_rules))][d_rule_name]
                 rrum.add_rule_to_role(role_id=rm.get_role(name=d_role_name)['id'],
-                                      rule_id=rule['id'])
+                                      rule_id=rum.get_rule_name(d_rule_name)['id'])

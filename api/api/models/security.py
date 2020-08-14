@@ -73,16 +73,27 @@ class RoleModel(Body):
 
 class RuleModel(Body):
     """Security rule model."""
-    def __init__(self, rule: dict = None):
+    def __init__(self, name: str = None, rule: dict = None):
         self.swagger_types = {
+            'name': str,
             'rule': dict
         }
 
         self.attribute_map = {
+            'name': 'name',
             'rule': 'rule'
         }
 
+        self._name = name
         self._rule = rule
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = name
 
     @property
     def rule(self):

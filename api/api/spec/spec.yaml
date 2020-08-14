@@ -1698,8 +1698,12 @@ components:
     SecurityRulesRequest:
       type: object
       required:
+        - name
         - rule
       properties:
+        name:
+          type: string
+          description: "Rule name"
         rule:
           type: object
           description: "Rule body"
@@ -13102,11 +13106,13 @@ paths:
                 data:
                   affected_items:
                     - id: 1
+                      name: "admin_rule"
                       rule:
                         FIND:
                           r'^auth[a-zA-Z]+$':
                             - "administrator"
                     - id: 2
+                      name: "limit_access_rule"
                       rule:
                         MATCH:
                           privileges: 'limit_access'
@@ -13140,6 +13146,8 @@ paths:
             schema:
               $ref: '#/components/schemas/SecurityRulesRequest'
             example:
+              name:
+                "New_Rule"
               rule:
                 MATCH:
                   definition: "normalRule"
@@ -13232,6 +13240,7 @@ paths:
             schema:
               $ref: '#/components/schemas/SecurityRulesRequest'
             example:
+              name: "new_name"
               rule:
                 MATCH:
                   definition: "normalRule"
