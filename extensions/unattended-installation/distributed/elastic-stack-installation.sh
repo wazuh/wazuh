@@ -80,21 +80,13 @@ installPrerequisites() {
 
     logger "Installing all necessary utilities for the installation..."
 
-    if [ $sys_type == "yum" ] 
+    if [ $sys_type == "yum" ]
     then
-        eval "yum install curl unzip wget libcap -y -q $debug"   
-        eval "yum install java-11-openjdk-devel -y -q $debug"
-        if [  "$?" != 0  ]
-        then
-            eval "yum install java-1.8.0-openjdk-devel -y -q $debug"
-            if [  "$?" != 0  ]
-            then
-                logger "JDK installation falied."
-                exit 1;
-            fi
+        eval "yum install curl unzip wget libcap -y -q $debug && yum install java-11-openjdk-devel -y -q $debug || yum install java-1.8.0-openjdk.x86_64 -y -q $debug"
             export JAVA_HOME=/usr/
-        fi
-        export JAVA_HOME=/usr/
+    elif [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install curl unzip wget libcap $debug && zypper -n install java-11-openjdk-devel $debug || zypper -n install java-1.8.0-openjdk.x86_64 $debug"
     elif [ $sys_type == "apt-get" ] 
     then
         eval "apt-get install apt-transport-https curl unzip wget libcap2-bin -y -q $debug"
@@ -128,13 +120,16 @@ installPrerequisites() {
 
 ## Add the Wazuh repository
 addWazuhrepo() {
-
     logger "Adding the Wazuh repository..."
 
     if [ $sys_type == "yum" ] 
     then
         eval "rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH $debug"
         eval "echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh_pre.repo $debug"
+    elif [ $sys_type == "zypper" ] 
+    then
+        eval "rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH $debug"
+        eval "echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/zypp/repos.d/wazuh_pre.repo $debug"            
     elif [ $sys_type == "apt-get" ] 
     then
         eval "curl -s https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH --max-time 300 | apt-key add - $debug"
@@ -142,16 +137,8 @@ addWazuhrepo() {
         eval "apt-get update -q $debug"
     fi    
 
-    if [  "$?" != 0  ]
-    then
-        echo "Error: Wazuh repository could not be added"
-        exit 1;
-    else
-        logger "Done"
-    fi   
-
+    logger "Done" 
 }
-
 ## Elasticsearch
 installElasticsearch() {
 
