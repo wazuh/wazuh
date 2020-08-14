@@ -492,6 +492,27 @@ void test_wm_agent_upgrade_parse_upgrade_command_invalid_http(void **state)
     char *error = NULL;
 
     cJSON *params = cJSON_CreateObject();
+    cJSON_AddStringToObject(params, "use_http", "yes");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"use_http\" should be a number'");
+
+    wm_upgrade_task* upgrade_task = wm_agent_upgrade_parse_upgrade_command(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = NULL;
+
+    assert_non_null(error);
+    assert_string_equal(error, "Parameter \"use_http\" should be a number");
+}
+
+void test_wm_agent_upgrade_parse_upgrade_command_invalid_http_number(void **state)
+{
+    char *error = NULL;
+
+    cJSON *params = cJSON_CreateObject();
     cJSON_AddNumberToObject(params, "use_http", 5);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
@@ -509,6 +530,27 @@ void test_wm_agent_upgrade_parse_upgrade_command_invalid_http(void **state)
 }
 
 void test_wm_agent_upgrade_parse_upgrade_command_invalid_force(void **state)
+{
+    char *error = NULL;
+
+    cJSON *params = cJSON_CreateObject();
+    cJSON_AddStringToObject(params, "force_upgrade", "no");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"force_upgrade\" should be a number'");
+
+    wm_upgrade_task* upgrade_task = wm_agent_upgrade_parse_upgrade_command(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = NULL;
+
+    assert_non_null(error);
+    assert_string_equal(error, "Parameter \"force_upgrade\" should be a number");
+}
+
+void test_wm_agent_upgrade_parse_upgrade_command_invalid_force_number(void **state)
 {
     char *error = NULL;
 
@@ -818,6 +860,342 @@ void test_wm_agent_upgrade_parse_upgrade_agent_status_invalid_json(void **state)
     assert_string_equal(error, "Invalid JSON type");
 }
 
+void test_wm_agent_upgrade_parse_message_upgrade_success(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    wm_upgrade_task* upgrade_task = NULL;
+    char *buffer = "{\"command\":\"upgrade\","
+                    "\"agents\":[1,15,24],"
+                    "\"params\":{\"wpk_repo\":\"wazuh.com\","
+                                "\"version\":\"v4.0.0\","
+                                "\"use_http\":0,"
+                                "\"force_upgrade\":1}}";
+
+    int command = wm_agent_upgrade_parse_message(buffer, (void*)&upgrade_task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, WM_UPGRADE_UPGRADE);
+    assert_non_null(agent_ids);
+    assert_int_equal(agent_ids[0], 1);
+    assert_int_equal(agent_ids[1], 15);
+    assert_int_equal(agent_ids[2], 24);
+    assert_int_equal(agent_ids[3], -1);
+    assert_non_null(upgrade_task);
+    assert_string_equal(upgrade_task->wpk_repository, "wazuh.com");
+    assert_string_equal(upgrade_task->custom_version, "v4.0.0");
+    assert_int_equal(upgrade_task->use_http, 0);
+    assert_int_equal(upgrade_task->force_upgrade, 1);
+    assert_null(upgrade_task->wpk_file);
+    assert_null(upgrade_task->wpk_sha1);
+    assert_null(error);
+
+    wm_agent_upgrade_free_upgrade_task(upgrade_task);
+}
+
+void test_wm_agent_upgrade_parse_message_upgrade_agent_error(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    wm_upgrade_task* upgrade_task = NULL;
+    char *buffer = "{\"command\":\"upgrade\","
+                    "\"agents\":[1,15,\"24\"],"
+                    "\"params\":{\"wpk_repo\":\"wazuh.com\","
+                                "\"version\":\"v4.0.0\","
+                                "\"use_http\":0,"
+                                "\"force_upgrade\":1}}";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Agent id not recognized'");
+
+    int command = wm_agent_upgrade_parse_message(buffer, (void*)&upgrade_task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, OS_INVALID);
+    assert_null(agent_ids);
+    assert_null(upgrade_task);
+    assert_non_null(error);
+    assert_string_equal(error, "{\"error\":3,\"data\":\"Agent id not recognized\"}");
+}
+
+void test_wm_agent_upgrade_parse_message_upgrade_task_error(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    wm_upgrade_task* upgrade_task = NULL;
+    char *buffer = "{\"command\":\"upgrade\","
+                    "\"agents\":[1,15,24],"
+                    "\"params\":{\"wpk_repo\":\"wazuh.com\","
+                                "\"version\":\"v4.0.0\","
+                                "\"use_http\":\"yes\","
+                                "\"force_upgrade\":1}}";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"use_http\" should be a number'");
+
+    int command = wm_agent_upgrade_parse_message(buffer, (void*)&upgrade_task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, OS_INVALID);
+    assert_non_null(agent_ids);
+    assert_int_equal(agent_ids[0], 1);
+    assert_int_equal(agent_ids[1], 15);
+    assert_int_equal(agent_ids[2], 24);
+    assert_int_equal(agent_ids[3], -1);
+    assert_non_null(error);
+    assert_string_equal(error, "{\"error\":3,\"data\":\"Parameter \\\"use_http\\\" should be a number\"}");
+}
+
+void test_wm_agent_upgrade_parse_message_upgrade_custom_success(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    wm_upgrade_custom_task* upgrade_custom_task = NULL;
+    char *buffer = "{\"command\":\"upgrade_custom\","
+                    "\"agents\":[1,15,24],"
+                    "\"params\":{\"file_path\":\"wazuh.wpk\","
+                                "\"installer\":\"install.sh\"}}";
+
+    int command = wm_agent_upgrade_parse_message(buffer, (void*)&upgrade_custom_task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, WM_UPGRADE_UPGRADE_CUSTOM);
+    assert_non_null(agent_ids);
+    assert_int_equal(agent_ids[0], 1);
+    assert_int_equal(agent_ids[1], 15);
+    assert_int_equal(agent_ids[2], 24);
+    assert_int_equal(agent_ids[3], -1);
+    assert_non_null(upgrade_custom_task);
+    assert_string_equal(upgrade_custom_task->custom_file_path, "wazuh.wpk");
+    assert_string_equal(upgrade_custom_task->custom_installer, "install.sh");
+    assert_null(error);
+
+    wm_agent_upgrade_free_upgrade_custom_task(upgrade_custom_task);
+}
+
+void test_wm_agent_upgrade_parse_message_upgrade_custom_agent_error(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    wm_upgrade_custom_task* upgrade_custom_task = NULL;
+    char *buffer = "{\"command\":\"upgrade_custom\","
+                    "\"agents\":[1,\"15\",24],"
+                    "\"params\":{\"file_path\":\"wazuh.wpk\","
+                                "\"installer\":\"install.sh\"}}";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Agent id not recognized'");
+
+    int command = wm_agent_upgrade_parse_message(buffer, (void*)&upgrade_custom_task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, OS_INVALID);
+    assert_null(agent_ids);
+    assert_null(upgrade_custom_task);
+    assert_non_null(error);
+    assert_string_equal(error, "{\"error\":3,\"data\":\"Agent id not recognized\"}");
+}
+
+void test_wm_agent_upgrade_parse_message_upgrade_custom_task_error(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    wm_upgrade_custom_task* upgrade_custom_task = NULL;
+    char *buffer = "{\"command\":\"upgrade_custom\","
+                    "\"agents\":[1,15,24],"
+                    "\"params\":{\"file_path\":\"wazuh.wpk\","
+                                "\"installer\":123}}";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"installer\" should be a string'");
+
+    int command = wm_agent_upgrade_parse_message(buffer, (void*)&upgrade_custom_task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, OS_INVALID);
+    assert_non_null(agent_ids);
+    assert_int_equal(agent_ids[0], 1);
+    assert_int_equal(agent_ids[1], 15);
+    assert_int_equal(agent_ids[2], 24);
+    assert_int_equal(agent_ids[3], -1);
+    assert_non_null(error);
+    assert_string_equal(error, "{\"error\":3,\"data\":\"Parameter \\\"installer\\\" should be a string\"}");
+}
+
+void test_wm_agent_upgrade_parse_message_upgrade_agent_status_success(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    wm_upgrade_agent_status_task* upgrade_agent_status_task = NULL;
+    char *buffer = "{\"command\":\"upgrade_update_status\","
+                    "\"agents\":[10],"
+                    "\"params\":{\"error\":0,"
+                                "\"data\":\"Success\","
+                                "\"status\":\"Done\"}}";
+
+    int command = wm_agent_upgrade_parse_message(buffer, (void*)&upgrade_agent_status_task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, WM_UPGRADE_AGENT_UPDATE_STATUS);
+    assert_non_null(agent_ids);
+    assert_int_equal(agent_ids[0], 10);
+    assert_int_equal(agent_ids[1], -1);
+    assert_non_null(upgrade_agent_status_task);
+    assert_int_equal(upgrade_agent_status_task->error_code, 0);
+    assert_string_equal(upgrade_agent_status_task->message, "Success");
+    assert_string_equal(upgrade_agent_status_task->status, "Done");
+    assert_null(error);
+
+    wm_agent_upgrade_free_agent_status_task(upgrade_agent_status_task);
+}
+
+void test_wm_agent_upgrade_parse_message_upgrade_agent_status_agent_error(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    wm_upgrade_agent_status_task* upgrade_agent_status_task = NULL;
+    char *buffer = "{\"command\":\"upgrade_update_status\","
+                    "\"agents\":[\"10\"],"
+                    "\"params\":{\"error\":0,"
+                                "\"data\":\"Success\","
+                                "\"status\":\"Done\"}}";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Agent id not recognized'");
+
+    int command = wm_agent_upgrade_parse_message(buffer, (void*)&upgrade_agent_status_task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, OS_INVALID);
+    assert_null(agent_ids);
+    assert_null(upgrade_agent_status_task);
+    assert_non_null(error);
+    assert_string_equal(error, "{\"error\":3,\"data\":\"Agent id not recognized\"}");
+}
+
+void test_wm_agent_upgrade_parse_message_upgrade_agent_status_task_error(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    wm_upgrade_agent_status_task* upgrade_agent_status_task = NULL;
+    char *buffer = "{\"command\":\"upgrade_update_status\","
+                    "\"agents\":[10],"
+                    "\"params\":{\"error\":0,"
+                                "\"data\":666,"
+                                "\"status\":\"Done\"}}";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"data\" should be a string'");
+
+    int command = wm_agent_upgrade_parse_message(buffer, (void*)&upgrade_agent_status_task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, OS_INVALID);
+    assert_non_null(agent_ids);
+    assert_int_equal(agent_ids[0], 10);
+    assert_int_equal(agent_ids[1], -1);
+    assert_non_null(error);
+    assert_string_equal(error, "{\"error\":3,\"data\":\"Parameter \\\"data\\\" should be a string\"}");
+}
+
+void test_wm_agent_upgrade_parse_message_invalid_command(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    void* task = NULL;
+    char *buffer = "{\"command\":\"unknown\","
+                    "\"agents\":[\"10\"]}";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8102): No action defined for command: 'unknown'");
+
+    int command = wm_agent_upgrade_parse_message(buffer, &task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, OS_INVALID);
+    assert_null(agent_ids);
+    assert_null(task);
+    assert_non_null(error);
+    assert_string_equal(error, "{\"error\":3,\"data\":\"Command not recognized.\"}");
+}
+
+void test_wm_agent_upgrade_parse_message_invalid_agents(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    void* task = NULL;
+    char *buffer = "{\"command\":\"upgrade\","
+                    "\"agents\":[]}";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8107): Required parameters in message are missing.");
+
+    int command = wm_agent_upgrade_parse_message(buffer, &task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, OS_INVALID);
+    assert_null(agent_ids);
+    assert_null(task);
+    assert_non_null(error);
+    assert_string_equal(error, "{\"error\":2,\"data\":\"Required parameters in json message where not found.\"}");
+}
+
+void test_wm_agent_upgrade_parse_message_invalid_json(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    void* task = NULL;
+    char *buffer = "unknown";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8101): Cannot parse JSON: 'unknown'");
+
+    int command = wm_agent_upgrade_parse_message(buffer, &task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, OS_INVALID);
+    assert_null(agent_ids);
+    assert_null(task);
+    assert_non_null(error);
+    assert_string_equal(error, "{\"error\":1,\"data\":\"Could not parse message JSON.\"}");
+}
+
 #endif
 
 int main(void) {
@@ -848,7 +1226,9 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_repo_type, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_version_type, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_http, teardown_parse_upgrade),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_http_number, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_force, teardown_parse_upgrade),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_force_number, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_json, teardown_parse_upgrade),
         // wm_agent_upgrade_parse_upgrade_custom_command
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_custom_command_success, teardown_parse_upgrade_custom),
@@ -863,6 +1243,19 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_agent_status_invalid_data_type, teardown_parse_upgrade_agent_status),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_agent_status_invalid_status_type, teardown_parse_upgrade_agent_status),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_agent_status_invalid_json, teardown_parse_upgrade_agent_status),
+        // wm_agent_upgrade_parse_message
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_success, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_agent_error, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_task_error, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_custom_success, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_custom_agent_error, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_custom_task_error, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_agent_status_success, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_agent_status_agent_error, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_agent_status_task_error, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_invalid_command, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_invalid_agents, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_invalid_json, teardown_parse_agents)
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
