@@ -30,12 +30,13 @@ getHelp() {
 
 ## Install the required packages for the installation
 installPrerequisites() {
+
     logger "Installing all necessary utilities for the installation..."
 
     if [ $sys_type == "yum" ] 
     then
         eval "yum install curl -y -q $debug"
-    if [ $sys_type == "zypper" ] 
+    elif [ $sys_type == "zypper" ] 
     then
         eval "zypper -n install curl $debug"        
     elif [ $sys_type == "apt-get" ] 
@@ -51,6 +52,7 @@ installPrerequisites() {
     fi
 
     logger "Done"
+
 }
 
 ## Add the Wazuh repository
