@@ -61,6 +61,18 @@ static int teardown_parse_upgrade(void **state) {
     return 0;
 }
 
+static int teardown_parse_upgrade_custom(void **state) {
+    if (state[0]) {
+        char *error = (char*)state[0];
+        os_free(error);
+    }
+    if (state[1]) {
+        wm_upgrade_custom_task *task = (wm_upgrade_custom_task*)state[1];
+        wm_agent_upgrade_free_upgrade_custom_task(task);
+    }
+    return 0;
+}
+
 // Wrappers
 
 void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
@@ -519,9 +531,9 @@ void test_wm_agent_upgrade_parse_upgrade_command_invalid_json(void **state)
     cJSON *use_http = cJSON_CreateObject();
     cJSON *force_upgrade = cJSON_CreateObject();
     cJSON_AddStringToObject(wpk_repo, "wpk_repo", repo);
-    cJSON_AddStringToObject(wpk_repo, "version", ver);
-    cJSON_AddNumberToObject(wpk_repo, "use_http", http);
-    cJSON_AddNumberToObject(wpk_repo, "force_upgrade", force);
+    cJSON_AddStringToObject(version, "version", ver);
+    cJSON_AddNumberToObject(use_http, "use_http", http);
+    cJSON_AddNumberToObject(force_upgrade, "force_upgrade", force);
     cJSON_AddItemToArray(params, wpk_repo);
     cJSON_AddItemToArray(params, version);
     cJSON_AddItemToArray(params, use_http);
@@ -541,26 +553,145 @@ void test_wm_agent_upgrade_parse_upgrade_command_invalid_json(void **state)
     assert_string_equal(error, "Invalid JSON type");
 }
 
+void test_wm_agent_upgrade_parse_upgrade_custom_command_success(void **state)
+{
+    char *error = NULL;
+    char *file = "wazuh.wpk";
+    char *exe = "install.sh";
+
+    cJSON *params = cJSON_CreateObject();
+    cJSON_AddStringToObject(params, "file_path", file);
+    cJSON_AddStringToObject(params, "installer", exe);
+
+    wm_upgrade_custom_task* upgrade_custom_task = wm_agent_upgrade_parse_upgrade_custom_command(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = (void*)upgrade_custom_task;
+    state[2] = NULL;
+
+    assert_non_null(upgrade_custom_task);
+    assert_string_equal(upgrade_custom_task->custom_file_path, file);
+    assert_string_equal(upgrade_custom_task->custom_installer, exe);
+    assert_null(error);
+}
+
+void test_wm_agent_upgrade_parse_upgrade_custom_command_default(void **state)
+{
+    char *error = NULL;
+
+    cJSON *params = cJSON_CreateObject();
+
+    wm_upgrade_custom_task* upgrade_custom_task = wm_agent_upgrade_parse_upgrade_custom_command(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = (void*)upgrade_custom_task;
+    state[2] = NULL;
+
+    assert_non_null(upgrade_custom_task);
+    assert_null(upgrade_custom_task->custom_file_path);
+    assert_null(upgrade_custom_task->custom_installer);
+    assert_null(error);
+}
+
+void test_wm_agent_upgrade_parse_upgrade_custom_command_invalid_file_type(void **state)
+{
+    char *error = NULL;
+
+    cJSON *params = cJSON_CreateObject();
+    cJSON_AddNumberToObject(params, "file_path", 789);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"file_path\" should be a string'");
+
+    wm_upgrade_custom_task* upgrade_custom_task = wm_agent_upgrade_parse_upgrade_custom_command(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = NULL;
+
+    assert_non_null(error);
+    assert_string_equal(error, "Parameter \"file_path\" should be a string");
+}
+
+void test_wm_agent_upgrade_parse_upgrade_custom_command_invalid_installer_type(void **state)
+{
+    char *error = NULL;
+
+    cJSON *params = cJSON_CreateObject();
+    cJSON_AddNumberToObject(params, "installer", 456);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"installer\" should be a string'");
+
+    wm_upgrade_custom_task* upgrade_custom_task = wm_agent_upgrade_parse_upgrade_custom_command(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = NULL;
+
+    assert_non_null(error);
+    assert_string_equal(error, "Parameter \"installer\" should be a string");
+}
+
+void test_wm_agent_upgrade_parse_upgrade_custom_command_invalid_json(void **state)
+{
+    char *error = NULL;
+    char *file = "wazuh.wpk";
+    char *exe = "install.sh";
+
+    cJSON *params = cJSON_CreateArray();
+    cJSON *file_path = cJSON_CreateObject();
+    cJSON *installer = cJSON_CreateObject();
+    cJSON_AddStringToObject(file_path, "file_path", file);
+    cJSON_AddStringToObject(installer, "installer", exe);
+    cJSON_AddItemToArray(params, file_path);
+    cJSON_AddItemToArray(params, installer);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Invalid JSON type'");
+
+    wm_upgrade_custom_task* upgrade_custom_task = wm_agent_upgrade_parse_upgrade_custom_command(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = NULL;
+
+    assert_non_null(error);
+    assert_string_equal(error, "Invalid JSON type");
+}
+
 #endif
 
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifdef TEST_SERVER
+        // wm_agent_upgrade_parse_response_message
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_response_message_complete, teardown_json),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_response_message_without_status, teardown_json),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_response_message_without_task_id, teardown_json),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_response_message_without_agent_id, teardown_json),
+        // wm_agent_upgrade_parse_task_module_request
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_complete, teardown_json),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_without_status, teardown_json),
+        // wm_agent_upgrade_parse_agent_response
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_ok_with_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_ok_without_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_err_with_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_err_without_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_unknown_response),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_invalid_response),
+        // wm_agent_upgrade_parse_agents
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_agents_success, teardown_parse_agents),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_agents_type_error, teardown_parse_agents),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_agents_empty, teardown_parse_agents),
+        // wm_agent_upgrade_parse_upgrade_command
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_success, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_default, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_repo_type, teardown_parse_upgrade),
@@ -568,6 +699,12 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_http, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_force, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_json, teardown_parse_upgrade),
+        // wm_agent_upgrade_parse_upgrade_custom_command
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_custom_command_success, teardown_parse_upgrade_custom),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_custom_command_default, teardown_parse_upgrade_custom),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_custom_command_invalid_file_type, teardown_parse_upgrade_custom),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_custom_command_invalid_installer_type, teardown_parse_upgrade_custom),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_custom_command_invalid_json, teardown_parse_upgrade),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

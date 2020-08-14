@@ -682,6 +682,7 @@ void test_wm_agent_upgrade_listen_messages_bind_error(void **state)
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifdef TEST_SERVER
+        // wm_agent_upgrade_listen_messages
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_upgrade_command),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_upgrade_custom_command),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_agent_update_status_command),
