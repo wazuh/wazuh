@@ -157,6 +157,11 @@ static int setup_group(void **state) {
         return -1;
 
     test_mode = 0;
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
 
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck.conf");
@@ -175,6 +180,11 @@ static int setup_root_group(void **state) {
         return -1;
 
     test_mode = 0;
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
 
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck_top_level.conf");
@@ -1741,13 +1751,20 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
 
     syscheck.recursion_level[3] = 0;
 
-    will_return_always(__wrap_lstat, 0);
+    expect_string(__wrap_lstat, filename, "/media");
+    expect_string(__wrap_lstat, filename, "/media/test");
+    will_return(__wrap_lstat, S_IFDIR);
+    will_return(__wrap_lstat, 0);
+    will_return(__wrap_lstat, S_IFDIR);
+    will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "/media");
     expect_string(__wrap_HasFilesystem, path, "/media/test");
     will_return_always(__wrap_HasFilesystem, 0);
 
     expect_string(__wrap_realtime_adddir, dir, "/media");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
 
     strcpy(fim_data->entry->d_name, "test");
 
@@ -1789,6 +1806,8 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     fim_data->item->statbuf = buf;
     fim_data->item->mode = FIM_REALTIME;
 
+    expect_string(__wrap_lstat, filename, "/test.file");
+    will_return(__wrap_lstat, S_IFREG);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "/test.file");

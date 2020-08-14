@@ -11,6 +11,12 @@
 #ifndef SELECT_WRAPPERS_H
 #define SELECT_WRAPPERS_H
 
-int __wrap_select();
+#include <sys/select.h>
+
+int __wrap_select(int nfds,
+                  fd_set *restrict readfds,
+                  fd_set *restrict writefds,
+                  fd_set *restrict errorfds,
+                  struct timeval *restrict timeout);
 
 #endif

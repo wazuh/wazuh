@@ -13,6 +13,11 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_select() {
+
+int __wrap_select(__attribute__((unused)) int nfds,
+                  __attribute__((unused)) fd_set *restrict readfds,
+                  __attribute__((unused)) fd_set *restrict writefds,
+                  __attribute__((unused)) fd_set *restrict errorfds,
+                  __attribute__((unused)) struct timeval *restrict timeout) {
     return mock();
 }

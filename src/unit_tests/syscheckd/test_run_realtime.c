@@ -588,7 +588,9 @@ void test_realtime_process_len(void **state)
     will_return(__wrap_rbtree_keys, paths);
     expect_string(__wrap_fim_realtime_event, file, "/test");
 
+    test_mode = 1;
     realtime_process();
+    test_mode = 0;
 }
 
 void test_realtime_process_len_zero(void **state)
@@ -613,7 +615,9 @@ void test_realtime_process_len_zero(void **state)
     will_return(__wrap_rbtree_keys, paths);
     expect_string(__wrap_fim_realtime_event, file, "/test");
 
+    test_mode = 1;
     realtime_process();
+    test_mode = 0;
 }
 
 void test_realtime_process_len_path_separator(void **state)
@@ -638,7 +642,9 @@ void test_realtime_process_len_path_separator(void **state)
     will_return(__wrap_rbtree_keys, paths);
     expect_string(__wrap_fim_realtime_event, file, "/test");
 
+    test_mode = 1;
     realtime_process();
+    test_mode = 0;
 }
 
 void test_realtime_process_overflow(void **state)

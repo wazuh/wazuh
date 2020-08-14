@@ -13,5 +13,4 @@
 
 int __wrap_CreateThread(void * (*function_pointer)(void *), void *data);
 
-
 #endif

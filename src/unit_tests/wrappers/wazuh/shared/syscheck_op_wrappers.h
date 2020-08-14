@@ -25,6 +25,4 @@ unsigned int __wrap_w_get_file_attrs(const char *file_path);
 
 int __wrap_w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
 
-
-
 #endif

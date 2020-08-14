@@ -41,6 +41,7 @@ void test_Read_Syscheck_Config_success(void **state)
     int ret;
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mwarn, formatted_msg);
 
 #ifdef TEST_AGENT
     will_return_always(__wrap_isChroot, 1);
@@ -435,6 +436,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     cJSON * ret;
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
+
 #ifdef TEST_AGENT
     will_return_always(__wrap_isChroot, 1);
 #endif
@@ -503,6 +505,12 @@ void test_getSyscheckConfig_no_directories(void **state)
 void test_SyscheckConf_DirectoriesWithCommas(void **state) {
     (void) state;
     int ret;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
 
     ret = Read_Syscheck_Config("test_syscheck3.conf");
     assert_int_equal(ret, 0);
