@@ -38,8 +38,8 @@ const char *task_manager_modules_list[] = {
 };
 
 const char *task_statuses[] = {
-    [WM_TASK_NEW] = "New",
-    [WM_TASK_IN_PROGRESS] = "In progress",
-    [WM_TASK_DONE] = "Done",
-    [WM_TASK_FAILED] = "Failed"
+    [WM_TASK_NEW] = WM_TASK_STATUS_NEW,
+    [WM_TASK_IN_PROGRESS] = WM_TASK_STATUS_IN_PROGRESS,
+    [WM_TASK_DONE] = WM_TASK_STATUS_DONE,
+    [WM_TASK_FAILED] = WM_TASK_STATUS_FAILED
 };

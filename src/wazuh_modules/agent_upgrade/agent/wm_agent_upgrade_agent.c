@@ -24,8 +24,8 @@ const char* upgrade_messages[] = {
 };
 
 static const char *task_statuses_map[] = {
-    [WM_UPGRADE_SUCCESSFULL] = task_statuses[WM_TASK_DONE],
-    [WM_UPGRADE_FAILED] = task_statuses[WM_TASK_FAILED]
+    [WM_UPGRADE_SUCCESSFULL] = WM_TASK_STATUS_DONE,
+    [WM_UPGRADE_FAILED] = WM_TASK_STATUS_FAILED
 };
 
 /**
