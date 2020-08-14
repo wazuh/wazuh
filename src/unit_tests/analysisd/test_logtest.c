@@ -169,6 +169,10 @@ OSHashNode *__wrap_OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *
     return mock_type(OSHashNode *);
 }
 
+OSStore *__wrap_OSStore_Free(OSStore *list) {
+    return mock_type(OSStore *);
+}
+
 /* tests */
 
 /* w_logtest_init_parameters */
@@ -405,6 +409,8 @@ void test_w_logtest_remove_session_OK(void **state)
     expect_value(__wrap_OSHash_Delete_ex, key, "test");
     will_return(__wrap_OSHash_Delete_ex, session);
 
+    will_return(__wrap_OSStore_Free, session->decoder_store);
+
     will_return(__wrap_OSHash_Free, session);
 
     will_return(__wrap_OSHash_Free, session);
@@ -469,11 +475,13 @@ void test_w_logtest_check_inactive_sessions_remove(void **state)
 
     will_return(__wrap_difftime, 1000000);
 
-    // test_w_logtest_remove_session_fail
+    // test_w_logtest_remove_session_ok
     char * key = "test";
 
     expect_value(__wrap_OSHash_Delete_ex, key, "test");
     will_return(__wrap_OSHash_Delete_ex, session);
+
+    will_return(__wrap_OSStore_Free, NULL);
 
     will_return(__wrap_OSHash_Free, session);
 
