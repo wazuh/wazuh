@@ -185,42 +185,47 @@ STATIC wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
 
     while(!error_flag && params && (param_index < cJSON_GetArraySize(params))) {
         cJSON *item = cJSON_GetArrayItem(params, param_index++);
-        if(strcmp(item->string, "wpk_repo") == 0) {
-            /* wpk_repo */
-            if (item->type == cJSON_String) {
-                os_strdup(item->valuestring, task->wpk_repository);
-            } else {
-                sprintf(output, "Parameter \"%s\" should be a string", item->string);
-                error_flag = 1;
+        if (item->string) {
+            if(strcmp(item->string, "wpk_repo") == 0) {
+                /* wpk_repo */
+                if (item->type == cJSON_String) {
+                    os_strdup(item->valuestring, task->wpk_repository);
+                } else {
+                    sprintf(output, "Parameter \"%s\" should be a string", item->string);
+                    error_flag = 1;
+                }
+            } else if(strcmp(item->string, "version") == 0) {
+                /* version */
+                if (item->type == cJSON_String) {
+                    os_strdup(item->valuestring, task->custom_version);
+                } else {
+                    sprintf(output, "Parameter \"%s\" should be a string", item->string);
+                    error_flag = 1;
+                }
+            } else if(strcmp(item->string, "use_http") == 0) {
+                /* use_http */
+                if (item->valueint == 1) {
+                    task->use_http = true;
+                } else if(item->valueint == 0) {
+                    task->use_http = false;
+                } else {
+                    sprintf(output, "Parameter \"%s\" can take only values [0, 1]", item->string);
+                    error_flag = 1;
+                }
+            } else if(strcmp(item->string, "force_upgrade") == 0) {
+                /* force_upgrade */
+                if(item->valueint == 0) {
+                    task->force_upgrade = false;
+                } else if(item->valueint == 1) {
+                    task->force_upgrade = true;
+                } else {
+                    sprintf(output, "Parameter \"%s\" can take only values [0, 1]", item->string);
+                    error_flag = 1;
+                }
             }
-        } else if(strcmp(item->string, "version") == 0) {
-            /* version */
-            if (item->type == cJSON_String) {
-                os_strdup(item->valuestring, task->custom_version);
-            } else {
-                sprintf(output, "Parameter \"%s\" should be a string", item->string);
-                error_flag = 1;
-            }
-        } else if(strcmp(item->string, "use_http") == 0) {
-            /* use_http */
-            if (item->valueint == 1) {
-                task->use_http = true;
-            } else if(item->valueint == 0) {
-                task->use_http = false;
-            } else {
-                sprintf(output, "Parameter \"%s\" can take only values [0, 1]", item->string);
-                error_flag = 1;
-            }
-        } else if(strcmp(item->string, "force_upgrade") == 0) {
-            /* force_upgrade */
-            if(item->valueint == 0) {
-                task->force_upgrade = false;
-            } else if(item->valueint == 1) {
-                task->force_upgrade = true;
-            } else {
-                sprintf(output, "Parameter \"%s\" can take only values [0, 1]", item->string);
-                error_flag = 1;
-            }
+        } else {
+            sprintf(output, "Invalid JSON type");
+            error_flag = 1;
         }
     }
 
@@ -247,22 +252,27 @@ STATIC wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(con
 
     while(!error_flag && params && (param_index < cJSON_GetArraySize(params))) {
         cJSON *item = cJSON_GetArrayItem(params, param_index++);
-        if (strcmp(item->string, "file_path") == 0) {
-            /* file_path */
-            if (item->type == cJSON_String) {
-                os_strdup(item->valuestring, task->custom_file_path);
-            } else {
-                sprintf(output, "Parameter \"%s\" should be a string", item->string);
-                error_flag = 1;
+        if (item->string) {
+            if (strcmp(item->string, "file_path") == 0) {
+                /* file_path */
+                if (item->type == cJSON_String) {
+                    os_strdup(item->valuestring, task->custom_file_path);
+                } else {
+                    sprintf(output, "Parameter \"%s\" should be a string", item->string);
+                    error_flag = 1;
+                }
+            } else if(strcmp(item->string, "installer") == 0) {
+                /* installer */
+                if (item->type == cJSON_String) {
+                    os_strdup(item->valuestring, task->custom_installer);
+                } else {
+                    sprintf(output, "Parameter \"%s\" should be a string", item->string);
+                    error_flag = 1;
+                }
             }
-        } else if(strcmp(item->string, "installer") == 0) {
-            /* installer */
-            if (item->type == cJSON_String) {
-                os_strdup(item->valuestring, task->custom_installer);
-            } else {
-                sprintf(output, "Parameter \"%s\" should be a string", item->string);
-                error_flag = 1;
-            }
+        } else {
+            sprintf(output, "Invalid JSON type");
+            error_flag = 1;
         }
     }
 
@@ -289,27 +299,32 @@ STATIC wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
 
     while(!error_flag && params && (param_index < cJSON_GetArraySize(params))) {
         cJSON *item = cJSON_GetArrayItem(params, param_index++);
-        if(strcmp(item->string, task_manager_json_keys[WM_TASK_ERROR]) == 0) {
-            if (item->type == cJSON_Number) {
-                task->error_code = item->valueint;
-            } else {
-                sprintf(output, "Parameter \"%s\" should be a number", item->string);
-                error_flag = 1;
+        if (item->string) {
+            if(strcmp(item->string, task_manager_json_keys[WM_TASK_ERROR]) == 0) {
+                if (item->type == cJSON_Number) {
+                    task->error_code = item->valueint;
+                } else {
+                    sprintf(output, "Parameter \"%s\" should be a number", item->string);
+                    error_flag = 1;
+                }
+            } else if(strcmp(item->string, task_manager_json_keys[WM_TASK_ERROR_DATA]) == 0) {
+                if (item->type == cJSON_String) {
+                    os_strdup(item->valuestring, task->message);
+                } else {
+                    sprintf(output, "Parameter \"%s\" should be a string", item->string);
+                    error_flag = 1;
+                }
+            } else if(strcmp(item->string, task_manager_json_keys[WM_TASK_STATUS]) == 0) {
+                if (item->type == cJSON_String) {
+                    os_strdup(item->valuestring, task->status);
+                } else {
+                    sprintf(output, "Parameter \"%s\" should be a string", item->string);
+                    error_flag = 1;
+                }
             }
-        } else if(strcmp(item->string, task_manager_json_keys[WM_TASK_ERROR_DATA]) == 0) {
-            if (item->type == cJSON_String) {
-                os_strdup(item->valuestring, task->message);
-            } else {
-                sprintf(output, "Parameter \"%s\" should be a string", item->string);
-                error_flag = 1;
-            }
-        } else if(strcmp(item->string, task_manager_json_keys[WM_TASK_STATUS]) == 0) {
-            if (item->type == cJSON_String) {
-                os_strdup(item->valuestring, task->status);
-            } else {
-                sprintf(output, "Parameter \"%s\" should be a string", item->string);
-                error_flag = 1;
-            }
+        } else {
+            sprintf(output, "Invalid JSON type");
+            error_flag = 1;
         }
     }
 
