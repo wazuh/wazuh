@@ -20,7 +20,7 @@
 typedef struct _wm_agent_configs {
     unsigned int upgrade_wait_start;
     unsigned int upgrade_wait_max;
-    float ugprade_wait_factor_increase;
+    float upgrade_wait_factor_increase;
 } wm_agent_configs;
 
 typedef struct _wm_agent_upgrade {
