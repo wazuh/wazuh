@@ -11,7 +11,7 @@
 
 #include "wazuh_db/wdb.h"
 #include "wazuh_modules/wmodules.h"
-#include "wm_agent_upgrade_manager.h"
+#include "wm_agent_upgrade_validate.h"
 
 /**
  * Check if agent version is valid to upgrade to a non-customized version
@@ -393,13 +393,21 @@ static int wm_agent_upgrade_compare_versions(const char *version1, const char *v
     return result;
 }
 
-bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char **status) {
+bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char **status, int *agent_id) {
     if (response) {
-        cJSON *error_object = cJSON_GetObjectItem(response, "error");
-        cJSON *data_object = cJSON_GetObjectItem(response, "data");
-        cJSON *status_object = cJSON_GetObjectItem(response, "status");
-        if (error_object && error_object->type == cJSON_Number) {
-            if (error_object->valueint == 0) {
+        cJSON *error_object = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_ERROR]);
+        cJSON *data_object = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_ERROR_DATA]);
+        cJSON *status_object = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_STATUS]);
+        cJSON *agent_json = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_AGENT_ID]);
+        
+        if (error_object && (error_object->type == cJSON_Number) && data_object && (data_object->type == cJSON_String) && agent_json
+            && (agent_json->type == cJSON_Number)) {
+            
+            if (agent_id) {
+                *agent_id = agent_json->valueint;
+            }
+            
+            if (error_object->valueint == WM_UPGRADE_SUCCESS) {
                 if (status && status_object && status_object->type == cJSON_String) {
                     os_strdup(status_object->valuestring, *status);
                 }
@@ -410,8 +418,30 @@ bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char *
         } else {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUIRED_PARAMETERS);
         }
-    } else {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_TASK_MAN_JSON);
+    }
+    return false;
+}
+
+bool wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *agent_id, int *task_id, char** data) {
+    if (input_json) {
+        cJSON *agent_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_AGENT_ID]);
+        cJSON *data_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_ERROR_DATA]);
+        cJSON *task_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_TASK_ID]);
+
+        if (agent_json && (agent_json->type == cJSON_Number)) {
+            *agent_id = agent_json->valueint;
+        } else {
+            return false;
+        }
+
+        if (data_json && (data_json->type == cJSON_String)) {
+            os_strdup(data_json->valuestring, *data);
+        }
+
+        if (task_json && (task_json->type == cJSON_Number)) {
+            *task_id = task_json->valueint;
+        }
+        return true;
     }
     return false;
 }
