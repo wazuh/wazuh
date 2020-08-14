@@ -1,4 +1,5 @@
 server.host: <kibana_ip>
+server.port: 443
 elasticsearch.hosts: https://<elasticsearch_ip>:9200
 elasticsearch.password: <elasticsearch_password>
 
