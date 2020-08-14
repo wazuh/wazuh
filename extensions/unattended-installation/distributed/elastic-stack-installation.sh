@@ -313,7 +313,7 @@ initializeKibana() {
     # Start Kibana
     startService "kibana"   
     logger "Initializing Kibana (this may take a while)" 
-    until [[ "$(curl -XGET https://${eip}/status -I -uadmin:admin -k -s | grep "200 OK")" ]]; do
+    until [[ "$(curl -XGET https://${eip}/status -I -uadmin:admin -k -s --max-time 300 | grep "200 OK")" ]]; do
         echo -ne $char
         sleep 10
     done     
