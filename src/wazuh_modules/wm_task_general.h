@@ -12,6 +12,11 @@
 #ifndef WM_TASK_GENERAL_H
 #define WM_TASK_GENERAL_H
 
+#define WM_TASK_STATUS_NEW "New"
+#define WM_TASK_STATUS_IN_PROGRESS "In progress"
+#define WM_TASK_STATUS_DONE "Done"
+#define WM_TASK_STATUS_FAILED "Failed"
+
 /**
  * Enumeration of all available keys that could be used in the messages
  * */
