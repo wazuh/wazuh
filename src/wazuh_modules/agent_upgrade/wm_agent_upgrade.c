@@ -46,7 +46,7 @@ static void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
     #ifdef CLIENT
         wm_agent_upgrade_check_status(upgrade_config->agent_config);
     #else 
-        wm_agent_upgrade_listen_messages(5);
+        wm_agent_upgrade_listen_messages(5, upgrade_config->manager_config);
     #endif 
 
     return NULL;
@@ -66,6 +66,11 @@ static cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
     } else { 
         cJSON_AddStringToObject(wm_info,"enabled","no");
     }
+    #ifndef CLIENT
+    if (upgrade_config->manager_config.wpk_repository) {
+        cJSON_AddStringToObject(wm_info, "wpk_repository", WM_UPGRADE_WPK_REPO_URL);
+    }
+    #endif
     cJSON_AddItemToObject(root,"agent-upgrade",wm_info);
     return root;
 }

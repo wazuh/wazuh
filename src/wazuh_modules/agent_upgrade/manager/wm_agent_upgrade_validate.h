@@ -47,7 +47,7 @@ int wm_agent_upgrade_validate_status(int last_keep_alive);
  * @retval WM_UPGRADE_VERSION_SAME_MANAGER
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
-int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *task, wm_upgrade_command command);
+int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *task, wm_upgrade_command command, wm_manager_configs manager_configs);
 
 /**
  * Check if WPK file exist or download it

@@ -14,6 +14,9 @@
 
 #define WM_AGENT_UPGRADE_LOGTAG ARGV0 ":" AGENT_UPGRADE_WM_NAME
 
+#define WM_UPGRADE_WPK_REPO_URL "packages.wazuh.com/wpk/"
+#define WM_UPGRADE_CHUNK_SIZE 512
+
 #ifdef CLIENT
 /**
  * Configurations on agent side
@@ -25,10 +28,23 @@ typedef struct _wm_agent_configs {
 } wm_agent_configs;
 #endif
 
+#ifndef CLIENT
+/**
+ * Configuration only for manager
+ */
+typedef struct _wm_manager_configs {
+    unsigned int chunk_size;
+    char *wpk_repository;
+} wm_manager_configs;
+#endif
+
 typedef struct _wm_agent_upgrade {
     int enabled:1;
 #ifdef CLIENT
     wm_agent_configs agent_config;
+#endif
+#ifndef CLIENT
+    wm_manager_configs manager_config;
 #endif
 } wm_agent_upgrade;
 
