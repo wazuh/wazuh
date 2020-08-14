@@ -61,5 +61,9 @@
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"
 #define LOGTEST_DISABLED                    "(7201): Logtest disabled"
+#define LOGTEST_INFO_TOKEN_NEW              "(7202): '%s' New token"
+#define LOGTEST_INFO_LOG_EMPTY              "(7203): Empty log for check alert level"
+#define LOGTEST_INFO_LOG_NOALERT            "(7204): Output without rule"
+#define LOGTEST_INFO_LOG_NOLEVEL            "(7205): Rule without alert level"
 
 #endif /* INFO_MESSAGES_H */
