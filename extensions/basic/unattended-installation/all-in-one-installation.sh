@@ -16,7 +16,9 @@ then
 fi
 
 logger() {
+
     echo $1
+
 }
 
 startService() {
@@ -56,21 +58,25 @@ startService() {
         echo "Error: ${1^} could not start. No service manager found on the system."
         exit 1;
     fi
+
 }
 
 ## Show script usage
 getHelp() {
+
    echo ""
    echo "Usage: $0 arguments"
    echo -e "\t-d   | --debug Shows the complete installation output"
    echo -e "\t-i   | --ignore-health-check Ignores the health-check"
    echo -e "\t-h   | --help Shows help"
    exit 1 # Exit script after printing help
+
 }
 
 
 ## Install the required packages for the installation
 installPrerequisites() {
+
     logger "Installing all necessary utilities for the installation..."
 
     if [ $sys_type == "yum" ] 
@@ -92,10 +98,12 @@ installPrerequisites() {
     else
         logger "Done"
     fi   
+
 }
 
 ## Add the Elastic repository
 addElasticrepo() {
+
     logger "Adding the Elasticsearch repository..."
 
     if [ $sys_type == "yum" ] 
@@ -129,11 +137,13 @@ addElasticrepo() {
         exit 1;
     else
         logger "Done"
-    fi        
+    fi  
+
 }
 
 ## Add the Wazuh repository
 addWazuhrepo() {
+
     logger "Adding the Wazuh repository..."
 
     if [ $sys_type == "yum" ] 
@@ -166,11 +176,13 @@ addWazuhrepo() {
         exit 1;
     else
         logger "Done"
-    fi        
+    fi  
+
 }
 
 ## Wazuh manager
 installWazuh() {
+    
     logger "Installing the Wazuh manager..."
     if [ $sys_type == "zypper" ] 
     then
@@ -184,11 +196,13 @@ installWazuh() {
         exit 1;
     else
         logger "Done"
-    fi     
+    fi   
+
 }
 
 ## Elasticsearch
 installElasticsearch() {
+
     logger "Installing Elasticsearch..."
 
     if [ $sys_type == "yum" ] 
@@ -250,6 +264,7 @@ installElasticsearch() {
 
         echo "Done"
     fi
+
 }
 
 ## Filebeat
@@ -283,6 +298,7 @@ installFilebeat() {
 
         logger "Done"
     fi
+
 }
 
 ## Kibana
@@ -324,10 +340,12 @@ installKibana() {
 
         logger "Done"
     fi
+
 }
 
 ## Health check
 healthCheck() {
+
     cores=$(cat /proc/cpuinfo | grep processor | wc -l)
     ram_gb=$(free -m | awk '/^Mem:/{print $2}')
 
@@ -338,9 +356,11 @@ healthCheck() {
     else
         echo "Starting the installation..."
     fi
+
 }
 
 checkInstallation() {
+
     logger "Checking the installation..."
     eval "curl -XGET https://localhost:9200 -elastic:"$password" -k --max-time 300 $debug"
     if [  "$?" != 0  ]
@@ -367,6 +387,7 @@ checkInstallation() {
     echo "$passwords"
     echo $'\nInstallation finished'
     exit 0;
+
 }
 
 main() {
@@ -420,8 +441,9 @@ main() {
         installElasticsearch
         installFilebeat password
         installKibana password
-        checkInstallation  
+        checkInstallation password
     fi 
+
 }
 
 main "$@"
