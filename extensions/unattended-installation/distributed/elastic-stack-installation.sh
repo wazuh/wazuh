@@ -5,9 +5,12 @@ debug='> /dev/null 2>&1'
 if [ -n "$(command -v yum)" ] 
 then
     sys_type="yum"
+elif [ -n "$(command -v zypper)" ] 
+then
+    sys_type="zypper"     
 elif [ -n "$(command -v apt-get)" ] 
 then
-    sys_type="apt-get"
+    sys_type="apt-get"   
 fi
 
 ## Prints information
@@ -125,6 +128,7 @@ installPrerequisites() {
 
 ## Add the Wazuh repository
 addWazuhrepo() {
+
     logger "Adding the Wazuh repository..."
 
     if [ $sys_type == "yum" ] 
@@ -138,21 +142,31 @@ addWazuhrepo() {
         eval "apt-get update -q $debug"
     fi    
 
-    logger "Done" 
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Wazuh repository could not be added"
+        exit 1;
+    else
+        logger "Done"
+    fi   
+
 }
 
 ## Elasticsearch
 installElasticsearch() {
 
 
-    logger "Installing Opend Distro for Elasticsearch..."
+    logger "Installing Elasticsearch..."
 
     if [ $sys_type == "yum" ] 
     then
-        eval "yum install opendistroforelasticsearch -y -q $debug"
+        eval "yum install elasticsearch -y -q $debug"
     elif [ $sys_type == "apt-get" ] 
     then
-        eval "apt-get install elasticsearch-oss opendistroforelasticsearch -y -q $debug"
+        eval "apt-get install elasticsearch -y -q $debug"
+    elif [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install elasticsearch $debug"
     fi
 
     if [  "$?" != 0  ]
@@ -263,15 +277,18 @@ createCertificates() {
 ## Kibana
 installKibana() {
      
-    
-    logger "Installing Open Distro for Kibana..."
-
-    eval "$sys_type install opendistroforelasticsearch-kibana -y -q $debug"
+    logger "Installing Kibana..."
+    if [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install kibana $debug"
+    else
+        eval "$sys_type install kibana -y -q $debug"
+    fi
     if [  "$?" != 0  ]
     then
         echo "Error: Kibana installation failed"
         exit 1;
-    else   
+    else  
         eval "curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/unattended-installation/distributed/templates/kibana_unattended.yml --max-time 300 $debug"
         eval "cd /usr/share/kibana $debug"
         eval "sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-4.0.0_7.8.0.zip $debug"
