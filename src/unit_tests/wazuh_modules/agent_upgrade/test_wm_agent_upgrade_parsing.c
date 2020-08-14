@@ -25,8 +25,6 @@ wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, cha
 wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message);
 wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status(const cJSON* params, char** error_message);
 
-#endif
-
 // Setup / teardown
 
 static int teardown_json(void **state) {
@@ -84,6 +82,8 @@ static int teardown_parse_upgrade_agent_status(void **state) {
     }
     return 0;
 }
+
+#endif
 
 // Wrappers
 
