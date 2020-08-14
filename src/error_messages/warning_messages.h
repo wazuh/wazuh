@@ -59,5 +59,6 @@
 #define LOGTEST_INV_NUM_THREADS             "(7000): Number of logtest threads too high. Only creates %d threads"
 #define LOGTEST_INV_NUM_USERS               "(7001): Number of maximum users connected in logtest too high. Only allows %d users"
 #define LOGTEST_INV_NUM_TIMEOUT             "(7002): Number of maximum user timeouts in logtest too high. Only allows %ds maximum timeouts"
+#define LOGTEST_WARN_TOKEN_EXPIRED          "(7003): '%s' token expires."
 
 #endif /* WARN_MESSAGES_H */
