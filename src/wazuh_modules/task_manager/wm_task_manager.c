@@ -231,7 +231,6 @@ cJSON* wm_task_manager_analyze_task_upgrade_module(const cJSON *task_object, int
             } else if (result) {
                 *error_code = result;
                 response = wm_task_manager_build_response(result, agent_id, task_id, status);
-
             } else {
                 response = wm_task_manager_build_response(WM_TASK_SUCCESS, agent_id, task_id, status_result);
             }

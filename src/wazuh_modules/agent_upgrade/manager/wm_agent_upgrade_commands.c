@@ -228,7 +228,7 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upg
     int agent = 0;
     cJSON* json_response = cJSON_CreateArray();
     cJSON *json_task_module_request = cJSON_CreateArray();
-    
+
     while (agent_id = agent_ids[agent++], agent_id != OS_INVALID) {
         if (task->message) {
             mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACK_RECEIVED, agent_id, task->error_code, task->message);
@@ -241,8 +241,10 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upg
     wm_agent_upgrade_task_module_callback(json_response, json_task_module_request, wm_agent_upgrade_update_status_success_callback, NULL);
 
     char *message = cJSON_PrintUnformatted(json_response);
+
     cJSON_Delete(json_task_module_request);
     cJSON_Delete(json_response);
+
     return message;
 }
 
@@ -587,6 +589,21 @@ static int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, con
     return result;
 }
 
+static cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task) {
+    cJSON *message_object = wm_agent_upgrade_parse_task_module_request(command, agent_id, status_task);
+    cJSON *message_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(message_array, message_object);
+
+    cJSON* task_module_response = cJSON_CreateArray();
+    wm_agent_upgrade_task_module_callback(task_module_response, message_array, NULL, NULL);
+
+    cJSON_Delete(message_array);
+
+    cJSON* response = cJSON_DetachItemFromArray(task_module_response, 0);
+    cJSON_Delete(task_module_response);
+    return response;
+}
+
 char* wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size) {
     char *response = NULL;
     int length = 0;
@@ -622,20 +639,5 @@ char* wm_agent_upgrade_send_command_to_agent(const char *command, const size_t c
         close(sock);
     }
 
-    return response;
-}
-
-static cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task) {
-    cJSON *message_object = wm_agent_upgrade_parse_task_module_request(command, agent_id, status_task);
-    cJSON *message_array = cJSON_CreateArray();
-    cJSON_AddItemToArray(message_array, message_object);
-
-    cJSON* task_module_response = cJSON_CreateArray();
-    wm_agent_upgrade_task_module_callback(task_module_response, message_array, NULL, NULL);
-    
-    cJSON_Delete(message_array);
-    
-    cJSON* response = cJSON_DetachItemFromArray(task_module_response, 0);
-    cJSON_Delete(task_module_response);
     return response;
 }

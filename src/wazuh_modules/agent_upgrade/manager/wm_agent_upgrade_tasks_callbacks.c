@@ -43,7 +43,6 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
             } else {
                 cJSON_AddItemToArray(temp_array, task_response);
             }
-            
         }
     } else {
         error = OS_INVALID;

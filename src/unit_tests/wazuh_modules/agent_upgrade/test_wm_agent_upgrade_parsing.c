@@ -73,6 +73,18 @@ static int teardown_parse_upgrade_custom(void **state) {
     return 0;
 }
 
+static int teardown_parse_upgrade_agent_status(void **state) {
+    if (state[0]) {
+        char *error = (char*)state[0];
+        os_free(error);
+    }
+    if (state[1]) {
+        wm_upgrade_agent_status_task *task = (wm_upgrade_agent_status_task*)state[1];
+        wm_agent_upgrade_free_agent_status_task(task);
+    }
+    return 0;
+}
+
 // Wrappers
 
 void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
@@ -667,6 +679,145 @@ void test_wm_agent_upgrade_parse_upgrade_custom_command_invalid_json(void **stat
     assert_string_equal(error, "Invalid JSON type");
 }
 
+void test_wm_agent_upgrade_parse_upgrade_agent_status_success(void **state)
+{
+    char *error = NULL;
+    int error_code = 0;
+    char *data = "Success";
+    char *status = "Done";
+
+    cJSON *params = cJSON_CreateObject();
+    cJSON_AddNumberToObject(params, "error", error_code);
+    cJSON_AddStringToObject(params, "data", data);
+    cJSON_AddStringToObject(params, "status", status);
+
+    wm_upgrade_agent_status_task* agent_status_task = wm_agent_upgrade_parse_upgrade_agent_status(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_status_task;
+    state[2] = NULL;
+
+    assert_non_null(agent_status_task);
+    assert_int_equal(agent_status_task->error_code, error_code);
+    assert_string_equal(agent_status_task->message, data);
+    assert_string_equal(agent_status_task->status, status);
+    assert_null(error);
+}
+
+void test_wm_agent_upgrade_parse_upgrade_agent_status_default(void **state)
+{
+    char *error = NULL;
+
+    cJSON *params = cJSON_CreateObject();
+
+    wm_upgrade_agent_status_task* agent_status_task = wm_agent_upgrade_parse_upgrade_agent_status(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_status_task;
+    state[2] = NULL;
+
+    assert_non_null(agent_status_task);
+    assert_int_equal(agent_status_task->error_code, 0);
+    assert_null(agent_status_task->message);
+    assert_null(agent_status_task->status);
+    assert_null(error);
+}
+
+void test_wm_agent_upgrade_parse_upgrade_agent_status_invalid_code_type(void **state)
+{
+    char *error = NULL;
+
+    cJSON *params = cJSON_CreateObject();
+    cJSON_AddStringToObject(params, "error", "0");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"error\" should be a number'");
+
+    wm_upgrade_agent_status_task* agent_status_task = wm_agent_upgrade_parse_upgrade_agent_status(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = NULL;
+
+    assert_non_null(error);
+    assert_string_equal(error, "Parameter \"error\" should be a number");
+}
+
+void test_wm_agent_upgrade_parse_upgrade_agent_status_invalid_data_type(void **state)
+{
+    char *error = NULL;
+
+    cJSON *params = cJSON_CreateObject();
+    cJSON_AddNumberToObject(params, "data", 123);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"data\" should be a string'");
+
+    wm_upgrade_agent_status_task* agent_status_task = wm_agent_upgrade_parse_upgrade_agent_status(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = NULL;
+
+    assert_non_null(error);
+    assert_string_equal(error, "Parameter \"data\" should be a string");
+}
+
+void test_wm_agent_upgrade_parse_upgrade_agent_status_invalid_status_type(void **state)
+{
+    char *error = NULL;
+
+    cJSON *params = cJSON_CreateObject();
+    cJSON_AddNumberToObject(params, "status", 555);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"status\" should be a string'");
+
+    wm_upgrade_agent_status_task* agent_status_task = wm_agent_upgrade_parse_upgrade_agent_status(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = NULL;
+
+    assert_non_null(error);
+    assert_string_equal(error, "Parameter \"status\" should be a string");
+}
+
+void test_wm_agent_upgrade_parse_upgrade_agent_status_invalid_json(void **state)
+{
+    char *error = NULL;
+    int error_code = 0;
+    char *data = "Success";
+
+    cJSON *params = cJSON_CreateObject();
+    cJSON *code = cJSON_CreateObject();
+    cJSON *path = cJSON_CreateObject();
+    cJSON_AddNumberToObject(code, "error", error_code);
+    cJSON_AddStringToObject(path, "data", data);
+    cJSON_AddItemToArray(params, code);
+    cJSON_AddItemToArray(params, path);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Invalid JSON type'");
+
+    wm_upgrade_agent_status_task* agent_status_task = wm_agent_upgrade_parse_upgrade_agent_status(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = NULL;
+
+    assert_non_null(error);
+    assert_string_equal(error, "Invalid JSON type");
+}
+
 #endif
 
 int main(void) {
@@ -704,7 +855,14 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_custom_command_default, teardown_parse_upgrade_custom),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_custom_command_invalid_file_type, teardown_parse_upgrade_custom),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_custom_command_invalid_installer_type, teardown_parse_upgrade_custom),
-        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_custom_command_invalid_json, teardown_parse_upgrade),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_custom_command_invalid_json, teardown_parse_upgrade_custom),
+        // wm_agent_upgrade_parse_upgrade_agent_status
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_agent_status_success, teardown_parse_upgrade_agent_status),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_agent_status_default, teardown_parse_upgrade_agent_status),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_agent_status_invalid_code_type, teardown_parse_upgrade_agent_status),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_agent_status_invalid_data_type, teardown_parse_upgrade_agent_status),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_agent_status_invalid_status_type, teardown_parse_upgrade_agent_status),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_agent_status_invalid_json, teardown_parse_upgrade_agent_status),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -20,46 +20,30 @@ static OSHash *task_table_by_agent_id;
 wm_upgrade_task* wm_agent_upgrade_init_upgrade_task() {
     wm_upgrade_task *task;
     os_calloc(1, sizeof(wm_upgrade_task), task);
-    task->custom_version = NULL;
-    task->wpk_repository = NULL;
-    task->force_upgrade = false;
-    task->use_http = false;
-    task->wpk_file = NULL;
-    task->wpk_sha1 = NULL;
     return task;
 }
 
 wm_upgrade_custom_task* wm_agent_upgrade_init_upgrade_custom_task() {
     wm_upgrade_custom_task *task;
     os_calloc(1, sizeof(wm_upgrade_custom_task), task);
-    task->custom_file_path = NULL;
-    task->custom_installer = NULL;
     return task;
 }
 
 wm_task_info* wm_agent_upgrade_init_task_info() {
     wm_task_info *task_info = NULL;
     os_calloc(1, sizeof(wm_task_info), task_info);
-    task_info->task = NULL;
     return task_info;
 }
 
 wm_agent_info* wm_agent_upgrade_init_agent_info() {
     wm_agent_info *agent_info = NULL;
     os_calloc(1, sizeof(wm_agent_info), agent_info);
-    agent_info->platform = NULL;
-    agent_info->major_version = NULL;
-    agent_info->minor_version = NULL;
-    agent_info->architecture = NULL;
-    agent_info->wazuh_version = NULL;
     return agent_info;
 }
 
 wm_agent_task* wm_agent_upgrade_init_agent_task() {
     wm_agent_task *agent_task = NULL;
     os_calloc(1, sizeof(wm_agent_task), agent_task);
-    agent_task->agent_info = NULL;
-    agent_task->task_info = NULL;
     return agent_task;
 }
 

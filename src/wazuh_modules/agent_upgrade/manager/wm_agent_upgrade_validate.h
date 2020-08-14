@@ -92,7 +92,7 @@ bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char *
 /**
  * Validate an upgrade response from the task manager module
  * @param input_json JSON to be validated
- * @param agent_id pointer to a variable where the agent_id will be sotred
+ * @param agent_id pointer to a variable where the agent_id will be stored
  * @param taks_id pointer to a variable where the task_id will be stored
  * @param data pointer to a variable where the data string will be stored
  * @return
