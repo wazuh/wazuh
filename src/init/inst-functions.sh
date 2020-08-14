@@ -742,7 +742,6 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
   ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${PREFIX}/bin/
-  ${INSTALL} -m 0750 -o root -g 0 external/osquery_lib/libs/libosqueryd.so ${PREFIX}/lib/
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts

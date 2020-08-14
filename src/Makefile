@@ -29,7 +29,6 @@ EXTERNAL_LIBFFI=external/libffi/
 EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
-EXTERNAL_OSQUERY=external/osquery_lib/
 EXTERNAL_GOOGLE_TEST=external/googletest/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
@@ -238,7 +237,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${EXTERNAL_OSQUERY}include -I./dbsync/include
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I./dbsync/include
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -907,31 +906,8 @@ endif
 endif
 endif
 
-OSQUERY := osquery
-ifneq (${uname_S},Linux)
-	OSQUERY := osquery_src
-else
-cpu_arch := ${uname_P}
-ifneq (,$(filter ${cpu_arch},unknown Unknown))
-cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
-endif
 
-ifneq (,$(filter ${cpu_arch},x86_64 amd64))
-OSQUERY := osquery_amd64
-else
-ifneq (,$(filter ${cpu_arch},i386 i686))
-OSQUERY := osquery_i386
-else
-OSQUERY := src_osquery
-endif
-endif
-endif
-
-ifeq (${EXTERNAL_SOURCES},yes)
-OSQUERY := src_osquery
-endif
-
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 $(OSQUERY) nlohmann googletest
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest
 EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -1638,16 +1614,9 @@ LIBS_TEST=-lcmocka
 # LIBS_TEST = -lcheck -lm -lrt -lsubunit
 
 
-ifneq (,$(filter ${TEST},YES yes y Y 1))
-	OSSEC_CFLAGS+=${CFLAGS_TEST}
-	# OSSEC_CFLAGS+=${CFLAGS_TEST} -Itests
-	OSSEC_LDFLAGS+=${CFLAGS_TEST}
-	OSSEC_LIBS+=${LIBS_TEST}
-ifeq (${TARGET},winagent)
-	WINDOWS_UNIT_TEST_WRAPPERS:=${wrappers_syscheck_o}
-	WINDOWS_UNIT_TEST_WRAPPERS+=${wrappers_shared_o}
-endif
-endif #TEST
+
+unit_tests/wrappers/%.o: unit_tests/wrappers/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 unit_tests/wrappers/syscheckd/%.o: unit_tests/wrappers/syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
@@ -1861,6 +1830,7 @@ clean-internals: clean-unit-tests
 clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}
 	rm -f ${wrappers_shared_o}
+	rm -f ${wrappers_common_o}
 	rm -rf $(DBSYNC)build
 
 clean-framework:
