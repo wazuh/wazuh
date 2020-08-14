@@ -13,6 +13,7 @@
 
 #include "../wmodules.h"
 #include "wm_task_manager_db.h"
+#include "../wm_task_general.h"
 #include "wazuh_db/wdb.h"
 
 static int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt);
@@ -25,13 +26,6 @@ static const char *task_queries[] = {
     [WM_TASK_UPDATE_TASK_STATUS] = "UPDATE " TASKS_TABLE " SET STATUS = ?, LAST_UPDATE_TIME = ? WHERE TASK_ID = ?;",
     [WM_TASK_GET_TASK_BY_AGENT_ID_AND_MODULE] = "SELECT MAX(TASK_ID), COMMAND, CREATE_TIME, LAST_UPDATE_TIME, STATUS FROM " TASKS_TABLE " WHERE MODULE = ? AND AGENT_ID = ?;",
     [WM_TASK_GET_TASK] = "SELECT * FROM " TASKS_TABLE " WHERE TASK_ID = ?;"
-};
-
-const char *task_statuses[] = {
-    [WM_TASK_NEW] = "New",
-    [WM_TASK_IN_PROGRESS] = "In progress",
-    [WM_TASK_DONE] = "Done",
-    [WM_TASK_FAILED] = "Failed"
 };
 
 int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt) {

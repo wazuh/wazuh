@@ -13,13 +13,6 @@
 #define WM_AGENT_UPGRADE_H
 
 #define WM_AGENT_UPGRADE_LOGTAG ARGV0 ":" AGENT_UPGRADE_WM_NAME
-#define WM_AGENT_UPGRADE_MODULE_NAME "upgrade_module"
-
-#define WM_UPGRADE_AGENT_UPDATED_COMMAND "upgrade_update_status"
-
-#define WM_UPGRADE_STATUS_IN_PROGRESS "In progress"
-#define WM_UPGRADE_STATUS_DONE "Done"
-#define WM_UPGRADE_STATUS_FAILED "Failed"
 
 /**
  * Configurations on agent side

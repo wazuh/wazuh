@@ -29,10 +29,9 @@ const char* upgrade_messages[] = {
     [WM_UPGRADE_FAILED]      = "Upgrade failed"
 };
 
-/* TODO: This was copied from task-manager, but should be in common location */
-static const char *task_statuses[] = {
-    [WM_UPGRADE_SUCCESSFULL] = WM_UPGRADE_STATUS_DONE,
-    [WM_UPGRADE_FAILED] = WM_UPGRADE_STATUS_FAILED
+static const char *task_statuses_map[] = {
+    [WM_UPGRADE_SUCCESSFULL] = task_statuses[WM_TASK_DONE],
+    [WM_UPGRADE_FAILED] = task_statuses[WM_TASK_FAILED]
 };
 
 /**
@@ -83,7 +82,7 @@ void wm_agent_upgrade_check_status(wm_agent_configs agent_config) {
             if(result_available) {
                 sleep(wait_time);
 
-                wait_time *= agent_config.ugprade_wait_factor_increase;
+                wait_time *= agent_config.upgrade_wait_factor_increase;
                 if (wait_time > agent_config.upgrade_wait_max) {
                     wait_time = agent_config.upgrade_wait_max;
                 }
@@ -100,14 +99,14 @@ STATIC void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_sta
     cJSON* root = cJSON_CreateObject();
     cJSON* params = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(root, "command", WM_UPGRADE_AGENT_UPDATED_COMMAND);
-    cJSON_AddNumberToObject(params, "error", atoi(upgrade_values[state]));
-    cJSON_AddStringToObject(params, "message", upgrade_messages[state]);
-    cJSON_AddStringToObject(params, "status", task_statuses[state]);
+    cJSON_AddStringToObject(root, task_manager_json_keys[WM_TASK_COMMAND], task_manager_commands_list[WM_TASK_UPGRADE_UPDATE_STATUS]);
+    cJSON_AddNumberToObject(params, task_manager_json_keys[WM_TASK_ERROR], atoi(upgrade_values[state]));
+    cJSON_AddStringToObject(params, task_manager_json_keys[WM_TASK_ERROR_DATA], upgrade_messages[state]);
+    cJSON_AddStringToObject(params,  task_manager_json_keys[WM_TASK_STATUS], task_statuses_map[state]);
     cJSON_AddItemToObject(root, "params", params);
 
     char *msg_string = cJSON_PrintUnformatted(root);
-    if (wm_sendmsg(msg_delay, queue_fd, msg_string, WM_AGENT_UPGRADE_MODULE_NAME, UPGRADE_MQ) < 0) {
+    if (wm_sendmsg(msg_delay, queue_fd, msg_string, task_manager_modules_list[WM_TASK_UPGRADE_MODULE], UPGRADE_MQ) < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 

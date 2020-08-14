@@ -59,13 +59,6 @@ static wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(con
  * */
 static wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status(const cJSON* params, char** error_message);
 
-const char* upgrade_commands[] = {
-    [WM_UPGRADE_UPGRADE] = "upgrade",
-    [WM_UPGRADE_UPGRADE_CUSTOM] = "upgrade_custom",
-    [WM_UPGRADE_AGENT_GET_STATUS] = "upgrade_get_status",
-    [WM_UPGRADE_AGENT_UPDATE_STATUS] = WM_UPGRADE_AGENT_UPDATED_COMMAND
-};
-
 int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error) {
     int retval = OS_INVALID;
     int error_code = WM_UPGRADE_SUCCESS;
@@ -83,7 +76,7 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
         cJSON *agents = cJSON_GetObjectItem(root, "agents");
 
         if (command && (command->type == cJSON_String) && agents && (agents->type == cJSON_Array) && cJSON_GetArraySize(agents)) {
-            if (strcmp(command->valuestring, upgrade_commands[WM_UPGRADE_UPGRADE]) == 0) { // Upgrade command
+            if (strcmp(command->valuestring, task_manager_commands_list[WM_UPGRADE_UPGRADE]) == 0) { // Upgrade command
                 // Analyze agent IDs
                 *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
                 if (!error_message) {
@@ -93,7 +86,7 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
                         retval = WM_UPGRADE_UPGRADE;
                     }
                 }
-            } else if (strcmp(command->valuestring, upgrade_commands[WM_UPGRADE_UPGRADE_CUSTOM]) == 0) { // Upgrade custom command
+            } else if (strcmp(command->valuestring, task_manager_commands_list[WM_UPGRADE_UPGRADE_CUSTOM]) == 0) { // Upgrade custom command
                 // Analyze agent IDs
                 *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
                 if (!error_message) {
@@ -103,7 +96,7 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
                         retval = WM_UPGRADE_UPGRADE_CUSTOM;
                     }
                 }
-            } else if (strcmp(command->valuestring, upgrade_commands[WM_UPGRADE_AGENT_UPDATE_STATUS]) == 0) {
+            } else if (strcmp(command->valuestring, task_manager_commands_list[WM_UPGRADE_AGENT_UPDATE_STATUS]) == 0) {
                 *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
                 if (!error_message) {
                     *task = (wm_upgrade_agent_status_task*)wm_agent_upgrade_parse_upgrade_agent_status(params, &error_message);
@@ -289,21 +282,21 @@ static wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
 
     while(!error_flag && params && (param_index < cJSON_GetArraySize(params))) {
         cJSON *item = cJSON_GetArrayItem(params, param_index++);
-        if(strcmp(item->string, "error") == 0) {
+        if(strcmp(item->string, task_manager_json_keys[WM_TASK_ERROR]) == 0) {
             if (item->type == cJSON_Number) {
                 task->error_code = item->valueint;
             } else {
                 sprintf(output, "Parameter \"%s\" should be a number", item->string);
                 error_flag = 1;
             }
-        } else if(strcmp(item->string, "message") == 0) {
+        } else if(strcmp(item->string, task_manager_json_keys[WM_TASK_ERROR_DATA]) == 0) {
             if (item->type == cJSON_String) {
                 os_strdup(item->valuestring, task->message);
             } else {
                 sprintf(output, "Parameter \"%s\" should be a string", item->string);
                 error_flag = 1;
             }
-        } else if(strcmp(item->string, "status") == 0) {
+        } else if(strcmp(item->string, task_manager_json_keys[WM_TASK_STATUS]) == 0) {
             if (item->type == cJSON_String) {
                 os_strdup(item->valuestring, task->status);
             } else {
@@ -326,95 +319,33 @@ static wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
 
 cJSON* wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
     cJSON * response = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response, "error", error_id);
-    cJSON_AddStringToObject(response, "data", message);
+    cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_ERROR], error_id);
+    cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_DATA], message);
     if(agent_id) {
-        cJSON_AddNumberToObject(response, "agent", *agent_id);
+        cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_AGENT_ID], *agent_id);
     }
     if (task_id) {
-       cJSON_AddNumberToObject(response, "task_id", *task_id); 
+       cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_TASK_ID], *task_id); 
     } 
     if (status) {
-        cJSON_AddStringToObject(response, "status", status);
+        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_STATUS], status);
     }
     return response;
 }
 
 cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status) {
     cJSON * response = cJSON_CreateObject();
-    cJSON_AddStringToObject(response, "module", WM_AGENT_UPGRADE_MODULE_NAME);
-    cJSON_AddStringToObject(response, "command", upgrade_commands[command]);
-    cJSON_AddNumberToObject(response, "agent", agent_id);
+    cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_MODULE], task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
+    cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_COMMAND], task_manager_commands_list[command]);
+    cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_AGENT_ID], agent_id);
     if (status) {
-        cJSON_AddStringToObject(response, "status", status);
+        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_STATUS], status);
     }
     return response;
 }
 
-int wm_agent_upgrade_parse_task_module_task_ids(cJSON *json_response, const cJSON* task_module_request) {
-    int agents = 0;
-    int error = OS_SUCCESS;
-    cJSON *task_module_response = NULL;
-    cJSON *error_json = NULL;
-
-    if (agents = cJSON_GetArraySize(task_module_request), !agents) {
-        return OS_INVALID;
-    }
-
-    // Send request to task module
-    task_module_response = wm_agent_upgrade_send_tasks_information(task_module_request);
-
-    if (task_module_response && (task_module_response->type == cJSON_Array) && (agents == cJSON_GetArraySize(task_module_response))) {
-        // Parse task module responses
-        while(cJSON_GetArraySize(task_module_response)) {
-            cJSON *task_response = cJSON_DetachItemFromArray(task_module_response, 0);
-            cJSON *agent_json = cJSON_GetObjectItem(task_response, "agent");
-            cJSON *data_json = cJSON_GetObjectItem(task_response, "data");
-            cJSON *task_json = cJSON_GetObjectItem(task_response, "task_id");
-
-            if (agent_json && (agent_json->type == cJSON_Number) && data_json && (data_json->type == cJSON_String)) {
-                int agent_id = agent_json->valueint;
-
-                if (task_json && (task_json->type == cJSON_Number)) {
-                    // Store task_id
-                    wm_agent_upgrade_insert_task_id(agent_id, task_json->valueint);
-                    cJSON_AddItemToArray(json_response, task_response);
-                } else {
-                    // Remove from table since upgrade will not be started
-                    wm_agent_upgrade_remove_entry(agent_id);
-                    error_json = wm_agent_upgrade_parse_response_message(WM_UPGRADE_TASK_MANAGER_FAILURE, data_json->valuestring, &agent_id, NULL, NULL);
-                    cJSON_AddItemToArray(json_response, error_json);
-                    cJSON_Delete(task_response);
-                }
-            } else {
-                error = OS_INVALID;
-            }
-        }
-    } else {
-        error = OS_INVALID;
-    }
-
-    if (error) {
-        for(int i = 0; i < agents; i++) {
-            cJSON *agent_json = cJSON_GetObjectItem(cJSON_GetArrayItem(task_module_request, i), "agent");
-
-            if (agent_json && (agent_json->type == cJSON_Number)) {
-                // Remove from table since upgrade will not be started
-                int agent_id = agent_json->valueint;
-                wm_agent_upgrade_remove_entry(agent_id);
-                error_json = wm_agent_upgrade_parse_response_message(WM_UPGRADE_TASK_MANAGER_COMMUNICATION, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION], &agent_id, NULL, NULL);
-                cJSON_AddItemToArray(json_response, error_json);
-            }
-        }
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_TASK_MAN_JSON);
-    }
-
-    cJSON_Delete(task_module_response);
-
-    return error;
-}
-
-int wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data, char **error) {
+int wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data) {
+    char *error = NULL;
     int error_code = OS_SUCCESS;
 
     if (agent_response) {
@@ -422,7 +353,8 @@ int wm_agent_upgrade_parse_agent_response(const char* agent_response, char **dat
             *data = strchr(agent_response, ' ') + 1;
         } else {
             if (!strncmp(agent_response, "err", 3) && strchr(agent_response, ' ')) {
-                *error = strchr(agent_response, ' ') + 1;
+                error = strchr(agent_response, ' ') + 1;
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_MESSAGE_ERROR, error);
             }
             error_code = OS_INVALID;
         }
