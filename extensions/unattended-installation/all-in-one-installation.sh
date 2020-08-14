@@ -201,7 +201,7 @@ installElasticsearch() {
         else
             logger "Certificates created"
         fi     
-        eval "rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f $debug"
+        eval "rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.8.zip -f $debug"
         
         # Configure JVM options for Elasticsearch
         ram_gb=$(free -g | awk '/^Mem:/{print $2}')
