@@ -17,7 +17,9 @@ fi
 
 ## Prints information
 logger() {
+
     echo $1
+
 }
 
 startService() {
@@ -57,10 +59,12 @@ startService() {
         echo "Error: ${1^} could not start. No service manager found on the system."
         exit 1;
     fi
+
 }
 
 ## Show script usage
 getHelp() {
+
    echo ""
    echo "Usage: $0 arguments"
    echo -e "\t-e     | --install-elasticsearch Installs Open Distro for Elasticsearch (cannot be used together with option -k)"
@@ -75,11 +79,13 @@ getHelp() {
    echo -e "\t-i     | --ignore-health-check Ignores the health-check"
    echo -e "\t-h     | --help Shows help"
    exit 1 # Exit script after printing help
+
 }
 
 
 ## Install the required packages for the installation
 installPrerequisites() {
+
     logger "Installing all necessary utilities for the installation..."
 
     if [ $sys_type == "yum" ] 
@@ -101,10 +107,12 @@ installPrerequisites() {
     else
         logger "Done"
     fi   
+
 }
 
 ## Add the Elastic repository
 addElasticrepo() {
+
     logger "Adding the Elasticsearch repository..."
 
     if [ $sys_type == "yum" ] 
@@ -138,11 +146,13 @@ addElasticrepo() {
         exit 1;
     else
         logger "Done"
-    fi        
+    fi  
+
 }
 
 ## Elasticsearch
 installElasticsearch() {
+
     logger "Installing Elasticsearch..."
 
     if [ $sys_type == "yum" ] 
@@ -188,6 +198,7 @@ installElasticsearch() {
 
         echo "Done"
     fi
+
 }
 
 createCertificates() {
@@ -234,6 +245,7 @@ createCertificates() {
     fi
     echo $'\nElasticsearch installation finished'
     exit 0;    
+
 }
 
 ## Kibana
@@ -253,7 +265,7 @@ installKibana() {
     else   
         eval "curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/unattended-installation/distributed/templates/kibana_unattended.yml --max-time 300 $debug"
         eval "cd /usr/share/kibana $debug"
-        eval "sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-4.0.0_7.8.1.zip $debug"
+        eval "sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/ui/kibana/wazuhapp-4.0.0_7.8.0_0.0.0.todelete.zip $debug"
         if [  "$?" != 0  ]
         then
             echo "Error: Wazuh Kibana plugin could not be installed."
@@ -272,21 +284,24 @@ installKibana() {
         then
             exit
         else
-            initializeKibana
+            initializeKibana password
         fi
         echo -e            
 
         logger "Done"
     fi
+
 }
 
 checkKibanacerts() {
+
     if [ -f "/etc/elasticsearch/certs/elasticsearch.key" ]
     then
         kc=1
     else
         kc=0
     fi
+
 }
 
 initializeKibana() {
@@ -312,17 +327,20 @@ initializeKibana() {
 
 ## Check nodes
 checkNodes() {
+
     head=$(head -n1 config.yml)
     if [ "${head}" == "## Multi-node configuration" ]
     then
         master=1
     else
         single=1
-    fi    
+    fi   
+
 }
 
 ## Health check
 healthCheck() {
+
     cores=$(cat /proc/cpuinfo | grep processor | wc -l)
     ram_gb=$(free -m | awk '/^Mem:/{print $2}')
 
@@ -333,6 +351,7 @@ healthCheck() {
     else
         echo "Starting the installation..."
     fi
+
 }
 
 ## Main
@@ -443,6 +462,7 @@ main() {
     else
         getHelp
     fi
+
 }
 
 main "$@"
