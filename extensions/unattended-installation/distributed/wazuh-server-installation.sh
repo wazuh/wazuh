@@ -52,7 +52,6 @@ installPrerequisites() {
 
 ## Add the Wazuh repository
 addWazuhrepo() {
-
     logger "Adding the Wazuh repository..."
 
     if [ $sys_type == "yum" ] 
@@ -61,17 +60,8 @@ addWazuhrepo() {
         eval "echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh_pre.repo $debug"
     elif [ $sys_type == "zypper" ] 
     then
-        rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH > /dev/null 2>&1
-		cat > /etc/zypp/repos.d/wazuh_pre.repo <<- EOF
-		[wazuh_repo]
-		gpgcheck=1
-		gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
-		enabled=1
-		name=Wazuh repository
-		baseurl=https://packages.wazuh.com/3.x/yum/
-		protect=1
-		EOF
-    
+        eval "rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH $debug"
+        eval "echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh_pre.repo $debug"            
     elif [ $sys_type == "apt-get" ] 
     then
         eval "curl -s https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH --max-time 300 | apt-key add - $debug"
@@ -79,14 +69,7 @@ addWazuhrepo() {
         eval "apt-get update -q $debug"
     fi    
 
-    if [  "$?" != 0  ]
-    then
-        echo "Error: Wazuh repository could not be added"
-        exit 1;
-    else
-        logger "Done"
-    fi   
-
+    logger "Done" 
 }
 
 ## Wazuh manager
