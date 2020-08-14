@@ -50,7 +50,7 @@ void *w_logtest_init() {
         os_calloc(num_extra_threads, sizeof(pthread_t), logtest_threads);
 
         for (int i = 0; i < num_extra_threads; i++) {
-            if(CreateThreadJoinable(logtest_threads + i, w_logtest_clients_handler, &connection)){
+            if (CreateThreadJoinable(logtest_threads + i, w_logtest_clients_handler, &connection)) {
                 merror_exit(THREAD_ERROR);
             }
         }
@@ -297,7 +297,7 @@ void *w_logtest_check_inactive_sessions(__attribute__((unused)) void * arg) {
 
             hash_node = OSHash_Next(w_logtest_sessions, &inode_it, hash_node);
             
-            if(session->expired){
+            if (session->expired) {
                 w_logtest_remove_session(token_session);
             }
             

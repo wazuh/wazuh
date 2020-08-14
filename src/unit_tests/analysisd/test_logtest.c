@@ -469,7 +469,7 @@ void test_w_logtest_check_inactive_sessions_remove(void **state)
 
     will_return(__wrap_difftime, 1000000);
 
-    // test_w_logtest_remove_session_fail
+    // test_w_logtest_remove_session_ok
     char * key = "test";
 
     expect_value(__wrap_OSHash_Delete_ex, key, "test");
