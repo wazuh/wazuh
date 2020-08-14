@@ -449,7 +449,12 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_set_agent_labels(wdb, next, output);
             }
-        } else {
+        } 
+        else if (strcmp(query, "sync-agent-info-get") == 0) { 
+            result = wdb_parse_global_sync_agent_info_get(wdb, next, output);
+        }
+        
+        else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
@@ -3943,6 +3948,31 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) 
 
         snprintf(output, OS_MAXSTR + 1, "ok");
     }
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) {
+    static int start_id = 0; 
+    char* agent_info_sync = NULL;
+
+    char *next = wstr_chr(input, ' ');
+    if(next) {
+        *next++ = '\0';
+        if (strcmp(input, "start_id") == 0) {
+            start_id = atoi(next);
+        }   
+    }
+    
+    wdb_chunks_status_t status = wdb_sync_agent_info_get(wdb, &start_id, &agent_info_sync);  
+    if (status == WDB_CHUNKS_COMPLETE || status == WDB_CHUNKS_ERROR) {
+        start_id = 0;
+    }  
+    snprintf(output, OS_MAXSTR + 1, "%1d %s", status, agent_info_sync);
+    os_free(agent_info_sync)
+
+
+   
 
     return OS_SUCCESS;
 }

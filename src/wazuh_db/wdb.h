@@ -45,6 +45,9 @@
 
 #define WDB_DATABASE_LOGTAG ARGV0 ":wdb_agent"
 
+#define WDB_MAX_COMMAND_SIZE    512
+#define WDB_MAX_RESPONSE_SIZE   OS_MAXSTR-WDB_MAX_COMMAND_SIZE
+
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
@@ -124,6 +127,8 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_LABELS_GET,
     WDB_STMT_GLOBAL_LABELS_DEL,
     WDB_STMT_GLOBAL_LABELS_SET,
+    WDB_STMT_GLOBAL_SYNC_REQ_GET,
+    WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_SIZE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
@@ -188,6 +193,14 @@ typedef enum {
     WDB_SYNCED,
     WDB_SYNC_REQ        
 } wdb_sync_status_t;
+
+/// Enumeration of sync-agent-info-get-status.
+typedef enum {
+    WDB_CHUNKS_PENDING,       //There are still elements to get
+    WDB_CHUNKS_BUFFER_FULL,   //There are still elements to get but buffer is full
+    WDB_CHUNKS_COMPLETE,      //There aren't any more elements to get
+    WDB_CHUNKS_ERROR          //An error occured
+} wdb_chunks_status_t;
 
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
@@ -379,6 +392,11 @@ cJSON* wdb_get_agent_labels(int id);
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_set_agent_labels(int id, const char *labels);
+
+int wdb_global_set_sync_status(wdb_t *wdb, int id, wdb_sync_status_t status);
+
+/*DOXYGEN here*/
+wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output);
 
 /* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */
 int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status);
@@ -693,6 +711,9 @@ int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
  * @retval -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
+
+/*DOXYGEN here*/
+int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * output);
 
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
