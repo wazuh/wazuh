@@ -35,6 +35,9 @@ installPrerequisites() {
     if [ $sys_type == "yum" ] 
     then
         eval "yum install curl -y -q $debug"
+    if [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install curl $debug"        
     elif [ $sys_type == "apt-get" ] 
     then
         if [ -n "$(command -v add-apt-repository)" ]
