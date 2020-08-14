@@ -5,9 +5,12 @@ debug='> /dev/null 2>&1'
 if [ -n "$(command -v yum)" ] 
 then
     sys_type="yum"
+elif [ -n "$(command -v zypper)" ] 
+then
+    sys_type="zypper"     
 elif [ -n "$(command -v apt-get)" ] 
 then
-    sys_type="apt-get"
+    sys_type="apt-get"   
 fi
 
 logger() {
@@ -74,21 +77,13 @@ installPrerequisites() {
 
     logger "Installing all necessary utilities for the installation..."
 
-    if [ $sys_type == "yum" ] 
+    if [ $sys_type == "yum" ]
     then
-        eval "yum install curl unzip wget libcap -y -q $debug"   
-        eval "yum install java-11-openjdk-devel -y -q $debug"
-        if [  "$?" != 0  ]
-        then
-            eval "yum install java-1.8.0-openjdk-devel -y -q $debug"
-            if [  "$?" != 0  ]
-            then
-                logger "JDK installation falied."
-                exit 1;
-            fi
+        eval "yum install curl unzip wget -y -q $debug && yum install java-11-openjdk-devel -y -q $debug || yum install java-1.8.0-openjdk.x86_64 -y -q $debug"
             export JAVA_HOME=/usr/
-        fi
-        export JAVA_HOME=/usr/
+    elif [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install curl unzip wget $debug && zypper -n install java-11-openjdk-devel $debug || zypper -n install java-1.8.0-openjdk.x86_64 $debug"
     elif [ $sys_type == "apt-get" ] 
     then
         eval "apt-get install apt-transport-https curl unzip wget libcap2-bin -y -q $debug"
@@ -122,13 +117,16 @@ installPrerequisites() {
 
 ## Add the Wazuh repository
 addWazuhrepo() {
-
     logger "Adding the Wazuh repository..."
 
     if [ $sys_type == "yum" ] 
     then
         eval "rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH $debug"
         eval "echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh_pre.repo $debug"
+    elif [ $sys_type == "zypper" ] 
+    then
+        eval "rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH $debug"
+        eval "echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/zypp/repos.d/wazuh_pre.repo $debug"            
     elif [ $sys_type == "apt-get" ] 
     then
         eval "curl -s https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH --max-time 300 | apt-key add - $debug"
@@ -136,29 +134,26 @@ addWazuhrepo() {
         eval "apt-get update -q $debug"
     fi    
 
-    if [  "$?" != 0  ]
-    then
-        echo "Error: Wazuh repository could not be added"
-        exit 1;
-    else
-        logger "Done"
-    fi   
-
+    logger "Done" 
 }
 
 ## Wazuh manager
 installWazuh() {
-
+    
     logger "Installing the Wazuh manager..."
-
-    eval "$sys_type install wazuh-manager -y -q $debug"
+    if [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install wazuh-manager $debug"
+    else
+        eval "$sys_type install wazuh-manager -y -q $debug"
+    fi
     if [  "$?" != 0  ]
     then
         echo "Error: Wazuh installation failed"
         exit 1;
     else
         logger "Done"
-    fi 
+    fi   
 
 }
 
@@ -170,6 +165,9 @@ installElasticsearch() {
     if [ $sys_type == "yum" ] 
     then
         eval "yum install opendistroforelasticsearch -y -q $debug"
+    elif [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install opendistroforelasticsearch $debug"
     elif [ $sys_type == "apt-get" ] 
     then
         eval "apt-get install elasticsearch-oss opendistroforelasticsearch -y -q $debug"
@@ -246,8 +244,13 @@ installElasticsearch() {
 installFilebeat() {
     
     logger "Installing Filebeat..."
-
-    eval "$sys_type install filebeat -y -q  $debug"
+    
+    if [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install filebeat $debug"
+    else
+        eval "$sys_type install filebeat -y -q  $debug"
+    fi
     if [  "$?" != 0  ]
     then
         echo "Error: Filebeat installation failed"
@@ -273,13 +276,17 @@ installFilebeat() {
 installKibana() {
     
     logger "Installing Open Distro for Kibana..."
-
-    eval "$sys_type install opendistroforelasticsearch-kibana -y -q $debug"
+    if [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install opendistroforelasticsearch-kibana $debug"
+    else
+        eval "$sys_type install opendistroforelasticsearch-kibana -y -q $debug"
+    fi
     if [  "$?" != 0  ]
     then
         echo "Error: Kibana installation failed"
         exit 1;
-    else   
+    else    
         eval "curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/kibana/7.x/kibana_all_in_one.yml --max-time 300 $debug"
         eval "cd /usr/share/kibana $debug"
         eval "sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-4.0.0_7.8.0.zip $debug"
