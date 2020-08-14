@@ -196,10 +196,10 @@ typedef enum {
 
 /// Enumeration of sync-agent-info-get-status.
 typedef enum {
-    WDB_CHUNKS_PENDING,       //There are still elements to get
-    WDB_CHUNKS_BUFFER_FULL,   //There are still elements to get but buffer is full
-    WDB_CHUNKS_COMPLETE,      //There aren't any more elements to get
-    WDB_CHUNKS_ERROR          //An error occured
+    WDB_CHUNKS_PENDING,       ///< There are still elements to get
+    WDB_CHUNKS_BUFFER_FULL,   ///< There are still elements to get but buffer is full
+    WDB_CHUNKS_COMPLETE,      ///< There aren't any more elements to get
+    WDB_CHUNKS_ERROR          ///< An error occured
 } wdb_chunks_status_t;
 
 extern char *schema_global_sql;
@@ -395,7 +395,10 @@ int wdb_set_agent_labels(int id, const char *labels);
 
 int wdb_global_set_sync_status(wdb_t *wdb, int id, wdb_sync_status_t status);
 
-/*DOXYGEN here*/
+/**
+ * @brief Gets and parses agents with status
+ * 
+ */
 wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output);
 
 /* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */

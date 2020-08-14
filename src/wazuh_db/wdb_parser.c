@@ -3971,8 +3971,5 @@ int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) 
     snprintf(output, OS_MAXSTR + 1, "%1d %s", status, agent_info_sync);
     os_free(agent_info_sync)
 
-
-   
-
     return OS_SUCCESS;
 }
