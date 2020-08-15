@@ -69,7 +69,7 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
             }
             if (SQLITE_ERROR == stmt->step())
             {
-                throw dbengine_error{ BIND_FIELDS_DOES_MATCH };
+                throw dbengine_error{ BIND_FIELDS_DOES_NOT_MATCH };
             }
             stmt->reset();
         }
@@ -852,7 +852,7 @@ bool SQLiteDBEngine::deleteRows(const std::string& table,
             }
             if (SQLITE_ERROR == stmt->step())
             {
-                throw dbengine_error{ BIND_FIELDS_DOES_MATCH };
+                throw dbengine_error{ BIND_FIELDS_DOES_NOT_MATCH };
             }
             stmt->reset();
         }
@@ -902,7 +902,7 @@ void SQLiteDBEngine::deleteRowsbyPK(const std::string& table,
             }
             if (SQLITE_ERROR == stmt->step())
             {
-                throw dbengine_error{ BIND_FIELDS_DOES_MATCH };
+                throw dbengine_error{ BIND_FIELDS_DOES_NOT_MATCH };
             }
             stmt->reset();
         }
@@ -1139,7 +1139,7 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
         }
         if (SQLITE_ERROR == stmt->step())
         {
-            throw dbengine_error{ BIND_FIELDS_DOES_MATCH };
+            throw dbengine_error{ BIND_FIELDS_DOES_NOT_MATCH };
         }
         stmt->reset();
     }
@@ -1419,7 +1419,7 @@ void SQLiteDBEngine::updateSingleRow(const std::string& table,
         }
         if (SQLITE_ERROR == stmt->step())
         {
-            throw dbengine_error{ BIND_FIELDS_DOES_MATCH };
+            throw dbengine_error{ BIND_FIELDS_DOES_NOT_MATCH };
         }
         stmt->reset();
     }
