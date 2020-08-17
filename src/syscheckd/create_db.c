@@ -355,7 +355,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     os_free(diff);
 
     if (json_event) {
-        if (result = fim_db_insert(syscheck.database, file, new, saved ? saved->data : NULL, alert_type), result < 0) {
+        if (result = fim_db_insert(syscheck.database, file, new, saved ? saved->data : NULL), result < 0) {
             free_entry_data(new);
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -503,7 +503,7 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
 
     if ((saved && data && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
-        if (result = fim_db_insert(syscheck.database, key, data, saved ? saved->data : NULL, alert_type), result < 0) {
+        if (result = fim_db_insert(syscheck.database, key, data, saved ? saved->data : NULL), result < 0) {
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
 
