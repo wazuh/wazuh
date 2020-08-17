@@ -258,7 +258,7 @@ if(${TARGET} STREQUAL "winagent")
                                            -Wl,--wrap=OSHash_Delete_ex,--wrap=_mterror,--wrap=check_path_type \
                                            -Wl,--wrap=_minfo -Wl,--wrap=OSHash_Create -Wl,--wrap=pthread_rwlock_unlock\
                                            -Wl,--wrap=OSHash_SetFreeDataPointer,--wrap=fim_whodata_event \
-                                           -Wl,--wrap=fim_configuration_directory,--wrap=fim_checker,--wrap=OSHash_Get \
+                                           -Wl,--wrap=fim_checker,--wrap=OSHash_Get \
                                            -Wl,--wrap=convert_windows_string,--wrap=OSHash_Get_ex,--wrap=FOREVER \
                                            -Wl,--wrap=fflush,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=fprintf \
                                            -Wl,--wrap=fgets -Wl,--wrap=wstr_split -Wl,--wrap=pthread_rwlock_wrlock")

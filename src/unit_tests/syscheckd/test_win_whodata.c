@@ -3695,6 +3695,8 @@ void test_restore_audit_policies_command_failed(void **state) {
     will_return(__wrap_IsFile, 0);
 
     expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\backup-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, "OUTPUT COMMAND");
     will_return(__wrap_wm_exec, -1);
     will_return(__wrap_wm_exec, -1);
@@ -3710,6 +3712,8 @@ void test_restore_audit_policies_command2_failed(void **state) {
     will_return(__wrap_IsFile, 0);
 
     expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\backup-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, "OUTPUT COMMAND");
     will_return(__wrap_wm_exec, -1);
     will_return(__wrap_wm_exec, 1);
@@ -3725,6 +3729,8 @@ void test_restore_audit_policies_command3_failed(void **state) {
     will_return(__wrap_IsFile, 0);
 
     expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\backup-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, "OUTPUT COMMAND");
     will_return(__wrap_wm_exec, -1);
     will_return(__wrap_wm_exec, 0);
@@ -3740,6 +3746,8 @@ void test_restore_audit_policies_success(void **state) {
     will_return(__wrap_IsFile, 0);
 
     expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\backup-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, "OUTPUT COMMAND");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
@@ -3818,6 +3826,8 @@ void test_audit_restore(void **state) {
         will_return(__wrap_IsFile, 0);
 
         expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\backup-policies\"");
+        expect_value(__wrap_wm_exec, secs, 5);
+        expect_value(__wrap_wm_exec, add_path, NULL);
         will_return(__wrap_wm_exec, "OUTPUT COMMAND");
         will_return(__wrap_wm_exec, 0);
         will_return(__wrap_wm_exec, 0);
@@ -5506,7 +5516,7 @@ void test_whodata_callback_4658_file_event(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, "1193046");
     will_return(__wrap_OSHash_Delete_ex, w_evt);
 
-    expect_function_call(__wrap_fim_whodata_event);
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "c:\\a\\path");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
@@ -5540,7 +5550,7 @@ void test_whodata_callback_4658_directory_delete_event(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, "1193046");
     will_return(__wrap_OSHash_Delete_ex, w_evt);
 
-    expect_function_call(__wrap_fim_whodata_event);
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "c:\\a\\path");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
@@ -5574,7 +5584,7 @@ void test_whodata_callback_4658_directory_new_file_detected(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, "1193046");
     will_return(__wrap_OSHash_Delete_ex, w_evt);
 
-    expect_function_call(__wrap_fim_whodata_event);
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "c:\\a\\path");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
@@ -5608,7 +5618,7 @@ void test_whodata_callback_4658_directory_scan_for_new_files(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, "1193046");
     will_return(__wrap_OSHash_Delete_ex, w_evt);
 
-    expect_function_call(__wrap_fim_whodata_event);
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "c:\\a\\path");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
@@ -5711,6 +5721,7 @@ void test_whodata_callback_unexpected_event_id(void **state) {
 void test_check_object_sacl_open_process_error(void **state) {
     int ret;
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)NULL);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)NULL);
     will_return(wrap_OpenProcessToken, 0);
@@ -5727,6 +5738,7 @@ void test_check_object_sacl_open_process_error(void **state) {
 void test_check_object_sacl_unable_to_set_privilege(void **state) {
     int ret;
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)123456);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -5747,6 +5759,7 @@ void test_check_object_sacl_unable_to_set_privilege(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(6659): The privilege could not be activated. Error: '5'.");
 
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
     ret = check_object_sacl("C:\\a\\path", 0);
@@ -5757,6 +5770,7 @@ void test_check_object_sacl_unable_to_set_privilege(void **state) {
 void test_check_object_sacl_unable_to_retrieve_security_info(void **state) {
     int ret;
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)123456);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -5795,6 +5809,7 @@ void test_check_object_sacl_unable_to_retrieve_security_info(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
     }
 
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
     ret = check_object_sacl("C:\\a\\path", 0);
@@ -5806,6 +5821,7 @@ void test_check_object_sacl_invalid_sacl(void **state) {
     ACL acl;
     int ret;
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)123456);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -5856,6 +5872,7 @@ void test_check_object_sacl_invalid_sacl(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
     }
 
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
     ret = check_object_sacl("C:\\a\\path", 0);
@@ -5867,6 +5884,7 @@ void test_check_object_sacl_valid_sacl(void **state) {
     ACL acl;
     int ret;
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)123456);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -5926,6 +5944,7 @@ void test_check_object_sacl_valid_sacl(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
     }
 
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
     ret = check_object_sacl("C:\\a\\path", 0);
@@ -6027,6 +6046,8 @@ void test_run_whodata_scan_no_auto_audit_policies(void **state) {
     will_return(__wrap_remove, 0);
 
     expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
 
@@ -6070,6 +6091,8 @@ void test_run_whodata_scan_error_event_channel(void **state) {
     will_return(__wrap_IsFile, 1);
 
     expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -6103,6 +6126,8 @@ void test_run_whodata_scan_error_event_channel(void **state) {
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -6171,6 +6196,8 @@ void test_run_whodata_scan_success(void **state) {
     will_return(__wrap_IsFile, 1);
 
     expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -6204,6 +6231,8 @@ void test_run_whodata_scan_success(void **state) {
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -6280,6 +6309,8 @@ void test_set_policies_fail_getting_policies(void **state) {
     will_return(__wrap_IsFile, 1);
 
     expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
 
@@ -6298,6 +6329,8 @@ void test_set_policies_unable_to_open_backup_file(void **state) {
     will_return(__wrap_IsFile, 1);
 
     expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -6321,6 +6354,8 @@ void test_set_policies_unable_to_open_new_file(void **state) {
     will_return(__wrap_IsFile, 1);
 
     expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -6351,6 +6386,8 @@ void test_set_policies_unable_to_restore_policies(void **state) {
     will_return(__wrap_IsFile, 1);
 
     expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -6384,6 +6421,8 @@ void test_set_policies_unable_to_restore_policies(void **state) {
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
     expect_string(__wrap__merror, formatted_msg,
@@ -6403,15 +6442,17 @@ void test_set_policies_success(void **state) {
     will_return(__wrap_IsFile, 1);
 
     expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
-    expect_string(__wrap_fopen, _Mode, "r");
+    expect_string(__wrap_fopen, path, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, (FILE*)1234);
 
-    expect_string(__wrap_fopen, _Filename, "tmp\\new-policies");
-    expect_string(__wrap_fopen, _Mode, "w");
+    expect_string(__wrap_fopen, path, "tmp\\new-policies");
+    expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, (FILE*)2345);
 
     expect_value(wrap_fgets, __stream, (FILE*)1234);
@@ -6436,6 +6477,8 @@ void test_set_policies_success(void **state) {
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
+    expect_value(__wrap_wm_exec, secs, 5);
+    expect_value(__wrap_wm_exec, add_path, NULL);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
