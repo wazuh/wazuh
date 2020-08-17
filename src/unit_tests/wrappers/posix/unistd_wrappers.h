@@ -32,4 +32,6 @@ int __wrap_usleep(useconds_t usec);
 
 ssize_t __wrap_read(int fildes, void *buf, size_t nbyte);
 
+int __wrap_gethostname(char *name, int len);
+
 #endif

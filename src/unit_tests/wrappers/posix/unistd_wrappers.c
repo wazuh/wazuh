@@ -13,6 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <string.h>
+#include <stdio.h>
 
 
 extern int test_mode;
@@ -68,4 +69,9 @@ ssize_t __wrap_read(__attribute__((unused)) int fildes,
         }
     }
     return mock_type(ssize_t);
+}
+
+int __wrap_gethostname(char *name, int len) {
+    snprintf(name, len, "%s",mock_type(char*));
+    return mock_type(int);
 }

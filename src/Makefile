@@ -1044,6 +1044,8 @@ wrappers_windows_o := $(wrappers_windows_c:.c=.o)
 wrappers_windows_lib_c := $(wildcard unit_tests/wrappers/windows/libc/*.c)
 wrappers_windows_lib_o := $(wrappers_windows_lib_c:.c=.o)
 
+wrappers_windows_posix_c := $(wildcard unit_tests/wrappers/windows/posix/*.c)
+wrappers_windows_posix_o := $(wrappers_windows_posix_c:.c=.o)
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
@@ -1076,6 +1078,7 @@ ifeq (${TARGET},winagent)
 	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_windows_lib_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_windows_posix_o}
 else
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_procpc_o}
@@ -1988,6 +1991,8 @@ clean-unit-tests:
 	rm -f ${wrappers_wazuh_os_auth_o}
 	rm -f ${wrappers_wazuh_addagent_o}
 	rm -f ${wrappers_windows_o}
+	rm -f ${wrappers_windows_lib_o}
+	rm -f ${wrappers_windows_posix_o}
 
 clean-framework:
 	${MAKE} -C ../framework clean

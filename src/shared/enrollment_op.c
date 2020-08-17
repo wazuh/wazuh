@@ -22,7 +22,10 @@
     #undef assert
     #define assert(expression) mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 
-    #ifdef WIN32
+    #ifndef WIN32
+        #include "unit_tests/wrappers/posix/unistd_wrappers.h"
+    #else
+        #include "unit_tests/wrappers/windows/posix/unistd_wrappers.h"
         #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
     #endif
 #endif

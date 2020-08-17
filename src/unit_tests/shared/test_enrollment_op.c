@@ -57,11 +57,6 @@ int __wrap_fclose ( FILE * stream ) {
     return 0;
 }
 
-int __wrap_gethostname(char *name, int len) {
-    snprintf(name, len, "%s",mock_type(char*));
-    return mock_type(int);
-}
-
 int __wrap_TempFile(File *file, const char *source, int copy) {
     file->name = mock_type(char *);
     file->fp = mock_type(FILE *);
@@ -526,8 +521,13 @@ void test_w_enrollment_send_message_empty_config(void **state) {
 
 void test_w_enrollment_send_message_wrong_hostname(void **state) {
     w_enrollment_ctx *cfg = *state;
+#ifdef WIN32
+    will_return(wrap_gethostname, NULL);
+    will_return(wrap_gethostname, -1);
+#else
     will_return(__wrap_gethostname, NULL);
     will_return(__wrap_gethostname, -1);
+#endif
     expect_string(__wrap__merror, formatted_msg, "Unable to extract hostname. Custom agent name not set.");
     int ret = w_enrollment_send_message(cfg);
     assert_int_equal(ret, -1);
@@ -542,8 +542,13 @@ void test_w_enrollment_send_message_invalid_hostname(void **state) {
 
 void test_w_enrollment_send_message_fix_invalid_hostname(void **state) {
     w_enrollment_ctx *cfg = *state;
+#ifdef WIN32
+    will_return(wrap_gethostname, "Invalid\'!@Hostname\'");
+    will_return(wrap_gethostname, 0);
+#else
     will_return(__wrap_gethostname, "Invalid\'!@Hostname\'");
     will_return(__wrap_gethostname, 0);
+#endif
     // If gethostname returns an invalid string should be fixed by OS_ConvertToValidAgentName
     expect_string(__wrap__minfo, formatted_msg, "Using agent name as: InvalidHostname");
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
@@ -557,8 +562,13 @@ void test_w_enrollment_send_message_fix_invalid_hostname(void **state) {
 
 void test_w_enrollment_send_message_ssl_error(void **state) {
     w_enrollment_ctx *cfg = *state;
+#ifdef WIN32
+    will_return(wrap_gethostname, "host.name");
+    will_return(wrap_gethostname, 0);
+#else
     will_return(__wrap_gethostname, "host.name");
     will_return(__wrap_gethostname, 0);
+#endif
     expect_string(__wrap__minfo, formatted_msg, "Using agent name as: host.name");
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
     expect_string(__wrap_SSL_write, buf, "OSSEC A:'host.name'\n");
@@ -617,8 +627,9 @@ void test_w_enrollment_store_key_entry_success(void **state) {
         expect_string(__wrap_fopen, mode, "w");
         will_return(__wrap_fopen, &file);
 
-        expect_value(wrap_fprintf, stream, &file);
+        expect_value(wrap_fprintf, __stream, &file);
         expect_string(wrap_fprintf, formatted_msg, "KEY EXAMPLE STRING\n");
+        will_return(wrap_fprintf, 0);
     #else
         expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
         expect_value(__wrap_TempFile, copy, 0);
@@ -672,8 +683,9 @@ void test_w_enrollment_process_agent_key_valid_key(void **state) {
         expect_string(__wrap_fopen, mode, "w");
         will_return(__wrap_fopen, 4);
 
-        expect_value(wrap_fprintf, stream, 4);
+        expect_value(wrap_fprintf, __stream, 4);
         expect_string(wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
+        will_return(wrap_fprintf, 0);
     #else
         expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
         expect_value(__wrap_TempFile, copy, 0);
@@ -768,8 +780,9 @@ void test_w_enrollment_process_response_success(void **state) {
             expect_string(__wrap_fopen, mode, "w");
             will_return(__wrap_fopen, 4);
 
-            expect_value(wrap_fprintf, stream, 4);
+            expect_value(wrap_fprintf, __stream, 4);
             expect_string(wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
+        will_return(wrap_fprintf, 0);
         #else
             expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
             expect_value(__wrap_TempFile, copy, 0);
@@ -872,8 +885,9 @@ void test_w_enrollment_request_key(void **state) {
                 expect_string(__wrap_fopen, mode, "w");
                 will_return(__wrap_fopen, 4);
 
-                expect_value(wrap_fprintf, stream, 4);
+                expect_value(wrap_fprintf, __stream, 4);
                 expect_string(wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
+                will_return(wrap_fprintf, 0);
             #else
                 expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
                 expect_value(__wrap_TempFile, copy, 0);
@@ -903,8 +917,13 @@ void test_w_enrollment_request_key(void **state) {
 void test_w_enrollment_extract_agent_name_localhost_allowed(void **state) {
     w_enrollment_ctx *cfg = *state;
     cfg->allow_localhost = 1; // Allow localhost
+#ifdef WIN32
+    will_return(wrap_gethostname, "localhost");
+    will_return(wrap_gethostname, 0);
+#else
     will_return(__wrap_gethostname, "localhost");
     will_return(__wrap_gethostname, 0);
+#endif
     char *lhostname = w_enrollment_extract_agent_name(cfg);
     assert_string_equal( lhostname, "localhost");
     os_free(lhostname);
@@ -913,8 +932,13 @@ void test_w_enrollment_extract_agent_name_localhost_allowed(void **state) {
 void test_w_enrollment_extract_agent_name_localhost_not_allowed(void **state) {
     w_enrollment_ctx *cfg = *state;
     cfg->allow_localhost = 0; // Do not allow localhost
+#ifdef WIN32
+    will_return(wrap_gethostname, "localhost");
+    will_return(wrap_gethostname, 0);
+#else
     will_return(__wrap_gethostname, "localhost");
     will_return(__wrap_gethostname, 0);
+#endif
     expect_string(__wrap__merror, formatted_msg, "(4104): Invalid hostname: 'localhost'.");
 
     char *lhostname = w_enrollment_extract_agent_name(cfg);
@@ -931,12 +955,15 @@ void test_w_enrollment_load_pass_empty_file(void **state) {
     expect_string(__wrap_fopen, filename, AUTHDPASS_PATH);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 4);
-
+#ifdef WIN32
+    expect_value(wrap_fgets, __stream, 4);
+    will_return(wrap_fgets, "");
+#else
     expect_value(__wrap_fgets, size, 4095);
     expect_value(__wrap_fgets, stream, 4);
     will_return(__wrap_fgets, "");
     will_return(__wrap_fgets, NULL);
-
+#endif
     char buff[1024];
     snprintf(buff, 1024, "Using password specified on file: %s", AUTHDPASS_PATH);
     expect_string(__wrap__minfo, formatted_msg, buff);
@@ -952,12 +979,15 @@ void test_w_enrollment_load_pass_file_with_content(void **state) {
     expect_string(__wrap_fopen, filename, AUTHDPASS_PATH);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 4);
-
+#ifdef WIN32
+    expect_value(wrap_fgets, __stream, 4);
+    will_return(wrap_fgets, "content_password");
+#else
     expect_value(__wrap_fgets, size, 4095);
     expect_value(__wrap_fgets, stream, 4);
     will_return(__wrap_fgets, "content_password");
     will_return(__wrap_fgets, "content_password");
-
+#endif
     char buff[1024];
     snprintf(buff, 1024, "Using password specified on file: %s", AUTHDPASS_PATH);
     expect_string(__wrap__minfo, formatted_msg, buff);
