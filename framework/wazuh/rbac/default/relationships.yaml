@@ -24,8 +24,7 @@ relationships:
         - syscheck_all
         - syscollector_read
       rule_ids:
-        - elastic_admin
-        - opendistro_admin
+        - wui_admin
 
     readonly:
       policy_ids:

@@ -1,14 +1,7 @@
 default_rules:
-  elastic_admin:
+  wui_admin:
     description: Admin permissions for Elastic administrator.
     rule:
-      FIND$:
-        elastic:
-          - administrator
-
-  opendistro_admin:
-    description: OpenDistro permissions for Elastic administrator.
-    rule:
-      FIND$:
-        admin:
-          - administrator
+      FIND:
+        roles:
+          - all_access

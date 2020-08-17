@@ -41,7 +41,10 @@ class RBAChecker:
         """
         if auth_context is None:
             auth_context = '{}'
-        self.authorization_context = json.loads(auth_context)
+        try:
+            self.authorization_context = json.loads(auth_context)
+        except TypeError:
+            self.authorization_context = auth_context
         # All roles in the system
         if role is None:
             with orm.RolesManager() as rm:
@@ -290,7 +293,7 @@ class RBAChecker:
         with orm.RolesPoliciesManager() as rpm:
             for role in user_roles:
                 for policy in rpm.get_all_policies_from_role(role):
-                    user_policies.append(policy['policy'])
+                    user_policies.append(json.loads(policy.policy))
 
         return user_policies
 
