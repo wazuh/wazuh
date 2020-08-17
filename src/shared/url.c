@@ -206,7 +206,7 @@ int wurl_request_gz(const char * url, const char * dest, const char * header, co
         return retval;
     } else {
         if (w_uncompress_gzfile(compressed_file, dest)) {
-            merror("Could not uncompress the file downloaded from '%s'.", url);
+            merror("Could not uncompress the file downloaded from '%s'", url);
         } else {
             retval = 0;
         }
@@ -298,7 +298,7 @@ int wurl_request_bz2(const char * url, const char * dest, const char * header, c
         return retval;
     } else {
         if (bzip2_uncompress(compressed_file, dest)) {
-            merror("Could not uncompress the file downloaded from '%s'.", url);
+            merror("Could not uncompress the file downloaded from '%s'", url);
         } else {
             retval = 0;
         }
@@ -312,7 +312,7 @@ int wurl_request_bz2(const char * url, const char * dest, const char * header, c
 }
 
 // Check the compression type of the file and try to download and uncompress it.
-int wurl_request_check_compression_types(const char * url, const char * dest, const long timeout) {
+int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const long timeout) {
     int res_url_request;
     int compress = 0;
 

@@ -25,7 +25,7 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
 int wurl_request_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout);
 char * wurl_http_get(const char * url);
 int wurl_request_bz2(const char * url, const char * dest, const char * header, const char * data, const long timeout);
-int wurl_request_check_compression_types(const char * url, const char * dest, const long timeout);
+int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const long timeout);
 
 /* Check download module availability */
 int wurl_check_connection();

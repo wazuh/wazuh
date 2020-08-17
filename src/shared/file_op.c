@@ -3115,38 +3115,48 @@ end:
 /* Check if a file is gzip compressed. */
 int w_is_compressed_gz_file(const char * path) {
     unsigned char buf[2];
+    int retval = 0;
     FILE *fp;
 
     fp = fopen(path, "rb");
+
     /* Magic number: 1f 8b */
     if (fp && fread(buf, 1, 2, fp) == 2) {
         if (buf[0] == 0x1f && buf[1] == 0x8b) {
-            fclose(fp);
-            return 1;
+            retval = 1;
         }
     }
 
-    return 0;
+    if (fp) {
+        fclose(fp);
+    }
+
+    return retval;
 }
 
 /* Check if a file is bzip2 compressed. */
 int w_is_compressed_bz2_file(const char * path) {
     unsigned char buf[3];
+    int retval = 0;
     FILE *fp;
 
     fp = fopen(path, "rb");
+
     /* Magic number: 42 5a 68 */
     if (fp && fread(buf, 1, 3, fp) == 3) {
         if (buf[0] == 0x42 && buf[1] == 0x5a && buf[2] == 0x68) {
-            fclose(fp);
-            return 1;
+            retval = 1;
         }
     }
 
-    return 0;
+    if (fp) {
+        fclose(fp);
+    }
+
+    return retval;
 }
 
-int w_check_compress_type_file(const char * path, const char * dest) {
+int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
     int result = 1;
 
     if (w_is_compressed_bz2_file(path)) {
