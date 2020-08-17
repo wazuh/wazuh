@@ -7,6 +7,8 @@
  * Foundation
  */
 
+#ifndef WIN32
+
 #include "select_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
@@ -21,3 +23,5 @@ int __wrap_select(__attribute__((unused)) int nfds,
                   __attribute__((unused)) struct timeval *restrict timeout) {
     return mock();
 }
+
+#endif

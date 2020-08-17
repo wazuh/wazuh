@@ -10,6 +10,7 @@
 
 #ifndef SELECT_WRAPPERS_H
 #define SELECT_WRAPPERS_H
+#ifndef WIN32
 
 #include <sys/select.h>
 
@@ -18,5 +19,7 @@ int __wrap_select(int nfds,
                   fd_set *restrict writefds,
                   fd_set *restrict errorfds,
                   struct timeval *restrict timeout);
+
+#endif
 
 #endif

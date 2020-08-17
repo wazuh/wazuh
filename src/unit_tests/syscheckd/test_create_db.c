@@ -2587,9 +2587,11 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     expect_string(__wrap_w_get_file_attrs, file_path, "c:\\test.file");
     will_return(__wrap_w_get_file_attrs, 123456);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "c:\\test.file");
     will_return(__wrap_fim_db_get_path, NULL);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_insert, file_path, "c:\\test.file");
@@ -2599,6 +2601,8 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     expect_string(__wrap_fim_db_set_scanned, path, "c:\\test.file");
     will_return(__wrap_fim_db_set_scanned, 0);
 
+    expect_string(__wrap_stat, __file, "c:\\test.file");
+    will_return(__wrap_stat, buf.st_mode);
     will_return(__wrap_stat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "c:\\test.file");
