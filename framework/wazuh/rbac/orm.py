@@ -38,6 +38,7 @@ admin_policy_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 1
 # Required rules for role
 # Key: Role - Value: Rules
 required_rules_for_role = {2: [1]}
+required_rules = {required_rule for r in required_rules_for_role.values() for required_rule in r}
 
 
 def json_validator(data):
@@ -823,7 +824,7 @@ class RulesManager:
         except IntegrityError:
             return SecurityError.RULE_NOT_EXIST
 
-    def get_rule_name(self, rule_name: str):
+    def get_rule_by_name(self, rule_name: str):
         """TODO"""
         try:
             rule = self.session.query(Rules).filter_by(name=rule_name).first()
@@ -856,7 +857,7 @@ class RulesManager:
     def delete_rule(self, rule_id: int):
         """TODO"""
         try:
-            if rule_id not in {required_rule for r in required_rules_for_role.values() for required_rule in r}:
+            if rule_id not in required_rules:
                 # If the role does not exist we rollback the changes
                 if self.session.query(Rules).filter_by(id=rule_id).first() is None:
                     return False
@@ -872,15 +873,30 @@ class RulesManager:
             self.session.rollback()
             return False
 
+    def delete_rule_by_name(self, rule_name: str):
+        """TODO
+        """
+        try:
+            if self.get_rule_by_name(rule_name) is not None and \
+                    self.get_rule_by_name(rule_name)['id'] not in required_rules:
+                rule_id = self.session.query(Rules).filter_by(name=rule_name).first().id
+                if rule_id:
+                    self.delete_rule(rule_id=rule_id)
+                    return True
+            return False
+        except (IntegrityError, AttributeError):
+            self.session.rollback()
+            return False
+
     def delete_all_rules(self):
         """TODO"""
         try:
             list_rules = list()
             rules = self.session.query(Rules).all()
             for rule in rules:
-                if int(rule.id) not in admin_role_ids:
+                if int(rule.id) not in required_rules:
                     with RolesRulesManager() as rrum:
-                        rrum.remove_all_rules_in_role(role_id=rule.id)
+                        rrum.remove_all_roles_in_rule(rule_id=rule.id)
                     list_rules.append(int(rule.id))
                     self.session.query(Rules).filter_by(id=rule.id).delete()
                     self.session.commit()
@@ -894,8 +910,7 @@ class RulesManager:
         try:
             rule_to_update = self.session.query(Rules).filter_by(id=rule_id).first()
             if rule_to_update and rule_to_update is not None:
-                if rule_to_update.id not in {required_rule for r in required_rules_for_role.values()
-                                             for required_rule in r}:
+                if rule_to_update.id not in required_rules:
                     # Rule is not a valid json
                     if rule is not None and not json_validator(rule):
                         return SecurityError.INVALID
@@ -1865,4 +1880,4 @@ with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
         for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
             for d_rule_name in payload['rule_ids']:
                 rrum.add_rule_to_role(role_id=rm.get_role(name=d_role_name)['id'],
-                                      rule_id=rum.get_rule_name(d_rule_name)['id'])
+                                      rule_id=rum.get_rule_by_name(d_rule_name)['id'])

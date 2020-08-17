@@ -486,7 +486,7 @@ def add_rule(name=None, rule=None):
         elif status == SecurityError.INVALID:
             result.add_failed_item(id_=json.dumps(rule), error=WazuhError(4003))
         else:
-            result.affected_items.append(rum.get_rule_name(name))
+            result.affected_items.append(rum.get_rule_by_name(name))
             result.total_affected_items += 1
 
     return result
