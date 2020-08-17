@@ -1709,7 +1709,7 @@ class RolesRulesManager:
             rule_roles = self.session.query(RolesRules).filter_by(role_id=role_id).order_by(RolesRules.id).all()
             rules = list()
             for relation in rule_roles:
-                rules.append(self.session.query(Rules).filter_by(id=relation.role_id).first())
+                rules.append(self.session.query(Rules).filter_by(id=relation.rule_id).first())
             return rules
         except (IntegrityError, AttributeError):
             self.session.rollback()
