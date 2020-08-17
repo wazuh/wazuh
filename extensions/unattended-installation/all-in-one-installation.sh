@@ -79,11 +79,11 @@ installPrerequisites() {
 
     if [ $sys_type == "yum" ]
     then
-        eval "yum install curl unzip wget -y -q $debug && yum install java-11-openjdk-devel -y -q $debug || yum install java-1.8.0-openjdk.x86_64 -y -q $debug"
+        eval "yum install curl unzip wget libcap -y -q $debug && yum install java-11-openjdk-devel -y -q $debug || yum install java-1.8.0-openjdk.x86_64 -y -q $debug"
             export JAVA_HOME=/usr/
     elif [ $sys_type == "zypper" ] 
     then
-        eval "zypper -n install curl unzip wget $debug && zypper -n install java-11-openjdk-devel $debug || zypper -n install java-1.8.0-openjdk.x86_64 $debug"
+        eval "zypper -n install curl unzip wget libcap-progs $debug && zypper -n install java-11-openjdk-devel $debug || zypper -n install java-1.8.0-openjdk.x86_64 $debug"
     elif [ $sys_type == "apt-get" ] 
     then
         eval "apt-get install apt-transport-https curl unzip wget libcap2-bin -y -q $debug"
