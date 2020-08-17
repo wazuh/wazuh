@@ -480,7 +480,7 @@ test_name: GET /security/user/authenticate
 
 stages:
 
-  - name: Get an API token
+  - name: Get an API token in raw format
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate"
