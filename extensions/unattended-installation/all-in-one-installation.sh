@@ -83,7 +83,7 @@ installPrerequisites() {
             export JAVA_HOME=/usr/
     elif [ $sys_type == "zypper" ] 
     then
-        eval "zypper -n install curl unzip wget libcap-progs $debug && zypper -n install java-11-openjdk-devel $debug || zypper -n install java-1.8.0-openjdk.x86_64 $debug"
+        eval "zypper -n install curl unzip wget libcap-progs $debug && zypper -n install java-11-openjdk-devel $debug || zypper -n install java-1_8_0-openjdk $debug"
     elif [ $sys_type == "apt-get" ] 
     then
         eval "apt-get install apt-transport-https curl unzip wget libcap2-bin -y -q $debug"
