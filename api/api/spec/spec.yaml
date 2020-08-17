@@ -3911,7 +3911,7 @@ components:
     raw:
       in: query
       name: raw
-      description: "Respond in raw format"
+      description: "Format response in plain text"
       required: False
       schema:
         type: boolean
