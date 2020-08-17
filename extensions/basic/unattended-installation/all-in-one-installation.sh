@@ -81,10 +81,10 @@ installPrerequisites() {
 
     if [ $sys_type == "yum" ] 
     then
-        eval "yum install zip unzip curl -y -q $debug"   
+        eval "yum install zip unzip curl libcap -y -q $debug"   
     elif [ $sys_type == "zypper" ] 
     then
-        eval "zypper -n install zip unzip curl $debug"       
+        eval "zypper -n install zip unzip curl libcap-progs $debug"       
     elif [ $sys_type == "apt-get" ] 
     then
         eval "apt-get install curl apt-transport-https zip unzip lsb-release gnupg2 libcap2-bin -y -q $debug"
