@@ -190,7 +190,7 @@ int __wrap_delete_target_file(const char *path) {
     return mock();
 }
 
-int __wrap_fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, fim_entry_data *saved, int alert_type) {
+int __wrap_fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, fim_entry_data *saved) {
     check_expected_ptr(fim_sql);
     check_expected(file_path);
 
