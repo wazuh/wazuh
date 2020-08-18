@@ -856,7 +856,7 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
     fim_db_bind_replace_path(fim_sql, file_path, inode_id, entry);
 
     if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_REPLACE_PATH]), res != SQLITE_DONE) {
-            merror("SQL ERROR: (%d)%s", res, sqlite3_errmsg(fim_sql->db));
+            merror("Step error replacing path '%s': %s", file_path, sqlite3_errmsg(fim_sql->db));
             return FIMDB_ERR;
     }
 
@@ -893,7 +893,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *new, fi
             fim_db_bind_delete_data_id(fim_sql, inode_id);
 
             if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_DATA]) != SQLITE_DONE) {
-                merror("Step error deleting data '%s' to insert in new row, the inode has changed: %s", file_path, sqlite3_errmsg(fim_sql->db));
+                merror("Step error deleting data: %s", sqlite3_errmsg(fim_sql->db));
                 return FIMDB_ERR;
             }
             fim_db_force_commit(fim_sql);
