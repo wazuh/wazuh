@@ -124,6 +124,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_LABELS_GET,
     WDB_STMT_GLOBAL_LABELS_DEL,
     WDB_STMT_GLOBAL_LABELS_SET,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_SIZE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
@@ -694,6 +695,17 @@ int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
  */
 int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
 
+/**
+ * @brief Function to update the agents info from workers.
+ * 
+ * @param wdb The global struct database.
+ * @param input String with the agents information in JSON format.
+ * @param output Response of the query in JSON format.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output);
+
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
@@ -803,6 +815,16 @@ int wdb_global_del_agent_labels(wdb_t *wdb, int id);
  * @retval -1 On error.
  */
 int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
+
+/**
+ * @brief Function to update the information of an agent.
+ * 
+ * @param wdb The Global struct database.
+ * @param agent_info A JSON array with the agent information.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
