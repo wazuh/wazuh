@@ -50,6 +50,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
     OS_XML xml;
     XML_NODE node = NULL;
     XML_NODE rule = NULL;
+    XML_NODE rule_opt = NULL;
     int retval = -1;
 
     /* XML variables */
@@ -395,7 +396,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 program_name = NULL;
                 location = NULL;
 
-                XML_NODE rule_opt = NULL;
                 rule_opt =  OS_GetElementsbyNode(&xml, rule[j]);
                 if (rule_opt == NULL) {
                     smerror(log_msg, "Rule '%d' without any option. It may lead to false positives and some "
@@ -1646,6 +1646,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 }
 
                 OS_ClearNode(rule_opt);
+                rule_opt = NULL;
             } /* end of elements block */
 
             /* Assign an active response to the rule */
@@ -1760,7 +1761,8 @@ cleanup:
     free(data);
     free(rulepath);
     OS_ClearNode(rule);
-
+    OS_ClearNode(rule_opt);
+    
     if (retval) {
         os_remove_ruleinfo(config_ruleinfo);
     }
