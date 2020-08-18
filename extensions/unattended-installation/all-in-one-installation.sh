@@ -83,7 +83,7 @@ installPrerequisites() {
         eval "yum install java-11-openjdk-devel -y -q $debug"
         if [ "$?" != 0 ]
         then
-            os=$(cat /etc/os-release | awk -F"ID=" '/ID=/{print $2; exit}' | tr -d \")
+            os=$(cat /etc/os-release > /dev/null 2>&1 | awk -F"ID=" '/ID=/{print $2; exit}' | tr -d \")
             if [ -z "$os" ]
             then
                 os="centos"
