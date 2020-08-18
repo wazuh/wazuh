@@ -18,6 +18,7 @@
  * @param agent_version Wazuh version of agent to validate
  * @param agent_info pointer to agent_info struture
  * @param task pointer to wm_upgrade_task with the params
+ * @param manager_configs manager configuration parameters
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
@@ -25,7 +26,7 @@
  * @retval WM_UPGRADE_VERSION_SAME_MANAGER
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
-static int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task);
+static int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task, const wm_manager_configs* manager_configs);
 
 /**
  * Check if WPK exists for this agent
@@ -45,12 +46,13 @@ static int wm_agent_upgrade_validate_system(const char *platform, const char *os
  * @param agent_info structure with the agent information
  * @param task structure with the task information
  * @param wpk_version version to validate
+ * @param wpk_repository_config char pointer with the repository url set in module config
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_URL_NOT_FOUND
  * @retval WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
  * */
-static int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version);
+static int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version, const char *wpk_repository_config);
 
 /**
  * Compare two versions with format v4.0.0
@@ -91,7 +93,7 @@ int wm_agent_upgrade_validate_status(int last_keep_alive) {
     return return_code;
 }
 
-int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *task, wm_upgrade_command command) {
+int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *task, wm_upgrade_command command, const wm_manager_configs* manager_configs) {
     char *tmp_agent_version = NULL;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
 
@@ -102,7 +104,7 @@ int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *tas
             if (wm_agent_upgrade_compare_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT) < 0) {
                 return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
             } else if (WM_UPGRADE_UPGRADE == command) {
-                return_code = wm_agent_upgrade_validate_non_custom_version(tmp_agent_version, agent_info, (wm_upgrade_task *)task);
+                return_code = wm_agent_upgrade_validate_non_custom_version(tmp_agent_version, agent_info, (wm_upgrade_task *)task, manager_configs);
             }
         }
     }
@@ -180,7 +182,7 @@ int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task) {
     return return_code;
 }
 
-static int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task) {
+static int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task, const wm_manager_configs* manager_configs) {
     char *manager_version = NULL;
     char *tmp_manager_version = NULL;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
@@ -193,7 +195,7 @@ static int wm_agent_upgrade_validate_non_custom_version(const char *agent_versio
                 char *wpk_version = task->custom_version ? task->custom_version : tmp_manager_version;
 
                 // Check if a WPK package exist for the upgrade version
-                return_code = wm_agent_upgrade_validate_wpk_version(agent_info, task, wpk_version);
+                return_code = wm_agent_upgrade_validate_wpk_version(agent_info, task, wpk_version, manager_configs->wpk_repository);
 
                 if (WM_UPGRADE_SUCCESS == return_code && !task->force_upgrade) {
                     if (wm_agent_upgrade_compare_versions(agent_version, wpk_version) >= 0) {
@@ -243,7 +245,7 @@ static int wm_agent_upgrade_validate_system(const char *platform, const char *os
     return return_code;
 }
 
-static int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version) {
+static int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version, const char *wpk_repository_config) {
     const char *http_tag = "http://";
     const char *https_tag = "https://";
     char *repository_url = NULL;
@@ -259,7 +261,7 @@ static int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info
     os_calloc(OS_SIZE_4096, sizeof(char), versions_url);
 
     if (!task->wpk_repository) {
-        os_strdup(WM_UPGRADE_WPK_REPO_URL, task->wpk_repository);
+        os_strdup(wpk_repository_config, task->wpk_repository);
     }
 
     // Set protocol

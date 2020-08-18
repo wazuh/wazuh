@@ -35,7 +35,8 @@ CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
 SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.template"
-AGENT_UPGRADE_TEMPLATE="./etc/templates/config/generic/wodle-agent-upgrade.template"
+AGENT_UPGRADE_MANAGER_TEMPLATE="./etc/templates/config/generic/wodle-agent-upgrade.manager.template"
+AGENT_UPGRADE_AGENT_TEMPLATE="./etc/templates/config/generic/wodle-agent-upgrade.agent.template"
 TASK_MANAGER_TEMPLATE="./etc/templates/config/generic/wodle-task-manager.manager.template"
 
 ##########
@@ -391,7 +392,7 @@ WriteAgent()
     WriteSyscollector "agent"
 
     # Agent upgrade
-    cat ${AGENT_UPGRADE_TEMPLATE} >> $NEWCONFIG
+    cat ${AGENT_UPGRADE_AGENT_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Configuration assessment configuration
@@ -498,7 +499,7 @@ WriteManager()
     WriteConfigurationAssessment
 
     # Agent upgrade
-    cat ${AGENT_UPGRADE_TEMPLATE} >> $NEWCONFIG
+    cat ${AGENT_UPGRADE_MANAGER_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Task Manager
@@ -623,7 +624,7 @@ WriteLocal()
     WriteOsquery "manager"
 
     # Agent upgrade
-    cat ${AGENT_UPGRADE_TEMPLATE} >> $NEWCONFIG
+    cat ${AGENT_UPGRADE_MANAGER_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Task Manager
