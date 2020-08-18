@@ -24,7 +24,9 @@ typedef enum _upgrade_status {
     WM_TASK_UPGRADE_ERROR = 0,
     WM_TASK_UPGRADE_UPDATING,
     WM_TASK_UPGRADE_UPDATED,
-    WM_TASK_UPGRADE_OUTDATED
+    WM_TASK_UPGRADE_OUTDATED,
+    WM_TASK_UPGRADE_TIMEOUT,
+    WM_TASK_UPGRADE_LEGACY
 } upgrade_status;
 
 typedef enum _error_code {

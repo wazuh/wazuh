@@ -23,7 +23,7 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
     if (agents = cJSON_GetArraySize(task_module_request), !agents) {
         return OS_INVALID;
     }
-    
+
     // Send request to task module
     task_module_response = wm_agent_upgrade_send_tasks_information(task_module_request);
 
@@ -43,7 +43,6 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
             } else {
                 cJSON_AddItemToArray(temp_array, task_response);
             }
-            
         }
     } else {
         error = OS_INVALID;

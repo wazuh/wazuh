@@ -353,10 +353,20 @@ static void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
 
             if (!wm_agent_upgrade_send_wpk_to_agent(agent_task)) {
 
-                // Update task to "In progress"
-                status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_IN_PROGRESS]);
+                if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
+                    wm_upgrade_task *upgrade_task = agent_task->task_info->task;
+                    if (upgrade_task->custom_version && (wm_agent_upgrade_compare_versions(upgrade_task->custom_version, WM_UPGRADE_NEW_UPGRADE_MECHANISM) < 0)) {
+                        // Update task to "Legacy". The agent won't report the result of the upgrade task
+                        status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_LEGACY]);
+                    } else {
+                        // Update task to "In progress"
+                        status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_IN_PROGRESS]);
+                    }
+                } else {
+                    // Update task to "In progress". There is no way to know if this task should be legacy
+                    status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_IN_PROGRESS]);
+                }
             } else {
-
                 // Update task to "Failed"
                 status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_FAILED]);
             }
@@ -632,9 +642,9 @@ static cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int 
 
     cJSON* task_module_response = cJSON_CreateArray();
     wm_agent_upgrade_task_module_callback(task_module_response, message_array, NULL, NULL);
-    
+
     cJSON_Delete(message_array);
-    
+
     cJSON* response = cJSON_DetachItemFromArray(task_module_response, 0);
     cJSON_Delete(task_module_response);
     return response;

@@ -202,7 +202,7 @@ int wm_task_manager_update_task_status(int agent_id, const char *module, const c
     int task_id = OS_INVALID;
     char *old_status = NULL;
 
-    if (!status || (strcmp(status, task_statuses[WM_TASK_IN_PROGRESS]) && strcmp(status, task_statuses[WM_TASK_DONE]) && strcmp(status, task_statuses[WM_TASK_FAILED]))) {
+    if (!status || (strcmp(status, task_statuses[WM_TASK_IN_PROGRESS]) && strcmp(status, task_statuses[WM_TASK_DONE]) && strcmp(status, task_statuses[WM_TASK_FAILED]) && strcmp(status, task_statuses[WM_TASK_LEGACY]))) {
         return WM_TASK_INVALID_STATUS;
     }
 
