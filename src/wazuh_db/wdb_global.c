@@ -220,13 +220,18 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
             }            
         }
         else {
-            //All agents has being obtained
+            //All agents have been obtained
             status = WDB_CHUNKS_COMPLETE;
         }
         cJSON_Delete(sql_agents_response);
-    }    
+    }
+    
+    if (response_size > 2) {
+        //Remove last ','
+        response_aux--;
+    } 
     //Add array end
-    *(response_aux-1) = ']';
+    *response_aux = ']';
 
     return status;
 }
