@@ -91,6 +91,8 @@ namespace SQLite
     private:
         std::shared_ptr<IConnection> m_connection;
         std::shared_ptr<sqlite3_stmt> m_stmt;
+        const int m_bindParametersCount;
+        int m_bindParametersIndex;
     };
 }
 

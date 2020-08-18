@@ -13,20 +13,21 @@
 #include <stdexcept>
 #include <string>
 
-constexpr auto FACTORY_INSTANTATION     { std::make_pair(1, "Unspecified type during factory instantiation") };
-constexpr auto INVALID_HANDLE           { std::make_pair(2, "Invalid handle value.") };
-constexpr auto INVALID_TRANSACTION      { std::make_pair(3, "Invalid transaction value.") };
-constexpr auto SQLITE_CONNECTION_ERROR  { std::make_pair(4, "No connection available for executions.") };
-constexpr auto EMPTY_DATABASE_PATH      { std::make_pair(5, "Empty database store path.") };
-constexpr auto EMPTY_TABLE_METADATA     { std::make_pair(6, "Empty table metadata.") };
-constexpr auto INVALID_PARAMETERS       { std::make_pair(7, "Invalid parameters.") };
-constexpr auto DATATYPE_NOT_IMPLEMENTED { std::make_pair(8, "Datatype not implemented.") };
-constexpr auto SQL_STMT_ERROR           { std::make_pair(9, "Invalid SQL statement.") };
-constexpr auto INVALID_PK_DATA          { std::make_pair(10, "Primary key not found.") };
-constexpr auto INVALID_COLUMN_TYPE      { std::make_pair(11, "Invalid column field type.") };
-constexpr auto INVALID_DATA_BIND        { std::make_pair(12, "Invalid data to bind.") };
-constexpr auto INVALID_TABLE            { std::make_pair(13, "Invalid table.") };
-constexpr auto INVALID_DELETE_INFO      { std::make_pair(14, "Invalid information provided for deletion.") };
+constexpr auto FACTORY_INSTANTATION       { std::make_pair(1, "Unspecified type during factory instantiation") };
+constexpr auto INVALID_HANDLE             { std::make_pair(2, "Invalid handle value.") };
+constexpr auto INVALID_TRANSACTION        { std::make_pair(3, "Invalid transaction value.") };
+constexpr auto SQLITE_CONNECTION_ERROR    { std::make_pair(4, "No connection available for executions.") };
+constexpr auto EMPTY_DATABASE_PATH        { std::make_pair(5, "Empty database store path.") };
+constexpr auto EMPTY_TABLE_METADATA       { std::make_pair(6, "Empty table metadata.") };
+constexpr auto INVALID_PARAMETERS         { std::make_pair(7, "Invalid parameters.") };
+constexpr auto DATATYPE_NOT_IMPLEMENTED   { std::make_pair(8, "Datatype not implemented.") };
+constexpr auto SQL_STMT_ERROR             { std::make_pair(9, "Invalid SQL statement.") };
+constexpr auto INVALID_PK_DATA            { std::make_pair(10, "Primary key not found.") };
+constexpr auto INVALID_COLUMN_TYPE        { std::make_pair(11, "Invalid column field type.") };
+constexpr auto INVALID_DATA_BIND          { std::make_pair(12, "Invalid data to bind.") };
+constexpr auto INVALID_TABLE              { std::make_pair(13, "Invalid table.") };
+constexpr auto INVALID_DELETE_INFO        { std::make_pair(14, "Invalid information provided for deletion.") };
+constexpr auto BIND_FIELDS_DOES_NOT_MATCH { std::make_pair(15, "Invalid information provided for statement creation.") };
 
 namespace DbSync
 {

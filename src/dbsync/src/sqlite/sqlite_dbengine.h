@@ -147,7 +147,8 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         bool loadFieldData(const std::string& table);
 
-        std::string buildInsertBulkDataSqlQuery(const std::string& table);
+        std::string buildInsertBulkDataSqlQuery(const std::string& table,
+                                                const nlohmann::json& data = {});
 
         std::string buildDeleteBulkDataSqlQuery(const std::string& table, 
                                                 const std::vector<std::string>& primaryKeyList,
@@ -220,7 +221,8 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                                const std::vector<std::string>& primaryKeyList,
                                std::vector<Row>& returnRows);
 
-        void bulkInsert(const std::string& table, const std::vector<Row>& data);
+        void bulkInsert(const std::string& table,
+                        const std::vector<Row>& data);
 
         void deleteTempTable(const std::string& table);
 
