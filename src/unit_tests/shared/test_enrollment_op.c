@@ -474,7 +474,7 @@ void test_w_enrollment_verify_ca_certificate_null_connection(void **state) {
 
 void test_w_enrollment_verify_ca_certificate_no_certificate(void **state) {
     SSL *ssl = *state;
-    expect_string(__wrap__minfo, formatted_msg, "Registering agent to unverified manager");
+    expect_string(__wrap__mdebug1, formatted_msg, "Registering agent to unverified manager");
     w_enrollment_verify_ca_certificate(ssl, NULL, "hostname");
 }
 
@@ -840,7 +840,7 @@ void test_w_enrollment_process_response_ssl_null(void **state) {
 
 void test_w_enrollment_process_response_ssl_error(void **state) {
      SSL *ssl = *state;
-    expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
+    expect_string(__wrap__minfo, formatted_msg, "Waiting for server reply");
     expect_value(__wrap_SSL_read, ssl, ssl);
     will_return(__wrap_SSL_read, "");
     will_return(__wrap_SSL_read, -1);
@@ -854,7 +854,7 @@ void test_w_enrollment_process_response_ssl_error(void **state) {
 
 void test_w_enrollment_process_response_message_error(void **state) {
     SSL *ssl = *state;
-    expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
+    expect_string(__wrap__minfo, formatted_msg, "Waiting for server reply");
     expect_value(__wrap_SSL_read, ssl, ssl);
     will_return(__wrap_SSL_read, "ERROR: Unable to add agent.");
     will_return(__wrap_SSL_read, strlen("ERROR: Unable to add agent."));
@@ -872,7 +872,7 @@ void test_w_enrollment_process_response_message_error(void **state) {
 void test_w_enrollment_process_response_success(void **state) { 
     const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
     SSL *ssl = *state;
-    expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
+    expect_string(__wrap__minfo, formatted_msg, "Waiting for server reply");
     expect_value(__wrap_SSL_read, ssl, ssl);
     will_return(__wrap_SSL_read, string);
     will_return(__wrap_SSL_read, strlen(string));    
@@ -921,7 +921,7 @@ void test_w_enrollment_request_key(void **state) {
     w_enrollment_ctx *cfg = *state; 
     SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
     
-    expect_string(__wrap__minfo, formatted_msg, "Requesting a key to server: valid_hostname");
+    expect_string(__wrap__minfo, formatted_msg, "Requesting a key from server: valid_hostname");
 
     // w_enrollment_connect
     {
@@ -971,7 +971,7 @@ void test_w_enrollment_request_key(void **state) {
     // w_enrollment_process_repsonse
     {
         const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
-        expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
+        expect_string(__wrap__minfo, formatted_msg, "Waiting for server reply");
         expect_value(__wrap_SSL_read, ssl, cfg->ssl);
         will_return(__wrap_SSL_read, string);
         will_return(__wrap_SSL_read, strlen(string));        

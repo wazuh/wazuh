@@ -115,7 +115,7 @@ void w_enrollment_destroy(w_enrollment_ctx *cfg) {
 int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address) {
     assert(cfg != NULL);
     int ret = -1;
-    minfo("Requesting a key to server: %s", server_address ? server_address : cfg->target_cfg->manager_name);
+    minfo("Requesting a key from server: %s", server_address ? server_address : cfg->target_cfg->manager_name);
     int socket = w_enrollment_connect(cfg, server_address ? server_address : cfg->target_cfg->manager_name);
     if ( socket >= 0) {
         w_enrollment_load_pass(cfg->cert_cfg);
@@ -321,7 +321,7 @@ static int w_enrollment_process_response(SSL *ssl) {
     os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
     buf[OS_SIZE_65536 + OS_SIZE_4096] = '\0';
 
-    minfo("Waiting for manager reply");
+    minfo("Waiting for server reply");
 
     while(ret = SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096), ret > 0) {
         buf[ret] = '\0';
@@ -465,7 +465,7 @@ static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_ce
         }
     }
     else {
-        minfo("Registering agent to unverified manager");
+        mdebug1("Registering agent to unverified manager");
     }
 }
 
