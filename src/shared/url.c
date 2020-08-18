@@ -327,7 +327,7 @@ int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const lo
     }
 
     if (compress == 1 && !res_url_request) {
-        mdebug1("The file from url '%s' was successfully uncompressed into '%s'", url, dest);
+        mdebug1("File from URL '%s' was successfully uncompressed into '%s'", url, dest);
     }
 
     return res_url_request;
