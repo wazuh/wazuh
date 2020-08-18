@@ -16,20 +16,20 @@ There are several modules needed in order to the tool to work correctly.
 
 ## How to use the tool
 Usage:
-./build.sh --help      :   Show this help.
-./build.sh --rtr       :   Ready to Review checks.
-./build.sh --config    :   Config dbsync.
-./build.sh --make      :   Make dbsync.
-./build.sh --remake    :   Clean and Make dbsync.
-./build.sh --tests     :   Tests.
-./build.sh --coverage  :   Coverage.
-./build.sh --cppcheck  :   cppcheck.
-./build.sh --valgrind  :   Valgrind on tests.
+- ./build.sh --help      :   Show this help.
+- ./build.sh --rtr       :   Ready to Review checks.
+- ./build.sh --config    :   Config dbsync.
+- ./build.sh --make      :   Make dbsync.
+- ./build.sh --remake    :   Clean and Make dbsync.
+- ./build.sh --tests     :   Tests.
+- ./build.sh --coverage  :   Coverage.
+- ./build.sh --cppcheck  :   cppcheck.
+- ./build.sh --valgrind  :   Valgrind on tests.
 
 Ready to review checks:
-  1- compiles dbsync.
-  2- runs cppcheck on dbsync folder.
-  3- runs dbsync UTs.
-  4- runs valgrind on dbsync UTs.
-  5- runs code coverage on dbsync tests and generates coverage reports.
+  1. compiles dbsync.
+  2. runs cppcheck on dbsync folder.
+  3. runs dbsync UTs.
+  4. runs valgrind on dbsync UTs.
+  5. runs code coverage on dbsync tests and generates coverage reports.
 If all the checks passed it returns 0 and prints a "RTR PASSED: code is ready to review.", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns and error code.
