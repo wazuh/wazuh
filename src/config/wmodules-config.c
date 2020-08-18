@@ -13,6 +13,17 @@
 
 static const char *XML_NAME = "name";
 
+/**
+ * List of modules that will be initialized by default
+ * last position should be NULL
+ * */
+static const void *default_modules[] = {
+    wm_agent_upgrade_read,
+    NULL
+};
+
+static bool default_modules_initialized = false;
+
 // Read wodle element
 
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
@@ -33,32 +44,56 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         return OS_INVALID;
     }
 
-    // Allocate memory
+    cur_wmodule = *wmodules;
 
-    if ((cur_wmodule = *wmodules)) {
-        cur_wmodule_exists = *wmodules;
-        int found = 0;
-
-        while (cur_wmodule_exists) {
-            if(cur_wmodule_exists->tag) {
-                if(strcmp(cur_wmodule_exists->tag,node->values[0]) == 0) {
-                    cur_wmodule = cur_wmodule_exists;
-                    found = 1;
-                    break;
-                }
-            }
-            cur_wmodule_exists = cur_wmodule_exists->next;
-        }
-
-        if(!found) {
-            while (cur_wmodule->next)
-                cur_wmodule = cur_wmodule->next;
-
+    // Wodles that are going to be enabled by default
+    int i=0;
+    while (default_modules[i] && !default_modules_initialized) {
+        if(!cur_wmodule) {
+            *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
+        } else {
             os_calloc(1, sizeof(wmodule), cur_wmodule->next);
             cur_wmodule = cur_wmodule->next;
+            if (!cur_wmodule) {
+                merror(MEM_ERROR, errno, strerror(errno));
+                return (OS_INVALID);
+            }
         }
-    } else
-        *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
+        // Point to read function
+        int (*function_ptr)(xml_node **nodes, wmodule *module) = default_modules[i];
+        
+        if(function_ptr(NULL, cur_wmodule) == OS_INVALID) {
+            return OS_INVALID;
+        }
+        i++;
+    }
+
+    default_modules_initialized = true;
+
+
+    // Allocate memory
+    cur_wmodule_exists = *wmodules;
+    int found = 0;
+
+    while (cur_wmodule_exists) {
+        if(cur_wmodule_exists->tag) {
+            if(strcmp(cur_wmodule_exists->tag,node->values[0]) == 0) {
+                cur_wmodule = cur_wmodule_exists;
+                found = 1;
+                break;
+            }
+        }
+        cur_wmodule_exists = cur_wmodule_exists->next;
+    }
+
+    if(!found) {
+        while (cur_wmodule->next)
+            cur_wmodule = cur_wmodule->next;
+
+        os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+        cur_wmodule = cur_wmodule->next;
+    }
+    
 
     if (!cur_wmodule) {
         merror(MEM_ERROR, errno, strerror(errno));
