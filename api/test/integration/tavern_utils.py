@@ -9,7 +9,15 @@ def test_distinct_key(response):
     :param response: Request response
     :return: True if all request response items are unique
     """
-    assert not any(response.json()["data"]["affected_items"].count(item) > 1 for item in response.json()["data"]["affected_items"])
+    assert not any(
+        response.json()["data"]["affected_items"].count(item) > 1 for item in response.json()["data"]["affected_items"])
+
+
+def test_token_raw_format(response):
+    """
+    :param response: Request response
+    """
+    assert type(response.text) is str
 
 
 def test_select_key_affected_items(response, select_key):
@@ -53,7 +61,8 @@ def test_select_key_affected_items_with_agent_id(response, select_key):
         expected_keys_level0 = {'agent_id', select_key.split('.')[0]}
         expected_keys_level1 = {select_key.split('.')[1]}
         assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys_level0
-        assert set(response.json()["data"]["affected_items"][0][select_key.split('.')[0]].keys()) == expected_keys_level1
+        assert set(
+            response.json()["data"]["affected_items"][0][select_key.split('.')[0]].keys()) == expected_keys_level1
     else:
         expected_keys = {'agent_id', select_key}
         assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys
@@ -136,3 +145,34 @@ def test_response_is_different(response, response_value, unexpected_value):
     :param unexpected_value: Response value should be different to this.
     """
     assert response_value != unexpected_value, f"{response_value} and {unexpected_value} shouldn't be the same"
+
+
+def test_save_response_data(response):
+    return Box({'response_data': response.json()['data']})
+
+
+def test_validate_restart_by_node(response, data):
+    data = json.loads(data.replace("'", '"'))
+    affected_items = list()
+    failed_items = list()
+    for item in data['affected_items']:
+        if item['status'] == 'active':
+            affected_items.append(item['id'])
+        else:
+            failed_items.append(item['id'])
+    assert response.json()['data']['affected_items'] == affected_items
+    assert response.json()['data']['failed_items'] == failed_items
+
+
+def test_validate_restart_by_node_rbac(response, permitted_agents):
+    data = response.json().get('data', None)
+    if data:
+        if data['affected_items']:
+            for agent in data['affected_items']:
+                assert agent in permitted_agents
+        else:
+            assert data['total_affected_items'] == 0
+    else:
+        assert response.status_code == 403
+        assert response.json()['code'] == 4000
+        assert 'agent:id' in response.json()['detail']

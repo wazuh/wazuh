@@ -179,7 +179,7 @@ class LocalServerHandlerMaster(LocalServerHandler):
                     self.server.node.clients[node_name].send_request(b'dapi', self.name.encode() + b' ' + request))
                 return b'ok', b'Request forwarded to worker node'
             else:
-                raise WazuhClusterError(3022, extra_message=node_name)
+                raise WazuhClusterError(3022)
         else:
             return super().process_request(command, data)
 

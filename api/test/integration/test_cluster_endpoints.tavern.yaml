@@ -9,7 +9,7 @@ stages:
   - name: Get cluster config
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/local/config"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -30,7 +30,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/healthcheck
@@ -40,7 +39,7 @@ stages:
   - name: Get cluster healtcheck
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/healthcheck"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/healthcheck"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -68,12 +67,11 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: !anystr
 
   - name: Get cluster healtcheck
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/healthcheck"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/healthcheck"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -105,7 +103,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/local/info
@@ -115,7 +112,7 @@ stages:
   - name: Get cluster node
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/local/info"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -130,7 +127,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/nodes
@@ -140,7 +136,7 @@ stages:
   - name: Get cluster nodes
     request: &get_cluster_nodes
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/nodes"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -158,7 +154,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
   - name: Get cluster nodes
     request:
@@ -177,7 +172,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
   - name: Filter nodes by query
     request:
@@ -223,9 +217,7 @@ stages:
       status_code: 400
       json:
         detail: !anystr
-        status: 400
         title: !anystr
-        type: !anystr
 
   - name: Sort nodes by name in ascending order
     request:
@@ -250,7 +242,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
   - name: Sort nodes by name in descending order
     request:
@@ -275,7 +266,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
   - name: Search master
     request:
@@ -294,7 +284,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Search worker1
     request:
@@ -312,7 +301,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters (type) -> master
     request:
@@ -330,7 +318,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters (type) -> worker
     request:
@@ -349,7 +336,6 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: !anystr
 
 
   - name: Filters -> invalid type
@@ -381,7 +367,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
   - name: Select type
     request:
@@ -400,7 +385,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
   - name: Select wrong_field
     request:
@@ -427,7 +411,7 @@ stages:
   - name: Get cluster {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/nodes"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -445,7 +429,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/nodes select
@@ -464,7 +447,7 @@ stages:
   - name: Get cluster nodes with select
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/nodes"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -487,7 +470,7 @@ stages:
   - name: Get cluster status
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/status"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -506,7 +489,7 @@ stages:
   - name: Request {master-node}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -538,12 +521,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Request (worker)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -570,12 +552,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> section=alerts (master-node)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -592,13 +573,12 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 
   - name: Filters -> section=syscheck (master)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -622,12 +602,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> section=syscollector (master)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -651,12 +630,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> section=alerts (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -673,12 +651,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> section=syscheck (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -702,12 +679,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> section=syscollector (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -731,7 +707,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/configuration/validation
@@ -741,7 +716,7 @@ stages:
   - name: Request cluster validation
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/configuration/validation"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -759,13 +734,12 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr
 
   #### Upload corrupted rules file
   - name: Upload corrupted configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
       data: "{corrupted_rules_file}"
       headers:
@@ -779,7 +753,7 @@ stages:
   - name: Request validation
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/configuration/validation"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -795,19 +769,16 @@ stages:
           failed_items:
             - error:
                 code: 1908
-                message: !anystr
-                remediation: !anystr
               id:
                 - 'master-node'
           total_affected_items: 2
           total_failed_items: 1
-        message: !anystr
 
     #### Delete corrupted rules file
   - name: Delete rules file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -819,7 +790,7 @@ stages:
   - name: Request cluster validation
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/configuration/validation"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -837,12 +808,11 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: !anystr
 
   - name: Request cluster validation
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/configuration/validation"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -858,7 +828,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
@@ -868,7 +837,7 @@ stages:
   - name: Try to show the config of analisys/global through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration/analysis/global"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/global"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -896,12 +865,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of analysis/active_response through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/analysis/active_response"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/analysis/active_response"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -914,12 +882,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of analysis/alerts through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration/analysis/alerts"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/alerts"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -932,13 +899,12 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show analysis/command through a worker
 
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/analysis/command"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/analysis/command"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -951,12 +917,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of authd/authd in the manager through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/auth/auth"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/auth/auth"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -981,12 +946,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of com/internal in the manager through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/com/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/com/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1002,12 +966,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of csyslog/csyslog in the manager through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/csyslog/csyslog"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/csyslog/csyslog"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1025,12 +988,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of integrator/integration in the manager through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/integrator/integration"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/integrator/integration"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1043,12 +1005,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of analysis/internal through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration/analysis/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1075,12 +1036,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of logcollector/localfile in the manager trough a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/logcollector/localfile"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/logcollector/localfile"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1093,12 +1053,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of logcollector/socket in the manager trough a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/logcollector/socket"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/logcollector/socket"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1110,12 +1069,11 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of logcollector/internal in the manager trough a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/logcollector/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/logcollector/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1144,12 +1102,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of mail/global in the manager trough a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/mail/global"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/mail/global"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1166,12 +1123,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of mail/alerts in the manager trough a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/mail/alerts"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/mail/alerts"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1187,12 +1143,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of mail/internal in the manager trough a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/mail/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/mail/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1208,12 +1163,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of monitor/internal in the manager trough a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/monitor/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/monitor/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1235,12 +1189,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of request/remote in the manager trough a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/request/remote"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/request/remote"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1258,12 +1211,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of request/internal in the manager trough a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/request/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/request/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1299,12 +1251,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of syscheck/syscheck in the manager trough a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/syscheck/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/syscheck/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1318,12 +1269,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of syscheck/rootcheck in the manager trough a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/syscheck/rootcheck"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/syscheck/rootcheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1351,12 +1301,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of syscheck/internal in the manager through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/syscheck/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/syscheck/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1378,12 +1327,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the config of wmodules/wmodules in the manager trough a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/wmodules/wmodules"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wmodules/wmodules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1396,7 +1344,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/files
@@ -1414,7 +1361,7 @@ stages:
   - name: Get ossec.conf {node_id}
     request: &get_cluster_files
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/files"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1514,7 +1461,7 @@ stages:
   - name: Delete rules file
     request: &delete_cluster_files
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/files"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1529,7 +1476,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Delete unexisting rules file
     request:
@@ -1545,12 +1491,9 @@ stages:
           failed_items:
             - error:
                 code: 1906
-                message: !anystr
-                remediation: !anystr
               id: !anything
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Delete decoder file
     request:
@@ -1567,7 +1510,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Delete unexisting decoder file
     request:
@@ -1593,7 +1535,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Delete unexisting CDB list file
     request:
@@ -1621,7 +1562,7 @@ stages:
   - name: Get ossec.conf {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/files"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1638,7 +1579,7 @@ stages:
   - name: Upload ossec.conf {node_id}
     request: &upload_cluster_files
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/files"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/files"
       method: PUT
       data: "{ossec_conf}"
       headers:
@@ -1656,7 +1597,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Upload new rules {node_id}
     request:
@@ -1674,7 +1614,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Upload rules (overwrite=false) {node_id}
     request:
@@ -1692,13 +1631,10 @@ stages:
           failed_items:
             - error:
                 code: 1905
-                message: !anystr
-                remediation: !anystr
               id:
                 - 'etc/rules/new-rules.xml'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Upload rules (overwrite=true) {node_id}
     request:
@@ -1717,7 +1653,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Upload rules with XML syntax error (overwrite=true)
     request:
@@ -1735,13 +1670,10 @@ stages:
           failed_items:
             - error:
                 code: 1113
-                message: !anystr
-                remediation: !anystr
               id:
                 - 'etc/rules/new-rules.xml'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Upload new decoder
     request:
@@ -1759,7 +1691,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Upload decoder (overwrite=false)
     request:
@@ -1777,13 +1708,10 @@ stages:
           failed_items:
             - error:
                 code: 1905
-                message: !anystr
-                remediation: !anystr
               id:
                 - 'etc/decoders/new-decoder.xml'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Upload decoder (overwrite=true)
     request:
@@ -1802,7 +1730,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Upload decoder with XML syntax error (overwrite=true)
     request:
@@ -1820,13 +1747,10 @@ stages:
           failed_items:
             - error:
                 code: 1113
-                message: !anystr
-                remediation: !anystr
               id:
                 - 'etc/decoders/new-decoder.xml'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Upload new CDB list
     request:
@@ -1844,7 +1768,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Upload CDB list (overwrite=false)
     request:
@@ -1862,13 +1785,10 @@ stages:
           failed_items:
             - error:
                 code: 1905
-                message: !anystr
-                remediation: !anystr
               id:
                 - 'etc/lists/new-list'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Upload CDB list (overwrite=true)
     request:
@@ -1887,7 +1807,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Upload CDB list with a syntax error (overwrite=true)
     request:
@@ -1909,7 +1828,6 @@ stages:
                 - 'etc/lists/new-list'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
 ---
 test_name: PUT /cluster/wrong_node/files
@@ -1919,7 +1837,7 @@ stages:
   - name: Upload rules to unexisting node (overwrite=false) {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/unexisting-node/files"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting-node/files"
       method: PUT
       data: "{new_rules:s}"
       headers:
@@ -1928,21 +1846,23 @@ stages:
       params:
         path: etc/rules/new-rules.xml
         overwrite: True
-    response:
-      status_code: 400
+    response: &unexisting_node
+      status_code: 200
       json:
-        code: 3022
-        dapi_errors: {}
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - "unexisting-node"
 
   - name: Upload decoder to unexisting node
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/unexisting-node/files"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting-node/files"
       method: PUT
       data: "{new_decoder:s}"
       headers:
@@ -1952,20 +1872,12 @@ stages:
         path: etc/decoders/new-decoder.xml
         overwrite: True
     response:
-      status_code: 400
-      json:
-        code: 3022
-        dapi_errors: {}
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+      <<: *unexisting_node
 
   - name: Upload CDB list to unexisting node
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/unexisting-node/files"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting-node/files"
       method: PUT
       data: "{new_cdb_list:s}"
       headers:
@@ -1975,15 +1887,7 @@ stages:
         path: etc/lists/new-list
         overwrite: False
     response:
-      status_code: 400
-      json:
-        code: 3022
-        dapi_errors: {}
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+      <<: *unexisting_node
 
 ---
 test_name: GET /cluster/{node_id}/info
@@ -2001,7 +1905,7 @@ stages:
   - name: Request {node_id} 0
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/info"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2022,7 +1926,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/logs
@@ -2040,7 +1943,7 @@ stages:
   - name: Request {node_id} 1
     request: &get_cluster_logs
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/logs"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2052,7 +1955,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> limit=3 {node_id}
     request:
@@ -2075,7 +1977,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> limit=4 {node_id}
     request:
@@ -2095,7 +1996,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> limit=2, sort=tag {node_id}
     request:
@@ -2114,7 +2014,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> limit=1, sort=-level {node_id}
     request:
@@ -2132,7 +2031,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> offset=2, limit=3 {node_id}
     request:
@@ -2152,7 +2050,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Filters -> offset=5, limit=2 {node_id}
     request:
@@ -2171,14 +2068,13 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
-  - name: Filters -> category=ossec-analysisd, limit=1 {node_id}
+  - name: Filters -> tag=ossec-analysisd, limit=1 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        category: ossec-analysisd
+        tag: ossec-analysisd
         limit: 1
     response:
       status_code: 200
@@ -2189,14 +2085,13 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
-  - name: Filters -> category=ossec-syscheckd, limit=2 {node_id}
+  - name: Filters -> tag=ossec-syscheckd, limit=2 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        category: ossec-syscheckd
+        tag: ossec-syscheckd
         limit: 2
     response:
       status_code: 200
@@ -2204,11 +2099,30 @@ stages:
         data:
           affected_items:
             - <<: *cluster_log
+              tag: ossec-syscheckd
             - <<: *cluster_log
+              tag: ossec-syscheckd
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
+
+  - name: Filters -> level=info, limit=1 {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        level: info
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *cluster_log
+              level: info
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
 
   - name: Filters by query (tag=ossec-syscheckd, level=info)
     request:
@@ -2243,7 +2157,7 @@ stages:
   - name: Request {node_id} 2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/logs/summary"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/logs/summary"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2275,7 +2189,6 @@ stages:
           failed_items: []
           total_affected_items: 20
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/stats
@@ -2293,7 +2206,7 @@ stages:
   - name: Cluster stats {node_id} today
     request: &get_cluster_stats
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/stats"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2301,12 +2214,6 @@ stages:
       status_code: 400
       json:
         code: 1308
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Cluster stats {node_id} 2019-08-27
     request:
@@ -2329,35 +2236,21 @@ stages:
       status_code: 400
       json:
         code: 1308
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
 ---
 test_name: GET /cluster/wrong_node/stats
 
 stages:
 
-  - name: wrong_node stats
+  - name: unexisting_node stats
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/wrong_node/stats"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting_node/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 3022
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+      <<: *unexisting_node
 
 ---
 test_name: GET /cluster/{node_id}/stats/analysisd
@@ -2375,7 +2268,7 @@ stages:
   - name: Analysisd stats {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/stats/analysisd"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/stats/analysisd"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2446,7 +2339,7 @@ stages:
   - name: Hourly node stats {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/stats/hourly"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/stats/hourly"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2473,7 +2366,7 @@ stages:
   - name: Remoted stats {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/stats/remoted"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/stats/remoted"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2506,7 +2399,7 @@ stages:
   - name: Weekly node stats {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/stats/weekly"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/stats/weekly"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2552,7 +2445,7 @@ stages:
   - name: Request {node_id} 3
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/status"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2581,7 +2474,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /cluster/api/config
@@ -2592,7 +2484,7 @@ stages:
   - name: Get API configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2620,10 +2512,14 @@ stages:
                   source_route: !anystr
                   expose_headers: !anystr
                   allow_headers: !anystr
-                  allow_credentials: !anything
+                  allow_credentials: !anybool
                 cache:
                   enabled: !anybool
                   time: !anything
+                access:
+                  max_login_attempts: !anyint
+                  block_time: !anyint
+                  max_request_per_minute: !anyint
                 use_only_authd: !anybool
                 drop_privileges: !anybool
                 experimental_features: !anybool
@@ -2636,13 +2532,12 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   # GET /cluster/api/config/{node_list}
   - name: Get API configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2662,7 +2557,6 @@ stages:
           total_affected_items: 2
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: PUT /cluster/api/config
@@ -2673,7 +2567,7 @@ stages:
   - name: Modify API configuration (some fields)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -2689,13 +2583,12 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   # PUT /cluster/api/config
   - name: Modify API configuration (all allowed fields)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -2707,6 +2600,8 @@ stages:
         cache:
           enabled: true
           time: 3
+        access:
+          block_time: 0
         use_only_authd: true
         experimental_features: true
     response:
@@ -2719,13 +2614,12 @@ stages:
           total_affected_items: 2
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   # PUT /cluster/api/config
   - name: Modify API configuration (forbidden field)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -2739,7 +2633,7 @@ stages:
   - name: Get API configuration that was set above
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2766,7 +2660,6 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: DELETE /cluster/api/config
@@ -2777,7 +2670,7 @@ stages:
   - name: Restore API configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2791,13 +2684,12 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   # GET /cluster/api/config
   - name: Get API default configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2824,13 +2716,12 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   # DELETE /cluster/api/config (all nodes)
   - name: Restore API configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2842,13 +2733,12 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   # GET /cluster/api/config
   - name: Get API default configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2869,7 +2759,6 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
 ---
 test_name: PUT /cluster/restart
@@ -2879,7 +2768,7 @@ stages:
   - name: Restart cluster
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/restart"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2895,13 +2784,12 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: !anystr
-    delay_after: 30
+    delay_after: !float "{restart_delay}"
 
   - name: Restart cluster
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/restart"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2916,4 +2804,3 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: !anystr

@@ -9,7 +9,7 @@ stages:
   - name: Runs an Active Response command on a specified agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -28,12 +28,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: Command sent to all agents
 
   - name: Send a message to an agent (Status=Active)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -52,13 +51,12 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: Command sent to all agents
+    delay_after: !float "{restart_delay}"
 
   - name: Send a message to a list of agents (Status=Active)
-    delay_before: 45
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -76,18 +74,16 @@ stages:
           failed_items:
             - error:
                 code: 1651
-                message: Active response - Agent is not active
-                remediation: !anything
               id:
                 - '010'
           total_affected_items: 4
           total_failed_items: 1
-        message: Could not send command to some agents
+    delay_after: !float "{restart_delay}"
 
   - name: Try to send a message to an agent (status=disconnected/never_connected)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -105,18 +101,15 @@ stages:
           failed_items:
             - error:
                 code: 1651
-                message: Active response - Agent is not active
-                remediation: !anything
               id:
                 - 009
           total_affected_items: 0
           total_failed_items: 1
-        message: Could not send command to any agent
 
   - name: Try to send a message to an unexisting agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -134,19 +127,15 @@ stages:
           failed_items:
             - error:
                 code: 1701
-                message: !anystr
-                remediation: Please, use `GET /agents?select=id,name` to find all available
-                  agents
               id:
                 - '251'
           total_affected_items: 0
           total_failed_items: 1
-        message: Could not send command to any agent
 
   - name: Try to send a message to an agent, without body
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -158,7 +147,7 @@ stages:
   - name: Try to send a message to an agent, malformed body
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -174,7 +163,7 @@ stages:
   - name: Send a message to one agent (Active response disabled)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -192,14 +181,10 @@ stages:
           failed_items:
             - error:
                 code: 1750
-                message: Could not send restart command, active-response is disabled in the
-                  agent
-                remediation: You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`
               id:
                 - '003'
           total_affected_items: 0
           total_failed_items: 1
-        message: Could not send command to any agent
 
 ---
 test_name: PUT /active-response
@@ -208,10 +193,10 @@ stages:
 
     # PUT /active-response
   - name: Runs an Active Response command on all agents
-    delay_before: 5
+    delay_before: !float "{active_reponse_delay}"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -227,8 +212,6 @@ stages:
           failed_items:
             - error:
                 code: 1651
-                message: Active response - Agent is not active
-                remediation: !anything
               id:
                 - '009'
                 - '010'
@@ -236,20 +219,16 @@ stages:
                 - '012'
             - error:
                 code: 1750
-                message: Could not send restart command, active-response is disabled in the
-                  agent
-                remediation: You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`
               id:
                 - '003'
           total_affected_items: 8
           total_failed_items: 5
-        message: Could not send command to some agents
 
     # PUT /active-response
   - name: Try to send a message to all agents, malformed body
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"

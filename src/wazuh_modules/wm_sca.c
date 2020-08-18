@@ -59,7 +59,11 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert); // Send alert
 static int wm_sca_check_hash(OSHash *cis_db_hash, const char * const result, const cJSON * const check, const cJSON * const event, int check_index, int policy_index);
 static char *wm_sca_hash_integrity(int policy_index);
 static void wm_sca_free_hash_data(cis_db_info_t *event);
+#ifdef WIN32
+static DWORD WINAPI wm_sca_dump_db_thread(wm_sca_t * data);
+#else
 static void * wm_sca_dump_db_thread(wm_sca_t * data);
+#endif
 static void wm_sca_send_policies_scanned(wm_sca_t * data);
 static int wm_sca_send_dump_end(wm_sca_t * data, unsigned int elements_sent,char * policy_id,int scan_id);  // Send dump end event
 static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg);
@@ -204,11 +208,9 @@ void * wm_sca_main(wm_sca_t * data) {
 
 #ifndef WIN32
 
-    for (i = 0; (data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++){
-        w_time_delay(1000 * WM_MAX_WAIT);
-    }
+    data->queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-    if (i == WM_MAX_ATTEMPTS) {
+    if (data->queue < 0) {
         merror("Can't connect to queue.");
     }
 
@@ -224,7 +226,7 @@ void * wm_sca_main(wm_sca_t * data) {
 #else
     w_create_thread(NULL,
                     0,
-                    (LPTHREAD_START_ROUTINE)wm_sca_dump_db_thread,
+                    (void *)wm_sca_dump_db_thread,
                     data,
                     0,
                     NULL);
@@ -254,7 +256,7 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
             close(data->queue);
         }
 
-        if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+        if ((data->queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             mwarn("Can't connect to queue.");
         } else {
             if(wm_sendmsg(data->msg_delay, data->queue, msg,WM_SCA_STAMP, SCA_MQ) < 0) {
@@ -2764,7 +2766,11 @@ char *wm_sca_hash_integrity_file(const char *file) {
     return hash_file;
 }
 
+#ifdef WIN32
+static DWORD WINAPI wm_sca_dump_db_thread(wm_sca_t * data) {
+#else
 static void *wm_sca_dump_db_thread(wm_sca_t * data) {
+#endif
     int i;
 
     while(1) {
@@ -2862,7 +2868,9 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
         }
     }
 
+#ifndef WIN32
     return NULL;
+#endif
 }
 
 
@@ -2943,7 +2951,7 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
 
     /* Create request socket */
     int cfga_queue;
-    if ((cfga_queue = StartMQ(CFGASSESSMENTQUEUEPATH, READ)) < 0) {
+    if ((cfga_queue = StartMQ(CFGASSESSMENTQUEUEPATH, READ, 0)) < 0) {
         merror(QUEUE_ERROR, CFGASSESSMENTQUEUEPATH, strerror(errno));
         pthread_exit(NULL);
     }

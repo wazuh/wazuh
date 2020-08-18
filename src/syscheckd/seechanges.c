@@ -44,7 +44,7 @@ static char* filter(const char *string) {
     const char *ptr;
     size_t clen;
     size_t len = strcspn(string, "\"\\$`");
-    out = malloc(len + 1);
+    os_malloc(len + 1, out);
     ptr = string + len;
     strncpy(out, string, len);
 

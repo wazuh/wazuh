@@ -67,15 +67,13 @@ STATIC void fim_link_reload_broken_link(char *path, int index);
 STATIC void fim_delete_realtime_watches(int pos);
 #endif
 
-// Global variables
-static int _base_line = 0;
 
 // Send a message
 STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
         merror(QUEUE_SEND);
 
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             merror_exit(QUEUE_FATAL, DEFAULTQPATH);
         }
 
@@ -328,6 +326,8 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 #endif
 
 #if defined INOTIFY_ENABLED || defined WIN32
+
+static int _base_line = 0;
 
 #ifdef WIN32
     set_priority_windows_thread();

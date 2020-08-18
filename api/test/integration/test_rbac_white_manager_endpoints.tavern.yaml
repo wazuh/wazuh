@@ -6,45 +6,47 @@ marks:
 
 stages:
 
-  - name: Request manager configuration (Allowed)
+  - name: Request manager configuration (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
+    response: &permission_denied
+      status_code: 403
+      json:
+        code: 4000
 
 ---
 test_name: GET /manager/configuration/validation
 
 stages:
 
-  - name: Request manager configuration validation (Allowed)
+  - name: Request manager configuration validation (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/validation"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/configuration/{component}/{configuration}
 
 stages:
 
-  - name: Request manager component configuration (Allowed)
+  - name: Request manager component configuration (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/agentless/agentless"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/agentless/agentless"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      <<: *permission_denied
 
 ---
 test_name: DELETE /manager/files
@@ -54,59 +56,55 @@ stages:
   - name: Delete a file (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         path: 'etc/decoders/local_decoder.xml'
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
-  - name: Delete a file (Allowed)
+  - name: Delete a file (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         path: 'etc/rules/local_rules.xml'
     response:
-      status_code: 200
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/files
 
 stages:
 
-  - name: Read a file (Allowed)
+  - name: Read a file (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         path: 'etc/decoders/local_decoder.xml'
     response:
-      status_code: 200
+      <<: *permission_denied
 
-  - name: Read a file (Allowed, Does not exist)
+  - name: Read a file (Denied, Does not exist)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         path: 'etc/rules/local_rules.xml'
     response:
-      status_code: 400
-      json:
-        code: 1906
+      <<: *permission_denied
 
 ---
 test_name: PUT /manager/files
@@ -116,7 +114,7 @@ stages:
   - name: Upload a file (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -124,146 +122,144 @@ stages:
       params:
         path: 'etc/decoders/test_decoders.xml'
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/info
 
 stages:
 
-  - name: Request manager info (Allowed)
+  - name: Request manager info (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/info"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/logs
 
 stages:
 
-  - name: Request manager logs (Allowed)
+  - name: Request manager logs (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/logs/summary
 
 stages:
 
-  - name: Request manager logs summary (Allowed)
+  - name: Request manager logs summary (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs/summary"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs/summary"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/stats
 
 stages:
 
-  - name: Request manager stats (Allowed)
+  - name: Request manager stats (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         date: "2019-08-27"
     response:
-      status_code: 200
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/stats/analysisd
 
 stages:
 
-  - name: Request manager analysisd stats (Allowed)
+  - name: Request manager analysisd stats (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/analysisd"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/analysisd"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/stats/hourly
 
 stages:
 
-  - name: Request manager hourly stats (Allowed)
+  - name: Request manager hourly stats (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/hourly"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/hourly"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/stats/remoted
 
 stages:
 
-  - name: Request manager remoted stats (Allowed)
+  - name: Request manager remoted stats (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/remoted"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/remoted"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/stats/weekly
 
 stages:
 
-  - name: Request manager weekly stats (Allowed)
+  - name: Request manager weekly stats (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/weekly"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/weekly"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/status
 
 stages:
 
-  - name: Request manager status (Allowed)
+  - name: Request manager status (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/status"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/api/config
@@ -273,7 +269,7 @@ stages:
   - name: Request API config (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -288,7 +284,7 @@ stages:
   - name: Modify API configuration (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -307,7 +303,7 @@ stages:
   - name: Restore API config (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -319,12 +315,12 @@ test_name: PUT /manager/restart
 
 stages:
 
-  - name: Restart manager (Allowed)
+  - name: Restart manager (Denied) (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/restart"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      <<: *permission_denied

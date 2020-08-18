@@ -215,6 +215,8 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->aws_account_alias) cJSON_AddStringToObject(service,"aws_account_alias",iter->aws_account_alias);
             if (iter->only_logs_after) cJSON_AddStringToObject(service,"only_logs_after",iter->only_logs_after);
             if (iter->regions) cJSON_AddStringToObject(service,"regions",iter->regions);
+            if (iter->aws_log_groups) cJSON_AddStringToObject(service,"aws_log_groups",iter->aws_log_groups);
+            if (iter->remove_log_streams) cJSON_AddStringToObject(service,"remove_log_streams","yes"); else cJSON_AddStringToObject(service,"remove_log_streams","no");
             cJSON_AddItemToArray(arr_services,service);
         }
         if (cJSON_GetArraySize(arr_services) > 0) {
@@ -238,7 +240,6 @@ void wm_aws_destroy(wm_aws *aws_config) {
 // Setup module
 
 void wm_aws_setup(wm_aws *_aws_config) {
-    int i;
 
     aws_config = _aws_config;
     wm_aws_check();
@@ -250,10 +251,9 @@ void wm_aws_setup(wm_aws *_aws_config) {
 
     // Connect to socket
 
-    for (i = 0; (aws_config->queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        w_time_delay(1000 * WM_MAX_WAIT);
+    aws_config->queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-    if (i == WM_MAX_ATTEMPTS) {
+    if (aws_config->queue_fd < 0) {
         mterror(WM_AWS_LOGTAG, "Can't connect to queue.");
         pthread_exit(NULL);
     }
@@ -480,6 +480,13 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
     if (exec_service->regions) {
         wm_strcat(&command, "--regions", ' ');
         wm_strcat(&command, exec_service->regions, ' ');
+    }
+    if (exec_service->aws_log_groups) {
+        wm_strcat(&command, "--aws_log_groups", ' ');
+        wm_strcat(&command, exec_service->aws_log_groups, ' ');
+    }
+    if (exec_service->remove_log_streams) {
+        wm_strcat(&command, "--remove-log-streams", ' ');
     }
     if (isDebug()) {
         wm_strcat(&command, "--debug", ' ');

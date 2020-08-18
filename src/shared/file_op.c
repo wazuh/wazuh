@@ -1610,7 +1610,7 @@ const char *getuname()
                 }
                 ret_size -= strlen(ret) + 1;
             } else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 2) {
-                pGNSI = (PGNSI) GetProcAddress(
+                pGNSI = (PGNSI)(LPSYSTEM_INFO)GetProcAddress(
                             GetModuleHandle("kernel32.dll"),
                             "GetNativeSystemInfo");
                 if (NULL != pGNSI) {

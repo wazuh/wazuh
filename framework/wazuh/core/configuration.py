@@ -21,6 +21,8 @@ from wazuh.core.ossec_socket import OssecSocket
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
 
+from wazuh.core.exception import WazuhResourceNotFound
+
 logger = logging.getLogger('wazuh')
 
 # Aux functions
@@ -43,8 +45,14 @@ conf_sections = {
     'alerts': {'type': 'merge', 'list_options': []},
     'client': {'type': 'merge', 'list_options': []},
     'database_output': {'type': 'merge', 'list_options': []},
-    'email_alerts': {'type': 'merge', 'list_options': []},
-    'reports': {'type': 'merge', 'list_options': []},
+    'email_alerts': {
+        'type': 'merge',
+        'list_options': ['email_to']
+    },
+    'reports': {
+        'type': 'merge',
+        'list_options': ['email_to']
+    },
     'global': {
         'type': 'merge',
         'list_options': ['white_list']
@@ -55,7 +63,7 @@ conf_sections = {
     },
     'cis-cat': {
         'type': 'merge',
-        'list_options': []
+        'list_options': ['content']
     },
     'syscollector': {
         'type': 'merge',
@@ -90,7 +98,7 @@ conf_sections = {
     },
     'osquery': {
         'type': 'merge',
-        'list_options': []
+        'list_options': ['pack']
     },
     'labels': {
         'type': 'duplicate',
@@ -485,7 +493,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     :return: agent.conf as dictionary.
     """
     if not os_path.exists(os_path.join(common.shared_path, group_id)):
-        raise WazuhError(1710, group_id)
+        raise WazuhResourceNotFound(1710, group_id)
     agent_conf = os_path.join(common.shared_path, group_id if group_id is not None else '', filename)
 
     if not os_path.exists(agent_conf):
@@ -517,7 +525,7 @@ def get_agent_conf_multigroup(multigroup_id=None, offset=0, limit=common.databas
     """
     # Check if a multigroup_id is provided and it exists
     if multigroup_id and not os_path.exists(os_path.join(common.multi_groups_path, multigroup_id)) or not multigroup_id:
-        raise WazuhError(1710, extra_message=multigroup_id if multigroup_id else "No multigroup provided")
+        raise WazuhResourceNotFound(1710, extra_message=multigroup_id if multigroup_id else "No multigroup provided")
 
     agent_conf_name = filename if filename else 'agent.conf'
     agent_conf = os_path.join(common.multi_groups_path, multigroup_id, agent_conf_name)
@@ -544,7 +552,7 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
     :return: configuration file as dictionary.
     """
     if not os_path.exists(os_path.join(common.shared_path, group_id)):
-        raise WazuhError(1710, group_id)
+        raise WazuhResourceNotFound(1710, group_id)
 
     file_path = os_path.join(common.shared_path, group_id if not filename == 'ar.conf' else '', filename)
 
@@ -629,7 +637,7 @@ def upload_group_configuration(group_id, file_content):
     :return: Confirmation message.
     """
     if not os_path.exists(os_path.join(common.shared_path, group_id)):
-        raise WazuhError(1710, group_id)
+        raise WazuhResourceNotFound(1710, group_id)
 
     # path of temporary files for parsing xml input
     tmp_file_path = os_path.join(common.ossec_path, "tmp", f"api_tmp_file_{time.time()}_{random.randint(0, 1000)}.xml")
@@ -699,7 +707,7 @@ def upload_group_file(group_id, file_data, file_name='agent.conf'):
     """
     # Check if the group exists
     if not os_path.exists(os_path.join(common.shared_path, group_id)):
-        raise WazuhError(1710, group_id)
+        raise WazuhResourceNotFound(1710, group_id)
 
     if file_name == 'agent.conf':
         if len(file_data) == 0:
@@ -753,6 +761,15 @@ def get_active_configuration(agent_id, component, configuration):
 
     if rec_msg_ok.startswith('ok'):
         msg = json.loads(rec_msg)
+
+        # Include password if auth->use_password enabled and authd.pass file exists
+        if msg.get('auth', {}).get('use_password') == 'yes':
+            try:
+                with open(os_path.join(common.ossec_path, "etc", "authd.pass"), 'r') as f:
+                    msg['authd.pass'] = f.read().rstrip()
+            except IOError:
+                pass
+
         return msg
     else:
         raise WazuhError(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg else 1116,

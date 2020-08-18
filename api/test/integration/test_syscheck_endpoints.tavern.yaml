@@ -11,7 +11,7 @@ stages:
     request: &get_syscheck_agent
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/000"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -477,7 +477,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/000/last_scan"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -500,7 +500,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -519,7 +519,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -537,14 +537,10 @@ stages:
           failed_items:
             - error:
                 code: 1601
-                message: !anystr
-                remediation: !anystr
               id:
                 - '012'
             - error:
                 code: 1601
-                message: !anystr
-                remediation: !anystr
               id:
                 - '010'
           total_affected_items: 5
@@ -559,7 +555,7 @@ stages:
     request: &get_syscheck_agent_002
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -982,7 +978,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002/last_scan"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/002/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1005,7 +1001,7 @@ stages:
     request:
       verify: False
       method: DELETE
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/001"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/001"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1027,7 +1023,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1038,15 +1034,11 @@ stages:
           failed_items:
             - error:
                 code: 1601
-                message: !anystr
-                remediation: !anystr
               id:
                 - '011'
                 - '012'
             - error:
                 code: 1601
-                message: !anystr
-                remediation: !anystr
               id:
                 - '009'
                 - '010'

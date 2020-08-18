@@ -397,7 +397,7 @@ static void test_audit_delete_rule(void **state) {
 
     will_return(__wrap_audit_errno_to_name, "AUDIT ERROR");
 
-    expect_string(__wrap__mdebug2, formatted_msg, "audit_manage_rules(): Cann't adding/deleting rule (-1) = AUDIT ERROR");
+    expect_string(__wrap__mdebug2, formatted_msg, "Can't add or delete a rule (-1) = AUDIT ERROR");
 
     will_return(__wrap_audit_close, 1);
 

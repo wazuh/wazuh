@@ -145,12 +145,12 @@
 #define FIM_HEALTHCHECK_CREATE              "(6252): Whodata health-check: Detected file creation event (%s)"
 #define FIM_HEALTHCHECK_DELETE              "(6253): Whodata health-check: Detected file deletion event (%s)"
 #define FIM_HEALTHCHECK_UNRECOGNIZED_EVENT  "(6254): Whodata health-check: Unrecognized event (%s)"
-#define FIM_HEALTHCHECK_THREAD_ATIVE        "(6255): Whodata health-check: Reading thread active."
-#define FIM_HEALTHCHECK_THREAD_FINISED      "(6256): Whodata health-check: Reading thread finished."
-#define FIM_HEALTHCHECK_WAIT_CREATE         "(6257): Whodata health-check: Waiting creation event."
-#define FIM_HEALTHCHECK_CREATE_RECEIVE      "(6258): Whodata health-check: Creation event received."
-#define FIM_HEALTHCHECK_WAIT_DELETE         "(6259): Whodata health-check: Waiting deletion event."
-#define FIM_HEALTHCHECK_DELETE_RECEIVE      "(6260): Whodata health-check: Deletion event received."
+#define FIM_HEALTHCHECK_THREAD_ACTIVE       "(6255): Whodata health-check: Reading thread active."
+#define FIM_HEALTHCHECK_THREAD_FINISHED     "(6256): Whodata health-check: Reading thread finished."
+#define FIM_HEALTHCHECK_CREATE_ERROR        "(6257): Whodata health-check: Failed to receive creation event."
+
+
+
 #define FIM_HEALTHCHECK_SUCCESS             "(6261): Whodata health-check: Success."
 #define FIM_HEALTHCHECK_CHECK_RULE          "(6262): Couldn't delete audit health check rule."
 #define FIM_SACL_CHECK_CONFIGURE            "(6263): Setting up SACL for '%s'"
@@ -236,5 +236,6 @@
 #define FIM_INOTIFY_WATCH_DELETED           "(6344): Inotify watch deleted for '%s'"
 #define FIM_NUM_WATCHES                     "(6345): Folders monitored with real-time engine: %u"
 #define FIM_REALTIME_CALLBACK               "(6346): Realtime watch deleted for '%s'"
+#define FIM_DIR_RECURSION_LEVEL             "(6347): Directory '%s' is already on the max recursion_level (%d), it will not be scanned."
 
 #endif /* DEBUG_MESSAGES_H */

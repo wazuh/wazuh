@@ -10,7 +10,7 @@ stages:
   - name: Try to create a new agent without body
     request: &agent_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -33,6 +33,7 @@ stages:
         data:
           id: !anystr
           key: !anystr
+    delay_after: !float "{global_db_delay}"
 
     # POST /agents
   - name: Try to create agent with a name already present
@@ -73,9 +74,7 @@ stages:
       status_code: 400
       json: &error_spec
         detail: !anystr
-        status: !anyint
         title: !anystr
-        type: !anystr
 
     # POST /agents
   - name: Create agent without assigning an specific IP
@@ -88,6 +87,7 @@ stages:
       status_code: 200
       json:
         <<: *agent_create_response
+    delay_after: !float "{global_db_delay}"
 
     # POST /agents
   - name: Create agent with an specific IP
@@ -102,6 +102,7 @@ stages:
       status_code: 200
       json:
         <<: *agent_create_response
+    delay_after: !float "{global_db_delay}"
 
     # POST /agents
   - name: Try to create an agent with a duplicated IP
@@ -157,6 +158,7 @@ stages:
       status_code: 200
       json:
         <<: *agent_create_response
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: POST /groups/{group_id}
@@ -167,7 +169,7 @@ stages:
   - name: Create a group called group4
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -177,12 +179,13 @@ stages:
       status_code: 200
       json:
         message: !anystr
+    delay_after: !float "{global_db_delay}"
 
     # POST /groups?group_id=group1
   - name: Try to create a group that already exists
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -197,7 +200,7 @@ stages:
   - name: Try to create a group with an invalid name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -217,7 +220,7 @@ stages:
   - name: Try to create a new agent without body
     request: &agent_insert_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/insert"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -240,6 +243,7 @@ stages:
       status_code: 200
       json:
         <<: *agent_create_response
+    delay_after: !float "{global_db_delay}"
 
     # POST /agents/insert
   - name: Try to create a new agent with an already present name
@@ -300,8 +304,6 @@ stages:
       json:
         <<: *error_spec
 
-
-    ##BODY IS ACCEPTING EXTRA FIELDS WITH GARBAGE DATA, NEED TO DO FURTHER TESTING ON THIS #
     # POST /agents/insert
   - name: Extra field
     skip: True
@@ -318,6 +320,7 @@ stages:
       status_code: 200
       json:
         <<: *agent_create_response
+    delay_after: !float "{global_db_delay}"
 
     # POST /agents/insert
   - name: Create a new agent using an automatic IP (ip already used by NewAgentPost2)
@@ -347,6 +350,7 @@ stages:
       status_code: 200
       json:
         <<: *agent_create_response
+    delay_after: !float "{global_db_delay}"
 
     # POST /agents/insert
   - name: Try to create an agent using an already registered IP
@@ -406,6 +410,7 @@ stages:
       status_code: 200
       json:
         <<: *agent_create_response
+    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: POST /agents/insert/quick
@@ -416,7 +421,7 @@ stages:
   - name: Create new agent specifying its name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert/quick"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/insert/quick"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -428,12 +433,13 @@ stages:
         data:
           id: !anystr
           key: !anystr
+    delay_after: !float "{global_db_delay}"
 
     # POST /agents/insert/quick?agent_name=wrong%name
   - name: Try to create agent with an invalid name (invalid_character)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert/quick"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/insert/quick"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -448,7 +454,7 @@ stages:
   - name: Try to create an already existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert/quick"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/insert/quick"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"

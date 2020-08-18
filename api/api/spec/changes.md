@@ -1,4 +1,5 @@
 ## General
+* Changed DELETE endpoints of some resources so if nothing is specified, nothing is removed. If the user wants to remove all of the resources, he can specify it with the "all" keyword.
 * Date type use a standard format ISO-8601 defined by date-time format.
 * Deleted all return parameters **path**, new API don't show any absolute path in responses.
 * Changed search negation from `!` to `-`.
@@ -33,6 +34,7 @@
 
 ## Agents
 ### DELETE  /agents
+* Nothing removed by default, it must be specified with the "all" keyword.
 * Removed **ids** query parameter. Use **list_agents** instead.
 * Added **list_agents** parameter in query used to specify which agents must be deleted. 
 * If no **list_agents** is provided in query all agents will be removed.
@@ -45,6 +47,7 @@
 * Removes the agent from all groups by default or a list of them if **list_groups** parameter is found.	
 
 ### DELETE  /agents/group
+* Nothing removed by default, it must be specified with the "all" keyword.
 * New endpoint. Remove all agents assignment or a list of them from the specified group.
 * Use `group_id` parameter in query to specify the group.
 
@@ -147,11 +150,14 @@ This agent will use **any** as IP.
 * Endpoint removed. Use `PUT /groups/{group_id}/files/{file_name}` instead.
 
 ### PUT     /agents/groups/{group_id}/restart
-* Endpoint removed. Use `PUT /groups/{group_id}/restart` instead.
+* Endpoint removed. Use `PUT /agents/group/{group_id}/restart` instead.
 
 ### PUT     /agents/restart
 * Added **list_agents** parameter in query to specify which agents must be restarted.
 * Restarts all agents by default or a list of them if **list_agents** parameter is used.
+
+### PUT     /agents/node/{node_id}/restart
+* New endpoint. Restart all agents belonging to a node.
 
 ## Cache
 ### DELETE  /cache 
@@ -159,10 +165,6 @@ This agent will use **any** as IP.
 ### DELETE  /cache{group} (Clear group cache)
 ### GET     /cache/config 
 * All cache endpoints have been removed.
-
-## Ciscat
-### GET     /ciscat/{agent_id}/results
-* removed **q** parameter in query.
 
 ## Cluster
 ### DELETE  /cluster/api/config
@@ -198,7 +200,8 @@ or a list of them if parameter **list_nodes** is used.
 * Removed **validation** parameter in query. Use `GET /cluster/configuration/validation?list_nodes=node_id` instead.
 
 ### GET ​   /cluster/{node_id}/logs
-* Removed **q** parameter in query.
+* Renamed **category** parameter to **tag**.
+* Renamed **type_log** parameter to **level**.
 
 ### GET     /cluster/{node_id}/stats
 * Changed date format from YYYYMMDD to YYYY-MM-DD for **date** parameter in query.
@@ -209,7 +212,6 @@ or a list of them if parameter **list_nodes** is used.
 ### GET     /cluster/nodes
 * Get information about all nodes in the cluster or a list of them
 * Added **list_nodes** parameter in query used to specify from which nodes get the information.
-* Removed **q** parameter in query.
 
 ### GET     /cluster/nodes/{node_name}
 * Endpoint removed. Use `GET /cluster/nodes?list_nodes=node_id` instead.
@@ -292,8 +294,12 @@ or a list of them if parameter **list_nodes** is used.
 * Renamed **local_port** parameter to **local.port**.
 * Renamed **remote_ip**  parameter to **remote.ip**. 
 
+### DELETE /experimental/syscheck
+* Nothing removed by default, it must be specified with the "all" keyword.
+
 ## Groups
 ### DELETE ​/groups
+* Nothing removed by default, it must be specified with the "all" keyword.
 * New endpoint. Deletes all groups or a list of them.
 
 ### GET ​   /groups
@@ -324,9 +330,6 @@ to the group and the checksums of the configuration and shared files.
 * New endpoint. Update an specified group's configuration. 
 This API call expects a full valid XML file with the shared configuration tags/syntax.
 
-### PUT ​   /groups/{group_id}/restart
-* New endpoint. Restart all agents which belong to a given group.
-
 ## Lists
 ### GET     /lists
 * Added **select** parameter.
@@ -351,7 +354,8 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * Parameter `openssl_support` in response is now a boolean.
 
 ### GET ​   /manager/logs
-* Removed **q** parameter in query.
+* Renamed **category** parameter to **tag**.
+* Renamed **type_log** parameter to **level**.
 
 ### GET ​   /manager/logs/summary
 * Return a summary of the last 2000 wazuh log entries instead of the last three months.
@@ -427,6 +431,7 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * New endpoint. Add a new policy.
 
 ### DELETE  /security/policies
+* Nothing removed by default, it must be specified with the "all" keyword.
 * New endpoint. Delete a list of policies or all policies in the system.
 
 ### PUT     /security/policies/{policy_id}
@@ -442,6 +447,7 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * New endpoint. Add a new role to the system.
 
 ### DELETE  /security/roles
+* Nothing removed by default, it must be specified with the "all" keyword.
 * New endpoint. Delete a list of roles or all roles in the system.
 
 ### PUT     /security/roles/{role_id}
@@ -451,6 +457,7 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * New endpoint. Create a relation between one role and one or more policies.
 
 ### DELETE ​/security/roles/{role_id}/policies
+* Nothing removed by default, it must be specified with the "all" keyword.
 * New endpoint. Delete a specify relation role-policy.
 
 ### GET     /security/user/authenticate
@@ -466,6 +473,7 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * New endpoint. Create new user.
 
 ### DELETE ​/security/users
+* Nothing removed by default, it must be specified with the "all" keyword.
 * New endpoint. Delete an user.
 
 ### PUT ​   /security/users/{username}
@@ -475,6 +483,7 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * New endpoint. Create a specify relation between one user and one role.
 
 ### DELETE  /security/users/{username}/roles
+* Nothing removed by default, it must be specified with the "all" keyword.
 * New endpoint. Delete a specify relation user-roles.
 
 ## Summary
@@ -482,9 +491,6 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * Endpoint removed. Use the new `GET /overview/agents` endpoint instead.
 
 ## Syscheck
-### GET ​   /syscheck/{agent_id}
-* Removed **q** parameter in query.
-
 ### PUT     /syscheck
 * Added **list_agents** parameter in query used to specify which agents must perform a syscheck scan.
 
@@ -492,14 +498,7 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * Endpoint removed. Use `PUT /syscheck?list_agents=agent_id` instead.
 
 ## Syscollector
-### GET     /syscollector/{agent_id}/hotfixes
-* Removed **q** parameter in query.
-
-### GET     /syscollector/{agent_id}/netaddr
-* Removed **q** parameter in query.
-
 ### GET     /syscollector/{agent_id}/netiface
-* Removed **q** parameter in query.
 * Changed the type of **mtu** parameter to integer.
 * Renamed **tx_packets** parameter in query to **tx.packets** and changed it's type to integer.
 * Renamed **rx_packets** parameter in query to **rx.packets** and changed it's type to integer.
@@ -510,22 +509,12 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * Renamed **tx_dropped** parameter in query to **tx.dropped**  and changed it's type to integer.
 * Renamed **rx_dropped** parameter in query to **rx.dropped** and changed it's type to integer.
 
-### GET     /syscollector/{agent_id}/netproto
-* Removed **q** parameter in query.
-
-### GET ​   /syscollector/{agent_id}/packages
-* Removed **q** parameter in query.
-
 ### GET     /syscollector/{agent_id}/ports
 * Added **process** parameter used to filter by process name.
-* Removed **q** parameter in query.
 * Renamed **local_ip** parameter to **local.ip**.
 * Renamed **local_port** parameter to **local.port**.
 * Renamed **remote_ip**  parameter to **remote.ip**. 
  
-### GET     /syscollector/{agent_id}/processes
-* Removed **q** parameter in query.
-
 ## Version
 ### GET     /version 
 * Endpoint removed. Use `GET /` instead.

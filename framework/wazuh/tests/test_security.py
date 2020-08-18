@@ -134,9 +134,9 @@ def test_rbac_catalog(db_setup, security_function, params, expected_result):
 
 def test_revoke_tokens(db_setup):
     """Checks that the return value of revoke_tokens is a WazuhResult."""
-    with patch('wazuh.security.change_secret', side_effect=None):
+    with patch('wazuh.core.security.change_secret', side_effect=None):
         security, WazuhResult, _ = db_setup
-        result = security.revoke_tokens()
+        result = security.revoke_current_user_tokens()
         assert isinstance(result, WazuhResult)
 
 

@@ -14,6 +14,7 @@ from api.models.agent_added import AgentAddedModel
 from api.models.agent_inserted import AgentInsertedModel
 from api.models.base_model_ import Data, Body
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
+from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
 from wazuh.core.exception import WazuhError
@@ -34,6 +35,8 @@ async def delete_agents(request, pretty=False, wait_for_complete=False, list_age
     ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, uses the register date.
     :return: AllItemsResponseAgentIDs
     """
+    if 'all' in list_agents:
+        list_agents = None
     f_kwargs = {'agent_list': list_agents,
                 'purge': purge,
                 'status': status,
@@ -173,6 +176,41 @@ async def restart_agents(request, pretty=False, wait_for_complete=False, list_ag
                           rbac_permissions=request['token_info']['rbac_policies'],
                           broadcasting=list_agents == '*',
                           logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def restart_agents_by_node(request, node_id, pretty=False, wait_for_complete=False):
+    """Restart all agents belonging to a node.
+
+    Parameters
+    ----------
+    node_id : str
+        Cluster node name.
+    pretty : bool, optional
+        Show results in human-readable format. Default `False`
+    wait_for_complete : bool, optional
+        Disable timeout response. Default `False`
+
+    Returns
+    -------
+    Response
+    """
+    nodes = await get_system_nodes()
+
+    f_kwargs = {'node_id': node_id, 'agent_list': '*'}
+
+    dapi = DistributedAPI(f=agent.restart_agents_by_node,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          cluster_required=True,
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -488,6 +526,8 @@ async def delete_multiple_agent_single_group(request, group_id, list_agents=None
     :param wait_for_complete: Disable timeout response
     :return: AllItemsResponseAgentIDs
     """
+    if 'all' in list_agents:
+        list_agents = None
     f_kwargs = {'agent_list': list_agents,
                 'group_list': [group_id]}
 
@@ -540,6 +580,8 @@ async def delete_groups(request, list_groups=None, pretty=False, wait_for_comple
     :param list_groups: Array of group's IDs.
     :return: AllItemsResponseGroupIDs + AgentGroupDeleted
     """
+    if 'all' in list_groups:
+        list_groups = None
     f_kwargs = {'group_list': list_groups}
 
     dapi = DistributedAPI(f=agent.delete_groups,

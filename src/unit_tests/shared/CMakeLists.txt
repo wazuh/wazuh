@@ -20,7 +20,7 @@ list(APPEND shared_tests_names "test_rbtree_op")
 list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_string_op")
-list(APPEND shared_tests_flags "")
+list(APPEND shared_tests_flags "-Wl,--wrap,_mwarn")
 
 set(VERSION_OP_BASE_FLAGS "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
                            -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets")
@@ -96,6 +96,10 @@ list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wra
 
 list(APPEND shared_tests_names "test_privsep_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getgrnam_r,--wrap=getpid")
+
+list(APPEND shared_tests_names "test_mq_op")
+list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,sleep \
+                                -Wl,--wrap,_mdebug1 -Wl,--wrap,OS_getsocketsize -Wl,--wrap,_merror")
 endif()
 
 
