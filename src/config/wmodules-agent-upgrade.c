@@ -22,7 +22,6 @@ static const char *XML_WAIT_FACTOR = "notification_wait_factor";
 
 int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
     wm_agent_upgrade* data = NULL;
-    int chunk;
     
     if (!module->data) {
         // Default initialization
@@ -31,11 +30,10 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
         os_calloc(1, sizeof(wm_agent_upgrade), data);
         data->enabled = 1;
         #ifdef CLIENT
-        data->agent_config.upgrade_wait_start = 300;
-        data->agent_config.upgrade_wait_max = 3600;
-        data->agent_config.upgrade_wait_factor_increase = 2.0;
-        #endif
-        #ifndef CLIENT
+        data->agent_config.upgrade_wait_start = WM_UPGRADE_WAIT_START;
+        data->agent_config.upgrade_wait_max = WM_UPGRADE_WAIT_MAX;
+        data->agent_config.upgrade_wait_factor_increase = WM_UPGRADE_WAIT_FACTOR_INCREASE;
+        #else
         data->manager_config.chunk_size = WM_UPGRADE_CHUNK_SIZE;
         data->manager_config.wpk_repository = strdup(WM_UPGRADE_WPK_REPO_URL);
         #endif
@@ -62,25 +60,7 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_AGENT_UPGRADE_CONTEXT.name);
                 return OS_INVALID;
             }
-        #ifndef CLIENT
-        } else if (!strcmp(nodes[i]->element, XML_CHUNK_SIZE)) {
-            if (!OS_StrIsNum(nodes[i]->content)) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_CHUNK_SIZE, WM_AGENT_UPGRADE_CONTEXT.name);
-                return (OS_INVALID);
-            }
-
-            if (chunk = atoi(nodes[i]->content), chunk < 64 || chunk > 32768) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_CHUNK_SIZE, WM_AGENT_UPGRADE_CONTEXT.name);
-                return (OS_INVALID);
-            }
-            
-            data->manager_config.chunk_size = chunk;
-            
-        } else if (!strcmp(nodes[i]->element, XML_WPK_REPOSITORY)) {
-            os_free(data->manager_config.wpk_repository);
-            os_strdup(nodes[i]->content, data->manager_config.wpk_repository);
         }
-        #endif
         #ifdef CLIENT
         // Agent configurations
         else if (!strcmp(nodes[i]->element, XML_WAIT_START)) {
@@ -109,6 +89,24 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_WAIT_FACTOR, WM_AGENT_UPGRADE_CONTEXT.name);
                 return OS_INVALID;
             }
+        }
+        #else
+        else if (!strcmp(nodes[i]->element, XML_CHUNK_SIZE)) {
+            if (!OS_StrIsNum(nodes[i]->content)) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_CHUNK_SIZE, WM_AGENT_UPGRADE_CONTEXT.name);
+                return (OS_INVALID);
+            }
+            int chunk;
+            if (chunk = atoi(nodes[i]->content), chunk < 64 || chunk > 32768) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_CHUNK_SIZE, WM_AGENT_UPGRADE_CONTEXT.name);
+                return (OS_INVALID);
+            }
+            
+            data->manager_config.chunk_size = chunk;
+            
+        } else if (!strcmp(nodes[i]->element, XML_WPK_REPOSITORY)) {
+            os_free(data->manager_config.wpk_repository);
+            os_strdup(nodes[i]->content, data->manager_config.wpk_repository);
         }
         #endif
         else {

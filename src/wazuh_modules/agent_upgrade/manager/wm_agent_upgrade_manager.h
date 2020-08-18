@@ -117,7 +117,7 @@ extern const char* upgrade_error_codes[];
  * @param manager_configs manager configuration parameters
  * @return only on errors, socket will be closed
  * */
-void wm_agent_upgrade_listen_messages(int timeout_sec, wm_manager_configs manager_configs);
+void wm_agent_upgrade_listen_messages(int timeout_sec, const wm_manager_configs* manager_configs);
 
 /**
  * Process and upgrade command. Create the task for each agent_id, dispatches to task manager and
@@ -127,7 +127,7 @@ void wm_agent_upgrade_listen_messages(int timeout_sec, wm_manager_configs manage
  * @param manager_configs manager configuration parameters
  * @return string with the response
  * */
-char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, wm_manager_configs manager_configs);
+char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs);
 
 /**
  * Process and upgrade custom command. Create the task for each agent_id, dispatches to task manager and
@@ -137,7 +137,7 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
  * @param manager_configs manager configuration parameters
  * @return string with the response
  * */
-char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, wm_manager_configs manager_configs);
+char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs);
 
 /**
  * Process and agent_upgraded command
