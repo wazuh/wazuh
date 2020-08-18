@@ -83,7 +83,11 @@ installPrerequisites() {
         eval "yum install java-11-openjdk-devel -y -q $debug"
         if [ "$?" != 0 ]
         then
-            os=$(cat /etc/os-release | awk -F"ID=" '/ID=/{print $2; exit}' | tr -d \")
+            os=$(eval "cat /etc/os-release $debug" | awk -F"ID=" '/ID=/{print $2; exit}' | tr -d \")
+            if [ -z "$os" ]
+            then
+                os="centos"
+            fi
             echo -e '[AdoptOpenJDK] \nname=AdoptOpenJDK \nbaseurl=http://adoptopenjdk.jfrog.io/adoptopenjdk/rpm/system-ver/$releasever/$basearch\nenabled=1\ngpgcheck=1\ngpgkey=https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public' | eval "tee /etc/yum.repos.d/adoptopenjdk.repo $debug"
             conf="$(awk '{sub("system-ver", "'"${os}"'")}1' /etc/yum.repos.d/adoptopenjdk.repo)"
             echo "$conf" > /etc/yum.repos.d/adoptopenjdk.repo 
@@ -96,8 +100,8 @@ installPrerequisites() {
         eval "zypper -n install java-11-openjdk-devel $debug"
         if [ "$?" != 0 ]
         then
-            eval "zypper ar -f http://adoptopenjdk.jfrog.io/adoptopenjdk/rpm/opensuse/15.0/$(uname -m) adoptopenjdk $debug"
-            eval "zypper install adoptopenjdk-11-hotspot $debug "
+            eval "zypper ar -f http://adoptopenjdk.jfrog.io/adoptopenjdk/rpm/opensuse/15.0/$(uname -m) adoptopenjdk $debug" | echo 'a'
+            eval "zypper -n install adoptopenjdk-11-hotspot $debug "
 
         fi    
         export JAVA_HOME=/usr/    
