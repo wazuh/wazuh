@@ -448,6 +448,15 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_set_agent_labels(wdb, next, output);
             }
+        } else if (strcmp(query, "sync-agent-info-get") == 0) { 
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_sync_agent_info_get(wdb, next, output);
+            }
         } else if (strcmp(query, "sync-agent-info-set") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax.");
@@ -3955,6 +3964,28 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) 
     return OS_SUCCESS;
 }
 
+int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) {
+    static int start_id = 0;
+    char* agent_info_sync = NULL;
+
+    char *next = wstr_chr(input, ' ');
+    if(next) {
+        *next++ = '\0';
+        if (strcmp(input, "start_id") == 0) {
+            start_id = atoi(next);
+        }
+    }
+
+    wdb_chunks_status_t status = wdb_sync_agent_info_get(wdb, &start_id, &agent_info_sync);
+    if (status == WDB_CHUNKS_COMPLETE || status == WDB_CHUNKS_ERROR) {
+        start_id = 0;
+    }
+    snprintf(output, OS_MAXSTR + 1, "%1d %s", status, agent_info_sync);
+    os_free(agent_info_sync)
+
+    return OS_SUCCESS;
+}
+
 int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output){
     const char *error = NULL;
     int agent_id = 0;
@@ -3995,7 +4026,7 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
                 // The JSON has a label array
                 // Removing old labels from the labels table before inserting
                 json_field = cJSON_GetObjectItemCaseSensitive(json_agent, "id");
-                agent_id = cJSON_IsNumber(json_field) ? json_field->valueint : -1; 
+                agent_id = cJSON_IsNumber(json_field) ? json_field->valueint : -1;
 
                 if (agent_id == -1){
                     mdebug1("Global DB Cannot execute SQL query; incorrect agent id in labels array");
@@ -4025,7 +4056,6 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
                             cJSON_Delete(root);
                             return OS_INVALID;
                         }
-
                     }
                 }
             }
