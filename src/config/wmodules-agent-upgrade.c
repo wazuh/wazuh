@@ -28,7 +28,7 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
         #ifdef CLIENT
         data->agent_config.upgrade_wait_start = 300;
         data->agent_config.upgrade_wait_max = 3600;
-        data->agent_config.ugprade_wait_factor_increase = 2.0;
+        data->agent_config.upgrade_wait_factor_increase = 2.0;
         #endif
         module->data = data;
     }
@@ -78,7 +78,7 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
         } else if (!strcmp(nodes[i]->element, XML_WAIT_FACTOR)) {
             float wait_factor = strtol(nodes[i]->content, NULL, 10);
             if (wait_factor > 1.0) {
-                data->agent_config.ugprade_wait_factor_increase = wait_factor;
+                data->agent_config.upgrade_wait_factor_increase = wait_factor;
             } else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_WAIT_FACTOR, WM_AGENT_UPGRADE_CONTEXT.name);
                 return OS_INVALID;

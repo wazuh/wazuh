@@ -25,15 +25,10 @@ typedef enum _task_query {
     WM_TASK_GET_MAX_TASK_ID,
     WM_TASK_GET_LAST_AGENT_TASK,
     WM_TASK_GET_TASK_STATUS,
-    WM_TASK_UPDATE_TASK_STATUS
+    WM_TASK_UPDATE_TASK_STATUS,
+    WM_TASK_GET_TASK_BY_AGENT_ID_AND_MODULE,
+    WM_TASK_GET_TASK
 } task_query;
-
-typedef enum _task_status {
-    WM_TASK_NEW = 0,
-    WM_TASK_IN_PROGRESS,
-    WM_TASK_DONE,
-    WM_TASK_FAILED
-} task_status;
 
 extern char *schema_task_manager_sql;
 
@@ -69,6 +64,33 @@ int wm_task_manager_get_task_status(int agent_id, const char *module, char **sta
  * @return 0 when succeed, !=0 otherwise.
  * */
 int wm_task_manager_update_task_status(int agent_id, const char *module, const char *status);
+
+/**
+ * Get task by agent_id and module from the tasks DB.
+ * @param agent_id ID of the agent where the task is being executed.
+ * @param module Name of the module where the task is stored.
+ * @param command String where the command of the task will be stored.
+ * @param status String where the status of the task will be stored.
+ * @param create_time Integer where the create_time of the task will be stored.
+ * @param last_update_time Integer where the last_update_time of the task will be stored.
+ * @return task_id when succeed, < 0 otherwise.
+ * */
+int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *module, char **command, char **status, int *create_time, int *last_update_time);
+
+/**
+ * Get task by task_id from the tasks DB.
+ * @param task_id ID of the task_id where the task is being executed.
+ * @param module Name of the module where the task is stored.
+ * @param command String where the command of the task will be stored.
+ * @param status String where the status of the task will be stored.
+ * @param create_time Integer where the create_time of the task will be stored.
+ * @param last_update_time Integer where the last_update_time of the task will be stored.
+ * @return result
+ * @retval OS_INVALID on errors
+ * @retval agent_id if the task was found
+ * @retval OS_NOTFOUND if the task was not found
+ * */
+int wm_task_manager_get_task_by_task_id(int task_id, char **module, char **command, char **status, int *create_time, int *last_update_time);
 
 #endif
 #endif

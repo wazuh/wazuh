@@ -70,7 +70,7 @@ add_adress_block() {
         echo "    <server>" >> ${DIRECTORY}/etc/ossec.conf
         echo "      <address>$i</address>" >> ${DIRECTORY}/etc/ossec.conf
         echo "      <port>1514</port>" >> ${DIRECTORY}/etc/ossec.conf
-        echo "      <protocol>udp</protocol>" >> ${DIRECTORY}/etc/ossec.conf
+        echo "      <protocol>tcp</protocol>" >> ${DIRECTORY}/etc/ossec.conf
         echo "    </server>" >> ${DIRECTORY}/etc/ossec.conf
     done
 

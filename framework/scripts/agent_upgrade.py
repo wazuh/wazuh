@@ -164,7 +164,7 @@ if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("-a", "--agent", type=str, help="Agent ID to upgrade or a list in the following format: 001,002,003.")
     arg_parser.add_argument("-r", "--repository", type=str, help="Specify a repository URL. [Default: {0}]".format(
-        common.wpk_repo_url))
+        common.wpk_repo_url_4_x))
     arg_parser.add_argument("-v", "--version", type=str, help="Version to upgrade. [Default: latest Wazuh version]")
     arg_parser.add_argument("-F", "--force", action="store_true",
                             help="Allows reinstall same version and downgrade version.")

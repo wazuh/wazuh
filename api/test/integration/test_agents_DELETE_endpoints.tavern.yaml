@@ -10,7 +10,7 @@ stages:
   - name: Try to remove agent 000 (manager) from group1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/group/group1"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/group1"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -23,7 +23,7 @@ stages:
   - name: Try to remove non existing agent from group1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/group/group1"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/group1"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -36,7 +36,7 @@ stages:
   - name: Try to remove wrong agent_id from group1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_id/group/group1"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_id/group/group1"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -50,7 +50,7 @@ stages:
   - name: Try to remove agent 001 from a wrong_group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/group/wrong_group"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/wrong_group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -63,7 +63,7 @@ stages:
   - name: Try to remove agent 001 from a group where it is not assigned (group2)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/group/group2"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/group2"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -76,7 +76,7 @@ stages:
   - name: Try to remove agent 004 (only assigned to default) from group default
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/004/group/default"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/004/group/default"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -89,7 +89,7 @@ stages:
   - name: Remove agent 001 from group1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/group/group1"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/group1"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -103,7 +103,7 @@ stages:
   - name: Remove agent 002 from default
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/002/group/default"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/002/group/default"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -117,7 +117,7 @@ stages:
   - name: Remove agent 002 from group2 when it is the only group assigned
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/002/group/group2"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/002/group/group2"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -136,7 +136,7 @@ stages:
   - name: Try to remove agent 000 (manager) from all groups
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/group"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -149,7 +149,7 @@ stages:
   - name: Try to remove non existing agent from all groups
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/group"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -160,7 +160,7 @@ stages:
   - name: Try to remove wrong agent_id from all groups
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/bad_id/group"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -173,7 +173,7 @@ stages:
   - name: Remove agent 005 from all groups
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/005/group"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/005/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -191,7 +191,7 @@ stages:
   - name: Remove agent 008 from group1 and group2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/group"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/008/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -216,7 +216,7 @@ stages:
   - name: Try to remove agents from non existing group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -232,7 +232,7 @@ stages:
   - name: Try to remove agents 000 and 002(not assigned to group1) from group1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -260,7 +260,7 @@ stages:
   - name: Try to remove agents 998 and 999 from group1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -286,7 +286,7 @@ stages:
   - name: Remove agents 006 and 010 from group2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -307,7 +307,7 @@ stages:
   - name: Remove all agents from group2 (008)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -327,7 +327,7 @@ stages:
   - name: Remove all agents from group2 (invalid list_agents)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -341,7 +341,7 @@ stages:
   - name: Remove all agents from group2 (invalid list_agents)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -359,7 +359,7 @@ stages:
   - name: Try to delete non existing group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -384,7 +384,7 @@ stages:
   - name: Try to delete default group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -408,7 +408,7 @@ stages:
   - name: Delete group3
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -431,7 +431,7 @@ stages:
   - name: Delete group3
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -447,7 +447,7 @@ stages:
   - name: Try to delete non existing groups
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -472,7 +472,7 @@ stages:
   - name: Delete groups group1 and default
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -500,7 +500,7 @@ stages:
   - name: Delete all groups (group2)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -525,7 +525,7 @@ stages:
   - name: Try to delete agent 000 (manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -546,7 +546,7 @@ stages:
   - name: Try to delete non existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -569,7 +569,7 @@ stages:
   - name: Try to delete agent using wrong agent_id format
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -584,7 +584,7 @@ stages:
   - name: Delete an agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -604,7 +604,7 @@ stages:
   - name: Delete an agent using purge
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -625,7 +625,7 @@ stages:
   - name: Delete an agent using purge
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -644,7 +644,7 @@ stages:
   - name: Try to delete agent with a wrong list_agents
     request: &delete_agents
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -845,7 +845,7 @@ stages:
   - name: Delete all agents (001,002,003,005)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
