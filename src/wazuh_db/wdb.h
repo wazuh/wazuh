@@ -129,7 +129,6 @@ typedef enum wdb_stmt {
 } wdb_stmt;
 
 typedef enum global_db_query {
-    SQL_INSERT_AGENT,
     SQL_UPDATE_AGENT_NAME,
     SQL_UPDATE_AGENT_VERSION,
     SQL_UPDATE_AGENT_VERSION_IP,
@@ -157,6 +156,36 @@ typedef enum global_db_query {
     SQL_SELECT_GROUPS,
     SQL_SELECT_KEEPALIVE
 } global_db_query;
+
+typedef enum global_db_access {
+    WDB_INSERT_AGENT,
+    WDB_UPDATE_AGENT_NAME,
+    WDB_UPDATE_AGENT_VERSION,
+    WDB_UPDATE_AGENT_VERSION_IP,
+    WDB_GET_AGENT_LABELS,
+    WDB_SET_AGENT_LABELS,
+    WDB_UPDATE_AGENT_KEEPALIVE,
+    WDB_DELETE_AGENT,
+    WDB_SELECT_AGENT,
+    WDB_SELECT_AGENT_GROUP,
+    WDB_SELECT_AGENTS,
+    WDB_FIND_AGENT,
+    WDB_SELECT_FIM_OFFSET,
+    WDB_SELECT_REG_OFFSET,
+    WDB_UPDATE_FIM_OFFSET,
+    WDB_UPDATE_REG_OFFSET,
+    WDB_SELECT_AGENT_STATUS,
+    WDB_UPDATE_AGENT_STATUS,
+    WDB_UPDATE_AGENT_GROUP,
+    WDB_FIND_GROUP,
+    WDB_INSERT_AGENT_GROUP,
+    WDB_INSERT_AGENT_BELONG,
+    WDB_DELETE_AGENT_BELONG,
+    WDB_DELETE_GROUP_BELONG,
+    WDB_DELETE_GROUP,
+    WDB_SELECT_GROUPS,
+    WDB_SELECT_KEEPALIVE
+} global_db_access;
 
 typedef struct wdb_t {
     sqlite3 * db;
@@ -338,8 +367,19 @@ int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id,int scan_id);
 /* Gets the policy SHA256. Returns 1 if found, 0 if not or -1 on error */
 int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output);
 
-/* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date);
+/**
+ * @brief Insert agent to the global.db.
+ * 
+ * @param[in] id The agent ID.
+ * @param[in] name The agent name.
+ * @param[in] ip The agent ip address.
+ * @param[in] register_ip The agent register IP.
+ * @param[in] internal_key The client key of the agent.
+ * @param[in] group The agent group.
+ * @param[in] keep_date If 1, the addition date will be taken from agents-timestamp. If 0, the addition date is the current time.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *internal_key, const char *group, int keep_date);
 
 /* Update agent name. It doesn't rename agent DB file. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_name(int id, const char *name);
@@ -468,7 +508,12 @@ int* wdb_get_all_agents();
 /* Fill belongs table on start */
 int wdb_agent_belongs_first_time();
 
-/* Get the agent first registration date */
+/**
+ * @brief Get the agent first registration date.
+ * 
+ * @param[in] agent_id The agent ID.
+ * @return Returns the agent first registration date.
+ */
 time_t get_agent_date_added(int agent_id);
 
 /* Find agent by name and address. Returns id if success, -1 on failure or -2 if it has not been found. */

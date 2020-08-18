@@ -21,7 +21,6 @@
 #define WDBOUTPUT_SIZE OS_MAXSTR
 
 static const char *global_db_queries[] = {
-    [SQL_INSERT_AGENT] = "global sql INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (%d, %Q, %Q, %Q, %Q, %lu, %Q);",
     [SQL_UPDATE_AGENT_NAME] = "global sql UPDATE agent SET name = %Q WHERE id = %d;",
     [SQL_UPDATE_AGENT_VERSION] = "global sql UPDATE agent SET os_name = %Q, os_version = %Q, os_major = %Q, os_minor = %Q, os_codename = %Q, os_platform = %Q, os_build = %Q, os_uname = %s, os_arch = %Q, version = %Q, config_sum = %Q, merged_sum = %Q, manager_host = %Q, node_name = %Q, last_keepalive = STRFTIME('%s', 'NOW'), sync_status = %d WHERE id = %d;",
     [SQL_UPDATE_AGENT_VERSION_IP] = "global sql UPDATE agent SET os_name = %Q, os_version = %Q, os_major = %Q, os_minor = %Q, os_codename = %Q, os_platform = %Q, os_build = %Q, os_uname = %s, os_arch = %Q, version = %Q, config_sum = %Q, merged_sum = %Q, manager_host = %Q, node_name = %Q, last_keepalive = STRFTIME('%s', 'NOW'), ip = %Q, sync_status = %d WHERE id = %d;",
@@ -52,20 +51,43 @@ static const char *global_db_queries[] = {
 
 int wdb_sock_agent = -1;
 
-/* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date) {
+static const char *global_db_accesses[] = {
+    [WDB_INSERT_AGENT] = "global insert-agent %s"
+};
+
+
+int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *internal_key, const char *group, int keep_date) {
     int result = 0;
-    time_t date = 0;
+    time_t date_add = 0;
+    cJSON *data_in = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
 
     if(keep_date) {
-        date = get_agent_date_added(id);
+        date_add = get_agent_date_added(id);
     } else {
-        time(&date);
+        time(&date_add);
     }
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery,  global_db_queries[SQL_INSERT_AGENT], id, name, ip, register_ip, key, date, group);
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddStringToObject(data_in, "name", name);
+    cJSON_AddStringToObject(data_in, "ip", ip);
+    cJSON_AddStringToObject(data_in, "register_ip", register_ip);
+    cJSON_AddStringToObject(data_in, "internal_key", internal_key);
+    cJSON_AddStringToObject(data_in, "group", group);
+    cJSON_AddNumberToObject(data_in, "date_add", date_add);
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_accesses[WDB_INSERT_AGENT], cJSON_PrintUnformatted(data_in));
+
+    cJSON_Delete(data_in);
+
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
