@@ -16,7 +16,17 @@
 #include "../wm_task_general.h"
 #include "wazuh_db/wdb.h"
 
+// Mutex needed to access tasks DB
+pthread_mutex_t db_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt);
+
+/**
+ * Update old tasks with status in progress to status timeout
+ * @param now Actual time
+ * @return OS_SUCCESS on success, OS_INVALID on errors
+ * */
+static int wm_task_manager_set_timeout_status(time_t now);
 
 static const char *task_queries[] = {
     [WM_TASK_INSERT_TASK] = "INSERT INTO " TASKS_TABLE " VALUES(NULL,?,?,?,?,?,?);",
@@ -25,13 +35,15 @@ static const char *task_queries[] = {
     [WM_TASK_GET_TASK_STATUS] = "SELECT STATUS FROM " TASKS_TABLE " WHERE TASK_ID = ?;",
     [WM_TASK_UPDATE_TASK_STATUS] = "UPDATE " TASKS_TABLE " SET STATUS = ?, LAST_UPDATE_TIME = ? WHERE TASK_ID = ?;",
     [WM_TASK_GET_TASK_BY_AGENT_ID_AND_MODULE] = "SELECT MAX(TASK_ID), COMMAND, CREATE_TIME, LAST_UPDATE_TIME, STATUS FROM " TASKS_TABLE " WHERE MODULE = ? AND AGENT_ID = ?;",
-    [WM_TASK_GET_TASK] = "SELECT * FROM " TASKS_TABLE " WHERE TASK_ID = ?;"
+    [WM_TASK_GET_TASK_BY_TASK_ID] = "SELECT * FROM " TASKS_TABLE " WHERE TASK_ID = ?;",
+    [WM_TASK_GET_TASK_BY_STATUS] = "SELECT * FROM " TASKS_TABLE " WHERE STATUS = ?;"
 };
 
-int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt) {
+static int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt) {
     mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_ERROR, sqlite3_errmsg(db));
     wdb_finalize(stmt);
     sqlite3_close_v2(db);
+    w_mutex_unlock(&db_mutex);
     return OS_INVALID;
 }
 
@@ -42,6 +54,8 @@ int wm_task_manager_check_db() {
     const char *tail;
     sqlite3 *db = NULL;
     sqlite3_stmt *stmt = NULL;
+
+    w_mutex_lock(&db_mutex);
 
     // Open or create the database file
     if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
@@ -71,6 +85,8 @@ int wm_task_manager_check_db() {
 
     sqlite3_close_v2(db);
 
+    w_mutex_unlock(&db_mutex);
+
     uid_t uid = Privsep_GetUser(ROOT);
     gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
 
@@ -92,11 +108,77 @@ int wm_task_manager_check_db() {
     return 0;
 }
 
+void* wm_task_manager_clean_db(__attribute__((unused)) void *arg) {
+
+    while (1) {
+        time_t now = time(0);
+
+        // Set the status of old tasks IN PROGRESS to TIMEOUT
+        wm_task_manager_set_timeout_status(now);
+
+        sleep(CLEAN_DB_SLEEP_TIME);
+    }
+}
+
+static int wm_task_manager_set_timeout_status(time_t now) {
+    sqlite3 *db = NULL;
+    sqlite3_stmt *stmt = NULL;
+    int result = OS_INVALID;
+
+    w_mutex_lock(&db_mutex);
+
+    if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READWRITE, NULL)) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
+        return wm_task_manager_sql_error(db, stmt);
+    }
+
+    if (wdb_prepare(db, task_queries[WM_TASK_GET_TASK_BY_STATUS], -1, &stmt, NULL) != SQLITE_OK) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
+        return wm_task_manager_sql_error(db, stmt);
+    }
+
+    sqlite3_bind_text(stmt, 1, task_statuses[WM_TASK_IN_PROGRESS], -1, NULL);
+
+    while (result = wdb_step(stmt), result == SQLITE_ROW) {
+        int task_id = sqlite3_column_int(stmt, 0);
+        int last_update_time = sqlite3_column_int(stmt, 5);
+
+        // Check if the last update time is longer than the timeout
+        if ((now - MAX_IN_PROGRESS_TIME) > last_update_time) {
+            wdb_finalize(stmt);
+
+            if (wdb_prepare(db, task_queries[WM_TASK_UPDATE_TASK_STATUS], -1, &stmt, NULL) != SQLITE_OK) {
+                mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
+                return wm_task_manager_sql_error(db, stmt);
+            }
+
+            sqlite3_bind_text(stmt, 1, task_statuses[WM_TASK_TIMEOUT], -1, NULL);
+            sqlite3_bind_int(stmt, 2, time(0));
+            sqlite3_bind_int(stmt, 3, task_id);
+
+            if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+                mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
+                return wm_task_manager_sql_error(db, stmt);
+            }
+        }
+    }
+
+    wdb_finalize(stmt);
+
+    sqlite3_close_v2(db);
+
+    w_mutex_unlock(&db_mutex);
+
+    return OS_SUCCESS;
+}
+
 int wm_task_manager_insert_task(int agent_id, const char *module, const char *command) {
     sqlite3 *db = NULL;
     sqlite3_stmt *stmt = NULL;
     int result = 0;
     int task_id = OS_INVALID;
+
+    w_mutex_lock(&db_mutex);
 
     if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READWRITE, NULL)) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
@@ -137,6 +219,8 @@ int wm_task_manager_insert_task(int agent_id, const char *module, const char *co
 
     sqlite3_close_v2(db);
 
+    w_mutex_unlock(&db_mutex);
+
     return task_id;
 }
 
@@ -146,7 +230,9 @@ int wm_task_manager_get_task_status(int agent_id, const char *module, char **sta
     int result = 0;
     int task_id = OS_INVALID;
 
-    if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READWRITE, NULL)) {
+    w_mutex_lock(&db_mutex);
+
+    if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READONLY, NULL)) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
@@ -169,6 +255,7 @@ int wm_task_manager_get_task_status(int agent_id, const char *module, char **sta
     if (!task_id) {
         wdb_finalize(stmt);
         sqlite3_close_v2(db);
+        w_mutex_unlock(&db_mutex);
         return WM_TASK_SUCCESS;
     }
 
@@ -192,6 +279,8 @@ int wm_task_manager_get_task_status(int agent_id, const char *module, char **sta
 
     sqlite3_close_v2(db);
 
+    w_mutex_unlock(&db_mutex);
+
     return WM_TASK_SUCCESS;
 }
 
@@ -205,6 +294,8 @@ int wm_task_manager_update_task_status(int agent_id, const char *module, const c
     if (!status || (strcmp(status, task_statuses[WM_TASK_IN_PROGRESS]) && strcmp(status, task_statuses[WM_TASK_DONE]) && strcmp(status, task_statuses[WM_TASK_FAILED]) && strcmp(status, task_statuses[WM_TASK_LEGACY]))) {
         return WM_TASK_INVALID_STATUS;
     }
+
+    w_mutex_lock(&db_mutex);
 
     if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READWRITE, NULL)) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
@@ -229,6 +320,7 @@ int wm_task_manager_update_task_status(int agent_id, const char *module, const c
     if (!task_id) {
         wdb_finalize(stmt);
         sqlite3_close_v2(db);
+        w_mutex_unlock(&db_mutex);
         return WM_TASK_DATABASE_NO_TASK;
     }
 
@@ -252,6 +344,7 @@ int wm_task_manager_update_task_status(int agent_id, const char *module, const c
        !strcmp(old_status, task_statuses[WM_TASK_FAILED])) {
         wdb_finalize(stmt);
         sqlite3_close_v2(db);
+        w_mutex_unlock(&db_mutex);
         return WM_TASK_DATABASE_NO_TASK;
     }
 
@@ -275,6 +368,8 @@ int wm_task_manager_update_task_status(int agent_id, const char *module, const c
 
     sqlite3_close_v2(db);
 
+    w_mutex_unlock(&db_mutex);
+
     return WM_TASK_SUCCESS;
 }
 
@@ -284,7 +379,9 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
     int result = OS_INVALID;
     int task_id;
 
-    if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READWRITE, NULL)) {
+    w_mutex_lock(&db_mutex);
+
+    if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READONLY, NULL)) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
@@ -318,6 +415,8 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
 
     sqlite3_close_v2(db);
 
+    w_mutex_unlock(&db_mutex);
+
     return result;
 }
 
@@ -327,12 +426,14 @@ int wm_task_manager_get_task_by_task_id(int task_id, char **module, char **comma
     int result = OS_INVALID;
     int agent_id;
 
-    if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READWRITE, NULL)) {
+    w_mutex_lock(&db_mutex);
+
+    if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READONLY, NULL)) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
 
-    if (wdb_prepare(db, task_queries[WM_TASK_GET_TASK], -1, &stmt, NULL) != SQLITE_OK) {
+    if (wdb_prepare(db, task_queries[WM_TASK_GET_TASK_BY_TASK_ID], -1, &stmt, NULL) != SQLITE_OK) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
         return wm_task_manager_sql_error(db, stmt);
     }
@@ -360,6 +461,8 @@ int wm_task_manager_get_task_by_task_id(int task_id, char **module, char **comma
     wdb_finalize(stmt);
 
     sqlite3_close_v2(db);
+
+    w_mutex_unlock(&db_mutex);
 
     return result;
 }
