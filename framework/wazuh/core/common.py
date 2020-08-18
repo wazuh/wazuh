@@ -89,6 +89,7 @@ EXECQ = os.path.join(ossec_path, 'queue', 'alerts', 'execq')
 AUTHD_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'auth')
 REQUEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'request')
 UPGRADE_SOCKET = os.path.join(ossec_path, 'queue', 'tasks', 'upgrade')
+TASK_SOCKET = os.path.join(ossec_path, 'queue', 'tasks', 'task')
 
 # Agent upgrading variables
 wpk_repo_url_4_x = "packages.wazuh.com/4.x/wpk/"

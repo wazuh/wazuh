@@ -19,7 +19,7 @@ path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Waz
 # Import framework
 try:
     from wazuh import Wazuh
-    from wazuh.core.agent import Agent, send_task_upgrade_module
+    from wazuh.core.agent import Agent, send_task_upgrade_module, send_task_module
     from wazuh.core.exception import WazuhException
     from wazuh.core.exception import WazuhError
     from wazuh.core import common
@@ -117,7 +117,7 @@ def main():
             sleep(common.upgrade_result_sleep)
             
             #request state of upgrading tasks
-            upgrade_result = send_task_upgrade_module(command='upgrade_result', agent_list=id_agents_upgrading, debug=args.debug)
+            upgrade_result = send_task_module(command='upgrade_result', agent_list=id_agents_upgrading, debug=args.debug)
 
             if not upgrade_result or upgrade_result == "":
                 print ("No response from upgrade module")
@@ -136,13 +136,9 @@ def main():
 
             for ag in agents_results:
                 # Check one by one if the agent end
-                if ag["status"] == "OUTDATED":
+                if ag["status"] != "Updating":
                     if not args.silent:
-                        print ("\nAgent upgrade failed: id: {0} status: {1}.".format(ag["agent"], ag["status"]))
-                    id_agents_upgrading.remove(int(ag["agent"]))
-                if ag["status"] == "UPDATED":
-                    if not args.silent:
-                        print ("\nAgent upgraded: id: {0} status: {1}.".format(ag["agent"], ag["status"]))
+                        print ("\nAgent upgrade result: id: {0} status: {1}.".format(ag["agent"], ag["status"]))
                     id_agents_upgrading.remove(int(ag["agent"]))
             
             counter = counter + 1
