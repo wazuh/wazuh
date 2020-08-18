@@ -146,12 +146,12 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb,cJSON * json_agent){
         return OS_INVALID;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_UPDATE_UNSYNCED_AGENTS) < 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_UPDATE_AGENT_INFO) < 0) {
         mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
 
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_UNSYNCED_AGENTS];
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_AGENT_INFO];
 
      for (n = 0 ; global_db_agent_fields[n] ; n++){
         // Every column name of Global DB is stored in global_db_agent_fields 
