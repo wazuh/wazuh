@@ -37,6 +37,10 @@ def get_user_me():
             with RolesManager() as rm:
                 role = rm.get_role_id(role_id=role_id)
                 role.pop('users')
+                for index_r, rule_id in enumerate(role['rules']):
+                    with RulesManager() as rum:
+                        role['rules'][index_r] = rum.get_rule(rule_id=rule_id)
+                        role['rules'][index_r].pop('roles')
                 for index_p, policy_id in enumerate(role['policies']):
                     with PoliciesManager() as pm:
                         role['policies'][index_p] = pm.get_policy_id(policy_id=policy_id)
