@@ -698,13 +698,13 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
 /**
  * @brief Function to update the agents info from workers.
  * 
- * @param wdb the global struct database.
+ * @param wdb The global struct database.
  * @param input String with the agents information in JSON format.
  * @param output Response of the query in JSON format.
  * @retval 0 Success: response contains the value.
  * @retval -1 On error: invalid DB query syntax.
  */
-int wdb_parse_global_update_unsynced_agents(wdb_t * wdb, char * input, char * output);
+int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output);
 
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
@@ -824,7 +824,7 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
  * @retval 0 On success.
  * @retval -1 On error.
  */
-int wdb_global_update_unsynced_agents(wdb_t *wdb, cJSON *agent_info);
+int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

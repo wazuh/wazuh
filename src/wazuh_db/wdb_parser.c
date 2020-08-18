@@ -448,14 +448,14 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_set_agent_labels(wdb, next, output);
             }
-        } else if (strcmp(query, "update-unsynced-agents") == 0) {
+        } else if (strcmp(query, "sync-agent-info-set") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
-                result = wdb_parse_global_update_unsynced_agents(wdb, next, output);
+                result = wdb_parse_global_sync_agent_info_set(wdb, next, output);
             }
         } else {
             mdebug1("Invalid DB query syntax.");
@@ -3955,7 +3955,7 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) 
     return OS_SUCCESS;
 }
 
-int wdb_parse_global_update_unsynced_agents(wdb_t * wdb, char * input, char * output){
+int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output){
     const char *error = NULL;
     int agent_id = 0;
     cJSON *root = NULL;
@@ -3981,13 +3981,9 @@ int wdb_parse_global_update_unsynced_agents(wdb_t * wdb, char * input, char * ou
         return OS_INVALID;
 
     } else {
-        /*
-        * Iterating over the array with cJSON_ArrayForEach() 
-        * is recommended in cJSON docs by Dave Gamble
-        */
         cJSON_ArrayForEach(json_agent, root){
             // Inserting new agent information in the database
-            if (OS_SUCCESS != wdb_global_update_unsynced_agents(wdb, json_agent)) {
+            if (OS_SUCCESS != wdb_global_sync_agent_info_set(wdb, json_agent)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(root);
@@ -4001,7 +3997,14 @@ int wdb_parse_global_update_unsynced_agents(wdb_t * wdb, char * input, char * ou
                 json_field = cJSON_GetObjectItemCaseSensitive(json_agent, "id");
                 agent_id = cJSON_IsNumber(json_field) ? json_field->valueint : -1; 
 
-                if (OS_SUCCESS != wdb_global_del_agent_labels(wdb, agent_id)) {
+                if (agent_id == -1){
+                    mdebug1("Global DB Cannot execute SQL query; incorrect agent id in labels array");
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot update labels due to invalid id;");
+                    cJSON_Delete(root);
+                    return OS_INVALID;
+                }
+
+                else if (OS_SUCCESS != wdb_global_del_agent_labels(wdb, agent_id)) {
                     mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
                     snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                     cJSON_Delete(root);
@@ -4013,18 +4016,16 @@ int wdb_parse_global_update_unsynced_agents(wdb_t * wdb, char * input, char * ou
                     json_value = cJSON_GetObjectItemCaseSensitive(json_label, "value");
                     json_id = cJSON_GetObjectItemCaseSensitive(json_label, "id");
 
-                    if(cJSON_IsString(json_key) && json_key->valuestring != NULL){
-                        if(cJSON_IsString(json_value) && json_value->valuestring != NULL){
-                            if(cJSON_IsNumber(json_id)){
-                                // Inserting labels in the database
-                                if (OS_SUCCESS != wdb_global_set_agent_label(wdb, json_id->valueint, json_key->valuestring, json_value->valuestring)) {
-                                    mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
-                                    snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-                                    cJSON_Delete(root);
-                                    return OS_INVALID;
-                                }
-                            }
+                    if(cJSON_IsString(json_key) && json_key->valuestring != NULL && cJSON_IsString(json_value) && 
+                        json_value->valuestring != NULL && cJSON_IsNumber(json_id)){
+                        // Inserting labels in the database
+                        if (OS_SUCCESS != wdb_global_set_agent_label(wdb, json_id->valueint, json_key->valuestring, json_value->valuestring)) {
+                            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                            snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                            cJSON_Delete(root);
+                            return OS_INVALID;
                         }
+
                     }
                 }
             }

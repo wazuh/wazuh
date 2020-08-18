@@ -104,7 +104,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_LABELS_GET] = "SELECT * FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_DEL] = "DELETE FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_SET] = "INSERT INTO labels (id, key, value) VALUES (?,?,?);",
-    [WDB_STMT_GLOBAL_UPDATE_UNSYNCED_AGENTS] = "UPDATE agent SET config_sum = ?, ip = ?, manager_host = ?, merged_sum = ?, name = ?, node_name = ?, os_arch = ?, os_build = ?, os_codename = ?, os_major = ?, os_minor = ?, os_name = ?, os_platform = ?, os_uname = ?, os_version = ?, version = ?, last_keepalive = ?, fim_offset = ?,  reg_offset = ?, sync_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_UNSYNCED_AGENTS] = "UPDATE agent SET config_sum = :config_sum, ip = :ip, manager_host = :manager_host, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_build = :os_build, os_codename = :os_codename, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_uname = :os_uname, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, sync_status = :sync_status WHERE id = :id;",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
 };
 
