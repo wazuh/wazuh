@@ -572,6 +572,7 @@ char * w_logtest_process_request(char * raw_request) {
     /* Check message and generate a request */
     json_response = cJSON_CreateObject();
     if (!w_logtest_check_input(raw_request, &json_request, list_msg)) {
+        w_logtest_add_msg_response(json_response, list_msg, &retval);
         retval = W_LOGTEST_RCODE_ERROR_INPUT;
     }
 
@@ -582,6 +583,7 @@ char * w_logtest_process_request(char * raw_request) {
         if (current_session) {
             cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_TOKEN, current_session->token);
         }
+        w_logtest_add_msg_response(json_response, list_msg, &retval);
     }
     /* Proccess log */
     if (retval >= W_LOGTEST_RCODE_SUCCESS) {
@@ -593,6 +595,7 @@ char * w_logtest_process_request(char * raw_request) {
             smerror(list_msg, LOGTEST_ERROR_PROCESS_EVENT);
             mdebug1(LOGTEST_ERROR_PROCESS_EVENT);
         }
+        w_logtest_add_msg_response(json_response, list_msg, &retval);
     }
 
     /* Check alert level */
@@ -602,7 +605,6 @@ char * w_logtest_process_request(char * raw_request) {
         cJSON_AddBoolToObject(json_response, W_LOGTEST_JSON_ALERT, alert);
     }
 
-    w_logtest_add_msg_response(json_response, list_msg, &retval);
     cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_CODE, retval);
 
     str_response = cJSON_PrintUnformatted(json_response);
