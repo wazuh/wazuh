@@ -45,28 +45,13 @@ class RBAChecker:
             self.authorization_context = json.loads(auth_context)
         except TypeError:
             self.authorization_context = auth_context
-        # All roles in the system
+
         if role is None:
+            # All system's roles
             with orm.RolesManager() as rm:
                 self.roles_list = rm.get_roles()
-                for role in self.roles_list:
-                    with orm.RolesRulesManager() as rrum:
-                        role.rule = {k: v for rule in rrum.get_all_rules_from_role(role.id)
-                                     for k, v in json.loads(rule.rule).items()}
         else:
-            # One single role
-            if not isinstance(role, list):
-                self.roles_list = [role]
-                with orm.RolesRulesManager() as rrum:
-                    role.rule = {k: v for rule in rrum.get_all_rules_from_role(role.id)
-                                 for k, v in json.loads(rule.rule).items()}
-            # role is a list of roles
-            elif isinstance(role, list):
-                self.roles_list = role
-                for role in self.roles_list:
-                    with orm.RolesRulesManager() as rrum:
-                        role.rule = {k: v for rule in rrum.get_all_rules_from_role(role.id)
-                                     for k, v in json.loads(rule.rule).items()}
+            self.roles_list = [role] if not isinstance(role, list) else role
 
     def get_authorization_context(self):
         """Return the authorization context
@@ -281,7 +266,10 @@ class RBAChecker:
         """This function will return a list of role IDs, if these match with the authorization context"""
         list_roles = list()
         for role in self.roles_list:
-            list_roles.append(role.id) if self.check_rule(role.rule) else None
+            for rule in role.rules:
+                if self.check_rule(rule):
+                    list_roles.append(role.id)
+                    break
 
         return list_roles
 
