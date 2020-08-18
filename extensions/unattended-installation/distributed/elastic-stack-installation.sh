@@ -82,11 +82,32 @@ installPrerequisites() {
 
     if [ $sys_type == "yum" ]
     then
-        eval "yum install curl unzip wget libcap -y -q $debug && yum install java-11-openjdk-devel -y -q $debug || yum install java-1.8.0-openjdk.x86_64 -y -q $debug"
-            export JAVA_HOME=/usr/
+        eval "yum install curl unzip wget libcap -y -q $debug"
+        eval "yum install java-11-openjdk-devel -y -q $debug"
+        if [ "$?" != 0 ]
+        then
+            os=$(cat /etc/os-release > /dev/null 2>&1 | awk -F"ID=" '/ID=/{print $2; exit}' | tr -d \")
+            if [ -z "$os" ]
+            then
+                os="centos"
+            fi
+            echo -e '[AdoptOpenJDK] \nname=AdoptOpenJDK \nbaseurl=http://adoptopenjdk.jfrog.io/adoptopenjdk/rpm/system-ver/$releasever/$basearch\nenabled=1\ngpgcheck=1\ngpgkey=https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public' | eval "tee /etc/yum.repos.d/adoptopenjdk.repo $debug"
+            conf="$(awk '{sub("system-ver", "'"${os}"'")}1' /etc/yum.repos.d/adoptopenjdk.repo)"
+            echo "$conf" > /etc/yum.repos.d/adoptopenjdk.repo 
+            eval "yum install adoptopenjdk-11-hotspot -y -q $debug"
+        fi
+        export JAVA_HOME=/usr/
     elif [ $sys_type == "zypper" ] 
     then
-        eval "zypper -n install curl unzip wget libcap $debug && zypper -n install java-11-openjdk-devel $debug || zypper -n install java-1.8.0-openjdk.x86_64 $debug"
+        eval "zypper -n install curl unzip wget libcap $debug"
+        eval "zypper -n install java-11-openjdk-devel $debug"
+        if [ "$?" != 0 ]
+        then
+            eval "zypper ar -f http://adoptopenjdk.jfrog.io/adoptopenjdk/rpm/opensuse/15.0/$(uname -m) adoptopenjdk $debug" | echo 'a'
+            eval "zypper -n install adoptopenjdk-11-hotspot $debug "
+
+        fi    
+        export JAVA_HOME=/usr/        
     elif [ $sys_type == "apt-get" ] 
     then
         eval "apt-get install apt-transport-https curl unzip wget libcap2-bin -y -q $debug"
