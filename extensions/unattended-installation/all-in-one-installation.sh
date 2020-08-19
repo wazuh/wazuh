@@ -100,7 +100,7 @@ installPrerequisites() {
         eval "zypper -n install java-11-openjdk-devel $debug"
         if [ "$?" != 0 ]
         then
-            eval "zypper ar -f http://adoptopenjdk.jfrog.io/adoptopenjdk/rpm/opensuse/15.0/$(uname -m) adoptopenjdk $debug" | echo 'a' > /dev/null 2>&1
+            eval "zypper ar -f http://adoptopenjdk.jfrog.io/adoptopenjdk/rpm/opensuse/15.0/$(uname -m) adoptopenjdk $debug" | echo 'a'
             eval "zypper -n install adoptopenjdk-11-hotspot $debug "
 
         fi    
