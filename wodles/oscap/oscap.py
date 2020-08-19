@@ -107,7 +107,12 @@ def oscap(profile=None):
         pass
 
     # Create an unique FIFO file
-    mkfifo(FIFO_PATH, 0666)
+    try:
+        perm = eval('0666')
+    except SyntaxError:
+        perm = eval('0o666')
+
+    mkfifo(FIFO_PATH, perm)
 
     try:
         cmd = [OSCAP_BIN, arg_module, 'eval', '--results', FIFO_PATH]
