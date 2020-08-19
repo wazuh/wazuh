@@ -54,17 +54,6 @@ static int wm_agent_upgrade_validate_system(const char *platform, const char *os
  * */
 static int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version, const char *wpk_repository_config);
 
-/**
- * Compare two versions with format v4.0.0
- * @param version1 char * with the string version
- * @param version2 char * with the string version
- * @return return_code
- * @retval 0 equals
- * @retval 1 version1 > version2
- * @retval -1 version1 < version2
- * */
-static int wm_agent_upgrade_compare_versions(const char *version1, const char *version2);
-
 static const char* invalid_platforms[] = {
     "darwin",
     "solaris",
@@ -343,7 +332,7 @@ static int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info
     return return_code;
 }
 
-static int wm_agent_upgrade_compare_versions(const char *version1, const char *version2) {
+int wm_agent_upgrade_compare_versions(const char *version1, const char *version2) {
     char ver1[10];
     char ver2[10];
     char *tmp_v1 = NULL;
