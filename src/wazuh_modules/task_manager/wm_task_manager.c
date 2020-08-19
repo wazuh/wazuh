@@ -35,7 +35,7 @@ static const char *upgrade_statuses[] = {
     [WM_TASK_UPGRADE_UPDATED] = "Updated",
     [WM_TASK_UPGRADE_OUTDATED] = "The agent is outdated since the task could not start",
     [WM_TASK_UPGRADE_TIMEOUT] = "Timeout reached while waiting for the response from the agent",
-    [WM_TASK_UPGRADE_LEGACY] = "Check the result manually since the agent cannot report the result of the task"
+    [WM_TASK_UPGRADE_LEGACY] = "Legacy upgrade: check the result manually since the agent cannot report the result of the task"
 };
 
 static const char *error_codes[] = {
