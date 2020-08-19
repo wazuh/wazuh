@@ -37,7 +37,7 @@ admin_policy_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 1
 
 # Required rules for role
 # Key: Role - Value: Rules
-required_rules_for_role = {2: [1]}
+required_rules_for_role = {1: [1], 2: [2]}
 required_rules = {required_rule for r in required_rules_for_role.values() for required_rule in r}
 
 
