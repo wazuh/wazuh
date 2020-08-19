@@ -1016,24 +1016,17 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         else {
             char *resolved_path = realpath(real_path, NULL);
 
-            if (resolved_path = realpath(real_path, NULL), resolved_path) {
-                if (!strcmp(resolved_path, real_path)) {
-                    dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag,
-                                        NULL, tmp_diff_size);
-                } else {
-                    dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
-                                        real_path, tmp_diff_size);
-                }
-            } else {
-                dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag,
-                                    NULL, tmp_diff_size);
+            if (resolved_path && strcmp(resolved_path, real_path)) {
+                dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
+                                    real_path, tmp_diff_size);
+            }
+            else {
+                dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL,
+                                    tmp_diff_size);
             }
 
             os_free(resolved_path);
         }
-
-        dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag,
-                            NULL, tmp_diff_size);
 #endif
 
         /* Next entry */
