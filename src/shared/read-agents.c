@@ -1129,41 +1129,49 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
 /* Gets the status of an agent, based on the name / IP address */
 agent_status_t get_agent_status(const char *agent_name, const char *agent_ip)
 {
-    char tmp_file[513];
-    char *agent_ip_pt = NULL;
-    struct stat file_status;
+    cJSON *json_agt_info = NULL;
+    cJSON *json_agt_info_field = NULL;
+    int last_keepalive = -1;
 
-    tmp_file[512] = '\0';
+    // Unused
+    (void) agent_ip;
+
+    /* Getting all the information of the agent */
+    json_agt_info = wdb_get_agent_info(atoi(get_agent_id_from_name(agent_name)));
+
+    if (!json_agt_info) {
+        mdebug1("Failed to get agent '%s' information from Wazuh DB.",agent_name);
+        cJSON_Delete(json_agt_info);
+        return GA_STATUS_INV;
+    }
+
+    json_agt_info_field = cJSON_GetObjectItemCaseSensitive(json_agt_info->child, "last_keepalive");
+    if (cJSON_IsNumber(json_agt_info_field)){
+        last_keepalive = json_agt_info_field->valueint;
+    }
 
     /* Server info */
     if (agent_name == NULL) {
+        cJSON_Delete(json_agt_info);
         return (GA_STATUS_ACTIVE);
     }
 
-    /* Remove the  "/", since it is not present on the file */
-    if ((agent_ip_pt = strchr(agent_ip, '/'))) {
-        *agent_ip_pt = '\0';
-    }
-
-    snprintf(tmp_file, 512, "%s/%s-%s", AGENTINFO_DIR, agent_name, agent_ip);
-
-    /* Set back the IP address */
-    if (agent_ip_pt) {
-        *agent_ip_pt = '/';
-    }
-
-    if (stat(tmp_file, &file_status) < 0) {
+    if (last_keepalive < 0) {
+        cJSON_Delete(json_agt_info);
         return (GA_STATUS_INV);
     }
 
-    if (file_status.st_mtime < (time(0) - DISCON_TIME)) {
+    if (last_keepalive < (time(0) - DISCON_TIME)) {
+        cJSON_Delete(json_agt_info);
         return (GA_STATUS_NACTIVE);
     }
 
-    if (file_status.st_size == 0) {
+    if (last_keepalive == 0) {
+        cJSON_Delete(json_agt_info);
         return GA_STATUS_PENDING;
     }
 
+    cJSON_Delete(json_agt_info);
     return (GA_STATUS_ACTIVE);
 }
 
