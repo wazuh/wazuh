@@ -15,13 +15,10 @@
 #define WM_UPGRADE_MINIMAL_VERSION_SUPPORT "v3.0.0"
 #define WM_UPGRADE_NEW_VERSION_REPOSITORY "v3.4.0"
 #define WM_UPGRADE_NEW_UPGRADE_MECHANISM "v4.1.0"
-#define WM_UPGRADE_WPK_REPO_URL "packages.wazuh.com/wpk/"
 #define WM_UPGRADE_WPK_DEFAULT_PATH "var/upgrade/"
-#define WM_UPGRADE_WPK_DEFAULT_CHUNK 512
 #define WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT 60000
 #define WM_UPGRADE_WPK_DOWNLOAD_ATTEMPTS 5
 #define WM_UPGRADE_WPK_OPEN_ATTEMPTS 10
-#define WM_UPGRADE_WPK_CHUNK_SIZE 512
 #define MANAGER_ID 0
 
 typedef enum _wm_upgrade_error_code {
@@ -118,27 +115,30 @@ extern const char* upgrade_error_codes[];
 /**
  * Start listening loop, exits only on error 
  * @param timeout_sec timeout in seconds
+ * @param manager_configs manager configuration parameters
  * @return only on errors, socket will be closed
  * */
-void wm_agent_upgrade_listen_messages(int timeout_sec);
+void wm_agent_upgrade_listen_messages(int timeout_sec, const wm_manager_configs* manager_configs);
 
 /**
  * Process and upgrade command. Create the task for each agent_id, dispatches to task manager and
  * then starts upgrading process.
  * @param agent_ids array with the list of agents id
  * @param task pointer to a wm_upgrade_task structure
+ * @param manager_configs manager configuration parameters
  * @return string with the response
  * */
-char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task);
+char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs);
 
 /**
  * Process and upgrade custom command. Create the task for each agent_id, dispatches to task manager and
  * then starts upgrading process.
  * @param agent_ids array with the list of agents id
  * @param task pointer to a wm_upgrade_custom_task structure
+ * @param manager_configs manager configuration parameters
  * @return string with the response
  * */
-char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task);
+char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs);
 
 /**
  * Process and agent_upgraded command

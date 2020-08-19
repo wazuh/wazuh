@@ -14,6 +14,9 @@ static const char *XML_ENABLED = "enabled";
 static const char *XML_WAIT_START = "notification_wait_start";
 static const char *XML_WAIT_MAX = "notification_wait_max";
 static const char *XML_WAIT_FACTOR = "notification_wait_factor";
+#else
+static const char *XML_WPK_REPOSITORY = "wpk_repository";
+static const char *XML_CHUNK_SIZE = "chunk_size";
 #endif
 
 int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
@@ -26,9 +29,12 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
         os_calloc(1, sizeof(wm_agent_upgrade), data);
         data->enabled = 1;
         #ifdef CLIENT
-        data->agent_config.upgrade_wait_start = 300;
-        data->agent_config.upgrade_wait_max = 3600;
-        data->agent_config.upgrade_wait_factor_increase = 2.0;
+        data->agent_config.upgrade_wait_start = WM_UPGRADE_WAIT_START;
+        data->agent_config.upgrade_wait_max = WM_UPGRADE_WAIT_MAX;
+        data->agent_config.upgrade_wait_factor_increase = WM_UPGRADE_WAIT_FACTOR_INCREASE;
+        #else
+        data->manager_config.chunk_size = WM_UPGRADE_CHUNK_SIZE;
+        data->manager_config.wpk_repository = strdup(WM_UPGRADE_WPK_REPO_URL);
         #endif
         module->data = data;
     }
@@ -44,8 +50,7 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
         if(!nodes[i]->element) {
             merror(XML_ELEMNULL);
             return OS_INVALID;
-        }
-        else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
+        } else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
             if (!strcmp(nodes[i]->content, "yes"))
                 data->enabled = 1;
             else if (!strcmp(nodes[i]->content, "no"))
@@ -83,6 +88,24 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_WAIT_FACTOR, WM_AGENT_UPGRADE_CONTEXT.name);
                 return OS_INVALID;
             }
+        }
+        #else
+        else if (!strcmp(nodes[i]->element, XML_CHUNK_SIZE)) {
+            if (!OS_StrIsNum(nodes[i]->content)) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_CHUNK_SIZE, WM_AGENT_UPGRADE_CONTEXT.name);
+                return (OS_INVALID);
+            }
+            int chunk;
+            if (chunk = atoi(nodes[i]->content), chunk < 64 || chunk > 32768) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_CHUNK_SIZE, WM_AGENT_UPGRADE_CONTEXT.name);
+                return (OS_INVALID);
+            }
+            
+            data->manager_config.chunk_size = chunk;
+            
+        } else if (!strcmp(nodes[i]->element, XML_WPK_REPOSITORY)) {
+            os_free(data->manager_config.wpk_repository);
+            os_strdup(nodes[i]->content, data->manager_config.wpk_repository);
         }
         #endif
         else {
