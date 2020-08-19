@@ -62,6 +62,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
     cJSON *data_in = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
 
     if(keep_date) {
         date_add = get_agent_date_added(id);
@@ -92,7 +93,12 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
 
     switch (result) {
         case OS_SUCCESS:
-            result = wdb_create_agent_db(id, name);
+            if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
+                result = wdb_create_agent_db(id, name);
+            }
+            else {
+                result = OS_INVALID;
+            }
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");

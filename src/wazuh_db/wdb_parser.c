@@ -3919,12 +3919,22 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
         j_group = cJSON_GetObjectItemCaseSensitive(agent_data, "group");
         j_date_add = cJSON_GetObjectItemCaseSensitive(agent_data, "date_add");
 
-        // These are the only constraints defined in the database for this set of parameters
+        // These are the only constraints defined in the database for this
+        // set of parameters. All the other parameters could be NULL.
         if (cJSON_IsNumber(j_id) &&
             cJSON_IsString(j_name) && j_name->valuestring &&
             cJSON_IsNumber(j_date_add) && j_date_add->valueint) {
-            if (OS_SUCCESS != wdb_global_insert_agent(wdb, j_id->valueint, j_name->valuestring, j_ip->valuestring, 
-                j_register_ip->valuestring, j_internal_key->valuestring, j_group->valuestring, j_date_add->valueint)) {
+
+            // Getting each field
+            int id = j_id->valueint;
+            char* name = j_name->valuestring;
+            char* ip = (j_ip && cJSON_IsString(j_ip)) ? j_ip->valuestring : NULL;
+            char* register_ip = (j_register_ip && cJSON_IsString(j_register_ip)) ? j_register_ip->valuestring : NULL;
+            char* internal_key = (j_internal_key && cJSON_IsString(j_internal_key)) ? j_internal_key->valuestring : NULL;
+            char* group = (j_group && cJSON_IsString(j_group)) ? j_group->valuestring : NULL;
+            int date_add = j_date_add->valueint;
+
+            if (OS_SUCCESS != wdb_global_insert_agent(wdb, id, name, ip, register_ip, internal_key, group, date_add)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
