@@ -6,7 +6,6 @@ import logging
 import re
 
 from aiohttp import web
-
 from api.authentication import generate_token
 from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
@@ -18,16 +17,16 @@ from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.exception import WazuhPermissionError, WazuhException
-from wazuh.core.security import revoke_tokens
+from wazuh.core.exception import WazuhPermissionError, WazuhException, WazuhInternalError
 from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.security import revoke_tokens
 from wazuh.rbac import preprocessor
 
 logger = logging.getLogger('wazuh')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
-async def login_user(request, user: str, auth_context=None):
+async def login_user(request, user: str, auth_context=None, raw=False):
     """User/password authentication to get an access token.
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
 
@@ -38,6 +37,8 @@ async def login_user(request, user: str, auth_context=None):
         Name of the user who wants to be authenticated
     auth_context : dict, optional
         User's authorization context
+    raw : bool, optional
+        Respond in raw format
 
     Returns
     -------
@@ -59,7 +60,10 @@ async def login_user(request, user: str, auth_context=None):
     except WazuhException as e:
         raise_if_exc(e)
 
-    return web.json_response(data=TokenResponseModel(token=token), status=200, dumps=dumps)
+    if raw:
+        return web.Response(text=token, content_type='text/plain', status=200)
+    else:
+        return web.json_response(data=TokenResponseModel(token=token), status=200, dumps=dumps)
 
 
 async def get_user_me(request, pretty=False, wait_for_complete=False):

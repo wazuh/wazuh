@@ -120,10 +120,6 @@ WazuhUpgrade()
     rm -f $DIRECTORY/wodles/cve.db
     rm -f $DIRECTORY/queue/vulnerabilities/cve.db
 
-    # Remove existing SQLite database for task-manager
-
-    rm -f $DIRECTORY/queue/tasks/tasks.db
-
     # Remove OpenSCAP policies if the module is disabled
     if stat $DIRECTORY/wodles/oscap/content/* 2> /dev/null ; then
 

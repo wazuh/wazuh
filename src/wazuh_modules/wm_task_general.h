@@ -16,6 +16,8 @@
 #define WM_TASK_STATUS_IN_PROGRESS "In progress"
 #define WM_TASK_STATUS_DONE "Done"
 #define WM_TASK_STATUS_FAILED "Failed"
+#define WM_TASK_STATUS_TIMEOUT "Timeout"
+#define WM_TASK_STATUS_LEGACY "Legacy"
 
 /**
  * Enumeration of all available keys that could be used in the messages
@@ -59,7 +61,9 @@ typedef enum _task_status {
     WM_TASK_NEW = 0,
     WM_TASK_IN_PROGRESS,
     WM_TASK_DONE,
-    WM_TASK_FAILED
+    WM_TASK_FAILED,
+    WM_TASK_TIMEOUT,
+    WM_TASK_LEGACY
 } task_status;
 
 /**

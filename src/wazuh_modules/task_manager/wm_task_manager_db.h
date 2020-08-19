@@ -22,12 +22,12 @@
 
 typedef enum _task_query {
     WM_TASK_INSERT_TASK,
-    WM_TASK_GET_MAX_TASK_ID,
     WM_TASK_GET_LAST_AGENT_TASK,
     WM_TASK_GET_TASK_STATUS,
     WM_TASK_UPDATE_TASK_STATUS,
-    WM_TASK_GET_TASK_BY_AGENT_ID_AND_MODULE,
-    WM_TASK_GET_TASK
+    WM_TASK_GET_TASK_BY_TASK_ID,
+    WM_TASK_GET_TASK_BY_STATUS,
+    WM_TASK_DELETE_OLD_TASKS
 } task_query;
 
 extern char *schema_task_manager_sql;
@@ -37,6 +37,13 @@ extern char *schema_task_manager_sql;
  * @return 0 when succeed, -1 otherwise.
  * */
 int wm_task_manager_check_db();
+
+/**
+ * Set tasks status to TIMEOUT after they are IN PROGRESS for a long period of time.
+ * Delete entries older than a configurable period of time from the tasks DB.
+ * @param arg Module configuration.
+ * */
+void* wm_task_manager_clean_db(void *arg);
 
 /**
  * Insert a new task in the tasks DB.

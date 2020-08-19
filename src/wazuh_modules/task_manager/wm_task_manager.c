@@ -33,7 +33,9 @@ static const char *upgrade_statuses[] = {
     [WM_TASK_UPGRADE_ERROR] = "Error",
     [WM_TASK_UPGRADE_UPDATING] = "Updating",
     [WM_TASK_UPGRADE_UPDATED] = "Updated",
-    [WM_TASK_UPGRADE_OUTDATED] = "Outdated"
+    [WM_TASK_UPGRADE_OUTDATED] = "The agent is outdated since the task could not start",
+    [WM_TASK_UPGRADE_TIMEOUT] = "Timeout reached while waiting for the response from the agent",
+    [WM_TASK_UPGRADE_LEGACY] = "Legacy upgrade: check the result manually since the agent cannot report the result of the task"
 };
 
 static const char *error_codes[] = {
@@ -398,6 +400,9 @@ int wm_task_manager_init(wm_task_manager *task_config) {
         pthread_exit(NULL);
     }
 
+    // Start clean DB thread
+    w_create_thread(wm_task_manager_clean_db, task_config);
+
     /* Set the queue */
     if (sock = OS_BindUnixDomain(DEFAULTDIR TASK_QUEUE, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_CREATE_SOCK_ERROR, TASK_QUEUE, strerror(errno));
@@ -505,6 +510,10 @@ static const char * wm_task_manager_decode_status(char * status) {
         return upgrade_statuses[WM_TASK_UPGRADE_ERROR];
     } else if (!strcmp(task_statuses[WM_TASK_NEW], status)){
         return upgrade_statuses[WM_TASK_UPGRADE_OUTDATED];
+    } else if (!strcmp(task_statuses[WM_TASK_TIMEOUT], status)){
+        return upgrade_statuses[WM_TASK_UPGRADE_TIMEOUT];
+    } else if (!strcmp(task_statuses[WM_TASK_LEGACY], status)){
+        return upgrade_statuses[WM_TASK_UPGRADE_LEGACY];
     }
     return error_codes[WM_TASK_INVALID_STATUS];
 }
