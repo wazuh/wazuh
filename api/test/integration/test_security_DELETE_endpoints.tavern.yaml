@@ -24,7 +24,7 @@ stages:
             - id: 102
               name: !anystr
               policies: !anything
-              rule: !anything
+              rules: !anything
           total_affected_items: 1
 
   # DELETE /security/roles/1
@@ -135,6 +135,90 @@ stages:
       status_code: 200
       json:
         <<: *error
+
+---
+test_name: DELETE /security/roles/{role_id}/rules
+
+stages:
+
+  # DELETE /security/roles/{role_id}/rules/{rule_id}
+  - name: Try to delete a existent role-rule
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/103/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids: 103,109
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items:
+            - error:
+                code: 4022
+              id: !anything
+          total_affected_items: 1
+          total_failed_items: 1
+
+  # DELETE /security/roles/{non-existent role_id}/rules/{non-existent policy_id}
+  - name: Try to delete a non-existent role-rule
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids: 999
+    response:
+      status_code: 200
+      json:
+        <<: *error
+
+  # DELETE /security/roles/{non-existent role_id}/rules/{rule_id}
+  - name: Try to delete a non-existent role-rule (role non-existent)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids: 100
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4002
+              id: !anything
+          total_failed_items: 1
+
+  # DELETE /security/roles/{role_id}/rules/{rule_id}
+  - name: Try to delete a non-existent role-rule (rule non-existent)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids: 999
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4022
+              id: !anything
+          total_failed_items: 1
 
 ---
 test_name: DELETE /security/user/{user_id}/roles/{role_id}
@@ -268,7 +352,7 @@ stages:
             - id: 103
               name: !anystr
               policies: !anything
-              rule: !anything
+              rules: !anything
           failed_items:
             - error:
                 code: 4002
@@ -528,6 +612,107 @@ stages:
       method: DELETE
       params:
         user_ids: none
+    response:
+      status_code: 400
+
+---
+test_name: DELETE /security/rules
+
+stages:
+
+  - name: Delete a non-existent rule
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids: 200
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4022
+              id:
+                - '200'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Delete an admin rule (wui-admin)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4008
+              id:
+                - '1'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Delete an existent rule
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids: 100
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 100
+          total_affected_items: 1
+
+  - name: Delete all rules in the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids: all
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: # Admin rules cannot be deleted
+            - id: 101
+            - id: 102
+            - id: 103
+            - id: 104
+            - id: 105
+          total_affected_items: 5
+          total_failed_items: 0
+          failed_items: []
+
+  - name: Delete all rules in the system (invalid)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids: none
     response:
       status_code: 400
 
