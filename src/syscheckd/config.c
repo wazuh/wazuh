@@ -238,6 +238,11 @@ cJSON *getSyscheckConfig(void) {
             if (syscheck.tag && syscheck.tag[i]) {
                 cJSON_AddStringToObject(pair,"tags",syscheck.tag[i]);
             }
+
+            if (syscheck.file_limit_enabled && syscheck.diff_size_limit[i]) {
+                cJSON_AddNumberToObject(pair, "diff_size_limit", syscheck.diff_size_limit[i]);
+            }
+
             cJSON_AddItemToArray(dirs, pair);
         }
         cJSON_AddItemToObject(syscfg,"directories",dirs);
