@@ -323,14 +323,13 @@ typedef struct _config {
 void organize_syscheck_dirs(syscheck_config *syscheck) __attribute__((nonnull(1)));
 
 /**
- * @brief Converts the value written in the configuration to a determined data unit
+ * @brief Converts the value written in the configuration to a determined data unit in KB
  *
- * @param value Configured value for file size or disk quota
- * @param data_unit Configured data unit
+ * @param content Read content from the configuration
  *
- * @return Value converted to the corresponding data unit
+ * @return Read value on success, -1 on failure
  */
-int adjust_value_to_data_unit(const int value, const char data_unit);
+int read_data_unit(const char *content);
 
 /**
  * @brief Read diff configuration

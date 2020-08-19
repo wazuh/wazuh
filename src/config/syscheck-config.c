@@ -476,8 +476,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     char **values = g_values;
     int opts = 0;
     int tmp_diff_size = -1;
-    int len_str_limit = 0;
-    char *limit_value_str = NULL;
 
     /* Variables for extract directories and free memory after that */
     char **dir;
@@ -724,37 +722,9 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 os_calloc(strlen(*values) + 1, sizeof(char), value);
                 strcpy(value, *values);
 
-                len_str_limit = strlen(value);
+                tmp_diff_size = read_data_unit(value);
 
-                if (value[len_str_limit - 1] == 'B' || value[len_str_limit - 1] == 'b') {
-                    if (isalpha(value[len_str_limit - 2])){
-                        os_calloc(len_str_limit, sizeof(char), limit_value_str);
-                        strncpy(limit_value_str, value, len_str_limit - 2);
-
-                        if (OS_StrIsNum(limit_value_str)) {
-                            tmp_diff_size = adjust_value_to_data_unit(atoi(limit_value_str),
-                                                                        value[len_str_limit - 2]);
-                        }
-                        else {
-                            mwarn(FIM_INVALID_OPTION_SKIP, value, *attrs, dirs);
-                            os_free(limit_value_str);
-                            os_free(value);
-                            goto out_free;
-                        }
-
-                        os_free(limit_value_str);
-                    }
-                }
-                else if (isdigit(value[len_str_limit - 1])) {
-                    if (!OS_StrIsNum(value)) {
-                        mwarn(FIM_INVALID_OPTION_SKIP, value, *attrs, dirs);
-                        os_free(value);
-                        goto out_free;
-                    }
-
-                    tmp_diff_size = atoi(value);    // In KB
-                }
-                else {
+                if (tmp_diff_size == -1) {
                     mwarn(FIM_INVALID_OPTION_SKIP, value, *attrs, dirs);
                     os_free(value);
                     goto out_free;
@@ -1113,36 +1083,70 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
     }
 }
 
-int adjust_value_to_data_unit(const int value, const char data_unit) {
-    int converted_value = 1;
+int read_data_unit(const char *content) {
+    size_t len_value_str = strlen(content);
+    int converted_value = 0;
+    int read_value = 0;
+    char *value_str;
 
-    switch (data_unit) {
-        case 'M':
-            // Fallthrough
-        case 'm':
-            converted_value = value * 1024;
-            break;
-        case 'G':
-            // Fallthrough
-        case 'g':
-            converted_value = value * (1024 * 1024);
-            break;
-        case 'T':
-            // Fallthrough
-        case 't':
-            converted_value = value * (1024 * 1024 * 1024);
-            break;
-        case 'K':
-            // Fallthrough
-        case 'k':
-            // Fallthrough
-        default:
-            converted_value = value;
-            break;
+    // Check that the last character is a 'B' or a 'b', if it is, translate data unit
+    // Else, use written value as KB
+    if (content[len_value_str - 1] == 'B' || content[len_value_str - 1] == 'b') {
+        if (isalpha(content[len_value_str - 2])){
+            os_calloc(len_value_str, sizeof(char), value_str);
+            strncpy(value_str, content, len_value_str - 2);
+
+            if (OS_StrIsNum(value_str)) {
+                read_value = atoi(value_str);
+                
+                switch (content[len_value_str - 2]) {
+                    case 'M':
+                        // Fallthrough
+                    case 'm':
+                        converted_value = read_value * 1024;
+                        break;
+                    case 'G':
+                        // Fallthrough
+                    case 'g':
+                        converted_value = read_value * (1024 * 1024);
+                        break;
+                    case 'T':
+                        // Fallthrough
+                    case 't':
+                        converted_value = read_value * (1024 * 1024 * 1024);
+                        break;
+                    case 'K':
+                        // Fallthrough
+                    case 'k':
+                        // Fallthrough
+                    default:
+                        converted_value = read_value;
+                        break;
+                }
+
+                if (converted_value < 0 && read_value > 0) {  // Overflow
+                    converted_value = INT_MAX;
+                }
+            }
+            else {
+                return -1;
+            }
+
+            os_free(value_str);
+        }
+        else if (isdigit(content[len_value_str - 2])) {
+            return -1;  // Error: limit cannot be set to bytes
+        }
     }
+    else if (isdigit(content[len_value_str - 1])) {
+        if (!OS_StrIsNum(content)) {
+            return -1;
+        }
 
-    if (converted_value < 0 && value > 0) {  // Overflow
-        converted_value = INT_MAX;
+        converted_value = atoi(content);     // In KB
+    }
+    else {
+        return -1;
     }
 
     return converted_value;
@@ -1160,9 +1164,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
     int i = 0;
     int j = 0;
     xml_node **children = NULL;
-    char *limit_value_str;
     unsigned int nodiff_size = 0;
-    size_t len_str_limit = 0;
 
     for (i = 0; node[i]; i++) {
         /* Getting file/dir nodiff */
@@ -1212,9 +1214,6 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         merror(REGEX_COMPILE, node[i]->content, mt_pt->error);
                         return;
                     }
-
-                    mdebug1("Found nodiff regex node %s OK?", node[i]->content);
-                    mdebug1("Found nodiff regex size %d", nodiff_size);
                 }
                 else {
                     merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
@@ -1263,46 +1262,9 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                 }
                 else if (strcmp(children[j]->element, xml_disk_quota_limit) == 0) {
                     if (children[j]->content) {
-                        len_str_limit = strlen(children[j]->content);
+                        syscheck->disk_quota_limit = read_data_unit(children[j]->content);
 
-                        if (children[j]->content[len_str_limit - 1] == 'B' ||
-                            children[j]->content[len_str_limit - 1] == 'b') {
-
-                            if (isalpha(children[j]->content[len_str_limit - 2])){
-                                os_calloc(len_str_limit, sizeof(char), limit_value_str);
-                                strncpy(limit_value_str, children[j]->content, len_str_limit - 2);
-
-                                if (OS_StrIsNum(limit_value_str)) {
-                                    syscheck->disk_quota_limit = adjust_value_to_data_unit(
-                                                                    atoi(limit_value_str),
-                                                                    children[j]->content[len_str_limit - 2]
-                                                                 );
-                                }
-                                else {
-                                    merror(XML_VALUEERR, children[j]->element, children[j]->content);
-                                    os_free(limit_value_str);
-                                    OS_ClearNode(children);
-                                    return;
-                                }
-
-                                os_free(limit_value_str);
-                            }
-                            else if (isdigit(children[j]->content[len_str_limit - 2])) {
-                                merror(XML_VALUEERR, children[j]->element, children[j]->content);
-                                OS_ClearNode(children);
-                                return;
-                            }
-                        }
-                        else if (isdigit(children[j]->content[len_str_limit - 1])) {
-                            if (!OS_StrIsNum(children[j]->content)) {
-                                merror(XML_VALUEERR, children[j]->element, children[j]->content);
-                                OS_ClearNode(children);
-                                return;
-                            }
-
-                            syscheck->disk_quota_limit = atoi(children[j]->content);    // In KB
-                        }
-                        else {
+                        if (syscheck->disk_quota_limit == -1) {
                             merror(XML_VALUEERR, children[j]->element, children[j]->content);
                             OS_ClearNode(children);
                             return;
@@ -1343,44 +1305,9 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                 }
                 else if (strcmp(children[j]->element, xml_file_size_limit) == 0) {
                     if (children[j]->content) {
-                        len_str_limit = strlen(children[j]->content);
+                        syscheck->file_size_limit = read_data_unit(children[j]->content);
 
-                        if (children[j]->content[len_str_limit - 1] == 'B') {
-                            if (isalpha(children[j]->content[len_str_limit - 2])){
-                                os_calloc(len_str_limit, sizeof(char), limit_value_str);
-                                strncpy(limit_value_str, children[j]->content, len_str_limit - 2);
-
-                                if (OS_StrIsNum(limit_value_str)) {
-                                    syscheck->file_size_limit = adjust_value_to_data_unit(
-                                                                    atoi(limit_value_str),
-                                                                    children[j]->content[len_str_limit - 2]
-                                                                );
-                                }
-                                else {
-                                    merror(XML_VALUEERR, children[j]->element, children[j]->content);
-                                    os_free(limit_value_str);
-                                    OS_ClearNode(children);
-                                    return;
-                                }
-
-                                os_free(limit_value_str);
-                            }
-                            else if (isdigit(children[j]->content[len_str_limit - 2])) {
-                                merror(XML_VALUEERR, children[j]->element, children[j]->content);
-                                OS_ClearNode(children);
-                                return;
-                            }
-                        }
-                        else if (isdigit(children[j]->content[len_str_limit - 1])) {
-                            if (!OS_StrIsNum(children[j]->content)) {
-                                merror(XML_VALUEERR, children[j]->element, children[j]->content);
-                                OS_ClearNode(children);
-                                return;
-                            }
-
-                            syscheck->file_size_limit = atoi(children[j]->content);     // In KB
-                        }
-                        else {
+                        if (syscheck->file_size_limit == -1) {
                             merror(XML_VALUEERR, children[j]->element, children[j]->content);
                             OS_ClearNode(children);
                             return;
