@@ -35,7 +35,7 @@ static const char *upgrade_statuses[] = {
     [WM_TASK_UPGRADE_UPDATED] = "Updated",
     [WM_TASK_UPGRADE_OUTDATED] = "The agent is outdated since the task could not start",
     [WM_TASK_UPGRADE_TIMEOUT] = "Timeout reached while waiting for the response from the agent",
-    [WM_TASK_UPGRADE_LEGACY] = "Check the result manually since the agent cannot report the result of the task"
+    [WM_TASK_UPGRADE_LEGACY] = "Legacy upgrade: check the result manually since the agent cannot report the result of the task"
 };
 
 static const char *error_codes[] = {
@@ -399,6 +399,9 @@ int wm_task_manager_init(wm_task_manager *task_config) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_CHECK_DB_ERROR);
         pthread_exit(NULL);
     }
+
+    // Start clean DB thread
+    w_create_thread(wm_task_manager_clean_db, task_config);
 
     /* Set the queue */
     if (sock = OS_BindUnixDomain(DEFAULTDIR TASK_QUEUE, SOCK_STREAM, OS_MAXSTR), sock < 0) {
