@@ -21,6 +21,7 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
     cJSON *task_module_response = NULL;
     cJSON *temp_array = cJSON_CreateArray();
     if (agents = cJSON_GetArraySize(task_module_request), !agents) {
+        cJSON_Delete(temp_array);
         return OS_INVALID;
     }
 
