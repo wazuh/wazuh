@@ -35,24 +35,25 @@ INSERT INTO users VALUES(104,'rbac','pbkdf2:sha256:150000$eQAz1s4i$12c6ffdd7f290
 INSERT INTO users VALUES(105,'guest','pbkdf2:sha256:150000$O9tFseJW$7659fc551aa6ed9cf207434d90d1da388f6840ce7bba5967a16949d4a94d1579',0,'1970-01-01 00:00:00');
 
 /* Default roles */
-INSERT INTO roles VALUES(1,'administrator','{"FIND": {"r''^auth[a-zA-Z]+$''": ["full_admin"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(2,'readonly','{"FIND": {"r''^auth[a-zA-Z]+$''": ["readonly"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(3,'users_admin','{"FIND": {"r''^auth[a-zA-Z]+$''": ["users_admin"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(4,'agents_readonly','{"FIND": {"r''^auth[a-zA-Z]+$''": ["agents_readonly"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(5,'agents_admin','{"FIND": {"r''^auth[a-zA-Z]+$''": ["agents_admin"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(6,'cluster_readonly','{"FIND": {"r''^auth[a-zA-Z]+$''": ["cluster_readonly"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(7,'cluster_admin','{"FIND": {"r''^auth[a-zA-Z]+$''": ["cluster_admin"]}}','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(1,'administrator','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(2,'readonly','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(3,'users_admin','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(4,'agents_readonly','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(5,'agents_admin','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(6,'cluster_readonly','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(7,'cluster_admin','1970-01-01 00:00:00');
 
 /* Testing */
-INSERT INTO roles VALUES(100,'wazuh','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(101,'wazuh-wui','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator-app"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(102,'technical','{"MATCH": {"definition": "technicalRule"}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(103,'administrator_test','{"MATCH": {"definition": "administratorRule"}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(104,'normalUser','{"MATCH": {"definition": "normalRule"}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(105,'ossec','{"MATCH": {"definition": "ossecRule"}}','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(100,'wazuh','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(101,'wazuh-wui','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(102,'technical','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(103,'administrator_test','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(104,'normalUser','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(105,'ossec','1970-01-01 00:00:00');
 
 /* Default rules */
 INSERT INTO rules VALUES(1,'wui_admin','{"FIND": {"roles": ["all_access"]}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(2,'wui_readonly','{"FIND": {"roles": ["readonly"]}}','1970-01-01 00:00:00');
 
 /* Testing */
 INSERT INTO rules VALUES(100,'rule1','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator"]}}','1970-01-01 00:00:00');
@@ -189,6 +190,7 @@ INSERT INTO user_roles VALUES(110,104,103,2,'1970-01-01 00:00:00');
 
 /* Default roles-rules links */
 INSERT INTO roles_rules VALUES(1,1,1,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(2,2,2,'1970-01-01 00:00:00');
 
 /* Testing */
 INSERT INTO roles_rules VALUES(100,100,100,'1970-01-01 00:00:00');
