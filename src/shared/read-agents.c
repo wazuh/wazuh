@@ -841,13 +841,6 @@ int delete_agentinfo(const char *id, const char *name)
 {
     const char *sk_name;
     char *sk_ip;
-    char tmp_file[513];
-
-    tmp_file[512] = '\0';
-
-    /* Delete agent info */
-    snprintf(tmp_file, 512, "%s/%s", AGENTINFO_DIR, name);
-    unlink(tmp_file);
 
     /* Delete syscheck */
     sk_name = name;
