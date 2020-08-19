@@ -254,8 +254,12 @@ installElasticsearch() {
 
         # Start Elasticsearch
         startService "elasticsearch"
-        echo "Initializing Elasticsearch..."
-        passwords=$(/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b)
+        echo "Initializing Elasticsearch...(this may take a while)"
+        until $(passwords=$(/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b > /dev/null 2>&1)); do
+            echo -ne $char
+            sleep 10
+        done
+        
         password=$(echo $passwords | awk 'NF{print $NF; exit}')
         until $(curl -XGET https://localhost:9200/ -elastic:"$password" -k --max-time 120 --silent --output /dev/null); do
             echo -ne $char
