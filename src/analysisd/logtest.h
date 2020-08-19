@@ -82,6 +82,10 @@ typedef struct w_logtest_connection_t {
     pthread_mutex_t mutex;      ///< Mutex to prevent race condition in accept syscall
     int sock;                   ///< The open connection with logtest queue
 
+    //! Mutex to prevent race condition when scrolling through the hash table and protect the number of active clients
+    pthread_mutex_t mutex_hash_table;
+    int active_client;                  ///< Number of current clients
+
 } w_logtest_connection_t;
 
 
@@ -134,8 +138,9 @@ void w_logtest_remove_session(char * token);
  *
  * Check all the sessions. If a session has been inactive longer than session_timeout,
  * call w_logtest_remove_session to remove it.
+ * @param connection
  */
-void * w_logtest_check_inactive_sessions(__attribute__((unused)) void * arg);
+void * w_logtest_check_inactive_sessions(w_logtest_connection_t * connection);
 
 /**
  * @brief Initialize FTS engine for a client session
@@ -181,9 +186,20 @@ char* w_logtest_generate_token();
  * or the token is invalid, returns a new session.
  * @param req request for a session.
  * @param list_msg list of \ref os_analysisd_log_msg_t for store messages.
+ * @param connection Where register the session as active
  * @return new session or NULL on error.
  */
-w_logtest_session_t* w_logtest_get_session(cJSON* req, OSList* list_msg);
+w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg, w_logtest_connection_t * connection);
+
+/**
+ * @brief Register a session as active in connection
+ * 
+ * If is reach the maximum number of sessions, find the session who has not made
+ * a query for the longest time and mark it as expired.
+ * @param connection Where register the session as active
+ * @param session Session to register
+ */
+void w_logtest_register_session(w_logtest_connection_t * connection, w_logtest_session_t * session);
 
 /**
  * @brief Get the level of de triggered rule within json_log_processed
@@ -195,6 +211,7 @@ int w_logtest_get_rule_level(cJSON* json_log_processed);
 /**
  * @brief Processes a client input request
  * @param raw_request client request
+ * @param connection 
  * @return string (json format) with the result of the request
  */
-char * w_logtest_process_request(char * raw_request);
+char * w_logtest_process_request(char * raw_request, w_logtest_connection_t * connection);
