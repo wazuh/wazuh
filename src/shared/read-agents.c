@@ -12,6 +12,7 @@
 #include "read-agents.h"
 #include "os_net/os_net.h"
 #include "wazuhdb_op.h"
+#include "wazuh_db/wdb.h"
 
 #ifndef WIN32
 static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, int csv_output, cJSON *json_output,
@@ -23,8 +24,6 @@ static void _do_get_rootcheckscan(FILE *fp, time_t values[2]) __attribute__((non
 static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_scan[2],
                                int csv_output, cJSON *json_output, int show_last) __attribute__((nonnull(1)));
 static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info, const char* agent_id) __attribute__((nonnull(2, 3)));
-static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip) __attribute__((nonnull(2)));
-static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_info *agt_info) __attribute__((nonnull(2, 3)));
 #endif /* !WIN32*/
 
 /* Free the agent list in memory */
@@ -1080,143 +1079,49 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
     return (0);
 }
 
-
-/* Internal function. Extract last time of scan from rootcheck/syscheck. */
-static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip)
-{
-    char buf[1024 + 1];
-    struct stat file_status;
-    char buf_ptr[26];
-
-    /* No keepalive for the server */
-    if (!agent_name) {
-        return (strdup("Not available"));
-    }
-
-    snprintf(buf, 1024, "%s/%s-%s", AGENTINFO_DIR, agent_name, agent_ip);
-    if (stat(buf, &file_status) < 0) {
-        return (strdup("Unknown"));
-    }
-    return (strdup(w_ctime(&file_status.st_mtime, buf_ptr, sizeof(buf_ptr))));
-}
-
-/* Internal function. Extract operating system. */
-static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_info *agt_info)
-{
-    FILE *fp;
-    char buf[1024 + 1];
-    char *merged_sum;
-    char *end;
-
-    /* Get server info */
-    if (!agent_name) {
-        char *ossec_version = NULL;
-        agt_info->os = strdup(getuname());
-        os_strdup(__ossec_name " " __ossec_version, agt_info->version);
-
-        /* Remove newline */
-        ossec_version = strchr(agt_info->os, '\n');
-        if (ossec_version) {
-            *ossec_version = '\0';
-        }
-
-        ossec_version = strstr(agt_info->os, " - ");
-        if (ossec_version) {
-            *ossec_version = '\0';
-        }
-
-        return (0);
-    }
-
-    snprintf(buf, 1024, "%s/%s-%s", AGENTINFO_DIR, agent_name, agent_ip);
-    fp = fopen(buf, "r");
-    if (!fp) {
-        os_strdup("Unknown", agt_info->os);
-        os_strdup("Unknown", agt_info->version);
-        os_strdup("Unknown", agt_info->merged_sum);
-        return (0);
-    }
-
-    if (fgets(buf, 1024, fp)) {
-        char *ossec_version = NULL;
-
-        /* Remove newline */
-        ossec_version = strchr(buf, '\n');
-        if (ossec_version) {
-            *ossec_version = '\0';
-        }
-
-        ossec_version = strstr(buf, " - ");
-        if (ossec_version) {
-            *ossec_version = '\0';
-            ossec_version += 3;
-
-            os_calloc(1024 + 1, sizeof(char), agt_info->version);
-            strncpy(agt_info->version, ossec_version, 1024);
-        }
-
-        os_strdup(buf, agt_info->os);
-
-        // Search for merged.mg sum
-
-        while (end = NULL, merged_sum = fgets(buf, 1024, fp), merged_sum) {
-            if (*merged_sum != '\"' && *merged_sum != '!' && (end = strchr(merged_sum, ' '), end)) {
-                *end = '\0';
-
-                if (strcmp(end + 1, SHAREDCFG_FILENAME "\n") == 0) {
-                    break;
-                }
-            }
-        }
-
-        os_strdup(end ? merged_sum : "Unknown", agt_info->merged_sum);
-        fclose(fp);
-
-        return (1);
-    }
-
-    fclose(fp);
-
-    os_strdup("Unknown", agt_info->os);
-    os_strdup("Unknown", agt_info->version);
-    os_strdup("Unknown", agt_info->merged_sum);
-
-    return (0);
-}
-
-
 /* Get information from an agent */
-agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id)
-{
-    char *agent_ip_pt = NULL;
-    char *tmp_str = NULL;
-
+agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id){
+    char tmp_keepalive[OS_SIZE_128] = "";
+    cJSON *json_agt_info = NULL;
+    cJSON *json_agt_info_field = NULL;
     agent_info *agt_info = NULL;
-
-    /* Remove the "/", since it is not present on the file */
-    if ((agent_ip_pt = strchr(agent_ip, '/'))) {
-        *agent_ip_pt = '\0';
-    }
 
     /* Allocate memory for the info structure */
     os_calloc(1, sizeof(agent_info), agt_info);
 
-    /* Get information about the OS */
-    _get_agent_os(agent_name, agent_ip, agt_info);
+    /* Getting all the information of the agent */
+    json_agt_info = wdb_get_agent_info(atoi(agent_id));
+
+    if (!json_agt_info) {
+        mdebug1("Failed to get agent '%s' information from Wazuh DB.",agent_id);
+        cJSON_Delete(json_agt_info);
+        return NULL;
+    }
+
+    json_agt_info_field = cJSON_GetObjectItemCaseSensitive(json_agt_info->child, "os_name");
+    if (cJSON_IsString(json_agt_info_field) && json_agt_info_field->valuestring != NULL ){
+        os_strdup(json_agt_info_field->valuestring, agt_info->os);
+    }
+
+    json_agt_info_field = cJSON_GetObjectItemCaseSensitive(json_agt_info->child, "version");
+    if (cJSON_IsString(json_agt_info_field) && json_agt_info_field->valuestring != NULL ){
+        os_strdup(json_agt_info_field->valuestring, agt_info->version);
+    }
+
+    json_agt_info_field = cJSON_GetObjectItemCaseSensitive(json_agt_info->child, "merged_sum");
+    if (cJSON_IsString(json_agt_info_field) && json_agt_info_field->valuestring != NULL ){
+        os_strdup(json_agt_info_field->valuestring, agt_info->merged_sum);
+    }
+
+    json_agt_info_field = cJSON_GetObjectItemCaseSensitive(json_agt_info->child, "last_keepalive");
+    if (cJSON_IsNumber(json_agt_info_field)){
+        snprintf(tmp_keepalive, OS_SIZE_128, "%d", json_agt_info_field->valueint);
+        os_strdup(tmp_keepalive, agt_info->last_keepalive);
+    }
+
     _get_time_rkscan(agent_name, agent_ip, agt_info, agent_id);
-    agt_info->last_keepalive = _get_agent_keepalive(agent_name, agent_ip);
 
-    /* Remove newline from keepalive */
-    tmp_str = strchr(agt_info->last_keepalive, '\n');
-    if (tmp_str) {
-        *tmp_str = '\0';
-    }
-
-    /* Set back the IP address */
-    if (agent_ip_pt) {
-        *agent_ip_pt = '/';
-    }
-
+    cJSON_Delete(json_agt_info);
     return (agt_info);
 }
 #endif
