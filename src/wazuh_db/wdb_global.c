@@ -211,8 +211,13 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
 
                 //Get labels if any
                 cJSON* json_labels = wdb_global_get_agent_labels(wdb, agent_id);
-                if (json_labels && json_labels->child){
-                    cJSON_AddItemToObject(json_agent, "labels", json_labels);
+                if (json_labels) {
+                    if (json_labels->child) {
+                        cJSON_AddItemToObject(json_agent, "labels", json_labels);
+                    }
+                    else {
+                        cJSON_Delete(json_labels);
+                    }                        
                 }
 
                 //Print Agent info
