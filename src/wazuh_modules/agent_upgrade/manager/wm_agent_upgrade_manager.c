@@ -37,7 +37,7 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start."
 };
 
-void wm_agent_upgrade_listen_messages(int timeout_sec) {
+void wm_agent_upgrade_listen_messages(int timeout_sec, const wm_manager_configs* manager_configs) {
 
     struct timeval timeout = { timeout_sec, 0 };
 
@@ -109,7 +109,7 @@ void wm_agent_upgrade_listen_messages(int timeout_sec) {
             case WM_UPGRADE_UPGRADE:
                 // Upgrade command
                 if (task && agent_ids) {
-                    message = wm_agent_upgrade_process_upgrade_command(agent_ids, (wm_upgrade_task *)task);
+                    message = wm_agent_upgrade_process_upgrade_command(agent_ids, (wm_upgrade_task *)task, manager_configs);
                     wm_agent_upgrade_free_upgrade_task(task);
                     os_free(agent_ids);
                 }
@@ -117,7 +117,7 @@ void wm_agent_upgrade_listen_messages(int timeout_sec) {
             case WM_UPGRADE_UPGRADE_CUSTOM:
                 // Upgrade custom command
                 if (task && agent_ids) {
-                    message = wm_agent_upgrade_process_upgrade_custom_command(agent_ids, (wm_upgrade_custom_task *)task);
+                    message = wm_agent_upgrade_process_upgrade_custom_command(agent_ids, (wm_upgrade_custom_task *)task, manager_configs);
                     wm_agent_upgrade_free_upgrade_custom_task(task);
                     os_free(agent_ids);
                 }

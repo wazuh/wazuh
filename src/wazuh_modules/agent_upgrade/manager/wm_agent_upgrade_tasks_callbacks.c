@@ -21,9 +21,10 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
     cJSON *task_module_response = NULL;
     cJSON *temp_array = cJSON_CreateArray();
     if (agents = cJSON_GetArraySize(task_module_request), !agents) {
+        cJSON_Delete(temp_array);
         return OS_INVALID;
     }
-    
+
     // Send request to task module
     task_module_response = wm_agent_upgrade_send_tasks_information(task_module_request);
 
@@ -43,7 +44,6 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
             } else {
                 cJSON_AddItemToArray(temp_array, task_response);
             }
-            
         }
     } else {
         error = OS_INVALID;
@@ -101,9 +101,9 @@ cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json) 
 }
 
 cJSON* wm_agent_upgrade_update_status_success_callback(int *error, cJSON* input_json) {
-    int agent_id;
-    if (wm_agent_upgrade_validate_task_status_message(input_json, NULL, &agent_id)) {
-        // If status update is successful, tell agent to erase results file
+    int agent_id = 0;
+    if (wm_agent_upgrade_validate_task_status_message(input_json, NULL, &agent_id), agent_id > 0) {
+        // Tell agent to erase results file
         char *buffer = NULL;
 
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
