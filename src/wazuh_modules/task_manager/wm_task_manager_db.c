@@ -29,13 +29,21 @@ static int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt);
  * */
 static int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout);
 
+/**
+ * Delete old tasks from the tasks DB
+ * @param timestamp Deletion limit time
+ * @return OS_SUCCESS on success, OS_INVALID on errors
+ * */
+static int wm_task_manager_delete_old_entries(int timestamp);
+
 static const char *task_queries[] = {
     [WM_TASK_INSERT_TASK] = "INSERT INTO " TASKS_TABLE " VALUES(NULL,?,?,?,?,?,?);",
     [WM_TASK_GET_LAST_AGENT_TASK] = "SELECT *, MAX(CREATE_TIME) FROM " TASKS_TABLE " WHERE AGENT_ID = ? AND MODULE = ?;",
     [WM_TASK_GET_TASK_STATUS] = "SELECT STATUS FROM " TASKS_TABLE " WHERE TASK_ID = ?;",
     [WM_TASK_UPDATE_TASK_STATUS] = "UPDATE " TASKS_TABLE " SET STATUS = ?, LAST_UPDATE_TIME = ? WHERE TASK_ID = ?;",
     [WM_TASK_GET_TASK_BY_TASK_ID] = "SELECT * FROM " TASKS_TABLE " WHERE TASK_ID = ?;",
-    [WM_TASK_GET_TASK_BY_STATUS] = "SELECT * FROM " TASKS_TABLE " WHERE STATUS = ?;"
+    [WM_TASK_GET_TASK_BY_STATUS] = "SELECT * FROM " TASKS_TABLE " WHERE STATUS = ?;",
+    [WM_TASK_DELETE_OLD_TASKS] = "DELETE FROM " TASKS_TABLE " WHERE CREATE_TIME <= ?;"
 };
 
 static int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt) {
@@ -108,7 +116,8 @@ int wm_task_manager_check_db() {
     return 0;
 }
 
-void* wm_task_manager_clean_db(__attribute__((unused)) void *arg) {
+void* wm_task_manager_clean_db(void *arg) {
+    wm_task_manager *config = (wm_task_manager *)arg;
     time_t next_clean = time(0);
     time_t next_timeout = next_clean;
 
@@ -122,7 +131,17 @@ void* wm_task_manager_clean_db(__attribute__((unused)) void *arg) {
             wm_task_manager_set_timeout_status(now, &next_timeout);
         }
 
-        sleep_time = next_timeout - now;
+        if (now >= next_clean) {
+            // Delete entries older than cleanup_time
+            next_clean = now + WM_TASK_CLEANUP_DB_SLEEP_TIME;
+            wm_task_manager_delete_old_entries((now - config->cleanup_time));
+        }
+
+        if (next_timeout < next_clean) {
+            sleep_time = next_timeout - now;
+        } else {
+            sleep_time = next_clean - now;
+        }
 
         sleep(sleep_time);
     }
@@ -168,9 +187,44 @@ static int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout) 
                 mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
                 return wm_task_manager_sql_error(db, stmt);
             }
-        } else {
+        } else if (now > last_update_time) {
             *next_timeout = last_update_time + WM_TASK_MAX_IN_PROGRESS_TIME;
         }
+    }
+
+    wdb_finalize(stmt);
+
+    sqlite3_close_v2(db);
+
+    w_mutex_unlock(&db_mutex);
+
+    return OS_SUCCESS;
+}
+
+static int wm_task_manager_delete_old_entries(int timestamp) {
+    sqlite3 *db = NULL;
+    sqlite3_stmt *stmt = NULL;
+    int result = OS_INVALID;
+
+    mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_RUNNING_CLEAN);
+
+    w_mutex_lock(&db_mutex);
+
+    if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READWRITE, NULL)) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
+        return wm_task_manager_sql_error(db, stmt);
+    }
+
+    if (wdb_prepare(db, task_queries[WM_TASK_DELETE_OLD_TASKS], -1, &stmt, NULL) != SQLITE_OK) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
+        return wm_task_manager_sql_error(db, stmt);
+    }
+
+    sqlite3_bind_int(stmt, 1, timestamp);
+
+    if (result = wdb_step(stmt), result != SQLITE_DONE) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
+        return wm_task_manager_sql_error(db, stmt);
     }
 
     wdb_finalize(stmt);

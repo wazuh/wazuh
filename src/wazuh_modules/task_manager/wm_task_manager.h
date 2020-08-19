@@ -17,6 +17,7 @@
 #define WM_TASK_MANAGER_LOGTAG ARGV0 ":" TASK_MANAGER_WM_NAME
 
 #define WM_TASK_MAX_IN_PROGRESS_TIME 900 // 15 minutes
+#define WM_TASK_CLEANUP_DB_SLEEP_TIME 86400 // A day
 #define WM_TASK_DEFAULT_CLEANUP_TIME 604800 // A week
 
 typedef struct _wm_task_manager {

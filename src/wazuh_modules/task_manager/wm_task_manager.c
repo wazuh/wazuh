@@ -401,7 +401,7 @@ int wm_task_manager_init(wm_task_manager *task_config) {
     }
 
     // Start clean DB thread
-    w_create_thread(wm_task_manager_clean_db, NULL);
+    w_create_thread(wm_task_manager_clean_db, task_config);
 
     /* Set the queue */
     if (sock = OS_BindUnixDomain(DEFAULTDIR TASK_QUEUE, SOCK_STREAM, OS_MAXSTR), sock < 0) {
