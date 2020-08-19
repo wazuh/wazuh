@@ -430,6 +430,15 @@ int wdb_parse(char * input, char * output) {
                     result = OS_INVALID;
                 }
             }
+        } else if (strcmp(query, "insert-agent") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_insert_agent(wdb, next, output);
+            }
         } else if (strcmp(query, "get-labels") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax.");
@@ -3882,6 +3891,57 @@ int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output) {
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
         return -1;
     }
+}
+
+int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
+    cJSON *agent_data = NULL;
+    const char *error = NULL;
+    cJSON *j_id = NULL;
+    cJSON *j_name = NULL;
+    cJSON *j_ip = NULL;
+    cJSON *j_register_ip = NULL;
+    cJSON *j_internal_key = NULL;
+    cJSON *j_group = NULL;
+    cJSON *j_date_add = NULL;
+
+    agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
+    if (!agent_data) {
+        mdebug1("Global DB Invalid JSON syntax when inserting agent.");
+        mdebug2("Global DB JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        return OS_INVALID;
+    } else {
+        j_id = cJSON_GetObjectItemCaseSensitive(agent_data, "id");
+        j_name = cJSON_GetObjectItemCaseSensitive(agent_data, "name");
+        j_ip = cJSON_GetObjectItemCaseSensitive(agent_data, "ip");
+        j_register_ip = cJSON_GetObjectItemCaseSensitive(agent_data, "register_ip");
+        j_internal_key = cJSON_GetObjectItemCaseSensitive(agent_data, "internal_key");
+        j_group = cJSON_GetObjectItemCaseSensitive(agent_data, "group");
+        j_date_add = cJSON_GetObjectItemCaseSensitive(agent_data, "date_add");
+
+        // These are the only constraints defined in the database for this set of parameters
+        if (cJSON_IsNumber(j_id) &&
+            cJSON_IsString(j_name) && j_name->valuestring &&
+            cJSON_IsNumber(j_date_add) && j_date_add->valueint) {
+            if (OS_SUCCESS != wdb_global_insert_agent(wdb, j_id->valueint, j_name->valuestring, j_ip->valuestring, 
+                j_register_ip->valuestring, j_internal_key->valuestring, j_group->valuestring, j_date_add->valueint)) {
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                cJSON_Delete(agent_data);
+                return OS_INVALID;
+            }
+        } else {
+            mdebug1("Global DB Invalid JSON data when inserting agent. Not compliant with constraints defined in the database.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
+            cJSON_Delete(agent_data);
+            return OS_INVALID;
+        }
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+    cJSON_Delete(agent_data);
+
+    return OS_SUCCESS;
 }
 
 int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output) {

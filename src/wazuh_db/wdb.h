@@ -124,6 +124,7 @@ typedef enum wdb_stmt {
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
     WDB_STMT_MITRE_NAME_GET,
+    WDB_STMT_GLOBAL_INSERT_AGENT,
     WDB_STMT_GLOBAL_LABELS_GET,
     WDB_STMT_GLOBAL_LABELS_DEL,
     WDB_STMT_GLOBAL_LABELS_SET,
@@ -732,6 +733,17 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
 int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output);
 
 /**
+ * @brief Function to parse the agent insert request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with the agent data in JSON format.
+ * @param output Response of the query.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output);
+
+/**
  * @brief Function to parse the labels request for a particular agent.
  * 
  * @param wdb the global struct database.
@@ -853,6 +865,22 @@ int wdb_journal_wal(sqlite3 *db);
  * @retval -1 On error: invalid DB query syntax.
  */
 int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
+
+/**
+ * @brief Function to insert an agent.
+ * 
+ * @param wdb The Global struct database.
+ * @param id The agent ID
+ * @param name The agent name
+ * @param ip The agent IP address
+ * @param register_ip The agent registration IP address
+ * @param internal_key The agent key
+ * @param group The agent group
+ * @param date_add The agent addition date.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add);
 
 /**
  * @brief Function to get the labels of a particular agent.
