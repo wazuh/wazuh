@@ -55,7 +55,7 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     /* Create the checksum file names */
     snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
-    snprintf(logfilesum, OS_FLSIZE, "%s.sum", logfile_r);
+    os_snprintf(logfilesum, OS_FLSIZE, "%s.sum", logfile_r);
     snprintf(logfilesum_old, OS_FLSIZE, "%s.%s.sum", logfile_old, ext);
 
     MD5_Init(&md5_ctx);
@@ -146,12 +146,12 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     fprintf(fp, "Current checksum:\n");
     fprintf(fp, "MD5  (%s) = %s\n", logfile, mf_sum);
-    fprintf(fp, "SHA1 (%s) = %s\n\n", logfile, sf_sum);
+    fprintf(fp, "SHA1 (%s) = %s\n", logfile, sf_sum);
     fprintf(fp, "SHA256 (%s) = %s\n\n", logfile, sf256_sum);
 
     fprintf(fp, "Chained checksum:\n");
     fprintf(fp, "MD5  (%s) = %s\n", logfilesum_old, mf_sum_old);
-    fprintf(fp, "SHA1 (%s) = %s\n\n", logfilesum_old, sf_sum_old);
+    fprintf(fp, "SHA1 (%s) = %s\n", logfilesum_old, sf_sum_old);
     fprintf(fp, "SHA256 (%s) = %s\n\n", logfilesum_old, sf256_sum_old);
     fclose(fp);
 

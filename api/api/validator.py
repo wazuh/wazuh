@@ -12,6 +12,7 @@ from jsonschema import draft4_format_checker
 from wazuh.core import common
 
 _alphanumeric_param = re.compile(r'^[\w,\-\.\+\s\:]+$')
+_symbols_alphanumeric_param = re.compile(r'^[a-zA-Z0-9_,<>!\-.+\s:/()\'"|=]+$')
 _array_numbers = re.compile(r'^\d+(,\d+)*$')
 _array_names = re.compile(r'^[\w\-\.]+(,[\w\-\.]+)*$')
 _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
@@ -19,7 +20,8 @@ _boolean = re.compile(r'^true$|^false$')
 _cdb_list = re.compile(r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
-_group_names = re.compile(r'^[A-Za-z0-9.\-_]+$')
+_group_names = re.compile(r'^[A-Za-z0-9.\-_]+\b(?<!\ball)$')
+_group_names_delete = re.compile(r'^[A-Za-z0-9.\-_]+$')
 _hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{56})?$|(?:[\da-fA-F]{64})?$|(?:[\da-fA-F]{96})?$|(?:[\da-fA-F]{128})?$')
 _ips = re.compile(
     r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2])){0,1}$|^any$|^ANY$')
@@ -28,6 +30,7 @@ _iso8601_date_time = (
     r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])[tT](2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?([zZ]|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$')
 _names = re.compile(r'^[\w\-\.]+$')
 _numbers = re.compile(r'^\d+$')
+_numbers_delete = re.compile(r'^\d+|all$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _paths = re.compile(r'^[\w\-\.\\\/:]+$')
 _query_param = re.compile(r"^(?:[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)(?:(?:;|,)[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)*$")
@@ -118,6 +121,11 @@ def format_alphanumeric(value):
     return check_exp(value, _alphanumeric_param)
 
 
+@draft4_format_checker.checks("alphanumeric_symbols")
+def format_alphanumeric_symbols(value):
+    return check_exp(value, _symbols_alphanumeric_param)
+
+
 @draft4_format_checker.checks("base64")
 def format_base64(value):
     return check_exp(value, _base64)
@@ -175,6 +183,11 @@ def format_names(value):
 @draft4_format_checker.checks("numbers")
 def format_numbers(value):
     return check_exp(value, _numbers)
+
+
+@draft4_format_checker.checks("numbers_delete")
+def format_numbers(value):
+    return check_exp(value, _numbers_delete)
 
 
 @draft4_format_checker.checks("path")
@@ -245,3 +258,8 @@ def format_datetime_or_empty(value):
 @draft4_format_checker.checks("group_names")
 def format_group_names(value):
     return check_exp(value, _group_names)
+
+
+@draft4_format_checker.checks("group_names_delete")
+def format_group_names_delete(value):
+    return check_exp(value, _group_names_delete)

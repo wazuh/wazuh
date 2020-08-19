@@ -20,7 +20,7 @@ try:
     from wazuh import Wazuh
     import wazuh.agent
     from wazuh.core.agent import Agent
-    from wazuh.core.exception import WazuhException
+    from wazuh.core.exception import WazuhError
     from wazuh.core import common
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -74,17 +74,17 @@ def main():
 
     agent_info = "{0}/queue/agent-info/{1}-{2}".format(common.ossec_path, agent.name, agent.registerIP)
     if not os.path.isfile(agent_info):
-        raise WazuhException(1720)
+        raise WazuhError(1720)
 
     # Evaluate if the version is correct
     if args.version is not None:
         pattern = re.compile("v[0-9]+\.[0-9]+\.[0-9]+")
         if not pattern.match(args.version):
-            raise WazuhException(1733, "Version received: {0}".format(args.version))
+            raise WazuhError(1733, "Version received: {0}".format(args.version))
 
     if args.chunk_size is not None:
         if args.chunk_size < 1 or args.chunk_size > 64000:
-            raise WazuhException(1744, "Chunk defined: {0}".format(args.chunk_size))
+            raise WazuhError(1744, "Chunk defined: {0}".format(args.chunk_size))
 
     # Custom WPK file
     if args.file:
@@ -109,7 +109,7 @@ def main():
             counter = counter + 1
 
         if agent_info_stat == os.stat(agent_info).st_mtime:
-            raise WazuhException(1716, "Timeout waiting for agent reconnection.")
+            raise WazuhError(1716, "Timeout waiting for agent reconnection.")
 
         upgrade_result = agent.upgrade_result(debug=args.debug)
         if not args.silent:
@@ -138,7 +138,7 @@ def main():
             counter = counter + 1
 
         if agent_info_stat == os.stat(agent_info).st_mtime:
-            raise WazuhException(1716, "Timeout waiting for agent reconnection.")
+            raise WazuhError(1716, "Timeout waiting for agent reconnection.")
 
         sleep(10)
         upgrade_result = agent.upgrade_result(debug=args.debug)
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("-a", "--agent", type=str, help="Agent ID to upgrade.")
     arg_parser.add_argument("-r", "--repository", type=str, help="Specify a repository URL. [Default: {0}]".format(
-        common.wpk_repo_url))
+        common.wpk_repo_url_4_x))
     arg_parser.add_argument("-v", "--version", type=str, help="Version to upgrade. [Default: latest Wazuh version]")
     arg_parser.add_argument("-F", "--force", action="store_true",
                             help="Allows reinstall same version and downgrade version.")
@@ -175,7 +175,7 @@ if __name__ == "__main__":
 
     try:
         main()
-    except WazuhException as e:
+    except WazuhError as e:
         print("Error {0}: {1}".format(e.code, e.message))
         if args.debug:
             raise

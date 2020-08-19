@@ -1,20 +1,20 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
+from wazuh.core import common
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.control import get_health, get_nodes
 from wazuh.core.cluster.utils import get_cluster_status, read_cluster_config, read_config
-from wazuh.core.exception import WazuhError
-from wazuh.rbac.decorators import expose_resources, async_list_handler
+from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.rbac.decorators import expose_resources, async_list_handler
 
 cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}'])
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def read_config_wrapper():
     """ Wrapper for read_config
 
@@ -32,7 +32,7 @@ def read_config_wrapper():
     return result
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}'])
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def get_node_wrapper():
     """ Wrapper for get_node
 
@@ -60,9 +60,7 @@ def get_status_json():
     return get_cluster_status()
 
 
-@expose_resources(actions=['cluster:read_config'],
-                  resources=['node:id:{filter_node}'],
-                  post_proc_func=async_list_handler)
+@expose_resources(actions=['cluster:read'], resources=['node:id:{filter_node}'], post_proc_func=async_list_handler)
 async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
     """ Wrapper for get_health """
     result = AffectedItemsWazuhResult(all_msg='All selected nodes healthcheck information is shown',
@@ -80,9 +78,7 @@ async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
     return result
 
 
-@expose_resources(actions=['cluster:read_config'],
-                  resources=['node:id:{filter_node}'],
-                  post_proc_func=async_list_handler)
+@expose_resources(actions=['cluster:read'], resources=['node:id:{filter_node}'], post_proc_func=async_list_handler)
 async def get_nodes_info(lc: local_client.LocalClient, filter_node=None, **kwargs):
     """ Wrapper for get_nodes """
     result = AffectedItemsWazuhResult(all_msg='All selected nodes information is shown',
@@ -90,8 +86,14 @@ async def get_nodes_info(lc: local_client.LocalClient, filter_node=None, **kwarg
                                       none_msg='No information is shown'
                                       )
 
-    data = await get_nodes(lc, filter_node=filter_node, **kwargs)
-    result.affected_items.extend(data['items'])
+    nodes = set(filter_node).intersection(set(common.cluster_nodes.get()))
+    non_existent_nodes = set(filter_node) - nodes
+    data = await get_nodes(lc, filter_node=list(nodes), **kwargs)
+    for item in data['items']:
+        result.affected_items.append(item)
+
+    for node in non_existent_nodes:
+        result.add_failed_item(id_=node, error=WazuhResourceNotFound(1730))
     result.total_affected_items = data['totalItems']
 
     return result

@@ -4,14 +4,16 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from sys import exit, argv
-from os.path import basename
-from getopt import GetoptError, getopt
-from signal import signal, SIGINT
 import logging
+from getopt import GetoptError, getopt
+from os.path import basename
+from signal import signal, SIGINT
+from sys import exit, argv
+
+from wazuh import agent
+from wazuh.core import agent as core_agent
 from wazuh.core.cluster.utils import read_config
-from wazuh.core.agent import Agent
-from wazuh.core.exception import WazuhException
+from wazuh.core.exception import WazuhError
 
 # Global variables
 debug = False
@@ -33,66 +35,70 @@ def signal_handler(n_signal, frame):
 
 
 def show_groups():
-    groups_data = Agent.get_all_groups(limit=None)
-
-    print("Groups ({0}):".format(groups_data['totalItems']))
-    for g in groups_data['items']:
+    groups_data = agent.get_agent_groups().to_dict()
+    print("Groups ({0}):".format(groups_data['total_affected_items']))
+    for g in groups_data['affected_items']:
         print("  {0} ({1})".format(g['name'], g['count']))
 
-    print("Unassigned agents: {0}.".format(Agent.get_agents_without_group()['totalItems']))
+    print("Unassigned agents: {0}.".format(agent.get_agents(q='id!=000;group=null').to_dict()['total_affected_items']))
 
 
 def show_group(agent_id):
-    agent_info = Agent(id=agent_id).get_basic_information()
-
-    str_group = ', '.join(agent_info['group']) if 'group' in agent_info else "Null"
-    print("The agent '{0}' with ID '{1}' belongs to groups: {2}.".format(agent_info['name'], agent_info['id'], str_group))
+    agent_info = agent.get_agents(agent_list=[agent_id]).to_dict()
+    if agent_info['total_affected_items'] == 0:
+        print(list(agent_info['failed_items'].keys())[0])
+    else:
+        agent_info = agent_info['affected_items'][0]
+        str_group = ', '.join(agent_info['group']) if 'group' in agent_info else "Null"
+        print("The agent '{0}' with ID '{1}' belongs to groups: {2}.".format(agent_info['name'], agent_info['id'],
+                                                                             str_group))
 
 
 def show_synced_agent(agent_id):
-
-    result = Agent(agent_id).get_sync_group(agent_id)
-
-    print("Agent '{}' is{} synchronized. ".format(agent_id,'' if result['synced'] else ' not'))
+    result = agent.get_agents_sync_group(agent_list=[agent_id]).to_dict()
+    if result['total_affected_items'] == 0:
+        print(list(result['failed_items'].keys())[0])
+    else:
+        print(
+            "Agent '{}' is{} synchronized. ".format(agent_id, '' if result['affected_items'][0]['synced'] else ' not'))
 
 
 def show_agents_with_group(group_id):
-    agents_data = Agent.get_agent_group(group_id, limit=None)
+    agents_data = agent.get_agents_in_group(group_list=[group_id], limit=None).to_dict()
 
-    if agents_data['totalItems'] == 0:
+    if agents_data['total_affected_items'] == 0:
         print("No agents found in group '{0}'.".format(group_id))
     else:
-        print("{0} agent(s) in group '{1}':".format(agents_data['totalItems'], group_id))
-        for agent in agents_data['items']:
-            print("  ID: {0}  Name: {1}.".format(agent['id'], agent['name']))
+        print("{0} agent(s) in group '{1}':".format(agents_data['total_affected_items'], group_id))
+        for a in agents_data['affected_items']:
+            print("  ID: {0}  Name: {1}.".format(a['id'], a['name']))
 
 
 def show_group_files(group_id):
-    data = Agent.get_group_files(group_id)
-    print("{0} files for '{1}' group:".format(data['totalItems'], group_id))
+    data = agent.get_group_files(group_list=[group_id]).to_dict()
+    print("{0} files for '{1}' group:".format(data['total_affected_items'], group_id))
 
     longest_name = 0
-    for item in data['items']:
+    for item in data['affected_items']:
         if len(item['filename']) > longest_name:
             longest_name = len(item['filename'])
 
-    for item in data['items']:
+    for item in data['affected_items']:
         spaces = longest_name - len(item['filename']) + 2
-        print("  {0}{1}[{2}]".format(item['filename'], spaces*' ', item['hash']))
+        print("  {0}{1}[{2}]".format(item['filename'], spaces * ' ', item['hash']))
 
 
 def unset_group(agent_id, group_id=None, quiet=False):
-    ans = 'n'
     if not quiet:
         if group_id:
-            ans = get_stdin("Do you want to delete the group '{0}' of agent '{1}'? [y/N]: ".format(group_id,agent_id))
+            ans = get_stdin("Do you want to delete the group '{0}' of agent '{1}'? [y/N]: ".format(group_id, agent_id))
         else:
             ans = get_stdin("Do you want to delete all groups of agent '{0}'? [y/N]: ".format(agent_id))
     else:
         ans = 'y'
 
     if ans.lower() == 'y':
-        msg = Agent.unset_group(agent_id, group_id)
+        msg = core_agent.Agent.unset_single_group_agent(agent_id, group_id)
     else:
         msg = "Cancelled."
 
@@ -100,19 +106,23 @@ def unset_group(agent_id, group_id=None, quiet=False):
 
 
 def remove_group(group_id, quiet=False):
-    ans = 'n'
     if not quiet:
-         ans = get_stdin("Do you want to remove the '{0}' group? [y/N]: ".format(group_id))
+        ans = get_stdin("Do you want to remove the '{0}' group? [y/N]: ".format(group_id))
     else:
         ans = 'y'
 
+    msg = ''
     if ans.lower() == 'y':
-        data = Agent.remove_group(group_id)
-        msg = data['msg']
-        if not data['affected_agents']:
-            msg += "\nNo affected agents."
+        data = agent.delete_groups(group_list=[group_id]).to_dict()
+        if data['total_affected_items'] == 0:
+            print(list(data['failed_items'].keys())[0])
         else:
-            msg += "\nAffected agents: {0}.".format(', '.join(data['affected_agents']))
+            affected_agents = data['dikt']['affected_agents']
+            msg = f'Group {group_id} removed.'
+            if not affected_agents:
+                msg += "\nNo affected agents."
+            else:
+                msg += "\nAffected agents: {0}.".format(', '.join(affected_agents))
     else:
         msg = "Cancelled."
 
@@ -120,7 +130,6 @@ def remove_group(group_id, quiet=False):
 
 
 def set_group(agent_id, group_id, quiet=False, replace=False):
-    ans = 'n'
     agent_id = "{}".format(int(agent_id)).zfill(3)
     if not quiet:
         ans = get_stdin("Do you want to add the group '{0}' to the agent '{1}'? [y/N]: ".format(group_id, agent_id))
@@ -128,22 +137,23 @@ def set_group(agent_id, group_id, quiet=False, replace=False):
         ans = 'y'
 
     if ans.lower() == 'y':
-        msg = Agent.set_group(agent_id=agent_id, group_id=group_id, replace=replace)
+        data = agent.assign_agents_to_group(agent_list=[agent_id], group_list=[group_id], replace=replace).to_dict()
+        if data['total_affected_items'] == 0:
+            print(list(data['failed_items'].keys())[0])
+        else:
+            print("Group '{0}' added to agent '{1}'.".format(group_id, agent_id))
     else:
-        msg = "Cancelled."
-
-    print(msg)
+        print("Cancelled.")
 
 
 def create_group(group_id, quiet=False):
-    ans = 'n'
     if not quiet:
-         ans = get_stdin("Do you want to create the group '{0}'? [y/N]: ".format(group_id))
+        ans = get_stdin("Do you want to create the group '{0}'? [y/N]: ".format(group_id))
     else:
         ans = 'y'
 
     if ans.lower() == 'y':
-        msg = Agent.create_group(group_id)
+        msg = agent.create_group(group_id).dikt['message']
     else:
         msg = "Cancelled."
 
@@ -201,9 +211,13 @@ def main():
     signal(SIGINT, signal_handler)
 
     # Parse arguments
-    arguments = {'n_args': 0, 'n_actions': 0, 'group': None, 'agent-id': None, 'list': False, 'list-files': False, 'add-group': False, 'replace-group': False, 'show-group': False, 'show-sync': False , 'remove-group': False, 'quiet': False }
+    arguments = {'n_args': 0, 'n_actions': 0, 'group': None, 'agent-id': None, 'list': False, 'list-files': False,
+                 'add-group': False, 'replace-group': False, 'show-group': False, 'show-sync': False,
+                 'remove-group': False, 'quiet': False}
     try:
-        opts, args = getopt(argv[1:], "lcafsSri:g:qdh", ["list", "list-files", "add-group","replace-group", "show-group","show-sync", "remove-group" ,"agent-id=", "group=", "quiet", "debug", "help"])
+        opts, args = getopt(argv[1:], "lcafsSri:g:qdh",
+                            ["list", "list-files", "add-group", "replace-group", "show-group", "show-sync",
+                             "remove-group", "agent-id=", "group=", "quiet", "debug", "help"])
         arguments['n_args'] = len(opts)
     except GetoptError as err:
         print(str(err) + "\n" + "Try '--help' for more information.")
@@ -295,10 +309,10 @@ if __name__ == "__main__":
         executable_name = "agent_groups"
         master_ip = cluster_config['nodes'][0]
         if cluster_config['node_type'] != 'master' and not cluster_config['disabled']:
-            raise WazuhException(3019, {"EXECUTABLE_NAME": executable_name, "MASTER_IP": master_ip})
+            raise WazuhError(3019, {"EXECUTABLE_NAME": executable_name, "MASTER_IP": master_ip})
         main()
 
-    except WazuhException as e:
+    except WazuhError as e:
         print("Error {0}: {1}".format(e.code, e.message))
         if debug:
             raise

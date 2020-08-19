@@ -57,6 +57,8 @@ int Read_Syscheck_Config(const char *cfgfile)
 #ifdef WIN32
     syscheck.realtime_change = 0;
     syscheck.registry       = NULL;
+    syscheck.registry_ignore = NULL;
+    syscheck.registry_ignore_regex = NULL;
     syscheck.max_fd_win_rt  = 0;
 #endif
     syscheck.prefilter_cmd  = NULL;
@@ -67,6 +69,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.sync_max_eps = 10;
     syscheck.max_eps        = 100;
     syscheck.allow_remote_prefilter_cmd  = false;
+    syscheck.audit_key = NULL;
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
 
@@ -129,26 +132,25 @@ int Read_Syscheck_Config(const char *cfgfile)
 }
 
 void free_whodata_event(whodata_evt *w_evt) {
+    if (w_evt == NULL) return;
     if (w_evt->user_name) free(w_evt->user_name);
-    if (w_evt->user_id) {
 #ifndef WIN32
-        free(w_evt->user_id);
-#else
-        LocalFree(w_evt->user_id);
-#endif
-    }
     if (w_evt->cwd) free(w_evt->cwd);
     if (w_evt->audit_name) free(w_evt->audit_name);
     if (w_evt->audit_uid) free(w_evt->audit_uid);
     if (w_evt->effective_name) free(w_evt->effective_name);
     if (w_evt->effective_uid) free(w_evt->effective_uid);
     if (w_evt->group_id) free(w_evt->group_id);
-    if (w_evt->path) free(w_evt->path);
-    if (w_evt->process_name) free(w_evt->process_name);
     if (w_evt->parent_name) free(w_evt->parent_name);
     if (w_evt->parent_cwd) free(w_evt->parent_cwd);
     if (w_evt->inode) free(w_evt->inode);
     if (w_evt->dev) free(w_evt->dev);
+    if (w_evt->user_id) free(w_evt->user_id);
+#else
+    if (w_evt->user_id) LocalFree(w_evt->user_id);
+#endif
+    if (w_evt->path) free(w_evt->path);
+    if (w_evt->process_name) free(w_evt->process_name);
     free(w_evt);
 }
 

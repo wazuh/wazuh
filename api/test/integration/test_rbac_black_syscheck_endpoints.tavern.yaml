@@ -10,25 +10,19 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/000"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000"
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
-      json: &permission_denied
+    response: &permission_denied
+      status_code: 403
+      json:
         code: 4000
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Try to get syscheck scan results for agent 002 (Allow)
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -49,19 +43,17 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/000/last_scan"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
   - name: Try to get when the last scan for agent 002 started and ended
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002/last_scan"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/002/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -84,7 +76,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -95,27 +87,22 @@ stages:
           failed_items:
             - error:
                 code: 1601
-                message: !anystr
-                remediation: !anystr
               id:
                 - '011'
                 - '012'
             - error:
                 code: 1601
-                message: !anystr
-                remediation: !anystr
               id:
                 - '009'
                 - '010'
           total_affected_items: 5
           total_failed_items: 4
-        message: !anystr
-
+        
   - name: Try to run a syscheck scan on a list of agents
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -128,29 +115,24 @@ stages:
           failed_items:
             - error:
                 code: 4000
-                message: !anystr
-                remediation: !anystr
               id:
                 - '000'
                 - '001'
                 - '003'
           total_affected_items: 2
           total_failed_items: 3
-        message: !anystr
-
+        
   - name: Try to run a syscheck scan on a list of agents
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         list_agents: '001'
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: DELETE /syscheck
@@ -161,7 +143,7 @@ stages:
     request:
       verify: False
       method: DELETE
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -177,10 +159,8 @@ stages:
     request:
       verify: False
       method: DELETE
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/001"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/001"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied

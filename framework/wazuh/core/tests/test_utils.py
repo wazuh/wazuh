@@ -617,6 +617,31 @@ def test_WazuhDBQuery__init__(mock_socket_conn, mock_isfile, mock_sqli_conn, val
                              extra_fields={'internal_key'})
 
 
+@pytest.mark.parametrize('query_filter, expected_query_filter, expected_wef', [
+    ({'operator': 'LIKE', 'value': 'user\'s'}, {'operator': 'LIKE', 'value': 'user_s'}, set()),
+    ({'operator': '=', 'value': 'user\'s', 'field': 'description'},
+     {'operator': 'LIKE', 'value': 'user_s', 'field': 'description'}, {'description'}),
+])
+@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch("wazuh.core.database.isfile", return_value=True)
+@patch('socket.socket.connect')
+@patch('wazuh.core.utils.common.maximum_database_limit', new=10)
+def test_WazuhDBQuery_protected_clean_filter(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, query_filter,
+                                             expected_query_filter, expected_wef):
+    """Test WazuhDBQuery._clean_filter function."""
+    query = WazuhDBQuery(offset=0, limit=500, table='agent', sort=None,
+                         search=None, select=None, filters=None,
+                         fields={'1': None, '2': None},
+                         default_sort_field=None, query=None,
+                         backend=WazuhDBBackend(agent_id=1),
+                         count=5, get_data=None)
+
+    query._clean_filter(query_filter)
+    assert query_filter == expected_query_filter, 'query_filter should have been updated, but it was not'
+    assert query.wildcard_equal_fields == expected_wef
+
+
 @pytest.mark.parametrize('limit, error, expected_exception', [
     (1, False, None),
     (0, True, 1406),
@@ -842,9 +867,9 @@ def test_WazuhDBQuery_parse_filters(mock_query, mock_filter, mock_socket_conn, m
 @pytest.mark.parametrize('field_name, field_filter, q_filter', [
     ('status', None, None),
     ('date1', None, {'value': '1', 'operator': None}),
-    ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE'}),
-    ('os.name', None, {'value': None, 'operator': 'LIKE'}),
-    ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE'})
+    ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'}),
+    ('os.name', None, {'value': None, 'operator': 'LIKE', 'field': 'status$0'}),
+    ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'}),
 
 ])
 @patch('wazuh.core.utils.glob.glob', return_value=True)
@@ -888,7 +913,7 @@ def test_WazuhDBQuery_protected_add_filters_to_query(mock_process, mock_socket_c
                          count=5, get_data=None, filters={'os.name': 'ubuntu'},
                          date_fields=['date1', 'date2'])
 
-    query.query_filters = [{'field': 'os.name', 'level': 0, 'separator': ';'}]
+    query.query_filters = [{'field': 'os.name', 'value': 'ubuntu', 'level': 0, 'separator': ';'}]
     query._add_filters_to_query()
 
     mock_conn_db.assert_called_once_with()
@@ -1432,3 +1457,16 @@ def test_select_array(select, required_fields, expected_result):
             assert element == expected_result
     except WazuhError as e:
         assert e.code == 1724
+
+@patch('wazuh.common.ossec_path', new='/var/ossec')
+@patch('wazuh.core.utils.glob.glob')
+def test_get_files(mock_glob):
+    """Test whether get_files() returns expected paths."""
+    mock_glob.return_value = ['/var/ossec/etc/rules/test.yml',
+                              '/var/ossec/etc/rules/test.xml',
+                              '/var/ossec/etc/decoders/test.cdb',
+                              '/var/ossec/etc/lists/test.yml.disabled']
+    result = get_files()
+
+    assert 'etc/ossec.conf' in result
+    assert all('/var/ossec' not in x for x in result)

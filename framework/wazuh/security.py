@@ -6,18 +6,17 @@ import re
 from copy import deepcopy
 from functools import lru_cache
 
-from api import configuration
-from api.authentication import change_secret
-from wazuh.core.security import check_relationships, invalid_users_tokens
+import api.configuration as configuration
 from wazuh.core import common
-from wazuh.core.security import load_spec, update_security_conf
 from wazuh.core.exception import WazuhError
+from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
+from wazuh.core.security import check_relationships, invalid_users_tokens, revoke_tokens
+from wazuh.core.security import load_spec, update_security_conf
+from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager, \
     TokenManager, UserRolesManager
 from wazuh.rbac.orm import SecurityError, admin_role_ids, admin_policy_ids
-from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.core.utils import process_array
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
@@ -444,6 +443,25 @@ def update_policy(policy_id=None, name=None, policy=None):
     return result
 
 
+def get_username(user_id):
+    """Return the username of the specified user_id
+
+    Parameters
+    ----------
+    user_id : list
+        User ID
+
+    Returns
+    -------
+    username if the user_id exists, unknown in other case
+    """
+    with AuthenticationManager() as am:
+        user = am.get_user_id(user_id=user_id[0])
+        username = user['username'] if user else 'unknown'
+
+    return username
+
+
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}', 'role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4017, 4008, 5001]})
 def set_user_role(user_id, role_ids, position=None):
@@ -451,7 +469,7 @@ def set_user_role(user_id, role_ids, position=None):
 
     Parameters
     ----------
-    user_id : str
+    user_id : list
         User ID
     role_ids : list of int
         List of role ids
@@ -465,9 +483,11 @@ def set_user_role(user_id, role_ids, position=None):
     """
     if position is not None and position < 0:
         raise WazuhError(4018)
-    result = AffectedItemsWazuhResult(none_msg=f'No link created to user {user_id[0]}',
-                                      some_msg=f'Some roles could not be linked to user {user_id[0]}',
-                                      all_msg=f'All roles were linked to user {user_id[0]}')
+
+    username = get_username(user_id=user_id)
+    result = AffectedItemsWazuhResult(none_msg=f'No link created to user {username}',
+                                      some_msg=f'Some roles could not be linked to user {username}',
+                                      all_msg=f'All roles were linked to user {username}')
     success = False
     with UserRolesManager() as urm:
         for role_id in role_ids:
@@ -504,9 +524,10 @@ def remove_user_role(user_id, role_ids):
     :param role_ids: List of role ids
     :return User-Roles information
     """
-    result = AffectedItemsWazuhResult(none_msg=f'No role unlinked from user {user_id[0]}',
-                                      some_msg=f'Some roles could not be unlinked from user {user_id[0]}',
-                                      all_msg=f'All roles were unlinked from user {user_id[0]}')
+    username = get_username(user_id=user_id)
+    result = AffectedItemsWazuhResult(none_msg=f'No role unlinked from user {username}',
+                                      some_msg=f'Some roles could not be unlinked from user {username}',
+                                      all_msg=f'All roles were unlinked from user {username}')
     success = False
     with UserRolesManager() as urm:
         for role_id in role_ids:
@@ -618,14 +639,20 @@ def remove_role_policy(role_id, policy_ids):
     return result
 
 
+def revoke_current_user_tokens():
+    """Revoke all current user's tokens"""
+    with TokenManager() as tm:
+        tm.add_user_rules(users={common.current_user.get()})
+
+    return WazuhResult({'msg': f'User {common.current_user.get()} logout correctly.'})
+
+
 @expose_resources(actions=['security:revoke'], resources=['*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': {
                       'none_msg': 'Permission denied in all manager nodes: Resource type: *:*'}})
-def revoke_tokens():
+def wrapper_revoke_tokens():
     """ Revoke all tokens """
-    change_secret()
-    with TokenManager() as tm:
-        tm.delete_all_rules()
+    revoke_tokens()
 
     return WazuhResult({'msg': 'Tokens revoked successfully'})
 
@@ -734,8 +761,7 @@ def update_security_config(updated_config=None):
         Confirmation/Error message.
     """
     try:
-        if update_security_conf(updated_config):
-            revoke_tokens()
+        update_security_conf(updated_config)
         result = 'Configuration successfully updated'
     except WazuhError as e:
         result = f'Configuration could not be updated. Error: {e}'
