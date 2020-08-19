@@ -174,7 +174,7 @@ installElasticsearch() {
         logger "Done"
 
         logger "Configuring Elasticsearch..."
-        eval "curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/unattended-installation/distributed/templates/elasticsearch_unattended.yml --max-time 300 $debug"
+        eval "curl -so /etc/elasticsearch/elasticsearch.yml https://documentation.wazuh.com/resources/elastic-stack/unattended-installation/distributed/templates/elasticsearch_unattended.yml --max-time 300 $debug"
 
         awk -v RS='' '/## Elasticsearch/' ~/config.yml >> /etc/elasticsearch/elasticsearch.yml    
         
@@ -263,7 +263,7 @@ installKibana() {
         echo "Error: Kibana installation failed"
         exit 1;
     else   
-        eval "curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/basic/unattended-installation/distributed/templates/kibana_unattended.yml --max-time 300 $debug"
+        eval "curl -so /etc/kibana/kibana.yml https://documentation.wazuh.com/resources/elastic-stack/unattended-installation/distributed/templates/kibana_unattended.yml --max-time 300 $debug"
         eval "cd /usr/share/kibana $debug"
         eval "sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/ui/kibana/wazuhapp-4.0.0_7.8.0_0.0.0.todelete.zip $debug"
         if [  "$?" != 0  ]
