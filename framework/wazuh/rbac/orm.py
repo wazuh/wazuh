@@ -287,7 +287,8 @@ class Rules(_Base):
     name = Column('name', String(20))
     rule = Column('rule', TEXT)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
-    __table_args__ = (UniqueConstraint('rule', name='rule_definition'),)
+    __table_args__ = (UniqueConstraint('name', name='rule_name'),
+                      UniqueConstraint('rule', name='rule_definition'))
 
     # Relations
     roles = relationship("Roles", secondary='roles_rules',
@@ -789,8 +790,6 @@ class RolesManager:
                 if role_to_update.id not in admin_role_ids:
                     # Change the name of the role
                     if name is not None:
-                        if self.session.query(Roles).filter_by(name=name).first() is not None:
-                            return SecurityError.ALREADY_EXIST
                         role_to_update.name = name
                     self.session.commit()
                     return True
@@ -798,7 +797,7 @@ class RolesManager:
             return SecurityError.ROLE_NOT_EXIST
         except IntegrityError:
             self.session.rollback()
-            return SecurityError.ROLE_NOT_EXIST
+            return SecurityError.ALREADY_EXIST
 
     def __enter__(self):
         self.session = _Session()
@@ -925,7 +924,7 @@ class RulesManager:
             return SecurityError.RULE_NOT_EXIST
         except IntegrityError:
             self.session.rollback()
-            return SecurityError.RULE_NOT_EXIST
+            return SecurityError.ALREADY_EXIST
 
     def __enter__(self):
         self.session = _Session()
@@ -1095,8 +1094,6 @@ class PoliciesManager:
                     if policy is not None and not json_validator(policy):
                         return SecurityError.INVALID
                     if name is not None:
-                        if self.session.query(Policies).filter_by(name=name).first() is not None:
-                            return SecurityError.ALREADY_EXIST
                         policy_to_update.name = name
                     if policy is not None:
                         if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
@@ -1107,7 +1104,7 @@ class PoliciesManager:
             return SecurityError.POLICY_NOT_EXIST
         except IntegrityError:
             self.session.rollback()
-            return SecurityError.POLICY_NOT_EXIST
+            return SecurityError.ALREADY_EXIST
 
     def __enter__(self):
         self.session = _Session()

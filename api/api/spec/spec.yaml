@@ -1707,6 +1707,15 @@ components:
         rule:
           type: object
           description: "Rule body"
+    SecurityRulesRequest_no_required:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Rule name"
+        rule:
+          type: object
+          description: "Rule body"
     UsersResponse:
       type: object
       properties:
@@ -13258,7 +13267,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SecurityRulesRequest'
+              $ref: '#/components/schemas/SecurityRulesRequest_no_required'
             example:
               name: "new_name"
               rule:

@@ -291,15 +291,14 @@ def add_role(name=None):
 
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}'])
-def update_role(role_id=None, name=None, rule=None):
+def update_role(role_id=None, name=None):
     """Updates a role in the system
 
     :param role_id: Role id to be update
     :param name: The new role name
-    :param rule: The new rule
     :return Role information
     """
-    if name is None and rule is None:
+    if name is None:
         raise WazuhError(4001)
     result = AffectedItemsWazuhResult(none_msg='Role could not be updated',
                                       all_msg='Role updated correctly')
@@ -317,7 +316,7 @@ def update_role(role_id=None, name=None, rule=None):
             updated = rm.get_role_id(role_id[0])
             result.affected_items.append(updated)
             result.total_affected_items += 1
-            invalid_users_tokens(roles=[updated])
+            invalid_users_tokens(roles=[updated['id']])
 
     return result
 
@@ -486,9 +485,9 @@ def add_rule(name=None, rule=None):
     with RulesManager() as rum:
         status = rum.add_rule(name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
-            result.add_failed_item(id_=json.dumps(rule), error=WazuhError(4005))
+            result.add_failed_item(id_=name, error=WazuhError(4005))
         elif status == SecurityError.INVALID:
-            result.add_failed_item(id_=json.dumps(rule), error=WazuhError(4003))
+            result.add_failed_item(id_=name, error=WazuhError(4003))
         else:
             result.affected_items.append(rum.get_rule_by_name(name))
             result.total_affected_items += 1
@@ -538,7 +537,7 @@ def update_rule(rule_id=None, name=None, rule=None):
     :param rule: The new rule
     :return Rule information
     """
-    if rule is None:
+    if name is None and rule is None:
         raise WazuhError(4001)
     result = AffectedItemsWazuhResult(none_msg='Rule could not be updated',
                                       all_msg='Rule updated correctly')
