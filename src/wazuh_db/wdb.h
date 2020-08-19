@@ -35,9 +35,8 @@
 #define WDB_SYSCHECK 0
 #define WDB_SYSCHECK_REGISTRY 1
 #define WDB_ROOTCHECK 2
-#define WDB_AGENTINFO 3
-#define WDB_GROUPS 4
-#define WDB_SHARED_GROUPS 5
+#define WDB_GROUPS 3
+#define WDB_SHARED_GROUPS 4
 #define WDB_NETADDR_IPV4 0
 
 #define WDB_MULTI_GROUP_DELIM '-'
@@ -45,6 +44,9 @@
 #define WDB_RESPONSE_BEGIN_SIZE 16
 
 #define WDB_DATABASE_LOGTAG ARGV0 ":wdb_agent"
+
+#define WDB_MAX_COMMAND_SIZE    512
+#define WDB_MAX_RESPONSE_SIZE   OS_MAXSTR-WDB_MAX_COMMAND_SIZE
 
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
@@ -122,9 +124,45 @@ typedef enum wdb_stmt {
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
     WDB_STMT_MITRE_NAME_GET,
+    WDB_STMT_GLOBAL_LABELS_GET,
+    WDB_STMT_GLOBAL_LABELS_DEL,
+    WDB_STMT_GLOBAL_LABELS_SET,
+    WDB_STMT_GLOBAL_SYNC_REQ_GET,
+    WDB_STMT_GLOBAL_SYNC_SET,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_SIZE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
+
+typedef enum global_db_query {
+    SQL_INSERT_AGENT,
+    SQL_UPDATE_AGENT_NAME,
+    SQL_UPDATE_AGENT_VERSION,
+    SQL_UPDATE_AGENT_VERSION_IP,
+    SQL_GET_AGENT_LABELS,
+    SQL_SET_AGENT_LABELS,
+    SQL_UPDATE_AGENT_KEEPALIVE,
+    SQL_DELETE_AGENT,
+    SQL_SELECT_AGENT,
+    SQL_SELECT_AGENT_GROUP,
+    SQL_SELECT_AGENTS,
+    SQL_FIND_AGENT,
+    SQL_SELECT_FIM_OFFSET,
+    SQL_SELECT_REG_OFFSET,
+    SQL_UPDATE_FIM_OFFSET,
+    SQL_UPDATE_REG_OFFSET,
+    SQL_SELECT_AGENT_STATUS,
+    SQL_UPDATE_AGENT_STATUS,
+    SQL_UPDATE_AGENT_GROUP,
+    SQL_FIND_GROUP,
+    SQL_INSERT_AGENT_GROUP,
+    SQL_INSERT_AGENT_BELONG,
+    SQL_DELETE_AGENT_BELONG,
+    SQL_DELETE_GROUP_BELONG,
+    SQL_DELETE_GROUP,
+    SQL_SELECT_GROUPS,
+    SQL_SELECT_KEEPALIVE
+} global_db_query;
 
 typedef struct wdb_t {
     sqlite3 * db;
@@ -151,8 +189,19 @@ typedef enum {
     WDB_FIM         ///< File integrity monitoring.
 } wdb_component_t;
 
-/* Global SQLite database */
-extern sqlite3 *wdb_global;
+/// Enumeration of sync-status.
+typedef enum {
+    WDB_SYNCED,
+    WDB_SYNC_REQ        
+} wdb_sync_status_t;
+
+/// Enumeration of sync-agent-info-get-status.
+typedef enum {
+    WDB_CHUNKS_PENDING,       ///< There are still elements to get
+    WDB_CHUNKS_BUFFER_FULL,   ///< There are still elements to get but buffer is full
+    WDB_CHUNKS_COMPLETE,      ///< There aren't any more elements to get
+    WDB_CHUNKS_ERROR          ///< An error occured
+} wdb_chunks_status_t;
 
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
@@ -161,6 +210,7 @@ extern char *schema_upgrade_v2_sql;
 extern char *schema_upgrade_v3_sql;
 extern char *schema_upgrade_v4_sql;
 extern char *schema_upgrade_v5_sql;
+extern int wdb_sock_agent;
 
 extern wdb_config wconfig;
 extern pthread_mutex_t pool_mutex;
@@ -168,8 +218,14 @@ extern wdb_t * db_pool;
 extern int db_pool_size;
 extern OSHash * open_dbs;
 
-/* Open global database. Returns 0 on success or -1 on failure. */
-int wdb_open_global();
+/**
+ * @brief Opens global database and stores it in DB pool.
+ *
+ * It is opened every time a query to global database is done.
+ *
+ * @return wdb_t* Database Structure locked or NULL.
+ */
+wdb_t * wdb_open_global();
 
 /**
  * @brief Open mitre database and store in DB poll.
@@ -179,9 +235,6 @@ int wdb_open_global();
  * @return wdb_t* Database Structure that store mitre database or NULL on failure.
  */
 wdb_t * wdb_open_mitre();
-
-/* Close global database */
-void wdb_close_global();
 
 /* Open database for agent */
 sqlite3* wdb_open_agent(int id_agent, const char *name);
@@ -306,10 +359,43 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
 int wdb_update_agent_name(int id, const char *name);
 
 /* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name, const char *agent_ip);
+int wdb_update_agent_version(int id, 
+                             const char *os_name,
+                             const char *os_version,
+                             const char *os_major,
+                             const char *os_minor,
+                             const char *os_codename,
+                             const char *os_platform,
+                             const char *os_build,
+                             const char *os_uname,
+                             const char *os_arch,
+                             const char *version,
+                             const char *config_sum,
+                             const char *merged_sum,
+                             const char *manager_host,
+                             const char *node_name,
+                             const char *agent_ip,
+                             wdb_sync_status_t sync_status);
+
+/**
+ * @brief Returns a JSON with all the agent's labels.
+ * 
+ * @param[in] id Id of the agent for whom the labels are requested.
+ * @return JSON* with the labels on success or NULL on failure.
+ */
+cJSON* wdb_get_agent_labels(int id);
+
+/**
+ * @brief Update agent's labels.
+ * 
+ * @param[in] id Id of the agent for whom the labels must be updated.
+ * @param[in] labels String with the key-values separated by EOL.
+ * @return OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_set_agent_labels(int id, const char *labels);
 
 /* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_keepalive(int id, long keepalive);
+int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status);
 
 /* Update agent group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_group(int id,char *group);
@@ -532,6 +618,23 @@ void wdb_close_old();
 
 int wdb_remove_database(const char * agent_id);
 
+/**
+ * @brief Function to execute a SQL statement and save the result in a JSON array.
+ * 
+ * @param stmt The SQL statement to be executed.
+ * @retval JSON array with the statement execution results.
+ * @retval NULL On error.
+ */
+cJSON * wdb_exec_stmt(sqlite3_stmt * stmt);
+
+/**
+ * @brief Function to execute a SQL query and save the result in a JSON array.
+ * 
+ * @param db The SQL database to be queried.
+ * @param sql The SQL query.
+ * @retval JSON array with the query results.
+ * @retval NULL On error.
+ */
 cJSON * wdb_exec(sqlite3 * db, const char * sql);
 
 // Execute SQL script into an database
@@ -583,6 +686,51 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
  */
 int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output);
 
+/**
+ * @brief Function to parse the labels request for a particular agent.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with 'agent_id'.
+ * @param output Response of the query in JSON format.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse string with agent's labels and set them in labels table in global database.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with 'agent_id labels_string'.
+ * @param output Response of the query.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse sync-agent-info-get params and set next ID to iterate on further calls.
+ *        If no start_id is provided. Last obtained ID is used.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with starting ID [optional].
+ * @param output Response of the query.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to update the agents info from workers.
+ * 
+ * @param wdb The global struct database.
+ * @param input String with the agents information in JSON format.
+ * @param output Response of the query in JSON format.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output);
+
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
@@ -603,6 +751,9 @@ wdb_t * wdb_backup(wdb_t *wdb, int version);
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */
 int wdb_create_backup(const char * agent_id, int version);
+
+/* Gets the agent last keepalive. Returns this value, 0 on NULL or OS_INVALID on error */
+time_t wdb_get_agent_keepalive (const char *name, const char *ip);
 
 /**
  * @brief Query the checksum of a data range
@@ -657,6 +808,72 @@ int wdb_journal_wal(sqlite3 *db);
  * @retval -1 On error: invalid DB query syntax.
  */
 int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
+
+/**
+ * @brief Function to get the labels of a particular agent.
+ * 
+ * @param wdb the Global struct database.
+ * @param id Agent id.
+ * @retval JSON with labels on success.
+ * @retval NULL on error.
+ */
+cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int id);
+
+/**
+ * @brief Function to delete the labels of a particular agent.
+ * 
+ * @param wdb the Global struct database.
+ * @param id Agent id.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_global_del_agent_labels(wdb_t *wdb, int id);
+
+/**
+ * @brief Function to insert a label of a particular agent.
+ * 
+ * @param wdb The Global struct database.
+ * @param id The agent ID
+ * @param key A string with the label key.
+ * @param value A string with the label value.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
+
+/**
+ * @brief Function to update sync_status of a particular agent.
+ * 
+ * @param wdb The Global struct database.
+ * @param id The agent ID
+ * @param status The value of sync_status
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_global_set_sync_status(wdb_t *wdb, int id, wdb_sync_status_t status);
+
+/**
+ * @brief Gets and parses agents with WDB_SYNC_REQ sync_status and sets them to WDB_SYNCED.
+ *        Response is prepared in one chunk, 
+ *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
+ *        Multiple calls to this function can be required to fully obtain all agents.
+ *       
+ * @param wdb The Global struct database.
+ * @param last_agent_id ID where to start querying.
+ * @param output buffer where the response is written. Must be de-allocated by the caller.
+ * @return wdb_chunks_status_t to represent if all agents has being obtained.
+ */
+wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output);
+
+/**
+ * @brief Function to update the information of an agent.
+ * 
+ * @param wdb The Global struct database.
+ * @param agent_info A JSON array with the agent information.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

@@ -12,7 +12,6 @@
 #include "wdb.h"
 #include "external/cJSON/cJSON.h"
 
-
 int wdb_parse(char * input, char * output) {
     char * actor;
     char * id;
@@ -392,10 +391,93 @@ int wdb_parse(char * input, char * output) {
         }
         wdb_leave(wdb);
         return result;
+    } else if(strcmp(actor, "global") == 0) {
+        query = next;
+
+        mdebug2("Global query: %s", query);
+
+        if (wdb = wdb_open_global(), !wdb) {
+            mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
+            return OS_INVALID;
+        }
+
+        if (next = wstr_chr(query, ' '), !next) {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("Global DB query error near: %s", query);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+            wdb_leave(wdb);
+            return OS_INVALID;
+        }
+        *next++ = '\0';
+
+        if (strcmp(query, "sql") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                if (data = wdb_exec(wdb->db, next), data) {
+                    out = cJSON_PrintUnformatted(data);
+                    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+                    os_free(out);
+                    cJSON_Delete(data);
+                } else {
+                    mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                    mdebug2("Global DB SQL query: %s", next);
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                    result = OS_INVALID;
+                }
+            }
+        } else if (strcmp(query, "get-labels") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_get_agent_labels(wdb, next, output);
+            }
+        } else if (strcmp(query, "set-labels") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_set_agent_labels(wdb, next, output);
+            }
+        } else if (strcmp(query, "sync-agent-info-get") == 0) { 
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_sync_agent_info_get(wdb, next, output);
+            }
+        } else if (strcmp(query, "sync-agent-info-set") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_sync_agent_info_set(wdb, next, output);
+            }
+        } else {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("Global DB query error near: %s", query);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+            result = OS_INVALID;
+        }
+        wdb_leave(wdb);
+        return result;
     } else {
         mdebug1("DB(%s) Invalid DB query actor: %s", sagent_id, actor);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query actor: '%.32s'", actor);
-        return -1;
+        return OS_INVALID;
     }
 }
 
@@ -3800,4 +3882,188 @@ int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output) {
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
         return -1;
     }
+}
+
+int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output) {
+    int agent_id = 0;
+    cJSON *labels = NULL;
+    char *out = NULL;
+
+    agent_id = atoi(input);
+
+    if (labels = wdb_global_get_agent_labels(wdb, agent_id), !labels) {
+        mdebug1("Error getting agent labels from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agent labels from global.db.");
+        return OS_INVALID;
+    }
+
+    out = cJSON_PrintUnformatted(labels);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(labels);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) {
+    char *next = NULL;
+    char *labels = NULL;
+    char *label = NULL;
+    char *value = NULL;
+    char *savedptr = NULL;
+    char sdelim[] = { '\n', '\0' };
+
+    if (next = wstr_chr(input, ' '), !next) {
+        mdebug1("Invalid DB query syntax.");
+        mdebug2("DB query error near: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
+        return OS_INVALID;
+    }
+    *next++ = '\0';
+
+    int agent_id = atoi(input);
+
+    if (!next) {
+        mdebug1("Global DB Invalid query syntax.");
+        mdebug2("Global DB query error near: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
+        return OS_INVALID;
+    } else {
+        // Removing old labels from the labels table
+        if (OS_SUCCESS != wdb_global_del_agent_labels(wdb, agent_id)) {
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+            snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+            return OS_INVALID;
+        }
+
+        labels = next;
+
+        // Parsing the labes string "key1:value1\nkey2:value2"
+        for (label = strtok_r(labels, sdelim, &savedptr); label; label = strtok_r(NULL, sdelim, &savedptr)) {
+            if (value = strstr(label, ":"), value) {
+                *value = '\0';
+                value++;
+            }
+            else {
+                continue;
+            }
+
+            // Inserting new labels in the database
+            if (OS_SUCCESS != wdb_global_set_agent_label(wdb, agent_id, label, value)) {
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                return OS_INVALID;
+            }
+
+            value = NULL;
+        }
+
+        snprintf(output, OS_MAXSTR + 1, "ok");
+    }
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) {
+    static int start_id = 0;
+    char* agent_info_sync = NULL;
+
+    char *next = wstr_chr(input, ' ');
+    if(next) {
+        *next++ = '\0';
+        if (strcmp(input, "start_id") == 0) {
+            start_id = atoi(next);
+        }
+    }
+
+    wdb_chunks_status_t status = wdb_sync_agent_info_get(wdb, &start_id, &agent_info_sync);
+    if (status == WDB_CHUNKS_COMPLETE || status == WDB_CHUNKS_ERROR) {
+        start_id = 0;
+    }
+    snprintf(output, OS_MAXSTR + 1, "%1d %s", status, agent_info_sync);
+    os_free(agent_info_sync)
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output){
+    const char *error = NULL;
+    int agent_id = 0;
+    cJSON *root = NULL;
+    cJSON *json_agent = NULL;
+    cJSON *json_field = NULL;
+    cJSON *json_label = NULL;
+    cJSON *json_labels = NULL;
+    cJSON *json_key = NULL;
+    cJSON *json_value = NULL;
+    cJSON *json_id = NULL;
+
+    /* 
+    * The cJSON_GetErrorPtr() method is not thread safe, using cJSON_ParseWithOpts() instead,
+    * error indicates where the string caused an error.
+    * The third arguments is TRUE and it will give an error if the input string 
+    * contains data after the JSON command
+    */ 
+    root = cJSON_ParseWithOpts(input, &error, TRUE);
+    if (!root) {
+        mdebug1("Global DB Invalid JSON syntax updating unsynced agents.");
+        mdebug2("Global DB JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        return OS_INVALID;
+
+    } else {
+        cJSON_ArrayForEach(json_agent, root){
+            // Inserting new agent information in the database
+            if (OS_SUCCESS != wdb_global_sync_agent_info_set(wdb, json_agent)) {
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                cJSON_Delete(root);
+                return OS_INVALID;
+            }
+            // Checking for labels
+            json_labels = cJSON_GetObjectItemCaseSensitive(json_agent, "labels");
+            if(cJSON_IsArray(json_labels)){
+                // The JSON has a label array
+                // Removing old labels from the labels table before inserting
+                json_field = cJSON_GetObjectItemCaseSensitive(json_agent, "id");
+                agent_id = cJSON_IsNumber(json_field) ? json_field->valueint : -1;
+
+                if (agent_id == -1){
+                    mdebug1("Global DB Cannot execute SQL query; incorrect agent id in labels array");
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot update labels due to invalid id;");
+                    cJSON_Delete(root);
+                    return OS_INVALID;
+                }
+
+                else if (OS_SUCCESS != wdb_global_del_agent_labels(wdb, agent_id)) {
+                    mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                    cJSON_Delete(root);
+                    return OS_INVALID;
+                }
+                // For every label in array, insert it in the database
+                cJSON_ArrayForEach(json_label, json_labels){
+                    json_key = cJSON_GetObjectItemCaseSensitive(json_label, "key");
+                    json_value = cJSON_GetObjectItemCaseSensitive(json_label, "value");
+                    json_id = cJSON_GetObjectItemCaseSensitive(json_label, "id");
+
+                    if(cJSON_IsString(json_key) && json_key->valuestring != NULL && cJSON_IsString(json_value) && 
+                        json_value->valuestring != NULL && cJSON_IsNumber(json_id)){
+                        // Inserting labels in the database
+                        if (OS_SUCCESS != wdb_global_set_agent_label(wdb, json_id->valueint, json_key->valuestring, json_value->valuestring)) {
+                            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                            snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                            cJSON_Delete(root);
+                            return OS_INVALID;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+    cJSON_Delete(root);
+
+    return OS_SUCCESS;
 }

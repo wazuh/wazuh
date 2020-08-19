@@ -23,7 +23,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     char f_ip[128] = {'\0'};
     char * rip = NULL;
     int port = DEFAULT_SECURE;
-    int protocol = IPPROTO_UDP;
+    int protocol = IPPROTO_TCP;
 
     /* XML definitions */
     const char *xml_client_server = "server";
@@ -229,7 +229,7 @@ int Read_Client_Server(XML_NODE node, agent * logr)
     char * rip = NULL;
     /* Default values */
     int port = DEFAULT_SECURE;
-    int protocol = IPPROTO_UDP;
+    int protocol = IPPROTO_TCP;
     int max_retries = DEFAULT_MAX_RETRIES; 
     int retry_interval = DEFAULT_RETRY_INTERVAL;
 

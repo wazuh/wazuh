@@ -68,6 +68,9 @@ if(NOT ${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_names "test_mq_op")
     list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,sleep \
                                     -Wl,--wrap,_mdebug1 -Wl,--wrap,OS_getsocketsize -Wl,--wrap,_merror")
+
+    list(APPEND shared_tests_names "test_remoted_op")
+    list(APPEND shared_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn -Wl,--wrap,_merror")
 endif()
 
 

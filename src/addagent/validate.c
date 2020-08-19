@@ -495,6 +495,8 @@ char *IPExist(const char *u_ip)
     return NULL;
 }
 
+#ifndef CLIENT
+
 double OS_AgentAntiquity_ID(const char *id) {
     char *name = getFullnameById(id);
     char *ip;
@@ -513,19 +515,24 @@ double OS_AgentAntiquity_ID(const char *id) {
     return ret;
 }
 
-/* Returns the number of seconds since last agent connection, or -1 if error. */
-double OS_AgentAntiquity(const char *name, const char *ip)
-{
-    struct stat file_stat;
-    char file_name[OS_FLSIZE];
+/**
+ * @brief Returns the number of seconds since last agent connection
+ * 
+ * @param name The name of the agent
+ * @param ip The IP address of the agent (unused). Kept only for compatibility
+ * @retval On success, it returns the difference between the current time and the last keepalive
+ * @retval -1 On error: invalid DB query syntax or result
+ */
+double OS_AgentAntiquity(const char *name, const char *ip){
+    time_t output = 0;
 
-    snprintf(file_name, OS_FLSIZE - 1, "%s/%s-%s", AGENTINFO_DIR, name, ip);
+    output = wdb_get_agent_keepalive(name,ip);
 
-    if (stat(file_name, &file_stat) < 0)
-        return -1;
-
-    return difftime(time(NULL), file_stat.st_mtime);
+    return output == OS_INVALID ? OS_INVALID : difftime(time(NULL), output);
 }
+
+ /* !CLIENT */
+ #endif
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output)
