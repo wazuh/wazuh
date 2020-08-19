@@ -19,7 +19,7 @@
 int w_logtest_init_parameters();
 void *w_logtest_init();
 void w_logtest_remove_session(char *token);
-void *w_logtest_check_inactive_sessions(__attribute__((unused)) void * arg);
+void *w_logtest_check_inactive_sessions(w_logtest_connection_t * connection);
 
 int logtest_enabled = 1;
 
@@ -52,12 +52,12 @@ int __wrap_pthread_mutex_init() {
     return mock();
 }
 
-int __wrap_pthread_mutex_lock() {
-    return mock();
+int __wrap_pthread_mutex_lock(pthread_mutex_t * mutex) {
+    return mock_type(int);
 }
 
-int __wrap_pthread_mutex_unlock() {
-    return mock();
+int __wrap_pthread_mutex_unlock(pthread_mutex_t * mutex) {
+    return mock_type(int);
 }
 
 int __wrap_pthread_mutex_destroy() {
@@ -122,6 +122,13 @@ int __wrap_getDefine_Int() {
 void * __wrap_OSHash_Delete_ex(OSHash *self, const char *key) {
     if (key) check_expected(key);
     return mock_type(void *);
+}
+
+int __wrap_OSHash_Add_ex(OSHash *hash, const char *key, void *data) {
+    check_expected_ptr(key);
+    check_expected_ptr(hash);
+    check_expected_ptr(data);
+    return mock_type(int);
 }
 
 void __wrap_os_remove_rules_list(RuleNode *node) {
@@ -424,6 +431,11 @@ void test_w_logtest_remove_session_OK(void **state)
 /* w_logtest_check_inactive_sessions */
 void test_w_logtest_check_inactive_sessions_no_remove(void **state)
 {
+
+    w_logtest_connection_t connection;
+    const int active_session = 5;
+    connection.active_client = active_session;
+
     w_logtest_session_t *session;
     os_calloc(1, sizeof(w_logtest_session_t), session);
     session->last_connection = 1;
@@ -437,17 +449,27 @@ void test_w_logtest_check_inactive_sessions_no_remove(void **state)
 
     will_return(__wrap_sleep, 0);
 
+    will_return(__wrap_pthread_mutex_lock, 0);
+
     will_return(__wrap_OSHash_Begin, hash_node);
 
+    will_return(__wrap_pthread_mutex_lock, 0);
+    
     will_return(__wrap_time, NULL);
 
     will_return(__wrap_difftime, 1);
+
+    will_return(__wrap_pthread_mutex_unlock, 0);
 
     will_return(__wrap_OSHash_Next, NULL);
 
     will_return(__wrap_FOREVER, 0);
 
-    w_logtest_check_inactive_sessions(NULL);
+    will_return(__wrap_pthread_mutex_unlock, 0);
+
+    w_logtest_check_inactive_sessions(&connection);
+
+    assert_int_equal(connection.active_client, active_session);
 
     os_free(session);
     os_free(hash_node);
@@ -456,6 +478,11 @@ void test_w_logtest_check_inactive_sessions_no_remove(void **state)
 
 void test_w_logtest_check_inactive_sessions_remove(void **state)
 {
+
+    w_logtest_connection_t connection;
+    const int active_session = 5;
+    connection.active_client = active_session;
+
     w_logtest_session_t *session;
     os_calloc(1, sizeof(w_logtest_session_t), session);
     session->last_connection = 1;
@@ -469,11 +496,19 @@ void test_w_logtest_check_inactive_sessions_remove(void **state)
 
     will_return(__wrap_sleep, 0);
 
+    will_return(__wrap_pthread_mutex_lock, 0);
+
     will_return(__wrap_OSHash_Begin, hash_node);
+
+    will_return(__wrap_pthread_mutex_lock, 0);
 
     will_return(__wrap_time, NULL);
 
     will_return(__wrap_difftime, 1000000);
+
+    will_return(__wrap_pthread_mutex_unlock, 0);
+
+    will_return(__wrap_OSHash_Next, NULL);
 
     // test_w_logtest_remove_session_ok
     char * key = "test";
@@ -490,14 +525,115 @@ void test_w_logtest_check_inactive_sessions_remove(void **state)
     will_return(__wrap_OSHash_Free, session);
 
 
-    will_return(__wrap_OSHash_Next, NULL);
-
     will_return(__wrap_FOREVER, 0);
 
-    w_logtest_check_inactive_sessions(NULL);
+    will_return(__wrap_pthread_mutex_unlock, 0);
+
+    w_logtest_check_inactive_sessions(&connection);
+
+    assert_int_equal(connection.active_client, active_session - 1);
 
     os_free(hash_node);
 
+}
+
+/* w_logtest_register_session */
+void test_w_logtest_register_session_dont_remove(void ** state) {
+    w_logtest_connection_t connection;
+    const int active_session = 5;
+
+    connection.active_client = active_session;
+    w_logtest_conf.max_sessions = active_session + 1;
+
+    w_logtest_session_t session;
+    w_strdup("test", session.token);
+
+    will_return(__wrap_pthread_mutex_lock, 0);
+
+    will_return(__wrap_pthread_mutex_unlock, 0);
+
+    expect_value(__wrap_OSHash_Add_ex, hash, w_logtest_sessions);
+    expect_value(__wrap_OSHash_Add_ex, key, session.token);
+    expect_value(__wrap_OSHash_Add_ex, data, &session);
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    w_logtest_register_session(&connection, &session);
+
+    assert_int_equal(connection.active_client, active_session + 1);
+
+    os_free(session.token)
+}
+
+void test_w_logtest_register_session_remove_old(void ** state) {
+    w_logtest_connection_t connection;
+    const int active_session = 5;
+
+    connection.active_client = active_session;
+    w_logtest_conf.max_sessions = active_session;
+
+    /* New session */
+    w_logtest_session_t session;
+    w_strdup("new_session", session.token);
+
+    /* Oldest session */
+    w_logtest_session_t * old_session;
+    os_calloc(1, sizeof(w_logtest_session_t), old_session);
+    old_session->expired = 0;
+    old_session->last_connection = 100;
+    w_strdup("old_session", old_session->token);
+    OSHashNode * hash_node_old;
+    os_calloc(1, sizeof(OSHashNode), hash_node_old);
+    w_strdup("old_session", hash_node_old->key);
+    hash_node_old->data = old_session;
+
+    /* Other session */
+    w_logtest_session_t other_session;
+    other_session.expired = 0;
+    other_session.last_connection = 300;
+    OSHashNode * hash_node_other;
+    os_calloc(1, sizeof(OSHashNode), hash_node_other);
+    w_strdup("other_session", hash_node_other->key);
+    hash_node_other->data = &other_session;
+
+    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_OSHash_Begin, hash_node_other);
+    will_return(__wrap_OSHash_Next, hash_node_old);
+
+    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_mutex_lock, 0);
+
+    will_return(__wrap_pthread_mutex_unlock, 0);
+    will_return(__wrap_pthread_mutex_unlock, 0);
+
+    will_return(__wrap_OSHash_Next, NULL);
+
+    /* w_logtest_remove_session */
+    expect_value(__wrap_OSHash_Delete_ex, key, old_session->token);
+    will_return(__wrap_OSHash_Delete_ex, old_session);
+
+    will_return(__wrap_OSStore_Free, NULL);
+
+    will_return(__wrap_OSHash_Free, old_session);
+
+    will_return(__wrap_OSHash_Free, old_session);
+
+    will_return(__wrap_OSHash_Free, old_session);
+
+    will_return(__wrap_pthread_mutex_unlock, 0);
+
+    expect_value(__wrap_OSHash_Add_ex, hash, w_logtest_sessions);
+    expect_value(__wrap_OSHash_Add_ex, key, session.token);
+    expect_value(__wrap_OSHash_Add_ex, data, &session);
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    w_logtest_register_session(&connection, &session);
+    assert_int_equal(connection.active_client, active_session);
+
+    os_free(session.token);
+    os_free(hash_node_other->key);
+    os_free(hash_node_old->key);
+    os_free(hash_node_other);
+    os_free(hash_node_old);
 }
 
 int main(void)
@@ -522,7 +658,10 @@ int main(void)
         cmocka_unit_test(test_w_logtest_remove_session_OK),
         // Tests w_logtest_check_inactive_sessions
         cmocka_unit_test(test_w_logtest_check_inactive_sessions_no_remove),
-        cmocka_unit_test(test_w_logtest_check_inactive_sessions_remove)
+        cmocka_unit_test(test_w_logtest_check_inactive_sessions_remove),
+        // Test w_logtest_register_session
+        cmocka_unit_test(test_w_logtest_register_session_dont_remove),
+        cmocka_unit_test(test_w_logtest_register_session_remove_old),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
