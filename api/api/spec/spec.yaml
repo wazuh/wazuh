@@ -12647,7 +12647,7 @@ paths:
           $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/user/authenticate:
-    post:
+    get:
       tags:
       - security
       summary: "User/password authentication to get an access token"
@@ -12655,11 +12655,6 @@ paths:
       operationId: api.controllers.security_controller.login_user
       security:
         - basicAuth: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
       responses:
         '200':
           description: "Login successful"
@@ -12690,6 +12685,35 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "User wazuh logout correctly."
+        '400':
+          $ref: '#/components/responses/ResponseError'
+
+  /security/user/authenticate/run_as:
+    post:
+      tags:
+      - security
+      summary: "Authorization context authentication to get an access token"
+      description: "This method should be called to get an API token. This token will expire at some time"
+      operationId: api.controllers.security_controller.login_user
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Login successful"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+              example:
+                token: "<generated_token>"
         '400':
           $ref: '#/components/responses/ResponseError'
 

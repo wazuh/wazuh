@@ -4,6 +4,7 @@
 
 import logging
 import re
+from json import JSONDecodeError
 
 from aiohttp import web
 
@@ -41,8 +42,12 @@ async def login_user(request, user: str):
     -------
     TokenResponseModel
     """
-    f_kwargs = {'auth_context': await request.json(),
-                'user_id': user}
+    f_kwargs = {'user_id': user}
+    try:
+        # Add authorization context in case there is body in request
+        f_kwargs['auth_context'] = await request.json()
+    except JSONDecodeError:
+        pass
 
     dapi = DistributedAPI(f=preprocessor.get_permissions,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
