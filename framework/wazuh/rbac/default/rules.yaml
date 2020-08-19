@@ -1,7 +1,14 @@
 default_rules:
   wui_admin:
-    description: Admin permissions for Elastic administrator.
+    description: Administrator permissions for WUI's users.
     rule:
       FIND:
         roles:
           - all_access
+
+  wui_readonly:
+    description: Read only permissions for WUI's users.
+    rule:
+      FIND:
+        roles:
+          - readonly

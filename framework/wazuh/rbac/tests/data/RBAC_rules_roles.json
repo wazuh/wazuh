@@ -544,7 +544,7 @@
     "rules": [
       {
         "FIND$": {
-          "test": "New"
+          "test": "Old"
         }
       },
       {
@@ -552,6 +552,11 @@
           "r'^auth[a-zA-Z]+$'": [
             "testing"
           ]
+        }
+      },
+      {
+        "FIND": {
+          "authLevel": ["basic1"]
         }
       }
     ]

@@ -49,9 +49,22 @@ class RBAChecker:
         if role is None:
             # All system's roles
             with orm.RolesManager() as rm:
-                self.roles_list = rm.get_roles()
+                roles_list = map(orm.Roles.to_dict, rm.get_roles())
         else:
-            self.roles_list = [role] if not isinstance(role, list) else role
+            roles_list = [role] if not isinstance(role, list) else role
+
+        with orm.RolesManager() as rm:
+            with orm.RulesManager() as rum:
+                processed_roles_list = list()
+                for role in roles_list:
+                    rules = list()
+                    for rule in rm.get_role_id(role_id=role['id'])['rules']:
+                        rules.append(rum.get_rule(rule))
+                    if len(rules) > 0:
+                        processed_roles_list.append(role)
+                        processed_roles_list[-1]['rules'] = rules
+
+        self.roles_list = processed_roles_list
 
     def get_authorization_context(self):
         """Return the authorization context
@@ -266,9 +279,9 @@ class RBAChecker:
         """This function will return a list of role IDs, if these match with the authorization context"""
         list_roles = list()
         for role in self.roles_list:
-            for rule in role.rules:
-                if self.check_rule(rule):
-                    list_roles.append(role.id)
+            for rule in role['rules']:
+                if self.check_rule(rule['rule']):
+                    list_roles.append(role['id'])
                     break
 
         return list_roles

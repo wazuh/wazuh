@@ -37,7 +37,8 @@ relationships:
         - sca_read
         - syscheck_read
         - syscollector_read
-      rule_ids: []
+      rule_ids:
+        - wui_readonly
 
     users_admin:
       policy_ids:
