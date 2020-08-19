@@ -73,6 +73,10 @@ void __wrap__merror(const char * file, int line, const char * func, const char *
     check_expected(formatted_msg);
 }
 
+char *__wrap_strerror (int __errnum) {
+    return mock_type(char*);
+}
+
 cJSON * __wrap_cJSON_CreateObject(void) {
     return mock_type(cJSON *);
 }
@@ -121,6 +125,14 @@ size_t __wrap_fread(void *__restrict __ptr, size_t __size, size_t __n, FILE *__r
     return __real_fread(__ptr, __size, __n, __stream);
 }
 
+extern size_t __real_fwrite(const void *__restrict __ptr, size_t __size, size_t __n, FILE *__restrict __s);
+size_t __wrap_fwrite(const void *__restrict __ptr, size_t __size, size_t __n, FILE *__restrict __s) {
+    if (test_mode) {
+        return mock_type(size_t);
+    }
+    return __real_fwrite(__ptr, __size, __n, __s);
+}
+
 extern int __real_fclose(FILE *__stream);
 int __wrap_fclose(FILE *stream) {
     if (test_mode) {
@@ -133,6 +145,12 @@ int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int
     check_expected(*sock);
     check_expected(query);
     check_expected(len);
+
+    return mock_type(int);
+}
+
+int __wrap_wdb_create_profile(const char *path) {
+    check_expected(path);
 
     return mock_type(int);
 }
@@ -178,7 +196,266 @@ int teardown_wdb_agent(void **state) {
     return 0;
 }
 
-/* Tests wdb_insert_agent*/
+/* Tests wdb_create_agent_db */
+
+void test_wdb_create_agent_db_error_no_name(void **state)
+{
+    int ret = 0;
+    int agent_id = 0;
+    const char* agent_name = NULL;
+
+    ret = wdb_create_agent_db(agent_id, agent_name);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_create_agent_db_error_creating_source_profile(void **state)
+{
+    int ret = 0;
+    int agent_id = 1;
+    const char* agent_name = "agent1";
+
+    // Opening source database file
+    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, 0);
+    // Creating profile
+    expect_string(__wrap__mdebug1, formatted_msg, "Profile database not found, creating.");
+    expect_string(__wrap_wdb_create_profile, path, "var/db/.template.db");
+    will_return(__wrap_wdb_create_profile, OS_INVALID);
+
+    ret = wdb_create_agent_db(agent_id, agent_name);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_create_agent_db_error_reopening_source_profile(void **state)
+{
+    int ret = 0;
+    int agent_id = 1;
+    const char* agent_name = "agent1";
+
+    // Opening source database file
+    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, 0);
+    // Creating profile
+    expect_string(__wrap__mdebug1, formatted_msg, "Profile database not found, creating.");
+    expect_string(__wrap_wdb_create_profile, path, "var/db/.template.db");
+    will_return(__wrap_wdb_create_profile, OS_SUCCESS);
+    // Opening source database file
+    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, 0);
+    expect_string(__wrap__merror, formatted_msg, "Couldn't open profile 'var/db/.template.db'.");
+
+    ret = wdb_create_agent_db(agent_id, agent_name);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_create_agent_db_error_opening_dest_profile(void **state)
+{
+    int ret = 0;
+    int agent_id = 1;
+    const char* agent_name = "agent1";
+
+    // Opening source database file
+    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, 1);
+    // Opening destination database file
+    expect_string(__wrap_fopen, __filename, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, __modes, "w");
+    will_return(__wrap_fopen, 0);
+    will_return(__wrap_fclose, OS_SUCCESS);
+    expect_string(__wrap__merror, formatted_msg, "Couldn't create database 'var/db/agents/001-agent1.db'.");
+
+    ret = wdb_create_agent_db(agent_id, agent_name);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_create_agent_db_error_writing_profile(void **state)
+{
+    int ret = 0;
+    int agent_id = 1;
+    const char* agent_name = "agent1";
+
+    // Opening source database file
+    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, 1);
+    // Opening destination database file
+    expect_string(__wrap_fopen, __filename, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, __modes, "w");
+    will_return(__wrap_fopen, 1);
+    // Writing destination profile
+    will_return(__wrap_fread, 100);
+    will_return(__wrap_fwrite, 0);
+    // Closing files
+    will_return_always(__wrap_fclose, OS_SUCCESS);
+    expect_string(__wrap__merror, formatted_msg, "Couldn't write/close file 'var/db/agents/001-agent1.db' completely.");
+
+    ret = wdb_create_agent_db(agent_id, agent_name);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_create_agent_db_error_getting_ids(void **state)
+{
+    int ret = 0;
+    int agent_id = 1;
+    const char* agent_name = "agent1";
+
+    // Opening source database file
+    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, 1);
+    // Opening destination database file
+    expect_string(__wrap_fopen, __filename, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, __modes, "w");
+    will_return(__wrap_fopen, 1);
+    // Writing destination profile
+    will_return(__wrap_fread, 100);
+    will_return(__wrap_fwrite, 100);
+    will_return(__wrap_fread, 0);
+    // Closing files
+    will_return_always(__wrap_fclose, OS_SUCCESS);
+    // Getting IDs
+    expect_string(__wrap_Privsep_GetUser, name, "root");
+    will_return(__wrap_Privsep_GetUser, (uid_t) - 1);
+    expect_string(__wrap_Privsep_GetGroup, name, "ossec");
+    will_return(__wrap_Privsep_GetGroup, (gid_t) - 1);
+    will_return(__wrap_strerror, "error");
+    expect_string(__wrap__merror, formatted_msg, "(1203): Invalid user 'root' or group 'ossec' given: error (0)");
+
+    ret = wdb_create_agent_db(agent_id, agent_name);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_create_agent_db_error_changing_owner(void **state)
+{
+    int ret = 0;
+    int agent_id = 1;
+    const char* agent_name = "agent1";
+
+    // Opening source database file
+    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, 1);
+    // Opening destination database file
+    expect_string(__wrap_fopen, __filename, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, __modes, "w");
+    will_return(__wrap_fopen, 1);
+    // Writing destination profile
+    will_return(__wrap_fread, 100);
+    will_return(__wrap_fwrite, 100);
+    will_return(__wrap_fread, 0);
+    // Closing files
+    will_return_always(__wrap_fclose, OS_SUCCESS);
+    // Getting IDs
+    expect_string(__wrap_Privsep_GetUser, name, "root");
+    will_return(__wrap_Privsep_GetUser, 0);
+    expect_string(__wrap_Privsep_GetGroup, name, "ossec");
+    will_return(__wrap_Privsep_GetGroup, 0);
+    // Changing owner
+    expect_string(__wrap_chown, __file, "var/db/agents/001-agent1.db");
+    expect_value(__wrap_chown, __owner, 0);
+    expect_value(__wrap_chown, __group, 0);
+    will_return(__wrap_chown, OS_INVALID);
+    will_return(__wrap_strerror, "error");
+    expect_string(__wrap__merror, formatted_msg, "(1135): Could not chown object 'var/db/agents/001-agent1.db' due to [(0)-(error)].");
+
+    ret = wdb_create_agent_db(agent_id, agent_name);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_create_agent_db_error_changing_mode(void **state)
+{
+    int ret = 0;
+    int agent_id = 1;
+    const char* agent_name = "agent1";
+
+    // Opening source database file
+    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, 1);
+    // Opening destination database file
+    expect_string(__wrap_fopen, __filename, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, __modes, "w");
+    will_return(__wrap_fopen, 1);
+    // Writing destination profile
+    will_return(__wrap_fread, 100);
+    will_return(__wrap_fwrite, 100);
+    will_return(__wrap_fread, 0);
+    // Closing files
+    will_return_always(__wrap_fclose, OS_SUCCESS);
+    // Getting IDs
+    expect_string(__wrap_Privsep_GetUser, name, "root");
+    will_return(__wrap_Privsep_GetUser, 0);
+    expect_string(__wrap_Privsep_GetGroup, name, "ossec");
+    will_return(__wrap_Privsep_GetGroup, 0);
+    // Changing owner
+    expect_string(__wrap_chown, __file, "var/db/agents/001-agent1.db");
+    expect_value(__wrap_chown, __owner, 0);
+    expect_value(__wrap_chown, __group, 0);
+    will_return(__wrap_chown, OS_SUCCESS);
+    // Changing mode
+    expect_string(__wrap_chmod, __file, "var/db/agents/001-agent1.db");
+    expect_value(__wrap_chmod, __mode, 0660);
+    will_return(__wrap_chmod, OS_INVALID);
+    will_return(__wrap_strerror, "error");
+    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object 'var/db/agents/001-agent1.db' due to [(0)-(error)].");
+
+    ret = wdb_create_agent_db(agent_id, agent_name);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_create_agent_db_success(void **state)
+{
+    int ret = 0;
+    int agent_id = 1;
+    const char* agent_name = "agent1";
+
+    // Opening source database file
+    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, 1);
+    // Opening destination database file
+    expect_string(__wrap_fopen, __filename, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, __modes, "w");
+    will_return(__wrap_fopen, 1);
+    // Writing destination profile
+    will_return(__wrap_fread, 100);
+    will_return(__wrap_fwrite, 100);
+    will_return(__wrap_fread, 0);
+    // Closing files
+    will_return_always(__wrap_fclose, OS_SUCCESS);
+    // Getting IDs
+    expect_string(__wrap_Privsep_GetUser, name, "root");
+    will_return(__wrap_Privsep_GetUser, 0);
+    expect_string(__wrap_Privsep_GetGroup, name, "ossec");
+    will_return(__wrap_Privsep_GetGroup, 0);
+    // Changing owner
+    expect_string(__wrap_chown, __file, "var/db/agents/001-agent1.db");
+    expect_value(__wrap_chown, __owner, 0);
+    expect_value(__wrap_chown, __group, 0);
+    will_return(__wrap_chown, OS_SUCCESS);
+    // Changing mode
+    expect_string(__wrap_chmod, __file, "var/db/agents/001-agent1.db");
+    expect_value(__wrap_chmod, __mode, 0660);
+    will_return(__wrap_chmod, OS_SUCCESS);
+
+    ret = wdb_create_agent_db(agent_id, agent_name);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
+/* Tests wdb_insert_agent */
 
 void test_wdb_insert_agent_error_json(void **state)
 {
@@ -363,23 +640,31 @@ void test_wdb_insert_agent_error_success(void **state)
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS); // Returning any error
 
     // Hnadling result and creating agent database
-    will_return_always(__wrap_fopen, db_file);
-    will_return_always(__wrap_fclose, OS_SUCCESS);
-    // Copy database file
+    // Opening source database file
     expect_string(__wrap_fopen, __filename, "var/db/.template.db");
     expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, 1);
+    // Opening destination database file
     expect_string(__wrap_fopen, __filename, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, __modes, "w");
+    will_return(__wrap_fopen, 1);
+    // Writing destination profile
+    will_return(__wrap_fread, 100);
+    will_return(__wrap_fwrite, 100);
     will_return(__wrap_fread, 0);
-    // Changing owner
+    // Closing files
+    will_return_always(__wrap_fclose, OS_SUCCESS);
+    // Getting IDs
     expect_string(__wrap_Privsep_GetUser, name, "root");
     will_return(__wrap_Privsep_GetUser, 0);
     expect_string(__wrap_Privsep_GetGroup, name, "ossec");
     will_return(__wrap_Privsep_GetGroup, 0);
+    // Changing owner
     expect_string(__wrap_chown, __file, "var/db/agents/001-agent1.db");
     expect_value(__wrap_chown, __owner, 0);
     expect_value(__wrap_chown, __group, 0);
     will_return(__wrap_chown, OS_SUCCESS);
+    // Changing mode
     expect_string(__wrap_chmod, __file, "var/db/agents/001-agent1.db");
     expect_value(__wrap_chmod, __mode, 0660);
     will_return(__wrap_chmod, OS_SUCCESS);
@@ -393,6 +678,16 @@ int main()
 {
     const struct CMUnitTest tests[] = 
     {
+        /* Tests wdb_create_agent_db */
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_no_name, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_creating_source_profile, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_reopening_source_profile, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_opening_dest_profile, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_writing_profile, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_getting_ids, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_changing_owner, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_changing_mode, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_success, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_insert_agent*/
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_json, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_socket, setup_wdb_agent, teardown_wdb_agent),

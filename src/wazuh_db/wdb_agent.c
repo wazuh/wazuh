@@ -409,13 +409,10 @@ int wdb_create_agent_db(int id, const char *name) {
     }
 
     fclose(source);
-    if (fclose(dest) == -1) {
-        merror("Couldn't write/close file %s completely ", path);
+    if (fclose(dest) == -1 || result < 0) {
+        merror("Couldn't write/close file '%s' completely.", path);
         return -1;
     }
-
-    if (result < 0)
-        return -1;
 
     uid = Privsep_GetUser(ROOT);
     gid = Privsep_GetGroup(GROUPGLOBAL);
