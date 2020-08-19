@@ -45,6 +45,9 @@
 
 #define WDB_DATABASE_LOGTAG ARGV0 ":wdb_agent"
 
+#define WDB_MAX_COMMAND_SIZE    512
+#define WDB_MAX_RESPONSE_SIZE   OS_MAXSTR-WDB_MAX_COMMAND_SIZE
+
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
@@ -124,6 +127,9 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_LABELS_GET,
     WDB_STMT_GLOBAL_LABELS_DEL,
     WDB_STMT_GLOBAL_LABELS_SET,
+    WDB_STMT_GLOBAL_SYNC_REQ_GET,
+    WDB_STMT_GLOBAL_SYNC_SET,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_SIZE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
@@ -188,6 +194,14 @@ typedef enum {
     WDB_SYNCED,
     WDB_SYNC_REQ        
 } wdb_sync_status_t;
+
+/// Enumeration of sync-agent-info-get-status.
+typedef enum {
+    WDB_CHUNKS_PENDING,       ///< There are still elements to get
+    WDB_CHUNKS_BUFFER_FULL,   ///< There are still elements to get but buffer is full
+    WDB_CHUNKS_COMPLETE,      ///< There aren't any more elements to get
+    WDB_CHUNKS_ERROR          ///< An error occured
+} wdb_chunks_status_t;
 
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
@@ -694,6 +708,29 @@ int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
  */
 int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
 
+/**
+ * @brief Function to parse sync-agent-info-get params and set next ID to iterate on further calls.
+ *        If no start_id is provided. Last obtained ID is used.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with starting ID [optional].
+ * @param output Response of the query.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to update the agents info from workers.
+ * 
+ * @param wdb The global struct database.
+ * @param input String with the agents information in JSON format.
+ * @param output Response of the query in JSON format.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output);
+
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
@@ -803,6 +840,40 @@ int wdb_global_del_agent_labels(wdb_t *wdb, int id);
  * @retval -1 On error.
  */
 int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
+
+/**
+ * @brief Function to update sync_status of a particular agent.
+ * 
+ * @param wdb The Global struct database.
+ * @param id The agent ID
+ * @param status The value of sync_status
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_global_set_sync_status(wdb_t *wdb, int id, wdb_sync_status_t status);
+
+/**
+ * @brief Gets and parses agents with WDB_SYNC_REQ sync_status and sets them to WDB_SYNCED.
+ *        Response is prepared in one chunk, 
+ *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
+ *        Multiple calls to this function can be required to fully obtain all agents.
+ *       
+ * @param wdb The Global struct database.
+ * @param last_agent_id ID where to start querying.
+ * @param output buffer where the response is written. Must be de-allocated by the caller.
+ * @return wdb_chunks_status_t to represent if all agents has being obtained.
+ */
+wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output);
+
+/**
+ * @brief Function to update the information of an agent.
+ * 
+ * @param wdb The Global struct database.
+ * @param agent_info A JSON array with the agent information.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
