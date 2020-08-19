@@ -138,12 +138,12 @@ void* wm_task_manager_clean_db(void *arg) {
         }
 
         if (next_timeout < next_clean) {
-            sleep_time = next_timeout - now;
+            sleep_time = next_timeout;
         } else {
-            sleep_time = next_clean - now;
+            sleep_time = next_clean;
         }
 
-        sleep(sleep_time);
+        w_sleep_until(sleep_time);
     }
 }
 
