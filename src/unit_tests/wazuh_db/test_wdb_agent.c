@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "wazuh_db/wdb.h"
+#include "wazuhdb_op.h"
 
 #define WDBQUERY_SIZE OS_BUFFER_SIZE
 #define WDBOUTPUT_SIZE OS_MAXSTR
@@ -146,6 +147,10 @@ int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int
     check_expected(query);
     check_expected(len);
 
+    return mock_type(int);
+}
+
+int __wrap_wdbc_parse_result(char *result, char **payload) {
     return mock_type(int);
 }
 
@@ -591,7 +596,7 @@ void test_wdb_insert_agent_error_sql_execution(void **state)
     assert_int_equal(OS_INVALID, ret);
 }
 
-void test_wdb_insert_agent_error_success(void **state)
+void test_wdb_insert_agent_success(void **state)
 {
     int ret = 0;
     int id = 1;
@@ -637,7 +642,10 @@ void test_wdb_insert_agent_error_success(void **state)
     expect_value(__wrap_wdbc_query_ex, *sock, -1);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS); // Returning any error
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     // Hnadling result and creating agent database
     // Opening source database file
@@ -692,7 +700,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_json, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_socket, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_success, setup_wdb_agent, teardown_wdb_agent)
+        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_success, setup_wdb_agent, teardown_wdb_agent)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
