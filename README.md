@@ -87,13 +87,17 @@ The Wazuh WUI provides a powerful user interface for data visualization and anal
 
 ![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/img/app4.png)
 
-**Agents overview**
+**Regulatory compliance**
 
 ![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/img/app5.png)
 
-**Agent summary**
+**Agents overview**
 
 ![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/img/app6.png)
+
+**Agent summary**
+
+![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/img/app7.png)
 
 ## Orchestration
 
