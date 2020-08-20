@@ -99,7 +99,8 @@ installPrerequisites() {
         export JAVA_HOME=/usr/
     elif [ $sys_type == "zypper" ] 
     then
-        eval "zypper -n install curl unzip wget libcap $debug"
+        eval "zypper -n install curl unzip wget $debug" 
+        eval "zypper -n install libcap-progs $debug || zypper -n install libcap2 $debug"
         eval "zypper -n install java-11-openjdk-devel $debug"
         if [ "$?" != 0 ]
         then
@@ -107,7 +108,7 @@ installPrerequisites() {
             eval "zypper -n install adoptopenjdk-11-hotspot $debug "
 
         fi    
-        export JAVA_HOME=/usr/        
+        export JAVA_HOME=/usr/    
     elif [ $sys_type == "apt-get" ] 
     then
         eval "apt-get install apt-transport-https curl unzip wget libcap2-bin -y -q $debug"
