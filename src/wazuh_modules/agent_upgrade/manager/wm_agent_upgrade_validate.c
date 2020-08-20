@@ -455,17 +455,19 @@ bool wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *ag
         cJSON *data_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_ERROR_DATA]);
         cJSON *task_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_TASK_ID]);
 
-        if (agent_json && (agent_json->type == cJSON_Number)) {
+        if (agent_id && agent_json && (agent_json->type == cJSON_Number)) {
             *agent_id = agent_json->valueint;
         } else {
             return false;
         }
 
-        if (data_json && (data_json->type == cJSON_String)) {
+        if (data && data_json && (data_json->type == cJSON_String)) {
             os_strdup(data_json->valuestring, *data);
+        } else {
+            return false;
         }
 
-        if (task_json && (task_json->type == cJSON_Number)) {
+        if (task_id && task_json && (task_json->type == cJSON_Number)) {
             *task_id = task_json->valueint;
         }
         return true;

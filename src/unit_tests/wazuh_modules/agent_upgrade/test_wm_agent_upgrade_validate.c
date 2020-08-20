@@ -1375,6 +1375,114 @@ void test_wm_agent_upgrade_validate_task_status_message_null_json(void **state)
     assert_int_equal(ret, false);
 }
 
+void test_wm_agent_upgrade_validate_task_ids_message_ok(void **state)
+{
+    cJSON *response = cJSON_CreateObject();
+    int agent_id = 0;
+    int task_id = 0;
+    char *data = NULL;
+
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddStringToObject(response, "data", "Success");
+    cJSON_AddNumberToObject(response, "agent", 7);
+    cJSON_AddNumberToObject(response, "task_id", 15);
+
+    int ret = wm_agent_upgrade_validate_task_ids_message(response, &agent_id, &task_id, &data);
+
+    state[0] = (void *)response;
+    state[1] = (void *)data;
+
+    assert_int_equal(ret, true);
+    assert_int_equal(agent_id, 7);
+    assert_int_equal(task_id, 15);
+    assert_string_equal(data, "Success");
+}
+
+void test_wm_agent_upgrade_validate_task_ids_message_not_agent_error(void **state)
+{
+    cJSON *response = cJSON_CreateObject();
+    int task_id = 0;
+    char *data = NULL;
+
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddStringToObject(response, "data", "Success");
+    cJSON_AddNumberToObject(response, "agent", 7);
+    cJSON_AddNumberToObject(response, "task_id", 15);
+
+    int ret = wm_agent_upgrade_validate_task_ids_message(response, NULL, &task_id, &data);
+
+    state[0] = (void *)response;
+
+    assert_int_equal(ret, false);
+    assert_int_equal(task_id, 0);
+    assert_null(data);
+}
+
+void test_wm_agent_upgrade_validate_task_ids_message_not_data_error(void **state)
+{
+    cJSON *response = cJSON_CreateObject();
+    int agent_id = 0;
+    int task_id = 0;
+
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddStringToObject(response, "data", "Success");
+    cJSON_AddNumberToObject(response, "agent", 7);
+    cJSON_AddNumberToObject(response, "task_id", 15);
+
+    int ret = wm_agent_upgrade_validate_task_ids_message(response, &agent_id, &task_id, NULL);
+
+    state[0] = (void *)response;
+
+    assert_int_equal(ret, false);
+    assert_int_equal(agent_id, 7);
+    assert_int_equal(task_id, 0);
+}
+
+void test_wm_agent_upgrade_validate_task_ids_message_not_task_ok(void **state)
+{
+    cJSON *response = cJSON_CreateObject();
+    int agent_id = 0;
+    char *data = NULL;
+
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddStringToObject(response, "data", "Success");
+    cJSON_AddNumberToObject(response, "agent", 7);
+    cJSON_AddNumberToObject(response, "task_id", 15);
+
+    int ret = wm_agent_upgrade_validate_task_ids_message(response, &agent_id, NULL, &data);
+
+    state[0] = (void *)response;
+    state[1] = (void *)data;
+
+    assert_int_equal(ret, true);
+    assert_int_equal(agent_id, 7);
+    assert_string_equal(data, "Success");
+}
+
+void test_wm_agent_upgrade_validate_task_ids_message_invalid_json(void **state)
+{
+    cJSON *response = cJSON_CreateObject();
+    int agent_id = 0;
+    int task_id = 0;
+    char *data = NULL;
+
+    int ret = wm_agent_upgrade_validate_task_ids_message(response, &agent_id, &task_id, &data);
+
+    state[0] = (void *)response;
+
+    assert_int_equal(ret, false);
+    assert_int_equal(agent_id, 0);
+    assert_int_equal(task_id, 0);
+    assert_null(data);
+}
+
+void test_wm_agent_upgrade_validate_task_ids_message_null_json(void **state)
+{
+    int ret = wm_agent_upgrade_validate_task_ids_message(NULL, NULL, NULL, NULL);
+
+    assert_int_equal(ret, false);
+}
+
 #endif
 
 int main(void) {
@@ -1450,6 +1558,13 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_validate_task_status_message_error_code, teardown_validate_message),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_validate_task_status_message_invalid_json, teardown_validate_message),
         cmocka_unit_test(test_wm_agent_upgrade_validate_task_status_message_null_json),
+        // wm_agent_upgrade_validate_task_ids_message
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_validate_task_ids_message_ok, teardown_validate_message),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_validate_task_ids_message_not_agent_error, teardown_validate_message),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_validate_task_ids_message_not_data_error, teardown_validate_message),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_validate_task_ids_message_not_task_ok, teardown_validate_message),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_validate_task_ids_message_invalid_json, teardown_validate_message),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_task_ids_message_null_json)
 #endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
