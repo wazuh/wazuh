@@ -31,7 +31,6 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST] = "The version of the WPK does not exist in the repository.",
     [WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT] = "Current agent version is greater or equal.",
     [WM_UPGRADE_NEW_VERSION_GREATER_MASTER] = "Upgrading an agent to a version higher than the manager requires the force flag.",
-    [WM_UPGRADE_VERSION_SAME_MANAGER] = "Agent and manager have the same version. No need to upgrade.",
     [WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST] = "The WPK file does not exist.",
     [WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH] = "The WPK sha1 of the file is not valid.",
     [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start."

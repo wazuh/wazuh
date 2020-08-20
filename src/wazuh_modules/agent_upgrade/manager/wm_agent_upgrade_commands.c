@@ -42,7 +42,6 @@ static cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_
  * @retval WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
  * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER
- * @retval WM_UPGRADE_VERSION_SAME_MANAGER
  * @retval WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST
  * @retval WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH
  * @retval WM_UPGRADE_UNKNOWN_ERROR
