@@ -208,13 +208,13 @@ installElasticsearch() {
 
     if [ $sys_type == "yum" ] 
     then
-        eval "yum install elasticsearch -y -q $debug"
+        eval "yum install elasticsearch-7.8.1 -y -q $debug"
     elif [ $sys_type == "apt-get" ] 
     then
-        eval "apt-get install elasticsearch -y -q $debug"
+        eval "apt-get install elasticsearch=7.8.1 -y -q $debug"
     elif [ $sys_type == "zypper" ] 
     then
-        eval "zypper -n install elasticsearch $debug"
+        eval "zypper -n install elasticsearch-7.8.1 $debug"
     fi
 
     if [  "$?" != 0  ]
@@ -276,12 +276,14 @@ installElasticsearch() {
 installFilebeat() {
     
     logger "Installing Filebeat..."
-    
-    if [ $sys_type == "zypper" ] 
+    if [ $sys_type == "yum" ] 
     then
-        eval "zypper -n install filebeat $debug"
-    else
-        eval "$sys_type install filebeat -y -q  $debug"
+        eval "yum install filebeat-7.8.1 -y -q  $debug"    
+    elif [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install filebeat-7.8.1 $debug"
+    elif [ $sys_type == "apt" ] 
+        eval "apt-get install filebeat=7.8.1 -y -q  $debug"
     fi
     if [  "$?" != 0  ]
     then
@@ -309,12 +311,15 @@ installFilebeat() {
 ## Kibana
 installKibana() {
     
-    logger "Installing Open Distro for Kibana..."
-    if [ $sys_type == "zypper" ] 
+    logger "Installing Kibana..."
+    if [ $sys_type == "yum" ] 
     then
-        eval "zypper -n install kibana $debug"
-    else
-        eval "$sys_type install kibana -y -q $debug"
+        eval "yum install kibana-7.8.1 -y -q  $debug"    
+    elif [ $sys_type == "zypper" ] 
+    then
+        eval "zypper -n install kibana-7.8.1 $debug"
+    elif [ $sys_type == "apt" ] 
+        eval "apt-get install kibana=7.8.1 -y -q  $debug"
     fi
     if [  "$?" != 0  ]
     then
