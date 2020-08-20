@@ -894,9 +894,6 @@ void test_seechanges_addfile(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/folder/test/state.1");
     will_return(__wrap_unlink, 0);
-#endif
-
-#ifndef TEST_WINAGENT
     // symlink_to_dir()
     expect_string(__wrap_lstat, filename, file_name);
     will_return(__wrap_lstat, 0120000);
@@ -1778,9 +1775,6 @@ void test_seechanges_addfile_run_diff_system_error(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/folder/test/diff.1");
     will_return(__wrap_unlink, 0);
-#endif
-
-#ifndef TEST_WINAGENT
     // symlink_to_dir()
     expect_string(__wrap_lstat, filename, file_name);
     will_return(__wrap_lstat, 0);

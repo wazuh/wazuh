@@ -1053,37 +1053,36 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
 	OSSEC_LIBS+=${LIBS_TEST}
 
+	UNIT_TEST_WRAPPERS:=${wrappers_common_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_externals_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_externals_bzip2_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_externals_cJSON_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_externals_openssl_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_externals_sqlite_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_libc_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_posix_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_crypto_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_net_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_regex_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_syscheckd_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_db_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_modules_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_monitord_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_auth_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_addagent_o}
 
-UNIT_TEST_WRAPPERS:=${wrappers_common_o}
-UNIT_TEST_WRAPPERS+=${wrappers_externals_o}
-UNIT_TEST_WRAPPERS+=${wrappers_externals_bzip2_o}
-UNIT_TEST_WRAPPERS+=${wrappers_externals_cJSON_o}
-UNIT_TEST_WRAPPERS+=${wrappers_externals_openssl_o}
-UNIT_TEST_WRAPPERS+=${wrappers_externals_sqlite_o}
-UNIT_TEST_WRAPPERS+=${wrappers_libc_o}
-UNIT_TEST_WRAPPERS+=${wrappers_posix_o}
-UNIT_TEST_WRAPPERS+=${wrappers_wazuh_o}
-UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_crypto_o}
-UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_net_o}
-UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_regex_o}
-UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_o}
-UNIT_TEST_WRAPPERS+=${wrappers_wazuh_syscheckd_o}
-UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_db_o}
-UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_modules_o}
-UNIT_TEST_WRAPPERS+=${wrappers_wazuh_monitord_o}
-UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_auth_o}
-UNIT_TEST_WRAPPERS+=${wrappers_wazuh_addagent_o}
-
-ifeq (${TARGET},winagent)
-	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_windows_lib_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_windows_posix_o}
-else
-	UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_externals_procpc_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_linux_o}
-endif
+	ifeq (${TARGET},winagent)
+		UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
+		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
+		UNIT_TEST_WRAPPERS+=${wrappers_windows_lib_o}
+		UNIT_TEST_WRAPPERS+=${wrappers_windows_posix_o}
+	else
+		UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
+		UNIT_TEST_WRAPPERS+=${wrappers_externals_procpc_o}
+		UNIT_TEST_WRAPPERS+=${wrappers_linux_o}
+	endif
 endif #TEST
 
 shared_c := $(wildcard shared/*.c)

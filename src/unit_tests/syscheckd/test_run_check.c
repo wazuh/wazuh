@@ -166,8 +166,6 @@ void test_fim_whodata_initialize(void **state)
         NULL
     };
     char expanded_dirs[1][OS_SIZE_1024];
-#endif
-#ifdef TEST_WINAGENT
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
 
     expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);

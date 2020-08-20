@@ -18,13 +18,6 @@
 #include <sys/inotify.h>
 #endif
 
-#ifdef WAZUH_UNIT_TESTING
-// Remove static qualifier when unit testing
-#define STATIC
-#else
-#define STATIC static
-#endif
-
 #include "shared.h"
 #include "syscheck.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
@@ -37,7 +30,6 @@
 #include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
 #include "unit_tests/wrappers/windows/synchapi_wrappers.h"
 #endif
-
 // Remove static qualifier when unit testing
 #define STATIC
 #else

@@ -33,12 +33,12 @@ int __wrap_sqlite3_bind_int64(__attribute__((unused)) sqlite3_stmt *stmt,
 }
 
 int __wrap_sqlite3_bind_text(__attribute__((unused)) sqlite3_stmt* pStmt,
-                             int a,
-                             const char* b,
-                             __attribute__((unused)) int c,
-                             __attribute__((unused)) void *d) {
-    check_expected(a);
-    if (b) check_expected(b);
+                             int pos,
+                             const char* buffer,
+                             __attribute__((unused)) int length,
+                             __attribute__((unused)) void *mem_callback) {
+    check_expected(pos);
+    if (buffer) check_expected(buffer);
 
     return mock();
 }
@@ -52,14 +52,14 @@ int __wrap_sqlite3_close_v2() {
 }
 
 double __wrap_sqlite3_column_double(__attribute__((unused)) sqlite3_stmt *pStmt,
-                                    int i) {
-    check_expected(i);
+                                    int iCol) {
+    check_expected(iCol);
     return mock_type(double);
 }
 
 int __wrap_sqlite3_column_int(__attribute__((unused)) sqlite3_stmt *pStmt,
-                              int i) {
-    check_expected(i);
+                              int iCol) {
+    check_expected(iCol);
     return mock();
 }
 
@@ -70,8 +70,8 @@ sqlite3_int64 __wrap_sqlite3_column_int64(__attribute__((unused)) sqlite3_stmt* 
 }
 
 const unsigned char *__wrap_sqlite3_column_text(__attribute__((unused)) sqlite3_stmt *pStmt,
-                                                int i) {
-    check_expected(i);
+                                                int iCol) {
+    check_expected(iCol);
     return mock_type(const unsigned char*);
 
 }

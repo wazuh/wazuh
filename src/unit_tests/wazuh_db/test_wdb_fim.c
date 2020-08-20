@@ -131,8 +131,8 @@ static void test_wdb_syscheck_save2_success(void **state)
     will_return(__wrap_cJSON_IsNumber, true);
     will_return(__wrap_cJSON_IsObject, true);
     will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "/test");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "/test");
     will_return(__wrap_sqlite3_bind_text, 1);
     expect_value(__wrap_sqlite3_bind_int64, index, 3);
     expect_value(__wrap_sqlite3_bind_int64, value, 10);
@@ -245,8 +245,8 @@ static void test_wdb_fim_insert_entry2_fail_element_null(void **state)
     will_return(__wrap_cJSON_IsNumber, true);
     will_return(__wrap_cJSON_IsObject, true);
     will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "/test");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "/test");
     will_return(__wrap_sqlite3_bind_text, 1);
     expect_value(__wrap_sqlite3_bind_int64, index, 3);
     expect_value(__wrap_sqlite3_bind_int64, value, 10);
@@ -270,8 +270,8 @@ static void test_wdb_fim_insert_entry2_fail_element_string(void **state)
     will_return(__wrap_cJSON_IsNumber, true);
     will_return(__wrap_cJSON_IsObject, true);
     will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "/test");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "/test");
     will_return(__wrap_sqlite3_bind_text, 1);
     expect_value(__wrap_sqlite3_bind_int64, index, 3);
     expect_value(__wrap_sqlite3_bind_int64, value, 10);
@@ -296,8 +296,8 @@ static void test_wdb_fim_insert_entry2_fail_element_number(void **state)
     will_return(__wrap_cJSON_IsNumber, true);
     will_return(__wrap_cJSON_IsObject, true);
     will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "/test");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "/test");
     will_return(__wrap_sqlite3_bind_text, 1);
     expect_value(__wrap_sqlite3_bind_int64, index, 3);
     expect_value(__wrap_sqlite3_bind_int64, value, 10);
@@ -318,8 +318,8 @@ static void test_wdb_fim_insert_entry2_fail_sqlite3_stmt(void **state)
     will_return(__wrap_cJSON_IsNumber, true);
     will_return(__wrap_cJSON_IsObject, true);
     will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "/test");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "/test");
     will_return(__wrap_sqlite3_bind_text, 1);
     expect_value(__wrap_sqlite3_bind_int64, index, 3);
     expect_value(__wrap_sqlite3_bind_int64, value, 10);
@@ -376,8 +376,8 @@ static void test_wdb_fim_insert_entry2_success(void **state)
     expect_value(__wrap_sqlite3_bind_int64, index, 13);
     expect_value(__wrap_sqlite3_bind_int64, value, 2);
     will_return(__wrap_sqlite3_bind_int64,0);
-    expect_any_count(__wrap_sqlite3_bind_text, a, 13);
-    expect_any_count(__wrap_sqlite3_bind_text, b, 13);
+    expect_any_count(__wrap_sqlite3_bind_text, pos, 13);
+    expect_any_count(__wrap_sqlite3_bind_text, buffer, 13);
     will_return_count(__wrap_sqlite3_bind_text, 1, 13);
     ret = wdb_fim_insert_entry2(wdb, data);
     cJSON_Delete(data);
@@ -429,8 +429,8 @@ static void test_wdb_fim_insert_entry2_large_inode(void **state)
     expect_value(__wrap_sqlite3_bind_int64, index, 13);
     expect_value(__wrap_sqlite3_bind_int64, value, 2311061769);
     will_return(__wrap_sqlite3_bind_int64, 0);
-    expect_any_count(__wrap_sqlite3_bind_text, a, 13);
-    expect_any_count(__wrap_sqlite3_bind_text, b, 13);
+    expect_any_count(__wrap_sqlite3_bind_text, pos, 13);
+    expect_any_count(__wrap_sqlite3_bind_text, buffer, 13);
     will_return_count(__wrap_sqlite3_bind_text, 1, 13);
 
     ret = wdb_fim_insert_entry2(wdb, data);

@@ -139,7 +139,7 @@ static void test_wdbi_checksum_range_success(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 100);
     will_return(__wrap_sqlite3_step, 0);
-    expect_value(__wrap_sqlite3_column_text, i, 0);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) has a NULL fim checksum.");
@@ -538,7 +538,7 @@ void test_wdbi_query_checksum_diff_hexdigest(void **state)
 
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 100);
-    expect_value(__wrap_sqlite3_column_text, i, 0);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, NULL);
     will_return(__wrap_sqlite3_step, 101);
     will_return(__wrap_wdb_stmt_cache, -1);
@@ -561,7 +561,7 @@ void test_wdbi_query_checksum_equal_hexdigest(void **state)
 
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 100);
-    expect_value(__wrap_sqlite3_column_text, i, 0);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_EVP_DigestUpdate, data, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_value(__wrap_EVP_DigestUpdate, count, 40);
@@ -586,7 +586,7 @@ void test_wdbi_query_checksum_bad_command(void **state)
 
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 100);
-    expect_value(__wrap_sqlite3_column_text, i, 0);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, NULL);
     will_return(__wrap_sqlite3_step, 101);
 
@@ -607,7 +607,7 @@ void test_wdbi_query_checksum_check_left_no_tail(void **state)
 
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 100);
-    expect_value(__wrap_sqlite3_column_text, i, 0);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "something");
     expect_string(__wrap_EVP_DigestUpdate, data, "something");
     expect_value(__wrap_EVP_DigestUpdate, count, 9);
@@ -631,7 +631,7 @@ void test_wdbi_query_checksum_check_left_ok(void **state)
 
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 100);
-    expect_value(__wrap_sqlite3_column_text, i, 0);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "something");
     expect_string(__wrap_EVP_DigestUpdate, data, "something");
     expect_value(__wrap_EVP_DigestUpdate, count, 9);

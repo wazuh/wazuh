@@ -1577,7 +1577,8 @@ static void test_fim_checker_no_file_system(void **state) {
 static void test_fim_checker_fim_regular(void **state) {
     fim_data_t *fim_data = *state;
 
-    char * path = "/media/test.file";    fim_data->item->statbuf.st_dev = 1;
+    char * path = "/media/test.file";
+    fim_data->item->statbuf.st_dev = 1;
     fim_data->item->statbuf.st_ino = 999;
     fim_data->item->statbuf.st_uid = 0;
     fim_data->item->statbuf.st_gid = 0;

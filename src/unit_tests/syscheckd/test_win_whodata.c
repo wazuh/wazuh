@@ -6656,7 +6656,7 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
         }
 
         expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
-    will_return(wrap_CloseHandle, 0);
+        will_return(wrap_CloseHandle, 0);
     }
 
     expect_string(__wrap__minfo, formatted_msg,
@@ -6773,7 +6773,7 @@ void test_state_checker_file_with_valid_sacl(void **state) {
         }
 
         expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
-    will_return(wrap_CloseHandle, 0);
+        will_return(wrap_CloseHandle, 0);
     }
 
     will_return(wrap_GetSystemTime, &st);
@@ -6972,7 +6972,7 @@ void test_state_checker_dir_readded_succesful(void **state) {
         }
 
         expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
-    will_return(wrap_CloseHandle, 0);
+        will_return(wrap_CloseHandle, 0);
     }
 
     will_return(wrap_GetSystemTime, &st);

@@ -22,26 +22,26 @@ int __wrap_sqlite3_bind_int64(sqlite3_stmt *stmt,
                               sqlite3_int64 value);
 
 int __wrap_sqlite3_bind_text(sqlite3_stmt* pStmt,
-                             int a,
-                             const char* b,
-                             int c,
-                             void *d);
+                             int pos,
+                             const char* buffer,
+                             int length,
+                             void *mem_callback);
 
 int __wrap_sqlite3_clear_bindings(sqlite3_stmt* pStmt);
 
 int __wrap_sqlite3_close_v2();
 
 double __wrap_sqlite3_column_double(sqlite3_stmt *pStmt,
-                                    int i);
+                                    int iCol);
 
 int __wrap_sqlite3_column_int(sqlite3_stmt *pStmt,
-                              int i);
+                              int iCol);
 
 sqlite3_int64 __wrap_sqlite3_column_int64(sqlite3_stmt* stmt,
                                           int iCol);
 
 const unsigned char *__wrap_sqlite3_column_text(sqlite3_stmt *pStmt,
-                                                int i);
+                                                int iCol);
 
 const char *__wrap_sqlite3_errmsg();
 

@@ -1,17 +1,11 @@
 
 # Tests list and flags
+list(APPEND shared_tests_names "test_file_op")
 set(FILE_OP_BASE_FLAGS "-Wl,--wrap,isChroot -Wl,--wrap,stat -Wl,--wrap,chmod -Wl,--wrap,getpid \
                         -Wl,--wrap,unlink -Wl,--wrap,_merror -Wl,--wrap,_minfo -Wl,--wrap,_mwarn -Wl,--wrap,fopen \
                         -Wl,--wrap,_mferror -Wl,--wrap=fflush,--wrap=fclose,--wrap,fread,--wrap=fseek,--wrap=fwrite \
                         -Wl,--wrap=remove,--wrap,fprintf,--wrap=fgets")
-
-list(APPEND shared_tests_names "test_file_op")
-
-if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
-else()
-list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
-endif()
 
 list(APPEND shared_tests_names "test_integrity_op")
 list(APPEND shared_tests_flags " ")
@@ -22,15 +16,10 @@ list(APPEND shared_tests_flags " ")
 list(APPEND shared_tests_names "test_string_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,_mwarn")
 
+list(APPEND shared_tests_names "test_version_op")
 set(VERSION_OP_BASE_FLAGS "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
                            -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets")
-
-list(APPEND shared_tests_names "test_version_op")
-if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${VERSION_OP_BASE_FLAGS}")
-else()
-list(APPEND shared_tests_flags "${VERSION_OP_BASE_FLAGS}")
-endif()
 
 list(APPEND shared_tests_names "test_queue_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=pthread_cond_wait \
@@ -65,15 +54,13 @@ list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wr
 list(APPEND shared_tests_names "test_schedule_scan")
 list(APPEND shared_tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=w_time_delay,--wrap=time,--wrap=_mwarn \
                                 -Wl,--wrap=OSRegex_Compile -Wl,--wrap=OSRegex_Execute")
-
 endif()
 
+list(APPEND shared_tests_names "test_syscheck_op")
 set(SYSCHECK_OP_BASE_FLAGS "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
                             -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,getpwuid_r -Wl,--wrap,getgrgid \
                             -Wl,--wrap,wstr_split -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
                             -Wl,--wrap,sysconf -Wl,--wrap,getpid")
-
-list(APPEND shared_tests_names "test_syscheck_op")
 if(${TARGET} STREQUAL "winagent")
     # cJSON_CreateArray@0 instead of cJSON_CreateArray since linker will be looking for cdecl forma
     # More info at: (https://devblogs.microsoft.com/oldnewthing/20040108-00/?p=41163)
