@@ -9,7 +9,7 @@ from typing import Tuple, Union
 import uvloop
 
 from wazuh.core import common
-from wazuh.core.cluster import common as c_common, server, client
+from wazuh.core.cluster import common as c_common, server, client, local_client
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.exception import WazuhClusterError
@@ -224,7 +224,8 @@ class LocalServerMaster(LocalServer):
         super().__init__(node=node, **kwargs)
         self.handler_class = LocalServerHandlerMaster
         self.dapi = dapi.APIRequestQueue(server=self)
-        self.tasks.append(self.dapi.run)
+        self.sendsync = dapi.SendSyncRequestQueue(server=self)
+        self.tasks.extend([self.dapi.run, self.sendsync.run])
 
 
 class LocalServerHandlerWorker(LocalServerHandler):
@@ -239,7 +240,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
         :param data: Received payload
         :return: A response
         """
-        #modify logger filter tag in LocalServerHandlerWorker entry point
+        # modify logger filter tag in LocalServerHandlerWorker entry point
         context_tag.set("Local " + self.name)
 
         self.logger.debug2("Command received: {}".format(command))
@@ -248,6 +249,11 @@ class LocalServerHandlerWorker(LocalServerHandler):
                 raise WazuhClusterError(3023)
             asyncio.create_task(self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data))
             return b'ok', b'Added request to API requests queue'
+        elif command == b'sendsync':
+            if self.server.node.client is None:
+                raise WazuhClusterError(3023)
+            asyncio.create_task(self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data))
+            return None, None
         else:
             return super().process_request(command, data)
 
