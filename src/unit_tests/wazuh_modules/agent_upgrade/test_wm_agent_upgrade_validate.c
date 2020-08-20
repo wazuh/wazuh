@@ -892,6 +892,103 @@ void test_wm_agent_upgrade_validate_non_custom_version_system_error(void **state
     assert_null(task->wpk_sha1);
 }
 
+void test_wm_agent_upgrade_validate_version_upgrade_ok(void **state)
+{
+    wm_manager_configs config;
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *manager_version = NULL;
+    char *versions = NULL;
+
+    config.wpk_repository = WM_UPGRADE_WPK_REPO_URL;
+
+    os_strdup("v3.9.1", agent->wazuh_version);
+    os_strdup("windows", agent->platform);
+    os_strdup("10", agent->major_version);
+    os_strdup("x64", agent->architecture);
+
+    task->use_http = false;
+    task->force_upgrade = false;
+    os_strdup("v3.12.0", task->custom_version);
+
+    os_strdup("v3.13.0", manager_version);
+
+    os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e\n", versions);
+
+    expect_value(__wrap_wdb_agent_version, id, MANAGER_ID);
+    will_return(__wrap_wdb_agent_version, manager_version);
+
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/wpk/windows/versions");
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_version(agent, task, WM_UPGRADE_UPGRADE, &config);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/wpk/windows/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v3.12.0_windows.wpk");
+    assert_string_equal(task->wpk_sha1, "4a313b1312c23a213f2e3209fe0909dd");
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_custom_ok(void **state)
+{
+    wm_manager_configs config;
+    wm_agent_info *agent = state[0];
+
+    os_strdup("v3.9.1", agent->wazuh_version);
+    os_strdup("windows", agent->platform);
+    os_strdup("10", agent->major_version);
+    os_strdup("x64", agent->architecture);
+
+    int ret = wm_agent_upgrade_validate_version(agent, NULL, WM_UPGRADE_UPGRADE_CUSTOM, &config);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_non_minimal(void **state)
+{
+    wm_manager_configs config;
+    wm_agent_info *agent = state[0];
+
+    os_strdup("v2.1.1", agent->wazuh_version);
+    os_strdup("windows", agent->platform);
+    os_strdup("10", agent->major_version);
+    os_strdup("x64", agent->architecture);
+
+    int ret = wm_agent_upgrade_validate_version(agent, NULL, WM_UPGRADE_UPGRADE, &config);
+
+    assert_int_equal(ret, WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED);
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_custom_non_minimal(void **state)
+{
+    wm_manager_configs config;
+    wm_agent_info *agent = state[0];
+
+    os_strdup("v2.1.1", agent->wazuh_version);
+    os_strdup("windows", agent->platform);
+    os_strdup("10", agent->major_version);
+    os_strdup("x64", agent->architecture);
+
+    int ret = wm_agent_upgrade_validate_version(agent, NULL, WM_UPGRADE_UPGRADE_CUSTOM, &config);
+
+    assert_int_equal(ret, WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED);
+}
+
+void test_wm_agent_upgrade_validate_version_version_null(void **state)
+{
+    wm_manager_configs config;
+    wm_agent_info *agent = state[0];
+
+    agent->wazuh_version = NULL;
+    os_strdup("windows", agent->platform);
+    os_strdup("10", agent->major_version);
+    os_strdup("x64", agent->architecture);
+
+    int ret = wm_agent_upgrade_validate_version(agent, NULL, WM_UPGRADE_UPGRADE_CUSTOM, &config);
+
+    assert_int_equal(ret, WM_UPGRADE_GLOBAL_DB_FAILURE);
+}
+
 #endif
 
 int main(void) {
@@ -944,6 +1041,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_non_custom_version_greater_master_force, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_non_custom_version_manager_version_error, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_non_custom_version_system_error, setup_validate_wpk_version, teardown_validate_wpk_version),
+        // wm_agent_upgrade_validate_version
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_custom_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_non_minimal, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_custom_non_minimal, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_version_null, setup_validate_wpk_version, teardown_validate_wpk_version),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
