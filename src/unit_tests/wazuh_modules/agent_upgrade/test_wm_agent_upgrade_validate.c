@@ -17,6 +17,14 @@
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_validate.h"
 #include "../../headers/shared.h"
 
+#ifdef TEST_SERVER
+
+int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task, const wm_manager_configs* manager_configs);
+int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch);
+int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version, const char *wpk_repository_config);
+
+#endif
+
 // Setup / teardown
 
 static int setup_group(void **state) {
@@ -104,6 +112,132 @@ void test_wm_agent_upgrade_validate_status_disconnected(void **state)
     assert_int_equal(ret, WM_UPGRADE_AGENT_IS_NOT_ACTIVE);
 }
 
+void test_wm_agent_upgrade_validate_system_windows_ok(void **state)
+{
+    (void) state;
+    int last_keep_alive = time(0);
+    char *platform = "windows";
+    char *os_major = "10";
+    char *os_minor = NULL;
+    char *arch = "x64";
+
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+}
+
+void test_wm_agent_upgrade_validate_system_rhel_ok(void **state)
+{
+    (void) state;
+    int last_keep_alive = time(0);
+    char *platform = "rhel";
+    char *os_major = "7";
+    char *os_minor = NULL;
+    char *arch = "x64";
+
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+}
+
+void test_wm_agent_upgrade_validate_system_ubuntu_ok(void **state)
+{
+    (void) state;
+    int last_keep_alive = time(0);
+    char *platform = "ubuntu";
+    char *os_major = "20";
+    char *os_minor = "04";
+    char *arch = "x64";
+
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+}
+
+void test_wm_agent_upgrade_validate_system_invalid_platform_darwin(void **state)
+{
+    (void) state;
+    int last_keep_alive = time(0);
+    char *platform = "darwin";
+    char *os_major = "10";
+    char *os_minor = "15";
+    char *arch = "x64";
+
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+
+    assert_int_equal(ret, WM_UPGRADE_SYSTEM_NOT_SUPPORTED);
+}
+
+void test_wm_agent_upgrade_validate_system_invalid_platform_solaris(void **state)
+{
+    (void) state;
+    int last_keep_alive = time(0);
+    char *platform = "solaris";
+    char *os_major = "11";
+    char *os_minor = "4";
+    char *arch = "x64";
+
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+
+    assert_int_equal(ret, WM_UPGRADE_SYSTEM_NOT_SUPPORTED);
+}
+
+void test_wm_agent_upgrade_validate_system_invalid_platform_suse(void **state)
+{
+    (void) state;
+    int last_keep_alive = time(0);
+    char *platform = "sles";
+    char *os_major = "11";
+    char *os_minor = NULL;
+    char *arch = "x64";
+
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+
+    assert_int_equal(ret, WM_UPGRADE_SYSTEM_NOT_SUPPORTED);
+}
+
+void test_wm_agent_upgrade_validate_system_invalid_platform_rhel(void **state)
+{
+    (void) state;
+    int last_keep_alive = time(0);
+    char *platform = "rhel";
+    char *os_major = "5";
+    char *os_minor = "7";
+    char *arch = "x64";
+
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+
+    assert_int_equal(ret, WM_UPGRADE_SYSTEM_NOT_SUPPORTED);
+}
+
+void test_wm_agent_upgrade_validate_system_invalid_platform_centos(void **state)
+{
+    (void) state;
+    int last_keep_alive = time(0);
+    char *platform = "centos";
+    char *os_major = "5";
+    char *os_minor = NULL;
+    char *arch = "x64";
+
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+
+    assert_int_equal(ret, WM_UPGRADE_SYSTEM_NOT_SUPPORTED);
+}
+
+void test_wm_agent_upgrade_validate_system_invalid_arch(void **state)
+{
+    (void) state;
+    int last_keep_alive = time(0);
+    char *platform = "ubuntu";
+    char *os_major = "18";
+    char *os_minor = "04";
+    char *arch = NULL;
+
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+
+    assert_int_equal(ret, WM_UPGRADE_GLOBAL_DB_FAILURE);
+}
+
 #endif
 
 int main(void) {
@@ -114,6 +248,15 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_validate_id_manager),
         cmocka_unit_test(test_wm_agent_upgrade_validate_status_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_status_disconnected),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_windows_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_rhel_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_ubuntu_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_darwin),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_solaris),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_suse),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_rhel),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_centos),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_arch),
 #endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
