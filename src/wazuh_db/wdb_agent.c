@@ -21,8 +21,6 @@
 #define WDBOUTPUT_SIZE OS_MAXSTR
 
 static const char *global_db_queries[] = {
-    [SQL_GET_AGENT_LABELS] = "global get-labels %d",
-    [SQL_SET_AGENT_LABELS] = "global set-labels %d %s",
     [SQL_UPDATE_AGENT_KEEPALIVE] = "global sql UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), sync_status = %d WHERE id = %d;",
     [SQL_DELETE_AGENT] = "global sql DELETE FROM agent WHERE id = %d;",
     [SQL_SELECT_AGENT] = "global sql SELECT name FROM agent WHERE id = %d;",
@@ -52,8 +50,8 @@ static const char *global_db_accesses[] = {
     [WDB_INSERT_AGENT] = "global insert-agent %s",
     [WDB_UPDATE_AGENT_NAME] = "global update-agent-name %s",
     [WDB_UPDATE_AGENT_VERSION] = "global update-agent-version %s",
-    [WDB_GET_AGENT_LABELS] = "",
-    [WDB_SET_AGENT_LABELS] = "",
+    [WDB_GET_AGENT_LABELS] = "global get-labels %d",
+    [WDB_SET_AGENT_LABELS] = "global set-labels %d %s",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "",
     [WDB_DELETE_AGENT] = "",
     [WDB_SELECT_AGENT] = "",
@@ -265,7 +263,7 @@ cJSON* wdb_get_agent_labels(int id) {
     char wdbquery[OS_BUFFER_SIZE] = "";
     char wdboutput[OS_MAXSTR] = "";
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_GET_AGENT_LABELS], id);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_accesses[WDB_GET_AGENT_LABELS], id);
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
@@ -291,7 +289,7 @@ int wdb_set_agent_labels(int id, const char *labels) {
     char wdbquery[OS_MAXSTR] = "";
     char wdboutput[OS_BUFFER_SIZE] = "";
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_SET_AGENT_LABELS], id, labels);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_accesses[WDB_SET_AGENT_LABELS], id, labels);
 
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 

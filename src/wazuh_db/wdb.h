@@ -139,8 +139,6 @@ typedef enum wdb_stmt {
 } wdb_stmt;
 
 typedef enum global_db_query {
-    SQL_GET_AGENT_LABELS,
-    SQL_SET_AGENT_LABELS,
     SQL_UPDATE_AGENT_KEEPALIVE,
     SQL_DELETE_AGENT,
     SQL_SELECT_AGENT,
