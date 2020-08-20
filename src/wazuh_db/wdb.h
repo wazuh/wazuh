@@ -125,6 +125,7 @@ typedef enum wdb_stmt {
     WDB_STMT_SYNC_UPDATE_COMPLETION,
     WDB_STMT_MITRE_NAME_GET,
     WDB_STMT_GLOBAL_INSERT_AGENT,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_NAME,
     WDB_STMT_GLOBAL_LABELS_GET,
     WDB_STMT_GLOBAL_LABELS_DEL,
     WDB_STMT_GLOBAL_LABELS_SET,
@@ -136,7 +137,6 @@ typedef enum wdb_stmt {
 } wdb_stmt;
 
 typedef enum global_db_query {
-    SQL_UPDATE_AGENT_NAME,
     SQL_UPDATE_AGENT_VERSION,
     SQL_UPDATE_AGENT_VERSION_IP,
     SQL_GET_AGENT_LABELS,
@@ -396,7 +396,13 @@ int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output);
  */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *internal_key, const char *group, int keep_date);
 
-/* Update agent name. It doesn't rename agent DB file. It opens and closes the DB. Returns 0 on success or -1 on error. */
+/**
+ * @brief Update agent name in global.db.
+ * 
+ * @param[in] id The agent ID.
+ * @param[in] name The agent name.
+ * @return Returns 0 on success or -1 on error.
+ */
 int wdb_update_agent_name(int id, const char *name);
 
 /* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
@@ -738,10 +744,19 @@ int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output);
  * @param wdb the global struct database.
  * @param input String with the agent data in JSON format.
  * @param output Response of the query.
- * @retval 0 Success: response contains the value.
- * @retval -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse the update agent name request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with the agent data in JSON format.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse the labels request for a particular agent.
@@ -877,10 +892,19 @@ int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
  * @param internal_key The agent key
  * @param group The agent group
  * @param date_add The agent addition date.
- * @retval 0 On success.
- * @retval -1 On error.
+ * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add);
+
+/**
+ * @brief Function to update an agent name.
+ * 
+ * @param wdb The Global struct database.
+ * @param id The agent ID
+ * @param name The agent name
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name);
 
 /**
  * @brief Function to get the labels of a particular agent.

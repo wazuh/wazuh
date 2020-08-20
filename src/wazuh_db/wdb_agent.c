@@ -21,7 +21,6 @@
 #define WDBOUTPUT_SIZE OS_MAXSTR
 
 static const char *global_db_queries[] = {
-    [SQL_UPDATE_AGENT_NAME] = "global sql UPDATE agent SET name = %Q WHERE id = %d;",
     [SQL_UPDATE_AGENT_VERSION] = "global sql UPDATE agent SET os_name = %Q, os_version = %Q, os_major = %Q, os_minor = %Q, os_codename = %Q, os_platform = %Q, os_build = %Q, os_uname = %s, os_arch = %Q, version = %Q, config_sum = %Q, merged_sum = %Q, manager_host = %Q, node_name = %Q, last_keepalive = STRFTIME('%s', 'NOW'), sync_status = %d WHERE id = %d;",
     [SQL_UPDATE_AGENT_VERSION_IP] = "global sql UPDATE agent SET os_name = %Q, os_version = %Q, os_major = %Q, os_minor = %Q, os_codename = %Q, os_platform = %Q, os_build = %Q, os_uname = %s, os_arch = %Q, version = %Q, config_sum = %Q, merged_sum = %Q, manager_host = %Q, node_name = %Q, last_keepalive = STRFTIME('%s', 'NOW'), ip = %Q, sync_status = %d WHERE id = %d;",
     [SQL_GET_AGENT_LABELS] = "global get-labels %d",
@@ -52,7 +51,33 @@ static const char *global_db_queries[] = {
 int wdb_sock_agent = -1;
 
 static const char *global_db_accesses[] = {
-    [WDB_INSERT_AGENT] = "global insert-agent %s"
+    [WDB_INSERT_AGENT] = "global insert-agent %s",
+    [WDB_UPDATE_AGENT_NAME] = "global update-agent-name %s",
+    [WDB_UPDATE_AGENT_VERSION] = "",
+    [WDB_UPDATE_AGENT_VERSION_IP] = "",
+    [WDB_GET_AGENT_LABELS] = "",
+    [WDB_SET_AGENT_LABELS] = "",
+    [WDB_UPDATE_AGENT_KEEPALIVE] = "",
+    [WDB_DELETE_AGENT] = "",
+    [WDB_SELECT_AGENT] = "",
+    [WDB_SELECT_AGENT_GROUP] = "",
+    [WDB_SELECT_AGENTS] = "",
+    [WDB_FIND_AGENT] = "",
+    [WDB_SELECT_FIM_OFFSET] = "",
+    [WDB_SELECT_REG_OFFSET] = "",
+    [WDB_UPDATE_FIM_OFFSET] = "",
+    [WDB_UPDATE_REG_OFFSET] = "",
+    [WDB_SELECT_AGENT_STATUS] = "",
+    [WDB_UPDATE_AGENT_STATUS] = "",
+    [WDB_UPDATE_AGENT_GROUP] = "",
+    [WDB_FIND_GROUP] = "",
+    [WDB_INSERT_AGENT_GROUP] = "",
+    [WDB_INSERT_AGENT_BELONG] = "",
+    [WDB_DELETE_AGENT_BELONG] = "",
+    [WDB_DELETE_GROUP_BELONG] = "",
+    [WDB_DELETE_GROUP] = "",
+    [WDB_SELECT_GROUPS] = "",
+    [WDB_SELECT_KEEPALIVE] = ""
 };
 
 
@@ -113,17 +138,35 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
     return result;
 }
 
-/* Update agent name. It doesn't rename agent DB file. It opens and closes the DB. Returns 0 on success or -1 on error. */
+
 int wdb_update_agent_name(int id, const char *name) {
     int result = 0;
+    cJSON *data_in = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_NAME], name, id);
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddStringToObject(data_in, "name", name);
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_accesses[WDB_UPDATE_AGENT_NAME], cJSON_PrintUnformatted(data_in));
+
+    cJSON_Delete(data_in);
+
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
+            if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
+                result = OS_INVALID;
+            }
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");
