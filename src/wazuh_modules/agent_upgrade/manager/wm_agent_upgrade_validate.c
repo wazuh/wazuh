@@ -144,6 +144,7 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
                     break;
                 } else if (attempts == WM_UPGRADE_WPK_DOWNLOAD_ATTEMPTS) {
                     return_code = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
+                    break;
                 }
                 sleep(attempts);
             }
