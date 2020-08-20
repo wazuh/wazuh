@@ -901,7 +901,7 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
  * 
  * @param wdb The Global struct database.
  * @param id Agent id.
- * @retval JSON with labels on success.
+ * @retval JSON with agent information on success.
  * @retval NULL on error.
  */
 cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
