@@ -344,30 +344,59 @@ int wm_agent_upgrade_compare_versions(const char *version1, const char *version2
     char ver2[10];
     char *tmp_v1 = NULL;
     char *tmp_v2 = NULL;
-    int patch1;
-    int major1;
-    int minor1;
-    int patch2;
-    int major2;
-    int minor2;
+    char *token = NULL;
+    int patch1 = 0;
+    int major1 = 0;
+    int minor1 = 0;
+    int patch2 = 0;
+    int major2 = 0;
+    int minor2 = 0;
     int result = 0;
 
-    strcpy(ver1, version1);
-    strcpy(ver2, version2);
+    if (version1) {
+        strcpy(ver1, version1);
 
-    tmp_v1 = strchr(ver1, 'v');
-    tmp_v2 = strchr(ver2, 'v');
-    tmp_v1++;
-    tmp_v2++;
+        if (tmp_v1 = strchr(ver1, 'v'), tmp_v1) {
+            tmp_v1++;
+        } else {
+            tmp_v1 = ver1;
+        }
 
-    major1 = atoi(strtok(tmp_v1, "."));
-    minor1 = atoi(strtok(NULL, "."));
-    patch1 = atoi(strtok(NULL, "."));
+        if (token = strtok(tmp_v1, "."), token) {
+            major1 = atoi(token);
 
-    major2 = atoi(strtok(tmp_v2, "."));
-    minor2 = atoi(strtok(NULL, "."));
-    patch2 = atoi(strtok(NULL, "."));
-    
+            if (token = strtok(NULL, "."), token) {
+                minor1 = atoi(token);
+
+                if (token = strtok(NULL, "."), token) {
+                    patch1 = atoi(token);
+                }
+            }
+        }
+    }
+
+    if (version2) {
+        strcpy(ver2, version2);
+
+        if (tmp_v2 = strchr(ver2, 'v'), tmp_v2) {
+            tmp_v2++;
+        } else {
+            tmp_v2 = ver2;
+        }
+
+        if (token = strtok(tmp_v2, "."), token) {
+            major2 = atoi(token);
+
+            if (token = strtok(NULL, "."), token) {
+                minor2 = atoi(token);
+
+                if (token = strtok(NULL, "."), token) {
+                    patch2 = atoi(token);
+                }
+            }
+        }
+    }
+
     if (major1 > major2) {
         result = 1;
     } else if (major1 < major2){

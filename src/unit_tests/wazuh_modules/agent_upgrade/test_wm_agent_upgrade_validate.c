@@ -115,7 +115,6 @@ void test_wm_agent_upgrade_validate_status_disconnected(void **state)
 void test_wm_agent_upgrade_validate_system_windows_ok(void **state)
 {
     (void) state;
-    int last_keep_alive = time(0);
     char *platform = "windows";
     char *os_major = "10";
     char *os_minor = NULL;
@@ -129,7 +128,6 @@ void test_wm_agent_upgrade_validate_system_windows_ok(void **state)
 void test_wm_agent_upgrade_validate_system_rhel_ok(void **state)
 {
     (void) state;
-    int last_keep_alive = time(0);
     char *platform = "rhel";
     char *os_major = "7";
     char *os_minor = NULL;
@@ -143,7 +141,6 @@ void test_wm_agent_upgrade_validate_system_rhel_ok(void **state)
 void test_wm_agent_upgrade_validate_system_ubuntu_ok(void **state)
 {
     (void) state;
-    int last_keep_alive = time(0);
     char *platform = "ubuntu";
     char *os_major = "20";
     char *os_minor = "04";
@@ -157,7 +154,6 @@ void test_wm_agent_upgrade_validate_system_ubuntu_ok(void **state)
 void test_wm_agent_upgrade_validate_system_invalid_platform_darwin(void **state)
 {
     (void) state;
-    int last_keep_alive = time(0);
     char *platform = "darwin";
     char *os_major = "10";
     char *os_minor = "15";
@@ -171,7 +167,6 @@ void test_wm_agent_upgrade_validate_system_invalid_platform_darwin(void **state)
 void test_wm_agent_upgrade_validate_system_invalid_platform_solaris(void **state)
 {
     (void) state;
-    int last_keep_alive = time(0);
     char *platform = "solaris";
     char *os_major = "11";
     char *os_minor = "4";
@@ -185,7 +180,6 @@ void test_wm_agent_upgrade_validate_system_invalid_platform_solaris(void **state
 void test_wm_agent_upgrade_validate_system_invalid_platform_suse(void **state)
 {
     (void) state;
-    int last_keep_alive = time(0);
     char *platform = "sles";
     char *os_major = "11";
     char *os_minor = NULL;
@@ -199,7 +193,6 @@ void test_wm_agent_upgrade_validate_system_invalid_platform_suse(void **state)
 void test_wm_agent_upgrade_validate_system_invalid_platform_rhel(void **state)
 {
     (void) state;
-    int last_keep_alive = time(0);
     char *platform = "rhel";
     char *os_major = "5";
     char *os_minor = "7";
@@ -213,7 +206,6 @@ void test_wm_agent_upgrade_validate_system_invalid_platform_rhel(void **state)
 void test_wm_agent_upgrade_validate_system_invalid_platform_centos(void **state)
 {
     (void) state;
-    int last_keep_alive = time(0);
     char *platform = "centos";
     char *os_major = "5";
     char *os_minor = NULL;
@@ -227,7 +219,6 @@ void test_wm_agent_upgrade_validate_system_invalid_platform_centos(void **state)
 void test_wm_agent_upgrade_validate_system_invalid_arch(void **state)
 {
     (void) state;
-    int last_keep_alive = time(0);
     char *platform = "ubuntu";
     char *os_major = "18";
     char *os_minor = "04";
@@ -238,16 +229,128 @@ void test_wm_agent_upgrade_validate_system_invalid_arch(void **state)
     assert_int_equal(ret, WM_UPGRADE_GLOBAL_DB_FAILURE);
 }
 
+void test_wm_agent_upgrade_compare_versions_equal_patch(void **state)
+{
+    (void) state;
+    char *v1 = "v4.0.0";
+    char *v2 = "v4.0.0";
+
+    int ret = wm_agent_upgrade_compare_versions(v1, v2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_wm_agent_upgrade_compare_versions_equal_minor(void **state)
+{
+    (void) state;
+    char *v1 = "3.13";
+    char *v2 = "3.13";
+
+    int ret = wm_agent_upgrade_compare_versions(v1, v2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_wm_agent_upgrade_compare_versions_equal_major(void **state)
+{
+    (void) state;
+    char *v1 = "4";
+    char *v2 = "v4";
+
+    int ret = wm_agent_upgrade_compare_versions(v1, v2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_wm_agent_upgrade_compare_versions_greater_patch(void **state)
+{
+    (void) state;
+    char *v1 = "4.0.1";
+    char *v2 = "v4.0.0";
+
+    int ret = wm_agent_upgrade_compare_versions(v1, v2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_wm_agent_upgrade_compare_versions_greater_minor(void **state)
+{
+    (void) state;
+    char *v1 = "2.15";
+    char *v2 = "2";
+
+    int ret = wm_agent_upgrade_compare_versions(v1, v2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_wm_agent_upgrade_compare_versions_greater_major(void **state)
+{
+    (void) state;
+    char *v1 = "v5";
+    char *v2 = "4.9";
+
+    int ret = wm_agent_upgrade_compare_versions(v1, v2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_wm_agent_upgrade_compare_versions_lower_patch(void **state)
+{
+    (void) state;
+    char *v1 = "v4.0.1";
+    char *v2 = "v4.0.3";
+
+    int ret = wm_agent_upgrade_compare_versions(v1, v2);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_wm_agent_upgrade_compare_versions_lower_minor(void **state)
+{
+    (void) state;
+    char *v1 = "2.15.1";
+    char *v2 = "2.18";
+
+    int ret = wm_agent_upgrade_compare_versions(v1, v2);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_wm_agent_upgrade_compare_versions_lower_major(void **state)
+{
+    (void) state;
+    char *v1 = "v5";
+    char *v2 = "v6.1";
+
+    int ret = wm_agent_upgrade_compare_versions(v1, v2);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_wm_agent_upgrade_compare_versions_null(void **state)
+{
+    (void) state;
+    char *v1 = NULL;
+    char *v2 = NULL;
+
+    int ret = wm_agent_upgrade_compare_versions(v1, v2);
+
+    assert_int_equal(ret, 0);
+}
+
 #endif
 
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifdef TEST_SERVER
-        // wm_agent_upgrade_listen_messages
+        // wm_agent_upgrade_validate_id
         cmocka_unit_test(test_wm_agent_upgrade_validate_id_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_id_manager),
+        // wm_agent_upgrade_validate_status
         cmocka_unit_test(test_wm_agent_upgrade_validate_status_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_status_disconnected),
+        // wm_agent_upgrade_validate_system
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_windows_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_rhel_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_ubuntu_ok),
@@ -257,6 +360,17 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_rhel),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_centos),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_arch),
+        // wm_agent_upgrade_compare_versions
+        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_equal_patch),
+        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_equal_minor),
+        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_equal_major),
+        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_greater_patch),
+        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_greater_minor),
+        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_greater_major),
+        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_lower_patch),
+        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_lower_minor),
+        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_lower_major),
+        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_null),
 #endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
