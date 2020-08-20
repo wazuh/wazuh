@@ -22,7 +22,6 @@
 
 #define WM_UPGRADE_LISTEN_TIMEOUT 5
 
-#ifdef CLIENT
 /**
  * Configurations on agent side
  */
@@ -31,7 +30,7 @@ typedef struct _wm_agent_configs {
     unsigned int upgrade_wait_max;
     float upgrade_wait_factor_increase;
 } wm_agent_configs;
-#else
+
 /**
  * Configuration only for manager
  */
@@ -39,15 +38,11 @@ typedef struct _wm_manager_configs {
     unsigned int chunk_size;
     char *wpk_repository;
 } wm_manager_configs;
-#endif
 
 typedef struct _wm_agent_upgrade {
     int enabled:1;
-#ifdef CLIENT
     wm_agent_configs agent_config;
-#else
     wm_manager_configs manager_config;
-#endif
 } wm_agent_upgrade;
 
 // Parse XML configuration

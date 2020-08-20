@@ -59,7 +59,7 @@ STATIC void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_sta
  * */
 STATIC bool wm_upgrade_agent_search_upgrade_result(int queue_fd);
 
-void wm_agent_upgrade_check_status(wm_agent_configs agent_config) {
+void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
     /**
      *  StartMQ will wait until agent connection which is when the pkg_install.sh will write 
      *  the upgrade result
@@ -70,7 +70,7 @@ void wm_agent_upgrade_check_status(wm_agent_configs agent_config) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_QUEUE_FD);
     } else {
         bool result_available = true;
-        unsigned int wait_time = agent_config.upgrade_wait_start;
+        unsigned int wait_time = agent_config->upgrade_wait_start;
         /**
          * This loop will send the upgrade result notification to the manager
          * If the manager is able to update the upgrade status will notify the agent
@@ -82,9 +82,9 @@ void wm_agent_upgrade_check_status(wm_agent_configs agent_config) {
             if(result_available) {
                 sleep(wait_time);
 
-                wait_time *= agent_config.upgrade_wait_factor_increase;
-                if (wait_time > agent_config.upgrade_wait_max) {
-                    wait_time = agent_config.upgrade_wait_max;
+                wait_time *= agent_config->upgrade_wait_factor_increase;
+                if (wait_time > agent_config->upgrade_wait_max) {
+                    wait_time = agent_config->upgrade_wait_max;
                 }
             }
         }

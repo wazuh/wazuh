@@ -17,6 +17,21 @@
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_manager.h"
 #include "../../headers/shared.h"
 
+// Setup / teardown
+
+static int setup_group(void **state) {
+    wm_manager_configs *config = NULL;
+    os_calloc(1, sizeof(wm_manager_configs), config);
+    *state = config;
+    return 0;
+}
+
+static int teardown_group(void **state) {
+    wm_manager_configs *config = *state;
+    os_free(config);
+    return 0;
+}
+
 // Wrappers
 
 void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
@@ -116,7 +131,7 @@ char* __wrap_wm_agent_upgrade_process_agent_result_command(const int* agent_ids,
 
 void test_wm_agent_upgrade_listen_messages_upgrade_command(void **state)
 {
-    (void) state;
+    wm_manager_configs *config = *state;
     int timeout = 10;
     int socket = 0;
     int peer = 1111;
@@ -181,12 +196,12 @@ void test_wm_agent_upgrade_listen_messages_upgrade_command(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout);
+    wm_agent_upgrade_listen_messages(timeout, config);
 }
 
 void test_wm_agent_upgrade_listen_messages_upgrade_custom_command(void **state)
 {
-    (void) state;
+    wm_manager_configs *config = *state;
     int timeout = 10;
     int socket = 0;
     int peer = 1111;
@@ -251,12 +266,12 @@ void test_wm_agent_upgrade_listen_messages_upgrade_custom_command(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout);
+    wm_agent_upgrade_listen_messages(timeout, config);
 }
 
 void test_wm_agent_upgrade_listen_messages_agent_update_status_command(void **state)
 {
-    (void) state;
+    wm_manager_configs *config = *state;
     int timeout = 10;
     int socket = 0;
     int peer = 1111;
@@ -323,12 +338,12 @@ void test_wm_agent_upgrade_listen_messages_agent_update_status_command(void **st
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout);
+    wm_agent_upgrade_listen_messages(timeout, config);
 }
 
 void test_wm_agent_upgrade_listen_messages_parse_error(void **state)
 {
-    (void) state;
+    wm_manager_configs *config = *state;
     int timeout = 10;
     int socket = 0;
     int peer = 1111;
@@ -370,12 +385,12 @@ void test_wm_agent_upgrade_listen_messages_parse_error(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout);
+    wm_agent_upgrade_listen_messages(timeout, config);
 }
 
 void test_wm_agent_upgrade_listen_messages_parse_error_with_message(void **state)
 {
-    (void) state;
+    wm_manager_configs *config = *state;
     int timeout = 10;
     int socket = 0;
     int peer = 1111;
@@ -421,12 +436,12 @@ void test_wm_agent_upgrade_listen_messages_parse_error_with_message(void **state
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout);
+    wm_agent_upgrade_listen_messages(timeout, config);
 }
 
 void test_wm_agent_upgrade_listen_messages_receive_empty(void **state)
 {
-    (void) state;
+    wm_manager_configs *config = *state;
     int timeout = 10;
     int socket = 0;
     int peer = 1111;
@@ -450,12 +465,12 @@ void test_wm_agent_upgrade_listen_messages_receive_empty(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout);
+    wm_agent_upgrade_listen_messages(timeout, config);
 }
 
 void test_wm_agent_upgrade_listen_messages_receive_error(void **state)
 {
-    (void) state;
+    wm_manager_configs *config = *state;
     int timeout = 10;
     int socket = 0;
     int peer = 1111;
@@ -479,12 +494,12 @@ void test_wm_agent_upgrade_listen_messages_receive_error(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout);
+    wm_agent_upgrade_listen_messages(timeout, config);
 }
 
 void test_wm_agent_upgrade_listen_messages_receive_sock_error(void **state)
 {
-    (void) state;
+    wm_manager_configs *config = *state;
     int timeout = 10;
     int socket = 0;
     int peer = 1111;
@@ -508,12 +523,12 @@ void test_wm_agent_upgrade_listen_messages_receive_sock_error(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout);
+    wm_agent_upgrade_listen_messages(timeout, config);
 }
 
 void test_wm_agent_upgrade_listen_messages_accept_error_eintr(void **state)
 {
-    (void) state;
+    wm_manager_configs *config = *state;
     int timeout = 10;
     int socket = 0;
     int peer = 1111;
@@ -542,12 +557,12 @@ void test_wm_agent_upgrade_listen_messages_accept_error_eintr(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout);
+    wm_agent_upgrade_listen_messages(timeout, config);
 }
 
 void test_wm_agent_upgrade_listen_messages_accept_error(void **state)
 {
-    (void) state;
+    wm_manager_configs *config = *state;
     int timeout = 10;
     int socket = 0;
     int peer = 1111;
@@ -579,12 +594,12 @@ void test_wm_agent_upgrade_listen_messages_accept_error(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout);
+    wm_agent_upgrade_listen_messages(timeout, config);
 }
 
 void test_wm_agent_upgrade_listen_messages_select_zero(void **state)
 {
-    (void) state;
+    wm_manager_configs *config = *state;
     int timeout = 10;
     int socket = 0;
     int peer = 1111;
@@ -610,12 +625,12 @@ void test_wm_agent_upgrade_listen_messages_select_zero(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout);
+    wm_agent_upgrade_listen_messages(timeout, config);
 }
 
 void test_wm_agent_upgrade_listen_messages_select_error_eintr(void **state)
 {
-    (void) state;
+    wm_manager_configs *config = *state;
     int timeout = 10;
     int socket = 0;
     int peer = 1111;
@@ -642,12 +657,12 @@ void test_wm_agent_upgrade_listen_messages_select_error_eintr(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout);
+    wm_agent_upgrade_listen_messages(timeout, config);
 }
 
 void test_wm_agent_upgrade_listen_messages_select_error(void **state)
 {
-    (void) state;
+    wm_manager_configs *config = *state;
     int timeout = 10;
     int socket = 0;
     errno = 1;
@@ -661,12 +676,12 @@ void test_wm_agent_upgrade_listen_messages_select_error(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout);
+    wm_agent_upgrade_listen_messages(timeout, config);
 }
 
 void test_wm_agent_upgrade_listen_messages_bind_error(void **state)
 {
-    (void) state;
+    wm_manager_configs *config = *state;
     int timeout = 10;
 
     will_return(__wrap_OS_BindUnixDomain, -1);
@@ -674,7 +689,7 @@ void test_wm_agent_upgrade_listen_messages_bind_error(void **state)
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket '/var/ossec/queue/tasks/upgrade': 'Operation not permitted'");
 
-    wm_agent_upgrade_listen_messages(timeout);
+    wm_agent_upgrade_listen_messages(timeout, config);
 }
 
 #endif
@@ -699,5 +714,5 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_bind_error)
 #endif
     };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

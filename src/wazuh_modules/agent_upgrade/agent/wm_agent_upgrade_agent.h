@@ -30,6 +30,6 @@ typedef enum _wm_upgrade_agent_state {
  * This method will block the thread if the agent is not connected to the manager
  * @param agent_config Agent configuration parameters
  * */
-void wm_agent_upgrade_check_status(wm_agent_configs agent_config);
+void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config);
 
 #endif

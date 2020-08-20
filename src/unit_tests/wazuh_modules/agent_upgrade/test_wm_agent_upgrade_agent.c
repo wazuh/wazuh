@@ -371,7 +371,7 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
-    wm_agent_upgrade_check_status(*config);
+    wm_agent_upgrade_check_status(config);
 }
 
 void test_wm_agent_upgrade_check_status_time_limit(void **state)
@@ -513,7 +513,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
-    wm_agent_upgrade_check_status(*config);
+    wm_agent_upgrade_check_status(config);
 }
 
 void test_wm_agent_upgrade_check_status_queue_error(void **state)
@@ -534,7 +534,7 @@ void test_wm_agent_upgrade_check_status_queue_error(void **state)
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8113): Could not open default queue to send upgrade notification.");
 
-    wm_agent_upgrade_check_status(*config);
+    wm_agent_upgrade_check_status(config);
 }
 
 #endif
