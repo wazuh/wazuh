@@ -72,6 +72,14 @@ static int teardown_validate_wpk_custom(void **state) {
     return 0;
 }
 
+static int teardown_validate_message(void **state) {
+    cJSON *response = state[0];
+    char *data = state[1];
+    cJSON_Delete(response);
+    os_free(data);
+    return 0;
+}
+
 #endif
 
 static int setup_group(void **state) {
@@ -1290,6 +1298,83 @@ void test_wm_agent_upgrade_validate_wpk_custom_task_error(void **state)
     assert_int_equal(ret, WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST);
 }
 
+void test_wm_agent_upgrade_validate_task_status_message_ok(void **state)
+{
+    cJSON *response = cJSON_CreateObject();
+    char *status = NULL;
+    int agent_id = 0;
+
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddStringToObject(response, "data", "Success");
+    cJSON_AddNumberToObject(response, "agent", 5);
+    cJSON_AddStringToObject(response, "status", "Done");
+
+    int ret = wm_agent_upgrade_validate_task_status_message(response, &status, &agent_id);
+
+    state[0] = (void *)response;
+    state[1] = (void *)status;
+
+    assert_int_equal(ret, true);
+    assert_string_equal(status, "Done");
+    assert_int_equal(agent_id, 5);
+}
+
+void test_wm_agent_upgrade_validate_task_status_message_not_agent_status_ok(void **state)
+{
+    cJSON *response = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddStringToObject(response, "data", "Success");
+    cJSON_AddNumberToObject(response, "agent", 5);
+    cJSON_AddStringToObject(response, "status", "Done");
+
+    int ret = wm_agent_upgrade_validate_task_status_message(response, NULL, NULL);
+
+    state[0] = (void *)response;
+
+    assert_int_equal(ret, true);
+}
+
+void test_wm_agent_upgrade_validate_task_status_message_error_code(void **state)
+{
+    cJSON *response = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(response, "error", 1);
+    cJSON_AddStringToObject(response, "data", "Error");
+    cJSON_AddNumberToObject(response, "agent", 5);
+    cJSON_AddStringToObject(response, "status", "Done");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8119): There has been an error updating task state. Error code: '1', message: 'Error'");
+
+    int ret = wm_agent_upgrade_validate_task_status_message(response, NULL, NULL);
+
+    state[0] = (void *)response;
+
+    assert_int_equal(ret, false);
+}
+
+void test_wm_agent_upgrade_validate_task_status_message_invalid_json(void **state)
+{
+    cJSON *response = cJSON_CreateObject();
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8107): Required parameters in message are missing.");
+
+    int ret = wm_agent_upgrade_validate_task_status_message(response, NULL, NULL);
+
+    state[0] = (void *)response;
+
+    assert_int_equal(ret, false);
+}
+
+void test_wm_agent_upgrade_validate_task_status_message_null_json(void **state)
+{
+    int ret = wm_agent_upgrade_validate_task_status_message(NULL, NULL, NULL);
+
+    assert_int_equal(ret, false);
+}
+
 #endif
 
 int main(void) {
@@ -1359,6 +1444,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_custom_exist, setup_validate_wpk_custom, teardown_validate_wpk_custom),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_custom_not_exist, setup_validate_wpk_custom, teardown_validate_wpk_custom),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_custom_task_error, setup_validate_wpk_custom, teardown_validate_wpk_custom),
+        // wm_agent_upgrade_validate_task_status_message
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_validate_task_status_message_ok, teardown_validate_message),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_validate_task_status_message_not_agent_status_ok, teardown_validate_message),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_validate_task_status_message_error_code, teardown_validate_message),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_validate_task_status_message_invalid_json, teardown_validate_message),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_task_status_message_null_json),
 #endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
