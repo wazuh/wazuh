@@ -36,6 +36,7 @@ float s_winevt_queue = 0;
 float s_event_queue = 0;
 float s_process_event_queue = 0;
 float s_dbsync_message_queue;
+float s_upgrade_message_queue = 0;
 
 unsigned int s_syscheck_queue_size = 0;
 unsigned int s_syscollector_queue_size = 0;
@@ -46,6 +47,7 @@ unsigned int s_winevt_queue_size = 0;
 unsigned int s_event_queue_size = 0;
 unsigned int s_process_event_queue_size = 0;
 unsigned int s_dbsync_message_queue_size;
+unsigned int s_upgrade_message_queue_size = 0;
 
 float s_writer_alerts_queue = 0;
 float s_writer_archives_queue = 0;
@@ -212,6 +214,12 @@ int w_analysisd_write_state(){
         "# Database synchronization message queue size\n"
         "dbsync_queue_size='%u'\n"
         "\n"
+        "# Upgrade module message queue\n"
+        "dbsync_queue_usage='%.2f'\n"
+        "\n"
+        "# Upgrade module message queue size\n"
+        "dbsync_queue_size='%u'\n"
+        "\n"
         "# Event queue\n"
         "event_queue_usage='%.2f'\n"
         "\n"
@@ -285,6 +293,7 @@ int w_analysisd_write_state(){
         s_winevt_queue,
         s_winevt_queue_size,
         s_dbsync_message_queue, s_dbsync_message_queue_size,
+        s_upgrade_message_queue, s_upgrade_message_queue_size,
         s_event_queue,s_event_queue_size,
         s_process_event_queue,
         s_process_event_queue_size,

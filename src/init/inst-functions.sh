@@ -35,7 +35,8 @@ CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
 SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.template"
-AGENT_UPGRADE_TEMPLATE="./etc/templates/config/generic/wodle-agent-upgrade.manager.template"
+AGENT_UPGRADE_MANAGER_TEMPLATE="./etc/templates/config/generic/wodle-agent-upgrade.manager.template"
+AGENT_UPGRADE_AGENT_TEMPLATE="./etc/templates/config/generic/wodle-agent-upgrade.agent.template"
 TASK_MANAGER_TEMPLATE="./etc/templates/config/generic/wodle-task-manager.manager.template"
 
 ##########
@@ -345,7 +346,7 @@ WriteAgent()
       echo "      <address>$HNAME</address>" >> $NEWCONFIG
     fi
     echo "      <port>1514</port>" >> $NEWCONFIG
-    echo "      <protocol>udp</protocol>" >> $NEWCONFIG
+    echo "      <protocol>tcp</protocol>" >> $NEWCONFIG
     echo "    </server>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
@@ -389,6 +390,10 @@ WriteAgent()
 
     # Syscollector configuration
     WriteSyscollector "agent"
+
+    # Agent upgrade
+    cat ${AGENT_UPGRADE_AGENT_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
     # Configuration assessment configuration
     WriteConfigurationAssessment
@@ -494,7 +499,7 @@ WriteManager()
     WriteConfigurationAssessment
 
     # Agent upgrade
-    cat ${AGENT_UPGRADE_TEMPLATE} >> $NEWCONFIG
+    cat ${AGENT_UPGRADE_MANAGER_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Task Manager
@@ -618,16 +623,16 @@ WriteLocal()
     # Write osquery
     WriteOsquery "manager"
 
+    # Agent upgrade
+    cat ${AGENT_UPGRADE_MANAGER_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # Task Manager
     cat ${TASK_MANAGER_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Agent upgrade
-    cat ${AGENT_UPGRADE_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Write syscheck
@@ -859,6 +864,7 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/api
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/rootcheck
 
     ${INSTALL} -m 0750 -o root -g 0 ossec-agentlessd ${PREFIX}/bin
@@ -950,8 +956,18 @@ InstallLocal()
 
     ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
 
+    ### Backup old API
+    if [ "X${update_only}" = "Xyes" ]; then
+      ${MAKEBIN} --quiet -C ../api backup PREFIX=${PREFIX} REVISION=${REVISION}
+    fi
+
     ### Install API
     ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
+
+    ### restore old API
+    if [ "X${update_only}" = "Xyes" ]; then
+      ${MAKEBIN} --quiet -C ../api restore PREFIX=${PREFIX} REVISION=${REVISION}
+    fi
 
     ### Install API service
     if [ "X${INSTALL_API_DAEMON}" = "X" ] || [ "X${INSTALL_API_DAEMON}" = "Xy" ]; then

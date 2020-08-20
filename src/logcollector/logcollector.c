@@ -166,8 +166,9 @@ void LogCollectorStart()
 
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
-#endif
+#else
             free(current->file);
+#endif
             current->file = NULL;
             current->command = NULL;
             current->fp = NULL;
@@ -183,8 +184,9 @@ void LogCollectorStart()
 
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
-#endif
+#else
             free(current->file);
+#endif
             current->file = NULL;
             current->command = NULL;
             current->fp = NULL;
@@ -1832,7 +1834,7 @@ void * w_output_thread(void * args){
                 #endif
 
                 // Retry to connect infinitely.
-                logr_queue = StartMQ(DEFAULTQPATH, WRITE, MAX_OPENQ_ATTEMPS);
+                logr_queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
                 minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
 

@@ -230,7 +230,7 @@ void wm_ciscat_setup(wm_ciscat *_ciscat) {
 
 #ifndef WIN32
 
-    queue_fd = StartMQ(DEFAULTQPATH, WRITE, MAX_OPENQ_ATTEMPS);
+    queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
     if (queue_fd < 0) {
         mterror(WM_CISCAT_LOGTAG, "Can't connect to queue.");

@@ -2,9 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import json
 import os
 import subprocess
 import sys
+from unittest.mock import mock_open
 from unittest.mock import patch, MagicMock
 from xml.etree.ElementTree import fromstring
 
@@ -315,6 +317,28 @@ def test_upload_group_file(mock_safe_move, mock_open):
     with patch('wazuh.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with pytest.raises(WazuhError, match=".* 1111 .*"):
             configuration.upload_group_file('default', [], 'a.conf')
+
+
+@pytest.mark.parametrize("agent_id, component, config, msg", [
+    ('000', 'agent', 'given', '{"auth": {"use_password": "yes"}}'),
+    ('000', 'agent', 'given', '{"auth": {"use_password": "no"}}')
+])
+def test_get_active_configuration(agent_id, component, config, msg):
+    """This test checks the propper working of get_active_configuration function."""
+    with patch('wazuh.core.configuration.OssecSocket.__init__', return_value=None):
+        with patch('wazuh.core.configuration.OssecSocket.send', side_effect=None):
+            with patch('wazuh.core.configuration.OssecSocket.receive', return_value=f'ok {msg}'.encode()):
+                with patch('wazuh.core.configuration.OssecSocket.close', side_effect=None):
+                    if json.loads(msg).get('auth', {}).get('use_password') == 'yes':
+                        result = configuration.get_active_configuration(agent_id, component, config)
+                        assert 'authd.pass' not in result
+
+                        with patch('builtins.open', mock_open(read_data='test_password')):
+                            result = configuration.get_active_configuration(agent_id, component, config)
+                            assert result['authd.pass'] == 'test_password'
+                    else:
+                        result = configuration.get_active_configuration(agent_id, component, config)
+                        assert 'authd.pass' not in result
 
 
 @pytest.mark.parametrize("exception_type, agent_id, component, config, exception_", [

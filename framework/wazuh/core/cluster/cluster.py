@@ -15,13 +15,14 @@ from shutil import rmtree
 from subprocess import check_output
 from time import time
 
-from wazuh import WazuhException
+from wazuh import WazuhException, WazuhError
 from wazuh.core import common
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_cluster_items, read_config
 from wazuh.core.utils import md5, mkdir_with_mode
 
 logger = logging.getLogger('wazuh')
+
 
 #
 # Cluster
@@ -37,16 +38,16 @@ def check_cluster_config(config):
     reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
 
     if len(config['key']) == 0:
-        raise WazuhException(3004, 'Unspecified key')
+        raise WazuhError(3004, 'Unspecified key')
     elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, eq):
-        raise WazuhException(3004, 'Key must be 32 characters long and only have alphanumeric characters')
+        raise WazuhError(3004, 'Key must be 32 characters long and only have alphanumeric characters')
 
     elif config['node_type'] != 'master' and config['node_type'] != 'worker':
-        raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and worker'.format(
+        raise WazuhError(3004, 'Invalid node type {0}. Correct values are master and worker'.format(
             config['node_type']))
 
     elif not 1024 < config['port'] < 65535:
-        raise WazuhException(3004, "Port must be higher than 1024 and lower than 65535.")
+        raise WazuhError(3004, "Port must be higher than 1024 and lower than 65535.")
 
     if len(config['nodes']) > 1:
         logger.warning(
@@ -56,7 +57,7 @@ def check_cluster_config(config):
     invalid_elements = list(reservated_ips & set(config['nodes']))
 
     if len(invalid_elements) != 0:
-        raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
+        raise WazuhError(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
 
 
 def get_cluster_items_master_intervals():
@@ -101,7 +102,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     try:
         entries = listdir(common.ossec_path + dirname)
     except OSError as e:
-        raise WazuhException(3015, str(e))
+        raise WazuhError(3015, str(e))
 
     for entry in entries:
         if entry in excluded_files or reduce(add, map(lambda x: entry[-(len(x)):] == x, excluded_extensions)):
@@ -182,14 +183,14 @@ def compress_files(name, list_path, cluster_control_json=None):
                 try:
                     zf.write(filename=common.ossec_path + f, arcname=f)
                 except zipfile.LargeZipFile as e:
-                    raise WazuhException(3001, str(e))
+                    raise WazuhError(3001, str(e))
                 except Exception as e:
                     logger.error("[Cluster] {}".format(str(WazuhException(3001, str(e)))))
 
         try:
             zf.writestr("cluster_control.json", json.dumps(cluster_control_json))
         except Exception as e:
-            raise WazuhException(3001, str(e))
+            raise WazuhError(3001, str(e))
 
     return zip_file_path
 

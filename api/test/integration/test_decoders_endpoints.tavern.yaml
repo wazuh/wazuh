@@ -11,7 +11,7 @@ stages:
     request: &get_decoders
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -224,12 +224,7 @@ stages:
     response:
       status_code: 400
       json: &invalid_select
-        type: !anystr
-        detail: !anystr
-        status: 400
-        remediation: !anystr
         code: 1724
-        dapi_errors: !anything
 
   - name: Show decoders using select (one select is invalid)
     request:
@@ -355,7 +350,7 @@ stages:
     request: &get_decoders_with_name
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -527,7 +522,7 @@ stages:
     request: &get_decoders_files
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -763,7 +758,7 @@ stages:
     request: &get_decoders_parents
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/parents"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/parents"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -935,7 +930,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/0005-wazuh_decoders.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -948,7 +943,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/wrongfile/download"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/wrongfile/download"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

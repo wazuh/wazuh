@@ -22,6 +22,7 @@
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
 #define SCA_MQ          'p'
+#define UPGRADE_MQ      'u'
 
 /* Queues for additional log types */
 #define MYSQL_MQ         'a'
@@ -31,7 +32,7 @@
 #define CISCAT_MQ        'e'
 #define WIN_EVT_MQ       'f'
 
-#define MAX_OPENQ_ATTEMPS 0
+#define INFINITE_OPENQ_ATTEMPTS 0
 
 extern int sock_fail_time;
 /**

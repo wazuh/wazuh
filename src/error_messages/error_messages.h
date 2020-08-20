@@ -254,7 +254,7 @@
 #define AG_MAX_ERROR    "(4110): Maximum number of agents '%d' reached."
 #define AG_AX_AGENTS    "(4111): Maximum number of agents allowed: '%d'."
 #define AG_INV_MNGIP    "(4112): Invalid server address found: '%s'"
-#define AG_ENROLL_FAIL  "(4113): Auto Enrollment configuration failed." 
+#define AG_ENROLL_FAIL  "(4113): Auto Enrollment configuration failed."
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."
@@ -400,8 +400,8 @@
 #define FIM_ERROR_WHODATA_AUDIT_SUPPORT             "(6620): Audit support not built. Whodata is not available."
 #define FIM_ERROR_WHODATA_EVENTCHANNEL              "(6621): Event Channel subscription could not be made. Whodata scan is disabled."
 #define FIM_ERROR_WHODATA_RESTORE_POLICIES          "(6622): There is no backup of audit policies. Policies will not be restored."
-#define FIM_ERROR_WHODATA_RENDER_EVENT              "(6623): Error rendering the event. Error %lu."
-#define FIM_ERROR_WHODATA_RENDER_PARAM              "(6624): Invalid number of rendered parameters."
+
+
 #define FIM_ERROR_WHODATA_NOTFIND_DIRPOS            "(6625): The '%s' file does not have an associated directory."
 #define FIM_ERROR_WHODATA_HANDLER_REMOVE            "(6626): The handler '%s' could not be removed from the whodata hash table."
 #define FIM_ERROR_WHODATA_HANDLER_EVENT             "(6627): Could not get the time of the event whose handler is '%llu'."
@@ -420,8 +420,8 @@
 #define FIM_ERROR_WHODATA_MAXNUM_WATCHES            "(6640): Unable to monitor who-data for directory: '%s' - Maximum size permitted (%d)."
 #define FIM_ERROR_WHODATA_COMPILE_REGEX             "(6641): Cannot compile '%s' regular expression."
 #define FIM_ERROR_WHODATA_HEALTHCHECK_START         "(6642): Audit health check couldn't be completed correctly."
-#define FIM_ERROR_WHODATA_EVENT_TOOLONG             "(6643): Caching Audit message: event too long."
-#define FIM_ERROR_WHODATA_GETID                     "(6644): Couldn't get event ID from Audit message. Line: '%s'."
+
+
 #define FIM_ERROR_WHODATA_CONTEXT                   "(6645): Error creating the whodata context. Error %lu."
 #define FIM_ERROR_SACL_ACE_DELETE                   "(6646): DeleteAce() failed restoring the SACLs. Error '%ld'"
 #define FIM_ERROR_SACL_FIND_PRIVILEGE               "(6647): Could not find the '%s' privilege. Error: %lu"
@@ -458,7 +458,7 @@
 #define FIM_DIRECTORY_NOPROVIDED                    "(6678): No directory provided for syscheck to monitor."
 #define FIM_INVALID_ATTRIBUTE                       "(6679): Invalid attribute '%s' for '%s' option."
 #define FIM_INVALID_OPTION                          "(6680): Invalid option '%s' for attribute '%s'"
-#define FIM_WHODATA_PARAMETER                       "(6681): Invalid parameter type (%ld) for '%s'."
+
 #define FIM_ERROR_WHODATA_WIN_ARCH                  "(6682): Error reading 'Architecture' from Windows registry. (Error %u)"
 #define FIM_ERROR_WHODATA_WIN_SIDERROR              "(6683): Could not obtain the sid of Everyone. Error '%lu'."
 #define FIM_ERROR_WHODATA_OPEN_TOKEN                "(6684): OpenProcessToken() failed. Error '%lu'."
@@ -494,15 +494,23 @@
 #define WM_UPGRADE_JSON_PARSE_ERROR                 "(8101): Cannot parse JSON: '%s'"
 #define WM_UPGRADE_UNDEFINED_ACTION_ERRROR          "(8102): No action defined for command: '%s'"
 #define WM_UPGRADE_COMMAND_PARSE_ERROR              "(8103): Error parsing command: '%s'"
-#define WM_UPGRADE_UNREACHEABLE_TASK_MANAGER        "(8104): Cannot connect to '%s'. Could not reach task manager module"
-#define WM_UPGRADE_INVALID_TASK_MAN_JSON            "(8105): Response from task manager does not have a valid JSON format"
-#define WM_UPGRADE_TASK_EMPTY_MESSAGE               "(8106): Empty message from task manager module"
-#define WM_UPGRADE_REQUIRED_PARAMETERS              "(8107): Required parameters in message are missing"
+#define WM_UPGRADE_UNREACHEABLE_TASK_MANAGER        "(8104): Cannot connect to '%s'. Could not reach task manager module."
+#define WM_UPGRADE_INVALID_TASK_MAN_JSON            "(8105): Response from task manager does not have a valid JSON format."
+#define WM_UPGRADE_TASK_EMPTY_MESSAGE               "(8106): Empty message from task manager module."
+#define WM_UPGRADE_REQUIRED_PARAMETERS              "(8107): Required parameters in message are missing."
 #define WM_UPGRADE_BIND_SOCK_ERROR                  "(8108): Unable to bind to socket '%s': '%s'"
 #define WM_UPGRADE_SELECT_ERROR                     "(8109): Error in select(): '%s'. Exiting..."
 #define WM_UPGRADE_ACCEPT_ERROR                     "(8110): Error in accept(): '%s'"
 #define WM_UPGRADE_RECV_ERROR                       "(8111): Error in recv(): '%s'"
 #define WM_UPGRADE_SOCKTERR_ERROR                   "(8112): Response size is bigger than expected."
+#define WM_UPGRADE_QUEUE_FD                         "(8113): Could not open default queue to send upgrade notification."
+#define WM_UPGRADE_UNREACHEABLE_REQUEST             "(8114): Cannot connect to '%s'. Could not reach agent."
+#define WM_UPGRADE_EMPTY_AGENT_RESPONSE             "(8115): Response from agent is empty."
+#define WM_UPGRADE_AGENT_RESPONSE_MESSAGE_ERROR     "(8116): Error response from agent: '%s'"
+#define WM_UPGRADE_AGENT_RESPONSE_UNKNOWN_ERROR     "(8117): Unknown error from agent."
+#define WM_UPGRADE_AGENT_RESPONSE_SHA1_ERROR        "(8118): The SHA1 of the file doesn't match in the agent."
+#define WM_UPGRADE_TASK_UPDATE_ERROR                "(8119): There has been an error updating task state. Error code: '%d', message: '%s'"
+#define WM_UPGRADE_RESULT_FILE_ERROR                "(8120): Agent was unable to erase upgrade_result file. Reason: '%s'"
 
 #define MOD_TASK_CHECK_DB_ERROR                     "(8250): DB integrity is invalid. Exiting..."
 #define MOD_TASK_CREATE_SOCK_ERROR                  "(8251): Queue '%s' not accesible: '%s'. Exiting..."
@@ -516,6 +524,8 @@
 #define MOD_TASK_PARSE_KEY_ERROR                    "(8259): Invalid message. '%s' not found at index '%d'"
 #define MOD_TASK_DB_ERROR                           "(8260): Database error at index '%d'"
 #define MOD_TASK_UNKNOWN_VALUE_ERROR                "(8261): Invalid '%s' at index '%d'"
+#define MOD_TASK_COULD_NOT_FIND_TASK                "(8262): Couldn't find task in DB at index '%d'"
+#define MOD_TASK_COULD_NOT_FIND_AGENT               "(8263): Couldn't find agent in DB at index '%d'"
 
 #define MOD_TASK_CREATE_DB_ERROR                    "(8275): DB couldn't be checked or created."
 #define MOD_TASK_OPEN_DB_ERROR                      "(8276): DB couldn't be opened."

@@ -9,15 +9,16 @@ import logging
 import os
 from secrets import token_urlsafe
 from shutil import chown
+from importlib import reload
 from time import time
 
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
-from api.api_exception import APIException
-from api.configuration import security_conf
+import api.configuration as configuration
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
+from wazuh import WazuhInternalError
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.rbac.orm import AuthenticationManager, TokenManager
 
@@ -97,7 +98,7 @@ def generate_secret():
             with open(_secret_file_path, mode='r') as secret_file:
                 jwt_secret = secret_file.readline()
     except IOError:
-        raise APIException(2002)
+        raise WazuhInternalError(6003)
 
     return jwt_secret
 
@@ -109,8 +110,14 @@ def change_secret():
         jwt_secret.write(new_secret)
 
 
+def get_api_conf():
+    reload(configuration)
+    return copy.deepcopy(configuration.api_conf)
+
+
 def get_security_conf():
-    return copy.deepcopy(security_conf)
+    reload(configuration)
+    return copy.deepcopy(configuration.security_conf)
 
 
 def generate_token(user_id=None, rbac_policies=None):
@@ -161,8 +168,10 @@ def check_token(username, token_nbf_time):
     -------
     Dict with the result
     """
+    with AuthenticationManager() as am:
+        user_id = am.get_user(username=username)['id']
     with TokenManager() as tm:
-        result = tm.is_token_valid(username=username, token_nbf_time=int(token_nbf_time))
+        result = tm.is_token_valid(user_id=user_id, token_nbf_time=int(token_nbf_time))
 
     return {'valid': result}
 
@@ -193,6 +202,7 @@ def decode_token(token):
         if not data.to_dict()['result']['valid']:
             raise Unauthorized
 
+        # Detect local changes
         dapi = DistributedAPI(f=get_security_conf,
                               request_type='local_master',
                               is_async=False,

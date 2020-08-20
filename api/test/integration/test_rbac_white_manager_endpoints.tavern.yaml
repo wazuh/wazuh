@@ -9,12 +9,12 @@ stages:
   - name: Request manager configuration (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response: &permission_denied
-      status_code: 400
+      status_code: 403
       json:
         code: 4000
 
@@ -26,7 +26,7 @@ stages:
   - name: Request manager configuration validation (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/validation"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -41,7 +41,7 @@ stages:
   - name: Request manager component configuration (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/agentless/agentless"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/agentless/agentless"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -56,7 +56,7 @@ stages:
   - name: Delete a file (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -68,7 +68,7 @@ stages:
   - name: Delete a file (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -85,7 +85,7 @@ stages:
   - name: Read a file (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -97,7 +97,7 @@ stages:
   - name: Read a file (Denied, Does not exist)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -114,7 +114,7 @@ stages:
   - name: Upload a file (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -122,9 +122,7 @@ stages:
       params:
         path: 'etc/decoders/test_decoders.xml'
     response:
-      status_code: 400
-      json:
-        code: 4000
+      <<: *permission_denied
 
 ---
 test_name: GET /manager/info
@@ -134,7 +132,7 @@ stages:
   - name: Request manager info (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/info"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -149,7 +147,7 @@ stages:
   - name: Request manager logs (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -164,7 +162,7 @@ stages:
   - name: Request manager logs summary (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs/summary"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs/summary"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -179,7 +177,7 @@ stages:
   - name: Request manager stats (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -196,7 +194,7 @@ stages:
   - name: Request manager analysisd stats (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/analysisd"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/analysisd"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -211,7 +209,7 @@ stages:
   - name: Request manager hourly stats (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/hourly"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/hourly"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -226,7 +224,7 @@ stages:
   - name: Request manager remoted stats (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/remoted"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/remoted"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -241,7 +239,7 @@ stages:
   - name: Request manager weekly stats (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/weekly"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/weekly"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -256,7 +254,7 @@ stages:
   - name: Request manager status (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/status"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -271,7 +269,7 @@ stages:
   - name: Request API config (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -286,7 +284,7 @@ stages:
   - name: Modify API configuration (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -305,7 +303,7 @@ stages:
   - name: Restore API config (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/api/config"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -320,7 +318,7 @@ stages:
   - name: Restart manager (Denied) (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/restart"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
