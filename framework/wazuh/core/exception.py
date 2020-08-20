@@ -404,11 +404,11 @@ class WazuhException(Exception):
         3002: {'message': 'Error creating PID file'},
         3003: {'message': 'Error deleting PID file'},
         3004: {'message': 'Error in cluster configuration',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'
+               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
         3005: 'Error reading cluster JSON file',
         3006: {'message': 'Error reading cluster configuration',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'
+               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
         3007: 'Client.keys file received in master node',
         3008: 'Received invalid agent status',
@@ -417,8 +417,8 @@ class WazuhException(Exception):
         3010: 'Received the status/group of a non-existent agent',
         3011: 'Agent info file received in a worker node',
         3012: 'Cluster is not running',
-        3013: {'message': 'Cluster is disabled in `WAZUH_HOME/etc/ossec.conf`',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'
+        3013: {'message': 'Cluster is not running, it might be disabled in `WAZUH_HOME/etc/ossec.conf`',
+               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'
                },
         3015: 'Cannot access directory',

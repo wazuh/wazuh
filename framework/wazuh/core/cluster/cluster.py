@@ -87,7 +87,7 @@ def check_cluster_status():
     """
     Function to check if cluster is enabled
     """
-    return read_config()['disabled']
+    return not read_config()['disabled']
 
 
 #
