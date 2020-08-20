@@ -34,6 +34,9 @@ list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,O
 list(APPEND upgrade_names "test_wm_agent_upgrade_parsing")
 list(APPEND upgrade_flags "-Wl,--wrap,_mterror")
 
+list(APPEND upgrade_names "test_wm_agent_upgrade_validate")
+list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1")
+
 # Compilig tests
 list(LENGTH upgrade_names count)
 math(EXPR count "${count} - 1")
