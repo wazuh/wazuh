@@ -18,6 +18,9 @@ CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null 
 ARCH_FLAGS =
 
 ROUTE_PATH := $(shell pwd)
+# dbsync var
+EXTERNAL_LIBS_FOLDER=../external/
+# end dbsync var
 EXTERNAL_JSON=external/cJSON/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
@@ -237,7 +240,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I./dbsync/include
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${DBSYNC}include
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -572,6 +575,7 @@ BUILD_SERVER+=ossec-dbd -
 BUILD_SERVER+=ossec-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
+BUILD_SERVER+=build_dbsync
 ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
 BUILD_SERVER+=wazuh-framework
 endif
@@ -583,6 +587,7 @@ BUILD_AGENT+=ossec-syscheckd
 BUILD_AGENT+=ossec-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=wazuh-modulesd
+BUILD_AGENT+=build_dbsync
 
 .PHONY: server local hybrid agent selinux
 
@@ -656,16 +661,15 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 
 ZLIB_LIB    = $(EXTERNAL_ZLIB)/libz.a
 OPENSSL_LIB = $(EXTERNAL_OPENSSL)libssl.a
-CRYPTO_LIB = $(EXTERNAL_OPENSSL)libcrypto.a
-
+CRYPTO_LIB 	= $(EXTERNAL_OPENSSL)libcrypto.a
 SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.a
 JSON_LIB    = $(EXTERNAL_JSON)libcjson.a
 PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
 DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.a
 LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
-AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
-LIBFFI_LIB = $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
+AUDIT_LIB 	= $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
+LIBFFI_LIB 	= $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
 
@@ -1031,6 +1035,15 @@ config_o := $(config_c:.c=.o)
 
 config/%.o: config/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
+#### DBSync ##########
+
+build_dbsync:
+ifneq (,$(filter ${DEBUG},YES yes y Y 1))
+	cd ${DBSYNC} && cmake -DEXTERNAL_LIBS_PATH=${EXTERNAL_LIBS_FOLDER} -DCMAKE_BUILD_TYPE=Debug -DUNIT_TEST=ON . && cmake --build .
+else
+	cd ${DBSYNC} && cmake -DEXTERNAL_LIBS_PATH=${EXTERNAL_LIBS_FOLDER} -DCMAKE_BUILD_TYPE=Release . && cmake --build .
+endif #DEBUG
 
 #### Wazuh modules ##
 
