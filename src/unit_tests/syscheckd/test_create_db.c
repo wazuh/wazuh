@@ -462,10 +462,6 @@ static int setup_group(void **state) {
 
     unit_testing = false;
 
-#ifndef TEST_WINAGENT
-    expect_any_always(__wrap__mdebug2, formatted_msg);
-#endif
-
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck.conf");
 
@@ -483,10 +479,6 @@ static int setup_root_group(void **state) {
         return -1;
 
     unit_testing = false;
-
-#ifndef TEST_WINAGENT
-    expect_any_always(__wrap__mdebug2, formatted_msg);
-#endif
 
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck_top_level.conf");

@@ -285,10 +285,6 @@ int __wrap_system(const char *__command) {
 static int setup_group(void **state) {
     (void) state;
 
-#ifndef TEST_WINAGENT
-    expect_any_always(__wrap__mdebug2, formatted_msg);
-#endif
-
     Read_Syscheck_Config("test_syscheck.conf");
 
     test_mode = 1;

@@ -522,10 +522,6 @@ static int setup_group(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck2.conf]");
 #endif
 
-#ifndef TEST_WINAGENT
-    expect_function_call_any(__wrap__mdebug2);
-#endif
-
     Read_Syscheck_Config("test_syscheck2.conf");
 
     syscheck.database_store = 0;    // disk

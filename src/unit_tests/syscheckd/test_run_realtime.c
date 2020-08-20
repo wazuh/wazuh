@@ -292,10 +292,6 @@ unsigned int __wrap_w_directory_exists(const char *path) {
 static int setup_group(void **state) {
     will_return_always(__wrap__mdebug1, 0);
 
-#ifndef TEST_WINAGENT
-    expect_any_always(__wrap__mdebug2, formatted_msg);
-#endif
-
     Read_Syscheck_Config("test_syscheck.conf");
 
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));

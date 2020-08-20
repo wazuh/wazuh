@@ -244,10 +244,6 @@ static int setup_group(void ** state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
 #endif
 
-#ifndef TEST_WINAGENT
-    expect_any_always(__wrap__mdebug2, msg);
-#endif
-
     if(Read_Syscheck_Config("test_syscheck.conf"))
         fail();
 
