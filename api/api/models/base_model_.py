@@ -197,7 +197,7 @@ class Body(Model):
             dikt = request if isinstance(request, dict) else await request.json()
             f_kwargs = util.deserialize_model(dikt, cls).to_dict()
         except JSONDecodeError:
-            raise_if_exc(WazuhError(code=1018))
+            raise_if_exc(WazuhError(1018))
 
         invalid = {key for key in dikt.keys() if key not in list(f_kwargs.keys())}
 
@@ -233,4 +233,4 @@ class Body(Model):
     @classmethod
     def validate_content_type(cls, request, expected_content_type):
         if request.content_type != expected_content_type:
-            raise_if_exc(WazuhError(6002), code=406)
+            raise_if_exc(WazuhNotAcceptable(6002))

@@ -11,7 +11,7 @@ variables:
   port: 55000
   user: testing
   pass: wazuh
-  version: v4
+  basic_auth: dGVzdGluZzp3YXp1aA== # b64 encoded user:pass, update if user or pass changes
   login_endpoint: /security/user/authenticate
 
   # delays

@@ -10,7 +10,7 @@ stages:
   - name: Try to show the roles of the system
     request: &all_roles_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -142,7 +142,7 @@ stages:
   - name: Search in roles
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -232,7 +232,7 @@ stages:
   - name: Try to show the policies of the system
     request: &all_policies_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -476,6 +476,25 @@ stages:
         <<: *response_error
 
 ---
+test_name: GET /security/user/authenticate
+
+stages:
+
+  - name: Get an API token in raw format
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate"
+      headers:
+        Authorization: "Basic {basic_auth:s}"
+      params:
+        raw: True
+      method: GET
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_token_raw_format
+
+---
 test_name: GET /security/users
 
 stages:
@@ -483,7 +502,7 @@ stages:
   - name: Get all users in the system
     request: &all_users_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -531,7 +550,7 @@ stages:
   - name: Get information about the current user
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/me"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/me"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -938,7 +957,7 @@ stages:
   - name: Testing RBAC's actions catalog
     request: &rbac_actions_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/actions"
+      url: "{protocol:s}://{host:s}:{port:d}/security/actions"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -988,7 +1007,7 @@ stages:
   - name: Testing RBAC's actions catalog
     request: &rbac_resources_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/resources"
+      url: "{protocol:s}://{host:s}:{port:d}/security/resources"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1038,7 +1057,7 @@ stages:
   - name: Get current security configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      url: "{protocol:s}://{host:s}:{port:d}/security/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

@@ -2,7 +2,7 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # May 3, 2017
 #
-# Syntax: make [ all | install]
+# Syntax: make [ all | backup | install | restore | service ]
 
 OSSEC_GROUP       = ossec
 PREFIX            = /var/ossec
@@ -16,14 +16,15 @@ INSTALL_CONFIG_FILE   = install -o root -g ${OSSEC_GROUP} -m 0660
 PYTHON_BIN     = $(PREFIX)/framework/python/bin/python3
 
 
-.PHONY: all install service
+.PHONY: all backup install restore service
 
-all: install service
+all: backup install restore service
+
+backup:
+	# Backup previous configuration
+	. ../api/service/inst-api-functions.sh; backup_old_api ${REVISION}
 
 install:
-    # Backup previous configuration
-	. ../api/service/inst-api-functions.sh; backup_old_api
-
     # Copy files and create folders
 	$(INSTALL_DIR) $(PREFIX)/api
 	$(INSTALL_RW_DIR) $(PREFIX)/api/configuration
