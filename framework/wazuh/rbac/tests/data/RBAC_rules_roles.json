@@ -126,8 +126,10 @@
                 },
                 "OR": [
                   {
-                    "authLevel": ["administrator"],
-                    "department": ["Technical"]
+                    "MATCH": {
+                      "authLevel": ["administrator"],
+                      "department": ["Technical"]
+                    }
                   }
                 ]
               }
