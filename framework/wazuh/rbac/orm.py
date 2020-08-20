@@ -820,7 +820,17 @@ class RulesManager:
         """
 
     def get_rule(self, rule_id: int):
-        """TODO"""
+        """Get the information about one rule specified by id.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+
+        Returns
+        -------
+        Rule object with all its information.
+        """
         try:
             rule = self.session.query(Rules).filter_by(id=rule_id).first()
             if not rule:
@@ -830,7 +840,17 @@ class RulesManager:
             return SecurityError.RULE_NOT_EXIST
 
     def get_rule_by_name(self, rule_name: str):
-        """TODO"""
+        """Get the information about one rule specified by id.
+
+        Parameters
+        ----------
+        rule_name : str
+            Name of the rule.
+
+        Returns
+        -------
+        Rule object with all its information.
+        """
         try:
             rule = self.session.query(Rules).filter_by(name=rule_name).first()
             if not rule:
@@ -840,7 +860,12 @@ class RulesManager:
             return SecurityError.RULE_NOT_EXIST
 
     def get_rules(self):
-        """TODO"""
+        """Get the information about all rules in the system.
+
+        Returns
+        -------
+        List of Rule objects with all of its information | False -> No rules in the system
+        """
         try:
             rules = self.session.query(Rules).all()
             return rules
@@ -848,7 +873,18 @@ class RulesManager:
             return SecurityError.RULE_NOT_EXIST
 
     def add_rule(self, name: str, rule: dict):
-        """TODO"""
+        """Add a new rule.
+
+        Parameters
+        ----------
+        name : str
+            Name of the new rule.
+        rule : dict
+            Rule dictionary.
+        Returns
+        -------
+        True -> Success | Rule already exists | Invalid rule
+        """
         try:
             if rule is not None and not json_validator(rule):
                 return SecurityError.INVALID
@@ -860,7 +896,16 @@ class RulesManager:
             return SecurityError.ALREADY_EXIST
 
     def delete_rule(self, rule_id: int):
-        """TODO"""
+        """Delete an existent rule in the system.
+
+        Parameters
+        ----------
+        rule_id : int
+            Id of the rule.
+        Returns
+        -------
+        True -> Success | False -> Failure
+        """
         try:
             if rule_id not in required_rules:
                 # If the role does not exist we rollback the changes
@@ -879,7 +924,15 @@ class RulesManager:
             return False
 
     def delete_rule_by_name(self, rule_name: str):
-        """TODO
+        """Delete an existent rule in the system.
+
+        Parameters
+        ----------
+        rule_name : str
+            Name of the rule.
+        Returns
+        -------
+        True -> Success | False -> Failure | ADMIN_RESOURCES -> Admin rules cannot be deleted
         """
         try:
             if self.get_rule_by_name(rule_name) is not None and \
@@ -894,7 +947,12 @@ class RulesManager:
             return False
 
     def delete_all_rules(self):
-        """TODO"""
+        """Delete all existen rules in the system.
+
+        Returns
+        -------
+        List of deleted roles -> Success | False -> Failure
+        """
         try:
             list_rules = list()
             rules = self.session.query(Rules).all()
@@ -911,7 +969,21 @@ class RulesManager:
             return False
 
     def update_rule(self, rule_id: int, name: str, rule: dict):
-        """TODO"""
+        """Update an existen rule in the system..
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+        name : name
+            Name of the rule.
+        rule : dict
+            Dictionary with the rule itself.
+
+        Returns
+        -------
+        True -> Success | Invalid rule | Name already in use | Rule not exists
+        """
         try:
             rule_to_update = self.session.query(Rules).filter_by(id=rule_id).first()
             if rule_to_update and rule_to_update is not None:
@@ -1682,12 +1754,23 @@ class RolesPoliciesManager:
 
 class RolesRulesManager:
     """
-    This class is the manager of the relationship between the rules and the roles, this class provided
-    all the methods needed for the rules-roles administration.
+    This class is the manager of the relationship between the roles and the rules, this class provides
+    all the methods needed for the roles-rules administration.
     """
-
     def add_rule_to_role(self, rule_id: int, role_id: int):
-        """TODO"""
+        """Add a relation between one specified role and one specified rule.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+        role_id : int
+            ID of the role.
+
+        Returns
+        -------
+        True -> Success | False -> Failure | Role not found | Rule not found | Existing relationship
+        """
         try:
             # Create a rule-role relationship if both exist
             rule = self.session.query(Rules).filter_by(id=rule_id).first()
@@ -1707,7 +1790,17 @@ class RolesRulesManager:
             return SecurityError.INVALID
 
     def get_all_rules_from_role(self, role_id: int):
-        """TODO"""
+        """Get all the rules related with the specified role.
+
+        Parameters
+        ----------
+        role_id : int
+            ID of the role.
+
+        Returns
+        -------
+            List of rules related with the role -> Success | False -> Failure
+        """
         try:
             rule_roles = self.session.query(RolesRules).filter_by(role_id=role_id).order_by(RolesRules.id).all()
             rules = list()
@@ -1719,7 +1812,17 @@ class RolesRulesManager:
             return False
 
     def get_all_roles_from_rule(self, rule_id: int):
-        """TODO"""
+        """Get all the roles related with the specified rule.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+
+        Returns
+        -------
+            List of roles related with the rule -> Success | False -> Failure
+        """
         try:
             role_rules = self.session.query(RolesRules).filter_by(rule_id=rule_id).order_by(RolesRules.id).all()
             roles = list()
@@ -1731,7 +1834,19 @@ class RolesRulesManager:
             return False
 
     def exist_role_rule(self, role_id: int, rule_id: int):
-        """TODO"""
+        """Check if the relationship role-rule exists.
+
+        Parameters
+        ----------
+        role_id : int
+            ID of the role.
+        rule_id : int
+            ID of the rule.
+
+        Returns
+        -------
+        True -> Existent relationship | False -> Failure | Rule not exists | Role not exists
+        """
         try:
             rule = self.session.query(Rules).filter_by(id=rule_id).first()
             if rule is None:
@@ -1748,7 +1863,19 @@ class RolesRulesManager:
             return False
 
     def remove_rule_in_role(self, rule_id: int, role_id: int):
-        """TODO"""
+        """Remove a role-rule relationship if both exists. This does not delete the objects.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+        role_id : int
+            ID of the role.
+
+        Returns
+        -------
+        True -> Success | False -> Failure | Role not exists | Rule not exist s| Non-existent relationship
+        """
         try:
             if rule_id not in required_rules_for_role.get(role_id, []):  # Required rule
                 rule = self.session.query(Rules).filter_by(id=rule_id).first()
@@ -1771,11 +1898,33 @@ class RolesRulesManager:
             return SecurityError.INVALID
 
     def remove_role_in_rule(self, rule_id: int, role_id: int):
-        """TODO"""
+        """Remove a role-rule relationship if both exists. This does not delete the objects.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+        role_id : int
+            ID of the role.
+
+        Returns
+        -------
+        True -> Success | False -> Failure | Role not exists | Rule not exist s| Non-existent relationship
+        """
         return self.remove_rule_in_role(rule_id=rule_id, role_id=role_id)
 
     def remove_all_roles_in_rule(self, rule_id: int):
-        """TODO"""
+        """Remove all relations between a rule and its roles. This does not delete the objects.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+
+        Returns
+        -------
+        True -> Success | False -> Failure
+        """
         try:
             roles = self.session.query(Rules).filter_by(id=rule_id).first().roles
             for role in roles:
@@ -1786,7 +1935,17 @@ class RolesRulesManager:
             return False
 
     def remove_all_rules_in_role(self, role_id: int):
-        """TODO"""
+        """Remove all relations between a role and its rules. This does not delete the objects.
+
+        Parameters
+        ----------
+        role_id : int
+            ID of the role.
+
+        Returns
+        -------
+        True -> Success | False -> Failure
+        """
         try:
             rules = self.session.query(Roles).filter_by(id=role_id).first().rules
             for rule in rules:
@@ -1797,7 +1956,21 @@ class RolesRulesManager:
             return False
 
     def replace_rule_role(self, rule_id: int, current_role_id: int, new_role_id: int):
-        """TODO"""
+        """Replace one existing relationship with another one.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+        current_role_id : int
+            Current ID of the role.
+        new_role_id : int
+            New role ID.
+
+        Returns
+        -------
+        True -> Success | False -> Failure
+        """
         if rule_id not in required_rules_for_role.get(int(current_role_id), []) and self.exist_role_rule(
                 rule_id=rule_id,
                 role_id=current_role_id) \

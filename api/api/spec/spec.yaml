@@ -13197,8 +13197,17 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseRoles'
               example:
                 data:
-                  # TODO
-                  todo
+                  affected_items:
+                    - id: 3
+                      name: "new_rule"
+                      rule:
+                        MATCH:
+                          definition: "normalRule"
+                      roles: []
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
+                message: "Rule created correctly"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13240,8 +13249,17 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseRoles'
               example:
                 data:
-                  # TODO
-                  todo
+                  affected_items:
+                    - id: 3
+                      name: "new_rule"
+                      rule:
+                        MATCH:
+                          definition: "normalRule"
+                      roles: []
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
+                message: "All specified rules were deleted"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13291,13 +13309,16 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - username: wazuh-wui
-                        roles:
-                          - 2
+                      - id: 3
+                        name: "new_name"
+                        rule:
+                          MATCH:
+                            definition: "updated_rule"
+                        roles: []
                     total_affected_items: 1
-                    total_failed_items: 0
                     failed_items: []
-                  message: User modified correctly
+                    total_failed_items: 0
+                  message: "Rule updated correctly"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13709,39 +13730,18 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
+                    - id: 5
                       name: normal
                       policies:
-                        - id: 2
-                          name: normal_policy
-                          policy:
-                            actions:
-                              - agent:delete
-                            effect: allow
-                            resources:
-                              - agent:id:001
-                              - agent:id:002
-                              - agent:id:003
-                        - id: 3
-                          name: normal_policy1
-                          policy:
-                            actions:
-                              - agent:delete1
-                            effect: allow
-                            resources:
-                              - agent:id:001
-                              - agent:id:002
-                              - agent:id:003
+                        - 2
+                        - 3
                       rules:
-                        - id: 1
-                          rule:
-                            MATCH:
-                              definition: normalRule
+                        - 3
                       users: []
                   failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
-                message: All rules were linked to role 3
+                message: "All rules were linked to role 5"
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -13781,7 +13781,7 @@ paths:
                     - id: 3
                       name: normal
                       policies: []
-                      rule: []
+                      rules: []
                       users: []
                   failed_items: []
                   total_affected_items: 2

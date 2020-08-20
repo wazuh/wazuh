@@ -502,7 +502,21 @@ async def update_rule(request, rule_id: int, pretty: bool = False, wait_for_comp
 
 
 async def remove_rules(request, rule_ids: list = None, pretty: bool = False, wait_for_complete: bool = False):
-    """TODO
+    """Remove a list of rules in the system.
+
+    Parameters
+    ----------
+    request : connexion.request
+    rule_ids : list, optional
+        List of policies ids to be deleted
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Two list with deleted rules and failed ones.
     """
     if 'all' in rule_ids:
         rule_ids = None
