@@ -29,7 +29,8 @@ typedef struct _SYSTEM_PROCESS_IMAGE_NAME_INFORMATION
 
 typedef NTSTATUS(WINAPI *tNTQSI)(ULONG SystemInformationClass, PVOID SystemInformation, ULONG SystemInformationLength, PULONG ReturnLength);
 
-static bool found_hotfix_error(char *key);
+static bool found_hotfix_error(HKEY hKey);
+static bool valid_hotfix_status(HKEY hKey);
 hw_info *get_system_windows();
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 
@@ -918,6 +919,7 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
 
 void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const char *LOCATION) {
     static OSRegex *hotfix_regex = NULL;
+    HKEY subKey;
     // This table is used to discard already reported hotfixes (same key and same timestamp)
     // It does not need to be released between iterations (static variable)
     static OSHash *hotfixes_table;
@@ -975,13 +977,22 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
         cbName = KEY_LENGTH;
         if (result = RegEnumKeyEx(hKey, i, achKey, &cbName, NULL, NULL, NULL, &ftLastWriteTime), result == ERROR_SUCCESS) {
             if (isVista) {
-                if (!OSRegex_Execute(achKey, hotfix_regex)) {
+                //  Open the hotfix key
+                result = RegOpenKeyEx(hKey, achKey, 0, KEY_READ, &subKey);
+                if (result != ERROR_SUCCESS) {
+                    merror("Error opening Windows registry.");
                     continue;
                 }
 
-                if (found_hotfix_error(achKey) == true) {
+                // Check basic stats
+                if (!OSRegex_Execute(achKey, hotfix_regex) ||
+                    found_hotfix_error(subKey) ||
+                    !valid_hotfix_status(subKey)) {
+                    RegCloseKey(subKey);
                     continue;
                 }
+
+                RegCloseKey(subKey);
 
                 char *hotfix = *hotfix_regex->d_sub_strings;
                 char *extension;
@@ -1033,28 +1044,37 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
     }
 }
 
-bool found_hotfix_error(char *key) {
-    DWORD dataSize = {0};
-    char reg[MAXSTR + 2] = {0};
+// Check if any error ocurred at installation time.
+bool found_hotfix_error(HKEY hKey) {
+    LONG result;
+    
+    // The Value only exists when an arror occurred.
+    result = RegQueryValueEx(hKey, "LastError", NULL, NULL, 0, 0);  
 
-    snprintf(reg, MAXSTR, "%s\\%s", (isVista)? WIN_REG_HOTFIX : VISTA_REG_HOTFIX, key);
+    return (result != ERROR_SUCCESS)? false : true;
+}
+
+// Check that the hotfix is installed correctly.
+bool valid_hotfix_status(HKEY hKey) {
+    DWORD dataSize = sizeof(DWORD);
+    DWORD value;
+    LONG result;
     
-    LONG result = RegGetValueA(
-        HKEY_LOCAL_MACHINE,
-        reg, 
-        (LPCSTR)"LastError",        
-        RRF_RT_REG_DWORD, 
-        0,              
-        0,              
-        &dataSize);  
+    result = RegQueryValueEx(hKey, "CurrentState", NULL, NULL, (LPBYTE)&value, &dataSize);  
     
-    if (result != ERROR_SUCCESS) {
-        printf("ERROR %d", result);
+    if (result != ERROR_SUCCESS ) {
+        mtdebug2(WM_SYS_LOGTAG, "Error reading 'CurrentState' from Windows registry. (Error %u)",(unsigned int)result);
         return false;
     }
 
-    mtinfo(WM_SYS_LOGTAG, ":length of that registry:%ld\n", dataSize);
-    return (dataSize > 0)? true : false;  
+    if (value != HOTFIX_INSTALLED && 
+        value != HOTFIX_SUPERSEDED && 
+        value != HOTFIX_STAGED) {
+        mtdebug2(WM_SYS_LOGTAG, "Invalid hotfix status: %ld", value);
+        return false;
+    }
+
+    return true;  
 }
 
 // List Windows users from the registry
