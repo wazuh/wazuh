@@ -3908,6 +3908,13 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
+    raw:
+      in: query
+      name: raw
+      description: "Format response in plain text"
+      required: False
+      schema:
+        type: boolean
     registry:
       in: query
       name: registry
@@ -4941,6 +4948,8 @@ paths:
       summary: 'Root-endpoint info'
       description: "Return basic information about the API"
       operationId: api.controllers.default_controller.default_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
       responses:
         '200':
           description: "API default info"
@@ -12617,12 +12626,13 @@ paths:
   /security/user/authenticate:
     get:
       tags:
-      - security
+        - security
       summary: "User/password authentication to get an access token"
       description: "This method should be called to get an API token. This token will expire at some time"
       operationId: api.controllers.security_controller.login_user
       parameters:
         - $ref: '#/components/parameters/auth_context'
+        - $ref: '#/components/parameters/raw'
       security:
         - basicAuth: []
       responses:
@@ -12637,6 +12647,10 @@ paths:
                     type: string
               example:
                 token: "<generated_token>"
+            text/plain:
+              schema:
+                type: string
+              example: "<generated_token>"
         '400':
           $ref: '#/components/responses/ResponseError'
 
