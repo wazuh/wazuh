@@ -6,7 +6,7 @@ marks:
 
 stages:
 
-    # PUT /agents/group?group_id=wrong_group
+  # PUT /agents/group?group_id=wrong_group
   - name: Try to assign all agents to a non existing group
     request: &put_agents_group
       verify: False
@@ -35,7 +35,7 @@ stages:
         detail: !anystr
         title: !anystr
 
-    # PUT /agents/group?group_id=wrong_%_group
+        # PUT /agents/group?group_id=wrong_%_group
   - name: Try to assign all agents to an invalid group id
     request:
       verify: False
@@ -210,7 +210,7 @@ test_name: PUT /groups/{group_id}/configuration
 
 stages:
 
-    # PUT /groups/group2/configuration
+  # PUT /groups/group2/configuration
   - name: Update group2 configuration
     request:
       verify: False
@@ -289,7 +289,7 @@ test_name: PUT /agents/group/{group_id}/restart
 
 stages:
 
-    # PUT /agents/group/group1/restart (This group has no agents assigned)
+  # PUT /agents/group/group1/restart (This group has no agents assigned)
   - name: Restart all agents from group1
     request:
       verify: False
@@ -352,7 +352,7 @@ test_name: PUT /agents/restart
 
 stages:
 
-    # PUT /agents/restart?list_agents=wrong_id
+  # PUT /agents/restart?list_agents=wrong_id
   - name: Try to restart agent with wrong_id
     request: &agent_restart_request
       verify: False
@@ -465,7 +465,7 @@ test_name: PUT /agents/{agent_id}/group/{group_id}
 
 stages:
 
-    # PUT /agents/001/group/group2
+  # PUT /agents/001/group/group2
   - name: Assign agent 001 to group1
     request:
       verify: False
@@ -538,7 +538,7 @@ test_name: PUT /agents/{agent_id}/restart
 
 stages:
 
-    # PUT /agents/000/restart
+  # PUT /agents/000/restart
   - name: Try to restart agent 000 (manager)
     request:
       verify: False
@@ -668,7 +668,7 @@ test_name: PUT /agents/{agent_id}/upgrade
 
 stages:
 
-    # PUT /agents/002/upgrade
+  # PUT /agents/002/upgrade
   - name: Try to upgrade a non existing agent
     request:
       verify: False
@@ -770,11 +770,11 @@ stages:
         force: true
         wait_for_complete: 'true'
     response:
-     status_code:
-       - 200
-       - 500
-     verify_response_with:
-       function: tavern_utils:test_validate_upgrade
+      status_code:
+        - 200
+        - 500
+      verify_response_with:
+        function: tavern_utils:test_validate_upgrade
 
     # PUT /agents/005/upgrade
   - name: Upgrade an agent using wkp repo to a 4.x version
@@ -819,7 +819,7 @@ test_name: PUT /agents/{agent_id}/upgrade_custom
 
 stages:
 
-    # PUT /agents/002/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
+  # PUT /agents/002/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade a non existing agent
     request:
       verify: False
