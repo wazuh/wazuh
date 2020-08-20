@@ -84,6 +84,26 @@ void test_wm_agent_upgrade_validate_id_manager(void **state)
     assert_int_equal(ret, WM_UPGRADE_INVALID_ACTION_FOR_MANAGER);
 }
 
+void test_wm_agent_upgrade_validate_status_ok(void **state)
+{
+    (void) state;
+    int last_keep_alive = time(0);
+
+    int ret = wm_agent_upgrade_validate_status(last_keep_alive);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+}
+
+void test_wm_agent_upgrade_validate_status_disconnected(void **state)
+{
+    (void) state;
+    int last_keep_alive = time(0) - (DISCON_TIME * 2);
+
+    int ret = wm_agent_upgrade_validate_status(last_keep_alive);
+
+    assert_int_equal(ret, WM_UPGRADE_AGENT_IS_NOT_ACTIVE);
+}
+
 #endif
 
 int main(void) {
@@ -92,6 +112,8 @@ int main(void) {
         // wm_agent_upgrade_listen_messages
         cmocka_unit_test(test_wm_agent_upgrade_validate_id_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_id_manager),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_status_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_status_disconnected),
 #endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
