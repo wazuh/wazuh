@@ -60,6 +60,8 @@ void wm_agent_upgrade_check_status(wm_agent_configs agent_config) {
     */
     int queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
+    sleep(30);
+
     if (queue_fd < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_QUEUE_FD);
     } else {
