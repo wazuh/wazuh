@@ -164,7 +164,7 @@ int wdb_update_agent_name(int id, const char *name) {
 
     switch (result) {
         case OS_SUCCESS:
-            if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
                 result = OS_INVALID;
             }
             break;
