@@ -1122,7 +1122,7 @@ void test_wm_agent_upgrade_validate_wpk_exist_diff_sha1(void **state)
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
 }
 
-void test_wm_agent_upgrade_validate_wpk_exist_download_retry(void **state)
+void test_wm_agent_upgrade_validate_wpk_download_retry(void **state)
 {
     wm_upgrade_task *task = *state;
     char *sha1 = "74691287f21a312ab2a12e31a23f21a33d242d52";
@@ -1159,7 +1159,7 @@ void test_wm_agent_upgrade_validate_wpk_exist_download_retry(void **state)
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
 }
 
-void test_wm_agent_upgrade_validate_wpk_exist_download_diff_sha1(void **state)
+void test_wm_agent_upgrade_validate_wpk_download_diff_sha1(void **state)
 {
     wm_upgrade_task *task = *state;
     char *sha1 = "74691287f21a312ab2a12e31a23f21a33d242d52";
@@ -1189,7 +1189,7 @@ void test_wm_agent_upgrade_validate_wpk_exist_download_diff_sha1(void **state)
     assert_int_equal(ret, WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH);
 }
 
-void test_wm_agent_upgrade_validate_wpk_exist_download_retry_max(void **state)
+void test_wm_agent_upgrade_validate_wpk_download_retry_max(void **state)
 {
     wm_upgrade_task *task = *state;
     char *sha1 = "74691287f21a312ab2a12e31a23f21a33d242d52";
@@ -1242,11 +1242,50 @@ void test_wm_agent_upgrade_validate_wpk_exist_download_retry_max(void **state)
     assert_int_equal(ret, WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST);
 }
 
-void test_wm_agent_upgrade_validate_wpk_exist_task_error(void **state)
+void test_wm_agent_upgrade_validate_wpk_task_error(void **state)
 {
     wm_upgrade_task *task = *state;
 
     int ret = wm_agent_upgrade_validate_wpk(task);
+
+    assert_int_equal(ret, WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST);
+}
+
+void test_wm_agent_upgrade_validate_wpk_custom_exist(void **state)
+{
+    wm_upgrade_custom_task *task = *state;
+
+    os_strdup("/tmp/test.wpk", task->custom_file_path);
+
+    expect_string(__wrap_fopen, path, "/tmp/test.wpk");
+    expect_string(__wrap_fopen, mode, "rb");
+    will_return(__wrap_fopen, 1);
+
+    int ret = wm_agent_upgrade_validate_wpk_custom(task);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+}
+
+void test_wm_agent_upgrade_validate_wpk_custom_not_exist(void **state)
+{
+    wm_upgrade_custom_task *task = *state;
+
+    os_strdup("/tmp/test.wpk", task->custom_file_path);
+
+    expect_string(__wrap_fopen, path, "/tmp/test.wpk");
+    expect_string(__wrap_fopen, mode, "rb");
+    will_return(__wrap_fopen, 0);
+
+    int ret = wm_agent_upgrade_validate_wpk_custom(task);
+
+    assert_int_equal(ret, WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST);
+}
+
+void test_wm_agent_upgrade_validate_wpk_custom_task_error(void **state)
+{
+    wm_upgrade_custom_task *task = *state;
+
+    int ret = wm_agent_upgrade_validate_wpk_custom(task);
 
     assert_int_equal(ret, WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST);
 }
@@ -1312,10 +1351,14 @@ int main(void) {
         // wm_agent_upgrade_validate_wpk
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_exist, setup_validate_wpk, teardown_validate_wpk),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_exist_diff_sha1, setup_validate_wpk, teardown_validate_wpk),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_exist_download_retry, setup_validate_wpk, teardown_validate_wpk),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_exist_download_diff_sha1, setup_validate_wpk, teardown_validate_wpk),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_exist_download_retry_max, setup_validate_wpk, teardown_validate_wpk),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_exist_task_error, setup_validate_wpk, teardown_validate_wpk),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_download_retry, setup_validate_wpk, teardown_validate_wpk),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_download_diff_sha1, setup_validate_wpk, teardown_validate_wpk),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_download_retry_max, setup_validate_wpk, teardown_validate_wpk),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_task_error, setup_validate_wpk, teardown_validate_wpk),
+        // wm_agent_upgrade_validate_wpk_custom
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_custom_exist, setup_validate_wpk_custom, teardown_validate_wpk_custom),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_custom_not_exist, setup_validate_wpk_custom, teardown_validate_wpk_custom),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_custom_task_error, setup_validate_wpk_custom, teardown_validate_wpk_custom),
 #endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
