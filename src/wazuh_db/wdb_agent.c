@@ -21,8 +21,6 @@
 #define WDBOUTPUT_SIZE OS_MAXSTR
 
 static const char *global_db_queries[] = {
-    [SQL_UPDATE_AGENT_VERSION] = "global sql UPDATE agent SET os_name = %Q, os_version = %Q, os_major = %Q, os_minor = %Q, os_codename = %Q, os_platform = %Q, os_build = %Q, os_uname = %s, os_arch = %Q, version = %Q, config_sum = %Q, merged_sum = %Q, manager_host = %Q, node_name = %Q, last_keepalive = STRFTIME('%s', 'NOW'), sync_status = %d WHERE id = %d;",
-    [SQL_UPDATE_AGENT_VERSION_IP] = "global sql UPDATE agent SET os_name = %Q, os_version = %Q, os_major = %Q, os_minor = %Q, os_codename = %Q, os_platform = %Q, os_build = %Q, os_uname = %s, os_arch = %Q, version = %Q, config_sum = %Q, merged_sum = %Q, manager_host = %Q, node_name = %Q, last_keepalive = STRFTIME('%s', 'NOW'), ip = %Q, sync_status = %d WHERE id = %d;",
     [SQL_GET_AGENT_LABELS] = "global get-labels %d",
     [SQL_SET_AGENT_LABELS] = "global set-labels %d %s",
     [SQL_UPDATE_AGENT_KEEPALIVE] = "global sql UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), sync_status = %d WHERE id = %d;",
@@ -53,8 +51,7 @@ int wdb_sock_agent = -1;
 static const char *global_db_accesses[] = {
     [WDB_INSERT_AGENT] = "global insert-agent %s",
     [WDB_UPDATE_AGENT_NAME] = "global update-agent-name %s",
-    [WDB_UPDATE_AGENT_VERSION] = "",
-    [WDB_UPDATE_AGENT_VERSION_IP] = "",
+    [WDB_UPDATE_AGENT_VERSION] = "global update-agent-version %s",
     [WDB_GET_AGENT_LABELS] = "",
     [WDB_SET_AGENT_LABELS] = "",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "",
@@ -181,53 +178,66 @@ int wdb_update_agent_name(int id, const char *name) {
     return result;
 }
 
-/* Update agent version. Sends a request to Wazuh-DB. Returns 1 or -1 on error. */
+
 int wdb_update_agent_version (int id,
-                             const char *os_name,
-                             const char *os_version,
-                             const char *os_major,
-                             const char *os_minor,
-                             const char *os_codename,
-                             const char *os_platform,
-                             const char *os_build,
-                             const char *os_uname,
-                             const char *os_arch,
-                             const char *version,
-                             const char *config_sum,
-                             const char *merged_sum,
-                             const char *manager_host,
-                             const char *node_name,
-                             const char *agent_ip,
-                             wdb_sync_status_t sync_status) {
+                              const char *os_name,
+                              const char *os_version,
+                              const char *os_major,
+                              const char *os_minor,
+                              const char *os_codename,
+                              const char *os_platform,
+                              const char *os_build,
+                              const char *os_uname,
+                              const char *os_arch,
+                              const char *version,
+                              const char *config_sum,
+                              const char *merged_sum,
+                              const char *manager_host,
+                              const char *node_name,
+                              const char *agent_ip,
+                              wdb_sync_status_t sync_status) {
     int result = 0;
+    cJSON *data_in = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
-    char os_uname_format[OS_BUFFER_SIZE] = "";
-    char *keepalive_format = "%s";
+    char *payload = NULL;
 
-    // os_uname fails with %Q flag
-    if (!os_uname) {
-        snprintf(os_uname_format, sizeof(os_uname_format),"NULL");
-    }
-    else {
-        snprintf(os_uname_format, sizeof(os_uname_format),"'%s'", os_uname);
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
     }
 
-    if(agent_ip) {
-        sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_VERSION_IP],
-        os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname_format,
-        os_arch, version, config_sum, merged_sum, manager_host, node_name, keepalive_format, agent_ip, sync_status, id);
-    } else {
-        sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_VERSION],
-        os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname_format,
-        os_arch, version, config_sum, merged_sum, manager_host, node_name, keepalive_format, sync_status, id);
-    }
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddStringToObject(data_in, "os_name", os_name);
+    cJSON_AddStringToObject(data_in, "os_version", os_version);
+    cJSON_AddStringToObject(data_in, "os_major", os_major);
+    cJSON_AddStringToObject(data_in, "os_minor", os_minor);
+    cJSON_AddStringToObject(data_in, "os_codename", os_codename);
+    cJSON_AddStringToObject(data_in, "os_platform", os_platform);
+    cJSON_AddStringToObject(data_in, "os_build", os_build);
+    cJSON_AddStringToObject(data_in, "os_uname", os_uname);
+    cJSON_AddStringToObject(data_in, "os_arch", os_arch);
+    cJSON_AddStringToObject(data_in, "version", version);
+    cJSON_AddStringToObject(data_in, "config_sum", config_sum);
+    cJSON_AddStringToObject(data_in, "merged_sum", merged_sum);
+    cJSON_AddStringToObject(data_in, "manager_host", manager_host);
+    cJSON_AddStringToObject(data_in, "node_name", node_name);
+    cJSON_AddStringToObject(data_in, "agent_ip", agent_ip);
+    cJSON_AddNumberToObject(data_in, "sync_status", sync_status);
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_accesses[WDB_UPDATE_AGENT_VERSION], cJSON_PrintUnformatted(data_in));
+
+    cJSON_Delete(data_in);
 
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
-            result = 1;
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                result = OS_INVALID;
+            }
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");

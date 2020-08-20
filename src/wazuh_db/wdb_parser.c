@@ -448,6 +448,15 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_update_agent_name(wdb, next, output);
             }
+        } else if (strcmp(query, "update-agent-version") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_update_agent_version(wdb, next, output);
+            }
         } else if (strcmp(query, "get-labels") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax.");
@@ -3994,6 +4003,94 @@ int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output)
             }
         } else {
             mdebug1("Global DB Invalid JSON data when updating agent name.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
+            cJSON_Delete(agent_data);
+            return OS_INVALID;
+        }
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+    cJSON_Delete(agent_data);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_update_agent_version(wdb_t * wdb, char * input, char * output) {
+    cJSON *agent_data = NULL;
+    const char *error = NULL;
+    cJSON *j_id = NULL;
+    cJSON *j_os_name = NULL;
+    cJSON *j_os_version = NULL;
+    cJSON *j_os_major = NULL;
+    cJSON *j_os_minor = NULL;
+    cJSON *j_os_codename = NULL;
+    cJSON *j_os_platform = NULL;
+    cJSON *j_os_build = NULL;
+    cJSON *j_os_uname = NULL;
+    cJSON *j_os_arch = NULL;
+    cJSON *j_version = NULL;
+    cJSON *j_config_sum = NULL;
+    cJSON *j_merged_sum = NULL;
+    cJSON *j_manager_host = NULL;
+    cJSON *j_node_name = NULL;
+    cJSON *j_agent_ip = NULL;
+    cJSON *j_sync_status = NULL;
+
+    agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
+    if (!agent_data) {
+        mdebug1("Global DB Invalid JSON syntax when updating agent version.");
+        mdebug2("Global DB JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        return OS_INVALID;
+    } else {
+        j_id = cJSON_GetObjectItemCaseSensitive(agent_data, "id");
+        j_os_name = cJSON_GetObjectItemCaseSensitive(agent_data, "os_name");
+        j_os_version = cJSON_GetObjectItemCaseSensitive(agent_data, "os_version");
+        j_os_major = cJSON_GetObjectItemCaseSensitive(agent_data, "os_major");
+        j_os_minor = cJSON_GetObjectItemCaseSensitive(agent_data, "os_minor");
+        j_os_codename = cJSON_GetObjectItemCaseSensitive(agent_data, "os_codename");
+        j_os_platform = cJSON_GetObjectItemCaseSensitive(agent_data, "os_platform");
+        j_os_build = cJSON_GetObjectItemCaseSensitive(agent_data, "os_build");
+        j_os_uname = cJSON_GetObjectItemCaseSensitive(agent_data, "os_uname");
+        j_os_arch = cJSON_GetObjectItemCaseSensitive(agent_data, "os_arch");
+        j_version = cJSON_GetObjectItemCaseSensitive(agent_data, "version");
+        j_config_sum = cJSON_GetObjectItemCaseSensitive(agent_data, "config_sum");
+        j_merged_sum = cJSON_GetObjectItemCaseSensitive(agent_data, "merged_sum");
+        j_manager_host = cJSON_GetObjectItemCaseSensitive(agent_data, "manager_host");
+        j_node_name = cJSON_GetObjectItemCaseSensitive(agent_data, "node_name");
+        j_agent_ip = cJSON_GetObjectItemCaseSensitive(agent_data, "agent_ip");
+        j_sync_status = cJSON_GetObjectItemCaseSensitive(agent_data, "sync_status");
+
+        if (cJSON_IsNumber(j_id)) {
+            // Getting each field
+            int id = j_id->valueint;
+            char *os_name = (j_os_name && cJSON_IsString(j_os_name)) ? j_os_name->valuestring : NULL;
+            char *os_version = (j_os_version && cJSON_IsString(j_os_version)) ? j_os_version->valuestring : NULL;
+            char *os_major = (j_os_major && cJSON_IsString(j_os_major)) ? j_os_major->valuestring : NULL;
+            char *os_minor = (j_os_minor && cJSON_IsString(j_os_minor)) ? j_os_minor->valuestring : NULL;
+            char *os_codename = (j_os_codename && cJSON_IsString(j_os_codename)) ? j_os_codename->valuestring : NULL;
+            char *os_platform = (j_os_platform && cJSON_IsString(j_os_platform)) ? j_os_platform->valuestring : NULL;
+            char *os_build = (j_os_build && cJSON_IsString(j_os_build)) ? j_os_build->valuestring : NULL;
+            char *os_uname = (j_os_uname && cJSON_IsString(j_os_uname)) ? j_os_uname->valuestring : NULL;
+            char *os_arch = (j_os_arch && cJSON_IsString(j_os_arch)) ? j_os_arch->valuestring : NULL;
+            char *version = (j_version && cJSON_IsString(j_version)) ? j_version->valuestring : NULL;
+            char *config_sum = (j_config_sum && cJSON_IsString(j_config_sum)) ? j_config_sum->valuestring : NULL;
+            char *merged_sum = (j_merged_sum && cJSON_IsString(j_merged_sum)) ? j_merged_sum->valuestring : NULL;
+            char *manager_host = (j_manager_host && cJSON_IsString(j_manager_host)) ? j_manager_host->valuestring : NULL;
+            char *node_name = (j_node_name && cJSON_IsString(j_node_name)) ? j_node_name->valuestring : NULL;
+            char *agent_ip = (j_agent_ip && cJSON_IsString(j_agent_ip)) ? j_agent_ip->valuestring : NULL;
+            wdb_sync_status_t sync_status = (j_sync_status && j_sync_status->valueint == 1) ? WDB_SYNC_REQ : WDB_SYNCED;
+
+            if (OS_SUCCESS != wdb_global_update_agent_version(wdb, id, os_name, os_version, os_major, os_minor, os_codename,
+                                                              os_platform, os_build, os_uname, os_arch, version, config_sum,
+                                                              merged_sum, manager_host, node_name, agent_ip, sync_status)) {
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                cJSON_Delete(agent_data);
+                return OS_INVALID;
+            }
+        } else {
+            mdebug1("Global DB Invalid JSON data when updating agent version.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
             cJSON_Delete(agent_data);
             return OS_INVALID;

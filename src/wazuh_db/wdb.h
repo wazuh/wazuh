@@ -126,6 +126,8 @@ typedef enum wdb_stmt {
     WDB_STMT_MITRE_NAME_GET,
     WDB_STMT_GLOBAL_INSERT_AGENT,
     WDB_STMT_GLOBAL_UPDATE_AGENT_NAME,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP,
     WDB_STMT_GLOBAL_LABELS_GET,
     WDB_STMT_GLOBAL_LABELS_DEL,
     WDB_STMT_GLOBAL_LABELS_SET,
@@ -137,8 +139,6 @@ typedef enum wdb_stmt {
 } wdb_stmt;
 
 typedef enum global_db_query {
-    SQL_UPDATE_AGENT_VERSION,
-    SQL_UPDATE_AGENT_VERSION_IP,
     SQL_GET_AGENT_LABELS,
     SQL_SET_AGENT_LABELS,
     SQL_UPDATE_AGENT_KEEPALIVE,
@@ -168,7 +168,6 @@ typedef enum global_db_access {
     WDB_INSERT_AGENT,
     WDB_UPDATE_AGENT_NAME,
     WDB_UPDATE_AGENT_VERSION,
-    WDB_UPDATE_AGENT_VERSION_IP,
     WDB_GET_AGENT_LABELS,
     WDB_SET_AGENT_LABELS,
     WDB_UPDATE_AGENT_KEEPALIVE,
@@ -222,7 +221,7 @@ typedef enum {
 /// Enumeration of sync-status.
 typedef enum {
     WDB_SYNCED,
-    WDB_SYNC_REQ        
+    WDB_SYNC_REQ
 } wdb_sync_status_t;
 
 /// Enumeration of sync-agent-info-get-status.
@@ -405,7 +404,28 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
  */
 int wdb_update_agent_name(int id, const char *name);
 
-/* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+/**
+ * @brief Update agent version in global.db.
+ * 
+ * @param[in] id The agent ID.
+ * @param[in] os_name The agent's operating system name.
+ * @param[in] os_version The agent's operating system version.
+ * @param[in] os_major The agent's operating system major version.
+ * @param[in] os_minor The agent's operating system minor version.
+ * @param[in] os_codename The agent's operating system code name.
+ * @param[in] os_platform The agent's operating system platform.
+ * @param[in] os_build The agent's operating system build number.
+ * @param[in] os_uname The agent's operating system uname.
+ * @param[in] os_arch The agent's operating system architecture.
+ * @param[in] version The agent's version.
+ * @param[in] config_sum The agent's configuration sum.
+ * @param[in] merged_sum The agent's merged sum.
+ * @param[in] manager_host The agent's manager host name.
+ * @param[in] node_name The agent's manager node name.
+ * @param[in] agent_ip The agent's IP address.
+ * @param[in] sync_status The agent's synchronization statuss in cluster.
+ * @return Returns 0 on success or -1 on error.
+ */
 int wdb_update_agent_version(int id, 
                              const char *os_name,
                              const char *os_version,
@@ -759,6 +779,16 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output);
 
 /**
+ * @brief Function to parse the update agent version request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with the agent data in JSON format.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_update_agent_version(wdb_t * wdb, char * input, char * output);
+
+/**
  * @brief Function to parse the labels request for a particular agent.
  * 
  * @param wdb the global struct database.
@@ -905,6 +935,48 @@ int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* regi
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name);
+
+/**
+ * @brief Function to update an agent version data.
+ * 
+ * @param wdb The Global struct database.
+ * @param id The agent ID.
+ * @param os_name The agent's operating system name.
+ * @param os_version The agent's operating system version.
+ * @param os_major The agent's operating system major version.
+ * @param os_minor The agent's operating system minor version.
+ * @param os_codename The agent's operating system code name.
+ * @param os_platform The agent's operating system platform.
+ * @param os_build The agent's operating system build number.
+ * @param os_uname The agent's operating system uname.
+ * @param os_arch The agent's operating system architecture.
+ * @param version The agent's version.
+ * @param config_sum The agent's configuration sum.
+ * @param merged_sum The agent's merged sum.
+ * @param manager_host The agent's manager host name.
+ * @param node_name The agent's manager node name.
+ * @param agent_ip The agent's IP address.
+ * @param sync_status The agent's synchronization statuss in cluster.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_update_agent_version(wdb_t *wdb,
+                                    int id, 
+                                    const char *os_name,
+                                    const char *os_version,
+                                    const char *os_major,
+                                    const char *os_minor,
+                                    const char *os_codename,
+                                    const char *os_platform,
+                                    const char *os_build,
+                                    const char *os_uname,
+                                    const char *os_arch,
+                                    const char *version,
+                                    const char *config_sum,
+                                    const char *merged_sum,
+                                    const char *manager_host,
+                                    const char *node_name,
+                                    const char *agent_ip,
+                                    wdb_sync_status_t sync_status);
 
 /**
  * @brief Function to get the labels of a particular agent.
