@@ -4027,3 +4027,41 @@ stages:
        function: tavern_utils:test_validate_upgrade_result
        extra_kwargs:
         upgraded: "{upgraded:b}"
+
+ - name: Upgrade an agent to an invalid version
+   request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/002/upgrade?wait_for_complete=true"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        version: 10000.10000.10000
+        force: True
+   response:
+      status_code:
+        - 200
+        - 500
+      verify_response_with:
+        function: tavern_utils:test_validate_upgrade
+      save:
+        $ext:
+          function: tavern_utils:test_validate_upgrade
+
+ - name: Get agent upgrade result (invalid version)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/agents/002/upgrade_result?wait_for_complete=true"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+     params:
+       wait_for_complete: True
+   response:
+     status_code:
+       - 200
+       - 400
+     verify_response_with:
+       function: tavern_utils:test_validate_upgrade_result
+       extra_kwargs:
+         upgraded: "{upgraded:b}"

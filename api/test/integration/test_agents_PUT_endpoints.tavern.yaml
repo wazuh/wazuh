@@ -669,7 +669,7 @@ test_name: PUT /agents/{agent_id}/upgrade
 stages:
 
     # PUT /agents/002/upgrade
-  - name: Try to upgrade a not existing agent
+  - name: Try to upgrade a non existing agent
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/999/upgrade"
@@ -707,11 +707,11 @@ stages:
       json:
         <<: *error_spec
 
-    # PUT /agents/001/upgrade
+    # PUT /agents/006/upgrade
   - name: Upgrade an agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/006/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -726,11 +726,11 @@ stages:
         function: tavern_utils:test_validate_upgrade
     delay_after: !float "{upgrade_delay}"
 
-    # PUT /agents/001/upgrade
+    # PUT /agents/006/upgrade
   - name: Try to upgrade an agent that is updated to the latest version
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/006/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
