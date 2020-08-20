@@ -277,9 +277,9 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
             mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
 
 #ifdef WIN32
-        seechanges_modify_estimation_percentage(FileSizeWin(compressed_tmp) / 1024, FileSizeWin(filename) / 1024);
+            seechanges_modify_estimation_percentage(FileSizeWin(compressed_tmp) / 1024, FileSizeWin(filename) / 1024);
 #else
-        seechanges_modify_estimation_percentage(FileSize(compressed_tmp) / 1024, FileSize(filename) / 1024);
+            seechanges_modify_estimation_percentage(FileSize(compressed_tmp) / 1024, FileSize(filename) / 1024);
 #endif
 
             seechanges_delete_compressed_file(filename_abs);
@@ -470,6 +470,7 @@ char *seechanges_get_diff_path(char *path) {
 
     if (windows_path == NULL) {
         mdebug1("Incorrect path. This does not contain ':' ");
+        os_free(full_path);
         return NULL;
     }
 
@@ -711,10 +712,8 @@ char *seechanges_addfile(const char *filename) {
 #ifdef WIN32
             abspath(containing_tmp_folder, abs_path, sizeof(abs_path));
             snprintf(containing_tmp_folder, PATH_MAX, "%s", abs_path);
-            compressed_new_size = DirSize(containing_tmp_folder) / 1024;
-#else
-            compressed_new_size = DirSize(containing_tmp_folder) / 1024;
 #endif
+            compressed_new_size = DirSize(containing_tmp_folder) / 1024;
             /**
              * Check if adding the new file doesn't exceed the disk quota limit. Update the diff_folder_size
              * value if it's not exceeded and move the temporary file to the correct location.
