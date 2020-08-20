@@ -256,8 +256,7 @@
 #define WM_UPGRADE_REQUEST_SEND_MESSAGE      "(8165): Sending message to agent: '%s'"
 #define WM_UPGRADE_REQUEST_RECEIVE_MESSAGE   "(8166): Receiving message from agent: '%s'"
 #define WM_UPGRADE_UPGRADE_FILE_AGENT        "(8167): Upgrade result file has been successfully erased from the agent."
-#define WM_UPGRADE_TASK_RECEIVE_MESSAGE      "(8168): Receiving message from task_manager module: '%s'"
-#define WM_UPGRADE_TASK_SEND_CLUSTER_MESSAGE "(8169): Sending send_sync message to task manager in master node: '%s'"
+#define WM_UPGRADE_TASK_SEND_CLUSTER_MESSAGE "(8168): Sending send_sync message to task manager in master node: '%s'"
 
 #define MOD_TASK_START                      "(8200): Module Task Manager started."
 #define MOD_TASK_FINISH                     "(8201): Module Task Manager finished."
@@ -266,5 +265,6 @@
 #define MOD_TASK_INCOMMING_MESSAGE          "(8204): Incomming message: '%s'"
 #define MOD_TASK_RESPONSE_MESSAGE           "(8205): Response to message: '%s'"
 #define MOD_TASK_RUNNING_CLEAN              "(8206): Running daily clean DB thread."
+#define MOD_TASK_DISABLED_WORKER            "(8207): Module Task Manager only runs on Master nodes in cluster configuration."
 
 #endif /* DEBUG_MESSAGES_H */
