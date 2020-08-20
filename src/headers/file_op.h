@@ -584,7 +584,6 @@ int w_is_compressed_bz2_file(const char * path);
  * @param path File location
  * @retval -1 The file cannot be uncompressed
  * @retval 0 The file has been uncompressed (.gz or .bz2)
- * @retval 1 The file is not compressed
  */
 int w_uncompress_bz2_gz_file(const char * path, const char * dest);
 
