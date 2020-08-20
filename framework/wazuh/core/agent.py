@@ -1635,3 +1635,75 @@ def expand_group(group_name):
             agents_ids.add(str(agent['id']).zfill(3))
 
     return agents_ids
+
+def send_task_upgrade_module(command=None, agent_list=None, debug=False, file_path=None, installer=None, 
+                                wpk_repo=None, version=None, use_http=False, force_upgrade=0):
+    
+    valid_commands = ['upgrade', 'upgrade_custom']
+
+    if command == None or command not in valid_commands:
+        raise WazuhError(1002, extra_message="Bad command for upgrade module")
+
+    agent_list = [int(agent) for agent in agent_list]
+
+    data = { "command" : command, "agents" : agent_list }
+
+    if command == 'upgrade':
+        data["params"] = {}
+        if wpk_repo != None:
+            data.get("params").update({"wpk_repo" : wpk_repo})
+        if version != None:
+            data.get("params").update({"version" : version})
+        if use_http != None:
+            data.get("params").update({"use_http" : int(use_http)})
+        if force_upgrade != None:
+            data.get("params").update({"force_upgrade" : int(force_upgrade)})
+    elif command == 'upgrade_custom':
+        data["params"] = {}
+        if file_path != None:
+            data.get("params").update({"file_path" : file_path})
+        if installer != None:
+            data.get("params").update({"installer" : installer})
+
+    data = str(data).replace("\'", "\"")
+    if debug:
+        print("MSG SENT TO UPGRADE MODULE: {0}".format(data))
+    
+    data_rec = ""
+    sock = OssecSocket(common.UPGRADE_SOCKET)
+    sock.send(data.encode())
+    data_rec = sock.receive().decode()
+    if debug:
+        print("MSG RECV FROM UPGRADE MODULE: {0}".format(data_rec))
+
+    sock.close()
+    
+    return data_rec.replace("\"", "\'")
+
+def send_task_module(command=None, agent_list=None, debug=False, file_path=None, installer=None, 
+                    wpk_repo=None, version=None, use_http=False, force_upgrade=0):
+
+    valid_commands = ['upgrade_result']
+
+    if command == None or command not in valid_commands:
+        raise WazuhError(1002, extra_message="Bad command for upgrade module")
+
+    data = []
+
+    for agent in agent_list:
+        data.append({ "module": "api", "command" : command, "agent" : agent })
+
+    data = str(data).replace("\'", "\"")
+    if debug:
+        print("MSG SENT TO UPGRADE MODULE: {0}".format(data))
+    
+    data_rec = ""
+    sock = OssecSocket(common.TASK_SOCKET)
+    sock.send(data.encode())
+    data_rec = sock.receive().decode()
+    if debug:
+        print("MSG RECV FROM UPGRADE MODULE: {0}".format(data_rec))
+
+    sock.close()
+    
+    return data_rec.replace("\"", "\'")
