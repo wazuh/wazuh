@@ -29,6 +29,7 @@ typedef struct _SYSTEM_PROCESS_IMAGE_NAME_INFORMATION
 
 typedef NTSTATUS(WINAPI *tNTQSI)(ULONG SystemInformationClass, PVOID SystemInformation, ULONG SystemInformationLength, PULONG ReturnLength);
 
+static bool found_hotfix_error(char *key);
 hw_info *get_system_windows();
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 
@@ -822,8 +823,7 @@ void sys_hotfixes(const char* LOCATION){
     cJSON *end_evt;
     char *end_evt_str;
 
-    HOTFIXES_REG = isVista ? "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages" :
-                    "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix";
+    HOTFIXES_REG = isVista ? WIN_REG_HOTFIX : VISTA_REG_HOTFIX;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting installed hotfixes inventory.");
 
@@ -978,6 +978,11 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
                 if (!OSRegex_Execute(achKey, hotfix_regex)) {
                     continue;
                 }
+
+                if (found_hotfix_error(achKey) == true) {
+                    continue;
+                }
+
                 char *hotfix = *hotfix_regex->d_sub_strings;
                 char *extension;
 
@@ -1026,6 +1031,30 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
 
         }
     }
+}
+
+bool found_hotfix_error(char *key) {
+    DWORD dataSize = {0};
+    char reg[MAXSTR + 2] = {0};
+
+    snprintf(reg, MAXSTR, "%s\\%s", (isVista)? WIN_REG_HOTFIX : VISTA_REG_HOTFIX, key);
+    
+    LONG result = RegGetValueA(
+        HKEY_LOCAL_MACHINE,
+        reg, 
+        (LPCSTR)"LastError",        
+        RRF_RT_REG_DWORD, 
+        0,              
+        0,              
+        &dataSize);  
+    
+    if (result != ERROR_SUCCESS) {
+        printf("ERROR %d", result);
+        return false;
+    }
+
+    mtinfo(WM_SYS_LOGTAG, ":length of that registry:%ld\n", dataSize);
+    return (dataSize > 0)? true : false;  
 }
 
 // List Windows users from the registry
