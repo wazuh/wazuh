@@ -29,17 +29,14 @@ int __wrap_BZ2_bzRead(int* bzerror,
 }
 
 void __wrap_BZ2_bzReadClose(__attribute__ ((__unused__)) int* bzerror,
-                            __attribute__ ((__unused__)) BZFILE* f,
-                            __attribute__ ((__unused__)) int abandon,
-                            __attribute__ ((__unused__)) unsigned int* nbytes_in,
-                            __attribute__ ((__unused__)) unsigned int* nbytes_out) {
+                            __attribute__ ((__unused__)) BZFILE* f) {
     return;
 }
 
 BZFILE* __wrap_BZ2_bzReadOpen(int* bzerror,
                               FILE* f,
-                              __attribute__ ((__unused__)) int verbosity,
                               __attribute__ ((__unused__)) int small,
+                              __attribute__ ((__unused__)) int verbosity,
                               __attribute__ ((__unused__)) void* unused,
                               __attribute__ ((__unused__)) int nUnused) {
     check_expected_ptr(f);

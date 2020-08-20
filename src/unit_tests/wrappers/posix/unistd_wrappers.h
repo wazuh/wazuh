@@ -12,12 +12,11 @@
 #define UNISTD_WRAPPERS_H
 
 #include <unistd.h>
+#include <errno.h>
 
 int __wrap_unlink(const char *file);
 
-int __wrap__unlink(const char *file);
-
-int __wrap_close();
+int __wrap_close(int fd);
 
 extern int __real_getpid();
 int __wrap_getpid();
@@ -33,5 +32,9 @@ int __wrap_usleep(useconds_t usec);
 ssize_t __wrap_read(int fildes, void *buf, size_t nbyte);
 
 int __wrap_gethostname(char *name, int len);
+
+int __wrap_readlink(void **state);
+
+int __wrap_symlink(const char *path1, const char *path2);
 
 #endif

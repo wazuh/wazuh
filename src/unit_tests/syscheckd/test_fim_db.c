@@ -2495,7 +2495,7 @@ void test_fim_db_callback_save_path_disk(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->tmp_file->fd = (FILE*)2345;
 
-    will_return(__wrap_wstr_escape_json, "/test/path");
+    will_return(__wrap_wstr_escape_json, strdup("/test/path"));
 
 #ifndef TEST_WINAGENT
     expect_value(__wrap_fprintf, __stream, 2345);
@@ -2515,7 +2515,7 @@ void test_fim_db_callback_save_path_disk_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->tmp_file->fd = (FILE*)2345;
 
-    will_return(__wrap_wstr_escape_json, "/test/path");
+    will_return(__wrap_wstr_escape_json, strdup("/test/path"));
 
 #ifndef TEST_WINAGENT
     expect_value(__wrap_fprintf, __stream, 2345);
@@ -2538,7 +2538,7 @@ void test_fim_db_callback_save_path_disk_error(void **state) {
 void test_fim_db_callback_save_path_memory(void **state) {
     test_fim_db_insert_data *test_data = *state;
 
-    will_return(__wrap_wstr_escape_json, "/test/path");
+    will_return(__wrap_wstr_escape_json, strdup("/test/path"));
 
     syscheck.database_store = 1;
     fim_db_callback_save_path(test_data->fim_sql, test_data->entry, syscheck.database_store, test_data->tmp_file);

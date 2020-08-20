@@ -11,7 +11,9 @@
 #ifndef DIRENT_WRAPPERS_H
 #define DIRENT_WRAPPERS_H
 
-int __wrap_closedir();
+#include <dirent.h>
+
+int __wrap_closedir(DIR *dirp);
 
 int __wrap_opendir();
 

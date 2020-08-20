@@ -145,6 +145,7 @@ static void test_audit_get_rule_list_error(void **state) {
 
     expect_value(__wrap_audit_send, fd, 0);
     expect_value(__wrap_audit_send, type, 1013);
+    expect_any(__wrap_audit_send, data);
     will_return(__wrap_audit_send, -1);
 
     expect_string(__wrap__merror, formatted_msg, "Error sending rule list data request (Operation not permitted)");
@@ -159,6 +160,7 @@ static void test_audit_get_rule_list(void **state) {
 
     expect_value(__wrap_audit_send, fd, 0);
     expect_value(__wrap_audit_send, type, AUDIT_LIST_RULES);
+    expect_any(__wrap_audit_send, data);
     will_return(__wrap_audit_send, 0);
 
     will_return_always(__wrap_select, 0);

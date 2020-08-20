@@ -20,7 +20,7 @@ int __wrap_SendMSG(__attribute__((unused)) int queue, const char *message, const
     return mock();
 }
 
-int __wrap_StartMQ(const char *path, short int type) {
+int __wrap_StartMQ(const char *path, short int type,__attribute__((unused)) short int n_attempts) {
     check_expected(path);
     check_expected(type);
     return mock();

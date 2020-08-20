@@ -75,11 +75,18 @@ void __wrap__merror_exit(__attribute__((unused)) const char * file,
     check_expected(formatted_msg);
 }
 
-int __wrap__mferror(__attribute__((unused)) const char * file,
+void __wrap__mferror(__attribute__((unused)) const char * file,
                     __attribute__((unused)) int line,
                     __attribute__((unused)) const char * func,
-                    __attribute__((unused)) const char *msg, ...) {
-    return 0;
+                    const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
 }
 
 void __wrap__minfo(__attribute__((unused)) const char * file,

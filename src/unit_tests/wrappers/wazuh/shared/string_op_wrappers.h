@@ -22,7 +22,7 @@ char *__wrap_convert_windows_string(LPCWSTR string);
 
 int __wrap_wstr_end(char *str, const char *str_end);
 
-char *__wrap_wstr_escape_json();
+char *__wrap_wstr_escape_json(const char * string);
 
 char *__wrap_wstr_replace(const char * string, const char * search, const char * replace);
 

@@ -32,14 +32,8 @@ int __wrap_wstr_end(char *str, const char *str_end) {
     return mock();
 }
 
-char *__wrap_wstr_escape_json() {
-    char *ret = mock_type(char *);
-
-    if (ret) {
-        return strdup(ret);
-    }
-
-    return NULL;
+char *__wrap_wstr_escape_json(__attribute__ ((__unused__)) const char * string) {
+    return mock_type(char *);
 }
 
 char *__wrap_wstr_replace(const char * string, const char * search, const char * replace) {

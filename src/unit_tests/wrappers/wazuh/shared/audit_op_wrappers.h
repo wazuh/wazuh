@@ -11,8 +11,7 @@
 #ifndef AUDIT_OP_WRAPPERS_H
 #define AUDIT_OP_WRAPPERS_H
 
-
-int __wrap_audit_add_rule();
+int __wrap_audit_add_rule(const char *path, const char *key);
 
 int __wrap_audit_get_rule_list();
 

@@ -76,7 +76,7 @@ const unsigned char *__wrap_sqlite3_column_text(__attribute__((unused)) sqlite3_
 
 }
 
-const char *__wrap_sqlite3_errmsg() {
+const char *__wrap_sqlite3_errmsg(__attribute__((unused)) sqlite3* db) {
     return mock_ptr_type(const char *);
 }
 

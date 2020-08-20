@@ -69,10 +69,11 @@ int __wrap_audit_rule_fieldpair_data(__attribute__((unused)) struct audit_rule_d
 
 int __wrap_audit_send(int fd,
                       int type,
-                      __attribute__((unused)) const void *data,
+                      const void *data,
                       __attribute__((unused)) unsigned int size) {
     check_expected(fd);
     check_expected(type);
+    check_expected(data);
 
     return mock();
 }

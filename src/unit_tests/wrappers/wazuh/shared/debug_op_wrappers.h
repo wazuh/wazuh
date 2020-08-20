@@ -35,7 +35,7 @@ void __wrap__merror_exit(const char * file,
                          const char * func,
                          const char *msg, ...);
 
-int __wrap__mferror(const char * file,
+void __wrap__mferror(const char * file,
                     int line,
                     const char * func,
                     const char *msg, ...);

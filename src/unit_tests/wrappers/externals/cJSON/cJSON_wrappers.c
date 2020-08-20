@@ -14,17 +14,17 @@
 #include <cmocka.h>
 
 
-void __wrap_cJSON_AddItemToArray(__attribute__ ((__unused__)) cJSON *array,
+cJSON_bool __wrap_cJSON_AddItemToArray(__attribute__ ((__unused__)) cJSON *array,
                                  __attribute__ ((__unused__)) cJSON *item) {
     function_called();
-    return;
+    return mock_type(cJSON_bool);
 }
 
-void __wrap_cJSON_AddItemToObject(__attribute__ ((__unused__)) cJSON *object,
+cJSON_bool __wrap_cJSON_AddItemToObject(__attribute__ ((__unused__)) cJSON *object,
                                   __attribute__ ((__unused__)) const char *string,
                                   __attribute__ ((__unused__)) cJSON *item) {
     function_called();
-    return;
+    return mock_type(cJSON_bool);
 }
 
 cJSON* __wrap_cJSON_AddStringToObject(__attribute__ ((__unused__)) cJSON * const object,
@@ -53,14 +53,14 @@ cJSON * __wrap_cJSON_CreateObject(void) {
 }
 #endif
 
-void __wrap_cJSON_CreateNumber(double num) {
+cJSON * __wrap_cJSON_CreateNumber(double num) {
     check_expected(num);
-    return;
+    return mock_type(cJSON *);
 }
 
-void __wrap_cJSON_CreateString(const char *string) {
+cJSON * __wrap_cJSON_CreateString(const char *string) {
     check_expected(string);
-    return;
+    return mock_type(cJSON *);
 }
 
 void __wrap_cJSON_Delete(__attribute__ ((__unused__)) cJSON *item) {

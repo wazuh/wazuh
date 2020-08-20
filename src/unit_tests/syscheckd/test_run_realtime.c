@@ -13,6 +13,9 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <string.h>
+#ifndef TEST_WINAGENT
+#include <sys/inotify.h>
+#endif
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/pthread_wrappers.h"
@@ -49,6 +52,11 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap);
 #endif
 
 extern int OSHash_Add_ex_check_data;
+
+typedef struct realtime_process_data{
+    struct inotify_event *event;
+    OSHashNode *node;
+} realtime_process_data;
 
 /* setup/teardown */
 static int setup_group(void **state) {
@@ -163,6 +171,28 @@ static int teardown_realtime_start(void **state) {
     return 0;
 }
 
+static int setup_inotify_event(void **state) {
+    struct inotify_event *event;
+    event = calloc(1, OS_SIZE_512);
+
+    if (!event) {
+        return -1;
+    }
+    *state = event;
+
+    return 0;
+}
+
+static int teardown_inotify_event(void **state) {
+    struct inotify_event *event = *state;
+
+    if (event) {
+        free(event);
+    }
+
+    return 0;
+}
+
 static int setup_hash_node(void **state) {
     OSHashNode *node = (OSHashNode *)calloc(1, sizeof(OSHashNode));
 
@@ -188,6 +218,42 @@ static int teardown_hash_node(void **state) {
 
     if (node) {
         free(node);
+    }
+
+    return 0;
+}
+
+static int setup_realtime_process(void **state) {
+    realtime_process_data *data = (realtime_process_data *)calloc(1, sizeof(realtime_process_data));
+
+    if (!data) {
+        return -1;
+    }
+
+    if (setup_hash_node((void **) &data->node)) {
+        return -1;
+    }
+
+    if (setup_inotify_event((void **) &data->event)) {
+        return -1;
+    }
+    *state = data;
+
+    return 0;
+}
+
+static int teardown_realtime_process(void **state) {
+    realtime_process_data *data = *state;
+
+    if (teardown_hash_node((void **) &data->node)) {
+        return -1;
+    }
+
+    if (teardown_inotify_event((void **) &data->event)) {
+        return -1;
+    }
+    if (data) {
+        free(data);
     }
 
     return 0;
@@ -553,30 +619,28 @@ void test_free_syscheck_dirtb_data_null(void **state)
 }
 
 
-void test_realtime_process(void **state)
-{
-    (void) state;
+void test_realtime_process(void **state) {
 
     syscheck.realtime->fd = 1;
 
-    will_return(__wrap_read, NULL);
-    will_return(__wrap_read, 0);
+    will_return(__wrap_read, "");
     will_return(__wrap_read, 0);
 
     realtime_process();
 }
 
-void test_realtime_process_len(void **state)
-{
-    (void) state;
-
-    char event[] = {1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 't', 'e', 's', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+void test_realtime_process_len(void **state) {
+    struct inotify_event *event = *state;
+    event->wd = 1;
+    event->mask = 2;
+    event->cookie = 0;
+    event->len = 5;
+    strcpy(event->name, "test");
 
     syscheck.realtime->fd = 1;
 
     will_return(__wrap_read, event);
-    will_return(__wrap_read, sizeof(event));
-    will_return(__wrap_read, 16);
+    will_return(__wrap_read, 21);
 
     expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get, key, "1");
@@ -593,16 +657,17 @@ void test_realtime_process_len(void **state)
     test_mode = 0;
 }
 
-void test_realtime_process_len_zero(void **state)
-{
-    (void) state;
-
-    char event[] = {1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 't', 'e', 's', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+void test_realtime_process_len_zero(void **state) {
+    struct inotify_event *event = *state;
+    event->wd = 1;
+    event->mask = 2;
+    event->cookie = 0;
+    event->len = 0;
+    strcpy(event->name, "test");
 
     syscheck.realtime->fd = 1;
 
     will_return(__wrap_read, event);
-    will_return(__wrap_read, sizeof(event));
     will_return(__wrap_read, 16);
 
     expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
@@ -620,17 +685,18 @@ void test_realtime_process_len_zero(void **state)
     test_mode = 0;
 }
 
-void test_realtime_process_len_path_separator(void **state)
-{
-    (void) state;
-
-    char event[] = {1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 't', 'e', 's', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+void test_realtime_process_len_path_separator(void **state) {
+    struct inotify_event *event = *state;
+    event->wd = 1;
+    event->mask = 2;
+    event->cookie = 0;
+    event->len = 5;
+    strcpy(event->name, "test");
 
     syscheck.realtime->fd = 1;
 
     will_return(__wrap_read, event);
-    will_return(__wrap_read, sizeof(event));
-    will_return(__wrap_read, 16);
+    will_return(__wrap_read, 21);
 
     expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get, key, "1");
@@ -647,17 +713,19 @@ void test_realtime_process_len_path_separator(void **state)
     test_mode = 0;
 }
 
-void test_realtime_process_overflow(void **state)
-{
-    (void) state;
-
-    char event[] = {255, 255, 255, 255, 0, 64, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 't', 'e', 's', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+void test_realtime_process_overflow(void **state) {
+    struct inotify_event *event = *state;
+    event->wd = -1;
+    event->mask = 16384;
+    event->cookie = 0;
+    event->len = 5;
+    strcpy(event->name, "test");
 
     syscheck.realtime->fd = 1;
 
     will_return(__wrap_read, event);
-    will_return(__wrap_read, sizeof(event));
-    will_return(__wrap_read, 16);
+    will_return(__wrap_read, 21);
+
     expect_string(__wrap__mwarn, formatted_msg, "Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
     expect_string(__wrap_send_log_msg, msg, "ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
     will_return(__wrap_send_log_msg, 1);
@@ -669,17 +737,18 @@ void test_realtime_process_overflow(void **state)
     realtime_process();
 }
 
-void test_realtime_process_delete(void **state)
-{
-    (void) state;
-
-    char event[] = {1, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 't', 'e', 's', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+void test_realtime_process_delete(void **state) {
+    struct inotify_event *event = *state;
+    event->wd = 1;
+    event->mask = 1024;
+    event->cookie = 0;
+    event->len = 5;
+    strcpy(event->name, "test");
 
     syscheck.realtime->fd = 1;
 
     will_return(__wrap_read, event);
-    will_return(__wrap_read, sizeof(event));
-    will_return(__wrap_read, 16);
+    will_return(__wrap_read, 21);
 
     expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get, key, "1");
@@ -706,16 +775,19 @@ void test_realtime_process_delete(void **state)
 }
 
 void test_realtime_process_move_self(void **state) {
-    (void) state;
+    realtime_process_data *data = *state;
+    struct inotify_event *event = data->event;
 
-    // IN_MOVE_SELF event for /test
-    char event[] = {1, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 't', 'e', 's', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    event->wd = 1;
+    event->mask = 2048;
+    event->cookie = 0;
+    event->len = 5;
+    strcpy(event->name, "test");
 
     syscheck.realtime->fd = 1;
 
     will_return(__wrap_read, event);
-    will_return(__wrap_read, sizeof(event));
-    will_return(__wrap_read, 16);
+    will_return(__wrap_read, 21);
 
     expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get, key, "1");
@@ -724,7 +796,7 @@ void test_realtime_process_move_self(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "Duplicate event in real-time buffer: test/test");
 
     // In delete_subdirectories_watches
-    OSHashNode *node = *state;
+    OSHashNode *node = data->node;
 
     node->data = "test/sub";
 
@@ -745,11 +817,11 @@ void test_realtime_process_move_self(void **state) {
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    char *data = strdup("delete this");
+    char *str_data = strdup("delete this");
     expect_value_count(__wrap_OSHash_Delete_ex, self, syscheck.realtime->dirtb, 2);
     expect_string(__wrap_OSHash_Delete_ex, key, "dummy_key");
     expect_string(__wrap_OSHash_Delete_ex, key, "1");
-    will_return_count(__wrap_OSHash_Delete_ex, data, 2);
+    will_return_count(__wrap_OSHash_Delete_ex, str_data, 2);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6344): Inotify watch deleted for 'test'");
 
@@ -771,7 +843,6 @@ void test_realtime_process_failure(void **state)
 
     will_return(__wrap_read, NULL);
     will_return(__wrap_read, 0);
-    will_return(__wrap_read, -1);
 
     expect_string(__wrap__merror, formatted_msg, FIM_ERROR_REALTIME_READ_BUFFER);
 
@@ -1247,12 +1318,12 @@ int main(void) {
 
         /* realtime_process */
         cmocka_unit_test(test_realtime_process),
-        cmocka_unit_test(test_realtime_process_len),
-        cmocka_unit_test(test_realtime_process_len_zero),
-        cmocka_unit_test(test_realtime_process_len_path_separator),
-        cmocka_unit_test(test_realtime_process_overflow),
-        cmocka_unit_test(test_realtime_process_delete),
-        cmocka_unit_test_setup_teardown(test_realtime_process_move_self, setup_hash_node, teardown_hash_node),
+        cmocka_unit_test_setup_teardown(test_realtime_process_len, setup_inotify_event, teardown_inotify_event),
+        cmocka_unit_test_setup_teardown(test_realtime_process_len_zero, setup_inotify_event, teardown_inotify_event),
+        cmocka_unit_test_setup_teardown(test_realtime_process_len_path_separator, setup_inotify_event, teardown_inotify_event),
+        cmocka_unit_test_setup_teardown(test_realtime_process_overflow, setup_inotify_event, teardown_inotify_event),
+        cmocka_unit_test_setup_teardown(test_realtime_process_delete, setup_inotify_event, teardown_inotify_event),
+        cmocka_unit_test_setup_teardown(test_realtime_process_move_self, setup_realtime_process, teardown_realtime_process),
         cmocka_unit_test(test_realtime_process_failure),
 
         /* delete_subdirectories_watches */

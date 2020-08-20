@@ -376,7 +376,6 @@ void test_querytactics_repeated_id(void **state)
     expect_any(__wrap_wdbc_query_ex, sock);
     expect_any(__wrap_wdbc_query_ex, query);
     expect_any(__wrap_wdbc_query_ex, len);
-    // will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, "ok Data Obfuscation");
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -404,7 +403,6 @@ void test_querytactics_success(void **state)
     expect_any(__wrap_wdbc_query_ex, sock);
     expect_any(__wrap_wdbc_query_ex, query);
     expect_any(__wrap_wdbc_query_ex, len);
-    // will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, "ok Data Obfuscation");
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -415,7 +413,6 @@ void test_querytactics_success(void **state)
     expect_any(__wrap_wdbc_query_ex, sock);
     expect_any(__wrap_wdbc_query_ex, query);
     expect_any(__wrap_wdbc_query_ex, len);
-    // will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, "ok Data Compressed");
     will_return(__wrap_wdbc_query_ex, 0);
 

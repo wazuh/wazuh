@@ -13,6 +13,4 @@
 
 int __wrap_os_random();
 
-
-
 #endif

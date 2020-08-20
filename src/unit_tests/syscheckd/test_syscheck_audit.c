@@ -17,7 +17,6 @@
 #include "syscheckd/syscheck.h"
 
 #include "../wrappers/externals/audit/libaudit_wrappers.h"
-#include "../wrappers/externals/openssl/rehash_wrappers.h"
 #include "../wrappers/externals/procpc/readproc_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/libc/stdlib_wrappers.h"

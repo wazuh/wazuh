@@ -11,15 +11,15 @@
 #ifndef CJSON_WRAPPERS_H
 #define CJSON_WRAPPERS_H
 
-#include "../../../../external/cJSON/cJSON.h"
+#include <external/cJSON/cJSON.h>
 
-void __wrap_cJSON_AddItemToArray(cJSON *array, cJSON *item);
+cJSON_bool __wrap_cJSON_AddItemToArray(cJSON *array, cJSON *item);
 
-extern void __real_cJSON_AddItemToArray(cJSON *array, cJSON *item);
+extern cJSON_bool __real_cJSON_AddItemToArray(cJSON *array, cJSON *item);
 
-void __wrap_cJSON_AddItemToObject(cJSON *object, const char *string, cJSON *item);
+cJSON_bool __wrap_cJSON_AddItemToObject(cJSON *object, const char *string, cJSON *item);
 
-extern void __real_cJSON_AddItemToObject(cJSON *object, const char *string, cJSON *item);
+extern cJSON_bool __real_cJSON_AddItemToObject(cJSON *object, const char *string, cJSON *item);
 
 cJSON * __wrap_cJSON_AddStringToObject(cJSON * const object, const char * const name, const char * const string);
 
@@ -41,9 +41,9 @@ extern cJSON * __real_cJSON_CreateObject(void);
 cJSON * __wrap_cJSON_CreateObject(void);
 #endif
 
-void __wrap_cJSON_CreateNumber(double num);
+cJSON * __wrap_cJSON_CreateNumber(double num);
 
-void __wrap_cJSON_CreateString(const char *string);
+cJSON * __wrap_cJSON_CreateString(const char *string);
 
 extern cJSON * __real_cJSON_CreateString(const char *string);
 

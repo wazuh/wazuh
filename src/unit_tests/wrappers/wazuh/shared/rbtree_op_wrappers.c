@@ -13,7 +13,9 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-void * __wrap_rbtree_insert() {
+void * __wrap_rbtree_insert(__attribute__((unused)) rb_tree * tree,
+                            __attribute__((unused)) const char * key,
+                            __attribute__((unused)) void * value) {
     return NULL;
 }
 

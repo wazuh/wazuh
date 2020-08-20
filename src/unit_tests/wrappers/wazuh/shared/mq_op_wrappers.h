@@ -13,6 +13,6 @@
 
 int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc);
 
-int __wrap_StartMQ(const char *path, short int type);
+int __wrap_StartMQ(const char *path, short int type, short int n_attempts);
 
 #endif

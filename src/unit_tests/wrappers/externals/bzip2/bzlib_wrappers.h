@@ -19,15 +19,12 @@ int __wrap_BZ2_bzRead(int* bzerror,
                       int len);
 
 void __wrap_BZ2_bzReadClose(int* bzerror,
-                            BZFILE* f,
-                            int abandon,
-                            unsigned int* nbytes_in,
-                            unsigned int* nbytes_out);
+                            BZFILE* f);
 
 BZFILE* __wrap_BZ2_bzReadOpen(int* bzerror,
                           FILE* f,
-                          int verbosity,
                           int small,
+                          int verbosity,
                           void* unused,
                           int nUnused);
 

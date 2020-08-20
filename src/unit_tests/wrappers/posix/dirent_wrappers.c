@@ -14,7 +14,7 @@
 #include <cmocka.h>
 
 
-int __wrap_closedir() {
+int __wrap_closedir(__attribute__((unused)) DIR *dirp) {
     return 1;
 }
 

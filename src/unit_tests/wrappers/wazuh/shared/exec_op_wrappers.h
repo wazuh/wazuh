@@ -18,7 +18,7 @@
 #include <sys/types.h>
 #include "../headers/exec_op.h"
 
-int __wrap_wpclose();
+int __wrap_wpclose(wfd_t * wfd);
 
 wfd_t *__wrap_wpopenl();
 

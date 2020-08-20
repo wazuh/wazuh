@@ -14,7 +14,9 @@
 #include <cmocka.h>
 
 
-int __wrap_inotify_add_watch() {
+int __wrap_inotify_add_watch(__attribute__((unused)) int fd,
+                             __attribute__((unused)) const char *pathname,
+                             __attribute__((unused)) uint32_t mask) {
     return mock();
 }
 

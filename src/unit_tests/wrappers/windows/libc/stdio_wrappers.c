@@ -36,16 +36,16 @@ char * wrap_fgets (char * __s, int __n, FILE * __stream) {
 int wrap_fprintf (FILE *__stream, const char *__format, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
-
+    int ret;
     va_start(args, __format);
     if (test_mode) {
         vsnprintf(formatted_msg, OS_MAXSTR, __format, args);
         check_expected(__stream);
         check_expected(formatted_msg);
-        va_end(args);
-        return mock();
+        ret = mock();
     } else {
-        va_end(args);
-        return fprintf(__stream, __format, args);
+        ret = vfprintf(__stream, __format, args);
     }
+    va_end(args);
+    return ret;
 }

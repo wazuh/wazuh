@@ -16,7 +16,7 @@
 
 extern void write_date_storage();
 
-int __wrap_wpclose() {
+int __wrap_wpclose(__attribute__((unused)) wfd_t * wfd) {
     return mock();
 }
 

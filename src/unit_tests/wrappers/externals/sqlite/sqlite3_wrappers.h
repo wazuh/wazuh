@@ -43,7 +43,7 @@ sqlite3_int64 __wrap_sqlite3_column_int64(sqlite3_stmt* stmt,
 const unsigned char *__wrap_sqlite3_column_text(sqlite3_stmt *pStmt,
                                                 int iCol);
 
-const char *__wrap_sqlite3_errmsg();
+const char *__wrap_sqlite3_errmsg(sqlite3* db);
 
 int __wrap_sqlite3_exec(sqlite3* db,                                 /* An open database */
                         const char *sql,                             /* SQL to be evaluated */

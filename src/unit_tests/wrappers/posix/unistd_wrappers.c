@@ -23,12 +23,7 @@ int __wrap_unlink(const char *file) {
     return mock();
 }
 
-int __wrap__unlink(const char *file) {
-    check_expected_ptr(file);
-    return mock();
-}
-
-int __wrap_close() {
+int __wrap_close(__attribute__ ((__unused__)) int fd) {
     return 1;
 }
 
@@ -63,15 +58,28 @@ ssize_t __wrap_read(__attribute__((unused)) int fildes,
     size_t n = mock_type(size_t);
     if(buffer) {
         if (nbyte > n){
-                memcpy(buf, buffer, n);
+            memcpy(buf, buffer, n);
+            return n;
         } else {
-                memcpy(buf, buffer, nbyte);
+            memcpy(buf, buffer, nbyte);
+            return nbyte;
         }
     }
-    return mock_type(ssize_t);
+    errno = EFAULT;
+    return -1;
 }
 
 int __wrap_gethostname(char *name, int len) {
     snprintf(name, len, "%s",mock_type(char*));
     return mock_type(int);
+}
+
+int __wrap_readlink(__attribute__((unused)) void **state) {
+    return mock();
+}
+
+int __wrap_symlink(const char *path1, const char *path2) {
+    check_expected(path1);
+    check_expected(path2);
+    return mock();
 }
