@@ -25,7 +25,7 @@ stages:
             - id: !anyint
               name: !anystr
               policies: !anything
-              rule: !anything
+              rules: !anything
               users: !anything
           failed_items: []
           total_affected_items: !anyint
@@ -406,6 +406,230 @@ stages:
       json:
         data:
           total_affected_items: 0
+
+---
+test_name: GET /security/rules
+
+stages:
+
+  # GET /security/rules
+  - name: Try to show the rules of the system
+    request: &all_rules_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 1
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: &rules
+            - id: !anyint
+              name: !anystr
+              rule: !anything
+              roles: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  # GET /security/rules
+  - name: Try to show the rules of the system, offset = 0
+    request:
+      <<: *all_rules_request
+      params:
+        limit: 2
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *rules
+            - <<: *rules
+          total_affected_items: !anyint
+      save:
+        json:
+          second_rule_id: data.affected_items[1].id
+          second_rule_name: data.affected_items[1].name
+
+  # GET /security/rules
+  - name: Try to show the rules of the system, offset = 1
+    request:
+      <<: *all_rules_request
+      params:
+        limit: 2
+        offset: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+          - id: !int "{second_rule_id}"
+            name: "{second_rule_name}"
+          - <<: *rules
+          total_affected_items: !anyint
+
+  # GET /security/rules
+  - name: Try to show the rules of the system, without limit
+    request:
+      <<: *all_rules_request
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+          - <<: *rules
+
+  # GET /security/rules
+  - name: Try to get all rules with limit = 0
+    request:
+      <<: *all_rules_request
+      params:
+        limit: 0
+    response:
+      status_code: 400
+
+  # GET /security/rules
+  - name: Sort the rules
+    request:
+      <<: *all_rules_request
+      params:
+        sort: name
+        limit: 2
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *rules
+            - <<: *rules
+          total_affected_items: !anyint
+      save:
+        json:
+          second_rule_id: data.affected_items[1].id
+          second_rule_name: data.affected_items[1].name
+
+  # GET /security/rules
+  - name: Sort the rules, limit=2, offset=1
+    request:
+      <<: *all_rules_request
+      params:
+        sort: name
+        limit: 2
+        offset: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+          - id: !int "{second_rule_id}"
+            name: "{second_rule_name}"
+          - <<: *rules
+          total_affected_items: !anyint
+
+  # GET /security/rules
+  - name: Sort without limit
+    request:
+      <<: *all_rules_request
+      params:
+        sort: -name
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+
+  # GET /security/rules
+  - name: Search in rules
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: administrator
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *rules
+          total_affected_items: !anyint
+
+  # GET /security/rules
+  - name: Search without limit
+    request:
+      <<: *all_rules_request
+      params:
+        search: administrator
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *rules
+            - <<: *rules
+            - <<: *rules
+          total_affected_items: !anyint
+
+  # GET /security/rules
+  - name: Sort without limit, non existent sort parameter
+    request:
+      <<: *all_rules_request
+      params:
+        sort: +noexist
+    response:
+      status_code: 400
+
+  # GET /security/rules
+  - name: Search without limit, non existent rules
+    request:
+      <<: *all_rules_request
+      params:
+        search: noexist
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 0
+
+  # GET /security/rules
+  - name: Invalid parameter
+    request:
+      <<: *all_rules_request
+      params:
+        noexist: nothing
+    response:
+      status_code: 400
+
+  # GET /security/rules
+  - name: Invalid parameters - Extra fields
+    request:
+      <<: *all_rules_request
+      params:
+        search: wazuh
+        noexist: True
+    response:
+      status_code: 400
+
+  # GET /security/rules
+  - name: Try to show the rules of the system with a non-existent search
+    request:
+      <<: *all_rules_request
+      params:
+        search: notexist
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 0
+
 ---
 test_name: GET /security/roles
 
@@ -444,6 +668,44 @@ stages:
                 - '999'
           total_affected_items: 0
           total_failed_items: 1
+---
+test_name: GET /security/rules/{rule_id}
+
+stages:
+
+  # GET /security/rules
+  - name: Try to show a list of rules
+    request:
+      <<: *all_rules_request
+      params:
+        rule_ids: 1,2
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *rules
+          total_affected_items: 2
+
+  # GET /security/rules
+  - name: Try to show a list of unexistent rules
+    request:
+      <<: *all_rules_request
+      params:
+        rule_ids: 1,999
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *rules
+          failed_items:
+            - error:
+                code:
+                  4022
+              id:
+                - '999'
+          total_affected_items: 1
 ---
 test_name: GET /security/policies/{policy_id}
 
@@ -545,7 +807,7 @@ stages:
               roles:
                 - id: 99
                   name: "testing"
-                  rule: !anything
+                  rules: !anything
                   policies: !anything
           total_affected_items: 1
           total_failed_items: 0
