@@ -900,9 +900,6 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *new, fi
         }
     }
 
-    unsigned long inode;
-    int res_inode, res_inode_id;
-
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_DATA_ROW);
     fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_DATA_ROW, new->inode, new->dev);
 #else
