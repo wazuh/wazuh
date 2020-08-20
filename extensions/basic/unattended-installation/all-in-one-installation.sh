@@ -256,7 +256,7 @@ installElasticsearch() {
         # Start Elasticsearch
         startService "elasticsearch"
         echo "Initializing Elasticsearch...(this may take a while)"
-        until $(passwords=$(/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b > /dev/null 2>&1)); do
+        until $(passwords=$(/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b)); do
             echo -ne $char
             sleep 10
         done
