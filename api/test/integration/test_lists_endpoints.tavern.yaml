@@ -11,7 +11,7 @@ stages:
     request: &get_lists
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -135,12 +135,7 @@ stages:
     response:
       status_code: 400
       json: &invalid_select
-        type: !anystr
-        detail: !anystr
-        status: 400
-        remediation: !anystr
         code: 1724
-        dapi_errors: !anything
 
   - name: Show lists using select (one select is invalid)
     request:
@@ -241,7 +236,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -254,7 +249,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -278,7 +273,7 @@ stages:
     request: &get_lists_files
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists/files"
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

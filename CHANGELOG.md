@@ -1,7 +1,41 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.13.0]
+## [v4.0.0] -
+
+### Added
+
+- Added improved support for monitoring paths from environment variables. ([#4961](https://github.com/wazuh/wazuh/pull/4961))
+
+### Changed
+
+- FIM Windows events handling refactored. ([#5144](https://github.com/wazuh/wazuh/pull/5144))
+
+### Fixed
+
+- Added support for monitoring directories which contain commas. ([#4961](https://github.com/wazuh/wazuh/pull/4961))
+- Fixed a bug where configuring a directory to be monitored as realtime and whodata resulted in realtime prevailing. ([#4961](https://github.com/wazuh/wazuh/pull/4961))
+- Fixed using an incorrect mutex while deleting inotify watches. ([#5126](https://github.com/wazuh/wazuh/pull/5126))
+- Fixed a bug which could cause multiple FIM threads to request the same temporary file. ([#5213](https://github.com/wazuh/wazuh/issues/5213))
+- Fixed a bug where deleting a file permanently in Windows would not trigger an alert. ([#5144](https://github.com/wazuh/wazuh/pull/5144))
+- Fixed a typo in the file monitoring options log entry. ([#5591](https://github.com/wazuh/wazuh/pull/5591))
+- Fixed an error where monitoring a drive in Windows under scheduled or realtime mode would generate alerts from the recycle bin. ([#4771](https://github.com/wazuh/wazuh/pull/4771))
+- When monitoring a drive in Windows in the format `U:`, it will monitor `U:\` instead of the agent's working directory. ([#5259](https://github.com/wazuh/wazuh/pull/5259))
+- Fixed a bug where monitoring a drive in Windows with recursion_level set to 0 would trigger alerts from files inside its subdirectories. ([#5235](https://github.com/wazuh/wazuh/pull/5235))
+
+
+## [v3.13.1] - 2020-07-14
+
+### Added
+
+- Added two new settings <max_retries> and <retry_interval> to adjust the agent failover interval. ([#5433](https://github.com/wazuh/wazuh/pull/5433))
+
+### Fixed
+
+- Fixed a crash in Modulesd caused by Vulnerability Detector when skipping a kernel package if the agent has OS info disabled. ([#5467](https://github.com/wazuh/wazuh/pull/5467))
+
+
+## [v3.13.0] - 2020-06-29
 
 ### Added
 
@@ -31,7 +65,6 @@ All notable changes to this project will be documented in this file.
 - Changed `same/different_systemname` for `same/different_system_name` in Analysisd static filters. ([#5131](https://github.com/wazuh/wazuh/pull/5131))
 - Updated the internal Python interpreter from v3.7.2 to v3.8.2. ([#5030](https://github.com/wazuh/wazuh/pull/5030))
 
-
 ### Fixed
 
 - Fixed a bug that, in some cases, kept the memory reserved when deleting monitored directories in FIM. ([#5115](https://github.com/wazuh/wazuh/issues/5115))
@@ -55,7 +88,6 @@ All notable changes to this project will be documented in this file.
 - Avoid duplicate descriptors using wildcards in 'localfile' configuration. ([#4977](https://github.com/wazuh/wazuh/pull/4977))
 - Added guarantee that all processes are killed when service stops. ([#4975](https://github.com/wazuh/wazuh/pull/4975))
 - Fixed mismatch in integration scripts when the debug flag is set to active. ([#4800](https://github.com/wazuh/wazuh/pull/4800))
-
 
 
 ## [v3.12.3] - 2020-04-30

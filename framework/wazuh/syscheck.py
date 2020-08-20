@@ -5,14 +5,14 @@ from glob import glob
 
 from wazuh.core import common
 from wazuh.core.agent import Agent, get_agents_info
-from wazuh.core.syscheck import WazuhDBQuerySyscheck
 from wazuh.core.database import Connection
-from wazuh.core.exception import WazuhInternalError, WazuhError
+from wazuh.core.exception import WazuhInternalError, WazuhError, WazuhResourceNotFound
 from wazuh.core.ossec_queue import OssecQueue
-from wazuh.rbac.decorators import expose_resources
 from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.syscheck import WazuhDBQuerySyscheck
 from wazuh.core.utils import WazuhVersion
 from wazuh.core.wdb import WazuhDBConnection
+from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=["syscheck:run"], resources=["agent:id:{agent_list}"])
@@ -58,7 +58,7 @@ def clear(agent_list=None):
     wdb_conn = WazuhDBConnection()
     for agent in agent_list:
         if agent not in get_agents_info():
-            result.add_failed_item(id_=agent, error=WazuhError(1701))
+            result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701))
         else:
             try:
                 wdb_conn.execute("agent {} sql delete from fim_entry".format(agent), delete=True)

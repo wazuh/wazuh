@@ -206,7 +206,7 @@ int wurl_request_gz(const char * url, const char * dest, const char * header, co
         return retval;
     } else {
         if (w_uncompress_gzfile(compressed_file, dest)) {
-            merror("Could not uncompress the file downloaded from '%s'.", url);
+            merror("Could not uncompress the file downloaded from '%s'", url);
         } else {
             retval = 0;
         }
@@ -285,4 +285,50 @@ char * wurl_http_get(const char * url) {
     }
 
     return chunk.memory;
+}
+
+// Request a download of a bzip2 file and uncompress it.
+int wurl_request_bz2(const char * url, const char * dest, const char * header, const char * data, const long timeout) {
+    char compressed_file[OS_SIZE_6144 + 1];
+    int retval = OS_INVALID;
+
+    snprintf(compressed_file, OS_SIZE_6144, "tmp/req-%u", os_random());
+
+    if (wurl_request(url, compressed_file, header, data, timeout)) {
+        return retval;
+    } else {
+        if (bzip2_uncompress(compressed_file, dest)) {
+            merror("Could not uncompress the file downloaded from '%s'", url);
+        } else {
+            retval = 0;
+        }
+    }
+
+    if (remove(compressed_file) < 0) {
+        mdebug1("Could not remove '%s'. Error: %d.", compressed_file, errno);
+    }
+
+    return retval;
+}
+
+// Check the compression type of the file and try to download and uncompress it.
+int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout) {
+    int res_url_request;
+    int compress = 0;
+
+    if (wstr_end((char *)url, ".gz")) {
+        compress = 1;
+        res_url_request = wurl_request_gz(url, dest, header, data, timeout);
+    } else if (wstr_end((char *)url, ".bz2")) {
+        compress = 1;
+        res_url_request = wurl_request_bz2(url, dest, header, data, timeout);
+    } else {
+        res_url_request = wurl_request(url, dest, header, data, timeout);
+    }
+
+    if (compress == 1 && !res_url_request) {
+        mdebug1("File from URL '%s' was successfully uncompressed into '%s'", url, dest);
+    }
+
+    return res_url_request;
 }

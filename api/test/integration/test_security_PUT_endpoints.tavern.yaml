@@ -10,7 +10,7 @@ stages:
   - name: Modify a role in the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/102"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/102"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -36,7 +36,7 @@ stages:
   - name: Modify a role in the system (without change rule)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/103"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/103"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -61,13 +61,12 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        message: !anystr
 
   # PUT /security/roles/{role_id}
   - name: Modify a role in the system (without change name)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/102"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/102"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -92,7 +91,7 @@ stages:
   - name: Modify a non-existent role in the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/999"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -108,13 +107,10 @@ stages:
           failed_items:
             - error:
                 code: 4002
-                message: !anystr
-                remediation: !anystr
               id:
                 - '999'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 ---
 test_name: PUT /security/policies
 
@@ -124,7 +120,7 @@ stages:
   - name: Modify a policy in the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -160,7 +156,7 @@ stages:
   - name: Modify a policy in the system (without change policy definition)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -188,7 +184,7 @@ stages:
   - name: Modify a policy in the system (without change name)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -223,7 +219,7 @@ stages:
   - name: Modify a non-existent policy in the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/999"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/999"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -245,19 +241,16 @@ stages:
           failed_items:
             - error:
                 code: 4007
-                message: !anystr
-                remediation: !anystr
               id:
                 - '999'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # PUT /security/policies/{non-existent policy_id}
   - name: Modify a policy in the system, bad policy definition
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -281,7 +274,7 @@ stages:
   - name: Revoke all tokens
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/revoke"
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -291,12 +284,28 @@ stages:
   - name: Revoke all tokens (Invalid token after previous call)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/revoke"
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
     response:
       status_code: 401
+
+---
+test_name: DELETE /security/user/authenticate
+
+stages:
+
+  - name: Logout current user
+    delay_after: 10
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
 
 ---
 test_name: PUT /security/users/{username}
@@ -306,17 +315,12 @@ stages:
   - name: Update an existent user (empty body)
     request: &put_users_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/103"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/103"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
     response:
       status_code: 400
-      json: &error_spec
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
 
   - name: Update an existent user (insecure password)
     request:
@@ -326,8 +330,6 @@ stages:
         password: "new_user"
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Update an existent user (secure password)
     request:
@@ -347,7 +349,7 @@ stages:
   - name: Update an non-existent user
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/200"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/200"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -361,13 +363,10 @@ stages:
           failed_items:
             - error:
                 code: 5001
-                message: !anystr
-                remediation: !anystr
               id:
                 - '200'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Update an existent user (invalid body)
     request:
@@ -377,8 +376,6 @@ stages:
         pass: "ossec"
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Update an existent user (valid body)
     request:
@@ -402,7 +399,7 @@ stages:
   - name: Update security configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      url: "{protocol:s}://{host:s}:{port:d}/security/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -419,7 +416,7 @@ stages:
   - name: Get security configuration to check if PUT method worked correctly
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      url: "{protocol:s}://{host:s}:{port:d}/security/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

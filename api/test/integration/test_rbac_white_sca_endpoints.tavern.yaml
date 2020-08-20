@@ -9,7 +9,7 @@ stages:
   - name: Request sca for agent 000 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/000"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -21,20 +21,22 @@ stages:
   - name: Request sca for agent 001 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
+    response: &permission_denied
+      status_code: 403
       json:
         code: 4000
-        detail: !anystr
+        dapi_errors:
+          unknown-node: # No permission to see node
+            error: !anystr
 
   - name: Request sca for agent 002 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -46,33 +48,27 @@ stages:
   - name: Request sca for agent 003 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
-        detail: !anystr
+      <<: *permission_denied
 
   - name: Request sca for agent 003 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
-        detail: !anystr
+      <<: *permission_denied
 
   - name: Request sca for agent 005 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/005"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/005"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -89,7 +85,7 @@ stages:
   - name: Request policy checks for 000 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/000/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -101,12 +97,9 @@ stages:
   - name: Request policy checks for 001 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 4000
-        detail: !anystr
+      <<: *permission_denied

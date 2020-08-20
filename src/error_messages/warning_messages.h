@@ -40,5 +40,19 @@
 #define FIM_INVALID_OPTION_SKIP                 "(6925): Invalid option '%s' for attribute '%s'. The paths '%s' not be monitored."
 #define FIM_WARN_WHODATA_ADD_RULE               "(6926): Unable to add audit rule for '%s'"
 #define FIM_DB_FULL_ALERT                       "(6927): Sending DB 100%% full alert."
+#define FIM_WARN_WHODATA_GETID                  "(6928): Couldn't get event ID from Audit message. Line: '%s'."
+#define FIM_WARN_WHODATA_EVENT_TOOLONG          "(6929): Caching Audit message: event too long. Event with ID: '%s' will be discarded."
+#define FIM_WARN_MAX_DIR_REACH                  "(6930): Maximum number of directories to be monitored in the same tag reached (%d) Excess are discarded: '%s'"
+#define FIM_WARN_MAX_REG_REACH                  "(6931): Maximum number of registries to be monitored in the same tag reached (%d) Excess are discarded: '%s'"
+#define FIM_WHODATA_PARAMETER                   "(6932): Invalid parameter type (%ld) for '%s'."
+#define FIM_WHODATA_RENDER_EVENT                "(6933): Error rendering the event. Error %lu."
+#define FIM_WHODATA_RENDER_PARAM                "(6934): Invalid number of rendered parameters."
+
+
+/* Monitord warning messages */
+#define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."
+#define ROTATE_JSON_LONG_PATH                   "(7501): The path of the rotated json is too long."
+#define COMPRESSED_LOG_LONG_PATH                "(7502): The path of the compressed log is too long."
+#define COMPRESSED_JSON_LONG_PATH               "(7503): The path of the compressed json is too long."
 
 #endif /* WARN_MESSAGES_H */
