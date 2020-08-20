@@ -259,6 +259,7 @@ installKibana() {
     then
         eval "zypper -n install kibana-7.8.1 $debug"
     elif [ $sys_type == "apt" ] 
+        then
         eval "apt-get install kibana=7.8.1 -y -q  $debug"
     fi
     if [  "$?" != 0  ]
