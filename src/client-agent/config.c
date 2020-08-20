@@ -134,7 +134,7 @@ cJSON *getClientConfig(void) {
             cJSON_AddStringToObject(enrollment_cfg, "authorization_pass_path", agt->enrollment_cfg->cert_cfg->authpass);
         
         cJSON_AddStringToObject(enrollment_cfg,"auto_method",agt->enrollment_cfg->cert_cfg->auto_method ? "yes": "no");
-        cJSON_AddItemToObject(client,"auto_enrollment",enrollment_cfg);
+        cJSON_AddItemToObject(client,"enrollment",enrollment_cfg);
     }
     cJSON_AddItemToObject(root,"client",client);
 
