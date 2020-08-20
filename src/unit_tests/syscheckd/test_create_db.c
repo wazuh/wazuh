@@ -36,7 +36,6 @@ typedef struct __fim_data_s {
 }fim_data_t;
 
 bool unit_testing;
-
 /* redefinitons/wrapping */
 
 void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
@@ -93,6 +92,7 @@ int __wrap_lstat(const char *path, struct stat *buf) {
     buf->st_ino = 999;
     buf->st_uid = 0;
     buf->st_gid = 0;
+    buf->st_mode = mock();
     buf->st_mtime = 1433395216;
     return mock();
 }
@@ -105,6 +105,7 @@ int __wrap_stat(const char *path, struct stat *buf) {
         buf->st_uid = 0;
         buf->st_gid = 0;
         buf->st_mtime = 1433395216;
+        buf->st_mode = mock();
         return mock();
     } else {
         return __real_stat(path, buf);
@@ -244,7 +245,6 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthr
 
 int __wrap_fim_db_delete_not_scanned(fdb_t * fim_sql) {
     check_expected_ptr(fim_sql);
-
     return mock();
 }
 
@@ -560,21 +560,38 @@ static int teardown_file_limit(void **state) {
     return 0;
 }
 
-static int setup_fim_tmp_file(void **state) {
-    fim_tmp_file *tmpfile;
+static int setup_double_scan(void **state) {
+    struct dirent *boot_dirent = calloc(1, sizeof(struct dirent));
+    fim_entry *entry = calloc(1, sizeof(fim_entry));
+    entry->data = calloc (1, sizeof(fim_entry_data));
+    entry->path = calloc (20, sizeof(char));
+    syscheck.database = calloc (1, sizeof(fdb_t));
 
-    if (tmpfile = calloc(1, sizeof(fim_tmp_file)), tmpfile == NULL) {
+    if (!boot_dirent || !entry || !entry->data || !entry->path || !syscheck.database ) {
         return -1;
     }
 
-    tmpfile->elements = 5000;
-    *state = tmpfile;
+    strcpy(boot_dirent->d_name, "test_file");
+    boot_dirent->d_type = DT_REG;
+    boot_dirent->d_ino = 1;
+
+
+    entry->data->entry_type = FIM_TYPE_FILE;
+    syscheck.database->full = false;
+    strcpy(entry->path, "/media/some_file");
+    state[0] = boot_dirent;
+    state[1] = entry;
+
     return 0;
 }
 
-static int teardown_fim_tmp_file(void **state) {
-    fim_tmp_file *tmpfile = *state;
-    free(tmpfile);
+static int teardown_fim_double_scan(void **state) {
+    struct dirent *sd = state[0];
+    fim_entry *entry = state[1];
+    free (sd);
+    free(entry);
+    free(syscheck.database);
+
     return 0;
 }
 
@@ -2116,12 +2133,13 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 }
 
 static void test_fim_scan_db_full_double_scan(void **state) {
-    fim_tmp_file *file = *state;
+    struct dirent *file = *state;
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
-    will_return_count(__wrap_lstat, 0, 7);
+    will_return_count(__wrap_lstat, 0, 6);
+    will_return_count(__wrap_lstat, 0, 6);
 
     int it = 0;
 
@@ -2130,39 +2148,62 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         it++;
     }
 
-    will_return_count(__wrap_HasFilesystem, 0, 7);
-
+    will_return_count(__wrap_HasFilesystem, 0, 8);
     expect_string(__wrap_realtime_adddir, dir, "/boot");
     expect_string(__wrap_realtime_adddir, dir, "/home");
     expect_string(__wrap_realtime_adddir, dir, "/media");
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
     // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
-    will_return(__wrap_fim_db_get_not_scanned, file);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
-
-    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_set_all_unscanned, 0);
-
     expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
 
-    will_return(__wrap_fim_db_get_count_entry_path, 45000);
-
-    expect_string(__wrap_HasFilesystem, path, "/boot");
-
-    will_return(__wrap_fim_db_get_count_entry_path, 50000);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
-
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
-    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+    // second scan
+    will_return(__wrap_lstat, S_IFDIR);
+    will_return(__wrap_lstat, 0);
 
+    expect_string(__wrap_HasFilesystem, path, "/boot");
+    expect_string(__wrap_realtime_adddir, dir, "/boot");
+
+    will_return(__wrap_opendir, 1);
+    will_return(__wrap_readdir, file);
+    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, 0);
+    expect_string(__wrap_HasFilesystem, path, "/boot/test_file");
+    // fim_get_data
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("user"));
+    expect_value(__wrap_get_group, gid, 0);
+    will_return(__wrap_get_group, "group");
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "/boot/test_file");
+    will_return(__wrap_fim_db_get_path, 0);
+
+    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert, file_path, "/boot/test_file");
+    will_return(__wrap_fim_db_insert, FIMDB_FULL);
+
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    // fim_check_db_state
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
     expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
 
+    // fim_send_scan_info
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     fim_scan();
@@ -3747,9 +3788,6 @@ static void test_check_deleted_files(void **state) {
     expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
 
-    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_set_all_unscanned, 0);
-
     check_deleted_files();
 
     free(file);
@@ -3762,9 +3800,6 @@ static void test_check_deleted_files_error(void **state) {
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_ERR);
 
     expect_string(__wrap__merror, formatted_msg, FIM_DB_ERROR_RM_NOT_SCANNED);
-
-    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_set_all_unscanned, 0);
 
     check_deleted_files();
 }
@@ -4165,9 +4200,9 @@ int main(void) {
         cmocka_unit_test_setup(test_fim_file_error_on_insert, setup_fim_entry),
 
         /* fim_scan */
-        cmocka_unit_test_setup_teardown(test_fim_scan_db_full_double_scan, setup_fim_tmp_file, teardown_fim_tmp_file),
+        cmocka_unit_test_setup_teardown(test_fim_scan_db_full_double_scan, setup_double_scan, teardown_fim_double_scan),
         #ifdef TEST_WINAGENT
-        cmocka_unit_test_setup_teardown(test_fim_scan_db_full_double_scan_winreg_check, setup_fim_tmp_file, teardown_fim_tmp_file),
+        cmocka_unit_test_setup_teardown(test_fim_scan_db_full_double_scan_winreg_check, setup_double_scan, teardown_fim_double_scan),
         #endif
         cmocka_unit_test(test_fim_scan_db_full_not_double_scan),
         cmocka_unit_test(test_fim_scan_db_free),

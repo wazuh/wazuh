@@ -873,6 +873,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *new, fi
         if (syscheck.file_limit_enabled) {
             nodes_count = fim_db_get_count_entry_path(syscheck.database);
             if (nodes_count >= syscheck.file_limit) {
+                syscheck.database->full = true;
                 mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", file_path);
                 return FIMDB_FULL;
             }
@@ -1102,6 +1103,8 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
                 w_mutex_unlock(mutex);
                 goto end;
             }
+
+            syscheck.database->full = false;
             break;
         }
     }
