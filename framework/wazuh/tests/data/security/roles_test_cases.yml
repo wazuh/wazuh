@@ -8,19 +8,16 @@ get_roles:
       affected_items:
         - id: 100
           name: wazuh
-          rule:
-            FIND:
-              r'^auth[a-zA-Z]+$':
-                - administrator
+          rules:
+            - 100
           policies:
             - 100
           users:
             - "100"
         - id: 103
           name: administrator_test
-          rule:
-            MATCH:
-              definition: administratorRule
+          rules:
+            - 103
           policies:
             - 104
             - 103
@@ -38,9 +35,8 @@ get_roles:
       affected_items:
         - id: 102
           name: technical
-          rule:
-            MATCH:
-              definition: technicalRule
+          rules:
+            - 102
           policies:
             - 101
             - 100
@@ -50,9 +46,8 @@ get_roles:
             - "104"
         - id: 104
           name: normalUser
-          rule:
-            MATCH:
-              definition: normalRule
+          rules:
+            - 104
           policies:
             - 101
             - 102
@@ -63,9 +58,8 @@ get_roles:
             - "104"
         - id: 105
           name: ossec
-          rule:
-            MATCH:
-              definition: ossecRule
+          rules:
+            - 105
           policies:
             - 101
             - 107
@@ -97,24 +91,16 @@ get_roles:
 add_role:
   - params:
       name: new_role
-      rule:
-        MATCH:
-          definition: normalRule1
     result:
       affected_items:
         - id: 106
           name: new_role
-          rule:
-            MATCH:
-              definition: normalRule1
+          rules: []
           policies: []
           users: []
       failed_items: {}
   - params:
       name: ossec
-      rule:
-        MATCH:
-          definition: normalRule1
     result:
       affected_items: []
       failed_items:
@@ -122,9 +108,6 @@ add_role:
           - "ossec"
   - params:
       name: wazuh
-      rule:
-        MATCH:
-          definition: wazuh
     result:
       affected_items: []
       failed_items:
@@ -135,16 +118,12 @@ update_role:
       role_id:
         - "105"
       name: ossec1
-      rule:
-        MATCH:
-          definition: normalRule3
     result:
       affected_items:
         - id: 105
           name: ossec1
-          rule:
-            MATCH:
-              definition: normalRule3
+          rules:
+            - 105
           policies:
             - 101
             - 107
@@ -163,9 +142,6 @@ update_role:
       role_id:
         - "89"
       name: normalUserw
-      rule:
-        MATCH:
-          definition: normalRuleq1
     result:
       affected_items: []
       failed_items:
@@ -182,10 +158,7 @@ update_role:
   - params:
       role_id:
         - "104"
-      name: normalUser
-      rule:
-        MATCH:
-          definition: normalRule
+      name: ossec
     result:
       affected_items: []
       failed_items:
@@ -195,9 +168,6 @@ update_role:
       role_id:
         - "1"
       name: administrator
-      rule:
-        MATCH:
-          definition: wazuhh
     result:
       affected_items: []
       failed_items:
@@ -215,9 +185,8 @@ remove_roles:
           policies:
             - 104
             - 103
-          rule:
-            MATCH:
-              definition: administratorRule
+          rules:
+            - 103
           users:
             - "101"
             - "104"
@@ -239,9 +208,8 @@ remove_roles:
             - 100
             - 107
             - 104
-          rule:
-            MATCH:
-              definition: technicalRule
+          rules:
+            - 102
           users:
             - "104"
         - id: 104
@@ -250,9 +218,8 @@ remove_roles:
             - 101
             - 102
             - 109
-          rule:
-            MATCH:
-              definition: normalRule
+          rules:
+            - 104
           users:
             - "101"
             - "102"
@@ -270,9 +237,8 @@ remove_roles:
             - 105
             - 102
             - 103
-          rule:
-            MATCH:
-              definition: ossecRule
+          rules:
+            - 105
           users:
             - "101"
       failed_items:

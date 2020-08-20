@@ -36,9 +36,8 @@ set_role_policy:
       affected_items:
         - id: 102
           name: technical
-          rule:
-            MATCH:
-              definition: technicalRule
+          rules:
+            - 102
           policies:
             - 101
             - 100
@@ -65,9 +64,8 @@ set_role_policy:
       affected_items:
         - id: 102
           name: technical
-          rule:
-            MATCH:
-              definition: technicalRule
+          rules:
+            - 102
           policies:
             - 101
             - 100
@@ -91,9 +89,8 @@ set_role_policy:
       affected_items:
         - id: 103
           name: administrator_test
-          rule:
-            MATCH:
-              definition: administratorRule
+          rules:
+            - 103
           policies:
             - 104
             - 103
@@ -142,9 +139,8 @@ remove_role_policy:
       affected_items:
         - id: 102
           name: technical
-          rule:
-            MATCH:
-              definition: technicalRule
+          rules:
+            - 102
           policies:
             - 101
             - 100
@@ -175,9 +171,8 @@ remove_role_policy:
             - 100
             - 102
             - 103
-          rule:
-            MATCH:
-              definition: ossecRule
+          rules:
+            - 105
           users:
             - "101"
       failed_items:

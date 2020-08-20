@@ -266,10 +266,16 @@ class Roles(_Base):
 
         :return: Dict with the information
         """
-        return {'id': self.id, 'name': self.name,
-                'policies': [policy.id for policy in self.policies],
-                'users': [user.id for user in self.users],
-                'rules': [rule.id for rule in self.rules]}
+        users = list()
+        for user in self.users:
+            users.append(str(user.get_user()['id']))
+
+        with RolesPoliciesManager() as rpm:
+            with RolesRulesManager() as rrum:
+                return {'id': self.id, 'name': self.name,
+                        'policies': [policy.id for policy in rpm.get_all_policies_from_role(role_id=self.id)],
+                        'rules': [rule.id for rule in rrum.get_all_rules_from_role(role_id=self.id)],
+                        'users': users}
 
 
 class Rules(_Base):
