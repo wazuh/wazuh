@@ -777,7 +777,7 @@ stages:
        function: tavern_utils:test_validate_upgrade
 
     # PUT /agents/005/upgrade
-  - name: Upgrade an agent using wkp repo
+  - name: Upgrade an agent using wkp repo to a 4.x version
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/005/upgrade"
@@ -785,15 +785,34 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        wpk_repo: "packages.wazuh.com/wpk/"
+        version: 4.0.0
         force: true
         wait_for_complete: 'true'
     response:
-     status_code:
-       - 200
-       - 500
-     verify_response_with:
-       function: tavern_utils:test_validate_upgrade
+      status_code:
+        - 200
+        - 500
+      verify_response_with:
+        function: tavern_utils:test_validate_upgrade
+
+    # PUT /agents/005/upgrade
+  - name: Upgrade an agent using wkp repo to a <4.0.0 version
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/005/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        version: 3.11.1
+        force: true
+        wait_for_complete: 'true'
+    response:
+      status_code:
+        - 200
+        - 500
+      verify_response_with:
+        function: tavern_utils:test_validate_upgrade
 
 ---
 test_name: PUT /agents/{agent_id}/upgrade_custom

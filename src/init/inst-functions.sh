@@ -343,7 +343,7 @@ WriteAgent()
       echo "      <address>$HNAME</address>" >> $NEWCONFIG
     fi
     echo "      <port>1514</port>" >> $NEWCONFIG
-    echo "      <protocol>udp</protocol>" >> $NEWCONFIG
+    echo "      <protocol>tcp</protocol>" >> $NEWCONFIG
     echo "    </server>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
@@ -841,6 +841,7 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/api
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/rootcheck
 
     ${INSTALL} -m 0750 -o root -g 0 ossec-agentlessd ${PREFIX}/bin

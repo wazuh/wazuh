@@ -700,7 +700,7 @@ void test_fim_db_exec_simple_wquery_error(void **state) {
     expect_string(__wrap_sqlite3_exec, sql, "BEGIN;");
     will_return(__wrap_sqlite3_exec, "ERROR_MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR_MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Error executing simple query 'BEGIN;': ERROR_MESSAGE");
 
     int ret = fim_db_exec_simple_wquery(test_data->fim_sql, "BEGIN;");
     assert_int_equal(ret, FIMDB_ERR);
@@ -731,11 +731,11 @@ void test_fim_db_init_failed_file_creation(void **state) {
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database 'queue/fim/db/fim.db': ERROR MESSAGE");
-    #else
+#else
     expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database '/var/ossec/queue/fim/db/fim.db': ERROR MESSAGE");
-    #endif
+#endif
     will_return(__wrap_sqlite3_close_v2, 0);
     fdb_t* fim_db;
     fim_db = fim_db_init(syscheck.database_store);
@@ -750,7 +750,7 @@ void test_fim_db_init_failed_file_creation_prepare(void **state) {
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Preparing statement: ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Error preparing statement '/* * SQL Schema for FIM database * Copyright (C) 2015-2020, Wazuh Inc. * * This program is a free software, you can redistribute it * and/or modify it under the terms of GPLv2. */CREATE TABLE IF NOT EXISTS entry_path (    path TEXT NOT NULL,    inode_id INTEGER,    mode INTEGER,    last_event INTEGER,    entry_type INTEGER,    scanned INTEGER,    options INTEGER,    checksum TEXT NOT NULL,    PRIMARY KEY(path));CREATE INDEX IF NOT EXISTS path_index ON entry_path (path);CREATE INDEX IF NOT EXISTS inode_index ON entry_path (inode_id);CREATE TABLE IF NOT EXISTS entry_data (    dev INTEGER,    inode INTEGER,    size INTEGER,    perm TEXT,    attributes TEXT,    uid INTEGER,    gid INTEGER,    user_name TEXT,    group_name TEXT,    hash_md5 TEXT,    hash_sha1 TEXT,    hash_sha256 TEXT,    mtime INTEGER,    PRIMARY KEY(dev, inode));CREATE INDEX IF NOT EXISTS dev_inode_index ON entry_data (dev, inode);': ERROR MESSAGE");
     will_return(__wrap_sqlite3_close_v2, 0);
     fdb_t* fim_db;
     fim_db = fim_db_init(syscheck.database_store);
@@ -766,7 +766,7 @@ void test_fim_db_init_failed_file_creation_step(void **state) {
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Stepping statement: ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Error stepping statement '/* * SQL Schema for FIM database * Copyright (C) 2015-2020, Wazuh Inc. * * This program is a free software, you can redistribute it * and/or modify it under the terms of GPLv2. */CREATE TABLE IF NOT EXISTS entry_path (    path TEXT NOT NULL,    inode_id INTEGER,    mode INTEGER,    last_event INTEGER,    entry_type INTEGER,    scanned INTEGER,    options INTEGER,    checksum TEXT NOT NULL,    PRIMARY KEY(path));CREATE INDEX IF NOT EXISTS path_index ON entry_path (path);CREATE INDEX IF NOT EXISTS inode_index ON entry_path (inode_id);CREATE TABLE IF NOT EXISTS entry_data (    dev INTEGER,    inode INTEGER,    size INTEGER,    perm TEXT,    attributes TEXT,    uid INTEGER,    gid INTEGER,    user_name TEXT,    group_name TEXT,    hash_md5 TEXT,    hash_sha1 TEXT,    hash_sha256 TEXT,    mtime INTEGER,    PRIMARY KEY(dev, inode));CREATE INDEX IF NOT EXISTS dev_inode_index ON entry_data (dev, inode);': ERROR MESSAGE");
     will_return(__wrap_sqlite3_finalize, 0);
     will_return(__wrap_sqlite3_close_v2, 0);
     fdb_t* fim_db;
@@ -823,9 +823,9 @@ void test_fim_db_init_failed_cache(void **state) {
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_cache(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
     #else
-    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_cache(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
     #endif
     fdb_t* fim_db;
     fim_db = fim_db_init(syscheck.database_store);
@@ -843,9 +843,9 @@ void test_fim_db_init_failed_cache_memory(void **state) {
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_cache(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
     #else
-    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_cache(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
     #endif
     will_return(__wrap_sqlite3_close_v2, 0);
     fdb_t* fim_db;
@@ -866,7 +866,7 @@ void test_fim_db_init_failed_execution(void **state) {
     expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF");
     will_return(__wrap_sqlite3_exec, "ERROR_MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR_MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "SQL error turning off synchronous mode: ERROR_MESSAGE");
     // fim_db_finalize_stmt()
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
@@ -891,7 +891,7 @@ void test_fim_db_init_failed_simple_query(void **state) {
     expect_string(__wrap_sqlite3_exec, sql, "BEGIN;");
     will_return(__wrap_sqlite3_exec, "ERROR_MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR_MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Error executing simple query 'BEGIN;': ERROR_MESSAGE");
     // fim_db_finalize_stmt()
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
@@ -961,8 +961,6 @@ void test_fim_db_clean_success(void **state) {
 /*----------fim_db_insert_data()---------------*/
 void test_fim_db_insert_data_no_rowid_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    int ret;
-    int row_id = 0;
 
     // Inside fim_db_clean_stmt
     {
@@ -981,9 +979,10 @@ void test_fim_db_insert_data_no_rowid_error(void **state) {
 
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error inserting data row_id '0': ERROR MESSAGE");
 
-    ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->data, &row_id);
+    int row_id = 0;
+    int ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->data, &row_id);
 
     assert_int_equal(row_id, 0);
     assert_int_equal(ret, FIMDB_ERR);
@@ -991,8 +990,6 @@ void test_fim_db_insert_data_no_rowid_error(void **state) {
 
 void test_fim_db_insert_data_no_rowid_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    int ret;
-    int row_id = 0;
 
     // Inside fim_db_clean_stmt
     {
@@ -1012,7 +1009,8 @@ void test_fim_db_insert_data_no_rowid_success(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_last_insert_rowid, 1);
 
-    ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->data, &row_id);
+    int row_id = 0;
+    int ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->data, &row_id);
 
     assert_int_equal(row_id, 1);
     assert_int_equal(ret, FIMDB_OK);
@@ -1026,7 +1024,7 @@ void test_fim_db_insert_data_rowid_error(void **state) {
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error updating data row_id '1': ERROR MESSAGE");
     int ret;
     int row_id = 1;
     ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->data, &row_id);
@@ -1057,7 +1055,7 @@ void test_fim_db_insert_path_error(void **state) {
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error inserting path '/test/path': ERROR MESSAGE");
     int ret;
     ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->path, test_data->entry->data, 1);
     assert_int_equal(ret, FIMDB_ERR);
@@ -1072,7 +1070,7 @@ void test_fim_db_insert_path_constraint_error(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_CONSTRAINT);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error updating path '/test/path': ERROR MESSAGE");
     int ret;
     ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->path, test_data->entry->data, 1);
     assert_int_equal(ret, FIMDB_ERR);
@@ -1127,7 +1125,7 @@ void test_fim_db_insert_error(void **state) {
 
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error getting data row: ERROR MESSAGE");
 
     ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_MODIFICATION);
     assert_int_equal(ret, FIMDB_ERR);
@@ -1224,7 +1222,7 @@ void test_fim_db_insert_inode_id_null_error(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error getting path inode '/test/path': ERROR MESSAGE");
 
     int ret;
     ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_MODIFICATION);
@@ -1288,7 +1286,7 @@ void test_fim_db_insert_inode_id_null_delete_error(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error deleting data '/test/path' to insert in new row, the inode has changed: ERROR MESSAGE");
 
     int ret;
     ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_MODIFICATION);
@@ -1312,7 +1310,7 @@ void test_fim_db_insert_inode_id_null_delete_row_error(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error getting inode ID for file path '/test/path': ERROR MESSAGE");
 
     int ret;
     ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_MODIFICATION);
@@ -1581,7 +1579,7 @@ void test_fim_db_remove_path_failed_path(void **state) {
     expect_string(__wrap_sqlite3_exec, sql, "END;");
     will_return(__wrap_sqlite3_exec, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Error executing simple query 'END;': ERROR MESSAGE");
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
     fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
     // Last commit time should change
@@ -1694,7 +1692,7 @@ void test_fim_db_set_all_unscanned_failed(void **state) {
     expect_string(__wrap_sqlite3_exec, sql, "UPDATE entry_path SET scanned = 0;");
     will_return(__wrap_sqlite3_exec, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Error executing simple query 'UPDATE entry_path SET scanned = 0;': ERROR MESSAGE");
     wraps_fim_db_check_transaction();
     int ret = fim_db_set_all_unscanned(test_data->fim_sql);
     assert_int_equal(ret, FIMDB_ERR);
@@ -1717,11 +1715,11 @@ void test_fim_db_get_path_range_failed(void **state) {
     fim_tmp_file *file = NULL;
 
     will_return(__wrap_fopen, 0);
-    #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345123456'");
-    #else
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_1928374652345123456'");
-    #endif
+#ifndef TEST_WINAGENT
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345123456': Success (0)");
+#else
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_1928374652345123456': Success (0)");
+#endif
 
     int ret = fim_db_get_path_range(test_data->fim_sql, "start", "stop", &file, syscheck.database_store);
     assert_int_equal(ret, FIMDB_ERR);
@@ -1740,11 +1738,11 @@ void test_fim_db_get_path_range_success(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     wraps_fim_db_check_transaction();
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_remove, filename, "/var/ossec/tmp/tmp_1928374652345123456");
-    #else
+#else
     expect_string(__wrap_remove, filename, "tmp/tmp_1928374652345123456");
-    #endif
+#endif
     will_return(__wrap_remove, 0);
 
     int ret = fim_db_get_path_range(test_data->fim_sql, "start", "stop", &file, syscheck.database_store);
@@ -1760,11 +1758,11 @@ void test_fim_db_get_not_scanned_failed(void **state) {
     fim_tmp_file *file = NULL;
 
     will_return(__wrap_fopen, 0);
-    #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345123456'");
-    #else
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_1928374652345123456'");
-    #endif
+#ifndef TEST_WINAGENT
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345123456': Success (0)");
+#else
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_1928374652345123456': Success (0)");
+#endif
 
     int ret = fim_db_get_not_scanned(test_data->fim_sql, &file, syscheck.database_store);
     assert_int_equal(ret, FIMDB_ERR);
@@ -1779,11 +1777,11 @@ void test_fim_db_get_not_scanned_success(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     wraps_fim_db_check_transaction();
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_remove, filename, "/var/ossec/tmp/tmp_1928374652345123456");
-    #else
+#else
     expect_string(__wrap_remove, filename, "tmp/tmp_1928374652345123456");
-    #endif
+#endif
     will_return(__wrap_remove, 0);
 
     int ret = fim_db_get_not_scanned(test_data->fim_sql, &file, syscheck.database_store);
@@ -1830,7 +1828,7 @@ void test_fim_db_check_transaction_failed(void **state) {
     expect_string(__wrap_sqlite3_exec, sql, "END;");
     will_return(__wrap_sqlite3_exec, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Error executing simple query 'END;': ERROR MESSAGE");
     const time_t commit_time = test_data->fim_sql->transaction.last_commit;
     fim_db_check_transaction(test_data->fim_sql);
     assert_int_equal(commit_time, test_data->fim_sql->transaction.last_commit);
@@ -1850,9 +1848,9 @@ void test_fim_db_cache_failed(void **state) {
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_cache(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
     #else
-    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_cache(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
     #endif
     int ret = fim_db_cache(test_data->fim_sql);
     assert_int_equal(ret, FIMDB_ERR);
@@ -1874,9 +1872,9 @@ void test_fim_db_close_failed(void **state) {
     will_return(__wrap_sqlite3_finalize, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_finalize_stmt(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg, "Error finalizing statement 'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
     #else
-    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_finalize_stmt(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg, "Error finalizing statement 'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
     #endif
     will_return(__wrap_sqlite3_close_v2, SQLITE_BUSY);
     fim_db_close(test_data->fim_sql);
@@ -1907,7 +1905,7 @@ void test_fim_db_finalize_stmt_failed(void **state) {
         will_return(__wrap_sqlite3_finalize, SQLITE_ERROR);
         char buffer[OS_MAXSTR];
         will_return(__wrap_sqlite3_errmsg, "FINALIZE ERROR");
-        snprintf(buffer, OS_MAXSTR, "Error in fim_db_finalize_stmt(): statement(%d)'%s' FINALIZE ERROR", index, SQL_STMT[index]);
+        snprintf(buffer, OS_MAXSTR, "Error finalizing statement '%s': FINALIZE ERROR", SQL_STMT[index]);
         expect_string(__wrap__merror, formatted_msg, buffer);
         int ret = fim_db_finalize_stmt(test_data->fim_sql);
         assert_int_equal(ret, FIMDB_ERR);
@@ -1929,7 +1927,7 @@ void test_fim_db_force_commit_failed(void **state){
     expect_string(__wrap_sqlite3_exec, sql, "END;");
     will_return(__wrap_sqlite3_exec, "ERROR_MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR_MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Error executing simple query 'END;': ERROR_MESSAGE");
     fim_db_force_commit(test_data->fim_sql);
     // If commit fails last_commit should still be one
     assert_int_equal(1, test_data->fim_sql->transaction.last_commit);
@@ -1959,7 +1957,11 @@ void test_fim_db_clean_stmt_reset_and_prepare_failed(void **state) {
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
-    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_cache(): ERROR");
+    #ifndef TEST_WINAGENT
+    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': ERROR");
+    #else
+    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': ERROR");
+    #endif
     int ret = fim_db_clean_stmt(test_data->fim_sql, 0);
     assert_int_equal(ret, FIMDB_ERR);
 }
@@ -2080,7 +2082,7 @@ void test_fim_db_data_checksum_range_first_half_failed(void **state) {
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error getting path range, first half 'start init' 'top end' (i:0): ERROR MESSAGE");
     int ret;
     ret = fim_db_data_checksum_range(test_data->fim_sql, "init", "end", 1, 5, &syscheck.fim_entry_mutex);
     assert_int_equal(ret, FIMDB_ERR);
@@ -2102,7 +2104,7 @@ void test_fim_db_data_checksum_range_second_half_failed(void **state) {
     // Second half
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error getting path range, second half 'start init' 'top end' (i:1): ERROR MESSAGE");
 
     int ret;
     ret = fim_db_data_checksum_range(test_data->fim_sql, "init", "end", 1, 2, &syscheck.fim_entry_mutex);
@@ -2169,7 +2171,7 @@ void test_fim_db_get_row_path_error(void **state) {
 
     will_return(__wrap_sqlite3_errmsg, "An error message.");
 
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: An error message.");
+    expect_string(__wrap__merror, formatted_msg, "Step error getting row path '(null)': An error message.");
 
     ret = fim_db_get_row_path(test_data->fim_sql, FIMDB_STMT_GET_FIRST_PATH, &path);
 
@@ -2231,7 +2233,7 @@ void test_fim_db_get_count_range_error_stepping(void **state) {
 
     will_return(__wrap_sqlite3_errmsg, "Some SQLite error");
 
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: Some SQLite error");
+    expect_string(__wrap__merror, formatted_msg, "Step error getting count range 'start begin' 'top top': Some SQLite error");
 
     ret = fim_db_get_count_range(test_data->fim_sql, "begin", "top", &count);
 
@@ -2629,7 +2631,7 @@ void test_fim_db_get_count_entry_data_error(void **state) {
 
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error getting count entry data: ERROR MESSAGE");
 
     int ret = fim_db_get_count_entry_data(test_data->fim_sql);
 
@@ -2661,7 +2663,7 @@ void test_fim_db_get_count_entry_path_error(void **state) {
 
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error getting count entry path: ERROR MESSAGE");
 
     int ret = fim_db_get_count_entry_path(test_data->fim_sql);
 
@@ -2710,7 +2712,7 @@ void test_fim_db_set_scanned_error(void **state) {
     will_return(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error setting scanned path '/test/path': ERROR MESSAGE");
 
     int ret = fim_db_set_scanned(test_data->fim_sql, test_data->entry->path);
     assert_int_equal(ret, FIMDB_ERR);
@@ -2745,11 +2747,11 @@ void test_fim_db_create_temp_file_disk(void **state) {
 
 void test_fim_db_create_temp_file_disk_error(void **state) {
     will_return(__wrap_fopen, 0);
-    #ifdef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_1928374652345123456'");
-    #else
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345123456'");
-    #endif
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_1928374652345123456': Success (0)");
+#else
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345123456': Success (0)");
+#endif
 
 
     fim_tmp_file *ret = fim_db_create_temp_file(FIM_DB_DISK);
@@ -2791,7 +2793,7 @@ void test_fim_db_clean_file_disk_error() {
     expect_string(__wrap_remove, filename, file->path);
     will_return(__wrap_remove, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "Failed to remove 'test'. Error: Success");
+    expect_string(__wrap__merror, formatted_msg, "Failed to remove 'test': Success (0)");
 
     fim_db_clean_file(&file, FIM_DB_DISK);
 
