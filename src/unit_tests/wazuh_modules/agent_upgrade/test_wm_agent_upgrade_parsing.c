@@ -298,6 +298,16 @@ void test_wm_agent_upgrade_parse_agent_response_unknown_response(void **state)
     assert_null(data);
 }
 
+void test_wm_agent_upgrade_parse_agent_response_null_data(void **state)
+{
+    (void) state;
+    char *response = "ok 1234567890";
+
+    int ret = wm_agent_upgrade_parse_agent_response(response, NULL);
+
+    assert_int_equal(ret, -1);
+}
+
 void test_wm_agent_upgrade_parse_agent_response_invalid_response(void **state)
 {
     (void) state;
@@ -1215,6 +1225,7 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_err_with_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_err_without_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_unknown_response),
+        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_null_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_invalid_response),
         // wm_agent_upgrade_parse_agents
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_agents_success, teardown_parse_agents),

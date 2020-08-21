@@ -420,12 +420,12 @@ int wm_agent_upgrade_compare_versions(const char *version1, const char *version2
     return result;
 }
 
-bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char **status, int *agent_id) {
-    if (response) {
-        cJSON *error_object = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_ERROR]);
-        cJSON *data_object = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_ERROR_DATA]);
-        cJSON *status_object = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_STATUS]);
-        cJSON *agent_json = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_AGENT_ID]);
+bool wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id) {
+    if (input_json) {
+        cJSON *error_object = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_ERROR]);
+        cJSON *data_object = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_ERROR_DATA]);
+        cJSON *status_object = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_STATUS]);
+        cJSON *agent_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_AGENT_ID]);
         
         if (error_object && (error_object->type == cJSON_Number) && data_object && (data_object->type == cJSON_String) && agent_json
             && (agent_json->type == cJSON_Number)) {

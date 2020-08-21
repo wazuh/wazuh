@@ -81,12 +81,13 @@ cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json) 
     int task_id = 0;
     char *data = NULL;
     cJSON *response = NULL;
-    
+
+    response = input_json;
+
     if (wm_agent_upgrade_validate_task_ids_message(input_json, &agent_id, &task_id, &data)) {
         if(task_id) {
             // Store task_id
             wm_agent_upgrade_insert_task_id(agent_id, task_id);
-            response = input_json;
         } else {
             // Remove from table since upgrade will not be started
             wm_agent_upgrade_remove_entry(agent_id);
@@ -96,12 +97,15 @@ cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json) 
         // We cannot know which agent is the one failing so we have to abort the whole process
         *error = OS_INVALID;
     }
+
     os_free(data);
+
     return response;
 }
 
 cJSON* wm_agent_upgrade_update_status_success_callback(int *error, cJSON* input_json) {
     int agent_id = 0;
+
     if (wm_agent_upgrade_validate_task_status_message(input_json, NULL, &agent_id), agent_id > 0) {
         // Tell agent to erase results file
         char *buffer = NULL;
@@ -110,9 +114,8 @@ cJSON* wm_agent_upgrade_update_status_success_callback(int *error, cJSON* input_
         snprintf(buffer, OS_MAXSTR, "%03d com clear_upgrade_result -1", agent_id);
 
         char *agent_response = wm_agent_upgrade_send_command_to_agent(buffer, strlen(buffer)); 
-        char *data = NULL;
 
-        if (*error = wm_agent_upgrade_parse_agent_response(agent_response, &data), (*error == OS_SUCCESS)) {
+        if (*error = wm_agent_upgrade_parse_agent_response(agent_response, NULL), (*error == OS_SUCCESS)) {
             mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UPGRADE_FILE_AGENT);
         }
 
@@ -121,5 +124,6 @@ cJSON* wm_agent_upgrade_update_status_success_callback(int *error, cJSON* input_
     } else {
         *error = OS_INVALID;
     }
+
     return input_json;
 }

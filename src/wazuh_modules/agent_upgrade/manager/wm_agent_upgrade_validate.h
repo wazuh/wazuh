@@ -98,7 +98,7 @@ int wm_agent_upgrade_compare_versions(const char *version1, const char *version2
  *      "status": "Done"
  *  }
  * */
-bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char **status, int *agent_id);
+bool wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id);
 
 /**
  * Validate an upgrade response from the task manager module
