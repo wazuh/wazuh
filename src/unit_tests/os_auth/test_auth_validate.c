@@ -74,7 +74,11 @@ int __wrap__mdebug1(const char * file, int line, const char * func, const char *
     return 1;
 }
 
-void __wrap_OS_RemoveAgentGroup(const char *id) {    
+void __wrap_OS_RemoveAgentGroup(const char *id) {
+}
+
+int __wrap_OS_AgentAntiquity() {
+    return -1;
 }
 
 int __wrap_opendir() {
