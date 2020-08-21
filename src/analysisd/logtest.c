@@ -136,7 +136,7 @@ void * w_logtest_clients_handler(w_logtest_connection_t * connection) {
             merror(LOGTEST_ERROR_RESPONSE, errno, strerror(errno));
         }
 
-        /* Frees resourse of requeset */
+        /* Cleanup */
         os_free(str_response);
         close(client);
     }
@@ -469,14 +469,14 @@ void w_logtest_register_session(w_logtest_connection_t * connection, w_logtest_s
     w_mutex_lock(&connection->mutex_hash_table);
     connection->active_client += 1;
 
-    /* Find the client who has not made a query for the longest time and marks the session as expired */
+    /* Find the client who has not made a query for the longest time and remove session */
     if (connection->active_client > w_logtest_conf.max_sessions) {
         w_logtest_remove_old_session(connection);
     }
 
     w_mutex_unlock(&connection->mutex_hash_table);
 
-    /* Register as active session */
+    /* Register session */
     OSHash_Add_ex(w_logtest_sessions, session->token, session);
 }
 
