@@ -453,6 +453,19 @@ This API call expects a full valid XML file with the shared configuration tags/s
 ### PUT     /security/roles/{role_id}
 * New endpoint. Modify a specified role.
 
+### GET     /security/rules
+* New endpoint. Get a list of security rules or all rules in the system if no ids are specified.
+
+### POST    /security/rules
+* New endpoint. Add a new security rule to the system.
+
+### DELETE  /security/rules
+* Nothing removed by default, it must be specified with the "all" keyword.
+* New endpoint. Delete a list of security rules or all rules in the system.
+
+### PUT     /security/rules/{rule_id}
+* New endpoint. Modify a specified security rule.
+
 ### POST ​  /security/roles/{role_id}/policies
 * New endpoint. Create a relation between one role and one or more policies.
 
@@ -460,8 +473,18 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * Nothing removed by default, it must be specified with the "all" keyword.
 * New endpoint. Delete a specify relation role-policy.
 
+### POST ​  /security/roles/{role_id}/rules
+* New endpoint. Create a relation between one role and one or more security rules.
+
+### DELETE ​/security/roles/{role_id}/rules
+* Nothing removed by default, it must be specified with the "all" keyword.
+* New endpoint. Delete a specific role-rule relation.
+
 ### GET     /security/user/authenticate
 * New endpoint. User/password authentication to get an access token.
+
+### POST    /security/user/authenticate/run_as
+* New endpoint. Auth_context based authentication to get an access token.
 
 ### PUT ​   /security/user/revoke
 * New endpoint. Revoke all active JWT tokens.

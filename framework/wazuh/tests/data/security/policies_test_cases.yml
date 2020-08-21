@@ -15,28 +15,10 @@ get_policies:
               - "*:*"
             effect: allow
           roles:
-            - id: 100
-              name: wazuh
-              rule:
-                FIND:
-                  r'^auth[a-zA-Z]+$':
-                    - administrator
-            - id: 101
-              name: wazuh-wui
-              rule:
-                FIND:
-                  r'^auth[a-zA-Z]+$':
-                    - administrator-app
-            - id: 102
-              name: technical
-              rule:
-                MATCH:
-                  definition: technicalRule
-            - id: 105
-              name: ossec
-              rule:
-                MATCH:
-                  definition: ossecRule
+            - 100
+            - 101
+            - 102
+            - 105
         - id: 103
           name: administratorPolicy
           policy:
@@ -47,16 +29,8 @@ get_policies:
             resources:
               - agent:id:*
           roles:
-            - id: 103
-              name: administrator_test
-              rule:
-                MATCH:
-                  definition: administratorRule
-            - id: 105
-              name: ossec
-              rule:
-                MATCH:
-                  definition: ossecRule
+            - 103
+            - 105
       failed_items: {}
   - params:
       policy_ids:
@@ -75,16 +49,8 @@ get_policies:
             resources:
               - "*:*:*"
           roles:
-            - id: 104
-              name: normalUser
-              rule:
-                MATCH:
-                  definition: normalRule
-            - id: 105
-              name: ossec
-              rule:
-                MATCH:
-                  definition: ossecRule
+            - 104
+            - 105
         - id: 104
           name: normalPolicy
           policy:
@@ -95,21 +61,9 @@ get_policies:
             resources:
               - agent:id:*
           roles:
-            - id: 102
-              name: technical
-              rule:
-                MATCH:
-                  definition: technicalRule
-            - id: 103
-              name: administrator_test
-              rule:
-                MATCH:
-                  definition: administratorRule
-            - id: 105
-              name: ossec
-              rule:
-                MATCH:
-                  definition: ossecRule
+            - 102
+            - 103
+            - 105
         - id: 105
           name: ossecPolicy
           policy:
@@ -119,11 +73,7 @@ get_policies:
             resources:
               - role:id:*
           roles:
-            - id: 105
-              name: ossec
-              rule:
-                MATCH:
-                  definition: ossecRule
+            - 105
       failed_items:
         "4007":
           - "110"
@@ -218,11 +168,7 @@ update_policy:
             resources:
               - agent:id:097
           roles:
-            - id: 105
-              name: ossec
-              rule:
-                MATCH:
-                  definition: ossecRule
+            - 105
       failed_items: {}
   - params:
       policy_id:
@@ -242,7 +188,7 @@ update_policy:
   - params:
       policy_id:
         - "103"
-      name: administratorPolicy
+      name: normalPolicy
       policy:
         actions:
           - agent:delete
@@ -286,16 +232,8 @@ remove_policies:
             resources:
               - agent:id:*
           roles:
-            - id: 103
-              name: administrator_test
-              rule:
-                MATCH:
-                  definition: administratorRule
-            - id: 105
-              name: ossec
-              rule:
-                MATCH:
-                  definition: ossecRule
+            - 103
+            - 105
       failed_items:
         "4008":
           - "1"
@@ -316,16 +254,8 @@ remove_policies:
             resources:
               - "*:*:*"
           roles:
-            - id: 104
-              name: normalUser
-              rule:
-                MATCH:
-                  definition: normalRule
-            - id: 105
-              name: ossec
-              rule:
-                MATCH:
-                  definition: ossecRule
+            - 104
+            - 105
         - id: 104
           name: normalPolicy
           policy:
@@ -336,21 +266,9 @@ remove_policies:
             resources:
               - agent:id:*
           roles:
-            - id: 102
-              name: technical
-              rule:
-                MATCH:
-                  definition: technicalRule
-            - id: 103
-              name: administrator_test
-              rule:
-                MATCH:
-                  definition: administratorRule
-            - id: 105
-              name: ossec
-              rule:
-                MATCH:
-                  definition: ossecRule
+            - 102
+            - 103
+            - 105
         - id: 105
           name: ossecPolicy
           policy:
@@ -360,11 +278,7 @@ remove_policies:
             resources:
               - role:id:*
           roles:
-            - id: 105
-              name: ossec
-              rule:
-                MATCH:
-                  definition: ossecRule
+            - 105
       failed_items:
         "4007":
           - "200"
@@ -385,16 +299,8 @@ remove_policies:
             resources:
               - policy:id:*
           roles:
-            - id: 104
-              name: normalUser
-              rule:
-                MATCH:
-                  definition: normalRule
-            - id: 105
-              name: ossec
-              rule:
-                MATCH:
-                  definition: ossecRule
+            - 104
+            - 105
       failed_items:
         "4007":
           - "901"

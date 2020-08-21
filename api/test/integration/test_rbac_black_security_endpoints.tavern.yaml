@@ -196,6 +196,46 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: GET RULES RBAC
+
+stages:
+
+  - name: Get all rules in the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 1
+            - id: 2
+            - id: 100
+            - id: 101
+            - id: 102
+            - id: 104
+            - id: 105
+          failed_items: []
+          total_affected_items: 7
+          total_failed_items: 0
+
+  - name: Get a specified rule by its id (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        rule_ids: 103
+    response:
+      <<: *permission_denied
+
+---
 test_name: GET POLICIES RBAC
 
 stages:
@@ -357,7 +397,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
 ---
 test_name: UPDATE ROLES RBAC
 
@@ -372,9 +412,6 @@ stages:
       method: PUT
       json:
         name: normalUserModified
-        rule:
-          FIND$:
-            definition: normalUserRuleModified
     response:
       status_code: 200
       json:
@@ -382,21 +419,10 @@ stages:
           affected_items:
             - id: 104
               name: normalUserModified
-              rule:
-                FIND$:
-                  definition: normalUserRuleModified
-              policies:
-                - 101
-                - 102
-                - 109
-              users:
-                - "101"
-                - "102"
-                - "104"
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        
+
   - name: Update one specified role in the system (Deny)
     request:
       verify: False
@@ -406,9 +432,6 @@ stages:
       method: PUT
       json:
         name: wazuh-wuiModified
-        rule:
-          FIND$:
-            definition: wazuh-wuiRuleModified
     response:
       <<: *permission_denied
 
@@ -421,9 +444,6 @@ stages:
       method: PUT
       json:
         name: wazuhModified
-        rule:
-          FIND$:
-            definition: wazuhRuleModified
     response:
       status_code: 200
       json:
@@ -437,7 +457,79 @@ stages:
                 - '1'
           total_affected_items: 0
           total_failed_items: 1
-        
+
+---
+test_name: UPDATE RULES RBAC
+
+stages:
+
+  - name: Update one specified rule in the system (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules/105"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: normalRuleModified
+        rule:
+          MATCH:
+            modified: "modified_rule"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 105
+              name: normalRuleModified
+              rule:
+                MATCH:
+                  modified: "modified_rule"
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+  - name: Update one specified rule in the system (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules/104"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: normalRuleModified
+        rule:
+          MATCH:
+            modified: "modified_rule"
+    response:
+      <<: *permission_denied
+
+  - name: Update one admin rule in the system (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules/1"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: normalRuleModified
+        rule:
+          MATCH:
+            modified: "modified_rule"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4008
+                remediation: !anything
+              id:
+                - '1'
+          total_affected_items: 0
+          total_failed_items: 1
+
 ---
 test_name: UPDATE POLICIES RBAC
 
@@ -475,21 +567,11 @@ stages:
                   - agent:id:097
                   - agent:id:002
                   - agent:id:003
-              roles:
-                - id: 103
-                  name: administrator_test
-                  rule:
-                    MATCH:
-                      definition: administratorRule
-                - id: 105
-                  name: ossec
-                  rule:
-                    MATCH:
-                      definition: ossecRule
+              roles: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
   - name: Update one specified policy in the system (Deny)
     request:
       verify: False
@@ -550,7 +632,7 @@ stages:
                 code: 4017
               id:
                 - '101'
-        
+
   - name: Create one specified link between one user and a list of roles (Allow)
     request:
       verify: False
@@ -604,7 +686,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
 ---
 test_name: CREATE ROLES AND POLICIES RBAC
 
@@ -619,9 +701,6 @@ stages:
       method: POST
       json:
         name: newUserRole
-        rule:
-          FIND$:
-            definition: newUser
     response:
       <<: *permission_denied
 
@@ -696,19 +775,11 @@ stages:
         data:
           affected_items:
             - id: 104
-              name: normalUserModified
-              rule:
-                FIND$:
-                  definition: normalUserRuleModified
               policies:
                 - 101
                 - 102
-                - 109
                 - 105
                 - 106
-              users:
-                - "101"
-                - "102"
           total_affected_items: 2
           total_failed_items: 1
           failed_items:
@@ -716,7 +787,7 @@ stages:
                 code: 4000
               id:
                 - '104'
-        
+
 ---
 test_name: DELETE LINK ROLE-POLICIES RBAC
 
@@ -737,17 +808,10 @@ stages:
         data:
           affected_items:
             - id: 104
-              name: normalUserModified
-              rule:
-                FIND$:
-                  definition: normalUserRuleModified
               policies:
                 - 101
                 - 102
                 - 109
-              users:
-                - "101"
-                - "102"
           total_affected_items: 2
           total_failed_items: 1
           failed_items:
@@ -755,7 +819,78 @@ stages:
                 code: 4010
               id:
                 - '104'
-        
+
+---
+test_name: CREATE LINK ROLE-RULES RBAC
+
+stages:
+
+  - name: Create one specified link between one role and a list of rules (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/101/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        rule_ids: 103,104,105
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 101
+              rules:
+                - 101
+                - 103
+                - 105
+          total_affected_items: 2
+          total_failed_items: 1
+          failed_items:
+            - id:
+                - '104'
+              error:
+                code: 4000
+
+---
+test_name: DELETE LINK ROLE-RULES RBAC
+
+stages:
+
+  - name: Delete one specified link between one role and a list of rules (Partially allow) (Agnostic user)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/101/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids: "all"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 101
+              rules:
+                - 105
+          total_affected_items: 2
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Delete one specified link between one role and a list of rules (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/101/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids:
+          - 105
+    response:
+      <<: *permission_denied
+
 ---
 test_name: DELETE USERS RBAC
 
@@ -780,7 +915,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
   - name: Delete all allowed user in the system (All)
     request:
       verify: False
@@ -815,7 +950,7 @@ stages:
           total_affected_items: 4
           total_failed_items: 0
           failed_items: []
-        
+
   - name: Delete all allowed user in the system (All)
     request:
       verify: False
@@ -833,7 +968,7 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        
+
   - name: Delete a list of users in the system (Allow and deny)
     request:
       verify: False
@@ -865,63 +1000,69 @@ stages:
           total_failed_items: 3
 
 ---
-test_name: DELETE ROLES RBAC
+test_name: DELETE RULES RBAC
 
 stages:
 
-  - name: Delete one specified role in the system (Allow)
+  - name: Delete one specified rule in the system (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 103
+        rule_ids: 103
     response:
       status_code: 200
       json:
         data:
           affected_items:
             - id: 103
-              name: administrator_test
-              rule:
-                MATCH:
-                  definition: administratorRule
-              policies:
-                - 104
-                - 103
-              users:
-                - "101"
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        
-  - name: Delete all roles in the system (Allow and deny)
+
+  - name: Delete all rules in the system (Allow and deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        role_ids: all
+        rule_ids: all
       method: DELETE
     response:
       status_code: 200
       json:
         data:
-          affected_items: !anything
+          affected_items: # Admin rules cannot be deleted. 105 is denied
+            - id: 100
+            - id: 101
+            - id: 102
+            - id: 104
           failed_items: []
-          total_affected_items: 6
+          total_affected_items: 4
           total_failed_items: 0
-        
+
+  - name: Delete one specified rule in the system (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids: 105
+    response:
+      <<: *permission_denied
+
 ---
 test_name: DELETE POLICIES RBAC
 
 stages:
 
   - name: Delete one specified policy in the system (Allow)
-    delay_before: 20
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/policies"
@@ -949,7 +1090,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
   - name: Delete all policies in the system (Allow and deny)
     request:
       verify: False
@@ -965,9 +1106,53 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 19
+          total_affected_items: 18
           total_failed_items: 0
-        
+    delay_after: 20
+
+---
+test_name: DELETE ROLES RBAC
+
+stages:
+
+  - name: Delete one specified role in the system (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        role_ids: 103
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 103
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+  - name: Delete all roles in the system (Allow and deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: all
+      method: DELETE
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 6
+          total_failed_items: 0
+    delay_after: 20
+
 ---
 test_name: REVOKE TOKENS RBAC
 

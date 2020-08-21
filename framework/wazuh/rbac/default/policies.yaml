@@ -79,6 +79,7 @@ default_policies:
           - role:id:*
           - policy:id:*
           - user:id:*
+          - rule:id:*
         effect: allow
 
   users_all:
