@@ -51,7 +51,7 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
 
     if (error) {
         for(int i = 0; i < agents; i++) {
-            cJSON *agent_json = cJSON_GetObjectItem(cJSON_GetArrayItem(task_module_request, i), "agent");
+            cJSON *agent_json = cJSON_GetObjectItem(cJSON_GetArrayItem(task_module_request, i), task_manager_json_keys[WM_TASK_AGENT_ID]);
 
             if (agent_json && (agent_json->type == cJSON_Number)) {
                 int agent_id = agent_json->valueint;

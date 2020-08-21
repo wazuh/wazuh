@@ -40,7 +40,7 @@ list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,w
 list(APPEND upgrade_names "test_wm_agent_upgrade_tasks_callbacks")
 list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wm_agent_upgrade_validate_task_ids_message -Wl,--wrap,wm_agent_upgrade_insert_task_id -Wl,--wrap,wm_agent_upgrade_remove_entry \
                            -Wl,--wrap,wm_agent_upgrade_parse_response_message -Wl,--wrap,wm_agent_upgrade_validate_task_status_message -Wl,--wrap,wm_agent_upgrade_send_command_to_agent \
-                           -Wl,--wrap,wm_agent_upgrade_parse_agent_response")
+                           -Wl,--wrap,wm_agent_upgrade_parse_agent_response -Wl,--wrap,wm_agent_upgrade_send_tasks_information")
 
 # Compilig tests
 list(LENGTH upgrade_names count)
