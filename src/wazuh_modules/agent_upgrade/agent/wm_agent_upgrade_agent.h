@@ -19,6 +19,8 @@
     #define WM_AGENT_UPGRADE_RESULT_FILE DEFAULTDIR UPGRADE_DIR "/upgrade_result"
 #endif
 
+#define WM_AGENT_UPGRADE_RESULT_WAIT_TIME 30
+
 typedef enum _wm_upgrade_agent_state {
     WM_UPGRADE_SUCCESSFULL = 0,
     WM_UPGRADE_FAILED,
