@@ -631,7 +631,7 @@ char* wm_agent_upgrade_send_command_to_agent(const char *command, const size_t c
     } else {
         mtdebug2(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUEST_SEND_MESSAGE, command);
 
-        OS_SendSecureTCP(sock, command_size, command);
+        OS_SendSecureTCP(sock, command_size ? command_size : (command ? strlen(command) : 0), command);
         os_calloc(OS_MAXSTR, sizeof(char), response);
 
         switch (length = OS_RecvSecureTCP(sock, response, OS_MAXSTR), length) {
@@ -642,11 +642,7 @@ char* wm_agent_upgrade_send_command_to_agent(const char *command, const size_t c
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RECV_ERROR, strerror(errno));
                 break;
             default:
-                if (!response) {
-                    mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_EMPTY_AGENT_RESPONSE);
-                } else {
-                    mtdebug2(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUEST_RECEIVE_MESSAGE, response);
-                }
+                mtdebug2(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUEST_RECEIVE_MESSAGE, response);
                 break;
         }
 
