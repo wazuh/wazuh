@@ -154,6 +154,14 @@ int __wrap_wdbc_parse_result(char *result, char **payload) {
     return mock_type(int);
 }
 
+cJSON *__wrap_wdbc_query_parse_json(int *sock, const char *query, char *response, const int len) {
+    check_expected(*sock);
+    check_expected(query);
+    check_expected(len);
+
+    return mock_type(cJSON *);
+}
+
 int __wrap_wdb_create_profile(const char *path) {
     check_expected(path);
 
@@ -1134,6 +1142,114 @@ void test_wdb_update_agent_version_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
+/* Tests wdb_get_agent_labels */
+
+void test_wdb_get_agent_labels_error_no_json_response(void **state) {
+    cJSON *root = NULL;
+    int id = 1;
+
+    const char *query_str = "global get-labels 1";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent's 1 labels.");
+
+    root = wdb_get_agent_labels(id);
+
+    assert_null(root);
+}
+
+void test_wdb_get_agent_labels_success(void **state) {
+    cJSON *root = NULL;
+    int id = 1;
+
+    const char *query_str = "global get-labels 1";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, (cJSON *)1);
+
+    root = wdb_get_agent_labels(id);
+
+    assert_ptr_equal(1, root);
+}
+
+/* Tests wdb_set_agent_labels */
+
+void test_wdb_set_agent_labels_error_socket(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    char *labels = "key1:value1\nkey2:value2";
+
+    char *query_str = "global set-labels 1 key1:value1\nkey2:value2";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, OS_BUFFER_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    // Hnadling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-labels 1 key1:value1\nkey2:value2");
+
+    ret = wdb_set_agent_labels(id, labels);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_labels_error_sql_execution(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    char *labels = "key1:value1\nkey2:value2";
+
+    char *query_str = "global set-labels 1 key1:value1\nkey2:value2";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, OS_BUFFER_SIZE);
+    will_return(__wrap_wdbc_query_ex, -100); // Returning any error
+
+    // Hnadling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-labels 1 key1:value1\nkey2:value2");
+
+    ret = wdb_set_agent_labels(id, labels);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_labels_success(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    char *labels = "key1:value1\nkey2:value2";
+
+    char *query_str = "global set-labels 1 key1:value1\nkey2:value2";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, OS_BUFFER_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = wdb_set_agent_labels(id, labels);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -1148,21 +1264,28 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_changing_owner, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_changing_mode, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_success, setup_wdb_agent, teardown_wdb_agent),
-        /* Tests wdb_insert_agent*/
+        /* Tests wdb_insert_agent */
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_json, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_socket, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_success, setup_wdb_agent, teardown_wdb_agent),
-        /* Tests wdb_update_agent_name*/
+        /* Tests wdb_update_agent_name */
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_json, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_socket, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_success, setup_wdb_agent, teardown_wdb_agent),
-        /* Tests wdb_update_agent_version*/
+        /* Tests wdb_update_agent_versio n*/
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_error_json, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_error_socket, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_success, setup_wdb_agent, teardown_wdb_agent)
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_get_agent_labels */
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_labels_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_labels_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_set_agent_labels */
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_error_socket, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_success, setup_wdb_agent, teardown_wdb_agent)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

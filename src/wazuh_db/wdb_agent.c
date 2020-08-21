@@ -288,6 +288,7 @@ int wdb_set_agent_labels(int id, const char *labels) {
     // The output will be just a JSON OK.
     char wdbquery[OS_MAXSTR] = "";
     char wdboutput[OS_BUFFER_SIZE] = "";
+    char *payload = NULL;
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_accesses[WDB_SET_AGENT_LABELS], id, labels);
 
@@ -295,13 +296,16 @@ int wdb_set_agent_labels(int id, const char *labels) {
 
     switch (result){
         case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                result = OS_INVALID;
+            }
             break;
         case OS_INVALID:
-            mdebug1("GLobal DB Error in the response from socket");
+            mdebug1("Global DB Error in the response from socket");
             mdebug2("Global DB SQL query: %s", wdbquery);
             break;
         default:
-            mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
     }
