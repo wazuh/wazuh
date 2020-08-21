@@ -1,7 +1,7 @@
 {
   "order": 0,
   "index_patterns": [
-    "wazuh-alerts-3.x-*"
+    "wazuh-alerts-4.x-*"
   ],
   "settings": {
     "index.refresh_interval": "5s",
