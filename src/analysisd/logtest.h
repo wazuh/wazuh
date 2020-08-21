@@ -194,12 +194,19 @@ w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg, w_lo
 /**
  * @brief Register a session as active in connection
  * 
- * If is reach the maximum number of sessions, find the session who has not made
- * a query for the longest time and mark it as expired.
+ * Register a session on the hash table
  * @param connection Where register the session as active
  * @param session Session to register
  */
 void w_logtest_register_session(w_logtest_connection_t * connection, w_logtest_session_t * session);
+
+/**
+ * @brief Remove the oldest session
+ *
+ * Find the session who has not made a query for the longest time and mark it as expired.
+ * @param connection Where register the session as active
+ */
+void w_logtest_remove_old_session(w_logtest_connection_t * connection);
 
 /**
  * @brief Get the level of de triggered rule within json_log_processed
