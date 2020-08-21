@@ -15,13 +15,12 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 logger = logging.getLogger('wazuh')
 
 
-async def get_attack(request, pretty=False, wait_for_complete=False, attack_id=None, offset=0, limit=database_limit,
+async def get_attack(request, pretty=False, wait_for_complete=False, offset=0, limit=database_limit,
                      phase_name=None, platform_name=None, q=None, search=None, select=None, sort=None):
     """Get information from MITRE ATT&CK database
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param attack_id: Filters by attack ID.
     :param phase_name: Filters by phase
     :param platform_name: Filters by platform
     :param search: Search if the string is contained in the db
@@ -32,7 +31,7 @@ async def get_attack(request, pretty=False, wait_for_complete=False, attack_id=N
     :param q: Query to filter by
     :return: Data
     """
-    f_kwargs = {'id_': attack_id,
+    f_kwargs = {'id_': request.query.get('id', None),
                 'phase_name': phase_name,
                 'platform_name': platform_name,
                 'select': select,
