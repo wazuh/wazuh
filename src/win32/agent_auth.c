@@ -321,7 +321,7 @@ void InstallAuthKeys(char *msg)
         fprintf(fp, "%s\n", key);
         fclose(fp);
 
-        printf("INFO: Valid key created. Finished.\n");
+        printf("INFO: Valid key received\n");
     }
     else
         merror_exit("Unknown message received (%s)", msg);
