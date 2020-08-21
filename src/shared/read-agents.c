@@ -25,6 +25,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_sc
                                int csv_output, cJSON *json_output, int show_last) __attribute__((nonnull(1)));
 static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info, const char* agent_id) __attribute__((nonnull(2, 3)));
 #endif /* !WIN32*/
+cJSON *get_json_field(cJSON *root, char *field);
 
 /* Free the agent list in memory */
 void free_agents(char **agent_list)
@@ -1081,7 +1082,7 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
 
 /* Get information from an agent */
 agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id){
-    char tmp_keepalive[OS_SIZE_128] = "";
+    char tmp_keepalive[OS_SIZE_512] = "";
     cJSON *json_agt_info = NULL;
     cJSON *json_agt_info_field = NULL;
     agent_info *agt_info = NULL;
@@ -1098,24 +1099,24 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
         return NULL;
     }
 
-    json_agt_info_field = cJSON_GetObjectItemCaseSensitive(json_agt_info->child, "os_name");
-    if (cJSON_IsString(json_agt_info_field) && json_agt_info_field->valuestring != NULL ){
+    json_agt_info_field = get_json_field(json_agt_info, "os_name");
+    if (json_agt_info_field){
         os_strdup(json_agt_info_field->valuestring, agt_info->os);
     }
 
-    json_agt_info_field = cJSON_GetObjectItemCaseSensitive(json_agt_info->child, "version");
-    if (cJSON_IsString(json_agt_info_field) && json_agt_info_field->valuestring != NULL ){
+    json_agt_info_field = get_json_field(json_agt_info, "version");
+    if (json_agt_info_field){
         os_strdup(json_agt_info_field->valuestring, agt_info->version);
     }
 
-    json_agt_info_field = cJSON_GetObjectItemCaseSensitive(json_agt_info->child, "merged_sum");
-    if (cJSON_IsString(json_agt_info_field) && json_agt_info_field->valuestring != NULL ){
+    json_agt_info_field = get_json_field(json_agt_info, "merged_sum");
+    if (json_agt_info_field){
         os_strdup(json_agt_info_field->valuestring, agt_info->merged_sum);
     }
 
-    json_agt_info_field = cJSON_GetObjectItemCaseSensitive(json_agt_info->child, "last_keepalive");
-    if (cJSON_IsNumber(json_agt_info_field)){
-        snprintf(tmp_keepalive, OS_SIZE_128, "%d", json_agt_info_field->valueint);
+    json_agt_info_field = get_json_field(json_agt_info, "last_keepalive");
+    if (json_agt_info_field){
+        snprintf(tmp_keepalive, sizeof(tmp_keepalive), "%d", json_agt_info_field->valueint);
         os_strdup(tmp_keepalive, agt_info->last_keepalive);
     }
 
@@ -1136,7 +1137,7 @@ agent_status_t get_agent_status(const char *agent_name, const char *agent_ip)
     // Unused
     (void) agent_ip;
 
-    /* Getting all the information of the agent */
+    /* Avoiding a change in the function parameters, using name to get the ID */
     json_agt_info = wdb_get_agent_info(atoi(get_agent_id_from_name(agent_name)));
 
     if (!json_agt_info) {
@@ -1144,9 +1145,9 @@ agent_status_t get_agent_status(const char *agent_name, const char *agent_ip)
         cJSON_Delete(json_agt_info);
         return GA_STATUS_INV;
     }
-
-    json_agt_info_field = cJSON_GetObjectItemCaseSensitive(json_agt_info->child, "last_keepalive");
-    if (cJSON_IsNumber(json_agt_info_field)){
+    
+    json_agt_info_field = get_json_field(json_agt_info, "last_keepalive");
+    if (json_agt_info_field){
         last_keepalive = json_agt_info_field->valueint;
     }
 
@@ -1166,6 +1167,7 @@ agent_status_t get_agent_status(const char *agent_name, const char *agent_ip)
         return (GA_STATUS_NACTIVE);
     }
 
+    // The pending status may not be related to the keepalive
     if (last_keepalive == 0) {
         cJSON_Delete(json_agt_info);
         return GA_STATUS_PENDING;
@@ -1180,39 +1182,54 @@ char **get_agents(int flag,int mon_time)
 {
     size_t f_size = 0;
     char **f_files = NULL;
-    DIR *dp;
-    struct dirent *entry = NULL;
+    int *id_array = NULL;
+    int i = 0;
+    cJSON *json_agt_info = NULL;
+    cJSON *json_agt_info_field = NULL;
+    cJSON *json_agt_info_name = NULL;
+    cJSON *json_agt_info_ip = NULL;
 
-    /* Open the directory */
-    dp = opendir(AGENTINFO_DIR);
-    if (!dp) {
-        merror("Error opening directory: '%s': %s ", AGENTINFO_DIR, strerror(errno));
+    id_array = wdb_get_all_agents();
+
+    if(!id_array){
+        mdebug1("Failed getting agent's ID array.");
         return (NULL);
     }
 
-    /* Read directory */
-    while ((entry = readdir(dp)) != NULL) {
+    /* Getting all the information from all the agents at once may result in a huge JSON */
+    for (i = 0; id_array[i] != -1; i++){
         int status = 0;
-        char tmp_file[513];
-        tmp_file[512] = '\0';
+        int last_keepalive = -1;
+        char agent_name_ip[OS_SIZE_256] = "";
 
-        /* Ignore . and ..  */
-        if ((strcmp(entry->d_name, ".") == 0) ||
-                (strcmp(entry->d_name, "..") == 0)) {
+        json_agt_info = wdb_get_agent_info(id_array[i]);
+        if (!json_agt_info) {
+            mdebug1("Failed to get agent information from Wazuh DB. ID:'%d'.",id_array[i]);
+            cJSON_Delete(json_agt_info);
             continue;
         }
 
-        snprintf(tmp_file, 512, "%s/%s", AGENTINFO_DIR, entry->d_name);
+        json_agt_info_field = get_json_field(json_agt_info, "last_keepalive");
+        if (json_agt_info_field){
+            last_keepalive = json_agt_info_field->valueint;
+        }
+
+        json_agt_info_name = get_json_field(json_agt_info, "name");
+        json_agt_info_ip = get_json_field(json_agt_info, "register_ip");
+
+        /* Keeping the same name structure than plain text files in AGENTINFO_DIR */
+        if (json_agt_info_name && json_agt_info_ip){
+            snprintf(agent_name_ip, sizeof(agent_name_ip), "%s-%s",json_agt_info_name->valuestring,json_agt_info_ip->valuestring);
+        }
+        cJSON_Delete(json_agt_info);
 
         if (flag != GA_ALL) {
-            struct stat file_status;
-
-            if (stat(tmp_file, &file_status) < 0) {
+            if (last_keepalive < 0) {
                 continue;
             }
 
-            if( !(flag == GA_NOTACTIVE && (file_status.st_mtime < (time(0) - (mon_time * 60)) && mon_time > 0))) {
-                if (file_status.st_mtime > (time(0) - DISCON_TIME)) {
+            if( !(flag == GA_NOTACTIVE && (last_keepalive < (time(0) - (mon_time * 60)) && mon_time > 0))) {
+                if (last_keepalive > (time(0) - DISCON_TIME)) {
                     status = 1;
                     if (flag == GA_NOTACTIVE) {
                         continue;
@@ -1235,11 +1252,11 @@ char **get_agents(int flag,int mon_time)
             char agt_stat[512];
 
             snprintf(agt_stat, sizeof(agt_stat) - 1, "%s %s",
-                     entry->d_name, status == 1 ? "active" : "disconnected");
+                     agent_name_ip, status == 1 ? "active" : "disconnected");
 
             os_strdup(agt_stat, f_files[f_size]);
         } else {
-            os_strdup(entry->d_name, f_files[f_size]);
+            os_strdup(agent_name_ip, f_files[f_size]);
         }
 
         f_files[f_size + 1] = NULL;
@@ -1247,7 +1264,7 @@ char **get_agents(int flag,int mon_time)
         f_size++;
     }
 
-    closedir(dp);
+    os_free(id_array);
     return (f_files);
 }
 
@@ -1278,3 +1295,31 @@ time_t scantime_fim (const char *agent_id, const char *scan) {
     return (ts);
 }
 #endif
+
+/**
+ * @brief Extracts a field from a cJSON array and checks it
+ *       
+ * @param root The cJSON root pointer.
+ * @param field Name of the field to extract.
+ * @retval cJSON* On success.
+ * @retval NULL On error.
+ */
+cJSON *get_json_field(cJSON *root, char *field){
+    cJSON *json_field = NULL;
+    
+    if(!root || !field){
+        return NULL;
+    }
+
+    json_field = cJSON_GetObjectItemCaseSensitive(root->child, field);
+
+    if (cJSON_IsString(json_field) && json_field->valuestring != NULL){
+        return json_field;
+    
+    } else if(cJSON_IsNumber(json_field)){
+        return json_field;
+    
+    } else{
+        return NULL;
+    }
+}
