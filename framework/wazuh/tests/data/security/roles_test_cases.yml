@@ -13,7 +13,7 @@ get_roles:
           policies:
             - 100
           users:
-            - "100"
+            - 100
         - id: 103
           name: administrator_test
           rules:
@@ -22,8 +22,8 @@ get_roles:
             - 104
             - 103
           users:
-            - "101"
-            - "104"
+            - 101
+            - 104
       failed_items: {}
   - params:
       role_ids:
@@ -43,7 +43,7 @@ get_roles:
             - 107
             - 104
           users:
-            - "104"
+            - 104
         - id: 104
           name: normalUser
           rules:
@@ -53,9 +53,9 @@ get_roles:
             - 102
             - 109
           users:
-            - "101"
-            - "102"
-            - "104"
+            - 101
+            - 102
+            - 104
         - id: 105
           name: ossec
           rules:
@@ -72,7 +72,7 @@ get_roles:
             - 102
             - 103
           users:
-            - "101"
+            - 101
       failed_items:
         "4002":
           - "200"
@@ -136,7 +136,7 @@ update_role:
             - 102
             - 103
           users:
-            - "101"
+            - 101
       failed_items: {}
   - params:
       role_id:
@@ -188,8 +188,8 @@ remove_roles:
           rules:
             - 103
           users:
-            - "101"
-            - "104"
+            - 101
+            - 104
       failed_items:
         "4008":
           - "1"
@@ -211,7 +211,7 @@ remove_roles:
           rules:
             - 102
           users:
-            - "104"
+            - 104
         - id: 104
           name: normalUser
           policies:
@@ -221,9 +221,9 @@ remove_roles:
           rules:
             - 104
           users:
-            - "101"
-            - "102"
-            - "104"
+            - 101
+            - 102
+            - 104
         - id: 105
           name: ossec
           policies:
@@ -240,7 +240,7 @@ remove_roles:
           rules:
             - 105
           users:
-            - "101"
+            - 101
       failed_items:
         "4002":
           - "200"
