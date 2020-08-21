@@ -451,12 +451,11 @@ w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg, w_lo
         s_token = w_logtest_generate_token();
     } while (OSHash_Get_ex(w_logtest_sessions, s_token) != NULL);
 
-    mdebug1(LOGTEST_INFO_TOKEN_NEW, s_token);
-    sminfo(list_msg, LOGTEST_INFO_TOKEN_NEW, s_token);
-
     session = w_logtest_initialize_session(s_token, list_msg);
     if (session) {
         w_logtest_register_session(connection, session);
+        mdebug1(LOGTEST_INFO_TOKEN_SESSION, s_token);
+        sminfo(list_msg, LOGTEST_INFO_TOKEN_SESSION, s_token);
     } else {
         smerror(list_msg, LOGTEST_ERROR_INITIALIZE_SESSION, s_token);
         mdebug1(LOGTEST_ERROR_INITIALIZE_SESSION, s_token);
@@ -472,6 +471,16 @@ void w_logtest_register_session(w_logtest_connection_t * connection, w_logtest_s
 
     /* Find the client who has not made a query for the longest time and marks the session as expired */
     if (connection->active_client > w_logtest_conf.max_sessions) {
+        w_logtest_remove_old_session(connection);
+    }
+
+    w_mutex_unlock(&connection->mutex_hash_table);
+
+    /* Register as active session */
+    OSHash_Add_ex(w_logtest_sessions, session->token, session);
+}
+
+void w_logtest_remove_old_session(w_logtest_connection_t * connection) {
 
         OSHashNode * hash_node;
         unsigned int inode_it = 0;
@@ -504,16 +513,8 @@ void w_logtest_register_session(w_logtest_connection_t * connection, w_logtest_s
         }
 
         /* Remove old session */
-        if (old_session) {
-            connection->active_client -= 1;
-            w_logtest_remove_session(old_session->token);
-        }
-    }
-
-    w_mutex_unlock(&connection->mutex_hash_table);
-
-    /* Register as active session */
-    OSHash_Add_ex(w_logtest_sessions, session->token, session);
+        connection->active_client -= 1;
+        w_logtest_remove_session(old_session->token);
 }
 
 char * w_logtest_generate_token() {
