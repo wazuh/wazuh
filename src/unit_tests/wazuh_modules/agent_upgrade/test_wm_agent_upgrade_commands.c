@@ -19,6 +19,8 @@
 
 #ifdef TEST_SERVER
 
+cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task);
+
 // Setup / teardown
 
 static int setup_config(void **state) {
@@ -37,6 +39,12 @@ static int teardown_config(void **state) {
 static int teardown_string(void **state) {
     char *string = *state;
     os_free(string);
+    return 0;
+}
+
+static int teardown_json(void **state) {
+    cJSON *json = *state;
+    cJSON_Delete(json);
     return 0;
 }
 
@@ -130,6 +138,23 @@ int __wrap_OS_RecvSecureTCP(int sock, char *ret, uint32_t size) {
 int __wrap_close(int fd) {
     check_expected(fd);
     return 0;
+}
+
+cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status) {
+    check_expected(command);
+    check_expected(agent_id);
+    check_expected(status);
+
+    return mock_type(cJSON *);
+}
+
+int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request) {
+    cJSON* json = cJSON_GetArrayItem(task_module_request, 0);
+    check_expected(json);
+
+    cJSON_AddItemToArray(json_response, mock_type(cJSON *));
+
+    return mock();
 }
 
 #ifdef TEST_SERVER
@@ -275,6 +300,78 @@ void test_wm_agent_upgrade_send_command_to_agent_connect_error(void **state)
     assert_null(res);
 }
 
+void test_wm_agent_upgrade_send_single_task_ok(void **state)
+{
+    wm_upgrade_command cmd = WM_UPGRADE_AGENT_GET_STATUS;
+    int agent = 18;
+    char *ag_status = "In progress";
+    cJSON *request = cJSON_CreateArray();
+
+    cJSON *task_request = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_request, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request, "command", "upgrade");
+    cJSON_AddNumberToObject(task_request, "agent", agent);
+    cJSON_AddStringToObject(task_request, "status", ag_status);
+
+    cJSON_AddItemToArray(request, task_request);
+
+    cJSON *task_response = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_response, "error", WM_UPGRADE_SUCCESS);
+    cJSON_AddStringToObject(task_response, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddNumberToObject(task_response, "agent", agent);
+    cJSON_AddStringToObject(task_response, "status", ag_status);
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, cmd);
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, agent_id, agent);
+    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, ag_status);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request);
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, task_request, sizeof(task_request));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    cJSON *res = wm_agent_upgrade_send_single_task(cmd, agent, ag_status);
+
+    *state = res;
+
+    assert_non_null(res);
+    assert_memory_equal(res, task_response, sizeof(task_response));
+}
+
+void test_wm_agent_upgrade_send_single_task_null_response(void **state)
+{
+    wm_upgrade_command cmd = WM_UPGRADE_AGENT_GET_STATUS;
+    int agent = 18;
+    char *ag_status = "In progress";
+    cJSON *request = cJSON_CreateArray();
+
+    cJSON *task_request = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_request, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request, "command", "upgrade");
+    cJSON_AddNumberToObject(task_request, "agent", agent);
+    cJSON_AddStringToObject(task_request, "status", ag_status);
+
+    cJSON_AddItemToArray(request, task_request);
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, cmd);
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, agent_id, agent);
+    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, ag_status);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request);
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, task_request, sizeof(task_request));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, NULL);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    cJSON *res = wm_agent_upgrade_send_single_task(cmd, agent, ag_status);
+
+    *state = res;
+
+    assert_null(res);
+}
+
 #endif
 
 int main(void) {
@@ -285,6 +382,9 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_send_command_to_agent_recv_error, teardown_string),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_send_command_to_agent_sockterr_error, teardown_string),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_send_command_to_agent_connect_error, teardown_string),
+        // wm_agent_upgrade_send_single_task
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_send_single_task_ok, teardown_json),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_send_single_task_null_response, teardown_json),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
