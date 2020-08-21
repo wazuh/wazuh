@@ -337,6 +337,11 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, queue);
 
+    #ifndef TEST_WINAGENT
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
+    will_return(__wrap_sleep, 1);
+    #endif
+
     expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
@@ -388,6 +393,11 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, queue);
+
+    #ifndef TEST_WINAGENT
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
+    will_return(__wrap_sleep, 1);
+    #endif
 
     expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
@@ -530,6 +540,11 @@ void test_wm_agent_upgrade_check_status_queue_error(void **state)
     expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, queue);
+
+    #ifndef TEST_WINAGENT
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
+    will_return(__wrap_sleep, 1);
+    #endif
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8113): Could not open default queue to send upgrade notification.");
