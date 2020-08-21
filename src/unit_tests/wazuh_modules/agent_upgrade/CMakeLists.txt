@@ -37,6 +37,10 @@ list(APPEND upgrade_flags "-Wl,--wrap,_mterror")
 list(APPEND upgrade_names "test_wm_agent_upgrade_validate")
 list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wurl_http_get -Wl,--wrap,wdb_agent_version -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,OS_SHA1_File -Wl,--wrap,wurl_request -Wl,--wrap,sleep")
 
+list(APPEND upgrade_names "test_wm_agent_upgrade_tasks_callbacks")
+list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wm_agent_upgrade_validate_task_ids_message -Wl,--wrap,wm_agent_upgrade_insert_task_id -Wl,--wrap,wm_agent_upgrade_remove_entry \
+                           -Wl,--wrap,wm_agent_upgrade_parse_response_message")
+
 # Compilig tests
 list(LENGTH upgrade_names count)
 math(EXPR count "${count} - 1")

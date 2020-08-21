@@ -30,7 +30,7 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
 
     if (task_module_response && (task_module_response->type == cJSON_Array) && (agents == cJSON_GetArraySize(task_module_response))) {
         // Parse task module responses
-        while( cJSON_GetArraySize(task_module_response) && (error == OS_SUCCESS) ) {
+        while(cJSON_GetArraySize(task_module_response) && (error == OS_SUCCESS)) {
             cJSON *task_response = cJSON_DetachItemFromArray(task_module_response, 0);
             if (success_callback) {
                 // A callback has been defined, process it with the callback
@@ -77,8 +77,8 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
 }
 
 cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json) {
-    int agent_id;
-    int task_id;
+    int agent_id = 0;
+    int task_id = 0;
     char *data = NULL;
     cJSON *response = NULL;
     
