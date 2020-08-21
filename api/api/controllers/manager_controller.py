@@ -136,9 +136,8 @@ async def get_stats_hourly(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_weekly(request, pretty=False, wait_for_complete=False):
@@ -161,9 +160,8 @@ async def get_stats_weekly(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_analysisd(request, pretty=False, wait_for_complete=False):
@@ -205,9 +203,8 @@ async def get_stats_remoted(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_log(request, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
