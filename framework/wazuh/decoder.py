@@ -72,12 +72,13 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
     for decoder_name in no_existent_files:
         result.add_failed_item(id_=decoder_name, error=WazuhError(1504))
 
-    data = process_array(decoders, search_text=search_text, search_in_fields=search_in_fields,
-                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         allowed_sort_fields=SORT_FIELDS, offset=offset, select=select, limit=limit, q=q,
-                         required_fields=REQUIRED_FIELDS)
-    result.affected_items = data['items']
-    result.total_affected_items = data['totalItems']
+    if decoders:
+        data = process_array(decoders, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             allowed_sort_fields=SORT_FIELDS, offset=offset, select=select, limit=limit, q=q,
+                             required_fields=REQUIRED_FIELDS)
+        result.affected_items = data['items']
+        result.total_affected_items = data['totalItems']
 
     return result
 
