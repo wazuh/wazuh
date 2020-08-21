@@ -77,13 +77,6 @@ int __wrap__mdebug1(const char * file, int line, const char * func, const char *
 void __wrap_OS_RemoveAgentGroup(const char *id) {    
 }
 
-int __wrap_OS_AgentAntiquity() {
-    return -1;
-}
-
-void __wrap_add_backup(const keyentry *entry) {
-}
-
 int __wrap_opendir() {
     return mock();
 }
@@ -129,10 +122,8 @@ typedef struct _enrollment_response {
 
 
 extern struct keynode *queue_insert;
-extern struct keynode *queue_backup;
 extern struct keynode *queue_remove;
 extern struct keynode * volatile *insert_tail;
-extern struct keynode * volatile *backup_tail;
 extern struct keynode * volatile *remove_tail;
 
 /* setup/teardowns */
@@ -149,7 +140,6 @@ static int setup_group(void **state) {
 
     /* Initialize queues */    
     insert_tail = &queue_insert;
-    backup_tail = &queue_backup;
     remove_tail = &queue_remove;
 
     return 0;
@@ -201,14 +191,14 @@ static void test_w_auth_validate_data(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Duplicated IP "EXISTENT_IP1);        
     err = w_auth_validate_data(response,EXISTENT_IP1, NEW_AGENT1, NULL);  
     assert_int_equal(err, OS_INVALID);
-    assert_string_equal(response, "ERROR: Duplicated IP: "EXISTENT_IP1"\n\n");  
+    assert_string_equal(response, "ERROR: Duplicated IP: "EXISTENT_IP1"");  
 
     /* Existent Agent Name */
     response[0] = '\0'; 
     expect_string(__wrap__merror, formatted_msg, "Invalid agent name "EXISTENT_AGENT1" (duplicated)");        
     err = w_auth_validate_data(response,NEW_IP1, EXISTENT_AGENT1, NULL);  
     assert_int_equal(err, OS_INVALID);
-    assert_string_equal(response, "ERROR: Duplicated agent name: "EXISTENT_AGENT1"\n\n");  
+    assert_string_equal(response, "ERROR: Duplicated agent name: "EXISTENT_AGENT1"");  
    
    /* Manager name */
    char host_name[512];
@@ -217,7 +207,7 @@ static void test_w_auth_validate_data(void **state) {
         host_name[sizeof(host_name) - 1] = '\0';
     }
     char err_response[2048];    
-    snprintf(err_response, 2048, "ERROR: Invalid agent name: %s\n\n", host_name) ;
+    snprintf(err_response, 2048, "ERROR: Invalid agent name: %s", host_name) ;
     char merror_message[2048];    
     snprintf(merror_message, 2048, "Invalid agent name %s (same as manager)", host_name);  
     expect_string(__wrap__merror, formatted_msg, merror_message);        
@@ -283,7 +273,7 @@ static void test_w_auth_validate_data_register_limit(void **state) {
             expect_string(__wrap__merror, formatted_msg, error_message);
             err = w_auth_validate_data(response,ANY_IP, agent_name, NULL);            
             assert_int_equal(err, OS_INVALID);
-            assert_string_equal(response, "ERROR: The maximum number of agents has been reached\n\n");  
+            assert_string_equal(response, "ERROR: The maximum number of agents has been reached");  
         }
         else {
             err = w_auth_validate_data(response,ANY_IP, agent_name, NULL);            
@@ -311,7 +301,7 @@ static void test_w_auth_validate_groups(void **state) {
     response[0] = '\0';
     err = w_auth_validate_groups(UNKNOWN_GROUP, response);
     assert_int_equal(err, OS_INVALID);
-    assert_string_equal(response, "ERROR: Invalid group: "UNKNOWN_GROUP"\n\n");
+    assert_string_equal(response, "ERROR: Invalid group: "UNKNOWN_GROUP"");
 
     /* Existent multigroups */
     will_return(__wrap_opendir, 1);
@@ -329,7 +319,7 @@ static void test_w_auth_validate_groups(void **state) {
     response[0] = '\0';
     err = w_auth_validate_groups(EXISTENT_GROUP1","EXISTENT_GROUP2","UNKNOWN_GROUP, response);
     assert_int_equal(err, OS_INVALID);
-    assert_string_equal(response, "ERROR: Invalid group: "UNKNOWN_GROUP"\n\n");
+    assert_string_equal(response, "ERROR: Invalid group: "UNKNOWN_GROUP"");
 
 }
 

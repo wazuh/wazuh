@@ -112,7 +112,6 @@ def get_permissions(user_id=None, auth_context=None):
     with AuthenticationManager() as auth:
         if auth.user_auth_context(user_id):
             # Add dummy rbac_policies for developing here
-            if auth_context:
-                return WazuhResult(optimize_resources(auth_context=auth_context))
+            return WazuhResult(optimize_resources(auth_context=auth_context))
 
     return WazuhResult(optimize_resources(user_id=user_id))

@@ -32,8 +32,6 @@
 
 /* Global variables */
 fpos_t fp_pos;
-static uid_t uid = -1;
-static uid_t gid = -1;
 
 int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char *ip, const char *key)
 {
@@ -663,138 +661,6 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
     return (0);
 }
 
-void OS_BackupAgentInfo_ID(const char *id) {
-    char *name = getFullnameById(id);
-    char *ip;
-
-    if (!name) {
-        merror("Agent id %s not found.", id);
-        return;
-    }
-
-    if ((ip = strchr(name, '-'))) {
-        *(ip++) = 0;
-        OS_BackupAgentInfo(id, name, ip);
-    }
-
-    free(name);
-}
-
-/* Backup agent information before force deleting */
-void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
-{
-    char *path_backup;
-    char path_src[OS_FLSIZE];
-    char path_dst[OS_FLSIZE];
-
-    time_t timer = time(NULL);
-    int status = 0;
-
-    path_backup = OS_CreateBackupDir(id, name, ip, timer);
-
-    if (!path_backup) {
-        merror("Couldn't create backup directory.");
-        return;
-    }
-
-    /* agent-info */
-    snprintf(path_src, OS_FLSIZE, "%s/%s-%s", AGENTINFO_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
-    status += link(path_src, path_dst);
-
-    /* rootcheck */
-    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->rootcheck", ROOTCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/rootcheck", path_backup);
-    status += link(path_src, path_dst);
-
-    /* agent-group */
-    snprintf(path_src, OS_FLSIZE, "%s/%s", GROUPS_DIR, id);
-    snprintf(path_dst, OS_FLSIZE, "%s/agent-group", path_backup);
-    status += link(path_src, path_dst);
-
-    if (status < 0) {
-        mdebug1("Couldn't create some backup files.");
-
-        if (status == -7) {
-            mdebug1("Backup directory empty. Removing %s", path_backup);
-            rmdir(path_backup);
-        }
-    }
-
-    free(path_backup);
-}
-
-char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now) {
-    char path[OS_FLSIZE + 1];
-    char timestamp[40];
-    struct tm tm_result = { .tm_sec = 0 };
-
-    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror("Unspecified uid or gid.");
-        return NULL;
-    }
-
-    /* Directory for year ^*/
-
-    strftime(timestamp, 40, "%Y", localtime_r(&now, &tm_result));
-    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
-
-    if (IsDir(path) != 0) {
-        if (mkdir(path, 0750) < 0 || chmod(path, 0750) < 0 || chown(path, uid, gid) < 0) {
-            return NULL;
-        }
-    }
-
-    /* Directory for month */
-
-    strftime(timestamp, 40, "%Y/%b", localtime_r(&now, &tm_result));
-    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
-
-    if (IsDir(path) != 0) {
-        if (mkdir(path, 0750) < 0 || chmod(path, 0750) < 0 || chown(path, uid, gid) < 0) {
-            return NULL;
-        }
-    }
-
-    /* Directory for day */
-
-    strftime(timestamp, 40, "%Y/%b/%d", localtime_r(&now, &tm_result));
-    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
-
-    if (IsDir(path) != 0) {
-        if (mkdir(path, 0750) < 0 || chmod(path, 0750) < 0 || chown(path, uid, gid) < 0) {
-            return NULL;
-        }
-    }
-
-    /* Directory for agent */
-
-    int acount = 1;
-    char tag[10] = { 0 };
-
-    while (1) {
-        snprintf(path, OS_FLSIZE, "%s/%s/%s-%s-%s%s", AGNBACKUP_DIR, timestamp, id, name, ip, tag);
-
-        if (IsDir(path) != 0) {
-            if (mkdir(path, 0750) < 0 || chmod(path, 0750) < 0 || chown(path, uid, gid) < 0) {
-                return NULL;
-            } else {
-                break;
-            }
-        } else {
-            if (++acount > MAX_TAG_COUNTER) {
-                return NULL;
-            } else {
-                snprintf(tag, 10, "-%03d", acount);
-            }
-        }
-    }
-
-    char *retval;
-    os_strdup(path, retval);
-    return retval;
-}
-
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now)
 {
     File file;
@@ -905,22 +771,5 @@ void FormatID(char *id) {
 
         if (!*end)
             sprintf(id, "%03d", number);
-    }
-}
-
-/* Load gid and uid.
- * Call before OS_BackupAgentInfo(), OS_BackupAgentInfo_ID() or OS_CreateBackupDir().
- * Should be called before chroot().
- * Returns 0 on success or -1 on failure.
- */
-int OS_LoadUid() {
-    uid = Privsep_GetUser(USER);
-    gid = Privsep_GetGroup(GROUPGLOBAL);
-
-    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror(USER_ERROR, USER, GROUPGLOBAL, strerror(errno), errno);
-        return -1;
-    } else {
-        return 0;
     }
 }
