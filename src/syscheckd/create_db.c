@@ -83,7 +83,7 @@ void fim_scan() {
 
 
 #ifdef WIN32
-        os_winreg_check();
+    os_winreg_check();
 #endif
     if (syscheck.file_limit_enabled) {
         w_mutex_lock(&syscheck.fim_entry_mutex);
@@ -93,11 +93,7 @@ void fim_scan() {
 
     check_deleted_files();
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-    fim_db_set_all_unscanned(syscheck.database);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    if (syscheck.file_limit_enabled && !syscheck.database->full && (nodes_count >= syscheck.file_limit)) {
+    if (syscheck.file_limit_enabled && (nodes_count >= syscheck.file_limit)) {
         it = 0;
 
         w_mutex_lock(&syscheck.fim_scan_mutex);
@@ -110,22 +106,18 @@ void fim_scan() {
             fim_checker(syscheck.dir[it], item, NULL, 0);
             it++;
             os_free(item);
-
-            w_mutex_lock(&syscheck.fim_entry_mutex);
-            nodes_count = fim_db_get_count_entry_path(syscheck.database);
-            w_mutex_unlock(&syscheck.fim_entry_mutex);
         }
 
         w_mutex_unlock(&syscheck.fim_scan_mutex);
 
 #ifdef WIN32
-        if (nodes_count < syscheck.file_limit) {
+        if (!syscheck.database->full) {
             os_winreg_check();
         }
 #endif
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-    fim_db_set_all_unscanned(syscheck.database);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
+        w_mutex_lock(&syscheck.fim_entry_mutex);
+        fim_db_set_all_unscanned(syscheck.database);
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
     }
 
     gettime(&end);
