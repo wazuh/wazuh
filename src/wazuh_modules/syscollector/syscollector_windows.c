@@ -31,6 +31,7 @@ typedef NTSTATUS(WINAPI *tNTQSI)(ULONG SystemInformationClass, PVOID SystemInfor
 
 static bool found_hotfix_error(HKEY hKey);
 static bool valid_hotfix_status(HKEY hKey);
+static char * parse_Rollup_hotfix(HKEY hKey);
 hw_info *get_system_windows();
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 
@@ -992,14 +993,20 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
                     continue;
                 }
 
-                RegCloseKey(subKey);
-
                 char *hotfix = *hotfix_regex->d_sub_strings;
                 char *extension;
 
-                if (extension = strchr(hotfix, '_'), extension) {
+                if (strstr(hotfix, "RollupFix")) {
+                    if (hotfix = parse_Rollup_hotfix(subKey), hotfix == NULL) {
+                        RegCloseKey(subKey);
+                        continue;
+                    }
+                
+                } else if (extension = strchr(hotfix, '_'), extension) {
                     *extension = '\0';
                 }
+
+                RegCloseKey(subKey);
 
                 // Ignore the hotfix if it is the same as the previous one
                 if (!strcmp(hotfix, prev_hotfix)) {
@@ -1042,6 +1049,30 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
 
         }
     }
+}
+
+char * parse_Rollup_hotfix(HKEY hKey) {
+    DWORD dataSize = MAXSTR;
+    char value[MAXSTR + 1];
+    LONG result;
+    
+    result = RegQueryValueEx(hKey, "InstallLocation", NULL, NULL, (LPBYTE)value, &dataSize);  
+    
+    if (result != ERROR_SUCCESS ) {
+        mtdebug2(WM_SYS_LOGTAG, "Error reading 'InstallLocation' from Windows registry. (Error %u)",(unsigned int)result);
+        return NULL;
+    }
+
+    char *hotfix = NULL;
+    char *start = NULL;
+    char *end = NULL;
+
+    if ((start = strstr(value, "KB")) != NULL && (end = strstr(start, "-")) != NULL) {
+        *end = '\0';
+        os_strdup(start, hotfix);
+    }
+
+    return hotfix;
 }
 
 // Check if any error ocurred at installation time.
