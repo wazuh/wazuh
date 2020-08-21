@@ -2,27 +2,31 @@
   {
     "id": "1",
     "name": "Initial",
-    "rule": {
-      "FIND$": {
-        "name": "Bill"
+    "rules": [
+      {
+        "FIND$": {
+          "name": "Bill"
+        }
       }
-    }
+    ]
   },
   {
     "id": "2",
     "name": "First",
-    "rule": {
-      "FIND": {
-        "r'^auth[a-zA-Z]+$'": [
-          "administrator"
-        ]
+    "rules": [
+      {
+        "FIND": {
+          "r'^auth[a-zA-Z]+$'": [
+            "administrator"
+          ]
+        }
       }
-    }
+    ]
   },
   {
     "id": "3",
     "name": "Second",
-    "rule": {
+    "rules": [{
       "OR": [
         {
           "FIND$": {
@@ -40,12 +44,12 @@
           ]
         }
       ]
-    }
+    }]
   },
   {
     "id": "4",
     "name": "Third",
-    "rule": {
+    "rules": [{
       "AND": [
         {
           "MATCH": {
@@ -87,12 +91,12 @@
           ]
         }
       ]
-    }
+    }]
   },
   {
     "id": "5",
     "name": "Fourth",
-    "rule": {
+    "rules": [{
       "AND": [
         {
           "MATCH": {
@@ -122,8 +126,10 @@
                 },
                 "OR": [
                   {
-                    "authLevel": ["administrator"],
-                    "department": ["Technical"]
+                    "MATCH": {
+                      "authLevel": ["administrator"],
+                      "department": ["Technical"]
+                    }
                   }
                 ]
               }
@@ -131,12 +137,12 @@
           ]
         }
       ]
-    }
+    }]
   },
   {
     "id": "6",
     "name": "Fifth",
-    "rule": {
+    "rules": [{
       "OR": [
         {
           "AND": [
@@ -184,12 +190,12 @@
           ]
         }
       ]
-    }
+    }]
   },
   {
     "id": "7",
     "name": "Sixth",
-    "rule": {
+    "rules": [{
       "AND": [
         {
           "AND": [
@@ -245,12 +251,12 @@
           ]
         }
       ]
-    }
+    }]
   },
   {
     "id": "8",
     "name": "Seventh",
-    "rule": {
+    "rules": [{
       "AND": [
         {
           "AND": [
@@ -305,26 +311,28 @@
           ]
         }
       ]
-    }
+    }]
   },
   {
     "id": "9",
     "name": "Eighth",
-    "rule": {
-      "AND": [
-        {
-          "FIND":
-            {
-              "last": "not too deep"
-            }
-        }
-      ]
-    }
+    "rules": [
+      {
+        "AND": [
+          {
+            "FIND":
+              {
+                "last": "not too deep"
+              }
+          }
+        ]
+      }
+    ]
   },
   {
     "id": "10",
     "name": "Nineth",
-    "rule": {
+    "rules": [{
       "AND": [
         {
           "FIND$":
@@ -333,12 +341,12 @@
             }
         }
       ]
-    }
+    }]
   },
   {
     "id": "11",
     "name": "Tenth",
-    "rule": {
+    "rules": [{
       "AND": [
         {
           "MATCH":
@@ -367,12 +375,12 @@
             }
         }
       ]
-    }
+    }]
   },
   {
     "id": "12",
     "name": "Eleventh",
-    "rule": {
+    "rules": [{
       "AND": [
         {
           "MATCH":
@@ -401,12 +409,12 @@
             }
         }
       ]
-    }
+    }]
   },
   {
     "id": "13",
     "name": "Twelfth",
-    "rule": {
+    "rules": [{
       "AND": [
         {
           "FIND":
@@ -433,12 +441,12 @@
             }
         }
       ]
-    }
+    }]
   },
   {
     "id": "14",
     "name": "Thirteenth",
-    "rule": {
+    "rules": [{
       "AND": [
         {
           "MATCH":
@@ -477,55 +485,82 @@
           }
         }
       ]
-    }
+    }]
   },
   {
     "id": "15",
     "name": "Fourteenth",
-    "rule": {
-      "AND": [
-        {
-          "FIND$":
-            {
-              "deep": {
-                "deeep": [
-                  {
-                    "moredeep": [
-                      {
-                        "toodeep": [
-                          {
-                            "nocomments": {
-                              "last": "not too deep"
+    "rules": [
+      {
+        "AND": [
+          {
+            "FIND$":
+              {
+                "deep": {
+                  "deeep": [
+                    {
+                      "moredeep": [
+                        {
+                          "toodeep": [
+                            {
+                              "nocomments": {
+                                "last": "not too deep"
+                              }
                             }
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
               }
+          },
+          {
+            "MATCH": {
+              "user": "r'^[a-z]{2}ep"
             }
-        },
-        {
-          "MATCH": {
-            "user": "r'^[a-z]{2}ep"
+          },
+          {
+            "NOT": {
+              "user": "peed"
+            }
           }
-        },
-        {
-          "NOT": {
-            "user": "peed"
-          }
-        }
-      ]
-    }
+        ]
+      }
+    ]
   },
   {
     "id": "16",
     "name": "Fifteenth",
-    "rule": {
-      "FIND$": {
-        "name": "r'^[[a-z]*'"
+    "rules": [
+      {
+        "FIND$": {
+          "name": "r'^[[a-z]*'"
+        }
       }
-    }
+    ]
+  },
+  {
+    "id": "17",
+    "name": "Sixteenth",
+    "rules": [
+      {
+        "FIND$": {
+          "test": "Old"
+        }
+      },
+      {
+        "FIND": {
+          "r'^auth[a-zA-Z]+$'": [
+            "testing"
+          ]
+        }
+      },
+      {
+        "FIND": {
+          "authLevel": ["basic1"]
+        }
+      }
+    ]
   }
 ]
