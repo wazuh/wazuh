@@ -52,8 +52,8 @@ INSERT INTO roles VALUES(104,'normalUser','1970-01-01 00:00:00');
 INSERT INTO roles VALUES(105,'ossec','1970-01-01 00:00:00');
 
 /* Default rules */
-INSERT INTO rules VALUES(1,'wui_admin','{"FIND": {"roles": ["all_access"]}}','1970-01-01 00:00:00');
-INSERT INTO rules VALUES(2,'wui_readonly','{"FIND": {"roles": ["readonly"]}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(1,'wui_elastic_admin','{"FIND": {"username": ["elastic"]}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(2,'wui_opendistro_admin','{"FIND": {"user_name": ["admin"]}}','1970-01-01 00:00:00');
 
 /* Testing */
 INSERT INTO rules VALUES(100,'rule1','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator"]}}','1970-01-01 00:00:00');

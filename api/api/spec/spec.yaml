@@ -12726,7 +12726,7 @@ paths:
     post:
       tags:
       - security
-      summary: "Authorization context authentication to get an access token"
+      summary: "Auth_context based authentication to get an access token"
       description: "This method should be called to get an API token. This token will expire at some time"
       operationId: api.controllers.security_controller.login_user
       parameters:
@@ -13149,7 +13149,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: "Return a list of rules"
+          description: "Return a list of security rules"
           content:
             application/json:
               schema:
@@ -13189,8 +13189,8 @@ paths:
     post:
       tags:
         - security
-      summary: "Add a new rule to the system"
-      description: "Add a new rule, all fields need to be specified"
+      summary: "Add a new security rule to the system"
+      description: "Add a new security rule"
       operationId: api.controllers.security_controller.add_rule
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:create'
@@ -13210,7 +13210,7 @@ paths:
                   definition: "normalRule"
       responses:
         '200':
-          description: "Return the information of the new rule"
+          description: "Return the information of the new security rule"
           content:
             application/json:
               schema:
@@ -13251,8 +13251,8 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a list of rules or all rules in the system"
-      description: "Policies linked to roles are not going to be removed"
+      summary: "Delete a list of security rules or all security rules in the system"
+      description: "Roles linked to rules are not going to be removed"
       operationId: api.controllers.security_controller.remove_rules
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
@@ -13300,8 +13300,8 @@ paths:
     put:
       tags:
         - security
-      summary: "Modify a rule"
-      description: "Modify a rule by specifying its ID"
+      summary: "Modify a security rule"
+      description: "Modify a security rule by specifying its ID"
       operationId: api.controllers.security_controller.update_rule
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
@@ -13321,7 +13321,7 @@ paths:
                   definition: "normalRule"
       responses:
         '200':
-          description: "User updated successful"
+          description: "Security rule updated successfully"
           content:
             application/json:
               schema:
@@ -13734,8 +13734,8 @@ paths:
     post:
       tags:
         - security
-      summary: "Create a relation between one role and one or more rules"
-      description: "Create a specify relation role-rule, one role may have multiples rules"
+      summary: "Create a relation between one role and one or more security rules"
+      description: "Create a specific role-rule relation. One role may have multiple security rules"
       operationId: api.controllers.security_controller.set_role_rule
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
@@ -13782,8 +13782,8 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a specific relation role-rule"
-      description: "Delete a specific relation role-rule"
+      summary: "Delete a specific role-rule relation"
+      description: "Delete a specific role-rule relation"
       operationId: api.controllers.security_controller.remove_role_rule
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'

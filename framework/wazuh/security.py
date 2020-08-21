@@ -449,6 +449,18 @@ def update_policy(policy_id=None, name=None, policy=None):
                   post_proc_kwargs={'exclude_codes': [4022]})
 def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+    """Return information from all the security rules. It does not return information from its associated roles.
+
+    :param rule_ids: List of rule ids (None for all rules)
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
     affected_items = list()
     result = AffectedItemsWazuhResult(none_msg='No rules were shown',
                                       some_msg='Some rules could not be shown',
@@ -474,7 +486,7 @@ def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'])
 def add_rule(name=None, rule=None):
-    """Creates a role in the system
+    """Create a rule in the system.
 
     :param name: The new rule name
     :param rule: The new rule
@@ -498,9 +510,9 @@ def add_rule(name=None, rule=None):
 @expose_resources(actions=['security:delete'], resources=['rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4022, 4008]})
 def remove_rules(rule_ids=None):
-    """Removes a certain rule from the system
+    """Remove a rule from the system.
 
-    :param rule_ids: List of rules ids (None for all rules)
+    :param rule_ids: List of rule ids (None for all rules)
     :return Result of operation
     """
     result = AffectedItemsWazuhResult(none_msg='No rule were deleted',
@@ -530,7 +542,7 @@ def remove_rules(rule_ids=None):
 
 @expose_resources(actions=['security:update'], resources=['rule:id:{rule_id}'])
 def update_rule(rule_id=None, name=None, rule=None):
-    """Updates a rule in the system
+    """Update a rule from the system.
 
     :param rule_id: Rule id to be updated
     :param name: The new name
@@ -673,19 +685,11 @@ def remove_user_role(user_id, role_ids):
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4008, 4022, 4023]})
 def set_role_rule(role_id, rule_ids):
-    """Create a relationship between a role and a rule
+    """Create a relationship between a role and one or more rules.
 
-    Parameters
-    ----------
-    role_id : int
-        The new role_id
-    rule_ids : list of int
-        List of rule IDs
-
-    Returns
-    -------
-    dict
-        Role-Rules information
+    :param role_id: The new role_id
+    :param rule_ids: List of rule ids
+    :return Result of operation
     """
     result = AffectedItemsWazuhResult(none_msg=f'No link created to role {role_id[0]}',
                                       some_msg=f'Some rules could not be linked to role {role_id[0]}',
@@ -718,10 +722,10 @@ def set_role_rule(role_id, rule_ids):
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_id}', 'rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4008, 4022, 4024]})
 def remove_role_rule(role_id, rule_ids):
-    """Removes a relationship between a role and one or more rules.
+    """Remove a relationship between a role and one or more rules.
 
     :param role_id: The new role_id
-    :param rule_ids: List of rules ids
+    :param rule_ids: List of rule ids
     :return Result of operation
     """
     result = AffectedItemsWazuhResult(none_msg=f'No rule unlinked from role {role_id[0]}',

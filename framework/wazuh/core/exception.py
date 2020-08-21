@@ -499,8 +499,8 @@ class WazuhException(Exception):
         4020: {'message': 'Invalid endpoint specified',
                'remediation': 'Valid endpoints are: '},
         4021: 'Error reading security configuration',
-        4022: {'message': 'The specified rule does not exist',
-               'remediation': 'Please, create the specified rule with the endpoint POST /security/rules'},
+        4022: {'message': 'The specified security rule does not exist',
+               'remediation': 'Please, create the specified security rule with the endpoint POST /security/rules'},
         4023: {'message': 'The specified role-rule relation already exist'},
         4024: {'message': 'The specified role-rule relation does not exist',
                'remediation': 'Please, create the specified role-rules relation with the endpoint '

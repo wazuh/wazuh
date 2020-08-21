@@ -37,7 +37,7 @@ admin_policy_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 1
 
 # Required rules for role
 # Key: Role - Value: Rules
-required_rules_for_role = {1: [1], 2: [2]}
+required_rules_for_role = {1: [1, 2]}
 required_rules = {required_rule for r in required_rules_for_role.values() for required_rule in r}
 
 
@@ -262,7 +262,7 @@ class Roles(_Base):
         return list(self.policies)
 
     def to_dict(self):
-        """Return the information of one role and the policies and rules that has assigned
+        """Return the information of one role and the users, policies and rules assigned to it.
 
         :return: Dict with the information
         """
@@ -278,8 +278,9 @@ class Rules(_Base):
     Rules table. In this table we are going to save all the information about the rules. The data that we will
     store is:
         id: ID of the rule, this is self assigned
+        name: Name of the rule
         rule: Rule body
-        created_at: Date of the policy creation
+        created_at: Date of the rule creation
     """
     __tablename__ = "rules"
 
@@ -811,8 +812,7 @@ class RolesManager:
 
 class RulesManager:
     """
-        This class is the manager of the Rules, this class provides
-        all the methods needed for the rules administration.
+        This class is Rules manager. This class provides all the methods needed for the rules administration.
         """
 
     def get_rule(self, rule_id: int):
@@ -836,7 +836,7 @@ class RulesManager:
             return SecurityError.RULE_NOT_EXIST
 
     def get_rule_by_name(self, rule_name: str):
-        """Get the information about one rule specified by id.
+        """Get the information about one rule specified by name.
 
         Parameters
         ----------
@@ -892,7 +892,7 @@ class RulesManager:
             return SecurityError.ALREADY_EXIST
 
     def delete_rule(self, rule_id: int):
-        """Delete an existent rule in the system.
+        """Delete an existent rule from the system specified by its ID.
 
         Parameters
         ----------
@@ -920,7 +920,7 @@ class RulesManager:
             return False
 
     def delete_rule_by_name(self, rule_name: str):
-        """Delete an existent rule in the system.
+        """Delete an existent rule from the system specified by its name.
 
         Parameters
         ----------
@@ -943,11 +943,11 @@ class RulesManager:
             return False
 
     def delete_all_rules(self):
-        """Delete all existen rules in the system.
+        """Delete all existent rules from the system.
 
         Returns
         -------
-        List of deleted roles -> Success | False -> Failure
+        List of deleted rules -> Success | False -> Failure
         """
         try:
             list_rules = list()
@@ -965,7 +965,7 @@ class RulesManager:
             return False
 
     def update_rule(self, rule_id: int, name: str, rule: dict):
-        """Update an existen rule in the system..
+        """Update an existent rule in the system.
 
         Parameters
         ----------
@@ -978,7 +978,7 @@ class RulesManager:
 
         Returns
         -------
-        True -> Success | Invalid rule | Name already in use | Rule not exists
+        True -> Success | Invalid rule | Name already in use | Rule already in use | Rule not exists
         """
         try:
             rule_to_update = self.session.query(Rules).filter_by(id=rule_id).first()
@@ -1750,7 +1750,7 @@ class RolesPoliciesManager:
 
 class RolesRulesManager:
     """
-    This class is the manager of the relationship between the roles and the rules, this class provides
+    This class is the manager of the relationships between the roles and the rules. This class provides
     all the methods needed for the roles-rules administration.
     """
     def add_rule_to_role(self, rule_id: int, role_id: int):
@@ -1786,7 +1786,7 @@ class RolesRulesManager:
             return SecurityError.INVALID
 
     def get_all_rules_from_role(self, role_id: int):
-        """Get all the rules related with the specified role.
+        """Get all the rules related to the specified role.
 
         Parameters
         ----------
@@ -1808,7 +1808,7 @@ class RolesRulesManager:
             return False
 
     def get_all_roles_from_rule(self, rule_id: int):
-        """Get all the roles related with the specified rule.
+        """Get all the roles related to the specified rule.
 
         Parameters
         ----------
@@ -1830,7 +1830,7 @@ class RolesRulesManager:
             return False
 
     def exist_role_rule(self, role_id: int, rule_id: int):
-        """Check if the relationship role-rule exists.
+        """Check if the role-rule relationship exists.
 
         Parameters
         ----------
@@ -1952,7 +1952,7 @@ class RolesRulesManager:
             return False
 
     def replace_rule_role(self, rule_id: int, current_role_id: int, new_role_id: int):
-        """Replace one existing relationship with another one.
+        """Replace one existing role_rule relationship with another one.
 
         Parameters
         ----------

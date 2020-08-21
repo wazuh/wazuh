@@ -397,12 +397,13 @@ async def update_role(request, role_id: int, pretty: bool = False, wait_for_comp
 
 async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                     offset: int = 0, limit: int = None, search: str = None, sort: str = None):
-    """
+    """Get information about the security rules in the system.
+
     Parameters
     ----------
     request : connexion.request
     rule_ids : list, optional
-        List of roles ids to be obtained
+        List of rule ids to be obtained
     pretty : bool, optional
         Show results in human-readable format
     wait_for_complete : bool, optional
@@ -419,7 +420,7 @@ async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_f
 
     Returns
     -------
-    Roles information
+    Rules information
     """
     f_kwargs = {'rule_ids': rule_ids, 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
@@ -508,13 +509,13 @@ async def update_rule(request, rule_id: int, pretty: bool = False, wait_for_comp
 
 
 async def remove_rules(request, rule_ids: list = None, pretty: bool = False, wait_for_complete: bool = False):
-    """Remove a list of rules in the system.
+    """Remove a list of rules from the system.
 
     Parameters
     ----------
     request : connexion.request
     rule_ids : list, optional
-        List of policies ids to be deleted
+        List of rule ids to be deleted
     pretty : bool, optional
         Show results in human-readable format
     wait_for_complete : bool, optional
@@ -522,7 +523,7 @@ async def remove_rules(request, rule_ids: list = None, pretty: bool = False, wai
 
     Returns
     -------
-    Two list with deleted rules and failed ones.
+    Two lists with deleted rules and failed ones.
     """
     if 'all' in rule_ids:
         rule_ids = None
@@ -876,8 +877,8 @@ async def remove_role_rule(request, role_id: int, rule_ids: list, pretty: bool =
     ----------
     request : request.connexion
     role_id : int
-    policy_ids : list
-        List of policy ids
+    rule_ids : list
+        List of rule ids
     pretty : bool, optional
         Show results in human-readable format
     wait_for_complete : bool, optional
