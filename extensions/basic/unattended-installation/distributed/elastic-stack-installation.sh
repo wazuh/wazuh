@@ -230,7 +230,13 @@ createCertificates() {
     startService "elasticsearch"
     if [[ -n "$single" ]] || [[ -n "$c" ]]
     then
-        echo "Initializing Elasticsearch..."
+        echo "Initializing Elasticsearch...(this may take a while)"
+        until grep '\Security is enabled' /var/log/elasticsearch/elasticsearch.log > /dev/null
+        do
+            echo -ne $char
+            sleep 10
+        done
+        echo $'\nGenerating passwords...'
         passwords=$(/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b)
         password=$(echo $passwords | awk 'NF{print $NF; exit}')
         elk=$(awk -F'network.host: ' '{print $2}' ~/config.yml | xargs)
