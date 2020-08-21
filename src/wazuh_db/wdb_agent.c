@@ -21,7 +21,6 @@
 #define WDBOUTPUT_SIZE OS_MAXSTR
 
 static const char *global_db_queries[] = {
-    [SQL_UPDATE_AGENT_KEEPALIVE] = "global sql UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), sync_status = %d WHERE id = %d;",
     [SQL_DELETE_AGENT] = "global sql DELETE FROM agent WHERE id = %d;",
     [SQL_SELECT_AGENT] = "global sql SELECT name FROM agent WHERE id = %d;",
     [SQL_SELECT_AGENT_GROUP] = "global sql SELECT `group` FROM agent WHERE id = %d;",
@@ -52,7 +51,7 @@ static const char *global_db_accesses[] = {
     [WDB_UPDATE_AGENT_VERSION] = "global update-agent-version %s",
     [WDB_GET_AGENT_LABELS] = "global get-labels %d",
     [WDB_SET_AGENT_LABELS] = "global set-labels %d %s",
-    [WDB_UPDATE_AGENT_KEEPALIVE] = "",
+    [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
     [WDB_DELETE_AGENT] = "",
     [WDB_SELECT_AGENT] = "",
     [WDB_SELECT_AGENT_GROUP] = "",
@@ -250,12 +249,7 @@ int wdb_update_agent_version (int id,
     return result;
 }
 
-/**
- * @brief Returns a JSON with all the agent's labels.
- * 
- * @param[in] id Id of the agent for whom the labels are requested.
- * @return JSON* with the labels on success or NULL on failure.
- */
+
 cJSON* wdb_get_agent_labels(int id) {
     cJSON *root = NULL;
     // Making use of a big buffer for the output because
@@ -274,13 +268,7 @@ cJSON* wdb_get_agent_labels(int id) {
     return root;
 }
 
-/**
- * @brief Update agent's labels.
- * 
- * @param[in] id Id of the agent for whom the labels must be updated.
- * @param[in] labels String with the key-values separated by EOL.
- * @return OS_SUCCESS on success or OS_INVALID on failure.
- */
+
 int wdb_set_agent_labels(int id, const char *labels) {
     int result = 0;
     // Making use of a big buffer for the query because it
@@ -313,19 +301,35 @@ int wdb_set_agent_labels(int id, const char *labels) {
     return result;
 }
 
-/* Update agent's last keepalive time. Sends a request to Wazuh-DB. Returns OS_SUCCESS or -1 on error. */
+
 int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status) {
     int result = 0;
+    cJSON *data_in = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
-    char *keepalive_format = "%s";
+    char *payload = NULL;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_KEEPALIVE], keepalive_format, sync_status, id);
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddNumberToObject(data_in, "sync_status", sync_status);
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_accesses[WDB_UPDATE_AGENT_KEEPALIVE], cJSON_PrintUnformatted(data_in));
+
+    cJSON_Delete(data_in);
 
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                result = OS_INVALID;
+            }
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");

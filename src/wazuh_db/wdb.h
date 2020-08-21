@@ -131,6 +131,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_LABELS_GET,
     WDB_STMT_GLOBAL_LABELS_DEL,
     WDB_STMT_GLOBAL_LABELS_SET,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
@@ -139,7 +140,6 @@ typedef enum wdb_stmt {
 } wdb_stmt;
 
 typedef enum global_db_query {
-    SQL_UPDATE_AGENT_KEEPALIVE,
     SQL_DELETE_AGENT,
     SQL_SELECT_AGENT,
     SQL_SELECT_AGENT_GROUP,
@@ -459,7 +459,13 @@ cJSON* wdb_get_agent_labels(int id);
  */
 int wdb_set_agent_labels(int id, const char *labels);
 
-/* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+/**
+ * @brief Update agent's last keepalive ond modifies the cluster synchronization status.
+ * 
+ * @param[in] id Id of the agent for whom the keepalive must be updated.
+ * @param[in] sync_status Enumeration with the cluster synchronization status to be set.
+ * @return OS_SUCCESS on success or OS_INVALID on failure.
+ */
 int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status);
 
 /* Update agent group. It opens and closes the DB. Returns 0 on success or -1 on error. */
@@ -792,8 +798,7 @@ int wdb_parse_global_update_agent_version(wdb_t * wdb, char * input, char * outp
  * @param wdb the global struct database.
  * @param input String with 'agent_id'.
  * @param output Response of the query in JSON format.
- * @retval 0 Success: response contains the value.
- * @retval -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
 
@@ -803,10 +808,19 @@ int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
  * @param wdb the global struct database.
  * @param input String with 'agent_id labels_string'.
  * @param output Response of the query.
- * @retval 0 Success: response contains the value.
- * @retval -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse the update agent keepalive request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with the agent data in JSON format.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse sync-agent-info-get params and set next ID to iterate on further calls.
@@ -1007,6 +1021,16 @@ int wdb_global_del_agent_labels(wdb_t *wdb, int id);
  * @retval -1 On error.
  */
 int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
+
+/**
+ * @brief Function to update an agent keepalive and the synchronization status.
+ * 
+ * @param wdb The Global struct database.
+ * @param id The agent ID
+ * @param status The value of sync_status
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, wdb_sync_status_t status);
 
 /**
  * @brief Function to update sync_status of a particular agent.
