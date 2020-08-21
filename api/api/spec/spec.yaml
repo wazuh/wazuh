@@ -3679,7 +3679,7 @@ components:
     file_format:
       in: query
       name: format
-      description: "Select output format to return the file. JSON will format the file in JSON format and XML will return the XML raw file in a string"
+      description: "Filter by file format. For example 'deb' will output deb files."
       schema:
         type: string
         format: alphanumeric
@@ -6722,6 +6722,8 @@ paths:
             $ref: '#/components/responses/ResponseError'
           '401':
             $ref: '#/components/responses/UnauthorizedResponse'
+          '403':
+            $ref: '#/components/responses/PermissionDeniedResponse'
           '405':
             $ref: '#/components/responses/InvalidHTTPMethodResponse'
           '429':
@@ -12703,6 +12705,14 @@ paths:
               example: "<generated_token>"
         '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -12721,6 +12731,14 @@ paths:
                 message: "User wazuh logout correctly."
         '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/user/authenticate/run_as:
     post:
@@ -13620,7 +13638,7 @@ paths:
       tags:
         - security
       summary: "Create a relation between one role and one or more policies"
-      description: "Create a specify relation role-policy, one role may have multiples policies"
+      description: "Create a specified relation role-policy, one role may have multiples policies"
       operationId: api.controllers.security_controller.set_role_policy
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
@@ -13687,8 +13705,8 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a specify relation role-policy"
-      description: "Delete a specify relation role-policy"
+      summary: "Delete a specified relation role-policy"
+      description: "Delete a specified relation role-policy"
       operationId: api.controllers.security_controller.remove_role_policy
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
@@ -13827,8 +13845,8 @@ paths:
     post:
       tags:
         - security
-      summary: "Create a specify relation between one user and one role"
-      description: "Create a specify relation role-policy, one user may have multiples roles"
+      summary: "Create a specified relation between one user and one role"
+      description: "Create a specified relation role-policy, one user may have multiples roles"
       operationId: api.controllers.security_controller.set_user_role
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
@@ -13876,8 +13894,8 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a specify relation user-roles"
-      description: "Delete a specify relation user-roles"
+      summary: "Delete a specified relation user-roles"
+      description: "Delete a specified relation user-roles"
       operationId: api.controllers.security_controller.remove_user_role
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
@@ -13982,6 +14000,14 @@ paths:
                   message: Current user information was shown
         '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/users:
     get:
@@ -14085,7 +14111,7 @@ paths:
                 - password
       responses:
         '200':
-          description: "User created successful"
+          description: "User created successfully"
           content:
             application/json:
               schema:
