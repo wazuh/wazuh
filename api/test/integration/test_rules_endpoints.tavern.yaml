@@ -179,6 +179,22 @@ stages:
       json:
         <<: *invalid_select
 
+  - name: Show lists using select and specifying a non-existent file in the filename parameter
+    request:
+      verify: False
+      <<: *general_rules_request
+      params:
+        select: 'id'
+        filename: 'invalid'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
   - name: Search in rules
     request:
       verify: False
