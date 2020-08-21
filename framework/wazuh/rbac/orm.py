@@ -266,16 +266,11 @@ class Roles(_Base):
 
         :return: Dict with the information
         """
-        users = list()
-        for user in self.users:
-            users.append(str(user.get_user()['id']))
-
         with RolesPoliciesManager() as rpm:
-            with RolesRulesManager() as rrum:
-                return {'id': self.id, 'name': self.name,
-                        'policies': [policy.id for policy in rpm.get_all_policies_from_role(role_id=self.id)],
-                        'rules': [rule.id for rule in rrum.get_all_rules_from_role(role_id=self.id)],
-                        'users': users}
+            return {'id': self.id, 'name': self.name,
+                    'policies': [policy.id for policy in rpm.get_all_policies_from_role(role_id=self.id)],
+                    'users': [user.id for user in self.users],
+                    'rules': [rule.id for rule in self.rules]}
 
 
 class Rules(_Base):
@@ -361,8 +356,9 @@ class Policies(_Base):
 
         :return: Dict with the information
         """
-        return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy),
-                'roles': [role.id for role in self.roles]}
+        with RolesPoliciesManager() as rpm:
+            return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy),
+                    'roles': [role.id for role in rpm.get_all_roles_from_policy(policy_id=self.id)]}
 
 
 class TokenManager:
