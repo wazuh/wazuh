@@ -751,7 +751,7 @@ async def revoke_all_tokens(request):
 
     dapi = DistributedAPI(f=security.wrapper_revoke_tokens,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master' if nodes is not None else 'local_only',
+                          request_type='distributed_master' if nodes is not None else 'local_any',
                           is_async=False,
                           broadcasting=nodes is not None,
                           wait_for_complete=True,
@@ -799,7 +799,7 @@ async def security_revoke_tokens():
         nodes = None
 
     dapi = DistributedAPI(f=revoke_tokens,
-                          request_type='distributed_master' if nodes is not None else 'local_only',
+                          request_type='distributed_master' if nodes is not None else 'local_any',
                           is_async=False,
                           wait_for_complete=True,
                           broadcasting=nodes is not None,
