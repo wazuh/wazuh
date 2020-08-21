@@ -744,24 +744,26 @@ async def get_rbac_actions(pretty: bool = False, endpoint: str = None):
 async def revoke_all_tokens(request):
     """Revoke all tokens."""
     f_kwargs = {}
+
     nodes = await get_system_nodes()
+    if isinstance(nodes, Exception):
+        nodes = None
 
     dapi = DistributedAPI(f=security.wrapper_revoke_tokens,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
+                          request_type='distributed_master' if nodes is not None else 'local_any',
                           is_async=False,
-                          broadcasting=True,
+                          broadcasting=nodes is not None,
                           wait_for_complete=True,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    status = 200
     if type(data) == AffectedItemsWazuhResult and len(data.affected_items) == 0:
         raise_if_exc(WazuhPermissionError(4000, data.message))
 
-    return web.json_response(data=data, status=status, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 async def get_security_config(request, pretty=False, wait_for_complete=False):
@@ -792,18 +794,15 @@ async def get_security_config(request, pretty=False, wait_for_complete=False):
 
 async def security_revoke_tokens():
     """Revokes all tokens on all nodes after a change in security configuration."""
-    nodes = list()
-    try:
-        nodes = await get_system_nodes()
-    except WazuhInternalError as e:
-        if e.code != 3012:  # Cluster is disabled
-            raise e
+    nodes = await get_system_nodes()
+    if isinstance(nodes, Exception):
+        nodes = None
 
     dapi = DistributedAPI(f=revoke_tokens,
-                          request_type='distributed_master' if len(nodes) > 0 else 'local_master',
+                          request_type='distributed_master' if nodes is not None else 'local_any',
                           is_async=False,
                           wait_for_complete=True,
-                          broadcasting=len(nodes) > 0,
+                          broadcasting=nodes is not None,
                           logger=logger,
                           nodes=nodes
                           )
