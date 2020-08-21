@@ -125,7 +125,7 @@ def start(foreground, root, config_file):
                 strict_validation=True,
                 validate_responses=True,
                 pass_context_arg_name='request',
-                options={"middlewares": [set_user_name, security_middleware, response_postprocessing]})
+                options={"middlewares": [response_postprocessing, set_user_name, security_middleware]})
 
     # Enable CORS
     if cors['enabled']:

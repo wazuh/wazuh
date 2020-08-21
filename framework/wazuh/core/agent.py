@@ -16,14 +16,13 @@ from shutil import copyfile, rmtree
 from time import time, sleep
 
 import requests
-
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.ossec_queue import OssecQueue
-from wazuh.core.ossec_socket import OssecSocket, OssecSocketJSON
+from wazuh.core.wazuh_socket import OssecSocket, OssecSocketJSON
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, SQLiteBackend, WazuhDBBackend, safe_move
 
@@ -42,7 +41,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                               filters=filters, fields=Agent.fields, default_sort_field=default_sort_field,
                               default_sort_order='ASC', query=query, backend=backend,
                               min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'}, distinct=distinct)
+                              date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'},
+                              distinct=distinct)
         self.remove_extra_fields = remove_extra_fields
 
     def _filter_status(self, status_filter):
@@ -970,7 +970,8 @@ class Agent:
 
         return protocol
 
-    def _get_versions(self, wpk_repo=common.wpk_repo_url, version=None, use_http=False):
+    def _get_versions(self, wpk_repo=common.wpk_repo_url_4_x, version=None,
+                      use_http=False):
         """Generates a list of available versions for its distribution and version.
         """
         invalid_platforms = ["darwin", "solaris", "aix", "hpux", "bsd"]
@@ -981,8 +982,14 @@ class Agent:
             error = "The WPK for this platform is not available."
             raise WazuhInternalError(1713, extra_message=str(error))
 
+        if (version is None) or (WazuhVersion(version) >= WazuhVersion("v4.0.0")):
+            wpk_repo = common.wpk_repo_url_4_x
+        elif WazuhVersion(version) < WazuhVersion("v4.0.0"):
+            wpk_repo = common.wpk_repo_url_3_x
+
         protocol = self._get_protocol(wpk_repo, use_http)
-        if (version is None or WazuhVersion(version) >= WazuhVersion("v3.4.0")) and self.os['platform'] != "windows":
+
+        if (version is None or WazuhVersion(version) >= WazuhVersion("v3.4.0")) and (self.os['platform'] != "windows"):
             versions_url = protocol + wpk_repo + "linux/" + self.os['arch'] + "/versions"
         else:
             if self.os['platform'] == "windows":
@@ -1009,7 +1016,7 @@ class Agent:
 
         return versions
 
-    def _get_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, use_http=False):
+    def _get_wpk_file(self, wpk_repo=common.wpk_repo_url_4_x, debug=False, version=None, force=False, use_http=False):
         """
         Search latest Wazuh WPK file for its distribution and version.
         Downloads the WPK if it is not in the upgrade folder.
@@ -1043,7 +1050,8 @@ class Agent:
         agent_ver = self.version
 
         if manager_ver < WazuhVersion(agent_new_ver) and not force:
-            raise WazuhError(1717, extra_message="Manager: {0} / Agent: {1} -> {2}".format(manager_ver, agent_ver, agent_new_ver))
+            raise WazuhError(1717, extra_message="Manager: {0} / Agent: {1} -> {2}".format(manager_ver, agent_ver,
+                                                                                           agent_new_ver))
 
         if WazuhVersion(agent_ver) >= WazuhVersion(agent_new_ver) and not force:
             raise WazuhError(1749, extra_message="Agent: {0} -> {1}".format(agent_ver, agent_new_ver))
@@ -1122,7 +1130,8 @@ class Agent:
 
         return [wpk_file, sha1hash]
 
-    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None,
+    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url_4_x, debug=False, version=None, force=False,
+                       show_progress=None,
                        chunk_size=None, rl_timeout=-1, timeout=common.open_retries, use_http=False):
         """
         Send WPK file to agent.
@@ -1271,7 +1280,8 @@ class Agent:
             raise WazuhInternalError(1721, extra_message=self.os['name'])
 
         if wpk_repo is None:
-            wpk_repo = common.wpk_repo_url
+            wpk_repo = common.wpk_repo_url_4_x if not version or WazuhVersion(version) >= WazuhVersion(
+                "4.0.0") else common.wpk_repo_url_3_x
 
         if not wpk_repo.endswith('/'):
             wpk_repo = wpk_repo + '/'

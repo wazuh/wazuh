@@ -17,7 +17,7 @@ from xml.dom.minidom import parseString
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError, WazuhError
-from wazuh.core.ossec_socket import OssecSocket
+from wazuh.core.wazuh_socket import OssecSocket
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
 
@@ -761,6 +761,15 @@ def get_active_configuration(agent_id, component, configuration):
 
     if rec_msg_ok.startswith('ok'):
         msg = json.loads(rec_msg)
+
+        # Include password if auth->use_password enabled and authd.pass file exists
+        if msg.get('auth', {}).get('use_password') == 'yes':
+            try:
+                with open(os_path.join(common.ossec_path, "etc", "authd.pass"), 'r') as f:
+                    msg['authd.pass'] = f.read().rstrip()
+            except IOError:
+                pass
+
         return msg
     else:
         raise WazuhError(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg else 1116,

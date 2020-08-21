@@ -774,3 +774,19 @@ class WazuhResourceNotFound(WazuhError):
     """
     _default_type = "about:blank"
     _default_title = "Resource Not Found"
+
+
+class WazuhTooManyRequests(WazuhError):
+    """
+    This type of exception is raised as a controlled response to too many requests.
+    """
+    _default_type = "about:blank"
+    _default_title = "Too Many Requests"
+
+
+class WazuhNotAcceptable(WazuhError):
+    """
+    This type of exception is raised as a controlled response to a not acceptable request
+    """
+    _default_type = "about:blank"
+    _default_title = "Not Acceptable"
