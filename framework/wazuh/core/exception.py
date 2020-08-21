@@ -404,11 +404,11 @@ class WazuhException(Exception):
         3002: {'message': 'Error creating PID file'},
         3003: {'message': 'Error deleting PID file'},
         3004: {'message': 'Error in cluster configuration',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'
+               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
         3005: 'Error reading cluster JSON file',
         3006: {'message': 'Error reading cluster configuration',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'
+               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
         3007: 'Client.keys file received in master node',
         3008: 'Received invalid agent status',
@@ -417,8 +417,8 @@ class WazuhException(Exception):
         3010: 'Received the status/group of a non-existent agent',
         3011: 'Agent info file received in a worker node',
         3012: 'Cluster is not running',
-        3013: {'message': 'Cluster is disabled in `WAZUH_HOME/etc/ossec.conf`',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'
+        3013: {'message': 'Cluster is not running, it might be disabled in `WAZUH_HOME/etc/ossec.conf`',
+               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'
                },
         3015: 'Cannot access directory',
@@ -469,17 +469,17 @@ class WazuhException(Exception):
         4003: {'message': 'The specified rule is invalid',
                'remediation': "The rule must be in JSON format."},
         4004: {'message': 'The specified name is invalid'},
-        4005: {'message': 'The specified name or rule already exist'},
+        4005: {'message': 'The specified name or rule already exists'},
         4006: {'message': 'The specified policy is invalid',
                'remediation': 'The policy must be in JSON format and its keys must be "access", "resources" and'
                               ' "effect". The actions and resources must be split by ":". Example: agent:id:001'},
         4007: {'message': 'The specified policy does not exist',
                'remediation': 'Please, create the specified policy with the endpoint POST /security/policies'},
         4008: {'message': 'The specified resource is required for a correct Wazuh\'s functionality'},
-        4009: {'message': 'The specified name or policy already exist'},
-        4010: {'message': 'The specified role-policy does not exist',
+        4009: {'message': 'The specified name or policy already exists'},
+        4010: {'message': 'The specified role-policy relation does not exist',
                'remediation': 'Please, create the specified role-policy relation with the endpoint '
-                              'POST /security/roles/{role_id}/policies/{policy_id}'},
+                              'POST /security/roles/{role_id}/policies'},
         4011: {'message': 'The specified role-policy link already exist'},
         4012: {'message': 'The specified actions or resources are invalid',
                'remediation': 'The actions and resources must be split by ":". Example: agent:id:001'},
@@ -489,16 +489,22 @@ class WazuhException(Exception):
         4015: {'message': 'Permission denied, could not remove agents from group before deleting it',
                'remediation': 'Please, make sure you have the right permissions for actions: agent:modify_group and '
                               'group:modify_assignments before attempting to delete the group'},
-        4016: {'message': 'The specified user-role does not exist',
+        4016: {'message': 'The specified user-role relation does not exist',
                'remediation': 'Please, create the specified user-role relation with the endpoint '
-                              'POST /security/user/{username}/roles/{role_id}'},
-        4017: {'message': 'The specified user-role link already exists'},
+                              'POST /security/user/{username}/roles'},
+        4017: {'message': 'The specified user-role relation already exists'},
         4018: {'message': 'Level cannot be a negative number'},
         4019: {'message': 'Invalid resource specified',
                'remediation': 'Please, check the current RBAC resources, for more information please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html'},
         4020: {'message': 'Invalid endpoint specified',
                'remediation': 'Valid endpoints are: '},
         4021: 'Error reading security configuration',
+        4022: {'message': 'The specified security rule does not exist',
+               'remediation': 'Please, create the specified security rule with the endpoint POST /security/rules'},
+        4023: {'message': 'The specified role-rule relation already exist'},
+        4024: {'message': 'The specified role-rule relation does not exist',
+               'remediation': 'Please, create the specified role-rules relation with the endpoint '
+                              'POST /security/roles/{role_id}/rules'},
         4500: {'message': 'The specified resources are invalid',
                'remediation': 'Please, make sure permissions are properly defined, '
                               'for more information on setting up permissions please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html'},

@@ -24,26 +24,30 @@ stages:
               json: !anydict
               platform_name: !anylist
 
-    # GET /mitre?limit=1
+    # GET /mitre?limit=5
   - name: Try to get MITRE attacks using limit parameter
     request:
       verify: False
       <<: *get_mitre
       params:
-        limit: 1
+        limit: 5
     response:
       status_code: 200
       json:
         data:
           affected_items:
             - <<: *full_items_array
+            - <<: *full_items_array
+            - <<: *full_items_array
+            - <<: *full_items_array
+            - <<: *full_items_array
       # Save some data for future use in the test
       save:
         json:
-          returned_phase: data.affected_items[0].phase_name
-          returned_id: data.affected_items[0].id
-          returned_json: data.affected_items[0].json
-          returned_platform: data.affected_items[0].platform_name
+          returned_phase: data.affected_items[2].phase_name
+          returned_id: data.affected_items[2].id
+          returned_json: data.affected_items[2].json
+          returned_platform: data.affected_items[2].platform_name
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /mitre?limit=2&offset=0
@@ -99,6 +103,7 @@ stages:
       <<: *get_mitre
       params:
         id: "{returned_id}"
+        limit: 1
     response:
       status_code: 200
       json:

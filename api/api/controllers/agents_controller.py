@@ -198,7 +198,7 @@ async def restart_agents_by_node(request, node_id, pretty=False, wait_for_comple
     -------
     Response
     """
-    nodes = await get_system_nodes()
+    nodes = raise_if_exc(await get_system_nodes())
 
     f_kwargs = {'node_id': node_id, 'agent_list': '*'}
 
@@ -209,7 +209,6 @@ async def restart_agents_by_node(request, node_id, pretty=False, wait_for_comple
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          cluster_required=True,
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())

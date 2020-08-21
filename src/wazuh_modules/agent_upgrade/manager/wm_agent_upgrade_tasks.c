@@ -17,6 +17,15 @@
 /* Hash table of current tasks based on agent_id */
 static OSHash *task_table_by_agent_id;
 
+/**
+ * Sends the task information locally to the task module queue
+ * */
+static cJSON *wm_agent_send_task_information_master(const cJSON *message_object);
+/**
+ * Sends a `send_sync` message into clusterd that will be received by the master node
+ * */
+static cJSON *wm_agent_send_task_information_worker(const cJSON *message_object);
+
 wm_upgrade_task* wm_agent_upgrade_init_upgrade_task() {
     wm_upgrade_task *task;
     os_calloc(1, sizeof(wm_upgrade_task), task);
@@ -161,6 +170,14 @@ OSHashNode* wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNode *curr
 }
 
 cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
+    if (w_is_worker()) {
+        return wm_agent_send_task_information_worker(message_object);
+    } else {
+        return wm_agent_send_task_information_master(message_object);
+    }
+}
+
+static cJSON *wm_agent_send_task_information_master(const cJSON *message_object) {
     cJSON* response = NULL;
 
     int sock = OS_ConnectUnixDomain(WM_TASK_MODULE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
@@ -202,4 +219,17 @@ cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
     }
 
     return response;
+}
+
+static cJSON *wm_agent_send_task_information_worker(const cJSON *message_object) {
+    char response[OS_MAXSTR];
+    cJSON* payload = w_create_sendsync_payload(TASK_MANAGER_WM_NAME, cJSON_Duplicate(message_object, 1));
+    char *message = cJSON_PrintUnformatted(payload);
+    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_SEND_CLUSTER_MESSAGE, message);
+    w_send_clustered_message("sendsync", message, response);      
+    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_RECEIVE_MESSAGE, response);
+
+    os_free(message);
+    cJSON_Delete(payload);
+    return cJSON_Parse(response);   
 }
