@@ -31,7 +31,7 @@ typedef NTSTATUS(WINAPI *tNTQSI)(ULONG SystemInformationClass, PVOID SystemInfor
 
 static bool found_hotfix_error(HKEY hKey);
 static bool valid_hotfix_status(HKEY hKey);
-static char * parse_Rollup_hotfix(HKEY hKey);
+static char * parse_Rollup_hotfix(HKEY hKey, char *value);
 hw_info *get_system_windows();
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 
@@ -996,8 +996,10 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
                 char *hotfix = *hotfix_regex->d_sub_strings;
                 char *extension;
 
+                // Parse hotfix
                 if (strstr(hotfix, "RollupFix")) {
-                    if (hotfix = parse_Rollup_hotfix(subKey), hotfix == NULL) {
+                    char value[MAXSTR + 1] = {0};
+                    if (hotfix = parse_Rollup_hotfix(subKey, value), hotfix == NULL) {
                         RegCloseKey(subKey);
                         continue;
                     }
@@ -1051,13 +1053,13 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
     }
 }
 
-char * parse_Rollup_hotfix(HKEY hKey) {
+// Retrieve the respective KB for those hotfixes which come as Rollup.
+// ex -> Package_for_RollupFix~31bf3856ad364e35~amd64~~18362.959.1.9
+char * parse_Rollup_hotfix(HKEY hKey, char *value) {
     DWORD dataSize = MAXSTR;
-    char value[MAXSTR + 1];
     LONG result;
     
     result = RegQueryValueEx(hKey, "InstallLocation", NULL, NULL, (LPBYTE)value, &dataSize);  
-    
     if (result != ERROR_SUCCESS ) {
         mtdebug2(WM_SYS_LOGTAG, "Error reading 'InstallLocation' from Windows registry. (Error %u)",(unsigned int)result);
         return NULL;
@@ -1067,9 +1069,10 @@ char * parse_Rollup_hotfix(HKEY hKey) {
     char *start = NULL;
     char *end = NULL;
 
+    // Parse the 'InstallLocation' field -> "Windows10.0-KB4565483-x64.cab"
     if ((start = strstr(value, "KB")) != NULL && (end = strstr(start, "-")) != NULL) {
         *end = '\0';
-        os_strdup(start, hotfix);
+        hotfix = start;
     }
 
     return hotfix;
@@ -1092,7 +1095,6 @@ bool valid_hotfix_status(HKEY hKey) {
     LONG result;
     
     result = RegQueryValueEx(hKey, "CurrentState", NULL, NULL, (LPBYTE)&value, &dataSize);  
-    
     if (result != ERROR_SUCCESS ) {
         mtdebug2(WM_SYS_LOGTAG, "Error reading 'CurrentState' from Windows registry. (Error %u)",(unsigned int)result);
         return false;
