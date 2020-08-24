@@ -20,6 +20,7 @@
 #ifdef TEST_SERVER
 
 int wm_agent_upgrade_send_lock_restart(int agent_id);
+int wm_agent_upgrade_send_open(int agent_id, const char *wpk_file);
 cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task);
 
 // Setup / teardown
@@ -465,6 +466,211 @@ void test_wm_agent_upgrade_send_lock_restart_err(void **state)
     assert_int_equal(res, OS_INVALID);
 }
 
+void test_wm_agent_upgrade_send_open_ok(void **state)
+{
+    (void) state;
+
+    int socket = 555;
+    int agent = 39;
+    char *wpk_file = "test.wpk";
+    char *cmd = "039 com open wb test.wpk";
+    char *agent_res = "ok ";
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(cmd));
+    expect_string(__wrap_OS_SendSecureTCP, msg, cmd);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
+
+    expect_value(__wrap_close, fd, socket);
+
+    expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
+    will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
+
+    int res = wm_agent_upgrade_send_open(agent, wpk_file);
+
+    assert_int_equal(res, 0);
+}
+
+void test_wm_agent_upgrade_send_open_retry_ok(void **state)
+{
+    (void) state;
+
+    int socket = 555;
+    int agent = 39;
+    char *wpk_file = "test.wpk";
+    char *cmd = "039 com open wb test.wpk";
+    char *agent_res1 = "err Could not open file in agent";
+    char *agent_res2 = "ok ";
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(cmd));
+    expect_string(__wrap_OS_SendSecureTCP, msg, cmd);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res1);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res1) + 1);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
+
+    expect_value(__wrap_close, fd, socket);
+
+    expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res1);
+    will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(cmd));
+    expect_string(__wrap_OS_SendSecureTCP, msg, cmd);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res2);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res2) + 1);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
+
+    expect_value(__wrap_close, fd, socket);
+
+    expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res2);
+    will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
+
+    int res = wm_agent_upgrade_send_open(agent, wpk_file);
+
+    assert_int_equal(res, 0);
+}
+
+void test_wm_agent_upgrade_send_open_retry_err(void **state)
+{
+    (void) state;
+
+    int socket = 555;
+    int agent = 39;
+    char *wpk_file = "test.wpk";
+    char *cmd = "039 com open wb test.wpk";
+    char *agent_res = "err Could not open file in agent";
+
+    will_return_count(__wrap_isChroot, 0, 10);
+
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 10);
+    expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 10);
+    expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 10);
+    will_return_count(__wrap_OS_ConnectUnixDomain, socket, 10);
+
+    expect_value_count(__wrap_OS_SendSecureTCP, sock, socket, 10);
+    expect_value_count(__wrap_OS_SendSecureTCP, size, strlen(cmd), 10);
+    expect_string_count(__wrap_OS_SendSecureTCP, msg, cmd, 10);
+    will_return_count(__wrap_OS_SendSecureTCP, 0, 10);
+
+    expect_value_count(__wrap_OS_RecvSecureTCP, sock, socket, 10);
+    expect_value_count(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR, 10);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade", 20);
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
+
+    expect_value_count(__wrap_close, fd, socket, 10);
+
+    expect_string_count(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res, 10);
+    will_return_count(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID, 10);
+
+    int res = wm_agent_upgrade_send_open(agent, wpk_file);
+
+    assert_int_equal(res, OS_INVALID);
+}
+
 #endif
 
 int main(void) {
@@ -481,6 +687,10 @@ int main(void) {
         // wm_agent_upgrade_send_lock_restart
         cmocka_unit_test(test_wm_agent_upgrade_send_lock_restart_ok),
         cmocka_unit_test(test_wm_agent_upgrade_send_lock_restart_err),
+        // wm_agent_upgrade_send_open
+        cmocka_unit_test(test_wm_agent_upgrade_send_open_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_send_open_retry_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_send_open_retry_err),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
