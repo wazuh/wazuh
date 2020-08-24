@@ -169,7 +169,8 @@ void test_DeletePID_failure(void **state)
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, 0);
 
-    expect_string(__wrap__mferror, formatted_msg, "(1129): Could not unlink file '/var/ossec/var/run/test-2345.pid' due to [(13)-(Permission denied)].");
+    expect_string(__wrap__mferror, formatted_msg,
+        "(1129): Could not unlink file '/var/ossec/var/run/test-2345.pid' due to [(0)-(Success)].");
 
     ret = DeletePID("test");
     assert_int_equal(-1, ret);

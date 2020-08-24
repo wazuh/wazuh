@@ -1187,7 +1187,7 @@ void test_RTCallBack_empty_hash_table(void **state) {
     OVERLAPPED ov;
 
     expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
-    expect_string(__wrap_OSHash_Get, key, "test_RTCallBack_empty_hash_table");
+    expect_any(__wrap_OSHash_Get, key);
     will_return(__wrap_OSHash_Get, NULL);
 
     expect_string(__wrap__merror, formatted_msg, FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY);
@@ -1369,5 +1369,5 @@ int main(void) {
     };
 #endif
 
-    return cmocka_run_group_tests(tests, setup_group, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
