@@ -84,13 +84,12 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     for rule_id in no_existent_ids:
         result.add_failed_item(id_=rule_id, error=WazuhError(1208))
 
-    if rules:
-        data = process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
-                             complementary_search=complementary_search, select=select, sort_by=sort_by,
-                             sort_ascending=sort_ascending, allowed_sort_fields=SORT_FIELDS, offset=offset,
-                             limit=limit, q=q, required_fields=REQUIRED_FIELDS)
-        result.affected_items = data['items']
-        result.total_affected_items = data['totalItems']
+    data = process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, select=select, sort_by=sort_by,
+                         sort_ascending=sort_ascending, allowed_sort_fields=SORT_FIELDS, offset=offset,
+                         limit=limit, q=q, required_fields=REQUIRED_FIELDS)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 

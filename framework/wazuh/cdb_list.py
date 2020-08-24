@@ -41,13 +41,12 @@ def get_lists(path=None, offset=0, limit=common.database_limit, select=None, sor
                           'relative_dirname': os.path.dirname(rel_p),
                           'filename': os.path.split(rel_p)[1]})
 
-    if lists:
-        data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
-                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                             offset=offset, limit=limit, select=select, allowed_sort_fields=SORT_FIELDS,
-                             required_fields=REQUIRED_FIELDS)
-        result.affected_items = data['items']
-        result.total_affected_items = data['totalItems']
+    data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit, select=select, allowed_sort_fields=SORT_FIELDS,
+                         required_fields=REQUIRED_FIELDS)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 
