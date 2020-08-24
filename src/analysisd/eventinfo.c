@@ -772,7 +772,7 @@ void Free_Eventinfo(Eventinfo *lf)
             // Remove the node from all lists
             while (i < lf->generated_rule->group_prev_matched_sz) {
                 while (lf->generated_rule->group_prev_matched[i]->count > 0);
-                if (lf->group_node_to_delete){
+                if (lf->group_node_to_delete) {
                     OSList_DeleteThisNode(lf->generated_rule->group_prev_matched[i],
                                           lf->group_node_to_delete[i]);
                 }

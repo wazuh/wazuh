@@ -119,7 +119,7 @@ void *w_logtest_clients_handler();
  * @param list_msg list of error/warn/info messages
  * @return NULL on failure, otherwise the alert generated
  */
-cJSON *w_logtest_process_log(cJSON * request,  w_logtest_session_t * session, OSList * list_msg);
+cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, OSList * list_msg);
 
 /**
  * @brief Preprocessing phase

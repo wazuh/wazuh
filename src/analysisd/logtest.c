@@ -143,7 +143,7 @@ void * w_logtest_clients_handler(w_logtest_connection_t * connection) {
 }
 
 
-cJSON *w_logtest_process_log(cJSON * request,  w_logtest_session_t * session, OSList * list_msg) {
+cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, OSList * list_msg) {
 
     cJSON *output = NULL;
     Eventinfo *lf = NULL;
@@ -206,7 +206,7 @@ int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request) {
 
     if (event->child) {
         event_json = true;
-        if(event_str = cJSON_PrintUnformatted(event), !event_str) return -1;
+        if (event_str = cJSON_PrintUnformatted(event), !event_str) return -1;
     }
     else {
         if (event_str = cJSON_GetStringValue(event), !event_str) return -1;
@@ -260,7 +260,7 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
     RuleNode * rulenode = NULL;
     RuleInfo * ruleinformation = NULL;
 
-    if(rulenode = session->rule_list, !rulenode) {
+    if (rulenode = session->rule_list, !rulenode) {
         return -1;
     }
 
@@ -796,8 +796,9 @@ char * w_logtest_process_request(char * raw_request) {
         }
         w_logtest_add_msg_response(json_response, list_msg, &retval);
     }
+
     /* Proccess log */
-    if (retval >= W_LOGTEST_RCODE_SUCCESS) {
+    if (retval >= W_LOGTEST_RCODE_SUCCESS && current_session) {
 
         json_log_processed = w_logtest_process_log(json_request, current_session, list_msg);
         if (json_log_processed) {
