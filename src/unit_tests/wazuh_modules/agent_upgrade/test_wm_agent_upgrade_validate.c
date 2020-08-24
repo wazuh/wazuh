@@ -454,7 +454,7 @@ void test_wm_agent_upgrade_validate_wpk_version_windows_https_ok(void **state)
 
     task->use_http = false;
 
-    os_strdup("v3.13.1 4a313b1312c23a213f2e3209fe0909dd\nv4.0.0 231ef123a32d312b4123c21313ee6780\n", versions);
+    os_strdup("v3.13.1 4a313b1312c23a213f2e3209fe0909dd\nv4.0.0 231ef123a32d312b4123c21313ee6780", versions);
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/wpk/windows/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -481,7 +481,7 @@ void test_wm_agent_upgrade_validate_wpk_version_windows_http_ok(void **state)
 
     task->use_http = true;
 
-    os_strdup("v3.13.1 4a313b1312c23a213f2e3209fe0909dd\nv4.0.0 231ef123a32d312b4123c21313ee6780\n", versions);
+    os_strdup("v3.13.1 4a313b1312c23a213f2e3209fe0909dd\nv4.0.0 231ef123a32d312b4123c21313ee6780", versions);
 
     expect_string(__wrap_wurl_http_get, url, "http://packages.wazuh.com/wpk/windows/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -508,7 +508,7 @@ void test_wm_agent_upgrade_validate_wpk_version_windows_invalid_version(void **s
 
     task->use_http = true;
 
-    os_strdup("v3.13.1 4a313b1312c23a213f2e3209fe0909dd\nv4.0.0 231ef123a32d312b4123c21313ee6780\n", versions);
+    os_strdup("v3.13.1 4a313b1312c23a213f2e3209fe0909dd\nv4.0.0 231ef123a32d312b4123c21313ee6780", versions);
 
     expect_string(__wrap_wurl_http_get, url, "http://packages.wazuh.com/wpk/windows/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -561,7 +561,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_https_ok(void **state)
 
     task->use_http = false;
 
-    os_strdup("v3.13.1 4a313b1312c23a213f2e3209fe0909dd\nv4.0.0 231ef123a32d312b4123c21313ee6780\n", versions);
+    os_strdup("v3.13.1 4a313b1312c23a213f2e3209fe0909dd\nv4.0.0 231ef123a32d312b4123c21313ee6780", versions);
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/wpk/linux/x64/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -589,7 +589,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_http_ok(void **state)
 
     task->use_http = true;
 
-    os_strdup("v3.13.1 4a313b1312c23a213f2e3209fe0909dd\nv4.0.0 231ef123a32d312b4123c21313ee6780\n", versions);
+    os_strdup("v3.13.1 4a313b1312c23a213f2e3209fe0909dd\nv4.0.0 231ef123a32d312b4123c21313ee6780", versions);
 
     expect_string(__wrap_wurl_http_get, url, "http://packages.wazuh.com/wpk/linux/x64/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -617,7 +617,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_invalid_version(void **sta
 
     task->use_http = true;
 
-    os_strdup("error\nerror\nerror\n", versions);
+    os_strdup("error\nerror\nerror", versions);
 
     expect_string(__wrap_wurl_http_get, url, "http://packages.wazuh.com/wpk/linux/x64/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -671,7 +671,7 @@ void test_wm_agent_upgrade_validate_wpk_version_ubuntu_old_version(void **state)
 
     task->use_http = false;
 
-    os_strdup("v3.3.0 ad87687f6876e876876bb86ad54e57aa\n", versions);
+    os_strdup("v3.3.0 ad87687f6876e876876bb86ad54e57aa", versions);
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/wpk/ubuntu/16.04/x64/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -698,7 +698,7 @@ void test_wm_agent_upgrade_validate_wpk_version_rhel_old_version(void **state)
 
     task->use_http = false;
 
-    os_strdup("v3.3.0 ad87687f6876e876876bb86ad54e57aa\n", versions);
+    os_strdup("v3.3.0 ad87687f6876e876876bb86ad54e57aa", versions);
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/wpk/rhel/6/x86/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -732,7 +732,7 @@ void test_wm_agent_upgrade_validate_non_custom_version_custom_version_ok(void **
 
     os_strdup("v3.13.0", manager_version);
 
-    os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e\n", versions);
+    os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e", versions);
 
     expect_value(__wrap_wdb_agent_version, id, MANAGER_ID);
     will_return(__wrap_wdb_agent_version, manager_version);
@@ -768,7 +768,7 @@ void test_wm_agent_upgrade_validate_non_custom_version_manager_version_ok(void *
 
     os_strdup("v3.13.0", manager_version);
 
-    os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e\n", versions);
+    os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e", versions);
 
     expect_value(__wrap_wdb_agent_version, id, MANAGER_ID);
     will_return(__wrap_wdb_agent_version, manager_version);
@@ -805,7 +805,7 @@ void test_wm_agent_upgrade_validate_non_custom_version_less_current(void **state
 
     os_strdup("v3.13.0", manager_version);
 
-    os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e\n", versions);
+    os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e", versions);
 
     expect_value(__wrap_wdb_agent_version, id, MANAGER_ID);
     will_return(__wrap_wdb_agent_version, manager_version);
@@ -842,7 +842,7 @@ void test_wm_agent_upgrade_validate_non_custom_version_less_current_force(void *
 
     os_strdup("v3.13.0", manager_version);
 
-    os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e\n", versions);
+    os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e", versions);
 
     expect_value(__wrap_wdb_agent_version, id, MANAGER_ID);
     will_return(__wrap_wdb_agent_version, manager_version);
@@ -879,7 +879,7 @@ void test_wm_agent_upgrade_validate_non_custom_version_greater_master(void **sta
 
     os_strdup("v3.13.0", manager_version);
 
-    os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e\nv4.0.0 231ef123a32d312b4123c21313ee6780\n", versions);
+    os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e\nv4.0.0 231ef123a32d312b4123c21313ee6780", versions);
 
     expect_value(__wrap_wdb_agent_version, id, MANAGER_ID);
     will_return(__wrap_wdb_agent_version, manager_version);

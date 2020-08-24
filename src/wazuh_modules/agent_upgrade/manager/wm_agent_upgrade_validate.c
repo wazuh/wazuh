@@ -323,6 +323,18 @@ STATIC int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info
             }
             version = next_line + 1;
         }
+        if (version) {
+            if (sha1 = strchr(version, ' '), sha1) {
+                *sha1 = '\0';
+                if (wm_agent_upgrade_compare_versions(wpk_version, version) == 0) {
+                    // Save WPK url, file name and sha1
+                    os_strdup(sha1 + 1, task->wpk_sha1);
+                    os_strdup(file_url, task->wpk_file);
+                    os_free(task->wpk_repository);
+                    os_strdup(path_url, task->wpk_repository);
+                }
+            }
+        }
         if (!task->wpk_repository || !task->wpk_file || !task->wpk_sha1) {
             return_code = WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST;
         }
