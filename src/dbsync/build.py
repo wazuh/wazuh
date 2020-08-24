@@ -163,6 +163,7 @@ def cleanLib():
 
 def configLinux(type, tests):
     currentDir = os.path.dirname(os.path.realpath(__file__))
+
     cmakeCommand = "cmake -DEXTERNAL_LIB=" + currentDir + "/../external/ -DCMAKE_BUILD_TYPE=" + type
     if tests == 'ON':
         cmakeCommand += " -DUNIT_TEST=ON "
@@ -179,7 +180,29 @@ def configLinux(type, tests):
     printGreen("[CONFIGURED: Linux|" + type + "|TEST=" + tests + "]")
 
 def configWin(type, tests):
-    print("win build")
+    if os.path.exists("/usr/bin/amd64-mingw32msvc-g++-posix"):
+        compiler = "/usr/bin/amd64-mingw32msvc-g++-posix"
+    elif os.path.exists("/usr/bin/i686-pc-mingw32-g++-posix"):
+        compiler = "/usr/bin/i686-pc-mingw32-g++-posix"
+    elif os.path.exists("/usr/bin/i686-w64-mingw32-g++-posix"):
+        compiler = "/usr/bin/i686-w64-mingw32-g++-posix"
+    else:
+        raise ValueError("Uknown compiler")
+    currentDir = os.path.dirname(os.path.realpath(__file__))
+    cmakeCommand = "cmake -DCMAKE_TOOLCHAIN_FILE=~/Documents/dev/cmake-cross-comp/mingw-w64-x86_x64.cmake -DCMAKE_SYSTEM_NAME=Windows -DEXTERNAL_LIB=" + currentDir + "/../external/ -DCMAKE_BUILD_TYPE=" + type
+    # cmakeCommand = "cmake -DCMAKE_CXX_COMPILER=" + compiler + " -DWINDOWS=ON -DEXTERNAL_LIB=" + currentDir + "/../external/ -DCMAKE_BUILD_TYPE=" + type
+    if tests == 'ON':
+        cmakeCommand += " -DUNIT_TEST=ON "
+    else:
+        cmakeCommand += " "
+    cmakeCommand += currentDir
+    out = subprocess.run(cmakeCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if out.returncode != 0:
+        print(out.stdout)
+        print(out.stderr)
+        errorString = 'Error configuring library: ' + str(out.returncode)
+        raise ValueError(errorString)
+    printGreen("[CONFIGURED: Win|" + type + "|TEST=" + tests + "]")
 
 def configMac(type, tests):
     print("Mac build")
@@ -210,6 +233,7 @@ def configLib(args):
         configMac(builType, tests)
 
 if __name__ == "__main__":
+    action = False
     Choices = ['win','linux','mac', 'release','debug','on','off']
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
@@ -222,21 +246,30 @@ if __name__ == "__main__":
     parser.add_argument("--cppcheck", action="store_true", help="Run cppcheck on the code")
     parser.add_argument("--config", nargs=3, metavar=('OS','TYPE','TEST'),  help="Configure the lib. OS=win|linux|mac TYPE=Release|Debug TEST=ON|OFF")
     args = parser.parse_args()
-    if args.tests:
-        runTests()
-    elif args.coverage:
-        runCoverage()
-    elif args.readytoreview:
-        runReadyToReview()
-    elif args.valgrind:
-        runValgrind()
-    elif args.make:
-        makeLib()
-    elif args.clean:
-        cleanLib()
-    elif args.cppcheck:
-        runCppCheck()
-    elif args.config:
+    if args.config:
         configLib(args.config)
+        action = True
+    if args.readytoreview:
+        runReadyToReview()
+        action = True
     else:
+        if args.clean:
+            cleanLib()
+            action = True
+        if args.make:
+            makeLib()
+            action = True
+        if args.tests:
+            runTests()
+            action = True
+        if args.coverage:
+            runCoverage()
+            action = True
+        if args.valgrind:
+            runValgrind()
+            action = True
+        if args.cppcheck:
+            runCppCheck()
+            action = True
+    if not action:
         parser.print_help()

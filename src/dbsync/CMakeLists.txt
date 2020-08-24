@@ -30,6 +30,17 @@ file(GLOB DBSYNC_SRC
 
 add_library(dbsync SHARED 
     "${DBSYNC_SRC}" )
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_definitions(-DWIN_EXPORT)
+  set_target_properties(dbsync PROPERTIES
+        PREFIX ""
+        SUFFIX ".dll"
+        LINK_FLAGS "-Wl,--add-stdcall-alias -static-libgcc -static-libstdc++"
+        POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
+        # MinGW generates position-independent-code for DLL by default
+  )
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     
 if(UNIT_TEST)
   target_link_libraries(dbsync sqlite3 cjson gcov)

@@ -161,15 +161,15 @@ TEST_F(SQLiteTest, StatementBindInt)
     };
     EXPECT_NO_THROW(insertStmt.bind(1, 1));
     EXPECT_NO_THROW(insertStmt.bind(2, "1"));
-    EXPECT_NO_THROW(insertStmt.bind(3, 1l));
-    EXPECT_NO_THROW(insertStmt.bind(4, 1lu));
+    EXPECT_NO_THROW(insertStmt.bind(3, int64_t{1l}));
+    EXPECT_NO_THROW(insertStmt.bind(4, uint64_t{1lu}));
     EXPECT_NO_THROW(insertStmt.bind(5, 1.0));
     EXPECT_TRUE(insertStmt.step());
     insertStmt.reset();
     EXPECT_NO_THROW(insertStmt.bind(1, 2));
     EXPECT_NO_THROW(insertStmt.bind(2, "2"));
-    EXPECT_NO_THROW(insertStmt.bind(3, 2l));
-    EXPECT_NO_THROW(insertStmt.bind(4, 2lu));
+    EXPECT_NO_THROW(insertStmt.bind(3, int64_t{2l}));
+    EXPECT_NO_THROW(insertStmt.bind(4, uint64_t{2lu}));
     EXPECT_NO_THROW(insertStmt.bind(5, 2.0));
     EXPECT_TRUE(insertStmt.step());
 }

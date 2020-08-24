@@ -12,8 +12,15 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g -std=c++11")
 add_executable(dbsync_test_tool
                "${CMAKE_SOURCE_DIR}/testtool/main.cpp" )
 
-target_link_libraries(dbsync_test_tool 
-    dbsync 
-    pthread 
-    dl 
-)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+	target_link_libraries(dbsync_test_tool
+	    dbsync
+	    -static-libgcc -static-libstdc++
+	)
+else()
+	target_link_libraries(dbsync_test_tool
+	    dbsync
+	    pthread
+	    dl
+	)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")

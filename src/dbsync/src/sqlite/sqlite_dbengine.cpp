@@ -569,7 +569,7 @@ bool SQLiteDBEngine::bindJsonData(const std::unique_ptr<SQLite::IStatement>& stm
         }
         else if (ColumnType::Integer == type)
         {
-            auto value
+            int32_t value
             {
                 jsData.is_number() ? jsData.get<int32_t>() : jsData.is_string()
                 && jsData.get_ref<const std::string&>().size()
@@ -936,7 +936,7 @@ void SQLiteDBEngine::bindFieldData(const std::unique_ptr<SQLite::IStatement>& st
     }
     else if (ColumnType::Double == type)
     {
-        const auto value { std::get<GenericTupleIndex::GenDouble>(fieldData) };
+        const double value { std::get<GenericTupleIndex::GenDouble>(fieldData) };
         stmt->bind(index, value);
     }
     else

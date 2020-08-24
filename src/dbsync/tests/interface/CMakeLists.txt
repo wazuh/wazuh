@@ -15,20 +15,35 @@ file(GLOB INTERFACE_UNITTEST_SRC
 
 add_executable(dbsync_unit_test 
     "${INTERFACE_UNITTEST_SRC}" )
-
-target_link_libraries(dbsync_unit_test 
-    debug gtestd
-    debug gmockd
-    debug gtest_maind
-    debug gmock_maind
-    optimized gtest
-    optimized gmock
-    optimized gtest_main
-    optimized gmock_main
-    pthread
-    dbsync 
-    dl
-)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_libraries(dbsync_unit_test
+        debug gtestd
+        debug gmockd
+        debug gtest_maind
+        debug gmock_maind
+        optimized gtest
+        optimized gmock
+        optimized gtest_main
+        optimized gmock_main
+        pthread
+        dbsync
+        -static-libgcc -static-libstdc++
+    )
+else()
+    target_link_libraries(dbsync_unit_test
+        debug gtestd
+        debug gmockd
+        debug gtest_maind
+        debug gmock_maind
+        optimized gtest
+        optimized gmock
+        optimized gtest_main
+        optimized gmock_main
+        pthread
+        dbsync
+        dl
+    )
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME dbsync_unit_test
          COMMAND dbsync_unit_test)
