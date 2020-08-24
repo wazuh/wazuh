@@ -18,12 +18,20 @@ INSERT INTO users VALUES(104,'rbac','pbkdf2:sha256:150000$eQAz1s4i$12c6ffdd7f290
 INSERT INTO users VALUES(105,'guest','pbkdf2:sha256:150000$O9tFseJW$7659fc551aa6ed9cf207434d90d1da388f6840ce7bba5967a16949d4a94d1579',0,'1970-01-01 00:00:00');
 
 /* Testing */
-INSERT INTO roles VALUES(100,'wazuh','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(101,'wazuh-wui','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator-app"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(102,'technical','{"MATCH": {"definition": "technicalRule"}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(103,'administrator_test','{"MATCH": {"definition": "administratorRule"}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(104,'normalUser','{"MATCH": {"definition": "normalRule"}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(105,'ossec','{"MATCH": {"definition": "ossecRule"}}','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(100,'wazuh','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(101,'wazuh-wui','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(102,'technical','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(103,'administrator_test','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(104,'normalUser','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(105,'ossec','1970-01-01 00:00:00');
+
+/* Testing */
+INSERT INTO rules VALUES(100,'omegalul','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator"]}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(101,'omegalul1','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator-app"]}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(102,'omegalul2','{"MATCH": {"definition": "technicalRule"}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(103,'omegalul3','{"MATCH": {"definition": "administratorRule"}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(104,'omegalul4','{"MATCH": {"definition": "normalRule"}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(105,'omegalul5','{"MATCH": {"definition": "ossecRule"}}','1970-01-01 00:00:00');
 
 /* Testing */
 INSERT INTO policies VALUES(100,'wazuhPolicy','{"actions": ["*:*"], "resources": ["*:*"], "effect": "allow"}','1970-01-01 00:00:00');
@@ -36,6 +44,14 @@ INSERT INTO policies VALUES(106,'policy1','{"actions": ["role:read"], "effect": 
 INSERT INTO policies VALUES(107,'policy2','{"actions": ["role:read"], "effect": "allow", "resources": ["role:id:1"]}','1970-01-01 00:00:00');
 INSERT INTO policies VALUES(108,'policy3','{"actions": ["policy:read"], "effect": "allow", "resources": ["policy:id:1"]}','1970-01-01 00:00:00');
 INSERT INTO policies VALUES(109,'policy4','{"actions": ["policy:delete"], "effect": "deny", "resources": ["policy:id:*"]}','1970-01-01 00:00:00');
+
+/* Testing */
+INSERT INTO roles_rules VALUES(100,100,100,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(101,101,101,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(102,102,102,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(103,103,103,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(104,104,104,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(105,105,105,'1970-01-01 00:00:00');
 
 /* Testing */
 INSERT INTO roles_policies VALUES(100,100,100,0,'1970-01-01 00:00:00');
