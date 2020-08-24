@@ -20,23 +20,28 @@ stages:
           affected_items:
             - id: 1
               username: wazuh
+              allow_run_as: false
               roles:
                 - 1
             - id: 2
               username: wazuh-wui
+              allow_run_as: true
               roles:
                 - 2
             - id: 99
               username: testing
+              allow_run_as: false
               roles:
                 - 99
             - id: 102
               username: ossec
+              allow_run_as: false
               roles:
                 - 101
                 - 104
             - id: 104
               username: rbac
+              allow_run_as: false
               roles:
                 - 104
                 - 102
@@ -61,6 +66,7 @@ stages:
           affected_items:
             - id: 102
               username: ossec
+              allow_run_as: false
               roles:
                 - 101
                 - 104
@@ -98,15 +104,18 @@ stages:
           affected_items:
             - id: 1
               username: wazuh
+              allow_run_as: false
               roles:
                 - 1
             - id: 102
               username: ossec
+              allow_run_as: false
               roles:
                 - 101
                 - 104
             - id: 104
               username: rbac
+              allow_run_as: false
               roles:
                 - 104
                 - 102
@@ -143,10 +152,12 @@ stages:
           affected_items:
             - id: 1
               username: wazuh
+              allow_run_as: false
               roles:
                 - 1
             - id: 102
               username: ossec
+              allow_run_as: false
               roles:
                 - 101
                 - 104
@@ -374,6 +385,7 @@ stages:
           affected_items:
             - id: 105
               username: guest
+              allow_run_as: false
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -394,6 +406,7 @@ stages:
           affected_items:
             - id: 103
               username: python
+              allow_run_as: false
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -613,6 +626,7 @@ stages:
           affected_items:
             - id: 103
               username: python
+              allow_run_as: false
               roles:
                 - 101
                 - 100
@@ -676,6 +690,7 @@ stages:
       json:
         username: newUser
         password: stringA1!
+        allow_run_as: true
     response:
       status_code: 200
       json:
@@ -683,6 +698,7 @@ stages:
           affected_items:
             - id: 106
               username: newUser
+              allow_run_as: true
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -912,6 +928,7 @@ stages:
           affected_items:
             - id: 100
               username: administrator
+              allow_run_as: false
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -932,20 +949,24 @@ stages:
           affected_items:
             - id: 102
               username: ossec
+              allow_run_as: false
               roles:
                 - 101
                 - 104
                 - 100
             - id: 103
               username: python
+              allow_run_as: false
               roles:
                 - 101
                 - 100
             - id: 104
               username: rbac
+              allow_run_as: false
               roles: []
             - id: 106
               username: newUser
+              allow_run_as: true
               roles: []
           total_affected_items: 4
           total_failed_items: 0
