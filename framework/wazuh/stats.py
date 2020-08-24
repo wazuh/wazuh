@@ -119,7 +119,6 @@ def hourly():
     return result
 
 
-
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def weekly():
