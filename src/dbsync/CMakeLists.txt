@@ -17,11 +17,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 include_directories(${CMAKE_SOURCE_DIR}/include/)
 include_directories(${CMAKE_SOURCE_DIR}/utils/)
 include_directories(${CMAKE_SOURCE_DIR}/src/)
-include_directories(${EXTERNAL_LIB}/sqlite/)
-include_directories(${EXTERNAL_LIB}/nlohmann/)
-include_directories(${EXTERNAL_LIB}/cJSON/)
-link_directories(${EXTERNAL_LIB}/sqlite/)
-link_directories(${EXTERNAL_LIB}/cJSON/)
+include_directories(${EXTERNAL_LIBS_PATH}/sqlite/)
+include_directories(${EXTERNAL_LIBS_PATH}/nlohmann/)
+include_directories(${EXTERNAL_LIBS_PATH}/cJSON/)
+link_directories(${EXTERNAL_LIBS_PATH}/sqlite/)
+link_directories(${EXTERNAL_LIBS_PATH}/cJSON/)
 
 file(GLOB DBSYNC_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
@@ -31,16 +31,21 @@ file(GLOB DBSYNC_SRC
 add_library(dbsync SHARED 
     "${DBSYNC_SRC}" )
     
-if(UNIT_TEST)
-  target_link_libraries(dbsync sqlite3 cjson gcov)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  if(UNIT_TEST)
+    include_directories(${EXTERNAL_LIBS_PATH}/googletest/googletest/include/)
+    include_directories(${EXTERNAL_LIBS_PATH}/googletest/googlemock/include/)
+
+    link_directories(${EXTERNAL_LIBS_PATH}/googletest/lib/)
+
+    target_link_libraries(dbsync sqlite3 cjson gcov)
+
+    add_subdirectory(tests)
+    add_subdirectory(integrationTests)
+  endif(UNIT_TEST)
 else()
-  target_link_libraries(dbsync sqlite3 cjson)
-endif(UNIT_TEST)
+    target_link_libraries(dbsync sqlite3 cjson)
+endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 add_subdirectory(example)
 add_subdirectory(testtool)
-
-if(UNIT_TEST)
-  add_subdirectory(tests)
-  add_subdirectory(integrationTests)
-endif(UNIT_TEST)

@@ -18,6 +18,9 @@ CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null 
 ARCH_FLAGS =
 
 ROUTE_PATH := $(shell pwd)
+# dbsync var
+EXTERNAL_LIBS_FOLDER=../external/
+# end dbsync var
 EXTERNAL_JSON=external/cJSON/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
@@ -63,6 +66,8 @@ USE_MSGPACK_OPT=yes
 DISABLE_SHARED?=no
 DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
+
+WIN_CMAKE_OPTS=
 
 ifneq ($(HAS_CHECKMODULE),)
 ifneq ($(HAS_SEMODULE_PACKAGE),)
@@ -237,7 +242,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I./dbsync/include
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${DBSYNC}include
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -309,6 +314,7 @@ endif #winagent
 
 
 OSSEC_CC      =${QUIET_CC}${MING_BASE}${CC}
+OSSEC_CXX     =${QUIET_CC}${MING_BASE}-g++-posix
 OSSEC_CCBIN   =${QUIET_CCBIN}${MING_BASE}${CC}
 OSSEC_SHARED  =${QUIET_CCBIN}${MING_BASE}${CC} -shared
 OSSEC_LINK    =${QUIET_LINK}${MING_BASE}ar -crus
@@ -583,6 +589,7 @@ BUILD_AGENT+=ossec-syscheckd
 BUILD_AGENT+=ossec-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=wazuh-modulesd
+BUILD_AGENT+=build_dbsync
 
 .PHONY: server local hybrid agent selinux
 
@@ -656,16 +663,15 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 
 ZLIB_LIB    = $(EXTERNAL_ZLIB)/libz.a
 OPENSSL_LIB = $(EXTERNAL_OPENSSL)libssl.a
-CRYPTO_LIB = $(EXTERNAL_OPENSSL)libcrypto.a
-
+CRYPTO_LIB 	= $(EXTERNAL_OPENSSL)libcrypto.a
 SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.a
 JSON_LIB    = $(EXTERNAL_JSON)libcjson.a
 PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
 DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.a
 LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
-AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
-LIBFFI_LIB = $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
+AUDIT_LIB 	= $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
+LIBFFI_LIB 	= $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
 
@@ -1031,6 +1037,17 @@ config_o := $(config_c:.c=.o)
 
 config/%.o: config/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
+#### DBSync ##########
+build_dbsync:
+ifeq (${TARGET}, winagent)
+	WIN_CMAKE_OPTS="-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${OSSEC_CC} -DCMAKE_CXX_COMPILER=${OSSEC_CXX}"
+endif #winagent
+ifneq (,$(filter ${DEBUG},YES yes y Y 1))
+	cd ${DBSYNC} && cmake -DEXTERNAL_LIBS_PATH=${EXTERNAL_LIBS_FOLDER} -DCMAKE_BUILD_TYPE=Debug -DUNIT_TEST=ON . && cmake --build .
+else
+	cd ${DBSYNC} && cmake -DEXTERNAL_LIBS_PATH=${EXTERNAL_LIBS_FOLDER} -DCMAKE_BUILD_TYPE=Release . && cmake --build .
+endif #DEBUG
 
 #### Wazuh modules ##
 
@@ -1539,13 +1556,16 @@ endif
 
 ### wazuh-gtest-gmock ###
 
-build_gtest: 
+build_gtest:
+ifeq (${TARGET}, winagent)
+	WIN_CMAKE_OPTS="-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${OSSEC_CC} -DCMAKE_CXX_COMPILER=${OSSEC_CXX}"
+endif #winagent
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-	cd ${EXTERNAL_GOOGLE_TEST} && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug && cmake --build . && cp -r lib ..
+	cd $(EXTERNAL_GOOGLE_TEST) && mkdir -p build && cd build && cmake .. ${WIN_CMAKE_OPTS} -DCMAKE_BUILD_TYPE=Debug && cmake --build . && cp -r lib ..
 else
-	cd ${EXTERNAL_GOOGLE_TEST} && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && cmake --build . && cp -r lib ..
+	cd $(EXTERNAL_GOOGLE_TEST) && mkdir -p build && cd build && cmake .. ${WIN_CMAKE_OPTS} -DCMAKE_BUILD_TYPE=Release && cmake --build . && cp -r lib ..
 endif #DEBUG
-	
+
 ### wazuh-python ###
 
 WPYTHON_DIR := ${PREFIX}/framework/python
