@@ -717,7 +717,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
     }
 
     if (strcasestr(pr_name, "redhat") && !os_list) {
-        mwarn(VU_NO_ENABLED_FEEDS, pr_name);
+        minfo(VU_NO_ENABLED_FEEDS, pr_name);
         char vsr [2] = {0};
         vu_os_feed *list, *tmp_list = NULL;
         // New linked list for RedHat (5, 6, 7 and 8)
@@ -1120,7 +1120,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
         if (!strcmp(node[i]->element, XML_UPDATE_FROM_YEAR)) {
             // Deprecated in RHEL
             if (rhel_enabled) {
-                mwarn("'%s' option at module '%s' is deprecated. Use '%s' instead.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name, XML_OS);
+                minfo("'%s' option at module '%s' is deprecated. Use '%s' instead.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name, XML_OS);
             }
             if (multi_provider || rhel_enabled) {
                 int min_year = rhel_enabled ? RED_HAT_REPO_MIN_YEAR : NVD_REPO_MIN_YEAR;
