@@ -45,10 +45,12 @@ def test_add_token(db_setup):
         with db_setup.AuthenticationManager() as am:
             for user in users:
                 am.add_user(username=user, password='testingA1!')
+        with db_setup.AuthenticationManager() as am:
+            user_ids = [am.get_user(user)['id'] for user in users]
         # New token rule
-        assert tm.add_user_rules(users=users) != db_setup.SecurityError.ALREADY_EXIST
+        assert tm.add_user_rules(users=user_ids) != db_setup.SecurityError.ALREADY_EXIST
 
-    return users
+    return user_ids
 
 
 def test_get_all_token_rules(db_setup):
@@ -66,7 +68,7 @@ def test_nbf_invalid(db_setup):
     users = test_add_token(db_setup)
     with db_setup.TokenManager() as tm:
         for user in users:
-            assert not tm.is_token_valid(username=user, token_nbf_time=current_timestamp)
+            assert not tm.is_token_valid(user_id=user, token_nbf_time=current_timestamp)
 
 
 def test_delete_all_rules(db_setup):
@@ -290,8 +292,8 @@ def test_update_user(db_setup):
     """Check update a user in the database"""
     with db_setup.AuthenticationManager() as am:
         am.add_user(username='toUpdate', password='testingA6!')
-        assert am.update_user(user_id='106', password='testingA0!')
-        assert not am.update_user(user_id='999', password='testingA0!')
+        assert am.update_user(user_id='106', password='testingA0!', allow_run_as=False)
+        assert not am.update_user(user_id='999', password='testingA0!', allow_run_as=True)
 
 
 def test_update_role(db_setup):
