@@ -586,6 +586,7 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
                     total++;
 
                     if (print_status) {
+                        #ifndef CLIENT //print_status is only available on servers
                         // Within this context, line_read corresponds to the agent ID
                         agent_status_t agt_status = get_agent_status(atoi(line_read));
                         if (active_only && (agt_status != GA_STATUS_ACTIVE)) {
@@ -614,6 +615,10 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
                         } else {
                             printf(PRINT_AGENT_STATUS, line_read, name, ip, print_agent_status(agt_status));
                         }
+                        #else
+                        (void) inactive_only;
+                        printf(PRINT_AGENT, line_read, name, ip);
+                        #endif
                     } else {
                         printf(PRINT_AGENT, line_read, name, ip);
                     }
