@@ -13,6 +13,6 @@
 #include <cmocka.h>
 
 LPVOID wrap_win_alloc(SIZE_T size) {
-  check_expected(size);
-  return mock_type(LPVOID);
+    check_expected(size);
+    return mock_type(LPVOID);
 }

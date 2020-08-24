@@ -81,9 +81,11 @@ void test_os_winreg_querykey_invalid_query(void **state) {
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command");
     int pos = 0;
+    FILETIME ft;
 
-    will_return_count(wrap_RegQueryInfoKey, NULL, 5);
-    will_return(wrap_RegQueryInfoKey,-1);
+    will_return_count(wrap_RegQueryInfoKey, NULL, 4);
+    will_return(wrap_RegQueryInfoKey, &ft);
+    will_return(wrap_RegQueryInfoKey, -1);
     os_winreg_querykey(oshkey, subkey, fullname, pos);
 }
 
@@ -92,13 +94,14 @@ void test_os_winreg_querykey_success_no_subkey(void **state) {
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command");
     int pos = 0;
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 0); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
     os_winreg_querykey(oshkey, subkey, fullname, pos);
 }
 
@@ -107,13 +110,14 @@ void test_os_winreg_querykey_success_subkey_p_key(void **state) {
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command");
     int pos = 0;
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 1); // subkey_count
     will_return(wrap_RegQueryInfoKey, 0); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     will_return(wrap_RegEnumKeyEx, "SUBKEY_NAME");
     will_return(wrap_RegEnumKeyEx, strlen("SUBKEY_NAME"));
@@ -138,13 +142,14 @@ void test_os_winreg_querykey_ignored_registry(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = syscheck.registry_ignore[pos].entry;
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 0); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     char debug_msg[OS_MAXSTR];
     snprintf(debug_msg, OS_MAXSTR, "(6204): Ignoring 'registry' '%s' due to '%s'", fullname, fullname);
@@ -157,13 +162,14 @@ void test_os_winreg_querykey_ignored_regex(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Security\\Enum"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 0); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     char debug_msg[OS_MAXSTR];
     snprintf(debug_msg, OS_MAXSTR,"(6205): Ignoring 'registry' '%s' due to sregex '\\Enum$'", fullname);
@@ -176,13 +182,14 @@ void test_os_winreg_querykey_values_string(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
     will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
@@ -209,13 +216,14 @@ void test_os_winreg_querykey_values_multi_string(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
     will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
@@ -256,13 +264,14 @@ void test_os_winreg_querykey_values_number(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey,&ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
     will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
@@ -303,13 +312,14 @@ void test_os_winreg_querykey_values_binary(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
     will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
@@ -347,13 +357,14 @@ void test_os_winreg_querykey_values_none(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
     will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
@@ -376,13 +387,14 @@ void test_os_winreg_querykey_registry_event_fail(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
     will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
@@ -501,6 +513,7 @@ void test_os_winreg_open_fail(void **state) {
 
 void test_os_winreg_open_success(void **state) {
     int pos = 0;
+    FILETIME ft;
 
     // Inside RegOpenKeyEx
     expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
@@ -511,8 +524,9 @@ void test_os_winreg_open_success(void **state) {
     will_return(wrap_RegOpenKeyEx, NULL);
     will_return(wrap_RegOpenKeyEx, ERROR_SUCCESS);
     // Promptly exit from os_winreg_querykey
-    will_return_count(wrap_RegQueryInfoKey, NULL, 5);
-    will_return(wrap_RegQueryInfoKey,-1);
+    will_return_count(wrap_RegQueryInfoKey, NULL, 4);
+    will_return(wrap_RegQueryInfoKey, &ft);
+    will_return(wrap_RegQueryInfoKey, -1);
 
     os_winreg_open_key("Software\\Classes\\batfile", "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 0);
 }

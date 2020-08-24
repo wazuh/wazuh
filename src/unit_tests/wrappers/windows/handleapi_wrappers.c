@@ -13,7 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-WINBOOL wrap_CloseHandle (HANDLE hObject) {
+WINBOOL wrap_CloseHandle(HANDLE hObject) {
     check_expected(hObject);
     return mock();
 }

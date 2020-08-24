@@ -13,6 +13,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-DWORD wrap_GetLastError (VOID) {
+DWORD wrap_GetLastError(VOID) {
     return mock();
 }

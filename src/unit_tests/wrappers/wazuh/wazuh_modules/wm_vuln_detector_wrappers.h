@@ -11,8 +11,8 @@
 #ifndef WM_VULN_DETECTOR_WRAPPERS_H
 #define WM_VULN_DETECTOR_WRAPPERS_H
 
-#include "../../../headers/shared.h"
-#include "../../../wazuh_modules/wmodules.h"
+#include "headers/shared.h"
+#include "wazuh_modules/wmodules.h"
 
 bool __wrap_c_isdigit(int c);
 
@@ -20,10 +20,14 @@ bool __wrap_c_isdigit(int c);
 
 int __wrap_wm_vuldet_prepare();
 
-bool __wrap_pkg_version_relate(const struct pkg_version *a, enum pkg_relation rel, const struct pkg_version *b,
+bool __wrap_pkg_version_relate(const struct pkg_version *a,
+                               enum pkg_relation rel,
+                               const struct pkg_version *b,
                                version_type vertype);
 
-int __wrap_wm_checks_package_vulnerability(char *version_a, const char *operation, const char *version_b,
+int __wrap_wm_checks_package_vulnerability(char *version_a,
+                                           const char *operation,
+                                           const char *version_b,
                                            version_type vertype);
 
 int __wrap_wm_vuldet_add_cve_node(cve_vuln_pkg *newPkg, const char *cve, OSHash *cve_table);

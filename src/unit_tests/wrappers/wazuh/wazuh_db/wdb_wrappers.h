@@ -11,7 +11,7 @@
 #ifndef WDB_WRAPPERS_H
 #define WDB_WRAPPERS_H
 
-#include "../../../../wazuh_db/wdb.h"
+#include "wazuh_db/wdb.h"
 
 int __wrap_wdb_begin2(wdb_t* aux);
 
@@ -23,7 +23,7 @@ int __wrap_wdb_fim_update_date_entry(wdb_t* socket, const char *path);
 
 int __wrap_wdb_finalize();
 
-int __wrap_wdb_scan_info_fim_checks_control(wdb_t* socket,const char *last_check);
+int __wrap_wdb_scan_info_fim_checks_control(wdb_t* socket, const char *last_check);
 
 int __wrap_wdb_scan_info_get(wdb_t *socket, const char *module, char *field, long *output);
 

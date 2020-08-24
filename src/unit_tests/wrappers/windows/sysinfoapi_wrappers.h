@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) 2015-2020, Wazuh Inc.
  *
@@ -15,6 +14,6 @@
 
 #define GetSystemTime wrap_GetSystemTime
 
-VOID wrap_GetSystemTime (LPSYSTEMTIME lpSystemTime);
+VOID wrap_GetSystemTime(LPSYSTEMTIME lpSystemTime);
 
 #endif

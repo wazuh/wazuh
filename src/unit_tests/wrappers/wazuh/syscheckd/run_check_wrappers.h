@@ -11,7 +11,9 @@
 #ifndef RUN_CHECK_WRAPPERS_H
 #define RUN_CHECK_WRAPPERS_H
 
-int __wrap_fim_send_scan_info();
+#include "syscheckd/syscheck.h"
+
+void __wrap_fim_send_scan_info(fim_scan_event event);
 
 void __wrap_fim_send_sync_msg(const char * msg);
 

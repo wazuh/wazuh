@@ -12,6 +12,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-VOID wrap_GetSystemTime (LPSYSTEMTIME lpSystemTime) {
+VOID wrap_GetSystemTime(LPSYSTEMTIME lpSystemTime) {
   memcpy(lpSystemTime, mock_type(LPSYSTEMTIME), sizeof(SYSTEMTIME));
 }

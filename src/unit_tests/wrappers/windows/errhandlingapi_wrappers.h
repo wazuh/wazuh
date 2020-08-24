@@ -16,6 +16,6 @@
 #undef GetLastError
 #define GetLastError wrap_GetLastError
 
-DWORD wrap_GetLastError (VOID);
+DWORD wrap_GetLastError(VOID);
 
 #endif

@@ -14,17 +14,17 @@
 #include <windows.h>
 
 #undef OpenProcessToken
-#define OpenProcessToken wrap_OpenProcessToken
-#define GetCurrentProcess wrap_GetCurrentProcess
+#define OpenProcessToken    wrap_OpenProcessToken
+#define GetCurrentProcess   wrap_GetCurrentProcess
 #define SetThreadPriority   wrap_SetThreadPriority
 #define GetCurrentThread    wrap_GetCurrentThread
 #define CreateThread        wrap_CreateThread
 
-WINBOOL wrap_SetThreadPriority (HANDLE hThread, int nPriority);
+WINBOOL wrap_SetThreadPriority(HANDLE hThread, int nPriority);
 
-HANDLE wrap_GetCurrentThread (VOID);
+HANDLE wrap_GetCurrentThread(VOID);
 
-HANDLE wrap_GetCurrentProcess (VOID);
+HANDLE wrap_GetCurrentProcess(VOID);
 
 HANDLE wrap_CreateThread(LPSECURITY_ATTRIBUTES lpThreadAttributes,
                          SIZE_T dwStackSize,

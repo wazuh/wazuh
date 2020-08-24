@@ -19,11 +19,12 @@ int wrap_WideCharToMultiByte(__UNUSED_PARAM(UINT CodePage),
                              LPSTR lpMultiByteStr,
                              int cbMultiByte,
                              __UNUSED_PARAM(LPCCH lpDefaultChar),
-                             __UNUSED_PARAM(LPBOOL lpUsedDefaultChar)
-) {
-  check_expected(lpWideCharStr);
-  check_expected(cchWideChar);
-  if(lpMultiByteStr)
-    strncpy(lpMultiByteStr, mock_type(char*), cbMultiByte);
-  return mock();
+                             __UNUSED_PARAM(LPBOOL lpUsedDefaultChar)) {
+    check_expected(lpWideCharStr);
+    check_expected(cchWideChar);
+
+    if(lpMultiByteStr)
+        strncpy(lpMultiByteStr, mock_type(char*), cbMultiByte);
+
+    return mock();
 }

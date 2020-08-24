@@ -20,17 +20,17 @@
 #define FindNextVolumeW wrap_FindNextVolumeW
 #undef  CreateFile
 #define CreateFile      wrap_CreateFile
-#define GetFileAttributesA          wrap_GetFileAttributesA
+#define GetFileAttributesA wrap_GetFileAttributesA
 
-HANDLE wrap_CreateFile (LPCSTR lpFileName,
-                        DWORD dwDesiredAccess,
-                        DWORD dwShareMode,
-                        LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-                        DWORD dwCreationDisposition,
-                        DWORD dwFlagsAndAttributes,
-                        HANDLE hTemplateFile);
+HANDLE wrap_CreateFile(LPCSTR lpFileName,
+                       DWORD dwDesiredAccess,
+                       DWORD dwShareMode,
+                       LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                       DWORD dwCreationDisposition,
+                       DWORD dwFlagsAndAttributes,
+                       HANDLE hTemplateFile);
 
-DWORD wrap_GetFileAttributesA (LPCSTR lpFileName);
+DWORD wrap_GetFileAttributesA(LPCSTR lpFileName);
 
 WINBOOL wrap_GetVolumePathNamesForVolumeNameW(LPCWSTR lpszVolumeName,
                                               LPWCH lpszVolumePathNames,
@@ -40,7 +40,7 @@ WINBOOL wrap_GetVolumePathNamesForVolumeNameW(LPCWSTR lpszVolumeName,
 HANDLE wrap_FindFirstVolumeW(LPWSTR lpszVolumeName,
                              DWORD cchBufferLength);
 
-WINBOOL wrap_FindVolumeClose (HANDLE hFindVolume);
+WINBOOL wrap_FindVolumeClose(HANDLE hFindVolume);
 
 DWORD wrap_QueryDosDeviceW(LPCWSTR lpDeviceName,
                            LPWSTR lpTargetPath,

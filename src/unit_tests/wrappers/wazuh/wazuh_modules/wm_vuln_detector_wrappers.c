@@ -19,7 +19,8 @@ bool __wrap_c_isdigit(__attribute__((unused)) int c) {
 
 #ifndef CLIENT
 
-bool __wrap_pkg_version_relate(__attribute__((unused)) const struct pkg_version *a, enum pkg_relation rel,
+bool __wrap_pkg_version_relate(__attribute__((unused)) const struct pkg_version *a,
+                               enum pkg_relation rel,
                                __attribute__((unused)) const struct pkg_version *b,
                                __attribute__((unused)) version_type vertype) {
     check_expected(rel);

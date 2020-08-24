@@ -8,11 +8,11 @@
  */
 
 
-#ifndef CREATE_DB_WRAPPERS_H
-#define CREATE_DB_WRAPPERS_H
+#ifndef SYSCHECKD_CONFIG_WRAPPERS_H
+#define SYSCHECKD_CONFIG_WRAPPERS_H
 
-#include "../../../../syscheckd/syscheck.h"
-#include "../../../../external/cJSON/cJSON.h"
+#include "syscheckd/syscheck.h"
+#include "external/cJSON/cJSON.h"
 
 void __wrap_free_whodata_event(whodata_evt *w_evt);
 

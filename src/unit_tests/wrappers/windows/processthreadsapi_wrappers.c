@@ -13,17 +13,17 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-WINBOOL wrap_SetThreadPriority (HANDLE hThread, int nPriority) {
+WINBOOL wrap_SetThreadPriority(HANDLE hThread, int nPriority) {
     check_expected(hThread);
     check_expected(nPriority);
     return mock();
 }
 
-HANDLE wrap_GetCurrentThread (VOID) {
+HANDLE wrap_GetCurrentThread(VOID) {
     return mock_type(HANDLE);
 }
 
-HANDLE wrap_GetCurrentProcess (VOID) {
+HANDLE wrap_GetCurrentProcess(VOID) {
     return mock_type(HANDLE);
 }
 

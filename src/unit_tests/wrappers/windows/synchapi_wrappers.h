@@ -17,11 +17,11 @@
 #undef CreateEvent
 #define CreateEvent wrap_CreateEvent
 
-VOID wrap_Sleep (DWORD dwMilliseconds);
+VOID wrap_Sleep(DWORD dwMilliseconds);
 
-HANDLE wrap_CreateEvent (LPSECURITY_ATTRIBUTES lpEventAttributes,
-                         WINBOOL bManualReset,
-                         WINBOOL bInitialState,
-                         LPCSTR lpName);
+HANDLE wrap_CreateEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,
+                        WINBOOL bManualReset,
+                        WINBOOL bInitialState,
+                        LPCSTR lpName);
 
 #endif

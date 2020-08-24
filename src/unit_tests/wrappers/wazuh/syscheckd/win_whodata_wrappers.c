@@ -13,7 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_run_whodata_scan(void) {
+int __wrap_run_whodata_scan() {
     return mock();
 }
 

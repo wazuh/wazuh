@@ -11,7 +11,7 @@
 #ifndef FIM_DB_WRAPPERS_H
 #define FIM_DB_WRAPPERS_H
 
-#include "../../../../syscheckd/syscheck.h"
+#include "syscheckd/syscheck.h"
 
 int __wrap_fim_db_data_checksum_range(fdb_t *fim_sql,
                                       const char *start,

@@ -60,7 +60,8 @@ int __wrap_wdb_stmt_cache(__attribute__((unused)) wdb_t wdb,
 }
 
 int __wrap_wdb_syscheck_load(__attribute__((unused)) wdb_t *wdb,
-                             __attribute__((unused)) const char *file, char *output,
+                             __attribute__((unused)) const char *file,
+                             char *output,
                              __attribute__((unused)) size_t size) {
     snprintf(output, OS_MAXSTR + 1, "TEST STRING");
     return mock();
@@ -121,7 +122,8 @@ int __wrap_wdbi_query_clear(__attribute__((unused)) wdb_t *wdb,
 }
 
 cJSON* __wrap_wdbc_query_parse_json(__attribute__((unused)) int *sock,
-                                    __attribute__((unused)) const char *query, char *response,
+                                    __attribute__((unused)) const char *query,
+                                    char *response,
                                     __attribute__((unused)) const int len) {
     int option;
 

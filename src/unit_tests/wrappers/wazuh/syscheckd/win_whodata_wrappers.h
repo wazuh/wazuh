@@ -11,7 +11,7 @@
 #ifndef WIN_WHODATA_WRAPPERS_H
 #define WIN_WHODATA_WRAPPERS_H
 
-int __wrap_run_whodata_scan(void);
+int __wrap_run_whodata_scan();
 
 int __wrap_set_winsacl(const char *dir, int position);
 

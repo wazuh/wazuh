@@ -13,7 +13,7 @@
 
 #include <windows.h>
 
-#undef LookupPrivilegeValue
+#undef  LookupPrivilegeValue
 #define LookupPrivilegeValue wrap_LookupPrivilegeValue
 #define LocalFree wrap_LocalFree
 #undef  FormatMessage
@@ -24,37 +24,37 @@
 #define GetFileSecurity wrap_GetFileSecurity
 #define ReadDirectoryChangesW wrap_ReadDirectoryChangesW
 
-DWORD wrap_FormatMessage (DWORD dwFlags,
-                          LPCVOID lpSource,
-                          DWORD dwMessageId,
-                          DWORD dwLanguageId,
-                          LPTSTR lpBuffer,
-                          DWORD nSize,
-                          va_list *Arguments);
+DWORD wrap_FormatMessage(DWORD dwFlags,
+                         LPCVOID lpSource,
+                         DWORD dwMessageId,
+                         DWORD dwLanguageId,
+                         LPTSTR lpBuffer,
+                         DWORD nSize,
+                         va_list *Arguments);
 
-HLOCAL wrap_LocalFree (HLOCAL hMem);
+HLOCAL wrap_LocalFree(HLOCAL hMem);
 
-WINBOOL wrap_GetFileSecurity (LPCSTR lpFileName,
-                              SECURITY_INFORMATION RequestedInformation,
-                              PSECURITY_DESCRIPTOR pSecurityDescriptor,
-                              DWORD nLength, LPDWORD lpnLengthNeeded);
+WINBOOL wrap_GetFileSecurity(LPCSTR lpFileName,
+                             SECURITY_INFORMATION RequestedInformation,
+                             PSECURITY_DESCRIPTOR pSecurityDescriptor,
+                             DWORD nLength, LPDWORD lpnLengthNeeded);
 
-WINBOOL wrap_LookupAccountSid (LPCSTR lpSystemName,
-                               PSID Sid,
-                               LPSTR Name,
-                               LPDWORD cchName,
-                               LPSTR ReferencedDomainName,
-                               LPDWORD cchReferencedDomainName,
-                               PSID_NAME_USE peUse);
+WINBOOL wrap_LookupAccountSid(LPCSTR lpSystemName,
+                              PSID Sid,
+                              LPSTR Name,
+                              LPDWORD cchName,
+                              LPSTR ReferencedDomainName,
+                              LPDWORD cchReferencedDomainName,
+                              PSID_NAME_USE peUse);
 
-WINBOOL wrap_ReadDirectoryChangesW (HANDLE hDirectory,
-                                    LPVOID lpBuffer,
-                                    DWORD nBufferLength,
-                                    WINBOOL bWatchSubtree,
-                                    DWORD dwNotifyFilter,
-                                    LPDWORD lpBytesReturned,
-                                    LPOVERLAPPED lpOverlapped,
-                                    LPOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);
+WINBOOL wrap_ReadDirectoryChangesW(HANDLE hDirectory,
+                                   LPVOID lpBuffer,
+                                   DWORD nBufferLength,
+                                   WINBOOL bWatchSubtree,
+                                   DWORD dwNotifyFilter,
+                                   LPDWORD lpBytesReturned,
+                                   LPOVERLAPPED lpOverlapped,
+                                   LPOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);
 
 BOOL wrap_LookupPrivilegeValue(LPCSTR lpSystemName,
                                LPCSTR lpName,

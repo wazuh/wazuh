@@ -23,30 +23,30 @@
 #define EqualSid wrap_EqualSid
 #define DeleteAce wrap_DeleteAce
 #define IsValidSid wrap_IsValidSid
-#define GetSecurityDescriptorDacl   wrap_GetSecurityDescriptorDacl
+#define GetSecurityDescriptorDacl wrap_GetSecurityDescriptorDacl
 
-WINBOOL wrap_IsValidSid (PSID pSid);
+WINBOOL wrap_IsValidSid(PSID pSid);
 
-WINBOOL wrap_GetSecurityDescriptorDacl (PSECURITY_DESCRIPTOR pSecurityDescriptor,
-                                        LPBOOL lpbDaclPresent,
-                                        PACL *pDacl,
-                                        LPBOOL lpbDaclDefaulted);
+WINBOOL wrap_GetSecurityDescriptorDacl(PSECURITY_DESCRIPTOR pSecurityDescriptor,
+                                       LPBOOL lpbDaclPresent,
+                                       PACL *pDacl,
+                                       LPBOOL lpbDaclDefaulted);
 
-WINBOOL wrap_GetAclInformation (PACL pAcl,
-                                LPVOID pAclInformation,
-                                DWORD nAclInformationLength,
-                                ACL_INFORMATION_CLASS dwAclInformationClass);
+WINBOOL wrap_GetAclInformation(PACL pAcl,
+                               LPVOID pAclInformation,
+                               DWORD nAclInformationLength,
+                               ACL_INFORMATION_CLASS dwAclInformationClass);
 
-WINBOOL wrap_GetAce (PACL pAcl,
-                     DWORD dwAceIndex,
-                     LPVOID *pAce);
+WINBOOL wrap_GetAce(PACL pAcl,
+                    DWORD dwAceIndex,
+                    LPVOID *pAce);
 
-WINBOOL wrap_AdjustTokenPrivileges (HANDLE TokenHandle,
-                                    WINBOOL DisableAllPrivileges,
-                                    PTOKEN_PRIVILEGES NewState,
-                                    DWORD BufferLength,
-                                    PTOKEN_PRIVILEGES PreviousState,
-                                    PDWORD ReturnLength);
+WINBOOL wrap_AdjustTokenPrivileges(HANDLE TokenHandle,
+                                   WINBOOL DisableAllPrivileges,
+                                   PTOKEN_PRIVILEGES NewState,
+                                   DWORD BufferLength,
+                                   PTOKEN_PRIVILEGES PreviousState,
+                                   PDWORD ReturnLength);
 
 WINBOOL wrap_AllocateAndInitializeSid(PSID_IDENTIFIER_AUTHORITY pIdentifierAuthority,
                                       BYTE nSubAuthorityCount,

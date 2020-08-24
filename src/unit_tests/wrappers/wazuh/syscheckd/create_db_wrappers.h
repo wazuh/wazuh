@@ -11,7 +11,7 @@
 #ifndef CREATE_DB_WRAPPERS_H
 #define CREATE_DB_WRAPPERS_H
 
-#include "../../../../syscheckd/syscheck.h"
+#include "syscheckd/syscheck.h"
 
 void __wrap_fim_checker(char *path,
                         fim_element *item,

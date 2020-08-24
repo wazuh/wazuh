@@ -23,7 +23,7 @@ BOOL wrap_EvtRender(EVT_HANDLE Context,
   check_expected_ptr(Fragment);
   check_expected(Flags);
   check_expected(BufferSize);
-  PEVT_VARIANT output = mock_ptr_type(PVOID);
+  PEVT_VARIANT output = mock_ptr_type(PEVT_VARIANT);
   *BufferUsed = mock_type(int);
   *PropertyCount = mock_type(int);
   if (output && Buffer && *BufferUsed <= BufferSize) {

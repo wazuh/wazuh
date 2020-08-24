@@ -17,17 +17,19 @@
 
 extern int test_mode;
 
-
-char * wrap_fgets (char * __s, int __n, FILE * __stream) {
+char * wrap_fgets(char * __s, int __n, FILE * __stream) {
     if (test_mode) {
         char *buffer = mock_type(char*);
         check_expected(__stream);
-        if(buffer) {
+
+        if (buffer) {
             strncpy(__s, buffer, __n);
             return __s;
         }
+
         return 0;
-    } else {
+    }
+    else {
         return fgets(__s, __n, __stream);
     }
 }
@@ -38,14 +40,17 @@ int wrap_fprintf (FILE *__stream, const char *__format, ...) {
     va_list args;
     int ret;
     va_start(args, __format);
+
     if (test_mode) {
         vsnprintf(formatted_msg, OS_MAXSTR, __format, args);
         check_expected(__stream);
         check_expected(formatted_msg);
         ret = mock();
-    } else {
+    }
+    else {
         ret = vfprintf(__stream, __format, args);
     }
+
     va_end(args);
     return ret;
 }

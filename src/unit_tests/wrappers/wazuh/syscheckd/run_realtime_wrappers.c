@@ -26,6 +26,6 @@ int __wrap_realtime_adddir(const char *dir, int whodata, __attribute__((unused))
     return mock();
 }
 
-int __wrap_realtime_start(void) {
+int __wrap_realtime_start() {
     return 0;
 }

@@ -13,14 +13,14 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-VOID wrap_Sleep (DWORD dwMilliseconds) {
+VOID wrap_Sleep(DWORD dwMilliseconds) {
     check_expected(dwMilliseconds);
 }
 
-HANDLE wrap_CreateEvent (LPSECURITY_ATTRIBUTES lpEventAttributes,
-                         WINBOOL bManualReset,
-                         WINBOOL bInitialState,
-                         LPCSTR lpName) {
+HANDLE wrap_CreateEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,
+                        WINBOOL bManualReset,
+                        WINBOOL bInitialState,
+                        LPCSTR lpName) {
     check_expected(lpEventAttributes);
     check_expected(bManualReset);
     check_expected(bInitialState);
