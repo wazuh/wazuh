@@ -67,6 +67,8 @@ DISABLE_SHARED?=no
 DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 
+WIN_CMAKE_OPTS=
+
 ifneq ($(HAS_CHECKMODULE),)
 ifneq ($(HAS_SEMODULE_PACKAGE),)
 USE_SELINUX=yes
@@ -312,6 +314,7 @@ endif #winagent
 
 
 OSSEC_CC      =${QUIET_CC}${MING_BASE}${CC}
+OSSEC_CXX     =${QUIET_CC}${MING_BASE}-g++-posix
 OSSEC_CCBIN   =${QUIET_CCBIN}${MING_BASE}${CC}
 OSSEC_SHARED  =${QUIET_CCBIN}${MING_BASE}${CC} -shared
 OSSEC_LINK    =${QUIET_LINK}${MING_BASE}ar -crus
@@ -575,7 +578,6 @@ BUILD_SERVER+=ossec-dbd -
 BUILD_SERVER+=ossec-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
-BUILD_SERVER+=build_dbsync
 ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
 BUILD_SERVER+=wazuh-framework
 endif
@@ -1037,8 +1039,10 @@ config/%.o: config/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
 #### DBSync ##########
-
 build_dbsync:
+ifeq (${TARGET}, winagent)
+	WIN_CMAKE_OPTS="-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${OSSEC_CC} -DCMAKE_CXX_COMPILER=${OSSEC_CXX}"
+endif #winagent
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 	cd ${DBSYNC} && cmake -DEXTERNAL_LIBS_PATH=${EXTERNAL_LIBS_FOLDER} -DCMAKE_BUILD_TYPE=Debug -DUNIT_TEST=ON . && cmake --build .
 else
@@ -1552,13 +1556,16 @@ endif
 
 ### wazuh-gtest-gmock ###
 
-build_gtest: 
+build_gtest:
+ifeq (${TARGET}, winagent)
+	WIN_CMAKE_OPTS="-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${OSSEC_CC} -DCMAKE_CXX_COMPILER=${OSSEC_CXX}"
+endif #winagent
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-	cd ${EXTERNAL_GOOGLE_TEST} && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug && cmake --build . && cp -r lib ..
+	cd $(EXTERNAL_GOOGLE_TEST) && mkdir -p build && cd build && cmake .. ${WIN_CMAKE_OPTS} -DCMAKE_BUILD_TYPE=Debug && cmake --build . && cp -r lib ..
 else
-	cd ${EXTERNAL_GOOGLE_TEST} && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && cmake --build . && cp -r lib ..
+	cd $(EXTERNAL_GOOGLE_TEST) && mkdir -p build && cd build && cmake .. ${WIN_CMAKE_OPTS} -DCMAKE_BUILD_TYPE=Release && cmake --build . && cp -r lib ..
 endif #DEBUG
-	
+
 ### wazuh-python ###
 
 WPYTHON_DIR := ${PREFIX}/framework/python
