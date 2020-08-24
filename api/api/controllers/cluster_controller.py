@@ -81,8 +81,7 @@ async def get_cluster_nodes(request, pretty=False, wait_for_complete=False, offs
                           logger=logger,
                           local_client_arg='lc',
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -111,8 +110,7 @@ async def get_healthcheck(request, pretty=False, wait_for_complete=False, list_n
                           logger=logger,
                           local_client_arg='lc',
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -180,8 +178,7 @@ async def get_status_node(request, node_id, pretty=False, wait_for_complete=Fals
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -207,8 +204,7 @@ async def get_info_node(request, node_id, pretty=False, wait_for_complete=False)
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -236,8 +232,7 @@ async def get_configuration_node(request, node_id, pretty=False, wait_for_comple
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -270,11 +265,9 @@ async def get_stats_node(request, node_id, pretty=False, wait_for_complete=False
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
-
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
@@ -298,8 +291,7 @@ async def get_stats_hourly_node(request, node_id, pretty=False, wait_for_complet
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -326,8 +318,7 @@ async def get_stats_weekly_node(request, node_id, pretty=False, wait_for_complet
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -352,8 +343,7 @@ async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_comp
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -378,8 +368,7 @@ async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_comple
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -423,8 +412,7 @@ async def get_log_node(request, node_id, pretty=False, wait_for_complete=False, 
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -448,8 +436,7 @@ async def get_log_summary_node(request, node_id, pretty=False, wait_for_complete
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -475,8 +462,7 @@ async def get_files_node(request, node_id, path, pretty=False, wait_for_complete
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -511,8 +497,7 @@ async def put_files_node(request, body, node_id, path, overwrite=False, pretty=F
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -538,8 +523,7 @@ async def delete_files_node(request, node_id, path, pretty=False, wait_for_compl
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -564,8 +548,7 @@ async def get_api_config(request, pretty=False, wait_for_complete=False, list_no
                           logger=logger,
                           broadcasting=list_nodes == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -592,8 +575,7 @@ async def put_api_config(request, pretty=False, wait_for_complete=False, list_no
                           logger=logger,
                           broadcasting=list_nodes == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -620,8 +602,7 @@ async def delete_api_config(request, pretty=False, wait_for_complete=False, list
                           logger=logger,
                           broadcasting=list_nodes == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -646,8 +627,7 @@ async def put_restart(request, pretty=False, wait_for_complete=False, list_nodes
                           logger=logger,
                           broadcasting=list_nodes == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -673,8 +653,7 @@ async def get_conf_validation(request, pretty=False, wait_for_complete=False, li
                           logger=logger,
                           broadcasting=list_nodes == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -702,8 +681,7 @@ async def get_node_config(request, node_id, component, wait_for_complete=False, 
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes,
-                          cluster_required=True
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
