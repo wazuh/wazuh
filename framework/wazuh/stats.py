@@ -66,7 +66,8 @@ def totals(date):
                 if len(data) in (0, 1):
                     continue
                 else:
-                    result.failed_result.add_failed_item(id_=node_id, error=WazuhInternalError(1309))
+                    result.add_failed_item(id_=node_id, error=WazuhInternalError(1309))
+                    return result
 
             hour = int(data[0])
             total_alerts = int(data[1])
@@ -185,8 +186,8 @@ def get_daemons_stats(filename):
         except Exception as e:
             return WazuhInternalError(1104, extra_message=str(e))
 
-    except Exception as e:
-        result.failed_result.add_failed_item(id_=node_id, error=WazuhInternalError(1308, extra_message=str(e)))
+    except IOError:
+        raise WazuhError(1308, extra_message=filename)
 
     result.total_affected_items = len(result.affected_items)
     return result

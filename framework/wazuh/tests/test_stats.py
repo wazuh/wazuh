@@ -48,24 +48,23 @@ def test_totals(date_, data_list):
     with patch('wazuh.stats.open', return_value=data_list):
         response = totals(date_)
 
-        assert isinstance(response, WazuhResult), f'The result is not WazuhResult type'
+        assert isinstance(response, AffectedItemsWazuhResult), f'The result is not WazuhResult type'
 
-        dict_res = response.to_dict()
-        if dict_res['result']['data']:
+        if response.affected_items:
             for line in data_list:
                 data = line.split('-')
                 if len(data) == 4:
-                    assert int(data[1]) == dict_res['result']['data'][0]['alerts'][0]['sigid'], f'Data do not match'
-                    assert int(data[2]) == dict_res['result']['data'][0]['alerts'][0]['level'], f'Data do not match'
-                    assert int(data[3]) == dict_res['result']['data'][0]['alerts'][0]['times'], f'Data do not match'
+                    assert int(data[1]) == response.affected_items[0]['alerts'][0]['sigid'], f'Data do not match'
+                    assert int(data[2]) == response.affected_items[0]['alerts'][0]['level'], f'Data do not match'
+                    assert int(data[3]) == response.affected_items[0]['alerts'][0]['times'], f'Data do not match'
                 else:
                     data = line.split('--')
                     if len(data) == 5:
-                        assert int(data[0]) == dict_res['result']['data'][0]['hour'], f'Data do not match'
-                        assert int(data[1]) == dict_res['result']['data'][0]['totalAlerts'], f'Data do not match'
-                        assert int(data[2]) == dict_res['result']['data'][0]['events'], f'Data do not match'
-                        assert int(data[3]) == dict_res['result']['data'][0]['syscheck'], f'Data do not match'
-                        assert int(data[4]) == dict_res['result']['data'][0]['firewall'], f'Data do not match'
+                        assert int(data[0]) == response.affected_items[0]['hour'], f'Data do not match'
+                        assert int(data[1]) == response.affected_items[0]['totalAlerts'], f'Data do not match'
+                        assert int(data[2]) == response.affected_items[0]['events'], f'Data do not match'
+                        assert int(data[3]) == response.affected_items[0]['syscheck'], f'Data do not match'
+                        assert int(data[4]) == response.affected_items[0]['firewall'], f'Data do not match'
 
 
 def test_totals_ko_data():
@@ -75,8 +74,9 @@ def test_totals_ko_data():
             totals(date(1996, 8, 13))
 
     with patch('wazuh.stats.open', return_value=['15-571-3-2', '15--107--1483']):
-        with pytest.raises(WazuhException, match=".* 1309 .*"):
-            totals(date(1996, 8, 13))
+        result = totals(date(1996, 8, 13))
+        assert not result.affected_items
+        assert next(iter(result.failed_items)).code == 1309
 
 
 @pytest.mark.parametrize('effect', [
@@ -93,7 +93,7 @@ def test_hourly(effect):
     """
     with patch('wazuh.stats.open', side_effect=effect):
         response = hourly()
-        assert isinstance(response, WazuhResult), f'The result is not WazuhResult type'
+        assert isinstance(response, AffectedItemsWazuhResult), f'The result is not WazuhResult type'
 
 
 @patch('wazuh.common.stats_path', new=test_data_path)
@@ -101,9 +101,9 @@ def test_hourly_data():
     """Makes sure that data returned by hourly() fit with the expected."""
     response = hourly()
 
-    assert 24 == response.to_dict()['result']['interactions'], f'Data do not match'
+    assert 24 == response.affected_items[0]['interactions'], f'Data do not match'
     for hour in range(24):
-        assert hour in response.to_dict()['result']['averages'], f'Data do not match'
+        assert hour in response.affected_items[0]['averages'], f'Data do not match'
 
 
 @pytest.mark.parametrize('effect', [
@@ -120,7 +120,7 @@ def test_weekly(effect):
     """
     with patch('wazuh.stats.open', side_effect=effect):
         response = weekly()
-        assert isinstance(response, WazuhResult), f'The result is not WazuhResult type'
+        assert isinstance(response, AffectedItemsWazuhResult), f'The result is not WazuhResult type'
 
 
 @patch('wazuh.common.stats_path', new=test_data_path)
@@ -128,11 +128,12 @@ def test_weekly_data():
     """Makes sure that data returned by weekly() fit with the expected."""
     response = weekly()
 
-    assert 0 == response.to_dict()['result']['Sun']['interactions'], f'Data do not match'
+    assert 0 == response.affected_items[0]['Sun']['interactions'], f'Data do not match'
     for day in DAYS:
-        assert day in response.to_dict()['result'].keys(), f'Data do not match'
+        assert day in {d for affected_item in response.affected_items for d in affected_item.keys()}, \
+            f'Data do not match'
     for hour in range(24):
-        assert hour in response.to_dict()['result']['Sun']['hours'], f'Data do not match'
+        assert hour in response.affected_items[0]['Sun']['hours'], f'Data do not match'
 
 
 @patch('wazuh.stats.open')
@@ -142,7 +143,7 @@ def test_get_daemons_stats(mock_items, mock_read, mock_open):
     """Tests get_daemons_stats function works"""
     response = get_daemons_stats('filename')
 
-    assert isinstance(response, dict), f'The result is not dict type'
+    assert isinstance(response, AffectedItemsWazuhResult), f'The result is not dict type'
     mock_open.assert_called_once_with('filename', 'r')
 
 
@@ -150,7 +151,7 @@ def test_get_daemons_stats(mock_items, mock_read, mock_open):
 def test_get_daemons_stats_ko(mock_readfp):
     """Tests get_daemons_stats function exceptions works"""
 
-    with patch('wazuh.stats.open', side_effect=Exception):
+    with patch('wazuh.stats.open', side_effect=IOError):
         with pytest.raises(WazuhException, match=".* 1308 .*"):
             get_daemons_stats('filename')
 
