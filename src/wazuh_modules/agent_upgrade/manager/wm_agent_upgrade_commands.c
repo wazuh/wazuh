@@ -576,7 +576,7 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id, const char *wpk_file, const 
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
     if (result = wm_agent_upgrade_parse_agent_response(response, &data), !result) {
-        if (!data || strcmp(file_sha1, data)) {
+        if (!file_sha1 || !data || strcmp(file_sha1, data)) {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_SHA1_ERROR);
             result = OS_INVALID;
         }
