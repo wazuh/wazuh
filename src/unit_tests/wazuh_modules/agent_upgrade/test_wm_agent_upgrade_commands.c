@@ -19,6 +19,7 @@
 
 #ifdef TEST_SERVER
 
+int wm_agent_upgrade_send_lock_restart(int agent_id);
 cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task);
 
 // Setup / teardown
@@ -153,6 +154,12 @@ int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJS
     check_expected(json);
 
     cJSON_AddItemToArray(json_response, mock_type(cJSON *));
+
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data) {
+    check_expected(agent_response);
 
     return mock();
 }
@@ -372,6 +379,92 @@ void test_wm_agent_upgrade_send_single_task_null_response(void **state)
     assert_null(res);
 }
 
+void test_wm_agent_upgrade_send_lock_restart_ok(void **state)
+{
+    (void) state;
+
+    int socket = 555;
+    int agent = 28;
+    char *cmd = "028 com lock_restart -1";
+    char *agent_res = "ok ";
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '028 com lock_restart -1'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(cmd));
+    expect_string(__wrap_OS_SendSecureTCP, msg, cmd);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
+
+    expect_value(__wrap_close, fd, socket);
+
+    expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
+    will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
+
+    int res = wm_agent_upgrade_send_lock_restart(agent);
+
+    assert_int_equal(res, 0);
+}
+
+void test_wm_agent_upgrade_send_lock_restart_err(void **state)
+{
+    (void) state;
+
+    int socket = 555;
+    int agent = 28;
+    char *cmd = "028 com lock_restart -1";
+    char *agent_res = "err Could not restart agent";
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '028 com lock_restart -1'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(cmd));
+    expect_string(__wrap_OS_SendSecureTCP, msg, cmd);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not restart agent'");
+
+    expect_value(__wrap_close, fd, socket);
+
+    expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
+    will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
+
+    int res = wm_agent_upgrade_send_lock_restart(agent);
+
+    assert_int_equal(res, OS_INVALID);
+}
+
 #endif
 
 int main(void) {
@@ -385,6 +478,9 @@ int main(void) {
         // wm_agent_upgrade_send_single_task
         cmocka_unit_test_teardown(test_wm_agent_upgrade_send_single_task_ok, teardown_json),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_send_single_task_null_response, teardown_json),
+        // wm_agent_upgrade_send_lock_restart
+        cmocka_unit_test(test_wm_agent_upgrade_send_lock_restart_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_send_lock_restart_err),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

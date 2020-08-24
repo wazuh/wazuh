@@ -471,7 +471,6 @@ STATIC int wm_agent_upgrade_send_lock_restart(int agent_id) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
-    char *data = NULL;
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
@@ -479,8 +478,8 @@ STATIC int wm_agent_upgrade_send_lock_restart(int agent_id) {
 
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
-    result = wm_agent_upgrade_parse_agent_response(response, &data);
-    
+    result = wm_agent_upgrade_parse_agent_response(response, NULL);
+
     os_free(command);
     os_free(response);
 
@@ -491,7 +490,6 @@ STATIC int wm_agent_upgrade_send_open(int agent_id, const char *wpk_file) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
-    char *data = NULL;
     int open_retries = 0;
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
@@ -501,7 +499,7 @@ STATIC int wm_agent_upgrade_send_open(int agent_id, const char *wpk_file) {
     for (open_retries = 0; open_retries < WM_UPGRADE_WPK_OPEN_ATTEMPTS; ++open_retries) {
         os_free(response);
         response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
-        if (result = wm_agent_upgrade_parse_agent_response(response, &data), !result) {
+        if (result = wm_agent_upgrade_parse_agent_response(response, NULL), !result) {
             break;
         }
     }
@@ -516,7 +514,6 @@ STATIC int wm_agent_upgrade_send_write(int agent_id, const char *wpk_file, const
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
-    char *data = NULL;
     FILE *file = NULL;
     unsigned char buffer[chunk_size];
     size_t bytes = 0;
@@ -534,7 +531,7 @@ STATIC int wm_agent_upgrade_send_write(int agent_id, const char *wpk_file, const
             }
             os_free(response);
             response = wm_agent_upgrade_send_command_to_agent(command, command_size);
-            if (result = wm_agent_upgrade_parse_agent_response(response, &data), result) {
+            if (result = wm_agent_upgrade_parse_agent_response(response, NULL), result) {
                 break;
             }
         }
@@ -551,7 +548,6 @@ STATIC int wm_agent_upgrade_send_close(int agent_id, const char *wpk_file) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
-    char *data = NULL;
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
@@ -559,8 +555,8 @@ STATIC int wm_agent_upgrade_send_close(int agent_id, const char *wpk_file) {
 
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
-    result = wm_agent_upgrade_parse_agent_response(response, &data);
-    
+    result = wm_agent_upgrade_parse_agent_response(response, NULL);
+
     os_free(command);
     os_free(response);
 
@@ -580,7 +576,7 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id, const char *wpk_file, const 
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
     if (result = wm_agent_upgrade_parse_agent_response(response, &data), !result) {
-        if (strcmp(file_sha1, data)) {
+        if (!data || strcmp(file_sha1, data)) {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_SHA1_ERROR);
             result = OS_INVALID;
         }
@@ -596,14 +592,13 @@ STATIC int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, con
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
-    char *data = NULL;
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
     snprintf(command, OS_MAXSTR, "%.3d com upgrade %s %s", agent_id, wpk_file, installer);
 
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
-    result = wm_agent_upgrade_parse_agent_response(response, &data);
+    result = wm_agent_upgrade_parse_agent_response(response, NULL);
     
     os_free(command);
     os_free(response);
