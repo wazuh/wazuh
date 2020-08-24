@@ -105,12 +105,22 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.databa
 
 
 @expose_resources(actions=['security:create_user'], resources=['*:*:*'])
-def create_user(username: str = None, password: str = None):
+def create_user(username: str = None, password: str = None, allow_run_as: bool = False):
     """Create a new user
 
-    :param username: Name for the new user
-    :param password: Password for the new user
-    :return: Status message
+    Parameters
+    ----------
+    username : str
+        Name for the new user
+    password : str
+        Password for the new user
+    allow_run_as : bool
+        Enable authorization context login method for the new user
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Status message
     """
     if not _user_password.match(password):
         raise WazuhError(5007)
@@ -118,7 +128,7 @@ def create_user(username: str = None, password: str = None):
     result = AffectedItemsWazuhResult(none_msg='User could not be created',
                                       all_msg='User created correctly')
     with AuthenticationManager() as auth:
-        if auth.add_user(username, password):
+        if auth.add_user(username, password, allow_run_as=allow_run_as):
             operation = auth.get_user(username)
             if operation:
                 result.affected_items.append(operation)
@@ -132,7 +142,7 @@ def create_user(username: str = None, password: str = None):
 
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}'])
-def update_user(user_id=None, password=None):
+def update_user(user_id: str = None, password: str = None, allow_run_as: bool = None):
     """Update a specified user
 
     Parameters
@@ -141,18 +151,22 @@ def update_user(user_id=None, password=None):
         User ID
     password : str
         Password for the new user
+    allow_run_as : bool
+        Enable authorization context login method for the new user
 
     Returns
     -------
     Status message
     """
-    if not _user_password.match(password):
+    if password is None and allow_run_as is None:
+        raise WazuhError(4001)
+    if password and not _user_password.match(password):
         raise WazuhError(5007)
     result = AffectedItemsWazuhResult(all_msg='User modified correctly',
                                       none_msg='User could not be updated')
     with AuthenticationManager() as auth:
-        query = auth.update_user(user_id[0], password)
-        if not query:
+        query = auth.update_user(user_id[0], password, allow_run_as)
+        if query is False:
             result.add_failed_item(id_=user_id[0], error=WazuhError(5001))
         else:
             result.affected_items.append(auth.get_user_id(user_id[0]))
