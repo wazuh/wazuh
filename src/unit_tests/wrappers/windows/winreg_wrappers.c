@@ -53,15 +53,15 @@ LONG wrap_RegOpenKeyEx(HKEY hKey,
                        DWORD ulOptions,
                        REGSAM samDesired,
                        PHKEY phkResult) {
-  PHKEY key;
-  check_expected(hKey);
-  check_expected(lpSubKey);
-  check_expected(ulOptions);
-  check_expected(samDesired);
-  if(key = mock_type(PHKEY), key) {
-    memcpy(phkResult, key, sizeof(HKEY));
-  }
-  return mock();
+    PHKEY key;
+    check_expected(hKey);
+    check_expected(lpSubKey);
+    check_expected(ulOptions);
+    check_expected(samDesired);
+    if(key = mock_type(PHKEY), key) {
+        memcpy(phkResult, key, sizeof(HKEY));
+    }
+    return mock();
 }
 
 LONG wrap_RegEnumValue(__UNUSED_PARAM(HKEY hKey),
@@ -91,12 +91,12 @@ LONG wrap_RegQueryValueEx(__UNUSED_PARAM(HKEY hKey),
                           LPDWORD lpType,
                           LPBYTE lpData,
                           LPDWORD lpcbData) {
-  LPBYTE data;
-  check_expected(lpValueName);
-  check_expected(lpReserved);
-  check_expected(lpType);
-  if(data = mock_type(LPBYTE), data) {
-    memcpy(lpData, data, *lpcbData);
-  }
-  return mock();
+    LPBYTE data;
+    check_expected(lpValueName);
+    check_expected(lpReserved);
+    check_expected(lpType);
+    if(data = mock_type(LPBYTE), data) {
+        memcpy(lpData, data, *lpcbData);
+    }
+    return mock();
 }

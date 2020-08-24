@@ -1044,9 +1044,7 @@ void test_seechanges_addfile_run_diff(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/folder/test/diff.1");
     will_return(__wrap_unlink, 0);
-#endif
 
-#ifndef TEST_WINAGENT
     // symlink_to_dir()
     expect_string(__wrap_lstat, filename, file_name);
     will_return(__wrap_lstat, 0);

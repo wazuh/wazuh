@@ -35,10 +35,10 @@ BOOL wrap_EvtRender(EVT_HANDLE Context,
 EVT_HANDLE wrap_EvtCreateRenderContext(DWORD   ValuePathsCount,
                                        LPCWSTR *ValuePaths,
                                        DWORD   Flags) {
-  check_expected(ValuePathsCount),
-  check_expected_ptr(ValuePaths);
-  check_expected(Flags);
-  return mock_type(EVT_HANDLE);
+    check_expected(ValuePathsCount),
+    check_expected_ptr(ValuePaths);
+    check_expected(Flags);
+    return mock_type(EVT_HANDLE);
 }
 
 EVT_HANDLE wrap_EvtSubscribe(EVT_HANDLE             Session,
@@ -49,13 +49,13 @@ EVT_HANDLE wrap_EvtSubscribe(EVT_HANDLE             Session,
                              PVOID                  Context,
                              EVT_SUBSCRIBE_CALLBACK Callback,
                              DWORD                  Flags) {
-  check_expected_ptr(Session);
-  check_expected(SignalEvent);
-  check_expected(ChannelPath);
-  check_expected(Query);
-  check_expected(Bookmark);
-  check_expected(Context);
-  check_expected_ptr(Callback);
-  check_expected(Flags);
-  return mock_type(EVT_HANDLE);
+    check_expected_ptr(Session);
+    check_expected(SignalEvent);
+    check_expected(ChannelPath);
+    check_expected(Query);
+    check_expected(Bookmark);
+    check_expected(Context);
+    check_expected_ptr(Callback);
+    check_expected(Flags);
+    return mock_type(EVT_HANDLE);
 }

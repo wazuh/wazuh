@@ -7,13 +7,13 @@
  * Foundation
  */
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
-#include <stdio.h>
 
-int wrap_gethostname(char *name, int len) {
-    snprintf(name, len, "%s",mock_type(char*));
-    return mock_type(int);
-}
+#ifndef WINSOCK_WRAPPERS_H
+#define WINSOCK_WRAPPERS_H
+
+#include <winsock.h>
+#define gethostname wrap_gethostname
+
+int wrap_gethostname(char *name, int len);
+
+#endif

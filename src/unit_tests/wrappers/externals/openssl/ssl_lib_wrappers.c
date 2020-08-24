@@ -32,7 +32,7 @@ int __wrap_SSL_get_error(__attribute__((unused)) const SSL *s, int i) {
     return mock_type(int);
 }
 
-int __wrap_SSL_write(SSL *ssl,	const void *buf, __attribute__((unused)) int num) {
+int __wrap_SSL_write(SSL *ssl, const void *buf, __attribute__((unused)) int num) {
     check_expected(ssl);
     check_expected(buf);
     return mock_type(int);

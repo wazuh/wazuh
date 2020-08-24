@@ -19,7 +19,7 @@ int __wrap_SSL_connect(SSL *s);
 
 int __wrap_SSL_get_error(const SSL *s, int i);
 
-int __wrap_SSL_write(SSL *ssl,	const void *buf, int num);
+int __wrap_SSL_write(SSL *ssl, const void *buf, int num);
 
 SSL *__wrap_SSL_new(SSL_CTX *ctx);
 

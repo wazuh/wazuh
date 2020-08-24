@@ -15,6 +15,6 @@
 
 int __wrap_W_Vector_insert_unique(W_Vector *v, const char *element);
 
-int __wrap_W_Vector_length();
+int __wrap_W_Vector_length(W_Vector *v);
 
 #endif

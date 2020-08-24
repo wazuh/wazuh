@@ -20,7 +20,6 @@ int __wrap_W_Vector_insert_unique(W_Vector *v, const char *element) {
     return mock();
 }
 
-int __wrap_W_Vector_length()
-{
+int __wrap_W_Vector_length(__attribute__((unused)) W_Vector *v) {
     return mock();
 }

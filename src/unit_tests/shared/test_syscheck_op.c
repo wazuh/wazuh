@@ -21,6 +21,13 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/string_op_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+
+#ifdef TEST_WINAGENT
+#include "../wrappers/wazuh/syscheckd/syscom_wrappers.h"
+#else
+#include "../wrappers/posix/unistd_wrappers.h"
+#endif
 
 /* Auxiliar structs */
 

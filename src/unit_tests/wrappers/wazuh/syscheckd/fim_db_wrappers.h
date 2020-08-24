@@ -17,9 +17,13 @@ int __wrap_fim_db_data_checksum_range(fdb_t *fim_sql,
                                       const char *start,
                                       const char *top,
                                       const long id,
-                                      const int n);
+                                      const int n,
+                                      pthread_mutex_t *mutex);
 
-int __wrap_fim_db_delete_not_scanned(fdb_t * fim_sql);
+int __wrap_fim_db_delete_not_scanned(fdb_t * fim_sql,
+                                     fim_tmp_file *file,
+                                     pthread_mutex_t *mutex,
+                                     int storage);
 
 int __wrap_fim_db_delete_range(fdb_t * fim_sql,
                                fim_tmp_file *file,
@@ -61,13 +65,15 @@ fdb_t *__wrap_fim_db_init(int memory);
 
 int __wrap_fim_db_insert(fdb_t *fim_sql,
                          const char *file_path,
-                         fim_entry_data *entry);
+                         fim_entry_data *entry,
+                         int alert_type);
 
 int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         fim_tmp_file *file,
                                         pthread_mutex_t *mutex,
                                         int storage,
-                                        fim_event_mode mode);
+                                        fim_event_mode mode,
+                                        whodata_evt * w_evt);
 
 void __wrap_fim_db_remove_path(fdb_t *fim_sql,
                                fim_entry *entry,
@@ -78,6 +84,9 @@ int __wrap_fim_db_set_all_unscanned(fdb_t *fim_sql);
 int __wrap_fim_db_set_scanned(fdb_t *fim_sql,
                               char *path);
 
-int __wrap_fim_db_sync_path_range(fdb_t *fim_sql);
+int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
+                                  pthread_mutex_t *mutex,
+                                  fim_tmp_file *file,
+                                  int storage);
 
 #endif

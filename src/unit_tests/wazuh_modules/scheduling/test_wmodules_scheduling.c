@@ -20,6 +20,8 @@
 #include "wazuh_modules/wmodules.h"
 #include "wmodules_scheduling_helpers.h"
 
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+
 static const int TEST_INTERVAL = 5 * 60;
 static const int TEST_DELAY    = 5;
 static const int TEST_DAY_MONTHS[] =  {3, 8, 15, 21};

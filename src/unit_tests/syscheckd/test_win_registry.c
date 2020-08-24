@@ -126,8 +126,7 @@ void test_os_winreg_querykey_success_subkey_p_key(void **state) {
     // Shutdown os_winreg_open_key
     // Inside RegOpenKeyEx
     expect_value(wrap_RegOpenKeyEx, hKey, HKEY_USERS);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "command\\SUBKEY_NAME");
+    expect_string(wrap_RegOpenKeyEx, lpSubKey, "command\\SUBKEY_NAME");
     expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
     expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ | (syscheck.registry[pos].arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY));
     will_return(wrap_RegOpenKeyEx, NULL);
@@ -479,8 +478,7 @@ void test_os_winreg_check_valid_subtree(void **state) {
     // If os_winreg check tries to call os_winreg_open_key then subtree is valid
     // Inside RegOpenKeyEx
     expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "Software\\Classes\\batfile");
+    expect_string(wrap_RegOpenKeyEx, lpSubKey, "Software\\Classes\\batfile");
     expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
     expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ | (syscheck.registry[pos].arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY));
     will_return(wrap_RegOpenKeyEx, NULL);
@@ -499,8 +497,7 @@ void test_os_winreg_open_fail(void **state) {
 
     // Inside RegOpenKeyEx
     expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "Software\\Classes\\batfile");
+    expect_string(wrap_RegOpenKeyEx, lpSubKey, "Software\\Classes\\batfile");
     expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
     expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ | (syscheck.registry[pos].arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY));
     will_return(wrap_RegOpenKeyEx, NULL);

@@ -17,7 +17,8 @@ int __wrap_fim_db_data_checksum_range(fdb_t *fim_sql,
                                       const char *start,
                                       const char *top,
                                       const long id,
-                                      const int n) {
+                                      const int n,
+                                      __attribute__ ((__unused__)) pthread_mutex_t *mutex) {
     check_expected_ptr(fim_sql);
     check_expected(start);
     check_expected(top);
@@ -27,7 +28,10 @@ int __wrap_fim_db_data_checksum_range(fdb_t *fim_sql,
     return mock();
 }
 
-int __wrap_fim_db_delete_not_scanned(fdb_t * fim_sql) {
+int __wrap_fim_db_delete_not_scanned(fdb_t * fim_sql,
+                                     __attribute__ ((__unused__)) fim_tmp_file *file,
+                                     __attribute__ ((__unused__)) pthread_mutex_t *mutex,
+                                     __attribute__ ((__unused__)) int storage) {
     check_expected_ptr(fim_sql);
 
     return mock();
@@ -129,7 +133,8 @@ fdb_t *__wrap_fim_db_init(int memory) {
 
 int __wrap_fim_db_insert(fdb_t *fim_sql,
                          const char *file_path,
-                         __attribute__((unused)) fim_entry_data *entry) {
+                         __attribute__((unused)) fim_entry_data *entry,
+                         __attribute__((unused)) int alert_type) {
     check_expected_ptr(fim_sql);
     check_expected(file_path);
 
@@ -140,7 +145,8 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         fim_tmp_file *file,
                                         __attribute__((unused)) pthread_mutex_t *mutex,
                                         int storage,
-                                        fim_event_mode mode) {
+                                        fim_event_mode mode,
+                                        __attribute__((unused)) whodata_evt * w_evt) {
     check_expected_ptr(fim_sql);
     check_expected_ptr(file);
     check_expected_ptr(storage);
@@ -170,7 +176,10 @@ int __wrap_fim_db_set_scanned(fdb_t *fim_sql,
     return mock();
 }
 
-int __wrap_fim_db_sync_path_range(fdb_t *fim_sql) {
+int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
+                                  __attribute__((unused)) pthread_mutex_t *mutex,
+                                  __attribute__((unused)) fim_tmp_file *file,
+                                  __attribute__((unused)) int storage) {
     check_expected_ptr(fim_sql);
 
     return mock();

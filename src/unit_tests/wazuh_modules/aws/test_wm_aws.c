@@ -22,6 +22,7 @@
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
+#include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 
 #define TEST_MAX_DATES 5
 

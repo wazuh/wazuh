@@ -23,6 +23,7 @@
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
+#include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 
 #define TEST_MAX_DATES 5
 
