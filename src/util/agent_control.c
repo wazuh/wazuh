@@ -383,8 +383,7 @@ int main(int argc, char **argv)
         }
 
         if (agt_id != -1) {
-            agt_status = get_agent_status(keys.keyentries[agt_id]->name,
-                                          keys.keyentries[agt_id]->ip->ip);
+            agt_status = get_agent_status(agt_id);
 
             agt_info = get_agent_info(keys.keyentries[agt_id]->name,
                                       keys.keyentries[agt_id]->ip->ip,
@@ -413,7 +412,7 @@ int main(int argc, char **argv)
                        print_agent_status(agt_status));
             }
         } else {
-            agt_status = get_agent_status(NULL, NULL);
+            agt_status = GA_STATUS_ACTIVE;
             agt_info = get_agent_info(NULL, "127.0.0.1", "000");
 
             if (!csv_output && !json_output) {

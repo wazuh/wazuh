@@ -180,8 +180,6 @@ int wdb_update_agent_version (int id,
  */
 cJSON* wdb_get_agent_labels(int id) {
     cJSON *root = NULL;
-    // Making use of a big buffer for the output because
-    // it will contain all the keys and values.
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
 

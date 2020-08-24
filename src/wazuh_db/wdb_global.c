@@ -321,12 +321,12 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id) {
         return NULL;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_INFO_GET) < 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENT_INFO) < 0) {
         mdebug1("Cannot cache statement");
         return NULL;
     }
 
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_INFO_GET];
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENT_INFO];
 
     if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));

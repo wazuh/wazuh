@@ -25,7 +25,6 @@ static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_sc
                                int csv_output, cJSON *json_output, int show_last) __attribute__((nonnull(1)));
 static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info, const char* agent_id) __attribute__((nonnull(2, 3)));
 #endif /* !WIN32*/
-cJSON *get_json_field(cJSON *root, char *field);
 
 /* Free the agent list in memory */
 void free_agents(char **agent_list)
@@ -1082,43 +1081,37 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
 
 /* Get information from an agent */
 agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id){
-    char tmp_keepalive[OS_SIZE_512] = "";
     cJSON *json_agt_info = NULL;
-    cJSON *json_agt_info_field = NULL;
     agent_info *agt_info = NULL;
-
-    /* Allocate memory for the info structure */
-    os_calloc(1, sizeof(agent_info), agt_info);
+    char tmp_string[OS_SIZE_1024] = "";
+    char keepalive_str[OS_SIZE_512] = "";
+    int keepalive_int = -1;
 
     /* Getting all the information of the agent */
     json_agt_info = wdb_get_agent_info(atoi(agent_id));
 
     if (!json_agt_info) {
         mdebug1("Failed to get agent '%s' information from Wazuh DB.",agent_id);
-        cJSON_Delete(json_agt_info);
         return NULL;
     }
 
-    json_agt_info_field = get_json_field(json_agt_info, "os_name");
-    if (json_agt_info_field){
-        os_strdup(json_agt_info_field->valuestring, agt_info->os);
-    }
+    /* Allocate memory for the info structure */   
+    os_calloc(1, sizeof(agent_info), agt_info);
 
-    json_agt_info_field = get_json_field(json_agt_info, "version");
-    if (json_agt_info_field){
-        os_strdup(json_agt_info_field->valuestring, agt_info->version);
-    }
+    json_get_string_field(json_agt_info, "os_name", tmp_string, sizeof(tmp_string));
+    os_strdup(tmp_string, agt_info->os);
 
-    json_agt_info_field = get_json_field(json_agt_info, "merged_sum");
-    if (json_agt_info_field){
-        os_strdup(json_agt_info_field->valuestring, agt_info->merged_sum);
-    }
+    json_get_string_field(json_agt_info, "version", tmp_string, sizeof(tmp_string));
+    os_strdup(tmp_string, agt_info->version);
 
-    json_agt_info_field = get_json_field(json_agt_info, "last_keepalive");
-    if (json_agt_info_field){
-        snprintf(tmp_keepalive, sizeof(tmp_keepalive), "%d", json_agt_info_field->valueint);
-        os_strdup(tmp_keepalive, agt_info->last_keepalive);
+    json_get_string_field(json_agt_info, "merged_sum", tmp_string, sizeof(tmp_string));
+    os_strdup(tmp_string, agt_info->merged_sum);
+
+    json_get_int_field(json_agt_info, "last_keepalive", &keepalive_int);
+    if(keepalive_int != -1){
+        snprintf(keepalive_str, sizeof(keepalive_str), "%d", keepalive_int);
     }
+    os_strdup(keepalive_str, agt_info->last_keepalive);
 
     _get_time_rkscan(agent_name, agent_ip, agt_info, agent_id);
 
@@ -1127,67 +1120,46 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
 }
 #endif
 
-/* Gets the status of an agent, based on the name / IP address */
-agent_status_t get_agent_status(const char *agent_name, const char *agent_ip)
-{
+/* Gets the status of an agent, based on the  agent ID*/
+agent_status_t get_agent_status(int agent_id){
     cJSON *json_agt_info = NULL;
-    cJSON *json_agt_info_field = NULL;
     int last_keepalive = -1;
 
-    // Unused
-    (void) agent_ip;
-
-    /* Avoiding a change in the function parameters, using name to get the ID */
-    json_agt_info = wdb_get_agent_info(atoi(get_agent_id_from_name(agent_name)));
+    json_agt_info = wdb_get_agent_info(agent_id);
 
     if (!json_agt_info) {
-        mdebug1("Failed to get agent '%s' information from Wazuh DB.",agent_name);
-        cJSON_Delete(json_agt_info);
+        mdebug1("Failed to get agent '%d' information from Wazuh DB.", agent_id);
         return GA_STATUS_INV;
     }
     
-    json_agt_info_field = get_json_field(json_agt_info, "last_keepalive");
-    if (json_agt_info_field){
-        last_keepalive = json_agt_info_field->valueint;
-    }
-
-    /* Server info */
-    if (agent_name == NULL) {
-        cJSON_Delete(json_agt_info);
-        return (GA_STATUS_ACTIVE);
-    }
+    json_get_int_field(json_agt_info, "last_keepalive", &last_keepalive);
+    cJSON_Delete(json_agt_info);
 
     if (last_keepalive < 0) {
-        cJSON_Delete(json_agt_info);
         return (GA_STATUS_INV);
     }
 
     if (last_keepalive < (time(0) - DISCON_TIME)) {
-        cJSON_Delete(json_agt_info);
         return (GA_STATUS_NACTIVE);
     }
 
     // The pending status may not be related to the keepalive
     if (last_keepalive == 0) {
-        cJSON_Delete(json_agt_info);
         return GA_STATUS_PENDING;
     }
 
-    cJSON_Delete(json_agt_info);
     return (GA_STATUS_ACTIVE);
 }
 
 /* List available agents */
-char **get_agents(int flag,int mon_time)
-{
-    size_t f_size = 0;
-    char **f_files = NULL;
+char **get_agents(int flag,int mon_time){
+    size_t array_size = 0;
+    char **agents_array = NULL;
     int *id_array = NULL;
     int i = 0;
     cJSON *json_agt_info = NULL;
-    cJSON *json_agt_info_field = NULL;
-    cJSON *json_agt_info_name = NULL;
-    cJSON *json_agt_info_ip = NULL;
+    char agent_name[OS_SIZE_256] = "";
+    char agent_ip[OS_SIZE_128] = "";
 
     id_array = wdb_get_all_agents();
 
@@ -1200,29 +1172,22 @@ char **get_agents(int flag,int mon_time)
     for (i = 0; id_array[i] != -1; i++){
         int status = 0;
         int last_keepalive = -1;
-        char agent_name_ip[OS_SIZE_256] = "";
+        char agent_name_ip[OS_SIZE_512] = "";
 
         json_agt_info = wdb_get_agent_info(id_array[i]);
         if (!json_agt_info) {
-            mdebug1("Failed to get agent information from Wazuh DB. ID:'%d'.",id_array[i]);
-            cJSON_Delete(json_agt_info);
+            mdebug1("Failed to get agent '%d' information from Wazuh DB.", id_array[i]);
             continue;
         }
 
-        json_agt_info_field = get_json_field(json_agt_info, "last_keepalive");
-        if (json_agt_info_field){
-            last_keepalive = json_agt_info_field->valueint;
-        }
-
-        json_agt_info_name = get_json_field(json_agt_info, "name");
-        json_agt_info_ip = get_json_field(json_agt_info, "register_ip");
-
-        /* Keeping the same name structure than plain text files in AGENTINFO_DIR */
-        if (json_agt_info_name && json_agt_info_ip){
-            snprintf(agent_name_ip, sizeof(agent_name_ip), "%s-%s",json_agt_info_name->valuestring,json_agt_info_ip->valuestring);
-        }
+        json_get_int_field(json_agt_info, "last_keepalive", &last_keepalive);
+        json_get_string_field(json_agt_info, "name", agent_name, sizeof(agent_name));
+        json_get_string_field(json_agt_info, "register_ip", agent_ip, sizeof(agent_ip));
         cJSON_Delete(json_agt_info);
 
+        /* Keeping the same name structure than plain text files in AGENTINFO_DIR */
+        snprintf(agent_name_ip, sizeof(agent_name_ip), "%s-%s", agent_name, agent_ip);
+    
         if (flag != GA_ALL) {
             if (last_keepalive < 0) {
                 continue;
@@ -1242,30 +1207,27 @@ char **get_agents(int flag,int mon_time)
             }
         }
 
-        f_files = (char **)realloc(f_files, (f_size + 2) * sizeof(char *));
-        if (!f_files) {
-            merror_exit(MEM_ERROR, errno, strerror(errno));
-        }
+        os_realloc(agents_array, (array_size + 2) * sizeof(char *), agents_array);
 
         /* Add agent entry */
         if (flag == GA_ALL_WSTATUS) {
-            char agt_stat[512];
+            char agt_stat[1024];
 
             snprintf(agt_stat, sizeof(agt_stat) - 1, "%s %s",
                      agent_name_ip, status == 1 ? "active" : "disconnected");
 
-            os_strdup(agt_stat, f_files[f_size]);
+            os_strdup(agt_stat, agents_array[array_size]);
         } else {
-            os_strdup(agent_name_ip, f_files[f_size]);
+            os_strdup(agent_name_ip, agents_array[array_size]);
         }
 
-        f_files[f_size + 1] = NULL;
+        agents_array[array_size + 1] = NULL;
 
-        f_size++;
+        array_size++;
     }
 
     os_free(id_array);
-    return (f_files);
+    return (agents_array);
 }
 
 #ifndef WIN32
@@ -1295,31 +1257,3 @@ time_t scantime_fim (const char *agent_id, const char *scan) {
     return (ts);
 }
 #endif
-
-/**
- * @brief Extracts a field from a cJSON array and checks it
- *       
- * @param root The cJSON root pointer.
- * @param field Name of the field to extract.
- * @retval cJSON* On success.
- * @retval NULL On error.
- */
-cJSON *get_json_field(cJSON *root, char *field){
-    cJSON *json_field = NULL;
-    
-    if(!root || !field){
-        return NULL;
-    }
-
-    json_field = cJSON_GetObjectItemCaseSensitive(root->child, field);
-
-    if (cJSON_IsString(json_field) && json_field->valuestring != NULL){
-        return json_field;
-    
-    } else if(cJSON_IsNumber(json_field)){
-        return json_field;
-    
-    } else{
-        return NULL;
-    }
-}

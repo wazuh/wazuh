@@ -114,3 +114,39 @@ void json_strip(char * json) {
         }
     }
 }
+
+void json_get_string_field(cJSON *root, char *field, char *output, size_t output_size){
+    cJSON *json_field = NULL;
+    
+    if(!root || !field){
+        snprintf(output, output_size, "%s", "");
+        return;
+    }
+
+    json_field = cJSON_GetObjectItemCaseSensitive(root->child, field);
+
+    if (cJSON_IsString(json_field) && json_field->valuestring != NULL){
+        snprintf(output, output_size, "%s", json_field->valuestring);
+
+    } else{
+        snprintf(output, output_size, "%s", "");
+    }
+}
+
+void json_get_int_field(cJSON *root, char *field, int *value){
+    cJSON *json_field = NULL;
+
+    if(!root || !field){
+        *value = -1;
+        return;
+    }
+
+    json_field = cJSON_GetObjectItemCaseSensitive(root->child, field);
+
+    if (cJSON_IsNumber(json_field)){
+        *value = json_field->valueint;    
+
+    } else{
+        *value = -1;
+    }
+}

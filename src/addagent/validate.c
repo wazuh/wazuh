@@ -588,7 +588,8 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
                     total++;
 
                     if (print_status) {
-                        agent_status_t agt_status = get_agent_status(name, ip);
+                        // Within this context, line_read corresponds to the agent ID
+                        agent_status_t agt_status = get_agent_status(atoi(line_read));
                         if (active_only && (agt_status != GA_STATUS_ACTIVE)) {
                             continue;
                         }
