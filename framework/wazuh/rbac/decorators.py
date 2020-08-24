@@ -14,8 +14,8 @@ from wazuh.core.cdb_list import iterate_lists
 from wazuh.core.utils import get_files
 from wazuh.core.agent import get_agents_info, get_groups, expand_group
 from wazuh.core.rule import format_rule_decoder_file, Status
-from wazuh.core.exception import WazuhError, WazuhPermissionError
-from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager
+from wazuh.core.exception import WazuhPermissionError
+from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 from wazuh.core.results import AffectedItemsWazuhResult
 
 
@@ -53,6 +53,10 @@ def _expand_resource(resource):
             for user in users:
                 users_system.add(user['user_id'])
             return users_system
+        elif resource_type == 'rule:id':
+            with RulesManager() as rum:
+                rules = rum.get_rules()
+            return {str(rule_id.id) for rule_id in rules}
         elif resource_type == 'rule:file':
             tags = ['rule_include', 'rule_exclude', 'rule_dir']
             format_rules = format_rule_decoder_file(
