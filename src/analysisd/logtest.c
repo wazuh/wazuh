@@ -174,8 +174,10 @@ cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, OSL
         return output;
     }
 
-    /* Add alert description to the event */
-    lf->comment = ParseRuleComment(lf);
+    /* Add alert description to the event if exist a match */
+    if (lf->generated_rule) {
+        lf->comment = ParseRuleComment(lf);
+    }
 
     /* Parse the alert */
     char *output_str = Eventinfo_to_jsonstr(lf, false);
@@ -582,22 +584,26 @@ bool w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
 
     /* Check JSON fields */
     location = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_LOCATION);
-    if (!(cJSON_IsString(location) && (location->valuestring != NULL))) {
+    if (!(cJSON_IsString(location) && location->valuestring != NULL && strlen(location->valuestring) > 0)) {
 
         mdebug1(LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOCATION);
         smerror(list_msg, LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOCATION);
         retval = false;
     }
 
-    log_format = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_LOGFORMAT);
-    if (!(cJSON_IsString(log_format) && (log_format->valuestring != NULL))) {
+    log_format = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_LOGFORMAT); 
+    if (!(cJSON_IsString(log_format) && log_format->valuestring != NULL 
+          && strlen(log_format->valuestring) > 0)) {
 
         mdebug1(LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOGFORMAT);
         smerror(list_msg, LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOGFORMAT);
         retval = false;
     }
 
-    if (event = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_EVENT), !event) {
+    /* An event can be a string or a json object */
+    event = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_EVENT);    
+    if ( !(cJSON_IsString(event) && event->valuestring != NULL  && strlen(event->valuestring) > 0)
+         && !(cJSON_IsObject(event) && event->child != NULL)) {
 
         mdebug1(LOGTEST_ERROR_FIELD_NOT_FOUND, W_LOGTEST_JSON_EVENT);
         smerror(list_msg, LOGTEST_ERROR_FIELD_NOT_FOUND, W_LOGTEST_JSON_EVENT);

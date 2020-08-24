@@ -41,6 +41,10 @@ int OS_Regex(const char *pattern, const char *str)
 
 void OSRegex_free_regex_matching (regex_matching *reg) {
 
+    if (!reg) {
+        return;
+    }
+
     if (reg->sub_strings) {
         for (unsigned int i = 0; reg->sub_strings[i]; i++) {
             os_free(reg->sub_strings[i]);
