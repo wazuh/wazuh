@@ -20,8 +20,8 @@
 
 int __wrap_wpclose(wfd_t * wfd);
 
-wfd_t *__wrap_wpopenl();
+wfd_t *__wrap_wpopenl(const char * path, int flags, ...);
 
-wfd_t *__wrap_wpopenv();
+wfd_t *__wrap_wpopenv(const char * path, char * const * argv, int flags);
 
 #endif

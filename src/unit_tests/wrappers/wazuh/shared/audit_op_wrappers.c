@@ -18,7 +18,7 @@ int __wrap_audit_add_rule(__attribute__((unused)) const char *path,
     return mock();
 }
 
-int __wrap_audit_get_rule_list() {
+int __wrap_audit_get_rule_list(__attribute__((unused)) int fd) {
     return mock();
 }
 
@@ -30,6 +30,8 @@ int __wrap_audit_set_db_consistency() {
     return 1;
 }
 
-int __wrap_search_audit_rule() {
+int __wrap_search_audit_rule(__attribute__((unused)) const char *path,
+                             __attribute__((unused)) const char *perms,
+                             __attribute__((unused)) const char *key) {
     return mock();
 }

@@ -20,10 +20,12 @@ int __wrap_wpclose(__attribute__((unused)) wfd_t * wfd) {
     return mock();
 }
 
-wfd_t *__wrap_wpopenl() {
+wfd_t *__wrap_wpopenl(__attribute__((unused)) const char * path, __attribute__((unused)) int flags, ...) {
     return mock_type(wfd_t *);
 }
 
-wfd_t *__wrap_wpopenv() {
+wfd_t *__wrap_wpopenv(__attribute__((unused)) const char * path,
+                      __attribute__((unused)) char * const * argv,
+                      __attribute__((unused)) int flags) {
     return mock_type(wfd_t *);
 }
