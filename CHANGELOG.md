@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added improved support for monitoring paths from environment variables. ([#4961](https://github.com/wazuh/wazuh/pull/4961))
+- Added auto enrollment capability. Agents are now able to request a key from the manager if current key is missing or wrong. ([#5609](https://github.com/wazuh/wazuh/pull/5609))
 
 ### Changed
 

@@ -45,20 +45,10 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
 int OS_RemoveAgent(const char *id);
 double OS_AgentAntiquity(const char *name, const char *ip);
 double OS_AgentAntiquity_ID(const char *id);
-void OS_BackupAgentInfo(const char *id, const char *name, const char *ip);
-void OS_BackupAgentInfo_ID(const char *id);
-char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now);
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now);
 void OS_RemoveAgentTimestamp(const char *id);
 void OS_RemoveAgentGroup(const char *id);
 void FormatID(char *id);
-
-/* Load gid and uid.
- * Call before OS_BackupAgentInfo(), OS_BackupAgentInfo_ID() or OS_CreateBackupDir().
- * Should be called before chroot().
- * Returns 0 on success or -1 on failure.
- */
-int OS_LoadUid();
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output);

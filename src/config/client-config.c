@@ -34,7 +34,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_profile_name = "config-profile";
     const char *xml_auto_restart = "auto_restart";
     const char *xml_crypto_method = "crypto_method";
-    const char *xml_client_auto_enrollment = "auto_enrollment";
+    const char *xml_client_enrollment = "enrollment";
 
     /* Old XML definitions */
     const char *xml_client_ip = "server-ip";
@@ -110,7 +110,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 return (OS_INVALID);
             }
             OS_ClearNode(chld_node);
-        } else if (strcmp(node[i]->element, xml_client_auto_enrollment) == 0) {
+        } else if (strcmp(node[i]->element, xml_client_enrollment) == 0) {
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 if (Read_Client_Enrollment(chld_node, logr) < 0) {
                     OS_ClearNode(chld_node);

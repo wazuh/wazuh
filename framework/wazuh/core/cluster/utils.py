@@ -166,6 +166,7 @@ def manager_restart():
     finally:
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
+        read_config.cache_clear()
 
     return WazuhResult({'message': 'Restart request sent'})
 
