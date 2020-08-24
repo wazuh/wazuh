@@ -34,7 +34,12 @@ default_configuration = os.path.join(test_path, 'default/')
 with open(default_configuration + 'roles.yaml') as f:
     role_yaml = yaml.safe_load(f)
     roles = role_yaml[list(role_yaml.keys())[0]]
-    roles_configuration = [(role_name, info['rule']) for role_name, info in roles.items()]
+    roles_configuration = [(role_name, info['description']) for role_name, info in roles.items()]
+
+with open(default_configuration + 'rules.yaml') as f:
+    rule_yaml = yaml.safe_load(f)
+    rules = rule_yaml[list(rule_yaml.keys())[0]]
+    rules_configuration = [(rule_name, info['rule']) for rule_name, info in rules.items()]
 
 with open(default_configuration + 'policies.yaml') as f:
     policy_yaml = yaml.safe_load(f)
@@ -47,7 +52,7 @@ with open(default_configuration + 'policies.yaml') as f:
 with open(default_configuration + 'users.yaml') as f:
     user_yaml = yaml.safe_load(f)
     users = user_yaml[list(user_yaml.keys())[0]]
-    users_configuration = [(user, info['auth_context']) for user, info in users.items()]
+    users_configuration = [(user, info['allow_run_as']) for user, info in users.items()]
 
 with open(default_configuration + 'relationships.yaml') as f:
     file = yaml.safe_load(f)
@@ -56,12 +61,19 @@ with open(default_configuration + 'relationships.yaml') as f:
     role_policies = [(role, policy_ids['policy_ids']) for role, policy_ids in relationships['roles'].items()]
 
 
-@pytest.mark.parametrize('role_name, role_rule', roles_configuration)
-def test_roles_default(db_setup, role_name, role_rule):
+@pytest.mark.parametrize('role_name, role_description', roles_configuration)
+def test_roles_default(db_setup, role_name, role_description):
     with db_setup.RolesManager() as rm:
         role = rm.get_role(name=role_name)
         assert role_name == role['name']
-        assert role_rule == role['rule']
+
+
+@pytest.mark.parametrize('rule_name, rule_info', rules_configuration)
+def test_rules_default(db_setup, rule_name, rule_info):
+    with db_setup.RulesManager() as rum:
+        rule = rum.get_rule_by_name(rule_name=rule_name)
+        assert rule_name == rule['name']
+        assert rule_info == rule['rule']
 
 
 @pytest.mark.parametrize('policy_name, policy_policy', policies_configuration)
@@ -76,7 +88,7 @@ def test_policies_default(db_setup, policy_name, policy_policy):
 def test_users_default(db_setup, user_name, auth_context):
     with db_setup.AuthenticationManager() as am:
         assert user_name == am.get_user(username=user_name)['username']
-        assert auth_context == am.user_auth_context(username=user_name)
+        assert auth_context == am.user_allow_run_as(username=user_name)
 
 
 @pytest.mark.parametrize('user_name, role_ids', user_roles)
