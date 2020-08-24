@@ -1729,7 +1729,7 @@ components:
           type: string
         allow_run_as:
           type: boolean
-          description: "Flag that indicates if the user has enabled the authorization context login method"
+          description: "Flag to enable the user to log in using authorization context"
         roles:
           type: array
           description: "User's roles"
