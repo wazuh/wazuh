@@ -11,7 +11,6 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 
-
 typedef enum wdbc_result { WDBC_OK, WDBC_ERROR, WDBC_IGNORE, WDBC_UNKNOWN } wdbc_result;
 
 int wdbc_connect();

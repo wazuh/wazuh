@@ -25,25 +25,4 @@ void json_strip(char * json);
 // Check if a JSON object is tagged
 #define json_tagged_obj(x) (x && x->string)
 
-/**
- * @brief Function to get a particular string field from a cJSON array.
- *        It writes an empty string "" on error.
- * 
- * @param root The cJSON array pointer.
- * @param field The cJSON field name.
- * @param output A char array to be written.
- * @param output_size The size of the output array.
- */
-void json_get_string_field(cJSON *root, char *field, char *output, size_t output_size );
-
-/**
- * @brief Function to get a particular integer field from a cJSON array.
- *        It stores a -1 in the variable "value" on error.
- * 
- * @param root The cJSON array pointer.
- * @param field The cJSON field name.
- * @param value An integer pointer to the output variable.
- */
-void json_get_int_field(cJSON *root, char *field, int *value);
-
 #endif

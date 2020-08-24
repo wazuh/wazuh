@@ -1097,10 +1097,9 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
 /* Get information from an agent */
 agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id){
     cJSON *json_agt_info = NULL;
+    cJSON *json_field = NULL;
     agent_info *agt_info = NULL;
-    char tmp_string[OS_SIZE_1024] = "";
     char keepalive_str[OS_SIZE_512] = "";
-    int keepalive_int = -1;
 
     /* Getting all the information of the agent */
     json_agt_info = wdb_get_agent_info(atoi(agent_id));
@@ -1113,20 +1112,26 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
     /* Allocate memory for the info structure */   
     os_calloc(1, sizeof(agent_info), agt_info);
 
-    json_get_string_field(json_agt_info, "os_name", tmp_string, sizeof(tmp_string));
-    os_strdup(tmp_string, agt_info->os);
-
-    json_get_string_field(json_agt_info, "version", tmp_string, sizeof(tmp_string));
-    os_strdup(tmp_string, agt_info->version);
-
-    json_get_string_field(json_agt_info, "merged_sum", tmp_string, sizeof(tmp_string));
-    os_strdup(tmp_string, agt_info->merged_sum);
-
-    json_get_int_field(json_agt_info, "last_keepalive", &keepalive_int);
-    if(keepalive_int != -1){
-        snprintf(keepalive_str, sizeof(keepalive_str), "%d", keepalive_int);
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "os_name");
+    if(cJSON_IsString(json_field) && json_field->valuestring != NULL){
+        os_strdup(json_field->valuestring, agt_info->os);
     }
-    os_strdup(keepalive_str, agt_info->last_keepalive);
+
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "version");
+    if(cJSON_IsString(json_field) && json_field->valuestring != NULL){
+        os_strdup(json_field->valuestring, agt_info->version);
+    }
+
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "merged_sum");
+    if(cJSON_IsString(json_field) && json_field->valuestring != NULL){
+        os_strdup(json_field->valuestring, agt_info->merged_sum);
+    }
+
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "last_keepalive");
+    if(cJSON_IsNumber(json_field)){
+        snprintf(keepalive_str, sizeof(keepalive_str), "%d", json_field->valueint);
+        os_strdup(keepalive_str, agt_info->last_keepalive);
+    }
 
     _get_time_rkscan(agent_name, agent_ip, agt_info, agent_id);
 
@@ -1138,6 +1143,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
 /* Gets the status of an agent, based on the  agent ID*/
 agent_status_t get_agent_status(int agent_id){
     cJSON *json_agt_info = NULL;
+    cJSON *json_field = NULL;
     int last_keepalive = -1;
 
     json_agt_info = wdb_get_agent_info(agent_id);
@@ -1147,7 +1153,10 @@ agent_status_t get_agent_status(int agent_id){
         return GA_STATUS_INV;
     }
     
-    json_get_int_field(json_agt_info, "last_keepalive", &last_keepalive);
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "last_keepalive");
+    if(cJSON_IsNumber(json_field)){
+        last_keepalive = json_field->valueint;
+    }
     cJSON_Delete(json_agt_info);
 
     if (last_keepalive < 0) {
@@ -1173,8 +1182,9 @@ char **get_agents(int flag,int mon_time){
     int *id_array = NULL;
     int i = 0;
     cJSON *json_agt_info = NULL;
-    char agent_name[OS_SIZE_256] = "";
-    char agent_ip[OS_SIZE_128] = "";
+    cJSON *json_field = NULL;
+    cJSON *json_name = NULL;
+    cJSON *json_ip = NULL;
 
     id_array = wdb_get_all_agents();
 
@@ -1195,13 +1205,20 @@ char **get_agents(int flag,int mon_time){
             continue;
         }
 
-        json_get_int_field(json_agt_info, "last_keepalive", &last_keepalive);
-        json_get_string_field(json_agt_info, "name", agent_name, sizeof(agent_name));
-        json_get_string_field(json_agt_info, "register_ip", agent_ip, sizeof(agent_ip));
-        cJSON_Delete(json_agt_info);
+        json_name= cJSON_GetObjectItem(json_agt_info->child, "name");
+        json_ip = cJSON_GetObjectItem(json_agt_info->child, "register_ip");
 
         /* Keeping the same name structure than plain text files in AGENTINFO_DIR */
-        snprintf(agent_name_ip, sizeof(agent_name_ip), "%s-%s", agent_name, agent_ip);
+        if(cJSON_IsString(json_name) && json_name->valuestring != NULL && 
+            cJSON_IsString(json_ip) && json_ip->valuestring != NULL){
+            snprintf(agent_name_ip, sizeof(agent_name_ip), "%s-%s", json_name->valuestring, json_ip->valuestring);
+        }
+
+        json_field = cJSON_GetObjectItem(json_agt_info->child, "last_keepalive");
+        if(cJSON_IsNumber(json_field)){
+            last_keepalive = json_field->valueint;
+        }
+        cJSON_Delete(json_agt_info);
     
         if (flag != GA_ALL) {
             if (last_keepalive < 0) {
