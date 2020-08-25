@@ -33,31 +33,45 @@ class RBAChecker:
     _regex_prefix = "r'"
 
     # If we don't pass it the role to check, it will take all of the system.
-    def __init__(self, auth_context=None, role=None):
+    def __init__(self, auth_context=None, role=None, user_id=None):
         """Class constructor to match the roles of the system with a given authorization context
 
-        :param auth_context: Authorization context to be checked
-        :param role: Roles(list)/Role/None(All roles in the system) to be checked against the authorization context
+        Parameters
+        ----------
+        auth_context : dict or str
+            Authorization context to be checked
+        role : list of Roles or Role or None
+            Roles(list)/Role/None(All roles in the system) to be checked against the authorization context
+        user_id : int
+            Current user_id
         """
+        self.user_id = user_id
         if auth_context is None:
             auth_context = '{}'
-        self.authorization_context = json.loads(auth_context)
-        # All roles in the system
+        try:
+            self.authorization_context = json.loads(auth_context)
+        except TypeError:
+            self.authorization_context = auth_context
+
         if role is None:
+            # All system's roles
             with orm.RolesManager() as rm:
-                self.roles_list = rm.get_roles()
-                for role in self.roles_list:
-                    role.rule = json.loads(role.rule)
+                roles_list = map(orm.Roles.to_dict, rm.get_roles())
         else:
-            # One single role
-            if not isinstance(role, list):
-                self.roles_list = [role]
-                self.roles_list[0].rule = json.loads(role.rule)
-            # role is a list of roles
-            elif isinstance(role, list):
-                self.roles_list = role
-                for role in self.roles_list:
-                    role.rule = json.loads(role.rule)
+            roles_list = [role] if not isinstance(role, list) else role
+
+        with orm.RolesManager() as rm:
+            with orm.RulesManager() as rum:
+                processed_roles_list = list()
+                for role in roles_list:
+                    rules = list()
+                    for rule in rm.get_role_id(role_id=role['id'])['rules']:
+                        rules.append(rum.get_rule(rule))
+                    if len(rules) > 0:
+                        processed_roles_list.append(role)
+                        processed_roles_list[-1]['rules'] = rules
+
+        self.roles_list = processed_roles_list
 
     def get_authorization_context(self):
         """Return the authorization context
@@ -272,7 +286,11 @@ class RBAChecker:
         """This function will return a list of role IDs, if these match with the authorization context"""
         list_roles = list()
         for role in self.roles_list:
-            list_roles.append(role.id) if self.check_rule(role.rule) else None
+            for rule in role['rules']:
+                if (rule['id'] not in orm.required_rules_for_role[1] or self.user_id in orm.admin_user_ids) and \
+                        self.check_rule(rule['rule']):
+                    list_roles.append(role['id'])
+                    break
 
         return list_roles
 
@@ -284,7 +302,7 @@ class RBAChecker:
         with orm.RolesPoliciesManager() as rpm:
             for role in user_roles:
                 for policy in rpm.get_all_policies_from_role(role):
-                    user_policies.append(policy['policy'])
+                    user_policies.append(json.loads(policy.policy))
 
         return user_policies
 

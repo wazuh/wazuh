@@ -6,9 +6,11 @@
  * and/or modify it under the terms of GPLv2.
  */
 
-CREATE TABLE users (id INTEGER NOT NULL, username VARCHAR(32), password VARCHAR(256), auth_context BOOLEAN NOT NULL, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT username_restriction UNIQUE (username), CHECK (auth_context IN (0, 1)));
+CREATE TABLE users (id INTEGER NOT NULL, username VARCHAR(32), password VARCHAR(256), allow_run_as BOOLEAN NOT NULL, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT username_restriction UNIQUE (username), CHECK (allow_run_as IN (0, 1)));
 
-CREATE TABLE roles (id INTEGER NOT NULL, name VARCHAR(20), rule TEXT, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT name_role UNIQUE (name), CONSTRAINT role_definition UNIQUE (rule));
+CREATE TABLE roles (id INTEGER NOT NULL, name VARCHAR(20), created_at DATETIME,	PRIMARY KEY (id), CONSTRAINT name_role UNIQUE (name));
+
+CREATE TABLE rules (id INTEGER NOT NULL, name VARCHAR(20), rule TEXT, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT rule_name UNIQUE (name), CONSTRAINT rule_definition UNIQUE (rule));
 
 CREATE TABLE policies (id INTEGER NOT NULL, name VARCHAR(20), policy TEXT, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT name_policy UNIQUE (name),	CONSTRAINT policy_definition UNIQUE (policy));
 
@@ -16,6 +18,7 @@ CREATE TABLE roles_policies (id INTEGER NOT NULL, role_id INTEGER, policy_id INT
 
 CREATE TABLE user_roles (id INTEGER NOT NULL, user_id INTEGER, role_id INTEGER, level INTEGER,	created_at DATETIME, PRIMARY KEY (id), CONSTRAINT user_role UNIQUE (user_id, role_id), FOREIGN KEY(user_id) REFERENCES users (username) ON DELETE CASCADE, FOREIGN KEY(role_id) REFERENCES roles (id) ON DELETE CASCADE);
 
+CREATE TABLE roles_rules (id INTEGER NOT NULL, role_id INTEGER, rule_id INTEGER, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT role_rule UNIQUE (role_id, rule_id), FOREIGN KEY(role_id) REFERENCES roles (id) ON DELETE CASCADE, FOREIGN KEY(rule_id) REFERENCES rules (id) ON DELETE CASCADE);
 PRAGMA foreign_keys=OFF;
 BEGIN TRANSACTION;
 
@@ -32,21 +35,33 @@ INSERT INTO users VALUES(104,'rbac','pbkdf2:sha256:150000$eQAz1s4i$12c6ffdd7f290
 INSERT INTO users VALUES(105,'guest','pbkdf2:sha256:150000$O9tFseJW$7659fc551aa6ed9cf207434d90d1da388f6840ce7bba5967a16949d4a94d1579',0,'1970-01-01 00:00:00');
 
 /* Default roles */
-INSERT INTO roles VALUES(1,'administrator','{"FIND": {"r''^auth[a-zA-Z]+$''": ["full_admin"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(2,'readonly','{"FIND": {"r''^auth[a-zA-Z]+$''": ["readonly"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(3,'users_admin','{"FIND": {"r''^auth[a-zA-Z]+$''": ["users_admin"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(4,'agents_readonly','{"FIND": {"r''^auth[a-zA-Z]+$''": ["agents_readonly"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(5,'agents_admin','{"FIND": {"r''^auth[a-zA-Z]+$''": ["agents_admin"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(6,'cluster_readonly','{"FIND": {"r''^auth[a-zA-Z]+$''": ["cluster_readonly"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(7,'cluster_admin','{"FIND": {"r''^auth[a-zA-Z]+$''": ["cluster_admin"]}}','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(1,'administrator','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(2,'readonly','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(3,'users_admin','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(4,'agents_readonly','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(5,'agents_admin','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(6,'cluster_readonly','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(7,'cluster_admin','1970-01-01 00:00:00');
 
 /* Testing */
-INSERT INTO roles VALUES(100,'wazuh','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(101,'wazuh-wui','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator-app"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(102,'technical','{"MATCH": {"definition": "technicalRule"}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(103,'administrator_test','{"MATCH": {"definition": "administratorRule"}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(104,'normalUser','{"MATCH": {"definition": "normalRule"}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(105,'ossec','{"MATCH": {"definition": "ossecRule"}}','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(100,'wazuh','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(101,'wazuh-wui','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(102,'technical','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(103,'administrator_test','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(104,'normalUser','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(105,'ossec','1970-01-01 00:00:00');
+
+/* Default rules */
+INSERT INTO rules VALUES(1,'wui_elastic_admin','{"FIND": {"username": ["elastic"]}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(2,'wui_opendistro_admin','{"FIND": {"user_name": ["admin"]}}','1970-01-01 00:00:00');
+
+/* Testing */
+INSERT INTO rules VALUES(100,'rule1','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator"]}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(101,'rule2','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator-app"]}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(102,'rule3','{"MATCH": {"definition": "technicalRule"}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(103,'rule4','{"MATCH": {"definition": "administratorRule"}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(104,'rule5','{"MATCH": {"definition": "normalRule"}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(105,'rule6','{"MATCH": {"definition": "ossecRule"}}','1970-01-01 00:00:00');
 
 /* Default policies */
 INSERT INTO policies VALUES(1,'agents_all_resourceless','{"actions": ["agent:create", "group:create"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.630121');
@@ -172,5 +187,17 @@ INSERT INTO user_roles VALUES(107,102,104,1,'1970-01-01 00:00:00');
 INSERT INTO user_roles VALUES(108,104,104,0,'1970-01-01 00:00:00');
 INSERT INTO user_roles VALUES(109,104,102,1,'1970-01-01 00:00:00');
 INSERT INTO user_roles VALUES(110,104,103,2,'1970-01-01 00:00:00');
+
+/* Default roles-rules links */
+INSERT INTO roles_rules VALUES(1,1,1,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(2,2,2,'1970-01-01 00:00:00');
+
+/* Testing */
+INSERT INTO roles_rules VALUES(100,100,100,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(101,101,101,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(102,102,102,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(103,103,103,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(104,104,104,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(105,105,105,'1970-01-01 00:00:00');
 
 COMMIT;
