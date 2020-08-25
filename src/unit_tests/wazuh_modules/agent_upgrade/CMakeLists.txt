@@ -47,7 +47,7 @@ list(APPEND upgrade_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,_mt
                            -Wl,--wrap,wm_agent_upgrade_parse_task_module_request -Wl,--wrap,wm_agent_upgrade_task_module_callback -Wl,--wrap,wm_agent_upgrade_parse_agent_response -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fclose \
                            -Wl,--wrap,OS_SHA1_File -Wl,--wrap,wm_agent_upgrade_get_first_node -Wl,--wrap,wm_agent_upgrade_get_next_node -Wl,--wrap,wm_agent_upgrade_compare_versions -Wl,--wrap,wm_agent_upgrade_remove_entry \
                            -Wl,--wrap,wm_agent_upgrade_validate_task_status_message -Wl,--wrap,wm_agent_upgrade_validate_id -Wl,--wrap,wm_agent_upgrade_validate_status -Wl,--wrap,wm_agent_upgrade_validate_version \
-                           -Wl,--wrap,wm_agent_upgrade_validate_wpk -Wl,--wrap,wm_agent_upgrade_validate_wpk_custom -Wl,--wrap,wdb_agent_info -Wl,--wrap,wm_agent_upgrade_create_task_entry")
+                           -Wl,--wrap,wm_agent_upgrade_validate_wpk -Wl,--wrap,wm_agent_upgrade_validate_wpk_custom -Wl,--wrap,wdb_agent_info -Wl,--wrap,wm_agent_upgrade_create_task_entry -Wl,--wrap,wm_agent_upgrade_parse_response_message")
 
 # Compiling tests
 list(LENGTH upgrade_names count)
