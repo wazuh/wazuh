@@ -439,9 +439,11 @@ int __wrap_wdb_agent_info(int id, char **platform, char **os_major, char **os_mi
 int __wrap_wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* ag_task) {
     check_expected(agent_id);
 
+#ifdef TEST_SERVER
     char key[128];
     sprintf(key, "%d", agent_id);
     OSHash_Add_ex(hash_table, key, ag_task);
+#endif
 
     return mock();
 }
@@ -449,12 +451,14 @@ int __wrap_wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* ag_ta
 void __wrap_wm_agent_upgrade_remove_entry(int agent_id) {
     check_expected(agent_id);
 
+#ifdef TEST_SERVER
     char key[128];
     sprintf(key, "%d", agent_id);
     wm_agent_task *agent_task = (wm_agent_task *)OSHash_Delete_ex(hash_table, key);
     if (agent_task) {
         wm_agent_upgrade_free_agent_task(agent_task);
     }
+#endif
 }
 
 cJSON* __wrap_wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
