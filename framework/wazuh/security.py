@@ -171,7 +171,7 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
         else:
             result.affected_items.append(auth.get_user_id(user_id[0]))
             result.total_affected_items += 1
-            invalid_users_tokens(users=result.affected_items)
+            invalid_users_tokens(users=user_id)
 
     return result
 
@@ -274,7 +274,7 @@ def remove_roles(role_ids):
                 result.affected_items.append(role)
                 result.total_affected_items += 1
 
-        invalid_roles_tokens(roles=result.affected_items)
+        invalid_roles_tokens(roles=role_ids)
         result.affected_items = sorted(result.affected_items, key=lambda i: i['id'])
 
     return result
@@ -328,7 +328,7 @@ def update_role(role_id=None, name=None):
             updated = rm.get_role_id(role_id[0])
             result.affected_items.append(updated)
             result.total_affected_items += 1
-            invalid_roles_tokens(roles=[role_id])
+            invalid_roles_tokens(roles=role_id)
 
     return result
 
@@ -646,7 +646,7 @@ def set_user_role(user_id, role_ids, position=None):
             with AuthenticationManager() as auth:
                 result.affected_items.append(auth.get_user_id(user_id[0]))
             result.affected_items.sort(key=str)
-            invalid_users_tokens(users=result.affected_items)
+            invalid_users_tokens(users=user_id)
 
     return result
 
@@ -684,7 +684,7 @@ def remove_user_role(user_id, role_ids):
             with AuthenticationManager() as auth:
                 result.affected_items.append(auth.get_user_id(user_id[0]))
             result.affected_items.sort(key=str)
-            invalid_users_tokens(users=result.affected_items)
+            invalid_users_tokens(users=user_id)
 
     return result
 

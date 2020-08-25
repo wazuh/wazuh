@@ -208,7 +208,8 @@ def decode_token(token):
         payload = jwt.decode(token, generate_secret(), algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'],
-                                        'roles': payload['rbac_roles'], 'token_nbf_time': payload['nbf']},                              request_type='local_master',
+                                        'roles': payload['rbac_roles'], 'token_nbf_time': payload['nbf']},
+                              request_type='local_master',
                               is_async=False,
                               wait_for_complete=True,
                               logger=logging.getLogger('wazuh')
