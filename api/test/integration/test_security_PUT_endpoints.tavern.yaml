@@ -16,9 +16,6 @@ stages:
       method: PUT
       json:
         name: "testModified"
-        rule:
-          MATCH:
-            normal_user: "get_permissionsM"
     response:
       status_code: 200
       json:
@@ -27,43 +24,12 @@ stages:
             - id: 102
               name: testModified
               policies: !anything
-              rule:
-                MATCH:
-                  normal_user: "get_permissionsM"
+              users: !anything
+              rules: !anything
           total_affected_items: 1
 
   # PUT /security/roles/{role_id}
-  - name: Modify a role in the system (without change rule)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/103"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-      json:
-        name: "testModified2"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - id: 103
-              name: testModified2
-              rule:
-                MATCH:
-                  definition: administratorRule
-              policies:
-                - 104
-                - 103
-              users:
-                - "101"
-                - "104"
-          total_affected_items: 1
-          total_failed_items: 0
-          failed_items: []
-
-  # PUT /security/roles/{role_id}
-  - name: Modify a role in the system (without change name)
+  - name: Modify a role in the system (using same name)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/102"
@@ -71,9 +37,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        rule:
-          MATCH:
-            normal_user: "get_permissionsM2"
+        name: "testModified"
     response:
       status_code: 200
       json:
@@ -82,10 +46,31 @@ stages:
             - id: 102
               name: testModified
               policies: !anything
-              rule:
-                MATCH:
-                  normal_user: "get_permissionsM2"
+              rules: !anything
           total_affected_items: 1
+
+  # PUT /security/roles/{role_id}
+  - name: Modify a role in the system (using same name for a different ID)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/103"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "testModified"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4005
+              id:
+                - '103'
+          total_affected_items: 0
+          total_failed_items: 1
 
   # PUT /security/roles/{non-existent role_id}
   - name: Modify a non-existent role in the system
@@ -97,8 +82,6 @@ stages:
       method: PUT
       json:
         name: "Unexistent"
-        rule:
-          user: "no"
     response:
       status_code: 200
       json:
@@ -267,6 +250,109 @@ stages:
       status_code: 400
 
 ---
+test_name: PUT /security/rules
+
+stages:
+
+# PUT /security/rules/{rule_id}
+  - name: Modify a rule in the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules/102"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "testModified"
+        rule: &modified_rule
+          MATCH:
+            normal_rule: "modifiedR"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 102
+              name: "testModified"
+              rule:
+                <<: *modified_rule
+              roles: !anything
+          total_affected_items: 1
+
+  # PUT /security/rules/{rule_id}
+  - name: Modify a rule in the system (using same name)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules/102"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "testModified"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 102
+              name: "testModified"
+              rule:
+                <<: *modified_rule
+              roles: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  # PUT /security/rules/{rule_id}
+  - name: Modify a rule in the system (using same name for a different ID)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules/103"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "testModified"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4005
+              id:
+                - '103'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # PUT /security/rules/{non-existent rule_id}
+  - name: Modify a non-existent rule in the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules/999"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "Unexistent"
+        rule:
+          MATCH:
+            user: "no"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4022
+              id:
+                - '999'
+          total_affected_items: 0
+          total_failed_items: 1
+
+---
 test_name: PUT /security/user/revoke
 
 stages:
@@ -328,6 +414,7 @@ stages:
       <<: *put_users_request
       json:
         password: "new_user"
+        allow_run_as: true
     response:
       status_code: 400
 
@@ -337,6 +424,7 @@ stages:
       <<: *put_users_request
       json:
         password: "new_user2A!"
+        allow_run_as: true
     response:
       status_code: 200
       json:
@@ -344,6 +432,7 @@ stages:
           affected_items:
             - id: 103
               username: python
+              allow_run_as: true
           total_affected_items: 1
 
   - name: Update an non-existent user
@@ -355,6 +444,7 @@ stages:
       method: PUT
       json:
         password: "new_user1A"
+        allow_run_as: false
     response:
       status_code: 200
       json:
@@ -382,13 +472,14 @@ stages:
       verify: False
       <<: *put_users_request
       json:
-        password: "new_user1A!!!?"
+        allow_run_as: false
     response:
       status_code: 200
       json:
         data:
           affected_items:
             - username: python
+              allow_run_as: false
           total_affected_items: 1
 
 ---

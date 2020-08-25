@@ -60,10 +60,8 @@ volatile int write_pending = 0;
 volatile int running = 1;
 
 extern struct keynode *queue_insert;
-extern struct keynode *queue_backup;
 extern struct keynode *queue_remove;
 extern struct keynode * volatile *insert_tail;
-extern struct keynode * volatile *backup_tail;
 extern struct keynode * volatile *remove_tail;
 
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
@@ -161,9 +159,9 @@ int main(int argc, char **argv)
     struct sockaddr_in _nc;
     struct timeval timeout;
     socklen_t _ncl;
-    pthread_t thread_dispatcher;
-    pthread_t thread_writer;
-    pthread_t thread_local_server;
+    pthread_t thread_dispatcher = 0;
+    pthread_t thread_writer = 0;
+    pthread_t thread_local_server = 0;
     fd_set fdset;
 
     /* Initialize some variables */
@@ -367,9 +365,16 @@ int main(int argc, char **argv)
         }
     }
 
-    if (w_is_worker()) {
-        minfo("Cluster worker node: Disabling Authd daemon.");
+    switch(w_is_worker()){
+    case -1:
+        merror("Invalid option at cluster configuration");
         exit(0);
+    case 1:	
+        config.worker_node = TRUE;        	
+        break;	
+    case 0:	
+        config.worker_node = FALSE;	
+        break;	
     }
 
     /* Start daemon -- NB: need to double fork and setsid */
@@ -472,11 +477,6 @@ int main(int argc, char **argv)
         shost[sizeof(shost) - 1] = '\0';
     }
 
-    /* Load ossec uid and gid for creating backups */
-    if (OS_LoadUid() < 0) {
-        merror_exit("Couldn't get user and group id.");
-    }
-
     /* Chroot */
     if (Privsep_Chroot(dir) < 0)
         merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
@@ -492,7 +492,6 @@ int main(int argc, char **argv)
     /* Initialize queues */
     client_queue = queue_init(AUTH_POOL);
     insert_tail = &queue_insert;
-    backup_tail = &queue_backup;
     remove_tail = &queue_remove;
 
     /* Start working threads */
@@ -693,7 +692,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         if(enrollment_ok)
         {
-            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", new_id, agentname, ip, new_key);
+            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'", new_id, agentname, ip, new_key);
             minfo("Agent key generated for '%s' (requested by %s)", agentname, ip);
             ret = SSL_write(ssl, response, strlen(response));
 
@@ -726,8 +725,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         }
         else {
             SSL_write(ssl, response, strlen(response));
-            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-            SSL_write(ssl, response, strlen(response));
+            snprintf(response, 2048, "ERROR: Unable to add agent");
+            SSL_write(ssl, response, strlen(response));  
         }
 
         SSL_free(ssl);
@@ -750,7 +749,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 void* run_writer(__attribute__((unused)) void *arg) {
     keystore *copy_keys;
     struct keynode *copy_insert;
-    struct keynode *copy_backup;
     struct keynode *copy_remove;
     struct keynode *cur;
     struct keynode *next;
@@ -769,13 +767,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         copy_keys = OS_DupKeys(&keys);
         copy_insert = queue_insert;
-        copy_backup = queue_backup;
         copy_remove = queue_remove;
         queue_insert = NULL;
-        queue_backup = NULL;
         queue_remove = NULL;
         insert_tail = &queue_insert;
-        backup_tail = &queue_backup;
         remove_tail = &queue_remove;
         write_pending = 0;
         w_mutex_unlock(&mutex_keys);
@@ -803,19 +798,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
             free(cur->name);
             free(cur->ip);
             free(cur->group);
-            free(cur);
-        }
-
-        for (cur = copy_backup; cur; cur = next) {
-            next = cur->next;
-            OS_BackupAgentInfo(cur->id, cur->name, cur->ip);
-
-            snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
-            wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-            free(cur->id);
-            free(cur->name);
-            free(cur->ip);
             free(cur);
         }
 

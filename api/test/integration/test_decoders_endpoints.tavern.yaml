@@ -237,6 +237,22 @@ stages:
       json:
         <<: *invalid_select
 
+  - name: Show lists using select and specifying a non-existent file in the filename parameter
+    request:
+      verify: False
+      <<: *get_decoders
+      params:
+        select: 'id'
+        filename: 'invalid'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
     # GET /decoders?q=name=agent-upgrade;position=2
   - name: Get decoders using query parameter
     request:
