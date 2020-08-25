@@ -1088,6 +1088,99 @@ void test_wdb_update_agent_version_error_sql_execution(void **state)
     assert_int_equal(OS_INVALID, ret);
 }
 
+void test_wdb_update_agent_version_error_result(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    char *os_name = "osname";
+    char *os_version = "osversion";
+    char *os_major = "osmajor";
+    char *os_minor = "osminor";
+    char *os_codename = "oscodename";
+    char *os_platform = "osplatform";
+    char *os_build = "osbuild";
+    char *os_uname = "osuname";
+    char *os_arch = "osarch";
+    char *version = "version";
+    char *config_sum = "csum";
+    char *merged_sum = "msum";
+    char *manager_host = "managerhost";
+    char *node_name = "nodename";
+    char *agent_ip = "agentip";
+    wdb_sync_status_t sync_status = WDB_SYNC_REQ;
+
+    const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
+\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
+\"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
+\"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
+\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":1}";
+    const char *query_str = "global update-agent-version {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
+\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
+\"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
+\"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
+\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":1}";
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "os_name");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "osname");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "os_version");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "osversion");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "os_major");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "osmajor");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "os_minor");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "osminor");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "os_codename");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "oscodename");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "os_platform");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "osplatform");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "os_build");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "osbuild");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "os_uname");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "osuname");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "os_arch");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "osarch");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "version");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "version");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "config_sum");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "csum");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "merged_sum");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "msum");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "manager_host");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "managerhost");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "node_name");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "nodename");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "agent_ip");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "agentip");
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "sync_status");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
+
+    ret = wdb_update_agent_version(id, os_name, os_version, os_major, os_minor, os_codename,
+                                   os_platform, os_build, os_uname, os_arch, version, config_sum,
+                                   merged_sum, manager_host, node_name, agent_ip, sync_status);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
 void test_wdb_update_agent_version_success(void **state)
 {
     int ret = 0;
@@ -1444,6 +1537,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_error_json, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_error_socket, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_error_result, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_success, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_get_agent_labels */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_labels_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),

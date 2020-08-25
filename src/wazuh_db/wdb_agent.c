@@ -231,6 +231,7 @@ int wdb_update_agent_version (int id,
     switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
                 result = OS_INVALID;
             }
             break;
