@@ -270,7 +270,8 @@ typedef struct _config {
     int file_size_limit;            /* Avoids generating a backup from a file bigger than this limit (in KB) */
     int *diff_size_limit;           /* Apply the file size limit option in a specific directory */
     float diff_folder_size;         /* Save size of queue/diff/local folder */
-    float comp_estimation_perc;     /* Estimation of the percentage of compression each file will have */   
+    float comp_estimation_perc;     /* Estimation of the percentage of compression each file will have */
+    uint16_t disk_quota_full_msg;   /* Specify if the full disk_quota message can be written (Once per scan) */
 
     char **nodiff;                  /* list of files/dirs to never output diff */
     OSMatch **nodiff_regex;         /* regex of files/dirs to never output diff */

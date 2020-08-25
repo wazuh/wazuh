@@ -187,6 +187,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
     char buf[OS_MAXSTR + 1];
     char tmp_location[PATH_MAX + 1];
     char compressed_file[PATH_MAX + 1];
+    char containing_folder[PATH_MAX + 1];
     char compressed_tmp[PATH_MAX + 1];
     char localtmp_path[PATH_MAX + 1];
     char filename_abs[PATH_MAX];
@@ -232,6 +233,14 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
     );
 
     snprintf(
+        containing_folder,
+        PATH_MAX,
+        "%s/local/%s",
+        DIFF_DIR_PATH,
+        filename_abs + PATH_OFFSET
+    );
+
+    snprintf(
         compressed_tmp,
         PATH_MAX,
         "%s/localtmp/%s/%s.gz",
@@ -250,14 +259,21 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
 #ifdef WIN32
     tmp_diff_size -= (FileSizeWin(compressed_file) / 1024);
     if (syscheck.disk_quota_enabled && !seechanges_estimate_compression(FileSizeWin(filename_abs) / 1024)) {
-        return NULL;
-    }
 #else
     tmp_diff_size -= (FileSize(compressed_file) / 1024);
     if (syscheck.disk_quota_enabled && !seechanges_estimate_compression(FileSize(filename_abs) / 1024)) {
+#endif
+        if (rmdir_ex(containing_folder) < 0) {
+            if (errno != ENOENT) {
+                mdebug2(RMDIR_ERROR, containing_folder, errno, strerror(errno));
+            }
+        }
+
+        syscheck.diff_folder_size = tmp_diff_size;
+
         return NULL;
     }
-#endif
+
 
     if (!seechanges_createpath(tmp_location)) {
         mdebug2("Could not create '%s' folder", tmp_location);
@@ -274,8 +290,10 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
 #endif
 
         if (tmp_diff_size > syscheck.disk_quota_limit) {
-            mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
-
+            if (syscheck.disk_quota_full_msg) {
+                syscheck.disk_quota_full_msg = false;
+                mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
+            }
 #ifdef WIN32
             seechanges_modify_estimation_percentage(FileSizeWin(compressed_tmp) / 1024, FileSizeWin(filename) / 1024);
 #else
@@ -355,6 +373,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
 #endif
 
     if (rename_ex(compressed_tmp, compressed_file) != 0) {
+        mdebug2(RENAME_ERROR, compressed_tmp, compressed_file, errno, strerror(errno));
         os_free(diff_str);
         return NULL;
     }
@@ -610,9 +629,7 @@ char *seechanges_addfile(const char *filename) {
     file_size = (float)FileSize(filename_abs) / 1024;
 #endif
 
-    while (syscheck.dir[it] && strncmp(syscheck.dir[it], filename_abs, strlen(syscheck.dir[it])) != 0) {
-        it++;
-    }
+    it = fim_configuration_directory(filename_abs, "file");
 
 #ifdef WIN32
     {
@@ -635,10 +652,6 @@ char *seechanges_addfile(const char *filename) {
             seechanges_delete_compressed_file(filename_abs);
             return NULL;
         }
-    }
-
-    if (syscheck.disk_quota_enabled && !seechanges_estimate_compression(file_size)) {
-        return NULL;
     }
 
     snprintf(
@@ -700,7 +713,25 @@ char *seechanges_addfile(const char *filename) {
         DIFF_DIR_PATH
     );
 
-    /* If the file is not there, create compressed file */
+    // Estimate if the file could fit in the disk_quota limit. If it estimates it won't fit, delete compressed file.
+    if (syscheck.disk_quota_enabled && !seechanges_estimate_compression(file_size)) {
+        if (rmdir_ex(compressed_file) < 0) {
+            if (errno != ENOENT) {
+                mdebug2(RMDIR_ERROR, compressed_file, errno, strerror(errno));
+            }
+        }
+        else {
+#ifndef WIN32
+            syscheck.diff_folder_size -= FileSize(compressed_file) / 1024;
+#else
+            syscheck.diff_folder_size -= FileSizeWin(compressed_file) / 1024;
+#endif
+        }
+
+        return NULL;
+    }
+
+    // If the file is not there, create compressed file
     if (w_uncompress_gzfile(compressed_file, old_location) != 0) {
         seechanges_createpath(old_location);
         seechanges_createpath(localtmp_location);
@@ -724,11 +755,17 @@ char *seechanges_addfile(const char *filename) {
                 syscheck.diff_folder_size += compressed_new_size;
 
                 if (rename_ex(compressed_tmp, compressed_file) != 0) {
-                    return NULL;
+                    mdebug2(RENAME_ERROR, compressed_tmp, compressed_file, errno, strerror(errno));
                 }
+                
+                return NULL;
             }
             else {
-                mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
+                if (syscheck.disk_quota_full_msg) {
+                    syscheck.disk_quota_full_msg = false;
+                    mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
+                }
+
                 seechanges_modify_estimation_percentage(compressed_new_size, file_size);
 
 #ifdef WIN32
@@ -743,8 +780,10 @@ char *seechanges_addfile(const char *filename) {
         }
         else {
             if (rename_ex(compressed_tmp, compressed_file) != 0) {
-                return NULL;
+                mdebug2(RENAME_ERROR, compressed_tmp, compressed_file, errno, strerror(errno));
             }
+            
+            return NULL;
         }
 
 #ifdef WIN32

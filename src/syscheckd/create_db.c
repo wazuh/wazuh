@@ -63,6 +63,7 @@ void fim_scan() {
     fim_send_scan_info(FIM_SCAN_START);
 
     fim_diff_folder_size();
+    syscheck.disk_quota_full_msg = true;
 
     mdebug2(FIM_DIFF_FOLDER_SIZE, DIFF_DIR_PATH, syscheck.diff_folder_size);
 
@@ -214,6 +215,10 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
 
                 if (full_path != NULL && IsDir(full_path) == 0) {
                     syscheck.diff_folder_size -= (DirSize(full_path) / 1024);   // Update diff_folder_size
+
+                    if (!syscheck.disk_quota_full_msg) {
+                        syscheck.disk_quota_full_msg = true;
+                    }
                 }
 
                 os_free(full_path);
