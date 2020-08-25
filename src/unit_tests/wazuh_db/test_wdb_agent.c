@@ -1495,6 +1495,43 @@ void test_wdb_update_agent_keepalive_error_sql_execution(void **state)
     assert_int_equal(OS_INVALID, ret);
 }
 
+void test_wdb_update_agent_keepalive_error_result(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    wdb_sync_status_t sync_status = WDB_SYNCED;
+
+    const char *json_str = "{\"id\":1,\"sync_status\":0}";
+    const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":0}";
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "sync_status");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
+
+    ret = wdb_update_agent_keepalive(id, sync_status);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
 void test_wdb_update_agent_keepalive_success(void **state)
 {
     int ret = 0;
@@ -1574,6 +1611,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_json, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_socket, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_result, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_success, setup_wdb_agent, teardown_wdb_agent),
     };
 
