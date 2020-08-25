@@ -447,7 +447,7 @@ void wm_clean_dangling_db() {
             if (end = strchr(dirent->d_name, '-'), end) {
                 *end = 0;
 
-                if (name = wdb_agent_name(atoi(dirent->d_name)), name) {
+                if (name = wdb_get_agent_name(atoi(dirent->d_name)), name) {
                     // Agent found: OK
                     free(name);
                 } else {

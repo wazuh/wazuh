@@ -21,8 +21,6 @@
 #define WDBOUTPUT_SIZE OS_MAXSTR
 
 static const char *global_db_queries[] = {
-    [SQL_DELETE_AGENT] = "global sql DELETE FROM agent WHERE id = %d;",
-    [SQL_SELECT_AGENT] = "global sql SELECT name FROM agent WHERE id = %d;",
     [SQL_SELECT_AGENT_GROUP] = "global sql SELECT `group` FROM agent WHERE id = %d;",
     [SQL_SELECT_AGENTS] = "global sql SELECT id FROM agent WHERE id != 0;",
     [SQL_FIND_AGENT] = "global sql SELECT id FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');",
@@ -36,7 +34,6 @@ static const char *global_db_queries[] = {
     [SQL_FIND_GROUP] = "global sql SELECT id FROM `group` WHERE name = %Q;",
     [SQL_INSERT_AGENT_GROUP] = "global sql INSERT INTO `group` (name) VALUES(%Q);",
     [SQL_INSERT_AGENT_BELONG] = "global sql INSERT INTO belongs (id_group, id_agent) VALUES(%d, %d);",
-    [SQL_DELETE_AGENT_BELONG] = "global sql DELETE FROM belongs WHERE id_agent = %d",
     [SQL_DELETE_GROUP_BELONG] = "global sql DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = %Q );", 
     [SQL_DELETE_GROUP] = "global sql DELETE FROM `group` WHERE name = %Q;",
     [SQL_SELECT_GROUPS] = "global sql SELECT name FROM `group`;",
@@ -52,8 +49,8 @@ static const char *global_db_accesses[] = {
     [WDB_GET_AGENT_LABELS] = "global get-labels %d",
     [WDB_SET_AGENT_LABELS] = "global set-labels %d %s",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
-    [WDB_DELETE_AGENT] = "",
-    [WDB_SELECT_AGENT] = "",
+    [WDB_DELETE_AGENT] = "global delete-agent %d",
+    [WDB_SELECT_AGENT_NAME] = "global select-agent-name %d",
     [WDB_SELECT_AGENT_GROUP] = "",
     [WDB_SELECT_AGENTS] = "",
     [WDB_FIND_AGENT] = "",
@@ -67,7 +64,7 @@ static const char *global_db_accesses[] = {
     [WDB_FIND_GROUP] = "",
     [WDB_INSERT_AGENT_GROUP] = "",
     [WDB_INSERT_AGENT_BELONG] = "",
-    [WDB_DELETE_AGENT_BELONG] = "",
+    [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %d",
     [WDB_DELETE_GROUP_BELONG] = "",
     [WDB_DELETE_GROUP] = "",
     [WDB_SELECT_GROUPS] = "",
@@ -344,23 +341,31 @@ int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status) {
     return result;
 }
 
-/* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
+
 int wdb_remove_agent(int id) {
     int result = 0 ;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
-    char * name = NULL;
+    char *payload = NULL;
+    char *name = NULL;
 
-    name = wdb_agent_name(id);
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_DELETE_AGENT], id);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_accesses[WDB_DELETE_AGENT], id);
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
-            wdb_delete_agent_belongs(id);
-            result = name ? wdb_remove_agent_db(id, name) : OS_INVALID;
-            if(result == OS_INVALID){
-                mdebug1("Unable to remove agent DB: %d - %s ", id, name);
+            if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
+                result = wdb_delete_agent_belongs(id);
+                name = wdb_get_agent_name(id);
+
+                result = ((OS_SUCCESS == result) && name) ? wdb_remove_agent_db(id, name) : OS_INVALID;
+
+                if(OS_INVALID == result){
+                    mdebug1("Unable to remove agent DB: %d - %s ", id, name);
+                }
+            }
+            else {
+                result = OS_INVALID;
             }
             break;
         case OS_INVALID:
@@ -377,15 +382,15 @@ int wdb_remove_agent(int id) {
     return result;
 }
 
-/* Get name from agent. The string must be freed after using. Returns NULL on error. */
-char* wdb_agent_name(int id) {
+
+char* wdb_get_agent_name(int id) {
     char *output = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     cJSON *root = NULL;
     cJSON *json_name = NULL;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_SELECT_AGENT], id);    
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_accesses[WDB_SELECT_AGENT_NAME], id);
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
@@ -393,7 +398,7 @@ char* wdb_agent_name(int id) {
         return NULL;
     }
 
-    json_name = cJSON_GetObjectItemCaseSensitive(root->child,"name");
+    json_name = cJSON_GetObjectItem(root->child,"name");
     if (cJSON_IsString(json_name) && json_name->valuestring != NULL) {
         os_strdup(json_name->valuestring, output);
     }
@@ -500,7 +505,7 @@ int wdb_create_agent_db(int id, const char *name) {
     return 0;
 }
 
-/* Remove database for agent. Returns 0 on success or -1 on error. */
+
 int wdb_remove_agent_db(int id, const char * name) {
     char path[PATH_MAX];
     char path_aux[PATH_MAX];
@@ -516,10 +521,11 @@ int wdb_remove_agent_db(int id, const char * name) {
         if (remove(path_aux) < 0) {
             mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
         }
-        return 0;
+        return OS_SUCCESS;
     } else
-        return -1;
+        return OS_INVALID;
 }
+
 
 /* Get an array containing the ID of every agent (except 0), ended with -1 */
 int* wdb_get_all_agents() {
@@ -886,18 +892,21 @@ int wdb_update_agent_belongs(int id_group, int id_agent) {
     return result;
 }
 
-/* Delete agent belongs table. It opens and closes the DB. Returns 1 or -1 on error. */
-int wdb_delete_agent_belongs(int id_agent) {
+
+int wdb_delete_agent_belongs(int id) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_DELETE_AGENT_BELONG], id_agent);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_accesses[WDB_DELETE_AGENT_BELONG], id);
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
-            result = 1;
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                result = OS_INVALID;
+            }
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");
@@ -911,6 +920,7 @@ int wdb_delete_agent_belongs(int id_agent) {
 
     return result;
 }
+
 
 int wdb_update_groups(const char *dirname) {
     int result = 0;
