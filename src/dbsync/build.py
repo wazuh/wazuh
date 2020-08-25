@@ -21,7 +21,6 @@ headerDic = {\
 'cppcheck':'=================== Running cppcheck    ===================',\
 'make':    '=================== Compiling library   ===================',\
 'clean':   '=================== Cleaning library    ===================',\
-'config':  '=================== Configuring library ===================',\
 'rtr':     '=================== Running RTR checks  ===================',\
 'coverage':'=================== Running Coverage    ===================',\
 }
@@ -161,80 +160,8 @@ def cleanLib():
     currentDir = os.path.dirname(os.path.realpath(__file__))
     os.system('make clean -C' + currentDir)
 
-def configLinux(type, tests):
-    currentDir = os.path.dirname(os.path.realpath(__file__))
-
-    cmakeCommand = "cmake -DEXTERNAL_LIB=" + currentDir + "/../external/ -DCMAKE_BUILD_TYPE=" + type
-    if tests == 'ON':
-        cmakeCommand += " -DUNIT_TEST=ON "
-    else:
-        cmakeCommand += " "
-    cmakeCommand += currentDir
-    print(cmakeCommand)
-    out = subprocess.run(cmakeCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    if out.returncode != 0:
-        print(out.stdout)
-        print(out.stderr)
-        errorString = 'Error configuring library: ' + str(out.returncode)
-        raise ValueError(errorString)
-    printGreen("[CONFIGURED: Linux|" + type + "|TEST=" + tests + "]")
-
-def configWin(type, tests):
-    if os.path.exists("/usr/bin/amd64-mingw32msvc-g++-posix"):
-        compiler = "/usr/bin/amd64-mingw32msvc-g++-posix"
-    elif os.path.exists("/usr/bin/i686-pc-mingw32-g++-posix"):
-        compiler = "/usr/bin/i686-pc-mingw32-g++-posix"
-    elif os.path.exists("/usr/bin/i686-w64-mingw32-g++-posix"):
-        compiler = "/usr/bin/i686-w64-mingw32-g++-posix"
-    else:
-        raise ValueError("Uknown compiler")
-    currentDir = os.path.dirname(os.path.realpath(__file__))
-    cmakeCommand = "cmake -DCMAKE_TOOLCHAIN_FILE=~/Documents/dev/cmake-cross-comp/mingw-w64-x86_x64.cmake -DCMAKE_SYSTEM_NAME=Windows -DEXTERNAL_LIB=" + currentDir + "/../external/ -DCMAKE_BUILD_TYPE=" + type
-    # cmakeCommand = "cmake -DCMAKE_CXX_COMPILER=" + compiler + " -DWINDOWS=ON -DEXTERNAL_LIB=" + currentDir + "/../external/ -DCMAKE_BUILD_TYPE=" + type
-    if tests == 'ON':
-        cmakeCommand += " -DUNIT_TEST=ON "
-    else:
-        cmakeCommand += " "
-    cmakeCommand += currentDir
-    out = subprocess.run(cmakeCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    if out.returncode != 0:
-        print(out.stdout)
-        print(out.stderr)
-        errorString = 'Error configuring library: ' + str(out.returncode)
-        raise ValueError(errorString)
-    printGreen("[CONFIGURED: Win|" + type + "|TEST=" + tests + "]")
-
-def configMac(type, tests):
-    print("Mac build")
-
-def configLib(args):
-    printHeader(headerDic['config'])
-    SupportedOs = ['win','linux','mac']
-    SupportedTypes = ['Release','Debug']
-    SupportedTests = ['ON','OFF']
-    os = ''
-    builType = ''
-    tests = ''
-    for arg in args:
-        if arg in SupportedOs:
-            os = arg  
-        elif arg in SupportedTypes:
-            builType = arg
-        elif arg in SupportedTests:
-            tests = arg
-        else:
-            raise ValueError('invalid config ' + arg)
-
-    if os == 'win':
-        configWin(builType, tests)
-    elif os == 'linux':
-        configLinux(builType, tests)
-    else:
-        configMac(builType, tests)
-
 if __name__ == "__main__":
     action = False
-    Choices = ['win','linux','mac', 'release','debug','on','off']
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
     parser.add_argument("-t", "--tests", action="store_true", help="Run tests (should be configured with TEST=on)")
@@ -244,11 +171,7 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--make", action="store_true", help="Compile the lib")
     parser.add_argument("--clean", action="store_true", help="Clean the lib")
     parser.add_argument("--cppcheck", action="store_true", help="Run cppcheck on the code")
-    parser.add_argument("--config", nargs=3, metavar=('OS','TYPE','TEST'),  help="Configure the lib. OS=win|linux|mac TYPE=Release|Debug TEST=ON|OFF")
     args = parser.parse_args()
-    if args.config:
-        configLib(args.config)
-        action = True
     if args.readytoreview:
         runReadyToReview()
         action = True
