@@ -8,6 +8,14 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
+#ifdef UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_tasks.h"
 #include "wm_agent_upgrade_parsing.h"
@@ -20,12 +28,12 @@ static OSHash *task_table_by_agent_id;
 /**
  * Sends the task information locally to the task module queue
  * */
-static cJSON *wm_agent_send_task_information_master(const cJSON *message_object);
+STATIC cJSON *wm_agent_send_task_information_master(const cJSON *message_object);
 
 /**
  * Sends a `send_sync` message into clusterd that will be received by the master node
  * */
-static cJSON *wm_agent_send_task_information_worker(const cJSON *message_object);
+STATIC cJSON *wm_agent_send_task_information_worker(const cJSON *message_object);
 
 wm_upgrade_task* wm_agent_upgrade_init_upgrade_task() {
     wm_upgrade_task *task;
@@ -178,7 +186,7 @@ cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
     }
 }
 
-static cJSON *wm_agent_send_task_information_master(const cJSON *message_object) {
+STATIC cJSON *wm_agent_send_task_information_master(const cJSON *message_object) {
     cJSON* response = NULL;
 
     int sock = OS_ConnectUnixDomain(WM_TASK_MODULE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
@@ -191,7 +199,7 @@ static cJSON *wm_agent_send_task_information_master(const cJSON *message_object)
         char *message = cJSON_PrintUnformatted(message_object);
         mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_SEND_MESSAGE, message);
 
-        OS_SendSecureTCP(sock, strlen(message), message);
+        OS_SendSecureTCP(sock, message ? strlen(message) : 0, message);
         os_free(message);
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
 
@@ -201,9 +209,6 @@ static cJSON *wm_agent_send_task_information_master(const cJSON *message_object)
                 break;
             case -1:
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RECV_ERROR, strerror(errno));
-                break;
-            case 0:
-                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_EMPTY_MESSAGE);
                 break;
             default:
                 response = cJSON_Parse(buffer);
@@ -222,7 +227,7 @@ static cJSON *wm_agent_send_task_information_master(const cJSON *message_object)
     return response;
 }
 
-static cJSON *wm_agent_send_task_information_worker(const cJSON *message_object) {
+STATIC cJSON *wm_agent_send_task_information_worker(const cJSON *message_object) {
     char response[OS_MAXSTR];
     cJSON* payload = w_create_sendsync_payload(TASK_MANAGER_WM_NAME, cJSON_Duplicate(message_object, 1));
 

@@ -19,6 +19,9 @@
 
 #ifdef TEST_SERVER
 
+cJSON *wm_agent_send_task_information_master(const cJSON *message_object);
+cJSON *wm_agent_send_task_information_worker(const cJSON *message_object);
+
 // Setup / teardown
 
 static int setup_agent_task(void **state) {
@@ -44,6 +47,14 @@ static int setup_node(void **state) {
 static int teardown_node(void **state) {
     OSHashNode *node = (OSHashNode *)*state;
     os_free(node);
+    return 0;
+}
+
+static int teardown_jsons(void **state) {
+    cJSON *json = state[0];
+    cJSON *json2 = state[1];
+    cJSON_Delete(json);
+    cJSON_Delete(json2);
     return 0;
 }
 
@@ -113,6 +124,38 @@ int __wrap_OSHash_Next(unsigned int *index, OSHashNode *current) {
     check_expected(index);
 
     return mock();
+}
+
+int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) {
+    check_expected(path);
+    check_expected(type);
+    check_expected(max_msg_size);
+
+    return mock();
+}
+
+int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
+    check_expected(sock);
+    check_expected(size);
+    if (msg) check_expected(msg);
+
+    return mock();
+}
+
+int __wrap_OS_RecvSecureTCP(int sock, char *ret, uint32_t size) {
+    check_expected(sock);
+    check_expected(size);
+
+    if (mock()) {
+        strncpy(ret, mock_type(char*), size);
+    }
+
+    return mock();
+}
+
+int __wrap_close(int fd) {
+    check_expected(fd);
+    return 0;
 }
 
 #ifdef TEST_SERVER
@@ -224,6 +267,334 @@ void test_wm_agent_upgrade_get_next_node(void **state)
     assert_int_equal(ret, 1);
 }
 
+void test_wm_agent_send_task_information_master_ok(void **state)
+{
+    int socket = 555;
+
+    char *response = "[{\"error\":0,"
+                       "\"data\":\"Success\","
+                       "\"agent\":12,"
+                       "\"task_id\":100},{"
+                       "\"error\":0,"
+                       "\"data\":\"Success\","
+                       "\"agent\":10,"
+                       "\"task_id\":101}]";
+
+    cJSON *input = cJSON_CreateArray();
+
+    cJSON *task_request1 = cJSON_CreateObject();
+    cJSON *task_request2 = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_request1, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request1, "command", "upgrade");
+    cJSON_AddNumberToObject(task_request1, "agent", 12);
+
+    cJSON_AddStringToObject(task_request2, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request2, "command", "upgrade");
+    cJSON_AddNumberToObject(task_request2, "agent", 10);
+
+    cJSON_AddItemToArray(input, task_request1);
+    cJSON_AddItemToArray(input, task_request2);
+
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":12},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":10}]";
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8157): Sending message to task_manager module: '[{\"module\":\"upgrade_module\","
+                                                                                                      "\"command\":\"upgrade\","
+                                                                                                      "\"agent\":12},{"
+                                                                                                      "\"module\":\"upgrade_module\","
+                                                                                                      "\"command\":\"upgrade\","
+                                                                                                      "\"agent\":10}]'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(message));
+    expect_string(__wrap_OS_SendSecureTCP, msg, message);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, response);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(response) + 1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8158): Receiving message from task_manager module: '[{\"error\":0,"
+                                                                                                          "\"data\":\"Success\","
+                                                                                                          "\"agent\":12,"
+                                                                                                          "\"task_id\":100},{"
+                                                                                                          "\"error\":0,"
+                                                                                                          "\"data\":\"Success\","
+                                                                                                          "\"agent\":10,"
+                                                                                                          "\"task_id\":101}]'");
+
+    expect_value(__wrap_close, fd, socket);
+
+    cJSON *output = wm_agent_send_task_information_master(input);
+
+    state[0] = output;
+    state[1] = input;
+
+    assert_non_null(output);
+}
+
+void test_wm_agent_send_task_information_master_json_err(void **state)
+{
+    int socket = 555;
+
+    char *response = "wrong json";
+
+    cJSON *input = cJSON_CreateArray();
+
+    cJSON *task_request1 = cJSON_CreateObject();
+    cJSON *task_request2 = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_request1, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request1, "command", "upgrade");
+    cJSON_AddNumberToObject(task_request1, "agent", 12);
+
+    cJSON_AddStringToObject(task_request2, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request2, "command", "upgrade");
+    cJSON_AddNumberToObject(task_request2, "agent", 10);
+
+    cJSON_AddItemToArray(input, task_request1);
+    cJSON_AddItemToArray(input, task_request2);
+
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":12},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":10}]";
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8157): Sending message to task_manager module: '[{\"module\":\"upgrade_module\","
+                                                                                                      "\"command\":\"upgrade\","
+                                                                                                      "\"agent\":12},{"
+                                                                                                      "\"module\":\"upgrade_module\","
+                                                                                                      "\"command\":\"upgrade\","
+                                                                                                      "\"agent\":10}]'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(message));
+    expect_string(__wrap_OS_SendSecureTCP, msg, message);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, response);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(response) + 1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8105): Response from task manager does not have a valid JSON format.");
+
+    expect_value(__wrap_close, fd, socket);
+
+    cJSON *output = wm_agent_send_task_information_master(input);
+
+    state[0] = output;
+    state[1] = input;
+
+    assert_null(output);
+}
+
+void test_wm_agent_send_task_information_master_recv_error(void **state)
+{
+    int socket = 555;
+
+    char *response = "[{\"error\":0,"
+                       "\"data\":\"Success\","
+                       "\"agent\":12,"
+                       "\"task_id\":100},{"
+                       "\"error\":0,"
+                       "\"data\":\"Success\","
+                       "\"agent\":10,"
+                       "\"task_id\":101}]";
+
+    cJSON *input = cJSON_CreateArray();
+
+    cJSON *task_request1 = cJSON_CreateObject();
+    cJSON *task_request2 = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_request1, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request1, "command", "upgrade");
+    cJSON_AddNumberToObject(task_request1, "agent", 12);
+
+    cJSON_AddStringToObject(task_request2, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request2, "command", "upgrade");
+    cJSON_AddNumberToObject(task_request2, "agent", 10);
+
+    cJSON_AddItemToArray(input, task_request1);
+    cJSON_AddItemToArray(input, task_request2);
+
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":12},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":10}]";
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8157): Sending message to task_manager module: '[{\"module\":\"upgrade_module\","
+                                                                                                      "\"command\":\"upgrade\","
+                                                                                                      "\"agent\":12},{"
+                                                                                                      "\"module\":\"upgrade_module\","
+                                                                                                      "\"command\":\"upgrade\","
+                                                                                                      "\"agent\":10}]'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(message));
+    expect_string(__wrap_OS_SendSecureTCP, msg, message);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, response);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8111): Error in recv(): 'Success'");
+
+    expect_value(__wrap_close, fd, socket);
+
+    cJSON *output = wm_agent_send_task_information_master(input);
+
+    state[0] = output;
+    state[1] = input;
+
+    assert_null(output);
+}
+
+void test_wm_agent_send_task_information_master_sockterr_error(void **state)
+{
+    int socket = 555;
+
+    char *response = "[{\"error\":0,"
+                       "\"data\":\"Success\","
+                       "\"agent\":12,"
+                       "\"task_id\":100},{"
+                       "\"error\":0,"
+                       "\"data\":\"Success\","
+                       "\"agent\":10,"
+                       "\"task_id\":101}]";
+
+    cJSON *input = cJSON_CreateArray();
+
+    cJSON *task_request1 = cJSON_CreateObject();
+    cJSON *task_request2 = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_request1, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request1, "command", "upgrade");
+    cJSON_AddNumberToObject(task_request1, "agent", 12);
+
+    cJSON_AddStringToObject(task_request2, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request2, "command", "upgrade");
+    cJSON_AddNumberToObject(task_request2, "agent", 10);
+
+    cJSON_AddItemToArray(input, task_request1);
+    cJSON_AddItemToArray(input, task_request2);
+
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":12},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":10}]";
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8157): Sending message to task_manager module: '[{\"module\":\"upgrade_module\","
+                                                                                                      "\"command\":\"upgrade\","
+                                                                                                      "\"agent\":12},{"
+                                                                                                      "\"module\":\"upgrade_module\","
+                                                                                                      "\"command\":\"upgrade\","
+                                                                                                      "\"agent\":10}]'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(message));
+    expect_string(__wrap_OS_SendSecureTCP, msg, message);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, 1);
+    will_return(__wrap_OS_RecvSecureTCP, response);
+    will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
+
+    expect_value(__wrap_close, fd, socket);
+
+    cJSON *output = wm_agent_send_task_information_master(input);
+
+    state[0] = output;
+    state[1] = input;
+
+    assert_null(output);
+}
+
+void test_wm_agent_send_task_information_master_connect_error(void **state)
+{
+    int socket = 555;
+
+    cJSON *input = cJSON_CreateArray();
+
+    cJSON *task_request1 = cJSON_CreateObject();
+    cJSON *task_request2 = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_request1, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request1, "command", "upgrade");
+    cJSON_AddNumberToObject(task_request1, "agent", 12);
+
+    cJSON_AddStringToObject(task_request2, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request2, "command", "upgrade");
+    cJSON_AddNumberToObject(task_request2, "agent", 10);
+
+    cJSON_AddItemToArray(input, task_request1);
+    cJSON_AddItemToArray(input, task_request2);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, OS_SOCKTERR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8104): Cannot connect to '/var/ossec/queue/tasks/task'. Could not reach task manager module.");
+
+    cJSON *output = wm_agent_send_task_information_master(input);
+
+    state[0] = output;
+    state[1] = input;
+
+    assert_null(output);
+}
+
 #endif
 
 int main(void) {
@@ -242,6 +613,12 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_get_first_node),
         // wm_agent_upgrade_get_next_node
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_get_next_node, setup_node, teardown_node),
+        // wm_agent_send_task_information_master
+        cmocka_unit_test_teardown(test_wm_agent_send_task_information_master_ok, teardown_jsons),
+        cmocka_unit_test_teardown(test_wm_agent_send_task_information_master_json_err, teardown_jsons),
+        cmocka_unit_test_teardown(test_wm_agent_send_task_information_master_recv_error, teardown_jsons),
+        cmocka_unit_test_teardown(test_wm_agent_send_task_information_master_sockterr_error, teardown_jsons),
+        cmocka_unit_test_teardown(test_wm_agent_send_task_information_master_connect_error, teardown_jsons),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
