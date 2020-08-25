@@ -150,7 +150,8 @@ def test_decode_token(mock_raise_if_exc, mock_submit, mock_distribute_function, 
     assert result == payload
 
     # Check all functions are called with expected params
-    calls = [call(f=ANY, f_kwargs={'username': payload['sub'], 'token_nbf_time': payload['nbf']},
+    calls = [call(f=ANY, f_kwargs={'username': payload['sub'], 'token_nbf_time': payload['nbf'],
+                                   'roles': payload['rbac_roles']},
                   request_type='local_master', is_async=False, wait_for_complete=True, logger=ANY),
              call(f=ANY, request_type='local_master', is_async=False, wait_for_complete=True, logger=ANY)]
     mock_dapi.assert_has_calls(calls)
