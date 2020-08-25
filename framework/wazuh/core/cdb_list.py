@@ -68,6 +68,73 @@ def iterate_lists(absolute_path=common.lists_path, only_names=False):
     return output
 
 
+def split_key_value_with_quotes(line):
+    """Return the key and value of a cdb list line when they are surrounded by quotes.
+
+    Parameters
+    ----------
+    line : str
+        String to split in key and value.
+
+    Returns
+    -------
+    str
+        Key of the CDB list line.
+    str
+        Value of the CDB list line.
+
+    Raises
+    ------
+    WazuhError
+        If the input line has a wrong format.
+    """
+    first_quote = find_nth(line, '"', 1)
+    second_quote = find_nth(line, '"', 2)
+
+    # Check if key AND value are surrounded by double quotes
+    if line.count('"') == 4:
+        third_quote = find_nth(line, '"', 3)
+        fourth_quote = find_nth(line, '"', 4)
+
+        key = line[first_quote + 1: second_quote]
+        value = line[third_quote + 1: fourth_quote]
+
+        # Check that the line starts with "...
+        # Check that the line has the structure ...":"...
+        # Check that the line finishes with ..."
+        if first_quote != 0 or line[second_quote: third_quote + 1] != '":"' or fourth_quote != len(
+                line) - 1:
+            raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
+
+    # Check whether the string surrounded by quotes is the key or the value
+    elif line.count('"') == 2:
+        # Check if the key is surrounded by quotes
+        if line.find(":") > first_quote:
+            key = line[first_quote + 1: second_quote]
+            value = line[second_quote + 2:]
+
+            # Check that the line starts with "...
+            # Check that the line has the structure ...":...
+            if first_quote != 0 or line[second_quote: second_quote + 2] != '":':
+                raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
+
+        # Check if the value is surrounded by quotes
+        if line.find(":") < first_quote:
+            key = line[: line.find(":")]
+            value = line[first_quote + 1: second_quote]
+
+            # Check that the line finishes with ..."
+            # Check that the line has the structure ...:"...
+            if second_quote != len(line) - 1 or line[first_quote - 1: first_quote + 1] != ':"':
+                raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
+
+    # There is an odd number of quotes (or more than 4)
+    else:
+        raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
+
+    return key, value
+
+
 def get_list_from_file(path):
     """Get CDB list from file
 
@@ -87,59 +154,7 @@ def get_list_from_file(path):
 
                     # Check if key and/or value are surrounded by double quotes
                     else:
-                        first_quote = find_nth(line, '"', 1)
-                        second_quote = find_nth(line, '"', 2)
-                        third_quote = find_nth(line, '"', 3)
-                        fourth_quote = find_nth(line, '"', 4)
-
-                        # Check if key AND value are surrounded by double quotes
-                        if line.count('"') == 4:
-                            key = line[first_quote + 1: second_quote]
-                            value = line[third_quote + 1: fourth_quote]
-
-                            # Check that the line starts with "...
-                            if first_quote != 0:
-                                raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
-
-                            # Check that the line has the structure ...":"...
-                            if line[second_quote: third_quote + 1] != '":"':
-                                raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
-
-                            # Check that the line finishes with ..."
-                            if fourth_quote != len(line) - 1:
-                                raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
-
-                        # Check whether the string surrounded by quotes is the key or the value
-                        elif line.count('"') == 2:
-                            # Check if the key is surrounded by quotes
-                            if line.find(":") > first_quote:
-                                key = line[first_quote + 1: second_quote]
-                                value = line[find_nth(line, ":", line.count(":")) + 1:]
-
-                                # Check that the line starts with "...
-                                if first_quote != 0:
-                                    raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
-
-                                # Check that the line has the structure ...":...
-                                if line[second_quote: second_quote + 2] != '":':
-                                    raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
-
-                            # Check if the value is surrounded by quotes
-                            if line.find(":") < first_quote:
-                                key = line[: line.find(":")]
-                                value = line[first_quote + 1: second_quote]
-
-                                # Check that the line finishes with ..."
-                                if second_quote != len(line) - 1:
-                                    raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
-
-                                # Check that the line has the structure ...:"...
-                                if line[first_quote - 1: first_quote + 1] != ':"':
-                                    raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
-
-                        # There is an odd number of quotes (or more than 4)
-                        else:
-                            raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
+                        key, value = split_key_value_with_quotes(line)
 
                     output.append({'key': key, 'value': value})
 

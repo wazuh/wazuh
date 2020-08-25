@@ -4,15 +4,17 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-import pytest
 import sys
 from unittest.mock import MagicMock, mock_open, patch
+
+import pytest
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         sys.modules['api'] = MagicMock()
         from wazuh.core import common
-        from wazuh.core.cdb_list import check_path, get_list_from_file, get_relative_path, iterate_lists
+        from wazuh.core.cdb_list import check_path, get_list_from_file, get_relative_path, iterate_lists, \
+            split_key_value_with_quotes
         from wazuh.core.exception import WazuhError
 
         del sys.modules['api']
@@ -114,6 +116,28 @@ def test_iterate_lists(only_names, path):
     for entry in result:
         for field in required_fields:
             assert field in entry
+
+
+@pytest.mark.parametrize('line, expected_key, expected_value', [
+    ('"example:0":value0', 'example:0', 'value0'),
+    ('"example:1":value:1', 'example:1', 'value:1'),
+    ('"example:2":"value:2"', 'example:2', 'value:2'),
+    ('example3:"value:3"', 'example3', 'value:3')
+])
+def test_split_key_value_with_quotes(line, expected_key, expected_value):
+    """Test `split_key_value_with_quotes` functionality.
+
+    Parameters
+    ----------
+    line : str
+        Line to be split.
+    expected_key : str
+        Expected key of the CDB list line.
+    expected_value : str
+        Expected value of the CDB list line.
+    """
+    key, value = split_key_value_with_quotes(line)
+    assert key == expected_key and value == expected_value
 
 
 def test_get_list_from_file():
