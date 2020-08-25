@@ -981,7 +981,7 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
                 //  Open the hotfix key
                 result = RegOpenKeyEx(hKey, achKey, 0, KEY_READ, &subKey);
                 if (result != ERROR_SUCCESS) {
-                    merror("Error opening Windows registry.");
+                    mterror(WM_SYS_LOGTAG, "Error opening Windows registry.");
                     continue;
                 }
 
@@ -1061,7 +1061,7 @@ char * parse_Rollup_hotfix(HKEY hKey, char *value) {
     
     result = RegQueryValueEx(hKey, "InstallLocation", NULL, NULL, (LPBYTE)value, &dataSize);  
     if (result != ERROR_SUCCESS ) {
-        mtdebug2(WM_SYS_LOGTAG, "Error reading 'InstallLocation' from Windows registry. (Error %u)",(unsigned int)result);
+        mterror(WM_SYS_LOGTAG, "Error reading 'InstallLocation' from Windows registry. (Error %u)",(unsigned int)result);
         return NULL;
     }
 
@@ -1096,7 +1096,7 @@ bool valid_hotfix_status(HKEY hKey) {
     
     result = RegQueryValueEx(hKey, "CurrentState", NULL, NULL, (LPBYTE)&value, &dataSize);  
     if (result != ERROR_SUCCESS ) {
-        mtdebug2(WM_SYS_LOGTAG, "Error reading 'CurrentState' from Windows registry. (Error %u)",(unsigned int)result);
+        mterror(WM_SYS_LOGTAG, "Error reading 'CurrentState' from Windows registry. (Error %u)",(unsigned int)result);
         return false;
     }
 
