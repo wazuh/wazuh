@@ -144,7 +144,7 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
  * @param agent_ids List with id of the agents (In this case the list will contain only 1 id)
  * @param task Task with the update information
  * */
-char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upgrade_agent_status_task* task);
+char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const wm_upgrade_agent_status_task* task);
 
 /**
  * Send a command to the agent and return the response

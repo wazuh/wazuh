@@ -131,6 +131,30 @@ static int teardown_config_nodes(void **state) {
     return 0;
 }
 
+static int teardown_agent_status_task_string(void **state) {
+    wm_upgrade_agent_status_task *task = state[0];
+    char *string = state[1];
+    wm_agent_upgrade_free_agent_status_task(task);
+    os_free(string);
+    return 0;
+}
+
+static int teardown_upgrade_custom_task_string(void **state) {
+    wm_upgrade_custom_task *task = state[0];
+    char *string = state[1];
+    wm_agent_upgrade_free_upgrade_custom_task(task);
+    os_free(string);
+    return 0;
+}
+
+static int teardown_upgrade_task_string(void **state) {
+    wm_upgrade_task *task = state[0];
+    char *string = state[1];
+    wm_agent_upgrade_free_upgrade_task(task);
+    os_free(string);
+    return 0;
+}
+
 #endif
 
 static int setup_group(void **state) {
@@ -144,6 +168,19 @@ static int teardown_group(void **state) {
 }
 
 // Wrappers
+
+void __wrap__mtinfo(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    check_expected(tag);
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
 
 void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
@@ -4998,6 +5035,61 @@ void test_wm_agent_upgrade_analyze_agent_global_db_err(void **state)
     assert_int_equal(agent_task->agent_info->last_keep_alive, keep_alive);
 }
 
+void test_wm_agent_upgrade_process_agent_result_command(void **state)
+{
+    (void) state;
+
+    int agents[2];
+    wm_upgrade_agent_status_task *upgrade_agent_status_task = NULL;
+    char *agent_status = "Done";
+
+    agents[0] = 25;
+    agents[1] = OS_INVALID;
+
+    upgrade_agent_status_task = wm_agent_upgrade_init_agent_status_task();
+    upgrade_agent_status_task->error_code = 0;
+    os_strdup("Success", upgrade_agent_status_task->message);
+    os_strdup(agent_status, upgrade_agent_status_task->status);
+
+    state[0] = (void *)upgrade_agent_status_task;
+
+    cJSON *task_request = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_request, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request, "command", "upgrade_update_status");
+    cJSON_AddNumberToObject(task_request, "agent", agents[0]);
+
+    cJSON *task_response = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_response, "error", WM_UPGRADE_SUCCESS);
+    cJSON_AddStringToObject(task_response, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddNumberToObject(task_response, "agent", agents[0]);
+    cJSON_AddStringToObject(task_response, "status", agent_status);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8164): Received upgrade notification from agent '25'. Error code: '0', message: 'Success'");
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_UPDATE_STATUS);
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, agent_id, agents[0]);
+    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, agent_status);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, task_request);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, task_request, sizeof(task_request));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    char *result = wm_agent_upgrade_process_agent_result_command(agents, upgrade_agent_status_task);
+
+    state[1] = (void *)result;
+
+    assert_non_null(result);
+    assert_string_equal(result, "[{\"data\":\"Success.\",\"agent\":25,\"status\":\"Done\"}]");
+}
+
 #endif
 
 int main(void) {
@@ -5066,6 +5158,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_analyze_agent_unknown_err, setup_config_agent_task_without_agent_info, teardown_config_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_analyze_agent_validate_err, setup_config_agent_task_without_agent_info, teardown_config_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_analyze_agent_global_db_err, setup_config_agent_task_without_agent_info, teardown_config_agent_task),
+        // wm_agent_upgrade_process_agent_result_command
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_process_agent_result_command, teardown_agent_status_task_string),
 #endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
