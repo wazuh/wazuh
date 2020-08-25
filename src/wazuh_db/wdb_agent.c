@@ -113,6 +113,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
                 result = wdb_create_agent_db(id, name);
             }
             else {
+                mdebug1("Global DB Error reported in the result of the query");
                 result = OS_INVALID;
             }
             break;
