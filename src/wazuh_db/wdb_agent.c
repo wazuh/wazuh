@@ -284,6 +284,7 @@ int wdb_set_agent_labels(int id, const char *labels) {
     switch (result){
         case OS_SUCCESS:
             if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
                 result = OS_INVALID;
             }
             break;
@@ -327,6 +328,7 @@ int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status) {
     switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
                 result = OS_INVALID;
             }
             break;
@@ -907,6 +909,7 @@ int wdb_delete_agent_belongs(int id) {
     switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
                 result = OS_INVALID;
             }
             break;
