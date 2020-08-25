@@ -2538,7 +2538,7 @@ components:
           type: integer
           format: int32
           minimum: 30
-          example: 36000
+          example: 3600
         rbac_mode:
           description: "RBAC mode (white/black)"
           type: string
