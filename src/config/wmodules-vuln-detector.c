@@ -243,7 +243,12 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             goto end;
         }
         upd->dist_ref = FEED_REDHAT;
-
+    }else if (strcasestr(feed, vu_feed_tag[FEED_MSU])) {
+        os_index = CVE_MSU;
+        upd->dist_tag_ref = FEED_MSU;
+        upd->dist_ext = vu_feed_ext[FEED_MSU];
+        upd->dist_ref = FEED_MSU;
+        upd->json_format = 1;
     } else if (strcasestr(feed, vu_feed_tag[FEED_NVD])) {
         os_index = CVE_NVD;
         upd->dist_tag_ref = FEED_NVD;
@@ -259,14 +264,6 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         upd_list[CPE_WDIC]->dist_ext = vu_feed_ext[FEED_CPEW];
         upd_list[CPE_WDIC]->dist_ref = FEED_CPEW;
         upd_list[CPE_WDIC]->json_format = 1;
-        // Set the MSU update node
-        os_calloc(1, sizeof(update_node), upd_list[CVE_MSU]);
-        upd_list[CVE_MSU]->dist_tag_ref = FEED_MSU;
-        upd_list[CVE_MSU]->interval = WM_VULNDETECTOR_ONLY_ONE_UPD;
-        upd_list[CVE_MSU]->dist_ext = vu_feed_ext[FEED_MSU];
-        upd_list[CVE_MSU]->dist_ref = FEED_MSU;
-        upd_list[CVE_MSU]->json_format = 1;
-
     } else {
         merror("Invalid feed '%s' at module '%s'", feed, WM_VULNDETECTOR_CONTEXT.name);
         retval = OS_INVALID;
@@ -784,7 +781,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
     }
 
     /**
-    *  multi_provider = NVD and RedHat.
+    *  multi_provider = NVD, RedHat and MSU.
     *  Those which use <path> or <url> tags.
     **/
     if (multi_provider || (p_options.multi_path || p_options.multi_url)) {
@@ -805,6 +802,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
 
         updates[os_index]->multi_path = p_options.multi_path;
         updates[os_index]->multi_url = p_options.multi_url;
+        updates[os_index]->url = p_options.multi_url; // Used by MSU.
         updates[os_index]->multi_url_start = p_options.multi_url_start;
         updates[os_index]->multi_url_end = p_options.multi_url_end;
         updates[os_index]->port = p_options.port;
@@ -1205,7 +1203,8 @@ char wm_vuldet_provider_type(char *pr_name) {
         strcasestr(pr_name, vu_feed_tag[FEED_DEBIAN]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) {
         return 0;
-    } else if (strcasestr(pr_name, vu_feed_tag[FEED_NVD])) {
+    } else if (strcasestr(pr_name, vu_feed_tag[FEED_NVD]) ||
+        strcasestr(pr_name, vu_feed_tag[FEED_MSU])) {
         return 1;
     } else {
         return OS_INVALID;
