@@ -21,6 +21,7 @@ static OSHash *task_table_by_agent_id;
  * Sends the task information locally to the task module queue
  * */
 static cJSON *wm_agent_send_task_information_master(const cJSON *message_object);
+
 /**
  * Sends a `send_sync` message into clusterd that will be received by the master node
  * */
@@ -224,12 +225,17 @@ static cJSON *wm_agent_send_task_information_master(const cJSON *message_object)
 static cJSON *wm_agent_send_task_information_worker(const cJSON *message_object) {
     char response[OS_MAXSTR];
     cJSON* payload = w_create_sendsync_payload(TASK_MANAGER_WM_NAME, cJSON_Duplicate(message_object, 1));
+
     char *message = cJSON_PrintUnformatted(payload);
+
     mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_SEND_CLUSTER_MESSAGE, message);
-    w_send_clustered_message("sendsync", message, response);      
+
+    w_send_clustered_message("sendsync", message, response);
+
     mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_RECEIVE_MESSAGE, response);
 
     os_free(message);
     cJSON_Delete(payload);
+
     return cJSON_Parse(response);   
 }

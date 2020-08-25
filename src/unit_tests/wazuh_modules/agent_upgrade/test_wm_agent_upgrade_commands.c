@@ -5869,7 +5869,7 @@ int main(void) {
         // wm_agent_upgrade_process_upgrade_custom_command
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_custom_command, setup_hash_table, teardown_upgrade_custom_task_string),
         // wm_agent_upgrade_process_upgrade_command
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_command, setup_hash_table, teardown_upgrade_task_string),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_command, setup_hash_table, teardown_upgrade_task_string)
 #endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
