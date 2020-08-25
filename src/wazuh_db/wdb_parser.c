@@ -484,6 +484,15 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_update_agent_keepalive(wdb, next, output);
             }
+        } else if (strcmp(query, "select-keepalive") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_select_agent_keepalive(wdb, next, output);
+            }
         } else if (strcmp(query, "sync-agent-info-get") == 0) { 
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax.");
@@ -4229,6 +4238,37 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
 
     snprintf(output, OS_MAXSTR + 1, "ok");
     cJSON_Delete(agent_data);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_select_agent_keepalive(wdb_t * wdb, char * input, char * output) {
+   char *out = NULL;
+   char *next = NULL;
+   
+   if (next = wstr_chr(input, ' '), !next) {
+        mdebug1("Invalid DB query syntax.");
+        mdebug2("DB query error near: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
+        return OS_INVALID;
+    }
+    *next++ = '\0';
+
+    char* agent_name = input;
+    char* agent_ip = next;
+    cJSON *keepalive = NULL;
+
+    keepalive = wdb_global_select_agent_keepalive(wdb, agent_name, agent_ip);
+    if (!keepalive) {
+        mdebug1("Error getting agent keepalive from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agent keepalive from global.db.");
+        return OS_INVALID;
+    }
+
+    out = cJSON_PrintUnformatted(keepalive);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(keepalive);
 
     return OS_SUCCESS;
 }

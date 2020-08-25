@@ -132,6 +132,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_LABELS_DEL,
     WDB_STMT_GLOBAL_LABELS_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE,
+    WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
@@ -158,8 +159,7 @@ typedef enum global_db_query {
     SQL_DELETE_AGENT_BELONG,
     SQL_DELETE_GROUP_BELONG,
     SQL_DELETE_GROUP,
-    SQL_SELECT_GROUPS,
-    SQL_SELECT_KEEPALIVE
+    SQL_SELECT_GROUPS
 } global_db_query;
 
 typedef enum global_db_access {
@@ -823,6 +823,16 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * output);
 
 /**
+ * @brief Function to parse the select keepalive request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with 'agent_name agent_ip'.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_select_agent_keepalive(wdb_t * wdb, char * input, char * output);
+
+/**
  * @brief Function to parse sync-agent-info-get params and set next ID to iterate on further calls.
  *        If no start_id is provided. Last obtained ID is used.
  * 
@@ -1031,6 +1041,17 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, wdb_sync_status_t status);
+
+/**
+ * @brief Function to get an agent keepalive using the agent name and register ip.
+ * 
+ * @param wdb The Global struct database.
+ * @param name The agent name
+ * @param ip The agent ip
+ * @retval JSON with last_keepalive on success.
+ * @retval NULL on error.
+ */
+cJSON* wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip);
 
 /**
  * @brief Function to update sync_status of a particular agent.
