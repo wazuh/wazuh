@@ -634,12 +634,12 @@ void ag_send_syscheck(char * message) {
     int sock = OS_ConnectUnixDomain(DEFAULTDIR SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
 
     if (sock < 0) {
-        merror("dbsync: cannot connect to syscheck: %s (%d)", strerror(errno), errno);
+        mwarn("dbsync: cannot connect to syscheck: %s (%d)", strerror(errno), errno);
         return;
     }
 
     if (OS_SendSecureTCP(sock, strlen(message), message) < 0) {
-        merror("Cannot send message to syscheck: %s (%d)", strerror(errno), errno);
+        mwarn("Cannot send message to syscheck: %s (%d)", strerror(errno), errno);
     }
 
     close(sock);
