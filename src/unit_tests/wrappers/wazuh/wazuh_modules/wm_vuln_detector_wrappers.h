@@ -32,8 +32,6 @@ int __wrap_wm_checks_package_vulnerability(char *version_a,
 
 int __wrap_wm_vuldet_add_cve_node(cve_vuln_pkg *newPkg, const char *cve, OSHash *cve_table);
 
-void __wrap_wm_vuldet_free_cve_node(cve_vuln_pkg *newPkg);
-
 int __wrap_wm_vuldet_linux_nvd_vulnerabilities(sqlite3 *db, agent_software *agent, OSHash *cve_table);
 
 int __wrap_wm_vuldet_win_nvd_vulnerabilities(sqlite3 *db, agent_software *agent, wm_vuldet_flags *flags);

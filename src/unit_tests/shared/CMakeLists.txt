@@ -1,11 +1,13 @@
 
 # Tests list and flags
-list(APPEND shared_tests_names "test_file_op")
-set(FILE_OP_BASE_FLAGS "-Wl,--wrap,isChroot -Wl,--wrap,stat -Wl,--wrap,chmod -Wl,--wrap,getpid \
-                        -Wl,--wrap,unlink -Wl,--wrap,_merror -Wl,--wrap,_minfo -Wl,--wrap,_mwarn -Wl,--wrap,fopen \
-                        -Wl,--wrap,_mferror -Wl,--wrap=fflush,--wrap=fclose,--wrap,fread,--wrap=fseek,--wrap=fwrite \
-                        -Wl,--wrap=remove,--wrap,fprintf,--wrap=fgets")
-list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
+if(NOT ${TARGET} STREQUAL "winagent")
+    list(APPEND shared_tests_names "test_file_op")
+    set(FILE_OP_BASE_FLAGS "-Wl,--wrap,isChroot -Wl,--wrap,stat -Wl,--wrap,chmod -Wl,--wrap,getpid \
+                            -Wl,--wrap,unlink -Wl,--wrap,_merror -Wl,--wrap,_minfo -Wl,--wrap,_mwarn -Wl,--wrap,fopen \
+                            -Wl,--wrap,_mferror -Wl,--wrap=fflush,--wrap=fclose,--wrap,fread,--wrap=fseek,--wrap=fwrite \
+                            -Wl,--wrap=remove,--wrap,fprintf,--wrap=fgets")
+    list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
+endif()
 
 list(APPEND shared_tests_names "test_integrity_op")
 list(APPEND shared_tests_flags " ")

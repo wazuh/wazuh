@@ -820,7 +820,8 @@ void test_realtime_process_move_self(void **state) {
     expect_value_count(__wrap_OSHash_Delete_ex, self, syscheck.realtime->dirtb, 2);
     expect_string(__wrap_OSHash_Delete_ex, key, "dummy_key");
     expect_string(__wrap_OSHash_Delete_ex, key, "1");
-    will_return_count(__wrap_OSHash_Delete_ex, str_data, 2);
+    will_return(__wrap_OSHash_Delete_ex, str_data);
+    will_return(__wrap_OSHash_Delete_ex, NULL);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6344): Inotify watch deleted for 'test'");
 
