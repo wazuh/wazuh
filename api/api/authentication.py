@@ -20,7 +20,7 @@ from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
 from wazuh import WazuhInternalError
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.rbac.orm import AuthenticationManager, TokenManager
+from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager, Roles
 
 pool = concurrent.futures.ThreadPoolExecutor()
 
@@ -142,6 +142,8 @@ def generate_token(user_id=None, rbac_policies=None):
                           )
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
     timestamp = int(time())
+    roles = rbac_policies['roles']
+    rbac_policies = rbac_policies['policies']
     rbac_policies['rbac_mode'] = result['rbac_mode']
     payload = {
         "iss": JWT_ISSUER,
@@ -149,31 +151,45 @@ def generate_token(user_id=None, rbac_policies=None):
         "nbf": int(timestamp),
         "exp": int(timestamp + result['auth_token_exp_timeout']),
         "sub": str(user_id),
+        "rbac_roles": roles,
         "rbac_policies": rbac_policies
     }
 
     return jwt.encode(payload, generate_secret(), algorithm=JWT_ALGORITHM)
 
 
-def check_token(username, token_nbf_time):
+def check_token(username, roles, token_nbf_time):
     """Check the validity of a token with the current time and the generation time of the token.
 
     Parameters
     ----------
     username : str
         Unique username
+    roles : list
+        List of roles related with the current token
     token_nbf_time : int
         Issued at time of the current token
     Returns
     -------
     Dict with the result
     """
+    # Check that the user exists
     with AuthenticationManager() as am:
-        user_id = am.get_user(username=username)['id']
-    with TokenManager() as tm:
-        result = tm.is_token_valid(user_id=user_id, token_nbf_time=int(token_nbf_time))
+        user = am.get_user(username=username)
+        if not user:
+            return {'valid': False}
+        user_id = user['id']
 
-    return {'valid': result}
+        with UserRolesManager() as urm:
+            user_roles = [role['id'] for role in map(Roles.to_dict, urm.get_all_roles_from_user(user_id=user_id))]
+            if not am.user_allow_run_as(user['username']) and set(user_roles) != set(roles):
+                return {'valid': False}
+            with TokenManager() as tm:
+                for role in user_roles:
+                    if not tm.is_token_valid(role_id=role, user_id=user_id, token_nbf_time=int(token_nbf_time)):
+                        return {'valid': False}
+
+    return {'valid': True}
 
 
 def decode_token(token):
@@ -191,8 +207,8 @@ def decode_token(token):
     try:
         payload = jwt.decode(token, generate_secret(), algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
         dapi = DistributedAPI(f=check_token,
-                              f_kwargs={'username': payload['sub'], 'token_nbf_time': payload['nbf']},
-                              request_type='local_master',
+                              f_kwargs={'username': payload['sub'],
+                                        'roles': payload['rbac_roles'], 'token_nbf_time': payload['nbf']},                              request_type='local_master',
                               is_async=False,
                               wait_for_complete=True,
                               logger=logging.getLogger('wazuh')
