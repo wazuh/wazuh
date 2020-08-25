@@ -22,21 +22,38 @@ file(GLOB PIPELINE_FACTORY_SRC
 add_executable(dbsyncPipelineFactory_unit_test 
     "${PIPELINE_FACTORY_UNITTEST_SRC}"
     "${PIPELINE_FACTORY_SRC}")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_libraries(dbsyncPipelineFactory_unit_test
+        debug gtestd
+        debug gmockd
+        debug gtest_maind
+        debug gmock_maind
+        optimized gtest
+        optimized gmock
+        optimized gtest_main
+        optimized gmock_main
+        pthread
+        cjson
+        dbsync
+        -static-libgcc -static-libstdc++
+    )
+else()
+    target_link_libraries(dbsyncPipelineFactory_unit_test
+        debug gtestd
+        debug gmockd
+        debug gtest_maind
+        debug gmock_maind
+        optimized gtest
+        optimized gmock
+        optimized gtest_main
+        optimized gmock_main
+        pthread
+        cjson
+        dbsync
+        dl
+    )
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(dbsyncPipelineFactory_unit_test 
-    debug gtestd
-    debug gmockd
-    debug gtest_maind
-    debug gmock_maind
-    optimized gtest
-    optimized gmock
-    optimized gtest_main
-    optimized gmock_main
-    pthread
-    cjson
-    dbsync
-    dl
-)
 
 add_test(NAME dbsyncPipelineFactory_unit_test
          COMMAND dbsyncPipelineFactory_unit_test)

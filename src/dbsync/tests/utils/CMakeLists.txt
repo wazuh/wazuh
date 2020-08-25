@@ -10,18 +10,32 @@ file(GLOB UTILS_UNITTEST_SRC
 
 add_executable(utils_unit_test 
     "${UTILS_UNITTEST_SRC}" )
-
-target_link_libraries(utils_unit_test 
-    debug gtestd
-    debug gmockd
-    debug gtest_maind
-    debug gmock_maind
-    optimized gtest
-    optimized gmock
-    optimized gtest_main
-    optimized gmock_main
-    pthread
-)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_libraries(utils_unit_test
+        debug gtestd
+        debug gmockd
+        debug gtest_maind
+        debug gmock_maind
+        optimized gtest
+        optimized gmock
+        optimized gtest_main
+        optimized gmock_main
+        pthread
+        -static-libgcc -static-libstdc++
+    )
+else()
+    target_link_libraries(utils_unit_test
+        debug gtestd
+        debug gmockd
+        debug gtest_maind
+        debug gmock_maind
+        optimized gtest
+        optimized gmock
+        optimized gtest_main
+        optimized gmock_main
+        pthread
+    )
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME utils_unit_test
          COMMAND utils_unit_test)

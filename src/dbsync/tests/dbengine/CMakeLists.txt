@@ -17,20 +17,35 @@ file(GLOB SQLITE_ENGINE_SRC
 add_executable(dbengine_unit_test 
     "${DBENGINE_UNITTEST_SRC}" 
     "${SQLITE_ENGINE_SRC}")
-
-target_link_libraries(dbengine_unit_test 
-    debug gtestd
-    debug gmockd
-    debug gtest_maind
-    debug gmock_maind
-    optimized gtest
-    optimized gmock
-    optimized gtest_main
-    optimized gmock_main
-    pthread
-    dbsync 
-    dl
-)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_libraries(dbengine_unit_test
+        debug gtestd
+        debug gmockd
+        debug gtest_maind
+        debug gmock_maind
+        optimized gtest
+        optimized gmock
+        optimized gtest_main
+        optimized gmock_main
+        pthread
+        dbsync
+        -static-libgcc -static-libstdc++
+    )
+else()
+    target_link_libraries(dbengine_unit_test
+        debug gtestd
+        debug gmockd
+        debug gtest_maind
+        debug gmock_maind
+        optimized gtest
+        optimized gmock
+        optimized gtest_main
+        optimized gmock_main
+        pthread
+        dbsync
+        dl
+    )
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME dbengine_unit_test
          COMMAND dbengine_unit_test)

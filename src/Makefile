@@ -67,7 +67,17 @@ DISABLE_SHARED?=no
 DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 
-WIN_CMAKE_OPTS=
+ifeq (${TARGET},winagent)
+WIN_CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=/usr/bin/${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=/usr/bin/${MING_BASE}g++-posix
+endif
+
+ifneq (,$(filter ${TEST},YES yes y Y 1))
+DBSYNC_TEST=-DUNIT_TEST=ON #--coverage
+endif
+ifneq (,$(filter ${DEBUG},YES yes y Y 1))
+DBSYNC_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
+GTEST_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
+endif
 
 ifneq ($(HAS_CHECKMODULE),)
 ifneq ($(HAS_SEMODULE_PACKAGE),)
@@ -314,7 +324,6 @@ endif #winagent
 
 
 OSSEC_CC      =${QUIET_CC}${MING_BASE}${CC}
-OSSEC_CXX     =${QUIET_CC}${MING_BASE}-g++-posix
 OSSEC_CCBIN   =${QUIET_CCBIN}${MING_BASE}${CC}
 OSSEC_SHARED  =${QUIET_CCBIN}${MING_BASE}${CC} -shared
 OSSEC_LINK    =${QUIET_LINK}${MING_BASE}ar -crus
@@ -637,7 +646,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
+winagent: external win32/dbsync.dll win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl ossec-pre6.conf > default-ossec-pre6.conf
@@ -653,6 +662,10 @@ winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscolle
 	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
 	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
 	cd win32/ && makensis ossec-installer.nsi
+
+
+win32/dbsync.dll:
+	cd ${DBSYNC} && cmake -DEXTERNAL_LIBS_PATH=${EXTERNAL_LIBS_FOLDER} ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} . && cmake --build .
 
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 	cp $< $@
@@ -1040,14 +1053,8 @@ config/%.o: config/%.c
 
 #### DBSync ##########
 build_dbsync:
-ifeq (${TARGET}, winagent)
-	WIN_CMAKE_OPTS="-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${OSSEC_CC} -DCMAKE_CXX_COMPILER=${OSSEC_CXX}"
-endif #winagent
-ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-	cd ${DBSYNC} && cmake -DEXTERNAL_LIBS_PATH=${EXTERNAL_LIBS_FOLDER} -DCMAKE_BUILD_TYPE=Debug -DUNIT_TEST=ON . && cmake --build .
-else
-	cd ${DBSYNC} && cmake -DEXTERNAL_LIBS_PATH=${EXTERNAL_LIBS_FOLDER} -DCMAKE_BUILD_TYPE=Release . && cmake --build .
-endif #DEBUG
+	cd ${DBSYNC} && cmake -DEXTERNAL_LIBS_PATH=${EXTERNAL_LIBS_FOLDER} ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} . && cmake --build .
+
 
 #### Wazuh modules ##
 
@@ -1556,15 +1563,9 @@ endif
 
 ### wazuh-gtest-gmock ###
 
+
 build_gtest:
-ifeq (${TARGET}, winagent)
-	WIN_CMAKE_OPTS="-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${OSSEC_CC} -DCMAKE_CXX_COMPILER=${OSSEC_CXX}"
-endif #winagent
-ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-	cd $(EXTERNAL_GOOGLE_TEST) && mkdir -p build && cd build && cmake .. ${WIN_CMAKE_OPTS} -DCMAKE_BUILD_TYPE=Debug && cmake --build . && cp -r lib ..
-else
-	cd $(EXTERNAL_GOOGLE_TEST) && mkdir -p build && cd build && cmake .. ${WIN_CMAKE_OPTS} -DCMAKE_BUILD_TYPE=Release && cmake --build . && cp -r lib ..
-endif #DEBUG
+	cd $(EXTERNAL_GOOGLE_TEST) && mkdir -p build && cd build && cmake .. ${WIN_CMAKE_OPTS} ${GTEST_RELEASE_TYPE}  -DBUILD_GMOCK=ON -DBUILD_SHARED_LIBS=0 && cmake --build . && cp -r lib ..
 
 ### wazuh-python ###
 

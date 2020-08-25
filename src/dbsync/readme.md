@@ -15,21 +15,27 @@ There are several modules needed in order to the tool to work correctly.
   - gcov
 
 ## How to use the tool
-Usage:
-- ./build.sh --help      :   Show this help.
-- ./build.sh --rtr       :   Ready to Review checks.
-- ./build.sh --config    :   Config dbsync.
-- ./build.sh --make      :   Make dbsync.
-- ./build.sh --remake    :   Clean and Make dbsync.
-- ./build.sh --tests     :   Tests.
-- ./build.sh --coverage  :   Coverage.
-- ./build.sh --cppcheck  :   cppcheck.
-- ./build.sh --valgrind  :   Valgrind on tests.
+usage: build.py [-h] [-t] [-c] [-r] [-v] [-m] [--clean] [--cppcheck] [--config OS TYPE TEST] {} ...
+
+positional arguments:
+  {}
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -t, --tests           Run tests (should be configured with TEST=on)
+  -c, --coverage        Collect tests coverage and generates report
+  -r, --readytoreview   Run all the quality checks needed to create a PR
+  -v, --valgrind        Run valgrind on tests
+  -m, --make            Compile the lib
+  --clean               Clean the lib
+  --cppcheck            Run cppcheck on the code
+  --config OS TYPE TEST
+                        Configure the lib. OS=win|linux|mac TYPE=Release|Debug TEST=ON|OFF
 
 Ready to review checks:
-  1. compiles dbsync.
-  2. runs cppcheck on dbsync folder.
+  1. runs cppcheck on dbsync folder.
+  2. compiles dbsync.
   3. runs dbsync UTs.
   4. runs valgrind on dbsync UTs.
   5. runs code coverage on dbsync tests and generates coverage reports.
-If all the checks passed it returns 0 and prints a "RTR PASSED: code is ready to review.", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns and error code.
+If all the checks passed it returns 0 and prints a "[RTR: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns and error code.
