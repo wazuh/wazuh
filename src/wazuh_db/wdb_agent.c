@@ -42,7 +42,7 @@ static const char *global_db_queries[] = {
 
 int wdb_sock_agent = -1;
 
-static const char *global_db_accesses[] = {
+static const char *global_db_commands[] = {
     [WDB_INSERT_AGENT] = "global insert-agent %s",
     [WDB_UPDATE_AGENT_NAME] = "global update-agent-name %s",
     [WDB_UPDATE_AGENT_VERSION] = "global update-agent-version %s",
@@ -101,7 +101,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
     cJSON_AddStringToObject(data_in, "group", group);
     cJSON_AddNumberToObject(data_in, "date_add", date_add);
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_accesses[WDB_INSERT_AGENT], cJSON_PrintUnformatted(data_in));
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_INSERT_AGENT], cJSON_PrintUnformatted(data_in));
 
     cJSON_Delete(data_in);
 
@@ -147,7 +147,7 @@ int wdb_update_agent_name(int id, const char *name) {
     cJSON_AddNumberToObject(data_in, "id", id);
     cJSON_AddStringToObject(data_in, "name", name);
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_accesses[WDB_UPDATE_AGENT_NAME], cJSON_PrintUnformatted(data_in));
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_NAME], cJSON_PrintUnformatted(data_in));
 
     cJSON_Delete(data_in);
 
@@ -221,7 +221,7 @@ int wdb_update_agent_version (int id,
     cJSON_AddStringToObject(data_in, "agent_ip", agent_ip);
     cJSON_AddNumberToObject(data_in, "sync_status", sync_status);
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_accesses[WDB_UPDATE_AGENT_VERSION], cJSON_PrintUnformatted(data_in));
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_VERSION], cJSON_PrintUnformatted(data_in));
 
     cJSON_Delete(data_in);
 
@@ -254,7 +254,7 @@ cJSON* wdb_get_agent_labels(int id) {
     char wdbquery[OS_BUFFER_SIZE] = "";
     char wdboutput[OS_MAXSTR] = "";
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_accesses[WDB_GET_AGENT_LABELS], id);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_GET_AGENT_LABELS], id);
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
@@ -275,7 +275,7 @@ int wdb_set_agent_labels(int id, const char *labels) {
     char wdboutput[OS_BUFFER_SIZE] = "";
     char *payload = NULL;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_accesses[WDB_SET_AGENT_LABELS], id, labels);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_SET_AGENT_LABELS], id, labels);
 
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
@@ -316,7 +316,7 @@ int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status) {
     cJSON_AddNumberToObject(data_in, "id", id);
     cJSON_AddNumberToObject(data_in, "sync_status", sync_status);
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_accesses[WDB_UPDATE_AGENT_KEEPALIVE], cJSON_PrintUnformatted(data_in));
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_KEEPALIVE], cJSON_PrintUnformatted(data_in));
 
     cJSON_Delete(data_in);
 
@@ -349,7 +349,7 @@ int wdb_remove_agent(int id) {
     char *payload = NULL;
     char *name = NULL;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_accesses[WDB_DELETE_AGENT], id);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_DELETE_AGENT], id);
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
@@ -390,7 +390,7 @@ char* wdb_get_agent_name(int id) {
     cJSON *root = NULL;
     cJSON *json_name = NULL;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_accesses[WDB_SELECT_AGENT_NAME], id);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_SELECT_AGENT_NAME], id);
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
@@ -899,7 +899,7 @@ int wdb_delete_agent_belongs(int id) {
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_accesses[WDB_DELETE_AGENT_BELONG], id);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_DELETE_AGENT_BELONG], id);
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
