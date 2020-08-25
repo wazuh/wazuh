@@ -51,7 +51,6 @@ void free_win32rtfim_data(win32rtfim *data);
 void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap);
 #endif
 
-extern int OSHash_Add_ex_check_data;
 
 typedef struct realtime_process_data{
     struct inotify_event *event;

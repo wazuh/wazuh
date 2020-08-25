@@ -14,8 +14,8 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <limits.h>
+#include "../common.h"
 
-extern int test_mode;
 
 extern int __real_atexit(void (*callback)(void));
 int __wrap_atexit(void (*callback)(void)) {

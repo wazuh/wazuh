@@ -14,9 +14,8 @@
 #include <cmocka.h>
 #include <string.h>
 #include <stdio.h>
+#include "../common.h"
 
-
-extern int test_mode;
 
 int __wrap_unlink(const char *file) {
     check_expected_ptr(file);

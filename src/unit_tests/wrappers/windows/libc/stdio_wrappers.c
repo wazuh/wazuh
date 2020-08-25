@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "headers/defs.h"
+#include "../../common.h"
 
-extern int test_mode;
 
 char * wrap_fgets(char * __s, int __n, FILE * __stream) {
     if (test_mode) {

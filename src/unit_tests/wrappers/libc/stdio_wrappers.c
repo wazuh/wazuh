@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "headers/defs.h"
+#include "../common.h"
 
-extern int test_mode;
 
 extern int __real_fclose(FILE *_File);
 int __wrap_fclose(FILE *_File) {

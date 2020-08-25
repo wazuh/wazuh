@@ -12,8 +12,8 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include "../common.h"
 
-extern int test_mode;
 
 int __wrap_chmod(const char *path) {
     check_expected_ptr(path);

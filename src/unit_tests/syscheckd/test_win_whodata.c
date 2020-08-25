@@ -67,7 +67,6 @@ extern PSID everyone_sid;
 extern size_t ev_sid_size;
 extern int restore_policies;
 extern EVT_HANDLE context;
-extern int OSHash_Add_ex_check_data;
 
 extern const wchar_t* event_fields[];
 

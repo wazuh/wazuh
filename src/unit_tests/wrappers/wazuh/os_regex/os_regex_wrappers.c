@@ -12,8 +12,8 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include "../../common.h"
 
-extern int test_mode;
 char **d_sub_strings = NULL;
 
 extern int __real_OSRegex_Compile(const char *pattern, OSRegex *reg, int flags);

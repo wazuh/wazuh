@@ -8,9 +8,9 @@
  */
 
 #include "wmodules_scheduling_helpers.h"
+#include "../../wrappers/wazuh/shared/time_op_wrappers.h"
 #include <time.h>
 
-extern time_t current_time;
 extern time_t __real_time(time_t *_time);
 /**************** Mocked functions *************/
 /**     Mocked functions       **/
