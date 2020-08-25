@@ -158,6 +158,21 @@ int __wrap_close(int fd) {
     return 0;
 }
 
+cJSON* __wrap_w_create_sendsync_payload(const char *daemon_name, cJSON *message) {
+    check_expected(daemon_name);
+
+    return mock_type(cJSON*);
+}
+
+int __wrap_w_send_clustered_message(const char* command, const char* payload, char* response) {
+    check_expected(command);
+    check_expected(payload);
+
+    strcpy(response, mock_type(char*));
+
+    return mock();
+}
+
 #ifdef TEST_SERVER
 
 // Tests
@@ -595,6 +610,80 @@ void test_wm_agent_send_task_information_master_connect_error(void **state)
     assert_null(output);
 }
 
+void test_wm_agent_send_task_information_worker(void **state)
+{
+    char *response = "[{\"error\":0,"
+                       "\"data\":\"Success\","
+                       "\"agent\":12,"
+                       "\"task_id\":100},{"
+                       "\"error\":0,"
+                       "\"data\":\"Success\","
+                       "\"agent\":10,"
+                       "\"task_id\":101}]";
+
+    cJSON *input = cJSON_CreateArray();
+
+    cJSON *task_request1 = cJSON_CreateObject();
+    cJSON *task_request2 = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_request1, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request1, "command", "upgrade");
+    cJSON_AddNumberToObject(task_request1, "agent", 12);
+
+    cJSON_AddStringToObject(task_request2, "module", "upgrade_module");
+    cJSON_AddStringToObject(task_request2, "command", "upgrade");
+    cJSON_AddNumberToObject(task_request2, "agent", 10);
+
+    cJSON_AddItemToArray(input, task_request1);
+    cJSON_AddItemToArray(input, task_request2);
+
+    cJSON * cluster_request = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(cluster_request, "daemon_name", TASK_MANAGER_WM_NAME);
+    cJSON_AddItemToObject(cluster_request, "message", input);
+
+    char *message = "{\"daemon_name\":\"task-manager\","
+                     "\"message\":[{\"module\":\"upgrade_module\","
+                                   "\"command\":\"upgrade\","
+                                   "\"agent\":12},{"
+                                   "\"module\":\"upgrade_module\","
+                                   "\"command\":\"upgrade\","
+                                   "\"agent\":10}]}";
+
+    expect_string(__wrap_w_create_sendsync_payload, daemon_name, TASK_MANAGER_WM_NAME);
+    will_return(__wrap_w_create_sendsync_payload, cluster_request);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8168): Sending sendsync message to task manager in master node: '{\"daemon_name\":\"task-manager\","
+                                                                                                                      "\"message\":[{\"module\":\"upgrade_module\","
+                                                                                                                                    "\"command\":\"upgrade\","
+                                                                                                                                    "\"agent\":12},{"
+                                                                                                                                    "\"module\":\"upgrade_module\","
+                                                                                                                                    "\"command\":\"upgrade\","
+                                                                                                                                    "\"agent\":10}]}'");
+
+    expect_string(__wrap_w_send_clustered_message, command, "sendsync");
+    expect_string(__wrap_w_send_clustered_message, payload, message);
+    will_return(__wrap_w_send_clustered_message, response);
+    will_return(__wrap_w_send_clustered_message, 1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8158): Receiving message from task_manager module: '[{\"error\":0,"
+                                                                                                          "\"data\":\"Success\","
+                                                                                                          "\"agent\":12,"
+                                                                                                          "\"task_id\":100},{"
+                                                                                                          "\"error\":0,"
+                                                                                                          "\"data\":\"Success\","
+                                                                                                          "\"agent\":10,"
+                                                                                                          "\"task_id\":101}]'");
+
+    cJSON *output = wm_agent_send_task_information_worker(input);
+
+    state[0] = output;
+
+    assert_non_null(output);
+}
+
 #endif
 
 int main(void) {
@@ -619,6 +708,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_send_task_information_master_recv_error, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_send_task_information_master_sockterr_error, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_send_task_information_master_connect_error, teardown_jsons),
+        // wm_agent_send_task_information_worker
+        cmocka_unit_test_teardown(test_wm_agent_send_task_information_worker, teardown_jsons),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
