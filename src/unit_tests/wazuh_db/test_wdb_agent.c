@@ -1794,6 +1794,7 @@ void test_wdb_get_agent_name_success(void **state) {
     expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
     expect_string(__wrap_wdbc_query_parse_json, query, query_str);
     expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -2046,6 +2047,69 @@ void test_wdb_remove_agent_success(void **state)
     __real_cJSON_Delete(root);
 }
 
+/* Tests wdb_get_agent_keepalive */
+
+void test_wdb_get_agent_keepalive_error_no_json_response(void **state) {
+    time_t keepalive = 0;
+    char name[]="agent1";
+    char ip[]="0.0.0.1";
+    const char *query_str = "global select-keepalive agent1 0.0.0.1";
+    cJSON* response = NULL;
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, response);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the last agent keepalive.");
+
+    keepalive = wdb_get_agent_keepalive(name, ip);
+
+    assert_int_equal(OS_INVALID, keepalive);
+}
+
+void test_wdb_get_agent_keepalive_error_empty_json_response(void **state) {
+    time_t keepalive = 0;
+    char name[]="agent1";
+    char ip[]="0.0.0.1";
+    const char *query_str = "global select-keepalive agent1 0.0.0.1";
+    cJSON* response = cJSON_Parse("[{}]");
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, response);
+    expect_function_call(__wrap_cJSON_Delete);
+    
+    keepalive = wdb_get_agent_keepalive(name, ip);
+
+    assert_int_equal(0, keepalive);
+
+    __real_cJSON_Delete(response);
+}
+
+void test_wdb_get_agent_keepalive_success(void **state) {
+    time_t keepalive = 0;
+    char name[]="agent1";
+    char ip[]="0.0.0.1";
+    const char *query_str = "global select-keepalive agent1 0.0.0.1";
+    cJSON* response = cJSON_Parse("[{\"last_keepalive\":100}]");
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, response);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    keepalive = wdb_get_agent_keepalive(name, ip);
+
+    assert_int_equal(100, keepalive);
+
+    __real_cJSON_Delete(response);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -2109,7 +2173,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_result, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_delete_belongs_and_name, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_success, setup_wdb_agent, teardown_wdb_agent)
+        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_get_agent_keepalive */
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_empty_json_response, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_success, setup_wdb_agent, teardown_wdb_agent),
+        
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

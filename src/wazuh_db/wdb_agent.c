@@ -36,8 +36,7 @@ static const char *global_db_queries[] = {
     [SQL_INSERT_AGENT_BELONG] = "global sql INSERT INTO belongs (id_group, id_agent) VALUES(%d, %d);",
     [SQL_DELETE_GROUP_BELONG] = "global sql DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = %Q );", 
     [SQL_DELETE_GROUP] = "global sql DELETE FROM `group` WHERE name = %Q;",
-    [SQL_SELECT_GROUPS] = "global sql SELECT name FROM `group`;",
-    [SQL_SELECT_KEEPALIVE] = "global sql SELECT last_keepalive FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');"
+    [SQL_SELECT_GROUPS] = "global sql SELECT name FROM `group`;"
 };
 
 int wdb_sock_agent = -1;
@@ -68,7 +67,7 @@ static const char *global_db_commands[] = {
     [WDB_DELETE_GROUP_BELONG] = "",
     [WDB_DELETE_GROUP] = "",
     [WDB_SELECT_GROUPS] = "",
-    [WDB_SELECT_KEEPALIVE] = ""
+    [WDB_SELECT_KEEPALIVE] = "global select-keepalive %s %s"
 };
 
 
@@ -1182,7 +1181,7 @@ time_t wdb_get_agent_keepalive (const char *name, const char *ip){
         return OS_INVALID;
     }
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_queries[SQL_SELECT_KEEPALIVE], name, ip, ip);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_KEEPALIVE], name, ip);
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
