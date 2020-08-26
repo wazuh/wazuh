@@ -18,9 +18,6 @@ CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null 
 ARCH_FLAGS =
 
 ROUTE_PATH := $(shell pwd)
-# dbsync var
-EXTERNAL_LIBS_FOLDER=../external/
-# end dbsync var
 EXTERNAL_JSON=external/cJSON/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
@@ -665,7 +662,7 @@ winagent: external win32/dbsync.dll win32/libwinpthread-1.dll wazuh_modules/sysc
 
 
 win32/dbsync.dll:
-	cd ${DBSYNC} && cmake -DEXTERNAL_LIBS_PATH=${EXTERNAL_LIBS_FOLDER} ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} . && cmake --build .
+	cd ${DBSYNC} && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} . && cmake --build .
 
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 	cp $< $@
@@ -1053,7 +1050,7 @@ config/%.o: config/%.c
 
 #### DBSync ##########
 build_dbsync:
-	cd ${DBSYNC} && cmake -DEXTERNAL_LIBS_PATH=${EXTERNAL_LIBS_FOLDER} ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} . && cmake --build .
+	cd ${DBSYNC} && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} . && cmake --build .
 
 
 #### Wazuh modules ##
@@ -1562,7 +1559,6 @@ wazuh-framework: ${shared_o} ${wdblib_o}
 endif
 
 ### wazuh-gtest-gmock ###
-
 
 build_gtest:
 	cd $(EXTERNAL_GOOGLE_TEST) && mkdir -p build && cd build && cmake .. ${WIN_CMAKE_OPTS} ${GTEST_RELEASE_TYPE}  -DBUILD_GMOCK=ON -DBUILD_SHARED_LIBS=0 && cmake --build . && cp -r lib ..
