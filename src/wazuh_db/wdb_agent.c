@@ -366,10 +366,11 @@ int wdb_remove_agent(int id) {
                 result = ((OS_SUCCESS == result) && name) ? wdb_remove_agent_db(id, name) : OS_INVALID;
 
                 if(OS_INVALID == result){
-                    mdebug1("Unable to remove agent DB: %d - %s ", id, name);
+                    mdebug1("Unable to remove agent DB: %d - %s", id, name);
                 }
             }
             else {
+                mdebug1("Global DB Error reported in the result of the query");
                 result = OS_INVALID;
             }
             break;
