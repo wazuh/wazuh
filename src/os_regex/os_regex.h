@@ -150,6 +150,12 @@ int OS_StrStartsWith(const char *str, const char *pattern) __attribute__((nonnul
 /* Checks if a specific string is numeric (like "129544") */
 int OS_StrIsNum(const char *str);
 
+/*
+ * @brief Free memory of regex_matching struct
+ * @param reg struct to remove
+ */
+void OSRegex_free_regex_matching (regex_matching *reg);
+
 /* Checks if a specified char is in the following range:
  * a-z, A-Z, 0-9, _-.
  */
