@@ -1,0 +1,55 @@
+# Generate vulnerability detector library
+file(GLOB task_files
+    ${SRC_FOLDER}/wazuh_modules/*.o
+    ${SRC_FOLDER}/wazuh_modules/task_manager/*.o)
+list(REMOVE_ITEM task_files ${SRC_FOLDER}/wazuh_modules/main.o)
+
+add_library(TASK_O STATIC ${task_files})
+
+set_source_files_properties(
+    ${task_files}
+    PROPERTIES
+    EXTERNAL_OBJECT true
+    GENERATED true
+)
+
+set_target_properties(
+    TASK_O
+    PROPERTIES
+    LINKER_LANGUAGE C
+)
+
+target_link_libraries(TASK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+
+# Generate task manager tests
+list(APPEND task_names "test_wm_task_manager")
+list(APPEND task_flags " ")
+
+list(APPEND task_names "test_wm_task_manager_db")
+list(APPEND task_flags " ")
+
+# Compilig tests
+list(LENGTH task_names count)
+math(EXPR count "${count} - 1")
+foreach(counter RANGE ${count})
+    list(GET task_names ${counter} test_name)
+    list(GET task_flags ${counter} test_flags)
+
+    add_executable(${test_name} ${test_name}.c)
+
+    target_link_libraries(
+        ${test_name}
+        ${WAZUHLIB}
+        ${WAZUHEXT}
+        TASK_O
+        ${TEST_DEPS}
+    )
+
+    if(NOT test_flags STREQUAL " ")
+        target_link_libraries(
+            ${test_name}
+            ${test_flags}
+        )
+    endif()
+    add_test(NAME ${test_name} COMMAND ${test_name})
+endforeach()
