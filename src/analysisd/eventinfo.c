@@ -1368,3 +1368,33 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     lf_cpy->rootcheck_fts = lf->rootcheck_fts;
     lf_cpy->is_a_copy = 1;
 }
+
+void w_free_event_info(Eventinfo *lf) {
+    /** Cleaning the memory **/
+    int force_remove = 1;
+    /* Only clear the memory if the eventinfo was not
+        * added to the stateful memory
+        * -- message is free inside clean event --
+    */
+    if (lf->generated_rule == NULL) {
+        Free_Eventinfo(lf);
+        force_remove = 0;
+    } else if (lf->last_events) {
+        int i;
+        if (lf->queue_added) {
+            force_remove = 0;
+        }
+        if (lf->last_events) {
+            for (i = 0; lf->last_events[i]; i++) {
+                os_free(lf->last_events[i]);
+            }
+            os_free(lf->last_events);
+        }
+    } else if (lf->queue_added) {
+        force_remove = 0;
+    }
+
+    if (force_remove) {
+        Free_Eventinfo(lf);
+    }
+}
