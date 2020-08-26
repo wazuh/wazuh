@@ -2165,30 +2165,11 @@ stages:
       status_code: 200
       json:
         data:
-          affected_items:
-            - ossec-agentlessd: !anything
-            - ossec-analysisd: !anything
-            - ossec-csyslogd: !anything
-            - ossec-dbd: !anything
-            - ossec-execd: !anything
-            - ossec-integratord: !anything
-            - ossec-logcollector: !anything
-            - ossec-monitord: !anything
-            - ossec-remoted: !anything
-            - ossec-rootcheck: !anything
-            - ossec-syscheckd: !anything
-            - sca: !anything
-            - wazuh-db: !anything
-            - wazuh-modulesd: !anything
-            - wazuh-modulesd:ciscat: !anything
-            - wazuh-modulesd:control: !anything
-            - wazuh-modulesd:database: !anything
-            - wazuh-modulesd:download: !anything
-            - wazuh-modulesd:osquery: !anything
-            - wazuh-modulesd:syscollector: !anything
+          affected_items: !anything
           failed_items: []
-          total_affected_items: 20
+          total_affected_items: !anyint
           total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/stats
@@ -2453,24 +2434,7 @@ stages:
       status_code: 200
       json:
         data:
-          affected_items:
-            - ossec-agentlessd: !anystr
-              ossec-analysisd: !anystr
-              ossec-authd: !anystr
-              ossec-csyslogd: !anystr
-              ossec-dbd: !anystr
-              ossec-execd: !anystr
-              ossec-integratord: !anystr
-              ossec-logcollector: !anystr
-              ossec-maild: !anystr
-              ossec-monitord: !anystr
-              ossec-remoted: !anystr
-              ossec-reportd: !anystr
-              ossec-syscheckd: !anystr
-              wazuh-apid: !anystr
-              wazuh-clusterd: !anystr
-              wazuh-db: !anystr
-              wazuh-modulesd: !anystr
+          affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0

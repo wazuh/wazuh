@@ -1722,9 +1722,17 @@ components:
     UsersResponse:
       type: object
       properties:
+        id:
+          type: integer
+          description: "User's id"
         username:
           type: string
-          description: "Policy name"
+        allow_run_as:
+          type: boolean
+          description: "Flag to enable the user to log in using authorization context"
+        roles:
+          type: array
+          description: "User's roles"
 
     # Cluster and manager models
     WazuhDaemonsStatus:
@@ -2530,7 +2538,7 @@ components:
           type: integer
           format: int32
           minimum: 30
-          example: 36000
+          example: 3600
         rbac_mode:
           description: "RBAC mode (white/black)"
           type: string
@@ -12681,7 +12689,7 @@ paths:
       tags:
         - security
       summary: "User/password authentication to get an access token"
-      description: "This method should be called to get an API token. This token will expire at some time"
+      description: "This method should be called to get an API token. This token will expire after auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
       parameters:
         - $ref: '#/components/parameters/raw'
@@ -12745,10 +12753,9 @@ paths:
       tags:
       - security
       summary: "Auth_context based authentication to get an access token"
-      description: "This method should be called to get an API token. This token will expire at some time"
+      description: "This method should be called to get an API token using an authorization context body. This token will expire after auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
       parameters:
-        - $ref: '#/components/parameters/auth_context'
         - $ref: '#/components/parameters/raw'
       security:
         - basicAuth: []
@@ -13964,6 +13971,7 @@ paths:
                     affected_items:
                       - id: 1
                         username: wazuh
+                        allow_run_as: true
                         roles:
                           - id: 1
                             name: administrator
@@ -14041,32 +14049,47 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - roles:
-                          - 2
+                      - id: 3
                         username: administrator
-                      - roles: []
+                        allow_run_as: true
+                        roles:
+                          - 2
+                      - id: 4
                         username: guest
-                      - roles:
+                        allow_run_as: false
+                        roles: []
+                      - id: 5
+                        username: normal
+                        allow_run_as: false
+                        roles:
                           - 4
                           - 5
                           - 6
-                        username: normal
-                      - roles:
+                      - id: 6
+                        username: ossec
+                        allow_run_as: true
+                        roles:
                           - 2
                           - 5
-                        username: ossec
-                      - roles: []
-                        username: python
-                      - roles:
+                      - username: python
+                        allow_run_as: true
+                        roles: []
+                      - id: 7
+                        username: rbac
+                        allow_run_as: false
+                        roles:
                           - 3
                           - 4
                           - 5
-                        username: rbac
-                      - roles:
-                          - 1
+                      - id: 1
                         username: wazuh
-                      - roles: []
+                        allow_run_as: true
+                        roles:
+                          - 1
+                      - id: 2
                         username: wazuh-wui
+                        allow_run_as: true
+                        roles: []
                     failed_items: []
                     total_affected_items: 8
                     total_failed_items: 0
@@ -14106,6 +14129,9 @@ paths:
                   maxLength: 64
                   minLength: 8
                   format: password
+                allow_run_as:
+                  type: boolean
+                  default: False
               required:
                 - username
                 - password
@@ -14199,8 +14225,9 @@ paths:
                   maxLength: 64
                   minLength: 8
                   format: password
-              required:
-                - password
+                allow_run_as:
+                  type: boolean
+                  default: False
       responses:
         '200':
           description: "User updated successful"
@@ -14351,7 +14378,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponse"
               example:
-                auth_token_exp_timeout: 36000
+                auth_token_exp_timeout: 3600
                 rbac_mode: white
         '400':
           $ref: '#/components/responses/ResponseError'
