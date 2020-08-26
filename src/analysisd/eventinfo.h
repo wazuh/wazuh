@@ -201,6 +201,13 @@ void Zero_Eventinfo(Eventinfo *lf);
  */
 void Free_Eventinfo(Eventinfo *lf);
 
+/**
+ * @brief Clear the memory if the eventinfo was not added to the stateful memory
+ * 
+ * @param lf Eventinfo to free
+ */
+void w_free_event_info(Eventinfo *lf);
+
 /* Add and event to the list of previous events */
 void OS_AddEvent(Eventinfo *lf, EventList *list);
 
