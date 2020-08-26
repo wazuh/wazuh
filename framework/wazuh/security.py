@@ -274,7 +274,7 @@ def remove_roles(role_ids):
                 result.affected_items.append(role)
                 result.total_affected_items += 1
 
-        invalid_roles_tokens(roles=role_ids)
+        invalid_roles_tokens(roles=[role['id'] for role in result.affected_items])
         result.affected_items = sorted(result.affected_items, key=lambda i: i['id'])
 
     return result
