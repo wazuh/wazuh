@@ -34,8 +34,6 @@
 /** Internal Functions **/
 void OS_ReadMSG(char *ut_str);
 
-void DecodeEvent(Eventinfo *lf, OSHash *rules_hash, regex_matching *decoder_match, OSDecoderNode *node);
-
 // Cleanup at exit
 static void onexit();
 

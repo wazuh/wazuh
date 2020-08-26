@@ -112,16 +112,19 @@ void OS_AddEvent(Eventinfo *lf, EventList *list)
 
 void os_remove_eventlist(EventList *list) {
 
-    EventNode *tmp;
+    EventNode *tmp = list->first_node;
+
+    while (tmp) {
+        if (tmp->event) Free_Eventinfo(tmp->event);
+        tmp = tmp->next;
+    }
 
     while (list->first_node) {
-
         tmp = list->first_node;
         list->first_node = list->first_node->next;
-
-        Free_Eventinfo(tmp->event);
         os_free(tmp);
     }
 
+    os_free(list->last_added_node);
     os_free(list);
 }

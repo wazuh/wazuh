@@ -254,7 +254,7 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
 {
     /* If no r_node is given, get first node */
     if (r_node == NULL) {
-        r_node = OS_GetFirstRule();
+        return -1;
     }
 
     if (sid == 0) {
@@ -334,7 +334,7 @@ int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule)
 {
     /* If no r_node is given, get first node */
     if (r_node == NULL) {
-        r_node = OS_GetFirstRule();
+        return -1;
     }
 
     while (r_node) {
@@ -367,7 +367,7 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
 {
     /* If no r_node is given, get first node */
     if (r_node == NULL) {
-        r_node = OS_GetFirstRule();
+        return -1;
     }
 
     while (r_node) {
@@ -424,6 +424,7 @@ void os_remove_rules_list(RuleNode *node) {
 
     os_free(rules);
 }
+
 
 void os_remove_rulenode(RuleNode *node, RuleInfo **rules, int *pos, int *max_size) {
 
@@ -593,6 +594,10 @@ void os_remove_ruleinfo(RuleInfo *ruleinfo) {
 
     if (ruleinfo->if_matched_group) OSMatch_FreePattern(ruleinfo->if_matched_group);
     os_free(ruleinfo->if_matched_group);
+
+    os_free(ruleinfo->sid_prev_matched);
+    os_free(ruleinfo->group_search);
+    os_free(ruleinfo->group_prev_matched);
 
     os_free(ruleinfo->ignore_fields);
     os_free(ruleinfo->ckignore_fields);
