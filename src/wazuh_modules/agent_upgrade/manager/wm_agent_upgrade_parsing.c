@@ -352,7 +352,9 @@ STATIC wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
 cJSON* wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
     cJSON * response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_ERROR], error_id);
-    cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_DATA], message);
+    if (message) {
+        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_DATA], message);
+    }
     if(agent_id) {
         cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_AGENT_ID], *agent_id);
     }

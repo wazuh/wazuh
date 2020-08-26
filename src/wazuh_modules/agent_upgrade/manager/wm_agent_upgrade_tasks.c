@@ -28,12 +28,12 @@ static OSHash *task_table_by_agent_id;
 /**
  * Sends the task information locally to the task module queue
  * */
-STATIC cJSON *wm_agent_send_task_information_master(const cJSON *message_object);
+STATIC cJSON* wm_agent_send_task_information_master(const cJSON *message_object) __attribute__((nonnull));
 
 /**
  * Sends a `send_sync` message into clusterd that will be received by the master node
  * */
-STATIC cJSON *wm_agent_send_task_information_worker(const cJSON *message_object);
+STATIC cJSON* wm_agent_send_task_information_worker(const cJSON *message_object) __attribute__((nonnull));
 
 wm_upgrade_task* wm_agent_upgrade_init_upgrade_task() {
     wm_upgrade_task *task;
@@ -199,7 +199,7 @@ STATIC cJSON *wm_agent_send_task_information_master(const cJSON *message_object)
         char *message = cJSON_PrintUnformatted(message_object);
         mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_SEND_MESSAGE, message);
 
-        OS_SendSecureTCP(sock, message ? strlen(message) : 0, message);
+        OS_SendSecureTCP(sock, strlen(message), message);
         os_free(message);
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
 

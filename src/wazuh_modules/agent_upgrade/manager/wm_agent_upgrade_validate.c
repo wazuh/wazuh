@@ -32,7 +32,7 @@
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
-STATIC int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task, const wm_manager_configs* manager_configs);
+STATIC int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
  * Check if WPK exists for this agent
@@ -58,7 +58,7 @@ STATIC int wm_agent_upgrade_validate_system(const char *platform, const char *os
  * @retval WM_UPGRADE_URL_NOT_FOUND
  * @retval WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
  * */
-STATIC int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version, const char *wpk_repository_config);
+STATIC int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version, const char *wpk_repository_config) __attribute__((nonnull));
 
 static const char* invalid_platforms[] = {
     "darwin",

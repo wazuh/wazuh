@@ -32,7 +32,7 @@
  * @param manager_configs manager configuration parameters
  * @return JSON task if success, NULL otherwise
  * */
-STATIC cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, wm_upgrade_error_code *error_code, const wm_manager_configs* manager_configs);
+STATIC cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, wm_upgrade_error_code *error_code, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
  * Validate the information of the agent and the task
@@ -54,7 +54,7 @@ STATIC cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_
  * @retval WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH
  * @retval WM_UPGRADE_UNKNOWN_ERROR
  * */
-STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs);
+STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
  * Start the upgrade procedure for the agents
@@ -62,7 +62,7 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
  * @param task_module_request cJSON array with the agents to be upgraded
  * @param manager_configs manager configuration parameters
  * */
-STATIC void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request, const wm_manager_configs* manager_configs);
+STATIC void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
  * Send WPK file to agent and verify SHA1
@@ -72,7 +72,7 @@ STATIC void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* t
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs);
+STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
  * Send a lock_restart command to an agent
@@ -91,7 +91,7 @@ STATIC int wm_agent_upgrade_send_lock_restart(int agent_id);
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_open(int agent_id, const char *wpk_file);
+STATIC int wm_agent_upgrade_send_open(int agent_id, const char *wpk_file) __attribute__((nonnull));
 
 /**
  * Send a write file command to an agent
@@ -103,7 +103,7 @@ STATIC int wm_agent_upgrade_send_open(int agent_id, const char *wpk_file);
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_write(int agent_id, const char *wpk_file, const char *file_path, int chunk_size);
+STATIC int wm_agent_upgrade_send_write(int agent_id, const char *wpk_file, const char *file_path, int chunk_size) __attribute__((nonnull));
 
 /**
  * Send a close file command to an agent
@@ -113,7 +113,7 @@ STATIC int wm_agent_upgrade_send_write(int agent_id, const char *wpk_file, const
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_close(int agent_id, const char *wpk_file);
+STATIC int wm_agent_upgrade_send_close(int agent_id, const char *wpk_file) __attribute__((nonnull));
 
 /**
  * Send a sha1 command to an agent
@@ -124,7 +124,7 @@ STATIC int wm_agent_upgrade_send_close(int agent_id, const char *wpk_file);
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_sha1(int agent_id, const char *wpk_file, const char *file_sha1);
+STATIC int wm_agent_upgrade_send_sha1(int agent_id, const char *wpk_file, const char *file_sha1) __attribute__((nonnull));
 
 /**
  * Send an upgrade command to an agent
@@ -135,7 +135,7 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id, const char *wpk_file, const 
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, const char *installer);
+STATIC int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, const char *installer) __attribute__((nonnull));
 
 /**
  * Sends a single message to the task module and returns a response
@@ -576,7 +576,7 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id, const char *wpk_file, const 
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
     if (result = wm_agent_upgrade_parse_agent_response(response, &data), !result) {
-        if (!file_sha1 || !data || strcmp(file_sha1, data)) {
+        if (!data || strcmp(file_sha1, data)) {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_SHA1_ERROR);
             result = OS_INVALID;
         }
@@ -634,7 +634,7 @@ char* wm_agent_upgrade_send_command_to_agent(const char *command, const size_t c
     } else {
         mtdebug2(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUEST_SEND_MESSAGE, command);
 
-        OS_SendSecureTCP(sock, command_size ? command_size : (command ? strlen(command) : 0), command);
+        OS_SendSecureTCP(sock, command_size ? command_size : strlen(command), command);
         os_calloc(OS_MAXSTR, sizeof(char), response);
 
         switch (length = OS_RecvSecureTCP(sock, response, OS_MAXSTR), length) {

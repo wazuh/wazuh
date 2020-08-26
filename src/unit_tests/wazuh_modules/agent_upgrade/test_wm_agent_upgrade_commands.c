@@ -578,10 +578,11 @@ void test_wm_agent_upgrade_send_command_to_agent_sockterr_error(void **state)
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '(null)'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: 'Command to agent: restart agent now.'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
-    expect_value(__wrap_OS_SendSecureTCP, size, 0);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(command));
+    expect_string(__wrap_OS_SendSecureTCP, msg, command);
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
@@ -595,7 +596,7 @@ void test_wm_agent_upgrade_send_command_to_agent_sockterr_error(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    char *res = wm_agent_upgrade_send_command_to_agent(NULL, 0);
+    char *res = wm_agent_upgrade_send_command_to_agent(command, 0);
 
     *state = res;
 

@@ -117,7 +117,7 @@ extern const char* upgrade_error_codes[];
  * @param manager_configs manager configuration parameters
  * @return only on errors, socket will be closed
  * */
-void wm_agent_upgrade_listen_messages(int timeout_sec, const wm_manager_configs* manager_configs);
+void wm_agent_upgrade_listen_messages(int timeout_sec, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
  * Process and upgrade command. Create the task for each agent_id, dispatches to task manager and
@@ -127,7 +127,7 @@ void wm_agent_upgrade_listen_messages(int timeout_sec, const wm_manager_configs*
  * @param manager_configs manager configuration parameters
  * @return string with the response
  * */
-char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs);
+char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
  * Process and upgrade custom command. Create the task for each agent_id, dispatches to task manager and
@@ -137,14 +137,14 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
  * @param manager_configs manager configuration parameters
  * @return string with the response
  * */
-char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs);
+char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
  * Process and agent_upgraded command
  * @param agent_ids List with id of the agents (In this case the list will contain only 1 id)
  * @param task Task with the update information
  * */
-char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const wm_upgrade_agent_status_task* task);
+char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const wm_upgrade_agent_status_task* task) __attribute__((nonnull));
 
 /**
  * Send a command to the agent and return the response
@@ -152,6 +152,6 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const 
  * @param command_size size of the command
  * @return response from agent
  * */
-char* wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size);
+char* wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size) __attribute__((nonnull));
 
 #endif

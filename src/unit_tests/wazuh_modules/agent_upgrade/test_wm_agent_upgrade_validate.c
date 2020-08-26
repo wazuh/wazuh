@@ -1016,13 +1016,14 @@ void test_wm_agent_upgrade_validate_version_upgrade_custom_ok(void **state)
 {
     wm_manager_configs config;
     wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
 
     os_strdup("v3.9.1", agent->wazuh_version);
     os_strdup("windows", agent->platform);
     os_strdup("10", agent->major_version);
     os_strdup("x64", agent->architecture);
 
-    int ret = wm_agent_upgrade_validate_version(agent, NULL, WM_UPGRADE_UPGRADE_CUSTOM, &config);
+    int ret = wm_agent_upgrade_validate_version(agent, task, WM_UPGRADE_UPGRADE_CUSTOM, &config);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
 }
@@ -1031,13 +1032,14 @@ void test_wm_agent_upgrade_validate_version_upgrade_non_minimal(void **state)
 {
     wm_manager_configs config;
     wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
 
     os_strdup("v2.1.1", agent->wazuh_version);
     os_strdup("windows", agent->platform);
     os_strdup("10", agent->major_version);
     os_strdup("x64", agent->architecture);
 
-    int ret = wm_agent_upgrade_validate_version(agent, NULL, WM_UPGRADE_UPGRADE, &config);
+    int ret = wm_agent_upgrade_validate_version(agent, task, WM_UPGRADE_UPGRADE, &config);
 
     assert_int_equal(ret, WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED);
 }
@@ -1046,13 +1048,14 @@ void test_wm_agent_upgrade_validate_version_upgrade_custom_non_minimal(void **st
 {
     wm_manager_configs config;
     wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
 
     os_strdup("v2.1.1", agent->wazuh_version);
     os_strdup("windows", agent->platform);
     os_strdup("10", agent->major_version);
     os_strdup("x64", agent->architecture);
 
-    int ret = wm_agent_upgrade_validate_version(agent, NULL, WM_UPGRADE_UPGRADE_CUSTOM, &config);
+    int ret = wm_agent_upgrade_validate_version(agent, task, WM_UPGRADE_UPGRADE_CUSTOM, &config);
 
     assert_int_equal(ret, WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED);
 }
@@ -1061,13 +1064,14 @@ void test_wm_agent_upgrade_validate_version_version_null(void **state)
 {
     wm_manager_configs config;
     wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
 
     agent->wazuh_version = NULL;
     os_strdup("windows", agent->platform);
     os_strdup("10", agent->major_version);
     os_strdup("x64", agent->architecture);
 
-    int ret = wm_agent_upgrade_validate_version(agent, NULL, WM_UPGRADE_UPGRADE_CUSTOM, &config);
+    int ret = wm_agent_upgrade_validate_version(agent, task, WM_UPGRADE_UPGRADE_CUSTOM, &config);
 
     assert_int_equal(ret, WM_UPGRADE_GLOBAL_DB_FAILURE);
 }
