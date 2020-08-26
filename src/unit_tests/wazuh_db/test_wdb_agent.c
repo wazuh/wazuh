@@ -175,6 +175,13 @@ int __wrap_fclose(FILE *stream) {
     return __real_fclose(stream);
 }
 
+extern int __real_remove (const char *__filename);
+int __wrap_remove (const char *__filename) {
+    check_expected(__filename);
+
+    return mock_type(int);
+}
+
 int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
     check_expected(*sock);
     check_expected(query);
@@ -1803,6 +1810,64 @@ void test_wdb_get_agent_name_success(void **state) {
     os_free(name);
 }
 
+/* Tests wdb_remove_agent_db */
+
+void test_wdb_remove_agent_db_error_removing_db(void **state) {
+    int ret = 0;
+    int id = 1;
+    char *name = "agent1";
+
+    // Removing DB files
+    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db");
+    will_return(__wrap_remove, OS_INVALID);
+
+    ret = wdb_remove_agent_db(id, name);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_remove_agent_db_error_removing_db_shm_wal(void **state) {
+    int ret = 0;
+    int id = 1;
+    char *name = "agent1";
+
+    // Removing DB files
+    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db");
+    will_return(__wrap_remove, OS_SUCCESS);
+
+    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db-shm");
+    will_return(__wrap_remove, OS_INVALID);
+    will_return(__wrap_strerror, "error");
+    expect_string(__wrap__mdebug2, formatted_msg, "(1129): Could not unlink file 'var/db/agents/001-agent1.db-shm' due to [(0)-(error)].");
+
+    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db-wal");
+    will_return(__wrap_remove, OS_INVALID);
+    will_return(__wrap_strerror, "error");
+    expect_string(__wrap__mdebug2, formatted_msg, "(1129): Could not unlink file 'var/db/agents/001-agent1.db-wal' due to [(0)-(error)].");
+
+    ret = wdb_remove_agent_db(id, name);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
+void test_wdb_remove_agent_db_success(void **state) {
+    int ret = 0;
+    int id = 1;
+    char *name = "agent1";
+
+    // Removing DB files
+    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db");
+    will_return(__wrap_remove, OS_SUCCESS);
+    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db-shm");
+    will_return(__wrap_remove, OS_SUCCESS);
+    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db-wal");
+    will_return(__wrap_remove, OS_SUCCESS);
+
+    ret = wdb_remove_agent_db(id, name);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -1857,6 +1922,11 @@ int main()
         /* Tests wdb_get_agent_name */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_remove_agent_db */
+        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_db_error_removing_db, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_db_error_removing_db_shm_wal, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_db_success, setup_wdb_agent, teardown_wdb_agent)
+        
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
