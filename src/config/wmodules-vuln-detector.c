@@ -243,7 +243,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             goto end;
         }
         upd->dist_ref = FEED_REDHAT;
-    }else if (strcasestr(feed, vu_feed_tag[FEED_MSU])) {
+    } else if (strcasestr(feed, vu_feed_tag[FEED_MSU])) {
         os_index = CVE_MSU;
         upd->dist_tag_ref = FEED_MSU;
         upd->dist_ext = vu_feed_ext[FEED_MSU];
@@ -273,7 +273,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
     os_strdup(feed, upd->dist);
 
     if (upd_list[os_index]) {
-        mwarn("Duplicate OVAL configuration for '%s%s%s'", upd->dist,  upd->version ? " " : "", upd->version ? upd->version : "");
+        mwarn("Duplicate OVAL configuration for '%s%s%s'", upd->dist, upd->version ? " " : "", upd->version ? upd->version : "");
         retval = OS_SUPP_SIZE;
         goto end;
     }
@@ -914,7 +914,7 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char *pr_nam
                 } else if (!strcmp(node[i]->attributes[j], XML_URL)) {
                     free(feeds_it->url);
                     os_strdup(node[i]->values[j], feeds_it->url);
-                } else if (!strcmp(node[i]->attributes[j],  XML_PORT)) {
+                } else if (!strcmp(node[i]->attributes[j], XML_PORT)) {
                     feeds_it->port = strtol(node[i]->values[j], NULL, 10);
                 } else if (!strcmp(node[i]->attributes[j],  XML_ALLOW)) {
                     free(feeds_it->allow);
@@ -945,7 +945,7 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char *pr_nam
                 while (feeds_it) {
                     os_strdup(node[i]->content, feeds_it->debian_json_url);
                     for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
-                        if (!strcmp(node[i]->attributes[j],  XML_PORT)) {
+                        if (!strcmp(node[i]->attributes[j], XML_PORT)) {
                             int port;
                             port = strtol(node[i]->values[j], NULL, 10);
                             wm_vuldet_set_port_to_url(&feeds_it->debian_json_url, port);
