@@ -2147,7 +2147,7 @@ static void test_get_user_success(void **state) {
     will_return(__wrap_getpwuid_r, 0);
     #endif
 
-    user = get_user(NULL, 1, NULL);
+    user = get_user(1);
 
     *state = user;
 
@@ -2167,7 +2167,7 @@ static void test_get_user_uid_not_found(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "User with uid '1' not found.\n");
 
-    user = get_user(NULL, 1, NULL);
+    user = get_user(1);
 
     *state = user;
 
@@ -2187,7 +2187,7 @@ static void test_get_user_error(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "Failed getting user_name (2): 'No such file or directory'\n");
 
-    user = get_user(NULL, 1, NULL);
+    user = get_user(1);
 
     *state = user;
 
@@ -2988,7 +2988,7 @@ static void test_get_user_CreateFile_error_access_denied(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (5)");
 
-    array[0] = get_user("C:\\a\\path", 0, &array[1]);
+    array[0] = get_user("C:\\a\\path", &array[1]);
 
     assert_string_equal(array[0], "");
 }
@@ -3005,7 +3005,7 @@ static void test_get_user_CreateFile_error_sharing_violation(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (32)");
 
-    array[0] = get_user("C:\\a\\path", 0, &array[1]);
+    array[0] = get_user("C:\\a\\path", &array[1]);
 
     assert_string_equal(array[0], "");
 }
@@ -3022,7 +3022,7 @@ static void test_get_user_CreateFile_error_generic(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (127)");
 
-    array[0] = get_user("C:\\a\\path", 0, &array[1]);
+    array[0] = get_user("C:\\a\\path", &array[1]);
 
     assert_string_equal(array[0], "");
 }
@@ -3047,7 +3047,7 @@ static void test_get_user_GetSecurityInfo_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "GetSecurityInfo error = 1337");
 
-    array[0] = get_user("C:\\a\\path", 0, &array[1]);
+    array[0] = get_user("C:\\a\\path", &array[1]);
 
     assert_string_equal(array[0], "");
 }
@@ -3074,7 +3074,7 @@ static void test_get_user_LookupAccountSid_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Error in LookupAccountSid.");
 
-    array[0] = get_user("C:\\a\\path", 0, &array[1]);
+    array[0] = get_user("C:\\a\\path", &array[1]);
 
     assert_string_equal(array[0], "");
     assert_string_equal(array[1], "sid");
@@ -3102,7 +3102,7 @@ static void test_get_user_LookupAccountSid_error_none_mapped(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "Account owner not found for file 'C:\\a\\path'");
 
-    array[0] = get_user("C:\\a\\path", 0, &array[1]);
+    array[0] = get_user("C:\\a\\path", &array[1]);
 
     assert_string_equal(array[0], "");
     assert_string_equal(array[1], "sid");
@@ -3126,7 +3126,7 @@ static void test_get_user_success(void **state) {
     will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
     will_return(wrap_syscheck_op_LookupAccountSid, 1);
 
-    array[0] = get_user("C:\\a\\path", 0, &array[1]);
+    array[0] = get_user("C:\\a\\path", &array[1]);
 
     assert_string_equal(array[0], "accountName");
     assert_string_equal(array[1], "sid");

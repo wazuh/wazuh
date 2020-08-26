@@ -753,7 +753,7 @@ fim_entry_data * fim_get_data(const char *file, fim_element *item) {
 
 #ifdef WIN32
     if (item->configuration & CHECK_OWNER) {
-        data->user_name = get_user(file, 0, &data->uid);
+        data->user_name = get_user(file, &data->uid);
     }
 #else
     if (item->configuration & CHECK_OWNER) {
@@ -761,7 +761,7 @@ fim_entry_data * fim_get_data(const char *file, fim_element *item) {
         snprintf(aux, OS_SIZE_64, "%u", item->statbuf.st_uid);
         os_strdup(aux, data->uid);
 
-        data->user_name = get_user(file, item->statbuf.st_uid, NULL);
+        data->user_name = get_user(item->statbuf.st_uid);
     }
 
     if (item->configuration & CHECK_GROUP) {
