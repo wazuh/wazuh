@@ -9,16 +9,15 @@ from wazuh.core import common
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError
+from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.decorators import expose_resources
-from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-
 
 try:
     import configparser
+
     unicode = str
 except ImportError:
     import ConfigParser as configparser
-
 
 DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
@@ -38,14 +37,15 @@ def totals(date):
     stat_filename = ""
     try:
         stat_filename = os.path.join(
-            common.stats_path, "totals", str(date.year), MONTHS[date.month - 1], f"ossec-totals-{date.strftime('%d')}.log")
+            common.stats_path, "totals", str(date.year), MONTHS[date.month - 1],
+            f"ossec-totals-{date.strftime('%d')}.log")
         stats = open(stat_filename, 'r')
     except IOError:
         raise WazuhError(1308, extra_message=stat_filename)
 
-    result = AffectedItemsWazuhResult(all_msg=f"Statistical information per hour for each node read successfully",
-                                      some_msg='Could not read statistical information per hour for some nodes',
-                                      none_msg=f"Could not read statistical information per hour for any node"
+    result = AffectedItemsWazuhResult(all_msg=f"Statistical information for each node read successfully",
+                                      some_msg='Could not read statistical information for some nodes',
+                                      none_msg=f"Could not read statistical information for any node"
                                       )
     alerts = []
 
@@ -127,9 +127,9 @@ def weekly():
     Returns the weekly averages.
     :return: A dictionary for each week day.
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Statistical information per hour for each node read successfully",
-                                      some_msg='Could not read statistical information per hour for some nodes',
-                                      none_msg=f"Could not read statistical information per hour for any node"
+    result = AffectedItemsWazuhResult(all_msg=f"Statistical information per week for each node read successfully",
+                                      some_msg='Could not read statistical information per week for some nodes',
+                                      none_msg=f"Could not read statistical information per week for any node"
                                       )
     # 0..6 => Sunday..Saturday
     for i in range(7):
@@ -165,10 +165,11 @@ def get_daemons_stats(filename):
     :param filename: Full path of the file to get information.
     :return: A dictionary with the stats of the input file.
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Statistical information per hour for each node read successfully",
-                                      some_msg='Could not read statistical information per hour for some nodes',
-                                      none_msg=f"Could not read statistical information per hour for any node"
-                                      )
+    result = AffectedItemsWazuhResult(
+        all_msg=f"Statistical information for each node read successfully",
+        some_msg='Could not read statistical information for some nodes',
+        none_msg=f"Could not read statistical information for any node"
+        )
     try:
 
         with open(filename, 'r') as f:

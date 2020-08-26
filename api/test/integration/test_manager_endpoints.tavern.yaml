@@ -336,25 +336,25 @@ stages:
         json:
           data:
             affected_items:
+              - Sun:
+                    hours: !anything
+                    interactions: !anyint
               - Mon:
                   hours: !anything
                   interactions: !anyint
-                Tue:
+              - Tue:
                   hours: !anything
                   interactions: !anyint
-                Wed:
+              - Wed:
                   hours: !anything
                   interactions: !anyint
-                Thu:
+              - Thu:
                   hours: !anything
                   interactions: !anyint
-                Fri:
+              - Fri:
                   hours: !anything
                   interactions: !anyint
-                Sat:
-                  hours: !anything
-                  interactions: !anyint
-                Sun:
+              - Sat:
                   hours: !anything
                   interactions: !anyint
             total_affected_items: 7

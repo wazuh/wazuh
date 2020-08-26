@@ -2168,6 +2168,7 @@ stages:
           affected_items:
             - ossec-agentlessd: !anything
             - ossec-analysisd: !anything
+            - ossec-authd: !anything
             - ossec-csyslogd: !anything
             - ossec-dbd: !anything
             - ossec-execd: !anything
@@ -2187,7 +2188,7 @@ stages:
             - wazuh-modulesd:osquery: !anything
             - wazuh-modulesd:syscollector: !anything
           failed_items: []
-          total_affected_items: 20
+          total_affected_items: 21
           total_failed_items: 0
 
 ---
@@ -2245,7 +2246,7 @@ stages:
   - name: unexisting_node stats
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting_node/stats"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting-node/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2441,7 +2442,7 @@ stages:
             - Sat:
                 hours: !anything
                 interactions: !anyint
-          total_affected_items: 1
+          total_affected_items: 7
           failed_items: []
           total_failed_items: 0
 
