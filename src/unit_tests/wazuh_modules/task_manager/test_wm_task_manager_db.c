@@ -115,6 +115,27 @@ int __wrap_sqlite3_bind_int(sqlite3_stmt *stmt, int index, int value) {
     return mock();
 }
 
+int __wrap_sqlite3_bind_text(sqlite3_stmt* pStmt, int a, const char* b, int c, void *d) {
+    check_expected(a);
+    if (b) check_expected(b);
+
+    return mock();
+}
+
+int __wrap_sqlite3_column_int(sqlite3_stmt *pStmt, int i) {
+    check_expected(i);
+    return mock();
+}
+
+char *__wrap_sqlite3_column_text(sqlite3_stmt *pStmt, int i) {
+    check_expected(i);
+    return mock_type(char*);
+}
+
+time_t __wrap_time(time_t *__timer) {
+    return mock();
+}
+
 void test_wm_task_manager_check_db_ok(void **state)
 {
     int uid = 5;
@@ -472,6 +493,274 @@ void test_wm_task_manager_delete_old_entries_open_err(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
+void test_wm_task_manager_set_timeout_status_timeout_ok(void **state)
+{
+    time_t now = 123456789;
+    time_t next_timeout = 0;
+    int task_id = 10;
+    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 1);
+    expect_string(__wrap_sqlite3_bind_text, b, "In progress");
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, i, 0);
+    will_return(__wrap_sqlite3_column_int, task_id);
+
+    expect_value(__wrap_sqlite3_column_int, i, 5);
+    will_return(__wrap_sqlite3_column_int, last_update_time);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 1);
+    expect_string(__wrap_sqlite3_bind_text, b, "Timeout");
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_time, now);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, now);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, task_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_set_timeout_status(now, &next_timeout);
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(next_timeout, 0);
+}
+
+void test_wm_task_manager_set_timeout_status_no_timeout_ok(void **state)
+{
+    time_t now = 123456789;
+    time_t next_timeout = 0;
+    int task_id = 10;
+    int last_update_time = (now - WM_TASK_MAX_IN_PROGRESS_TIME) + 100;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 1);
+    expect_string(__wrap_sqlite3_bind_text, b, "In progress");
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, i, 0);
+    will_return(__wrap_sqlite3_column_int, task_id);
+
+    expect_value(__wrap_sqlite3_column_int, i, 5);
+    will_return(__wrap_sqlite3_column_int, last_update_time);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_set_timeout_status(now, &next_timeout);
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(next_timeout, now + 100);
+}
+
+void test_wm_task_manager_set_timeout_status_timeout_step_err(void **state)
+{
+    time_t now = 123456789;
+    time_t next_timeout = 0;
+    int task_id = 10;
+    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 1);
+    expect_string(__wrap_sqlite3_bind_text, b, "In progress");
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, i, 0);
+    will_return(__wrap_sqlite3_column_int, task_id);
+
+    expect_value(__wrap_sqlite3_column_int, i, 5);
+    will_return(__wrap_sqlite3_column_int, last_update_time);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 1);
+    expect_string(__wrap_sqlite3_bind_text, b, "Timeout");
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_time, now);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, now);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, task_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8279): Couldn't execute SQL statement.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_set_timeout_status(now, &next_timeout);
+
+    assert_int_equal(ret, OS_INVALID);
+    assert_int_equal(next_timeout, 0);
+}
+
+void test_wm_task_manager_set_timeout_status_timeout_prepare_err(void **state)
+{
+    time_t now = 123456789;
+    time_t next_timeout = 0;
+    int task_id = 10;
+    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 1);
+    expect_string(__wrap_sqlite3_bind_text, b, "In progress");
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, i, 0);
+    will_return(__wrap_sqlite3_column_int, task_id);
+
+    expect_value(__wrap_sqlite3_column_int, i, 5);
+    will_return(__wrap_sqlite3_column_int, last_update_time);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8278): Couldn't prepare SQL statement.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_set_timeout_status(now, &next_timeout);
+
+    assert_int_equal(ret, OS_INVALID);
+    assert_int_equal(next_timeout, 0);
+}
+
+void test_wm_task_manager_set_timeout_status_prepare_err(void **state)
+{
+    time_t now = 123456789;
+    time_t next_timeout = 0;
+    int task_id = 10;
+    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8278): Couldn't prepare SQL statement.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_set_timeout_status(now, &next_timeout);
+
+    assert_int_equal(ret, OS_INVALID);
+    assert_int_equal(next_timeout, 0);
+}
+
+void test_wm_task_manager_set_timeout_status_open_err(void **state)
+{
+    time_t now = 123456789;
+    time_t next_timeout = 0;
+    int task_id = 10;
+    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8276): DB couldn't be opened.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_set_timeout_status(now, &next_timeout);
+
+    assert_int_equal(ret, OS_INVALID);
+    assert_int_equal(next_timeout, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_task_manager_check_db
@@ -487,6 +776,13 @@ int main(void) {
         cmocka_unit_test(test_wm_task_manager_delete_old_entries_step_err),
         cmocka_unit_test(test_wm_task_manager_delete_old_entries_prepare_err),
         cmocka_unit_test(test_wm_task_manager_delete_old_entries_open_err),
+        // wm_task_manager_set_timeout_status
+        cmocka_unit_test(test_wm_task_manager_set_timeout_status_timeout_ok),
+        cmocka_unit_test(test_wm_task_manager_set_timeout_status_no_timeout_ok),
+        cmocka_unit_test(test_wm_task_manager_set_timeout_status_timeout_step_err),
+        cmocka_unit_test(test_wm_task_manager_set_timeout_status_timeout_prepare_err),
+        cmocka_unit_test(test_wm_task_manager_set_timeout_status_prepare_err),
+        cmocka_unit_test(test_wm_task_manager_set_timeout_status_open_err),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
