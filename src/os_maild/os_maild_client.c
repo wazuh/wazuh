@@ -15,6 +15,29 @@
 #include "config/config.h"
 #endif
 
+/**
+ * @brief Function to add a json field to the alert buffer.
+ * @param json_object JSON object that where the field will be looked for.
+ * @param logs Alert buffer.
+ * @param body_size Size of the buffer.
+ * @param field Field to look for.
+ * @param field_name Name that will be used for the field in the alert.
+ */
+void add_field_from_json(cJSON *json_object, char *logs, size_t *body_size, char *field, char *field_name) {
+    cJSON *json_field;
+    size_t log_size = 0;
+    json_field = cJSON_GetObjectItem(json_object, field);
+    if (json_field) {
+        log_size = strlen(json_field->valuestring) + strlen(field_name) + 3;
+        if (*body_size > log_size) {
+            strcat(logs, field_name);
+            strncat(logs, json_field->valuestring, *body_size);
+            strcat(logs, "\r\n");
+            *(body_size) -= log_size;
+        }
+    }
+}
+
 /* Receive a Message on the Mail queue */
 MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg **msg_sms)
 {
@@ -360,6 +383,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     MailMsg *mail = NULL;
     cJSON *al_json;
     cJSON *json_object;
+    cJSON *json_audit;
     cJSON *json_field;
     cJSON *location;
     cJSON *agent;
@@ -386,7 +410,58 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
 
     /* Add alert to logs */
 
-    if(json_field = cJSON_GetObjectItem(al_json,"full_log"), json_field){
+    if (json_object = cJSON_GetObjectItem(al_json,"syscheck"), json_object){
+
+        add_field_from_json(json_object, logs, &body_size, "path", "- File: ");
+        add_field_from_json(json_object, logs, &body_size, "event", "- Event: ");
+        add_field_from_json(json_object, logs, &body_size, "mode", "- Mode: ");
+        add_field_from_json(json_object, logs, &body_size, "size_before", "- Size before: ");
+        add_field_from_json(json_object, logs, &body_size, "size_after", "- Size after: ");
+        add_field_from_json(json_object, logs, &body_size, "md5_before", "- Old md5sum was: ");
+        add_field_from_json(json_object, logs, &body_size, "md5_after", "- New md5sum is: ");
+        add_field_from_json(json_object, logs, &body_size, "sha1_before", "- Old sha1sum was: ");
+        add_field_from_json(json_object, logs, &body_size, "sha1_after", "- New sha1sum is: ");
+        add_field_from_json(json_object, logs, &body_size, "sha256_before", "- Old sha256sum was: ");
+        add_field_from_json(json_object, logs, &body_size, "sha256_after", "- New sha256sum is: ");
+
+        // get audit information
+        if (json_audit = cJSON_GetObjectItem(json_object,"audit"), json_audit){
+            strcat(logs, "\nAudit information:\n");
+
+            json_field = cJSON_GetObjectItem(json_audit,"user");
+            if (json_field) {
+                add_field_from_json(json_field, logs, &body_size, "name", "- (Audit) User name: ");
+            }
+
+            json_field = cJSON_GetObjectItem(json_audit,"login_user");
+            if (json_field) {
+                add_field_from_json(json_field, logs, &body_size, "name", "- (Audit) Audit name: ");
+            }
+
+            json_field = cJSON_GetObjectItem(json_audit,"effective_user");
+            if (json_field) {
+                add_field_from_json(json_field, logs, &body_size, "name", "- (Audit) Effective name: ");
+            }
+
+            json_field = cJSON_GetObjectItem(json_audit,"group");
+            if (json_field) {
+                add_field_from_json(json_field, logs, &body_size, "name", "- (Audit) Group name: ");
+            }
+
+            json_field = cJSON_GetObjectItem(json_audit,"process");
+            if (json_field) {
+                add_field_from_json(json_field, logs, &body_size, "id", "- (Audit) Process id: ");
+                add_field_from_json(json_field, logs, &body_size, "name", "- (Audit) Process name: ");
+                add_field_from_json(json_field, logs, &body_size, "cwd", "- (Audit) Process cwd: ");
+                add_field_from_json(json_field, logs, &body_size, "parent_name", "- (Audit) Parent process name: ");
+                add_field_from_json(json_field, logs, &body_size, "ppid", "- (Audit) Parent process id: ");
+                add_field_from_json(json_field, logs, &body_size, "parent_cwd", "- (Audit) Parent process cwd: ");
+            }
+        }
+
+        add_field_from_json(json_object, logs, &body_size, "diff", "\n- Changed content:\n");
+
+    } else if(json_field = cJSON_GetObjectItem(al_json,"full_log"), json_field){
 
         log_size = strlen(json_field->valuestring) + 4;
 
@@ -397,96 +472,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         strncpy(logs, json_field->valuestring, body_size);
         strncpy(logs + log_size, "\r\n", body_size - log_size);
 
-    }
-    else if (json_object = cJSON_GetObjectItem(al_json,"syscheck"), json_object){
-
-        json_field = cJSON_GetObjectItem(json_object,"path");
-        if (json_field) {
-            log_size = strlen(json_field->valuestring) + 6;
-            if (body_size > log_size) {
-                strcat(logs, "File: ");
-                strncat(logs, json_field->valuestring, body_size);
-                body_size -= log_size;
-            }
-        }
-
-        json_field = cJSON_GetObjectItem(json_object,"event");
-        if (json_field) {
-            log_size = strlen(json_field->valuestring) + 1 + 4;
-            if (body_size > log_size) {
-                strcat(logs, " ");
-                strncat(logs, json_field->valuestring, body_size);
-                strcat(logs, "\r\n");
-                body_size -= log_size;
-            }
-        }
-
-        json_field = cJSON_GetObjectItem(json_object,"md5_before");
-        if (json_field) {
-            log_size = strlen(json_field->valuestring) + 16 + 4;
-            if (body_size > log_size) {
-                strcat(logs, "Old md5sum was: ");
-                strncat(logs, json_field->valuestring, body_size);
-                strcat(logs, "\r\n");
-                body_size -= log_size;
-            }
-        }
-
-        json_field = cJSON_GetObjectItem(json_object,"md5_after");
-        if (json_field) {
-            log_size = strlen(json_field->valuestring) + 15 + 4;
-            if (body_size > log_size) {
-                strcat(logs, "New md5sum is: ");
-                strncat(logs, json_field->valuestring, body_size);
-                strcat(logs, "\r\n");
-                body_size -= log_size;
-            }
-        }
-
-        json_field = cJSON_GetObjectItem(json_object,"sha1_before");
-        if (json_field) {
-            log_size = strlen(json_field->valuestring) + 17 + 4;
-            if (body_size > log_size) {
-                strcat(logs, "Old sha1sum was: ");
-                strncat(logs, json_field->valuestring, body_size);
-                strcat(logs, "\r\n");
-                body_size -= log_size;
-            }
-        }
-
-        json_field = cJSON_GetObjectItem(json_object,"sha1_after");
-        if (json_field) {
-            log_size = strlen(json_field->valuestring) + 16 + 4;
-            if (body_size > log_size) {
-                strcat(logs, "New sha1sum is: ");
-                strncat(logs, json_field->valuestring, body_size);
-                strcat(logs, "\r\n");
-                body_size -= log_size;
-            }
-        }
-
-        json_field = cJSON_GetObjectItem(json_object,"sha256_before");
-        if (json_field) {
-            log_size = strlen(json_field->valuestring) + 19 + 4;
-            if (body_size > log_size) {
-                strcat(logs, "Old sha256sum was: ");
-                strncat(logs, json_field->valuestring, body_size);
-                strcat(logs, "\r\n");
-                body_size -= log_size;
-            }
-        }
-
-        json_field = cJSON_GetObjectItem(json_object,"sha256_after");
-        if (json_field) {
-            log_size = strlen(json_field->valuestring) + 18 + 4;
-            if (body_size > log_size) {
-                strcat(logs, "New sha256sum is: ");
-                strncat(logs, json_field->valuestring, body_size);
-                strcat(logs, "\r\n");
-            }
-        }
-    }
-    else {
+    } else {
         /* The full alert is printed */
         /* tab is used to determine the number of tabs on each line */
         char *tab;
@@ -826,4 +812,3 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
     /* Clear memory */
     free(tab_child);
 }
-
