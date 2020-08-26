@@ -27,7 +27,7 @@ list(APPEND task_flags " ")
 
 list(APPEND task_names "test_wm_task_manager_db")
 list(APPEND task_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,sqlite3_open_v2 -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_finalize -Wl,--wrap,sqlite3_close_v2 -Wl,--wrap,sqlite3_errmsg \
-                        -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,chown -Wl,--wrap,chmod")
+                        -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,chown -Wl,--wrap,chmod -Wl,--wrap,sqlite3_bind_int")
 
 # Compilig tests
 list(LENGTH task_names count)

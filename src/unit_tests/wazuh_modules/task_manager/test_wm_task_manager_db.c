@@ -17,6 +17,9 @@
 #include "../../wazuh_modules/task_manager/wm_task_manager_db.h"
 #include "../../headers/shared.h"
 
+int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout);
+int wm_task_manager_delete_old_entries(int timestamp);
+
 // Wrappers
 
 void __wrap__mtinfo(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
@@ -101,6 +104,13 @@ int __wrap_chown(const char *__file, __uid_t __owner, __gid_t __group) {
 int __wrap_chmod(const char *__file, __mode_t __mode) {
     check_expected(__file);
     check_expected(__mode);
+
+    return mock();
+}
+
+int __wrap_sqlite3_bind_int(sqlite3_stmt *stmt, int index, int value) {
+    check_expected(index);
+    check_expected(value);
 
     return mock();
 }
@@ -338,6 +348,130 @@ void test_wm_task_manager_check_db_open_err(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
+void test_wm_task_manager_delete_old_entries_ok(void **state)
+{
+    int timestamp = 12345;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8206): Running daily clean DB thread.");
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, timestamp);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_delete_old_entries(timestamp);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_wm_task_manager_delete_old_entries_step_err(void **state)
+{
+    int timestamp = 12345;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8206): Running daily clean DB thread.");
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, timestamp);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8279): Couldn't execute SQL statement.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_delete_old_entries(timestamp);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wm_task_manager_delete_old_entries_prepare_err(void **state)
+{
+    int timestamp = 12345;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8206): Running daily clean DB thread.");
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8278): Couldn't prepare SQL statement.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_delete_old_entries(timestamp);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wm_task_manager_delete_old_entries_open_err(void **state)
+{
+    int timestamp = 12345;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8206): Running daily clean DB thread.");
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8276): DB couldn't be opened.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_delete_old_entries(timestamp);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_task_manager_check_db
@@ -348,6 +482,11 @@ int main(void) {
         cmocka_unit_test(test_wm_task_manager_check_db_step_err),
         cmocka_unit_test(test_wm_task_manager_check_db_prepare_err),
         cmocka_unit_test(test_wm_task_manager_check_db_open_err),
+        // wm_task_manager_delete_old_entries
+        cmocka_unit_test(test_wm_task_manager_delete_old_entries_ok),
+        cmocka_unit_test(test_wm_task_manager_delete_old_entries_step_err),
+        cmocka_unit_test(test_wm_task_manager_delete_old_entries_prepare_err),
+        cmocka_unit_test(test_wm_task_manager_delete_old_entries_open_err),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
