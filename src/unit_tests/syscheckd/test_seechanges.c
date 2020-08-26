@@ -304,6 +304,16 @@ static int teardown_free_string(void **state) {
     return 0;
 }
 
+static int setup_disk_quota_exceeded(void **state) {
+    syscheck.disk_quota_full_msg = true;
+    return 0;
+}
+
+static int teardown_disk_quota_exceeded(void **state) {
+    syscheck.disk_quota_full_msg = false;
+    return 0;
+}
+
 #ifdef TEST_WINAGENT
 static int teardown_string(void **state) {
     char *s = *state;
@@ -3677,10 +3687,10 @@ int main(void) {
         cmocka_unit_test(test_seechanges_addfile_dupfile_error),
         cmocka_unit_test(test_seechanges_addfile_fopen_error),
         cmocka_unit_test(test_seechanges_addfile_file_size_exceeded),
-        cmocka_unit_test(test_seechanges_addfile_disk_quota_exceeded),
-        cmocka_unit_test(test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error1),
-        cmocka_unit_test(test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error2),
-        cmocka_unit_test(test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error3),
+        cmocka_unit_test_setup_teardown(test_seechanges_addfile_disk_quota_exceeded, setup_disk_quota_exceeded, teardown_disk_quota_exceeded),
+        cmocka_unit_test_setup_teardown(test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error1, setup_disk_quota_exceeded, teardown_disk_quota_exceeded),
+        cmocka_unit_test_setup_teardown(test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error2, setup_disk_quota_exceeded, teardown_disk_quota_exceeded),
+        cmocka_unit_test_setup_teardown(test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error3, setup_disk_quota_exceeded, teardown_disk_quota_exceeded),
         cmocka_unit_test_teardown(test_seechanges_addfile_fwrite_error, teardown_free_string),
         cmocka_unit_test(test_seechanges_addfile_run_diff_system_error),
 
