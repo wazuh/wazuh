@@ -187,10 +187,8 @@ cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, OSL
     output = cJSON_Parse(output_str);
     os_free(output_str);
 
-    /* Only clear the memory if the event was not added to the stateful memory */
-    if (lf->generated_rule == NULL) {
-        Free_Eventinfo(lf);
-    }
+    /* Clear the memory if the event was not added to the stateful memory */
+    w_free_event_info(lf);
 
     return output;
 }
