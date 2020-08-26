@@ -2538,7 +2538,7 @@ components:
           type: integer
           format: int32
           minimum: 30
-          example: 36000
+          example: 3600
         rbac_mode:
           description: "RBAC mode (white/black)"
           type: string
@@ -12689,7 +12689,7 @@ paths:
       tags:
         - security
       summary: "User/password authentication to get an access token"
-      description: "This method should be called to get an API token. This token will expire at some time"
+      description: "This method should be called to get an API token. This token will expire after auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
       parameters:
         - $ref: '#/components/parameters/raw'
@@ -12753,7 +12753,7 @@ paths:
       tags:
       - security
       summary: "Auth_context based authentication to get an access token"
-      description: "This method should be called to get an API token. This token will expire at some time"
+      description: "This method should be called to get an API token using an authorization context body. This token will expire after auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
       parameters:
         - $ref: '#/components/parameters/raw'
@@ -14378,7 +14378,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponse"
               example:
-                auth_token_exp_timeout: 36000
+                auth_token_exp_timeout: 3600
                 rbac_mode: white
         '400':
           $ref: '#/components/responses/ResponseError'

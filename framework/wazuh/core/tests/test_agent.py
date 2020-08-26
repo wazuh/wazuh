@@ -1628,10 +1628,6 @@ def test_agent_get_versions_ko():
             with pytest.raises(WazuhInternalError, match='.* 1713 .*'):
                 agent._get_versions()
 
-        # Requests raises exception
-        with pytest.raises(WazuhInternalError, match='.* 1713 .*'):
-            agent._get_versions(wpk_repo='ñ*-^ç¨¨çÇ}{')
-
         # Platform is not valid
         agent.os['platform'] = 'solaris'
         with pytest.raises(WazuhInternalError, match='.* 1713 .*'):
