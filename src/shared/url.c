@@ -210,7 +210,7 @@ int wurl_request_gz(const char * url, const char * dest, const char * header, co
     } else {
         os_sha256 filehash = {0};
         if (sha256 && !OS_SHA256_File(compressed_file, filehash, 'r') && strcmp(sha256, filehash)) {
-            merror("Invalid file integrity for '%s'", compressed_file); 
+            merror("Invalid file integrity for '%s'", compressed_file);
 
         } else if (w_uncompress_gzfile(compressed_file, dest)) {
             merror("Could not uncompress the file downloaded from '%s'", url);
@@ -295,6 +295,8 @@ char * wurl_http_get(const char * url) {
     return chunk.memory;
 }
 
+#ifndef CLIENT
+
 // Request a download of a bzip2 file and uncompress it.
 int wurl_request_bz2(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256) {
     char compressed_file[OS_SIZE_6144 + 1];
@@ -308,7 +310,7 @@ int wurl_request_bz2(const char * url, const char * dest, const char * header, c
     } else {
         os_sha256 filehash = {0};
         if (sha256 && !OS_SHA256_File(compressed_file, filehash, 'r') && strcmp(sha256, filehash)) {
-            merror("Invalid file integrity for '%s'", compressed_file); 
+            merror("Invalid file integrity for '%s'", compressed_file);
 
         } else if (bzip2_uncompress(compressed_file, dest)) {
             merror("Could not uncompress the file downloaded from '%s'", url);
@@ -346,3 +348,4 @@ int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const ch
 
     return res_url_request;
 }
+#endif

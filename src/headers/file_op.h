@@ -578,13 +578,14 @@ int w_is_compressed_gz_file(const char * path);
  */
 int w_is_compressed_bz2_file(const char * path);
 
+#ifndef CLIENT
 /**
  * @brief Check if a file from a path is compressed in bunzip2 or gzip and uncompressed it
- * 
+ *
  * @param path File location
  * @retval -1 The file cannot be uncompressed
  * @retval 0 The file has been uncompressed (.gz or .bz2)
  */
 int w_uncompress_bz2_gz_file(const char * path, const char * dest);
-
+#endif /* CLIENT */
 #endif /* FILE_OP_H */

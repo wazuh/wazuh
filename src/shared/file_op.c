@@ -3156,6 +3156,8 @@ int w_is_compressed_bz2_file(const char * path) {
     return retval;
 }
 
+#ifndef CLIENT
+
 int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
     int result = 1;
 
@@ -3173,3 +3175,4 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
 
     return result;
 }
+#endif
