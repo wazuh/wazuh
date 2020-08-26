@@ -130,6 +130,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
+    WDB_STMT_GLOBAL_GET_AGENTS_BY_KEEPALIVE,
     WDB_STMT_SIZE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
@@ -194,6 +195,14 @@ typedef enum {
     WDB_SYNCED,
     WDB_SYNC_REQ        
 } wdb_sync_status_t;
+
+/// Enumeration of query conditions
+typedef enum {
+    WDB_EQUAL,
+    WDB_GREATER,
+    WDB_LESS,
+    WDB_ANY       
+} wdb_condition_t;
 
 /// Enumeration of sync-agent-info-get-status.
 typedef enum {
@@ -731,6 +740,11 @@ int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * outpu
  */
 int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output);
 
+/**
+ * Doxygen here
+*/
+int wdb_parse_get_agent_agents_by_keepalive(wdb_t* wdb, char* input, char* output);
+
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
@@ -874,6 +888,11 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
  * @retval -1 On error.
  */
 int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
+
+/**
+ * Doxygen here
+*/
+wdb_chunks_status_t wdb_get_agent_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char* condition, int keep_alive, char **output);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
