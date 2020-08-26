@@ -88,7 +88,6 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
                          complementary_search=complementary_search, select=select, sort_by=sort_by,
                          sort_ascending=sort_ascending, allowed_sort_fields=SORT_FIELDS, offset=offset,
                          limit=limit, q=q, required_fields=REQUIRED_FIELDS)
-
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

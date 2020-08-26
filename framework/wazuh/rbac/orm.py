@@ -33,7 +33,12 @@ admin_user_ids = [1, 2]
 
 # IDs reserved for administrator roles and policies, these can not be modified or deleted
 admin_role_ids = [1, 2, 3, 4, 5, 6, 7]
-admin_policy_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ,16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+admin_policy_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
+
+# Required rules for role
+# Key: Role - Value: Rules
+required_rules_for_role = {1: [1, 2]}
+required_rules = {required_rule for r in required_rules_for_role.values() for required_rule in r}
 
 
 def json_validator(data):
@@ -64,6 +69,29 @@ class SecurityError(IntEnum):
     USER_NOT_EXIST = -5
     # The token-rule does not exist in the database
     TOKEN_RULE_NOT_EXIST = -6
+    # The rule does not exist in the database
+    RULE_NOT_EXIST = -7
+
+
+class RolesRules(_Base):
+    """
+    Relational table between Roles and Policies, in this table are stored the relationship between the both entities
+    The information stored from Roles and Policies are:
+        id: ID of the relationship
+        role_id: ID of the role
+        policy_id: ID of the policy
+        level: Priority in case of multiples policies, higher = more priority
+        created_at: Date of the relationship creation
+    """
+    __tablename__ = "roles_rules"
+
+    # Schema, Many-To-Many relationship
+    id = Column('id', Integer, primary_key=True)
+    role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
+    rule_id = Column('rule_id', Integer, ForeignKey("rules.id", ondelete='CASCADE'))
+    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    __table_args__ = (UniqueConstraint('role_id', 'rule_id', name='role_rule'),
+                      )
 
 
 # Declare relational tables
@@ -149,7 +177,7 @@ class User(_Base):
     id = Column('id', Integer, primary_key=True)
     username = Column(String(32))
     password = Column(String(256))
-    auth_context = Column(Boolean, default=False, nullable=False)
+    allow_run_as = Column(Boolean, default=False, nullable=False)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('username', name='username_restriction'),)
 
@@ -157,10 +185,10 @@ class User(_Base):
     roles = relationship("Roles", secondary='user_roles',
                          backref=backref("rolesu", cascade="all, delete", order_by=UserRoles.role_id), lazy='dynamic')
 
-    def __init__(self, username, password, auth_context=False):
+    def __init__(self, username, password, allow_run_as=False):
         self.username = username
         self.password = password
-        self.auth_context = auth_context
+        self.allow_run_as = allow_run_as
         self.created_at = datetime.utcnow()
 
     def __repr__(self):
@@ -182,7 +210,7 @@ class User(_Base):
         :return: Dict with the information of the user
         """
         return {'id': self.id, 'username': self.username,
-                'roles': self._get_roles_id(), 'auth_context': self.auth_context}
+                'roles': self._get_roles_id(), 'allow_run_as': self.allow_run_as}
 
     def to_dict(self):
         """Return the information of one policy and the roles that have assigned
@@ -191,6 +219,7 @@ class User(_Base):
         """
         with UserRolesManager() as urm:
             return {'id': self.id, 'username': self.username,
+                    'allow_run_as': self.allow_run_as,
                     'roles': [role.id for role in urm.get_all_roles_from_user(user_id=str(self.id))]}
 
 
@@ -208,20 +237,19 @@ class Roles(_Base):
     # Schema
     id = Column('id', Integer, primary_key=True)
     name = Column('name', String(20))
-    rule = Column('rule', TEXT)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
-    __table_args__ = (UniqueConstraint('name', name='name_role'),
-                      UniqueConstraint('rule', name='role_definition'))
+    __table_args__ = (UniqueConstraint('name', name='name_role'),)
 
     # Relations
     policies = relationship("Policies", secondary='roles_policies',
                             backref=backref("policiess", cascade="all, delete", order_by=id), lazy='dynamic')
     users = relationship("User", secondary='user_roles',
-                         backref=backref("userss", cascade="all,delete", order_by=UserRoles.user_id), lazy='dynamic')
+                         backref=backref("userss", cascade="all, delete", order_by=UserRoles.user_id), lazy='dynamic')
+    rules = relationship("Rules", secondary='roles_rules',
+                         backref=backref("ruless", cascade="all, delete", order_by=RolesRules.id), lazy='dynamic')
 
-    def __init__(self, name, rule):
+    def __init__(self, name):
         self.name = name
-        self.rule = rule
         self.created_at = datetime.utcnow()
 
     def get_role(self):
@@ -229,24 +257,65 @@ class Roles(_Base):
 
         :return: Dict with the information of the role
         """
-        return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule)}
+        return {'id': self.id, 'name': self.name}
 
     def get_policies(self):
         return list(self.policies)
 
     def to_dict(self):
-        """Return the information of one role and the policies that have assigned
+        """Return the information of one role and the users, policies and rules assigned to it.
 
         :return: Dict with the information
         """
-        users = list()
-        for user in self.users:
-            users.append(str(user.get_user()['id']))
-
         with RolesPoliciesManager() as rpm:
-            return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule),
+            return {'id': self.id, 'name': self.name,
                     'policies': [policy.id for policy in rpm.get_all_policies_from_role(role_id=self.id)],
-                    'users': users}
+                    'users': [user.id for user in self.users],
+                    'rules': [rule.id for rule in self.rules]}
+
+
+class Rules(_Base):
+    """
+    Rules table. In this table we are going to save all the information about the rules. The data that we will
+    store is:
+        id: ID of the rule, this is self assigned
+        name: Name of the rule
+        rule: Rule body
+        created_at: Date of the rule creation
+    """
+    __tablename__ = "rules"
+
+    # Schema
+    id = Column('id', Integer, primary_key=True)
+    name = Column('name', String(20))
+    rule = Column('rule', TEXT)
+    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    __table_args__ = (UniqueConstraint('name', name='rule_name'),
+                      UniqueConstraint('rule', name='rule_definition'))
+
+    # Relations
+    roles = relationship("Roles", secondary='roles_rules',
+                         backref=backref("ruless", cascade="all, delete", order_by=id), lazy='dynamic')
+
+    def __init__(self, name, rule):
+        self.name = name
+        self.rule = rule
+        self.created_at = datetime.utcnow()
+
+    def get_rule(self):
+        """Rule getter.
+
+        :return: Dict with the information of the rule
+        """
+        return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule)}
+
+    def to_dict(self):
+        """Return the information of one rule and its roles
+
+        :return: Dict with the information
+        """
+        return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule),
+                'roles': [role.id for role in self.roles]}
 
 
 class Policies(_Base):
@@ -289,11 +358,9 @@ class Policies(_Base):
 
         :return: Dict with the information
         """
-        roles = list()
-        for role in self.roles:
-            roles.append(role.get_role())
-
-        return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy), 'roles': roles}
+        with RolesPoliciesManager() as rpm:
+            return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy),
+                    'roles': [role.id for role in rpm.get_all_roles_from_policy(policy_id=self.id)]}
 
 
 class TokenManager:
@@ -397,7 +464,7 @@ class TokenManager:
                 if token_rule.first() and current_time > token_rule.first().is_valid_until:
                     token_rule.delete()
                     self.session.commit()
-                    list_user.append(user_token.username)
+                    list_user.append(user_token.user_id)
             return list_user
         except IntegrityError:
             self.session.rollback()
@@ -435,24 +502,24 @@ class AuthenticationManager:
     It manages users and token generation.
     """
 
-    def add_user(self, username: str, password: str, auth_context: bool = False):
+    def add_user(self, username: str, password: str, allow_run_as: bool = False):
         """Creates a new user if it does not exist.
 
         :param username: string Unique user name
         :param password: string Password provided by user. It will be stored hashed
-        :param auth_context: Flag that indicates if the user can log into the API throw an authorization context
+        :param allow_run_as: Flag that indicates if the user can log into the API throw an authorization context
         :return: True if the user has been created successfully. False otherwise (i.e. already exists)
         """
         try:
             self.session.add(User(username=username, password=generate_password_hash(password),
-                                  auth_context=auth_context))
+                                  allow_run_as=allow_run_as))
             self.session.commit()
             return True
         except IntegrityError:
             self.session.rollback()
             return False
 
-    def update_user(self, user_id: str, password: str):
+    def update_user(self, user_id: str, password: str, allow_run_as: bool):
         """Update the password an existent user
 
         Parameters
@@ -461,6 +528,8 @@ class AuthenticationManager:
             Unique user id
         password : str
             Password provided by user. It will be stored hashed
+        allow_run_as : bool
+            Enable authorization context login method for the new user
 
         Returns
         -------
@@ -469,11 +538,14 @@ class AuthenticationManager:
         try:
             user = self.session.query(User).filter_by(id=user_id).first()
             if user is not None:
-                user.password = generate_password_hash(password)
-                self.session.commit()
-                return True
-            else:
-                return False
+                if password:
+                    user.password = generate_password_hash(password)
+                if allow_run_as is not None:
+                    user.allow_run_as = allow_run_as
+                if password or allow_run_as is not None:
+                    self.session.commit()
+                    return True
+            return False
         except IntegrityError:
             self.session.rollback()
             return False
@@ -548,15 +620,15 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
-    def user_auth_context(self, username: str = None):
-        """Get the auth_context's flag of specified user in the system
+    def user_allow_run_as(self, username: str = None):
+        """Get the allow_run_as's flag of specified user in the system
 
         :param username: string Unique user name
         :return: An specified user
         """
         try:
             if username is not None:
-                return self.session.query(User).filter_by(username=username).first().get_user()['auth_context']
+                return self.session.query(User).filter_by(username=username).first().get_user()['allow_run_as']
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
@@ -634,7 +706,7 @@ class RolesManager:
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
 
-    def add_role(self, name: str, rule: dict):
+    def add_role(self, name: str):
         """Add a new role
 
         :param name: Name of the new role
@@ -642,9 +714,7 @@ class RolesManager:
         :return: True -> Success | Role already exist | Invalid rule
         """
         try:
-            if rule is not None and not json_validator(rule):
-                return SecurityError.INVALID
-            self.session.add(Roles(name=name, rule=json.dumps(rule)))
+            self.session.add(Roles(name=name))
             self.session.commit()
             return True
         except IntegrityError:
@@ -667,6 +737,9 @@ class RolesManager:
                     urm.remove_all_users_in_role(role_id=role_id)
                 with RolesPoliciesManager() as rpm:
                     rpm.remove_all_policies_in_role(role_id=role_id)
+                # Remove all associated rules
+                with RolesRulesManager() as rrum:
+                    rrum.remove_all_rules_in_role(role_id=role_id)
                 # Finally we delete the role
                 self.session.query(Roles).filter_by(id=role_id).delete()
                 self.session.commit()
@@ -713,36 +786,225 @@ class RolesManager:
             self.session.rollback()
             return False
 
-    def update_role(self, role_id: int, name: str, rule: dict):
+    def update_role(self, role_id: int, name: str):
         """Update an existent role in the system
 
         :param role_id: ID of the role to be updated
         :param name: New name for the role
-        :param rule: New rule for the role
         :return: True -> Success | Invalid rule | Name already in use | Role not exist
         """
         try:
             role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
             if role_to_update and role_to_update is not None:
                 if role_to_update.id not in admin_role_ids:
-                    # Rule is not a valid json
-                    if rule is not None and not json_validator(rule):
-                        return SecurityError.INVALID
                     # Change the name of the role
                     if name is not None:
-                        if self.session.query(Roles).filter_by(name=name).first() is not None:
-                            return SecurityError.ALREADY_EXIST
                         role_to_update.name = name
-                    # Change the rule of the role
-                    if rule is not None:
-                        role_to_update.rule = json.dumps(rule)
                     self.session.commit()
                     return True
                 return SecurityError.ADMIN_RESOURCES
             return SecurityError.ROLE_NOT_EXIST
         except IntegrityError:
             self.session.rollback()
-            return SecurityError.ROLE_NOT_EXIST
+            return SecurityError.ALREADY_EXIST
+
+    def __enter__(self):
+        self.session = _Session()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.session.close()
+
+
+class RulesManager:
+    """
+        This class is Rules manager. This class provides all the methods needed for the rules administration.
+        """
+
+    def get_rule(self, rule_id: int):
+        """Get the information about one rule specified by id.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+
+        Returns
+        -------
+        Rule object with all its information.
+        """
+        try:
+            rule = self.session.query(Rules).filter_by(id=rule_id).first()
+            if not rule:
+                return SecurityError.RULE_NOT_EXIST
+            return rule.to_dict()
+        except IntegrityError:
+            return SecurityError.RULE_NOT_EXIST
+
+    def get_rule_by_name(self, rule_name: str):
+        """Get the information about one rule specified by name.
+
+        Parameters
+        ----------
+        rule_name : str
+            Name of the rule.
+
+        Returns
+        -------
+        Rule object with all its information.
+        """
+        try:
+            rule = self.session.query(Rules).filter_by(name=rule_name).first()
+            if not rule:
+                return SecurityError.RULE_NOT_EXIST
+            return rule.to_dict()
+        except IntegrityError:
+            return SecurityError.RULE_NOT_EXIST
+
+    def get_rules(self):
+        """Get the information about all rules in the system.
+
+        Returns
+        -------
+        List of Rule objects with all of its information | False -> No rules in the system
+        """
+        try:
+            rules = self.session.query(Rules).all()
+            return rules
+        except IntegrityError:
+            return SecurityError.RULE_NOT_EXIST
+
+    def add_rule(self, name: str, rule: dict):
+        """Add a new rule.
+
+        Parameters
+        ----------
+        name : str
+            Name of the new rule.
+        rule : dict
+            Rule dictionary.
+        Returns
+        -------
+        True -> Success | Rule already exists | Invalid rule
+        """
+        try:
+            if rule is not None and not json_validator(rule):
+                return SecurityError.INVALID
+            self.session.add(Rules(name=name, rule=json.dumps(rule)))
+            self.session.commit()
+            return True
+        except IntegrityError:
+            self.session.rollback()
+            return SecurityError.ALREADY_EXIST
+
+    def delete_rule(self, rule_id: int):
+        """Delete an existent rule from the system specified by its ID.
+
+        Parameters
+        ----------
+        rule_id : int
+            Id of the rule.
+        Returns
+        -------
+        True -> Success | False -> Failure
+        """
+        try:
+            if rule_id not in required_rules:
+                # If the role does not exist we rollback the changes
+                if self.session.query(Rules).filter_by(id=rule_id).first() is None:
+                    return False
+                # If the role has one or more rules associated with it, the associations will be eliminated.
+                with RolesRulesManager() as rrum:
+                    rrum.remove_all_roles_in_rule(rule_id=rule_id)
+                # Finally we delete the role
+                self.session.query(Rules).filter_by(id=rule_id).delete()
+                self.session.commit()
+                return True
+            return SecurityError.ADMIN_RESOURCES
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def delete_rule_by_name(self, rule_name: str):
+        """Delete an existent rule from the system specified by its name.
+
+        Parameters
+        ----------
+        rule_name : str
+            Name of the rule.
+        Returns
+        -------
+        True -> Success | False -> Failure | ADMIN_RESOURCES -> Admin rules cannot be deleted
+        """
+        try:
+            if self.get_rule_by_name(rule_name) is not None and \
+                    self.get_rule_by_name(rule_name)['id'] not in required_rules:
+                rule_id = self.session.query(Rules).filter_by(name=rule_name).first().id
+                if rule_id:
+                    self.delete_rule(rule_id=rule_id)
+                    return True
+            return False
+        except (IntegrityError, AttributeError):
+            self.session.rollback()
+            return False
+
+    def delete_all_rules(self):
+        """Delete all existent rules from the system.
+
+        Returns
+        -------
+        List of deleted rules -> Success | False -> Failure
+        """
+        try:
+            list_rules = list()
+            rules = self.session.query(Rules).all()
+            for rule in rules:
+                if int(rule.id) not in required_rules:
+                    with RolesRulesManager() as rrum:
+                        rrum.remove_all_roles_in_rule(rule_id=rule.id)
+                    list_rules.append(int(rule.id))
+                    self.session.query(Rules).filter_by(id=rule.id).delete()
+                    self.session.commit()
+            return list_rules
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def update_rule(self, rule_id: int, name: str, rule: dict):
+        """Update an existent rule in the system.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+        name : name
+            Name of the rule.
+        rule : dict
+            Dictionary with the rule itself.
+
+        Returns
+        -------
+        True -> Success | Invalid rule | Name already in use | Rule already in use | Rule not exists
+        """
+        try:
+            rule_to_update = self.session.query(Rules).filter_by(id=rule_id).first()
+            if rule_to_update and rule_to_update is not None:
+                if rule_to_update.id not in required_rules:
+                    # Rule is not a valid json
+                    if rule is not None and not json_validator(rule):
+                        return SecurityError.INVALID
+                    # Change the rule
+                    if name is not None:
+                        rule_to_update.name = name
+                    if rule is not None:
+                        rule_to_update.rule = json.dumps(rule)
+                    self.session.commit()
+                    return True
+                return SecurityError.ADMIN_RESOURCES
+            return SecurityError.RULE_NOT_EXIST
+        except IntegrityError:
+            self.session.rollback()
+            return SecurityError.ALREADY_EXIST
 
     def __enter__(self):
         self.session = _Session()
@@ -912,8 +1174,6 @@ class PoliciesManager:
                     if policy is not None and not json_validator(policy):
                         return SecurityError.INVALID
                     if name is not None:
-                        if self.session.query(Policies).filter_by(name=name).first() is not None:
-                            return SecurityError.ALREADY_EXIST
                         policy_to_update.name = name
                     if policy is not None:
                         if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
@@ -924,7 +1184,7 @@ class PoliciesManager:
             return SecurityError.POLICY_NOT_EXIST
         except IntegrityError:
             self.session.rollback()
-            return SecurityError.POLICY_NOT_EXIST
+            return SecurityError.ALREADY_EXIST
 
     def __enter__(self):
         self.session = _Session()
@@ -1494,6 +1754,243 @@ class RolesPoliciesManager:
         self.session.close()
 
 
+class RolesRulesManager:
+    """
+    This class is the manager of the relationships between the roles and the rules. This class provides
+    all the methods needed for the roles-rules administration.
+    """
+    def add_rule_to_role(self, rule_id: int, role_id: int):
+        """Add a relation between one specified role and one specified rule.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+        role_id : int
+            ID of the role.
+
+        Returns
+        -------
+        True -> Success | False -> Failure | Role not found | Rule not found | Existing relationship
+        """
+        try:
+            # Create a rule-role relationship if both exist
+            rule = self.session.query(Rules).filter_by(id=rule_id).first()
+            if rule is None:
+                return SecurityError.RULE_NOT_EXIST
+            role = self.session.query(Roles).filter_by(id=role_id).first()
+            if role is None:
+                return SecurityError.ROLE_NOT_EXIST
+            if self.session.query(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).first() is None:
+                role.rules.append(rule)
+                self.session.commit()
+                return True
+            else:
+                return SecurityError.ALREADY_EXIST
+        except (IntegrityError, InvalidRequestError):
+            self.session.rollback()
+            return SecurityError.INVALID
+
+    def get_all_rules_from_role(self, role_id: int):
+        """Get all the rules related to the specified role.
+
+        Parameters
+        ----------
+        role_id : int
+            ID of the role.
+
+        Returns
+        -------
+            List of rules related with the role -> Success | False -> Failure
+        """
+        try:
+            rule_roles = self.session.query(RolesRules).filter_by(role_id=role_id).order_by(RolesRules.id).all()
+            rules = list()
+            for relation in rule_roles:
+                rules.append(self.session.query(Rules).filter_by(id=relation.rule_id).first())
+            return rules
+        except (IntegrityError, AttributeError):
+            self.session.rollback()
+            return False
+
+    def get_all_roles_from_rule(self, rule_id: int):
+        """Get all the roles related to the specified rule.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+
+        Returns
+        -------
+            List of roles related with the rule -> Success | False -> Failure
+        """
+        try:
+            role_rules = self.session.query(RolesRules).filter_by(rule_id=rule_id).order_by(RolesRules.id).all()
+            roles = list()
+            for relation in role_rules:
+                roles.append(self.session.query(Roles).filter_by(id=relation.role_id).first())
+            return roles
+        except (IntegrityError, AttributeError):
+            self.session.rollback()
+            return False
+
+    def exist_role_rule(self, role_id: int, rule_id: int):
+        """Check if the role-rule relationship exists.
+
+        Parameters
+        ----------
+        role_id : int
+            ID of the role.
+        rule_id : int
+            ID of the rule.
+
+        Returns
+        -------
+        True -> Existent relationship | False -> Failure | Rule not exists | Role not exists
+        """
+        try:
+            rule = self.session.query(Rules).filter_by(id=rule_id).first()
+            if rule is None:
+                return SecurityError.RULE_NOT_EXIST
+            role = self.session.query(Roles).filter_by(id=role_id).first()
+            if role is None:
+                return SecurityError.ROLE_NOT_EXIST
+            match = role.rules.filter_by(id=rule_id).first()
+            if match is not None:
+                return True
+            return False
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def remove_rule_in_role(self, rule_id: int, role_id: int):
+        """Remove a role-rule relationship if both exists. This does not delete the objects.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+        role_id : int
+            ID of the role.
+
+        Returns
+        -------
+        True -> Success | False -> Failure | Role not exists | Rule not exist s| Non-existent relationship
+        """
+        try:
+            if rule_id not in required_rules_for_role.get(role_id, []):  # Required rule
+                rule = self.session.query(Rules).filter_by(id=rule_id).first()
+                if rule is None:
+                    return SecurityError.RULE_NOT_EXIST
+                role = self.session.query(Roles).filter_by(id=role_id).first()
+                if role is None:
+                    return SecurityError.ROLE_NOT_EXIST
+                if self.session.query(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).first() is not None:
+                    rule = self.session.query(Rules).get(rule_id)
+                    role = self.session.query(Roles).get(role_id)
+                    rule.roles.remove(role)
+                    self.session.commit()
+                    return True
+                else:
+                    return SecurityError.INVALID
+            return SecurityError.ADMIN_RESOURCES
+        except IntegrityError:
+            self.session.rollback()
+            return SecurityError.INVALID
+
+    def remove_role_in_rule(self, rule_id: int, role_id: int):
+        """Remove a role-rule relationship if both exists. This does not delete the objects.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+        role_id : int
+            ID of the role.
+
+        Returns
+        -------
+        True -> Success | False -> Failure | Role not exists | Rule not exist s| Non-existent relationship
+        """
+        return self.remove_rule_in_role(rule_id=rule_id, role_id=role_id)
+
+    def remove_all_roles_in_rule(self, rule_id: int):
+        """Remove all relations between a rule and its roles. This does not delete the objects.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+
+        Returns
+        -------
+        True -> Success | False -> Failure
+        """
+        try:
+            roles = self.session.query(Rules).filter_by(id=rule_id).first().roles
+            for role in roles:
+                self.remove_role_in_rule(rule_id=rule_id, role_id=role.id)
+            return True
+        except (IntegrityError, TypeError):
+            self.session.rollback()
+            return False
+
+    def remove_all_rules_in_role(self, role_id: int):
+        """Remove all relations between a role and its rules. This does not delete the objects.
+
+        Parameters
+        ----------
+        role_id : int
+            ID of the role.
+
+        Returns
+        -------
+        True -> Success | False -> Failure
+        """
+        try:
+            rules = self.session.query(Roles).filter_by(id=role_id).first().rules
+            for rule in rules:
+                self.remove_rule_in_role(rule_id=rule.id, role_id=role_id)
+            return True
+        except (IntegrityError, TypeError):
+            self.session.rollback()
+            return False
+
+    def replace_rule_role(self, rule_id: int, current_role_id: int, new_role_id: int):
+        """Replace one existing role_rule relationship with another one.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+        current_role_id : int
+            Current ID of the role.
+        new_role_id : int
+            New role ID.
+
+        Returns
+        -------
+        True -> Success | False -> Failure
+        """
+        if rule_id not in required_rules_for_role.get(int(current_role_id), []) and self.exist_role_rule(
+                rule_id=rule_id,
+                role_id=current_role_id) \
+                and self.session.query(Roles).filter_by(id=new_role_id).first() is not None:
+            self.remove_role_in_rule(rule_id=rule_id, role_id=current_role_id)
+            self.add_rule_to_role(rule_id=rule_id, role_id=new_role_id)
+            return True
+
+        return False
+
+    def __enter__(self):
+        self.session = _Session()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.session.close()
+
+
 # This is the actual sqlite database creation
 _Base.metadata.create_all(_engine)
 # Only if executing as root
@@ -1509,7 +2006,7 @@ with open(os.path.join(default_path, "users.yaml"), 'r') as stream:
     with AuthenticationManager() as auth:
         for d_username, payload in default_users[next(iter(default_users))].items():
             auth.add_user(username=d_username, password=payload['password'],
-                          auth_context=payload['auth_context'])
+                          allow_run_as=payload['allow_run_as'])
 
 # Create default roles if they don't exist yet
 with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:
@@ -1517,7 +2014,14 @@ with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:
 
     with RolesManager() as rm:
         for d_role_name, payload in default_roles[next(iter(default_roles))].items():
-            rm.add_role(name=d_role_name, rule=payload['rule'])
+            rm.add_role(name=d_role_name)
+
+with open(os.path.join(default_path, 'rules.yaml'), 'r') as stream:
+    default_rules = yaml.safe_load(stream)
+
+    with RulesManager() as rum:
+        for d_rule_name, payload in default_rules[next(iter(default_rules))].items():
+            rum.add_rule(name=d_rule_name, rule=payload['rule'])
 
 # Create default policies if they don't exist yet
 with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
@@ -1548,3 +2052,10 @@ with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
                     rpm.add_policy_to_role(role_id=rm.get_role(name=d_role_name)['id'],
                                            policy_id=pm.get_policy(name=f'{d_policy_name}_{sub_name}')['id'],
                                            force_admin=True)
+
+    # Role-Rules relationships
+    with RolesRulesManager() as rrum:
+        for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
+            for d_rule_name in payload['rule_ids']:
+                rrum.add_rule_to_role(role_id=rm.get_role(name=d_role_name)['id'],
+                                      rule_id=rum.get_rule_by_name(d_rule_name)['id'])

@@ -279,7 +279,7 @@ def raise_if_exc(obj):
 
     Parameters
     ----------
-    obj : dict
+    obj : dict or Exception
         Object to be checked
 
     Returns

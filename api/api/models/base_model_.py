@@ -8,7 +8,7 @@ from connexion import ProblemException
 
 from api import util
 from api.util import raise_if_exc
-from wazuh import WazuhError
+from wazuh.core.exception import WazuhError, WazuhNotAcceptable
 
 T = typing.TypeVar('T')
 

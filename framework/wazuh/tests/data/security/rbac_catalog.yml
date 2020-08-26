@@ -612,6 +612,7 @@ get_rbac_actions:
           - policy:id
           - role:id
           - user:id
+          - rule:id
         example:
           actions:
             - security:read
@@ -619,9 +620,11 @@ get_rbac_actions:
             - policy:id:*
             - role:id:2
             - user:id:5
+            - rule:id:3
           effect: allow
         related_endpoints:
           - GET /security/roles
+          - GET /security/rules
           - GET /security/policies
           - GET /security/users
       security:create:
@@ -636,6 +639,7 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - POST /security/roles
+          - POST /security/rules
           - POST /security/policies
       security:delete:
         description: Delete system's security resources
@@ -643,6 +647,7 @@ get_rbac_actions:
           - policy:id
           - role:id
           - user:id
+          - rule:id
         example:
           actions:
             - security:update
@@ -650,11 +655,14 @@ get_rbac_actions:
             - policy:id:*
             - role:id:3
             - user:id:4
+            - rule:id:2
           effect: deny
         related_endpoints:
           - DELETE /security/roles
+          - DELETE /security/rules
           - DELETE /security/policies
           - DELETE /security/roles/{role_id}/policies
+          - DELETE /security/roles/{role_id}/rules
           - DELETE /security/users/{user_id}/roles
           - DELETE /security/users
       security:update:
@@ -663,6 +671,7 @@ get_rbac_actions:
           - policy:id
           - role:id
           - user:id
+          - rule:id
         example:
           actions:
             - security:update
@@ -670,11 +679,14 @@ get_rbac_actions:
             - policy:id:*
             - role:id:4
             - user:id:3
+            - rule:id:4
           effect: deny
         related_endpoints:
           - PUT /security/roles/{role_id}
+          - PUT /security/rules/{rule_id}
           - PUT /security/policies/{policy_id}
           - POST /security/roles/{role_id}/policies
+          - POST /security/roles/{role_id}/rules
           - POST /security/users/{user_id}/roles
           - PUT /security/users/{user_id}
       security:create_user:
@@ -742,6 +754,8 @@ get_rbac_resources:
         description: Reference security roles via its id (i.e. role:id:1)
       user:id:
         description: Reference security users via its id (i.e. user:id:1)
+      rule:id:
+        description: Reference security rules via its id (i.e. rule:id:1)
   - params:
       resource: "agent:id"
     result:
