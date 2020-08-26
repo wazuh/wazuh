@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -223,7 +223,6 @@ int add_agent(int json_output, int no_limit)
             double antiquity = OS_AgentAntiquity_ID(id_exist);
 
             if (env_remove_dup && (antiquity >= force_antiquity || antiquity < 0)) {
-                OS_BackupAgentInfo_ID(id_exist);
                 OS_RemoveAgent(id_exist);
             } else {
                 if (json_output) {
@@ -340,8 +339,8 @@ int add_agent(int json_output, int no_limit)
                  * Random 5: Final key
                  */
 
-                snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
-                snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
+                os_snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
+                os_snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
 
                 OS_MD5_Str(str1, -1, md1);
                 OS_MD5_Str(str2, -1, md2);
@@ -380,7 +379,7 @@ int add_agent(int json_output, int no_limit)
                     } else
                         merror_exit("Lost authd socket connection.");
                 }
-                if (auth_add_agent(sock, id, name, ip, NULL, env_remove_dup ? force_antiquity : -1, json_output,NULL,1) < 0) {
+                if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, env_remove_dup ? force_antiquity : -1, json_output,NULL,1) < 0) {
                     break;
                 }
             }

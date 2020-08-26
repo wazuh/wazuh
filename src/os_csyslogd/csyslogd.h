@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-#ifndef _CSYSLOGD_H
-#define _CSYSLOGD_H
+#ifndef CSYSLOGD_H
+#define CSYSLOGD_H
 
 #include "config/csyslogd-config.h"
 #include "cJSON.h"
@@ -54,4 +54,4 @@ extern char __shost_long[512];
 
 extern SyslogConfig **syslog_config;
 
-#endif /* _CSYSLOGD_H */
+#endif /* CSYSLOGD_H */

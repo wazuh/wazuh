@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __ROOTCHECK_H
-#define __ROOTCHECK_H
+#ifndef ROOTCHECK_H
+#define ROOTCHECK_H
 
 #include "list_op.h"
 #include "config/rootcheck-config.h"
@@ -106,8 +106,11 @@ void rootcheck_connect();
 void run_rk_check(void);
 
 /* Rootcheck thread */
+#ifdef WIN32
+DWORD WINAPI w_rootcheck_thread(__attribute__((unused)) void * args);
+#else
 void * w_rootcheck_thread(__attribute__((unused)) void * args);
-
+#endif
 /*** Plugins prototypes ***/
 void check_rc_files(const char *basedir, FILE *fp);
 void check_rc_trojans(const char *basedir, FILE *fp);
@@ -146,4 +149,4 @@ typedef struct _Proc_Info {
     char *p_path;
 } Proc_Info;
 
-#endif /* __ROOTCHECK_H */
+#endif /* ROOTCHECK_H */

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -284,7 +284,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 file_name = SHAREDCFG_FILENAME;
                 snprintf(destination_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
                 mdebug1("Downloading shared file '%s' from '%s'", merged, file_url);
-                downloaded = wurl_request(file_url,destination_path);
+                downloaded = wurl_request(file_url,destination_path, NULL, NULL, 0);
                 w_download_status(downloaded,file_url,destination_path);
                 r_group->merged_is_downloaded = !downloaded;
 
@@ -318,7 +318,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                         snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, file_name);
                         snprintf(download_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
                         mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
-                        downloaded = wurl_request(file_url,download_path);
+                        downloaded = wurl_request(file_url,download_path, NULL, NULL, 0);
 
                         if (!w_download_status(downloaded, file_url, destination_path)) {
                             OS_MoveFile(download_path, destination_path);
@@ -362,6 +362,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             os_calloc(1, sizeof(file_sum), f_sum[f_size]);
             strncpy(f_sum[f_size]->sum, md5sum, 32);
             os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
+            f_sum[f_size + 1] = NULL;
 
             if (!logr.nocmerged) {
                 MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1);
@@ -473,6 +474,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
 void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
     DIR *dp;
     char *group;
+    char *save_ptr = NULL;
     const char delim[2] = ",";
     char path[PATH_MAX + 1];
     char ** files;
@@ -485,7 +487,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
 
     if (!logr.nocmerged) {
         /* Get each group of the multi-group */
-        group = strtok(multi_group, delim);
+        group = strtok_r(multi_group, delim, &save_ptr);
 
         /* Delete agent.conf from multi group before appending to it */
         snprintf(agent_conf_multi_path,PATH_MAX + 1,"%s/%s/%s",MULTIGROUPS_DIR,hash_multigroup,"agent.conf");
@@ -551,7 +553,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
 
             }
 next:
-            group = strtok(NULL, delim);
+            group = strtok_r(NULL, delim, &save_ptr);
             free_strarray(files);
             closedir(dp);
 
@@ -592,7 +594,7 @@ static void c_files()
 {
     DIR *dp;
     char ** subdir;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     unsigned int p_size = 0;
     char path[PATH_MAX + 1];
     int oldmask;
@@ -615,7 +617,7 @@ static void c_files()
         int j;
         file_sum **f_sum;
         DIR *dp;
-        struct dirent *entry;
+        struct dirent *entry = NULL;
 
         if (groups) {
             for (i = 0; groups[i]; i++) {
@@ -1070,7 +1072,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             // Copy sum before unlock mutex
-            if (*f_sum[0]->sum) {
+            if (f_sum[0] && *(f_sum[0]->sum)) {
                 memcpy(tmp_sum, f_sum[0]->sum, sizeof(tmp_sum));
             }
 
@@ -1258,7 +1260,7 @@ int purge_group(char *group){
 
     DIR *dp;
     char path[PATH_MAX + 1];
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     FILE *fp = NULL;
     char groups_info[OS_SIZE_65536 + 1] = {0};
     char **groups;

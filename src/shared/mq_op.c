@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -12,14 +12,13 @@
 #include "config/config.h"
 #include "os_net/os_net.h"
 
-static char * msgsubst(const char * pattern, const char * logmsg, const char * location, time_t timestamp);
-
+static log_builder_t * mq_log_builder;
 int sock_fail_time;
 
 #ifndef WIN32
 
 /* Start the Message Queue. type: WRITE||READ */
-int StartMQ(const char *path, short int type)
+int StartMQ(const char *path, short int type, short int n_attempts)
 {
     if (type == READ) {
         return (OS_BindUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 512));
@@ -27,23 +26,25 @@ int StartMQ(const char *path, short int type)
 
     /* We give up to 21 seconds for the other end to start */
     else {
-        int rc = 0;
-        int i;
+        int rc = 0, sleep_time = 5;
+        short int attempt = 0;
 
-        /* Wait up to connect to the unix domain.
-         * After three errors, exit.
-         */
-         for (i = 0; i < MAX_OPENQ_ATTEMPS; i++) {
-             if (rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256), rc >= 0) {
-                 break;
-             }
-             sleep(1);
-         }
-         if (i == MAX_OPENQ_ATTEMPS) {
-             merror(QUEUE_ERROR, path, strerror(errno));
-             return OS_INVALID;
-         }
+        // If n_attempts is 0, trying to reconnect infinitely
+        while ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)), rc < 0){
+            attempt++;
+            mdebug1("Can't connect to '%s': %s (%d). Attempt: %d", path, strerror(errno), errno, attempt);
+            if (n_attempts != INFINITE_OPENQ_ATTEMPTS && attempt == n_attempts) {
+                break;
+            }
+            sleep(sleep_time += 5);
+        }
 
+        if (rc < 0) {
+            merror(QUEUE_ERROR, path, strerror(errno));
+            return OS_INVALID;
+        }
+
+        mdebug1("Connected succesfully to '%s' after %d attempts", path, attempt);
         mdebug1(MSG_SOCKET_SIZE, OS_getsocketsize(rc));
         return (rc);
     }
@@ -106,21 +107,23 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
 }
 
 /* Send a message to socket */
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * target)
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute__((unused)) char loc, logtarget * target)
 {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
-    time_t mtime = time(NULL);
+    time_t mtime;
     char * _message = NULL;
 
-    _message = msgsubst(target->format, message, locmsg, mtime);
+    _message = log_builder_build(mq_log_builder, target->format, message, locmsg);
+
+    tmpstr[OS_MAXSTR] = '\0';
 
     if (strcmp(target->log_socket->name, "agent") == 0) {
-        SendMSG(queue, _message, locmsg, loc);
-    }
-    else {
-        tmpstr[OS_MAXSTR] = '\0';
-
+        if(SendMSG(queue, _message, locmsg, loc) != 0) {
+            free(_message);
+            return -1;
+        }
+    }else{
         int sock_type;
         const char * strmode;
 
@@ -165,7 +168,6 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
         }
 
         // Send msg to socket
-
         if (__mq_rcode = OS_SendUnix(target->log_socket->socket, tmpstr, strlen(tmpstr)), __mq_rcode < 0) {
             if (__mq_rcode == OS_SOCKTERR) {
                 if (mtime = time(NULL), mtime > target->log_socket->last_attempt + sock_fail_time) {
@@ -191,8 +193,10 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                 SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
             }
         }
-    }
 
+        free(_message);
+        return (0);
+    }
     free(_message);
     return (0);
 }
@@ -208,7 +212,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
         return -1;
     }
 
-    _message = msgsubst(targets[0].format, message, locmsg, time(NULL));
+    _message = log_builder_build(mq_log_builder, targets[0].format, message, locmsg);
     retval = SendMSG(queue, _message, locmsg, loc);
     free(_message);
     return retval;
@@ -216,127 +220,12 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 
 #endif /* !WIN32 */
 
-char * msgsubst(const char * pattern, const char * logmsg, const char * location, time_t timestamp) {
-    char * final;
-    char * _pattern;
-    char * cur;
-    char * tok;
-    char * end;
-    char * param;
-    const char * field;
-    char _timestamp[64];
-    char hostname[512];
-    size_t n = 0;
-    size_t z;
+void mq_log_builder_init() {
+    assert(mq_log_builder == NULL);
+    mq_log_builder = log_builder_init(true);
+}
 
-    if (!pattern) {
-        return strdup(logmsg);
-    }
-
-    os_malloc(OS_MAXSTR, final);
-    os_strdup(pattern, _pattern);
-
-    for (cur = _pattern; tok = strstr(cur, "$("), tok; cur = end) {
-        field = NULL;
-        *tok = '\0';
-
-        // Skip $(
-        param = tok + 2;
-
-        // Copy anything before the token
-        z = strlen(cur);
-
-        if (n + z >= OS_MAXSTR) {
-            goto fail;
-        }
-
-        strncpy(final + n, cur, OS_MAXSTR - n);
-        n += z;
-
-        if (end = strchr(param, ')'), !end) {
-            // Token not closed: break
-            *tok = '$';
-            cur = tok;
-            break;
-        }
-
-        *end++ = '\0';
-
-        // Find parameter
-
-        if (strcmp(param, "log") == 0 || strcmp(param, "output") == 0) {
-            field = logmsg;
-        } else if (strcmp(param, "location") == 0 || strcmp(param, "command") == 0) {
-            field = location;
-        } else if (strncmp(param, "timestamp", 9) == 0) {
-            struct tm tm;
-            char * format;
-
-            localtime_r(&timestamp, &tm);
-
-            if (format = strchr(param, ' '), format) {
-                if (strftime(_timestamp, sizeof(_timestamp), format + 1, &tm)) {
-                    field = _timestamp;
-                } else {
-                    mdebug1("Cannot format time '%s': %s (%d)", format, strerror(errno), errno);
-                }
-            } else {
-                // If format is not speficied, use RFC3164
-#ifdef WIN32
-                // strfrime() does not allow %e in Windows
-                const char * MONTHS[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-
-                if (snprintf(_timestamp, sizeof(_timestamp), "%s %s%d %02d:%02d:%02d", MONTHS[tm.tm_mon], tm.tm_mday < 10 ? " " : "", tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec) < (int)sizeof(_timestamp)) {
-                    field = _timestamp;
-                }
-#else
-                if (strftime(_timestamp, sizeof(_timestamp), "%b %e %T", &tm)) {
-                    field = _timestamp;
-                }
-#endif // WIN32
-            }
-        } else if (strcmp(param, "hostname") == 0) {
-            if (gethostname(hostname, sizeof(hostname)) != 0) {
-                strncpy(hostname, "localhost", sizeof(hostname));
-            }
-
-            hostname[sizeof(hostname) - 1] = '\0';
-            field = hostname;
-        } else {
-            mdebug1("Invalid parameter '%s' for log format.", param);
-            continue;
-        }
-
-        if (field) {
-            z = strlen(field);
-
-            if (n + z >= OS_MAXSTR) {
-                goto fail;
-            }
-
-            strncpy(final + n, field, OS_MAXSTR - n);
-            n += z;
-        }
-    }
-
-    // Copy rest of the pattern
-
-    z = strlen(cur);
-
-    if (n + z >= OS_MAXSTR) {
-        goto fail;
-    }
-
-    strncpy(final + n, cur, OS_MAXSTR - n);
-    final[n + z] = '\0';
-
-    free(_pattern);
-    return final;
-
-fail:
-    mdebug1("Too long message format");
-    strncpy(final, logmsg ? logmsg : "Too long message format", OS_MAXSTR - 1);
-    final[OS_MAXSTR - 1] = '\0';
-    free(_pattern);
-    return final;
+int mq_log_builder_update() {
+    assert(mq_log_builder != NULL);
+    return log_builder_update(mq_log_builder);
 }

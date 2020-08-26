@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __OS_ZLIB_H
-#define __OS_ZLIB_H
+#ifndef OS_ZLIB_H
+#define OS_ZLIB_H
 
 /* Compress a string with zlib
  * src: the source string to compress
@@ -35,5 +35,4 @@ unsigned long int os_zlib_uncompress(const char *src, char *dst,
                                      unsigned long int src_size,
                                      unsigned long int dst_size);
 
-#endif /* __OS_ZLIB_H */
-
+#endif /* OS_ZLIB_H */

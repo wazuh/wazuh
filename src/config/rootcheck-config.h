@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __CROOTCHECK_H
-#define __CROOTCHECK_H
+#ifndef CROOTCHECK_H
+#define CROOTCHECK_H
 
 #include <stdio.h>
 #include "os_regex/os_regex.h"
@@ -66,4 +66,4 @@ typedef struct _rkconfig {
 /* Frees the Rootcheck struct  */
 void Free_Rootcheck(rkconfig * config);
 
-#endif /* __CROOTCHECK_H */
+#endif /* CROOTCHECK_H */

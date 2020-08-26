@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _MAILLIST__H
-#define _MAILLIST__H
+#ifndef MAILLIST_H
+#define MAILLIST_H
 
 /* Events List structure */
 typedef struct _MailNode {
@@ -38,5 +38,4 @@ void FreeMail(MailNode *ml);
 /* Free email msg */
 void FreeMailMsg(MailMsg *ml);
 
-#endif /* _MAILLIST__H */
-
+#endif /* MAILLIST_H */

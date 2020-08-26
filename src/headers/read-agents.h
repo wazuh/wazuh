@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __CRAGENT_H
-#define __CRAGENT_H
+#ifndef CRAGENT_H
+#define CRAGENT_H
 
 #include <external/cJSON/cJSON.h>
 
@@ -54,6 +54,9 @@ int delete_agentinfo(const char *id, const char *name) __attribute__((nonnull));
 /* Delete agent SQLite db */
 void delete_sqlite(const char *id, const char *name);
 
+/* Delete diff folders */
+void delete_diff(const char *name);
+
 /* Get all available agents */
 char **get_agents(int flag, int mon_time);
 
@@ -87,12 +90,6 @@ char *agent_file_perm(mode_t mode);
 int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const char *exec) __attribute__((nonnull(2)));
 
 /*
- * Send query to Wazuh-db
- * Returns -1 on error
- */
-int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output);
-
-/*
  * Gets FIM scan-time
  * Returns -1 on error
  */
@@ -105,4 +102,4 @@ time_t scantime_fim (const char *agent_id, const char *scan);
 #define GA_ALL              5
 #define GA_ALL_WSTATUS      7
 
-#endif
+#endif /* CRAGENT_H */

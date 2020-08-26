@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for System inventory for Linux
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * Aug, 2017.
  *
  * This program is free software; you can redistribute it
@@ -275,18 +275,7 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 
     char *protocol;
     int random_id = os_random();
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH - 1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -381,9 +370,7 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
 char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
     char *format = "rpm";
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
+    char *timestamp = w_get_timestamp(time(NULL));
     cJSON *object = NULL;
     cJSON *package = NULL;
 
@@ -406,17 +393,6 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
-    // Set timestamp
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
-
     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "Failed to initialize the DB handler: %s", db_strerror(ret));
         free(timestamp);
@@ -424,7 +400,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     }
 
     // Set Little-endian order by default
-    if ((ret = dbp->set_lorder(dbp, 1234)) != 0) {
+    if (ret = dbp->set_lorder(dbp, 1234), ret != 0) {
         mtwarn(WM_SYS_LOGTAG, "Error setting byte-order.");
     }
 
@@ -471,7 +447,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
         for (i = 0; i < index; i++) {
             offset = 16;
-            if ((ret = read_entry(bytes, info)) == 0) {
+            if ((ret = read_entry(bytes, info)), ret == 0) {
                 os_calloc(1, sizeof(rpm_data), info->next);
                 info = info->next;
             }
@@ -526,16 +502,10 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
                     }
 
                     if (!strncmp(info->tag, "install_time", 12)) {    // Format date
-                        char installt[TIME_LENGTH];
-                        struct tm itime;
-                        time_t dateint = result;
-                        localtime_r(&dateint, &itime);
-
-                        snprintf(installt,TIME_LENGTH - 1,"%d/%02d/%02d %02d:%02d:%02d",
-                                itime.tm_year + 1900, itime.tm_mon + 1,
-                                itime.tm_mday, itime.tm_hour, itime.tm_min, itime.tm_sec);
+                        char *installt = w_get_timestamp(result);
 
                         cJSON_AddStringToObject(package, info->tag, installt);
+                        free(installt);
                     } else if (!strncmp(info->tag, "epoch", 5)) {
                         epoch = result;
                     } else {
@@ -613,25 +583,12 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     FILE *fp;
     size_t length;
     int i, installed = 1;
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
+    char *timestamp = w_get_timestamp(time(NULL));
     cJSON *object = NULL;
     cJSON *package = NULL;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    // Set timestamp
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     memset(read_buff, 0, OS_MAXSTR);
 
@@ -830,18 +787,7 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 
     char *string;
     int random_id = os_random();
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -896,18 +842,7 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
 
     char *string;
     int random_id = os_random();
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -962,21 +897,10 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     int i = 0, size_ifaces = 0;
     struct ifaddrs *ifaddr = NULL, *ifa;
     int random_id = os_random();
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
+    char *timestamp = w_get_timestamp(time(NULL));
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if (random_id < 0)
         random_id = -random_id;
@@ -1073,7 +997,7 @@ hw_info *get_system_linux(){
     } else {
         char *aux_string = NULL;
         while (fgets(string, OS_MAXSTR, fp) != NULL){
-            if ((aux_string = strstr(string, "model name")) != NULL){
+            if ((aux_string = strstr(string, "model name")), aux_string != NULL){
 
                 char *cpuname;
                 strtok_r(string, ":", &saveptr);
@@ -1084,7 +1008,7 @@ hw_info *get_system_linux(){
 
                 free(info->cpu_name);
                 info->cpu_name = strdup(cpuname);
-            } else if ((aux_string = strstr(string, "cpu MHz")) != NULL){
+            } else if ((aux_string = strstr(string, "cpu MHz")), aux_string != NULL){
 
                 char *frec;
                 strtok_r(string, ":", &saveptr);
@@ -1109,7 +1033,7 @@ hw_info *get_system_linux(){
         while (fgets(string, OS_MAXSTR, fp) != NULL){
             char *aux_string = NULL;
 
-            if ((aux_string = strstr(string, "MemTotal")) != NULL){
+            if ((aux_string = strstr(string, "MemTotal")), aux_string != NULL){
 
                 char *end_string = NULL;
                 strtok_r(string, ":", &saveptr);
@@ -1122,7 +1046,7 @@ hw_info *get_system_linux(){
                 } else {
                     info->ram_total = 0;
                 }
-            } else if ((aux_string = strstr(string, "MemFree")) != NULL){
+            } else if ((aux_string = strstr(string, "MemFree")), aux_string != NULL){
 
                 char *end_string = NULL;
                 strtok_r(string, ":", &saveptr);
@@ -1472,18 +1396,28 @@ char* get_default_gateway(char *ifa_name){
     struct in_addr address;
     int destination, gateway, flags, ref, use, metric;
     char * def_gateway;
+    bool is_first_line = true;
+    bool starts_with_default_gw = false;
     os_calloc(V_LENGTH, sizeof(char) + 1, def_gateway);
 
     strncpy(interface, ifa_name, sizeof(interface) - 1);
     snprintf(file_location, PATH_LENGTH, "%s%s", WM_SYS_NET_DIR, "route");
     snprintf(def_gateway, V_LENGTH, "%s", "unknown");
 
-    if ((fp = fopen(file_location, "r"))){
+    if ((fp = fopen(file_location, "r"))) {
 
-        while (fgets(string, OS_MAXSTR, fp) != NULL){
+        while (fgets(string, OS_MAXSTR, fp) != NULL) {
+            if (sscanf(string, "%s %8x %8x %d %d %d %d", if_name, &destination, &gateway, &flags, &ref, &use, &metric) == 7) {
+                if (is_first_line) {
+                    is_first_line = false;
+                    starts_with_default_gw = (destination == 0);
+                }
 
-            if (sscanf(string, "%s %8x %8x %d %d %d %d", if_name, &destination, &gateway, &flags, &ref, &use, &metric) == 7){
-                if (destination == 00000000 && !strcmp(if_name, interface)){
+                if (starts_with_default_gw && destination != 0) {
+                    break;
+                }
+
+                if (!strcmp(if_name, interface)) {
                     address.s_addr = gateway;
                     snprintf(def_gateway, V_LENGTH, "%s|%d", inet_ntoa(*(struct in_addr *) &address), metric);
                     fclose(fp);
@@ -1502,9 +1436,7 @@ char* get_default_gateway(char *ifa_name){
 
 void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
+    char *timestamp = w_get_timestamp(time(NULL));
     int random_id = os_random();
 
     if (random_id < 0)
@@ -1512,15 +1444,6 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     PROCTAB* proc = openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV);
 

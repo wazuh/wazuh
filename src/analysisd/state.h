@@ -1,6 +1,6 @@
 /*
  * Queue (abstract data type)
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * June 22, 2018
  *
  * This program is free software; you can redistribute it
@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _STATE_A__H
-#define _STATE_A__H
+#ifndef STATE_A_H
+#define STATE_A_H
 
 extern unsigned int s_events_syscheck_decoded;
 extern unsigned int s_events_syscollector_decoded;
@@ -32,6 +32,7 @@ extern float s_hostinfo_queue;
 extern float s_event_queue;
 extern float s_process_event_queue;
 extern float s_winevt_queue;
+extern float s_dbsync_message_queue;
 
 extern unsigned int s_syscheck_queue_size;
 extern unsigned int s_syscollector_queue_size;
@@ -41,6 +42,7 @@ extern unsigned int s_hostinfo_queue_size;
 extern unsigned int s_event_queue_size;
 extern unsigned int s_process_event_queue_size;
 extern unsigned int s_winevt_queue_size;
+extern unsigned int s_dbsync_message_queue_size;
 
 extern float s_writer_alerts_queue;
 extern float s_writer_archives_queue;
@@ -67,7 +69,7 @@ void w_inc_alerts_written();
 void w_inc_firewall_written();
 void w_inc_fts_written();
 void w_inc_winevt_decoded_events();
+void w_inc_dbsync_dispatched_messages();
 void w_reset_stats();
 
-#endif /* _STATE_A__H */
-
+#endif /* STATE_A_H */

@@ -1,6 +1,6 @@
-#!/var/ossec/framework/python/bin/python3
+#!/usr/bin/env python
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
@@ -9,7 +9,10 @@ import logging
 import argparse
 import operator
 import sys
-from wazuh.cluster import control, cluster
+
+import wazuh.core.cluster.cluster
+import wazuh.core.cluster.utils
+from wazuh.core.cluster import control, local_client
 
 
 def __print_table(data, headers, show_header=False):
@@ -35,22 +38,25 @@ def __print_table(data, headers, show_header=False):
 
 
 async def print_agents(filter_status, filter_node):
-    result = await control.get_agents(filter_node=filter_node, filter_status=filter_status)
+    lc = local_client.LocalClient()
+    result = await control.get_agents(lc, filter_node=filter_node, filter_status=filter_status)
     headers = {'id': 'ID', 'name': 'Name', 'ip': 'IP', 'status': 'Status', 'version': 'Version',
                'node_name': 'Node name'}
-    data = map(operator.itemgetter(*headers.keys()), result['data']['items'])
+    data = map(operator.itemgetter(*headers.keys()), result['items'])
     __print_table(data, list(headers.values()), True)
 
 
 async def print_nodes(filter_node):
-    result = await control.get_nodes(filter_node)
+    lc = local_client.LocalClient()
+    result = await control.get_nodes(lc, filter_node=filter_node)
     headers = ["Name", "Type", "Version", "Address"]
     data = map(lambda x: list(x.values()), result['items'])
     __print_table(data, headers, True)
 
 
 async def print_health(config, more, filter_node):
-    result = await control.get_health(filter_node)
+    lc = local_client.LocalClient()
+    result = await control.get_health(lc, filter_node=filter_node)
     msg1 = ""
     msg2 = ""
 
@@ -140,13 +146,13 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
 
-    cluster_status = cluster.get_status_json()
+    cluster_status = wazuh.core.cluster.utils.get_cluster_status()
     if cluster_status['enabled'] == 'no' or cluster_status['running'] == 'no':
         logging.error("Cluster is not running.")
         sys.exit(1)
 
-    cluster_config = cluster.read_config()
-    cluster.check_cluster_config(config=cluster_config)
+    cluster_config = wazuh.core.cluster.utils.read_config()
+    wazuh.core.cluster.cluster.check_cluster_config(config=cluster_config)
 
     try:
         if args.filter_status and not args.list_agents:

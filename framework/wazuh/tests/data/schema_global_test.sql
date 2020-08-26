@@ -1,6 +1,6 @@
 /*
  * SQL Schema agent tests
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * February 13, 2019.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
@@ -73,8 +73,8 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
 INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
                    last_keepalive, status) VALUES (2,'agent-2','172.17.0.201',
-                   'b3650e11eba2f27er4d160c69de533ee7eed6016fga85ba2455d53a90927747f', 'Ubuntu','18.04.1 LTS','18','04',
-                   'Bionic Beaver','ubuntu',
+                   'b3650e11eba2f27er4d160c69de533ee7eed6016fga85ba2455d53a90927747f', 'Ubuntu','16.04.1 LTS','16','04',
+                   'Xenial','ubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.6.2','ab73af41699f13fgt81903b5f23d8d00','f8d49771911ed9d5c45bdfa40babd065','master',
                    'node01',strftime('%s','now','-3 days'),
@@ -83,7 +83,7 @@ INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_
 -- Never connected agent
 INSERT INTO agent (id, name, register_ip, internal_key, date_add, `group`) VALUES (3,'nc-agent','any',
                    'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d',
-                   strftime('%s','now','-3 days'), NULL);
+                   strftime('%s','now','-4 days'), NULL);
 
 -- Pending agent
 INSERT INTO agent (id, name, register_ip, internal_key, manager_host, date_add, last_keepalive, `group`) VALUES
@@ -101,3 +101,55 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-5 days'),
                     strftime('%s','now','-2 hour'),'updated');
+
+
+-- Connected agent in group-1
+INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
+                   os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
+                   last_keepalive, status, `group`) VALUES (6,'agent-6','172.17.0.401','any',
+                   'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Ubuntu','18.04.1 LTS','18','04',
+                   'Bionic Beaver','ubuntu',
+                   'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
+                   'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
+                   'node01',strftime('%s','now','-4 days'),
+                    strftime('%s','now','-7 seconds'),'updated', 'group-1');
+
+
+-- Connected agent in group-2
+INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
+                   os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
+                   last_keepalive, status, `group`) VALUES (7,'agent-7','172.17.0.501','any',
+                   'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Ubuntu','18.04.1 LTS','18','04',
+                   'Bionic Beaver','ubuntu',
+                   'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
+                   'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
+                   'node01',strftime('%s','now','-4 days'),
+                    strftime('%s','now','-4 seconds'),'updated', 'group-2');
+
+
+-- Connected agent in group-2
+INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
+                   os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
+                   last_keepalive, status, `group`) VALUES (8,'agent-8','172.17.0.502','any',
+                   'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Ubuntu','18.04.1 LTS','18','04',
+                   'Bionic Beaver','ubuntu',
+                   'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
+                   'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
+                   'node01',strftime('%s','now','-4 days'),
+                    strftime('%s','now','-12 seconds'),'updated', 'group-2, group-1');
+
+
+-- Create group-1 and group-2
+INSERT INTO `group` (id, name) VALUES (1, 'group-1');
+INSERT INTO `group` (id, name) VALUES (2, 'group-2');
+INSERT INTO `group` (id, name) VALUES (3, 'group-empty');
+
+
+-- agent-6 -> group-1 and agent-7 -> group-2
+INSERT INTO belongs (id_agent, id_group) VALUES (6, 1);
+INSERT INTO belongs (id_agent, id_group) VALUES (7, 2);
+
+
+-- agent-8 -> group-1 and group-2
+INSERT INTO belongs (id_agent, id_group) VALUES (8, 2);
+INSERT INTO belongs (id_agent, id_group) VALUES (8, 1);

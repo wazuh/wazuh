@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * Contributed by Jeremy Rossi (@jrossi)
  *
  * This program is free software; you can redistribute it
@@ -8,11 +8,11 @@
  * Foundation.
  */
 
-#ifndef __RANDOMBYTES_H
-#define __RANDOMBYTES_H
+#ifndef RANDOMBYTES_H
+#define RANDOMBYTES_H
 
 void randombytes(void *ptr, size_t length);
 void srandom_init(void);
 int os_random(void);
 
-#endif
+#endif /* RANDOMBYTES_H */

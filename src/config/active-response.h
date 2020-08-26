@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _CAR__H
-#define _CAR__H
+#ifndef CAR_H
+#define CAR_H
 
 /* Active response commands */
 typedef struct _ar_command {
@@ -39,4 +39,4 @@ typedef struct _ar {
 /* Active response flag */
 extern int ar_flag;
 
-#endif /* _CAR__H */
+#endif /* CAR_H */

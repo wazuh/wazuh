@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-#ifndef _EXECD_H
-#define _EXECD_H
+#ifndef EXECD_H
+#define EXECD_H
 
 #ifndef ARGV0
 #define ARGV0 "ossec-execd"
@@ -78,4 +78,4 @@ typedef struct _timeout_data {
 
 void FreeTimeoutEntry(timeout_data *timeout_entry);
 
-#endif
+#endif /* EXECD_H */

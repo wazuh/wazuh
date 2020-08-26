@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -118,7 +118,7 @@ void HandleSecure()
     /* Connect to the message queue
      * Exit if it fails.
      */
-    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
+    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
@@ -167,7 +167,15 @@ void HandleSecure()
                 if (fd == logr.sock) {
                     sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);
                     if (sock_client < 0) {
-                        merror_exit(ACCEPT_ERROR, strerror(errno), errno);
+                        switch (errno) {
+                        case ECONNABORTED:
+                            mdebug1(ACCEPT_ERROR, strerror(errno), errno);
+                            break;
+                        default:
+                            merror(ACCEPT_ERROR, strerror(errno), errno);
+                        }
+
+                        continue;
                     }
 
                     nb_open(&netbuffer, sock_client, &peer_info);
@@ -203,9 +211,7 @@ void HandleSecure()
                         default:
                             merror("TCP peer [%d] at %s: %s (%d)", sock_client, inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
                         }
-
-                        // Fallthrough
-
+                        fallthrough;
                     case 0:
                         _close_sock(&keys, sock_client);
                         continue;
@@ -237,8 +243,7 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
 
     while (1) {
         message = rem_msgpop();
-        size_t fd_list_counter = rem_getCounter(message->sock);
-        if (message->counter > fd_list_counter) {
+        if (message->sock == -1 || message->counter > rem_getCounter(message->sock)) {
             memcpy(buffer, message->buffer, message->size);
             HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
         } else {
@@ -420,8 +425,14 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
                 SECURE_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
-        if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+        // Try to reconnect infinitely
+        logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
+        minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+
+        if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
+            // Something went wrong sending a message after an immediate reconnection...
+            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
         }
     } else {
         rem_inc_evt();

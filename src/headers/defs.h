@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009-2012 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,8 +10,8 @@
 
 /* Global Definitions */
 
-#ifndef __OS_HEADERS
-#define __OS_HEADERS
+#ifndef OS_HEADERS
+#define OS_HEADERS
 
 #define TRUE            1
 #define FALSE           0
@@ -34,6 +34,9 @@
 #define OS_SIZE_512     512
 #define OS_SIZE_256     256
 #define OS_SIZE_128     128
+#define OS_SIZE_64      64
+#define OS_SIZE_32      32
+#define OS_SIZE_16      16
 
 /* Level of log messages */
 #define LOGLEVEL_CRITICAL 4
@@ -42,26 +45,27 @@
 #define LOGLEVEL_INFO 1
 #define LOGLEVEL_DEBUG 0
 
-#define OS_MAXSTR       OS_SIZE_65536    /* Size for logs, sockets, etc  */
-#define OS_BUFFER_SIZE  OS_SIZE_2048    /* Size of general buffers      */
-#define OS_FLSIZE       OS_SIZE_256     /* Maximum file size            */
-#define OS_HEADER_SIZE  OS_SIZE_128     /* Maximum header size          */
-#define OS_LOG_HEADER   OS_SIZE_256     /* Maximum log header size      */
-#define OS_SK_HEADER    OS_SIZE_6144    /* Maximum syscheck header size */
-#define IPSIZE          INET6_ADDRSTRLEN /* IP Address size             */
-#define AUTH_POOL       1000            /* Max number of connections    */
-#define BACKLOG         128             /* Socket input queue length    */
-#define MAX_EVENTS      1024            /* Max number of epoll events   */
-#define EPOLL_MILLIS    -1              /* Epoll wait time              */
-#define MAX_TAG_COUNTER 256             /* Max retrying counter         */
-#define SOCK_RECV_TIME0 300             /* Socket receiving timeout (s) */
-#define MIN_ORDER_SIZE  10              /* Minimum size of orders array */
-#define KEEPALIVE_SIZE  700             /* Random keepalive string size */
-#define MAX_DYN_STR     4194304         /* Max message size received 4MiB */
+#define OS_MAXSTR       OS_SIZE_65536       /* Size for logs, sockets, etc      */
+#define OS_BUFFER_SIZE  OS_SIZE_2048        /* Size of general buffers          */
+#define OS_FLSIZE       OS_SIZE_256         /* Maximum file size                */
+#define OS_HEADER_SIZE  OS_SIZE_128         /* Maximum header size              */
+#define OS_LOG_HEADER   OS_SIZE_256         /* Maximum log header size          */
+#define OS_SK_HEADER    OS_SIZE_6144        /* Maximum syscheck header size     */
+#define IPSIZE          INET6_ADDRSTRLEN    /* IP Address size                  */
+#define AUTH_POOL       1000                /* Max number of connections        */
+#define BACKLOG         128                 /* Socket input queue length        */
+#define MAX_EVENTS      1024                /* Max number of epoll events       */
+#define EPOLL_MILLIS    -1                  /* Epoll wait time                  */
+#define MAX_TAG_COUNTER 256                 /* Max retrying counter             */
+#define SOCK_RECV_TIME0 300                 /* Socket receiving timeout (s)     */
+#define MIN_ORDER_SIZE  32                  /* Minimum size of orders array     */
+#define KEEPALIVE_SIZE  700                 /* Random keepalive string size     */
+#define MAX_DYN_STR     4194304             /* Max message size received 4MiB   */
+#define DATE_LENGTH     64                  /* Format date time %D %T           */
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.10.2"
+#define __ossec_version "v4.0.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -142,6 +146,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
 #define CONTROL_SOCK "/queue/ossec/control"
 
+// Absolute path local requests socket
+#define CONTROL_SOCK_PATH DEFAULTDIR CONTROL_SOCK
+
 // Attempts to check sockets availability
 #define SOCK_ATTEMPTS   10
 
@@ -208,13 +215,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Rootcheck directory */
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
-/* Backup directory for agents */
-#define AGNBACKUP_DIR    "/backup/agents"
-
 /* Wazuh Database */
 #define WDB_DIR         "var/db"
 #define WDB2_DIR        "queue/db"
 #define WDB_GLOB_NAME   "global.db"
+#define WDB_MITRE_NAME  "mitre"
 #define WDB_PROF_NAME   ".template.db"
 
 /* Diff queue */
@@ -222,7 +227,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DIFF_DIR        "/queue/diff"
 #define DIFF_DIR_PATH   DEFAULTDIR DIFF_DIR
 #else
-#define DIFF_DIR_PATH "queue/diff"
+#define DIFF_DIR        "queue/diff"
+#define DIFF_DIR_PATH   DIFF_DIR
 #endif
 #define DIFF_NEW_FILE  "new-entry"
 #define DIFF_LAST_FILE "last-entry"
@@ -276,6 +282,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WIN32
 #define OSSEC_DEFINES   "/etc/internal_options.conf"
 #define OSSEC_LDEFINES   "/etc/local_internal_options.conf"
+#define OSSEC_DEFINES_PATH DEFAULTDIR OSSEC_DEFINES
 #else
 #define OSSEC_DEFINES   "internal_options.conf"
 #define OSSEC_LDEFINES   "local_internal_options.conf"
@@ -468,4 +475,4 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define FTELL_INT64 (long)
 #endif
 
-#endif /* __OS_HEADERS */
+#endif /* OS_HEADERS */

@@ -1,7 +1,7 @@
 <!--
   -  Wazuh decoders
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -46,4 +46,10 @@
   <prematch offset="after_parent">^Invalid remote configuration:</prematch>
   <regex offset="after_prematch">^ '(\S+)'.</regex>
   <order>module</order>
+</decoder>
+
+<decoder name="fim-state">
+  <parent>wazuh</parent>
+  <prematch offset="after_parent">^FIM DB: </prematch>
+  <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
 </decoder>

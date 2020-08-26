@@ -1,7 +1,7 @@
 /* Network buffer library for Remoted
  * November 26, 2018
  *
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2018-2020 Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it

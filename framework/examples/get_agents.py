@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 ###
-#  Copyright (C) 2015-2019, Wazuh Inc.All rights reserved.
+#  Copyright (C) 2015-2020, Wazuh Inc.All rights reserved.
 #  Wazuh.com
 #
 #  This program is free software; you can redistribute it
@@ -31,7 +31,7 @@ path.append(framework_path)
 
 try:
     from wazuh import Wazuh
-    from wazuh.agent import Agent
+    from wazuh.core.agent import Agent
 except Exception as e:
     print("No module 'wazuh' found.")
     exit()

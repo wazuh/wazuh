@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2014 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef OS_XML_INTERNAL_H_
-#define OS_XML_INTERNAL_H_
+#ifndef OS_XML_INTERNAL_H
+#define OS_XML_INTERNAL_H
 
 #define _R_CONFS    '<'
 #define _R_CONFE    '>'
@@ -27,4 +27,4 @@
 //#define XML_ATTR                102
 //#define XML_VARIABLE_BEGIN      '$'
 
-#endif /* OS_XML_INTERNAL_H_ */
+#endif /* OS_XML_INTERNAL_H */

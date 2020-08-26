@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _MONITORD_H
-#define _MONITORD_H
+#ifndef MONITORD_H
+#define MONITORD_H
 
 #ifndef ARGV0
 #define ARGV0 "ossec-monitord"
@@ -41,4 +41,4 @@ void * moncom_main(__attribute__((unused)) void * arg);
 /* Global variables */
 extern monitor_config mond;
 
-#endif
+#endif /* MONITORD_H */

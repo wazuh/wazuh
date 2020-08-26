@@ -1,5 +1,5 @@
 /* OS_crypto/AES Library
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * March 12, 2018.
  *
  * This program is free software; you can redistribute it
@@ -8,9 +8,8 @@
  * Foundation.
  */
 
-#ifndef __AES_OP_H
-#define __AES_OP_H
-
+#ifndef AES_OP_H
+#define AES_OP_H
 
 #define OS_ENCRYPT      1
 #define OS_DECRYPT      0
@@ -22,4 +21,4 @@ int decrypt_AES(const unsigned char *ciphertext, int ciphertext_len, unsigned ch
 int OS_AES_Str(const char *input, char *output, const char *charkey,
               long size, short int action) __attribute((nonnull));
 
-#endif
+#endif /* AES_OP_H */

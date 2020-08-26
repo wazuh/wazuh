@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __GETLL_H
-#define __GETLL_H
+#ifndef GETLL_H
+#define GETLL_H
 
 #include "eventinfo.h"
 #include "analysisd.h"
@@ -33,4 +33,4 @@ extern FILE *_ejflog;
 
 void OS_RotateLogs(int day,int year,char *mon);
 
-#endif /* __GETLL_H */
+#endif /* GETLL_H */

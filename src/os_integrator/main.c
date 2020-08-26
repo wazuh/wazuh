@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2014 Daniel B. Cid
  * All rights reserved.
  *
@@ -12,7 +12,6 @@
 #include "integrator.h"
 #include "shared.h"
 
-IntegratorConfig **integrator_config;
 
 void help(const char *prog)
 {
@@ -107,7 +106,7 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     if((uid < 0)||(gid < 0))
     {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Reading configuration */

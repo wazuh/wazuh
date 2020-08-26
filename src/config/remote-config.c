@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -233,7 +233,11 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     /* Set default protocol */
     if (logr->proto[pl] == 0) {
+#if defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+        logr->proto[pl] = IPPROTO_TCP;
+#else
         logr->proto[pl] = IPPROTO_UDP;
+#endif
     }
 
     /* Queue_size is only for secure connections */

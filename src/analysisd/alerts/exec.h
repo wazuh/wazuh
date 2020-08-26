@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,13 +8,12 @@
  * Foundation
  */
 
-#ifndef _EXEC__H
-#define _EXEC__H
+#ifndef EXEC_H
+#define EXEC_H
 
 #include "eventinfo.h"
 #include "active-response.h"
 
-void OS_Exec(int execq, int arq, const Eventinfo *lf, const active_response *ar);
+void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar);
 
-#endif
-
+#endif /* EXEC_H */

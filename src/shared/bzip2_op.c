@@ -1,0 +1,138 @@
+/*
+ * Copyright (C) 2015-2020, Wazuh Inc.
+ * April, 2020.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include "../headers/shared.h"
+
+
+int bzip2_compress(const char *file, const char *filebz2) {
+    FILE* input;
+    FILE* output;
+    BZFILE* compressfile;
+    int bzerror;
+
+    if (!file || !filebz2) {
+        return -1;
+    }
+
+    input = fopen(file, "rb");
+    if (!input) {
+        mdebug2(FOPEN_ERROR, file, errno, strerror(errno));
+        return -1;
+    }
+
+    output = fopen(filebz2, "wb");
+    if (!output) {
+        mdebug2(FOPEN_ERROR, filebz2, errno, strerror(errno));
+        fclose(input);
+        return -1;
+    }
+
+    compressfile = BZ2_bzWriteOpen(&bzerror, output, 9, 0, 1);
+    if (bzerror != BZ_OK) {
+        mdebug2("Could not open to write bz2 file (%d)'%s': (%d)-%s",
+                bzerror, filebz2, errno, strerror(errno));
+        fclose(input);
+        fclose(output);
+        return -1;
+    }
+
+    char buf[BZIP2_BUFFER_SIZE];
+    int readbuff;
+    while (readbuff = fread(buf, sizeof(char), sizeof(buf), input), readbuff > 0) {
+        BZ2_bzWrite(&bzerror, compressfile, (void*)buf, readbuff);
+
+        if (bzerror != BZ_OK) {
+            mdebug2("Could not write bz2 file (%d)'%s': (%d)-%s",
+                    bzerror, filebz2, errno, strerror(errno));
+            fclose(input);
+            fclose(output);
+            BZ2_bzReadClose(&bzerror, compressfile);
+            return -1;
+        }
+    }
+
+    unsigned int nbytes_in_lo32;
+    unsigned int nbytes_in_hi32;
+    unsigned int nbytes_out_lo32;
+    unsigned int nbytes_out_hi32;
+    BZ2_bzWriteClose64(&bzerror, compressfile, 0,
+                       &nbytes_in_lo32, &nbytes_in_hi32,
+                       &nbytes_out_lo32, &nbytes_out_hi32);
+
+    if (bzerror != BZ_OK) {
+        mdebug2("BZ2_bzWriteClose64(%d)'%s': (%d)-%s",
+                bzerror, filebz2, errno, strerror(errno));
+        fclose(input);
+        fclose(output);
+        BZ2_bzReadClose(&bzerror, compressfile);
+        return -1;
+    }
+
+    fclose(input);
+    fclose(output);
+    BZ2_bzReadClose(&bzerror, compressfile);
+    return 0;
+}
+
+int bzip2_uncompress(const char *filebz2, const char *file) {
+    FILE* input;
+    FILE* output;
+    BZFILE* compressfile;
+    int bzerror;
+    unsigned char unused[BZ_MAX_UNUSED];
+    int nUnused = 0;
+
+    if (!file || !filebz2) {
+        return -1;
+    }
+
+    input = fopen(filebz2, "rb");
+    if (!input) {
+        mdebug2(FOPEN_ERROR, filebz2, errno, strerror(errno));
+        return -1;
+    }
+
+     output = fopen(file, "wb");
+    if (!output) {
+        mdebug2(FOPEN_ERROR, file, errno, strerror(errno));
+        fclose(input);
+        return -1;
+    }
+
+    compressfile = BZ2_bzReadOpen(&bzerror, input, 0, 0, unused, nUnused);
+    if (compressfile == NULL || bzerror != BZ_OK) {
+        mdebug2("BZ2_bzReadOpen(%d)'%s': (%d)-%s",
+                bzerror, filebz2, errno, strerror(errno));
+        fclose(input);
+        fclose(output);
+        return -1;
+    }
+
+    char buf[BZIP2_BUFFER_SIZE];
+    int readbuff;
+    do {
+        readbuff = BZ2_bzRead(&bzerror, compressfile, buf, sizeof(buf));
+        if (bzerror == BZ_OK || bzerror == BZ_STREAM_END) {
+            fwrite(buf, sizeof(char), readbuff, output);
+        } else {
+            mdebug2("BZ2_bzRead(%d)'%s': (%d)-%s",
+                    bzerror, filebz2, errno, strerror(errno));
+            fclose(input);
+            fclose(output);
+            BZ2_bzReadClose(&bzerror, compressfile);
+            return -1;
+        }
+    } while (bzerror == BZ_OK);
+
+    fclose(input);
+    fclose(output);
+    BZ2_bzReadClose(&bzerror, compressfile);
+    return 0;
+}

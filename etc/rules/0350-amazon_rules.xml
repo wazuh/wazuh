@@ -1,7 +1,7 @@
 <!--
   -  Amazon rules
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -29,7 +29,7 @@ ID: 80200 - 80499
         <field name="aws.source">cloudtrail</field>
         <list field="aws.eventName" lookup="match_key">etc/lists/amazon/aws-eventnames</list>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName).</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -38,7 +38,7 @@ ID: 80200 - 80499
         <if_sid>80202</if_sid>
         <field name="aws.errorCode">\.+</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,amazon-error,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,amazon-error,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -49,7 +49,7 @@ ID: 80200 - 80499
         <if_sid>80203</if_sid>
         <field name="aws.errorCode">AccessDenied</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -58,14 +58,17 @@ ID: 80200 - 80499
         <if_sid>80202</if_sid>
         <field name="aws.eventName">DeleteObjects</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName).</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="80252" level="10" frequency="22" timeframe="600">
         <if_matched_sid>80251</if_matched_sid>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - high number of deleted object.</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <mitre>
+            <id>T1485</id>
+        </mitre>
+        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -74,7 +77,10 @@ ID: 80200 - 80499
         <if_sid>80202</if_sid>
         <field name="aws.eventName">ConsoleLogin</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login Success.</description>
-        <group>aws_cloudtrail,authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
+        <group>aws_cloudtrail,authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -82,14 +88,17 @@ ID: 80200 - 80499
         <if_sid>80253</if_sid>
         <field name="aws.responseElements.ConsoleLogin">Failure</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login failed.</description>
-        <group>aws_cloudtrail,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <group>aws_cloudtrail,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="80255" level="10" frequency="6" timeframe="360">
         <if_matched_sid>80254</if_matched_sid>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - Possible breaking attempt (high number of login attempts).</description>
-        <group>aws_cloudtrail,authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <mitre>
+            <id>T1110</id>
+        </mitre>
+        <group>aws_cloudtrail,authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -99,7 +108,7 @@ ID: 80200 - 80499
     <rule id="80300" level="0">
         <if_sid>80200</if_sid>
         <field name="aws.source">guardduty</field>
-        <description>AWS Guard​Duty alert.</description>
+        <description>AWS GuardDuty alert.</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
@@ -108,21 +117,21 @@ ID: 80200 - 80499
     <rule id="80301" level="3">
         <if_sid>80300</if_sid>
         <field name="aws.severity">0|1|2|3</field>
-        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title)</description>
+        <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title)</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
     <rule id="80302" level="6">
         <if_sid>80300</if_sid>
         <field name="aws.severity">4|5|6</field>
-        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title)</description>
+        <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title)</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
     <rule id="80303" level="10">
         <if_sid>80300</if_sid>
         <field name="aws.severity">7|8|9</field>
-        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title)</description>
+        <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title)</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
@@ -131,7 +140,7 @@ ID: 80200 - 80499
     <rule id="80305" level="3">
         <if_sid>80301</if_sid>
         <field name="aws.service.action.actionType">PORT_PROBE</field>
-        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
+        <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
@@ -139,7 +148,7 @@ ID: 80200 - 80499
     <rule id="80306" level="6">
         <if_sid>80302</if_sid>
         <field name="aws.service.action.actionType">PORT_PROBE</field>
-        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
+        <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
@@ -147,7 +156,7 @@ ID: 80200 - 80499
     <rule id="80307" level="10">
         <if_sid>80303</if_sid>
         <field name="aws.service.action.actionType">PORT_PROBE</field>
-        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
+        <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
@@ -230,7 +239,39 @@ ID: 80200 - 80499
         <options>no_full_log</options>
     </rule>
 
+    <!-- AWS WAF -->
+    <!-- Documentation: https://docs.aws.amazon.com/waf/latest/developerguide/logging.html -->
+    <rule id="80440" level="0">
+        <if_sid>80200</if_sid>
+        <field name="aws.source">waf</field>
+        <description>AWS WAF alert.</description>
+        <group>aws_waf,</group>
+        <options>no_full_log</options>
+    </rule>
 
+    <rule id="80441" level="0">
+        <if_sid>80440</if_sid>
+        <match>"ALLOW"</match>
+        <description>AWS WAF - Allowed request.</description>
+        <group>aws_waf,aws_waf_allow,</group>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="80442" level="3">
+        <if_sid>80440,80441</if_sid>
+        <match>"BLOCK"</match>
+        <description>AWS WAF - Blocked request.</description>
+        <group>aws_waf,aws_waf_block,</group>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="80443" level="10" frequency="8" timeframe="120" ignore="60">
+        <if_matched_sid>80442</if_matched_sid>
+        <description>AWS WAF - Multiple Blocked request.</description>
+        <same_field>aws.httpRequest.clientIp</same_field>
+        <options>no_full_log</options>
+    </rule>
+  
     <!-- AWS Config -->
     <!-- Documentation: https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html -->
     <rule id="80450" level="0">

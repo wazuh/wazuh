@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -53,7 +53,7 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Set the group */
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     if (clear_daily) {
         const char *daily_dir = STATQUEUE;
         DIR *daily;
-        struct dirent *entry;
+        struct dirent *entry = NULL;
 
         daily = opendir(daily_dir);
         if (!daily) {
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
             const char *daily_dir = STATWQUEUE;
             char dir_path[PATH_MAX + 1];
             DIR *daily;
-            struct dirent *entry;
+            struct dirent *entry = NULL;
 
             snprintf(dir_path, PATH_MAX, "%s/%d", daily_dir, i);
             daily = opendir(dir_path);

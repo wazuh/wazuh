@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,12 +10,11 @@
 
 /* Global alert header */
 
-#ifndef _ALERT__H
-#define _ALERT__H
+#ifndef ALERT_H
+#define ALERT_H
 
 #include "log.h"
 #include "exec.h"
 #include "getloglocation.h"
 
-#endif
-
+#endif /* ALERT_H */

@@ -1,6 +1,6 @@
 /*
  * Wazuh DLL for System inventory for Windows
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * Aug, 2017.
  *
  * This program is free software; you can redistribute it

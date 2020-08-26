@@ -1,0 +1,445 @@
+[
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["security:update"],
+        "resources": ["user:id:wazuh","user:id:wazuh-wui", "user:id:rbac"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["security:update"],
+        "resources": ["role:id:1", "policy:id:2", "policy:id:3", "policy:id:4"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["security:update"],
+        "resources": ["user:id:rbac"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:update", "agent:read", "agent:delete"],
+        "resources": ["agent:id:*"],
+        "effect": "allow"
+      }
+    ],
+    "processed_policies": {
+      "security:update": {
+        "user:id:wazuh": "allow",
+        "user:id:wazuh-wui": "allow",
+        "role:id:1": "allow",
+        "policy:id:2": "allow",
+        "policy:id:3": "allow",
+        "policy:id:4": "allow",
+        "user:id:rbac": "deny"
+      },
+      "agent:update": {
+        "agent:id:*": "allow"
+      },
+      "agent:read": {
+        "agent:id:*": "allow"
+      },
+      "agent:delete": {
+        "agent:id:*": "allow"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["agent:read","agent:delete", "agent:update"],
+        "resources": ["agent:id:*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:read", "agent:delete", "agent:update"],
+        "resources": ["agent:id:000", "agent:group:group1", "agent:id:001"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:update"],
+        "resources": ["agent:id:*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:read", "agent:delete"],
+        "resources": ["agent:id:000"],
+        "effect": "deny"
+      }
+    ],
+    "processed_policies": {
+      "agent:read": {
+        "agent:id:*" : "deny",
+        "agent:group:group1" : "allow",
+        "agent:id:001" : "allow",
+        "agent:id:000" : "deny"
+      },
+      "agent:delete": {
+        "agent:id:*": "deny",
+        "agent:group:group1" : "allow",
+        "agent:id:001" : "allow",
+        "agent:id:000" : "deny"
+      },
+      "agent:update": {
+        "agent:id:*": "deny"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["agent:delete", "agent:update"],
+        "resources": ["agent:id:*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:read","agent:delete", "agent:update"],
+        "resources": ["agent:id:000", "agent:group:group1", "agent:id:001"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:*"],
+        "effect": "allow"
+      }
+    ],
+    "processed_policies": {
+      "agent:read": {
+        "agent:id:*" : "allow"
+      },
+      "agent:delete": {
+        "agent:id:*" : "deny",
+        "agent:id:000" : "deny",
+        "agent:group:group1" : "deny",
+        "agent:id:001" : "deny"
+      },
+      "agent:update": {
+        "agent:id:*": "deny",
+        "agent:id:000" : "deny",
+        "agent:group:group1" : "deny",
+        "agent:id:001" : "deny"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["agent:delete", "agent:update", "security:read"],
+        "resources": ["agent:id:*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:*"],
+        "effect": "allow"
+      }
+    ],
+    "processed_policies": {
+      "agent:read": {
+        "agent:id:*" : "allow"
+      },
+      "agent:delete": {
+        "agent:id:*" : "deny"
+      },
+      "agent:update": {
+        "agent:id:*": "deny"
+      },
+      "security:read": {
+        "agent:id:*": "deny"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:*"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:000"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:000"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:001"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:001"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:002", "agent:id:003"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:002", "agent:id:003"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:003", "agent:id:004", "agent:id:005"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:003", "agent:id:004", "agent:id:005"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:group:*"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:group:*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:group:group1"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:group:group1"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:group:group2"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:group:group2"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:group:group1", "agent:group:group2"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:group:group1", "agent:group:group2"],
+        "effect": "deny"
+      }
+    ],
+    "processed_policies": {
+      "agent:read": {
+        "agent:id:*": "deny",
+        "agent:id:000": "allow",
+        "agent:id:001": "deny",
+        "agent:id:002": "deny",
+        "agent:id:003": "deny",
+        "agent:id:004": "deny",
+        "agent:id:005": "deny",
+        "agent:group:*": "deny",
+        "agent:group:group1": "deny",
+        "agent:group:group2": "deny"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:*"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:003", "agent:id:004", "agent:id:005"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:update"],
+        "resources": ["agent:id:003", "agent:id:004", "agent:id:005"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:delete"],
+        "resources": ["agent:group:*"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:group:*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:update"],
+        "resources": ["agent:group:group1"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:group:group1", "agent:group:group2"],
+        "effect": "allow"
+      }
+    ],
+    "processed_policies": {
+      "agent:read": {
+        "agent:id:*": "allow",
+        "agent:id:003": "deny",
+        "agent:id:004": "deny",
+        "agent:id:005": "deny",
+        "agent:group:*": "deny",
+        "agent:group:group1": "allow",
+        "agent:group:group2": "allow"
+      },
+      "agent:update": {
+        "agent:id:003": "deny",
+        "agent:id:004": "deny",
+        "agent:id:005": "deny",
+        "agent:group:group1": "allow"
+      },
+      "agent:delete": {
+        "agent:group:*": "allow"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["agent:create"],
+        "resources": ["*"],
+        "effect": "allow"
+      }
+    ],
+    "processed_policies": {
+      "agent:create": {
+        "*:*:*": "allow"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["agent:create"],
+        "resources": ["*"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:create"],
+        "resources": ["*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:create"],
+        "resources": ["*"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:create"],
+        "resources": ["*"],
+        "effect": "deny"
+      }
+    ],
+    "processed_policies": {
+      "agent:create": {
+        "*:*:*": "deny"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker1&file:path:etc/rules/local_rules.xml"],
+        "effect": "allow"
+      }
+    ],
+    "processed_policies": {
+      "cluster:read_file": {
+        "node:id:*&file:path:*": "deny",
+        "node:id:worker1&file:path:etc/rules/local_rules.xml": "allow"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "allow"
+      }
+    ],
+    "processed_policies": {
+      "cluster:read_file": {
+        "node:id:*&file:path:etc/ossec.conf": "allow"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "allow"
+      }
+    ],
+    "processed_policies": {
+      "cluster:read_file": {
+        "node:id:*&file:path:*": "deny",
+        "node:id:*&file:path:etc/ossec.conf": "allow"
+      }
+    }
+  }
+]
