@@ -28,23 +28,23 @@
 
 
 /* JSON REQUEST / RESPONSE fields names */
-#define W_LOGTEST_JSON_TOKEN            "token"   ///< Token field name of json input/output.
-#define W_LOGTEST_JSON_EVENT            "event"   ///< Event field name of json input.
-#define W_LOGTEST_JSON_LOGFORMAT   "log_format"   ///< Log format field name of json input.
-#define W_LOGTEST_JSON_LOCATION      "location"   ///< Location field name of json input.
-#define W_LOGTEST_JSON_ALERT            "alert"   ///< Alert field name of json output (boolean).
-#define W_LOGTEST_JSON_MESSAGES      "messages"   ///< Message format field name of json output.
+#define W_LOGTEST_JSON_TOKEN            "token"   ///< Token field name of json input/output
+#define W_LOGTEST_JSON_EVENT            "event"   ///< Event field name of json input
+#define W_LOGTEST_JSON_LOGFORMAT   "log_format"   ///< Log format field name of json input
+#define W_LOGTEST_JSON_LOCATION      "location"   ///< Location field name of json input
+#define W_LOGTEST_JSON_ALERT            "alert"   ///< Alert field name of json output (boolean)
+#define W_LOGTEST_JSON_MESSAGES      "messages"   ///< Message format field name of json output
 #define W_LOGTEST_JSON_CODE           "codemsg"   ///< Code of message field name of json output (number)
-#define W_LOGTEST_JSON_OUTPUT          "output"   ///< Output field name of json output.
+#define W_LOGTEST_JSON_OUTPUT          "output"   ///< Output field name of json output
 
 #define W_LOGTEST_TOKEN_LENGH                 8   ///< Lenght of token
 #define W_LOGTEST_ERROR_JSON_PARSE_NSTR      20   ///< Number of characters to show in parsing error
 
 /* Return codes for responses */
-#define W_LOGTEST_RCODE_ERROR_INPUT          -2   ///< Return code: Input error, malformed json, input field missing.
-#define W_LOGTEST_RCODE_ERROR_PROCESS        -1   ///< Return code: Processing with error.
-#define W_LOGTEST_RCODE_SUCCESS               0   ///< Return code: Successful request.
-#define W_LOGTEST_RCODE_WARNING               1   ///< Return code: Successful request with warning messages.
+#define W_LOGTEST_RCODE_ERROR_INPUT          -2   ///< Return code: Input error, malformed json, input field missing
+#define W_LOGTEST_RCODE_ERROR_PROCESS        -1   ///< Return code: Processing with error
+#define W_LOGTEST_RCODE_SUCCESS               0   ///< Return code: Successful request
+#define W_LOGTEST_RCODE_WARNING               1   ///< Return code: Successful request with warning messages
 
 
 /**
@@ -87,6 +87,9 @@ typedef struct w_logtest_connection_t {
 
     pthread_mutex_t mutex;      ///< Mutex to prevent race condition in accept syscall
     int sock;                   ///< The open connection with logtest queue
+
+    pthread_mutex_t mutex_hash_table;  ///< Mutex to prevent race condition in hash table and active client
+    int active_client;                 ///< Number of current clients
 
 } w_logtest_connection_t;
 
@@ -172,9 +175,11 @@ void w_logtest_remove_session(char * token);
  * @brief Check the inactive logtest sessions
  *
  * Check all the sessions. If a session has been inactive longer than session_timeout,
- * call w_logtest_remove_session to remove it.
+ * call w_logtest_remove_session to remove it
+ *
+ * @param connection Manager of connections
  */
-void * w_logtest_check_inactive_sessions(__attribute__((unused)) void * arg);
+void * w_logtest_check_inactive_sessions(w_logtest_connection_t * connection);
 
 /**
  * @brief Initialize FTS engine for a client session
@@ -186,8 +191,8 @@ int w_logtest_fts_init(OSList **fts_list, OSHash **fts_store);
 
 /**
  * @brief Check if input_json its valid and generate a client request.
- * @param req Client request information.
- * @param input_json Raw JSON input of requeset.
+ * @param req Client request information
+ * @param input_json Raw JSON input of requeset
  * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
  * @return true on valid input, otherwise false
  */
@@ -201,28 +206,50 @@ bool w_logtest_check_input(char* input_json, cJSON** req, OSList* list_msg);
  * \ref W_LOGTEST_RCODE_SUCCESS If the list is empty or there are only info messages.
  * \ref W_LOGTEST_RCODE_WARNING If there are warning messages.
  * \ref W_LOGTEST_RCODE_ERROR_PROCESS If there are error messages.
- * @param response json response for the client.
- * @param list_msg list of \ref os_analysisd_log_msg_t for store messages.
- * @param error_code Actual level error.
+ * 
+ * @param response json response for the client
+ * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
+ * @param error_code Actual level error
  */
 void w_logtest_add_msg_response(cJSON* response, OSList* list_msg, int* error_code);
 
 /**
- * @brief Generate a new hexa-token.
- * @return char* new token string.
+ * @brief Generate a new hexa-token
+ * @return char* new token string
  */
 char* w_logtest_generate_token();
 
 /**
- * @brief Get a session for a request.
+ * @brief Get a session for a request
  *
  * Search for an active session based on the request token. If session expires
- * or the token is invalid, returns a new session.
- * @param req request for a session.
- * @param list_msg list of \ref os_analysisd_log_msg_t for store messages.
- * @return new session or NULL on error.
+ * or the token is invalid, returns a new session
+ *
+ * @param req request for a session
+ * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
+ * @param connection Manager of connections
+ * @return new session or NULL on error
  */
-w_logtest_session_t* w_logtest_get_session(cJSON* req, OSList* list_msg);
+w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg, w_logtest_connection_t * connection);
+
+/**
+ * @brief Register a session as active in connection
+ * 
+ * Register a session on the hash table
+ *
+ * @param connection Manager of connections
+ * @param session Session to register
+ */
+void w_logtest_register_session(w_logtest_connection_t * connection, w_logtest_session_t * session);
+
+/**
+ * @brief Remove the oldest session
+ *
+ * Find the session who has not made a query for the longest time and remove it
+ *
+ * @param connection Manager of connections
+ */
+void w_logtest_remove_old_session(w_logtest_connection_t * connection);
 
 /**
  * @brief Get the level of de triggered rule within json_log_processed
@@ -234,8 +261,9 @@ int w_logtest_get_rule_level(cJSON* json_log_processed);
 /**
  * @brief Processes a client input request
  * @param raw_request client request
+ * @param connection Manager of connections
  * @return string (json format) with the result of the request
  */
-char * w_logtest_process_request(char * raw_request);
+char * w_logtest_process_request(char * raw_request, w_logtest_connection_t * connection);
 
 #endif
