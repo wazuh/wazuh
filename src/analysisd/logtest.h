@@ -7,18 +7,23 @@
  * Foundation
  */
 
+#ifndef LOGTEST_H
+#define LOGTEST_H
+
 #include "shared.h"
 #include "config.h"
 #include "rules.h"
 #include "config.h"
 #include "decoders/decoder.h"
 #include "eventinfo.h"
+#include "cleanevent.h"
 #include "lists.h"
 #include "lists_make.h"
 #include "fts.h"
 #include "accumulator.h"
 #include "../config/logtest-config.h"
 #include "../os_net/os_net.h"
+#include "format/to_json.h"
 #include <time.h>
 
 
@@ -40,7 +45,6 @@
 #define W_LOGTEST_RCODE_ERROR_PROCESS        -1   ///< Return code: Processing with error
 #define W_LOGTEST_RCODE_SUCCESS               0   ///< Return code: Successful request
 #define W_LOGTEST_RCODE_WARNING               1   ///< Return code: Successful request with warning messages
-
 
 
 /**
@@ -66,6 +70,8 @@ typedef struct w_logtest_session_t {
     OSHash *acm_store;                      ///< Hash to save data which have the same id
     int acm_lookups;                        ///< Counter of the number of times purged. Option accumulate
     time_t acm_purge_ts;                    ///< Counter of the time interval of last purge. Option accumulate
+    regex_matching decoder_match;           ///< Used for decoding phase
+    regex_matching rule_match;              ///< Used for rules matching phase
 
 } w_logtest_session_t;
 
@@ -110,25 +116,58 @@ int w_logtest_init_parameters();
 void *w_logtest_clients_handler();
 
 /**
- * @brief Process the log within req for user represented by session
- * @param req user request
- * @param session session for user request
- * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
- * @return output response or NULL on error
+ * @brief Process client's request
+ * @param request client input
+ * @param session client session
+ * @param list_msg list of error/warn/info messages
+ * @return NULL on failure, otherwise the alert generated
  */
-cJSON* w_logtest_process_log(cJSON* req, w_logtest_session_t* session, OSList* list_msg);
+cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, OSList * list_msg);
+
+/**
+ * @brief Preprocessing phase
+ *
+ * It's called by w_logtest_process_log
+ *
+ * @param lf struct to save the event processed
+ * @param request client input
+ * @return 0 on success, otherwise -1
+ */
+int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request);
+
+/**
+ * @brief Decoding phase
+ *
+ * It's called by w_logtest_process_log
+ *
+ * @param lf struct to save the event processed
+ * @param session client session
+ */
+void w_logtest_decoding_phase(Eventinfo * lf, w_logtest_session_t * session);
+
+/**
+ * @brief Matching rules phase
+ *
+ * It's called by w_logtest_process_log
+ *
+ * @param lf struct to save the event processed
+ * @param session client session
+ * @param list_msg list of error/warn/info messages
+ * @return 0 on success, otherwise return -1
+ */
+int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session, OSList * list_msg);
 
 /**
  * @brief Create resources necessary to service client
- * @param token Token which represents the client
- * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
- * @return new session or NULL on error
+ * @param token client identifier
+ * @param msg_error contains the message to send to the client in case of invalid rules or decoder otherwise, it's null
+ * @return NULL on failure, otherwise a w_logtest_session_t object which represents to the client
  */
 w_logtest_session_t *w_logtest_initialize_session(char * token, OSList * list_msg);
 
 /**
  * @brief Free resources after client closes connection
- * @param token Token which represents the client
+ * @param token client identifier
  */
 void w_logtest_remove_session(char * token);
 
@@ -226,3 +265,5 @@ int w_logtest_get_rule_level(cJSON* json_log_processed);
  * @return string (json format) with the result of the request
  */
 char * w_logtest_process_request(char * raw_request, w_logtest_connection_t * connection);
+
+#endif
