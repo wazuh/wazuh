@@ -20,6 +20,21 @@
 int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout);
 int wm_task_manager_delete_old_entries(int timestamp);
 
+// Setup / teardown
+
+static int setup_config(void **state) {
+    wm_task_manager *config = NULL;
+    os_calloc(1, sizeof(wm_task_manager), config);
+    *state = config;
+    return 0;
+}
+
+static int teardown_config(void **state) {
+    wm_task_manager *config = *state;
+    os_free(config);
+    return 0;
+}
+
 // Wrappers
 
 void __wrap__mtinfo(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
@@ -134,6 +149,10 @@ char *__wrap_sqlite3_column_text(sqlite3_stmt *pStmt, int i) {
 
 time_t __wrap_time(time_t *__timer) {
     return mock();
+}
+
+void __wrap_w_sleep_until(const time_t new_time){
+    check_expected(new_time);
 }
 
 void test_wm_task_manager_check_db_ok(void **state)
@@ -761,6 +780,216 @@ void test_wm_task_manager_set_timeout_status_open_err(void **state)
     assert_int_equal(next_timeout, 0);
 }
 
+void test_wm_task_manager_clean_db(void **state)
+{
+
+    wm_task_manager *config = *state;
+
+    config->cleanup_time = 1000;
+
+    int now = 123456789;
+    int timestamp = now - config->cleanup_time;
+
+    int task_id = 10;
+    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+
+    will_return(__wrap_time, now);
+
+    will_return(__wrap_time, now);
+
+    will_return(__wrap_time, now);
+
+    // wm_task_manager_set_timeout_status
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 1);
+    expect_string(__wrap_sqlite3_bind_text, b, "In progress");
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, i, 0);
+    will_return(__wrap_sqlite3_column_int, task_id);
+
+    expect_value(__wrap_sqlite3_column_int, i, 5);
+    will_return(__wrap_sqlite3_column_int, last_update_time);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 1);
+    expect_string(__wrap_sqlite3_bind_text, b, "Timeout");
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_time, now);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, now);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, task_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    // wm_task_manager_delete_old_entries
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8206): Running daily clean DB thread.");
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, timestamp);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    expect_value(__wrap_w_sleep_until, new_time, now + WM_TASK_MAX_IN_PROGRESS_TIME);
+
+    wm_task_manager_clean_db(config);
+}
+
+void test_wm_task_manager_clean_db_timeout(void **state)
+{
+
+    wm_task_manager *config = *state;
+
+    config->cleanup_time = 1000;
+
+    int now = 123456789;
+    int timestamp = now - config->cleanup_time;
+
+    int task_id = 10;
+    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+
+    will_return(__wrap_time, now + 100);
+
+    will_return(__wrap_time, now);
+
+    will_return(__wrap_time, now);
+
+    // wm_task_manager_set_timeout_status
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 1);
+    expect_string(__wrap_sqlite3_bind_text, b, "In progress");
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, i, 0);
+    will_return(__wrap_sqlite3_column_int, task_id);
+
+    expect_value(__wrap_sqlite3_column_int, i, 5);
+    will_return(__wrap_sqlite3_column_int, last_update_time);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 1);
+    expect_string(__wrap_sqlite3_bind_text, b, "Timeout");
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_time, now);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, now);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, task_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    expect_value(__wrap_w_sleep_until, new_time, now + 100);
+
+    wm_task_manager_clean_db(config);
+}
+
+void test_wm_task_manager_clean_db_clean(void **state)
+{
+
+    wm_task_manager *config = *state;
+
+    config->cleanup_time = 1000;
+
+    int now = 123456789;
+    int timestamp = now - config->cleanup_time;
+
+    int task_id = 10;
+    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+
+    will_return(__wrap_time, now);
+
+    will_return(__wrap_time, now + 200);
+
+    will_return(__wrap_time, now);
+
+    // wm_task_manager_delete_old_entries
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8206): Running daily clean DB thread.");
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, timestamp);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    expect_value(__wrap_w_sleep_until, new_time, now + 200);
+
+    wm_task_manager_clean_db(config);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_task_manager_check_db
@@ -783,6 +1012,10 @@ int main(void) {
         cmocka_unit_test(test_wm_task_manager_set_timeout_status_timeout_prepare_err),
         cmocka_unit_test(test_wm_task_manager_set_timeout_status_prepare_err),
         cmocka_unit_test(test_wm_task_manager_set_timeout_status_open_err),
+        // wm_task_manager_clean_db
+        cmocka_unit_test_setup_teardown(test_wm_task_manager_clean_db, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_wm_task_manager_clean_db_timeout, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_wm_task_manager_clean_db_clean, setup_config, teardown_config),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
