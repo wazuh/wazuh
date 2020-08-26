@@ -5,7 +5,7 @@ var:
     default:
       - /var/ossec/logs/alerts/alerts.json
   - name: index_prefix
-    default: wazuh-alerts-3.x-
+    default: wazuh-alerts-4.x-
 
 input: config/alerts.yml
 

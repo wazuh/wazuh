@@ -20,7 +20,7 @@ from xml.etree.ElementTree import fromstring
 
 from wazuh.core import common
 from wazuh.core.database import Connection
-from wazuh.core.exception import WazuhError, WazuhException
+from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
 
 # Python 2/3 compatibility
@@ -54,19 +54,19 @@ def execute(command):
     except CalledProcessError as error:
         output = error.output
     except Exception as e:
-        raise WazuhException(1002, "{0}: {1}".format(command, e))  # Error executing command
+        raise WazuhInternalError(1002, "{0}: {1}".format(command, e))  # Error executing command
 
     try:
         output_json = json.loads(output)
     except Exception as e:
-        raise WazuhException(1003, command)  # Command output not in json
+        raise WazuhInternalError(1003, command)  # Command output not in json
 
     keys = output_json.keys()  # error and (data or message)
     if 'error' not in keys or ('data' not in keys and 'message' not in keys):
-        raise WazuhException(1004, command)  # Malformed command output
+        raise WazuhInternalError(1004, command)  # Malformed command output
 
     if output_json['error'] != 0:
-        raise WazuhException(output_json['error'], output_json['message'], True)
+        raise WazuhInternalError(output_json['error'], output_json['message'], True)
     else:
         return output_json['data']
 
@@ -89,6 +89,9 @@ def process_array(array, search_text=None, complementary_search=False, search_in
     :param required_fields: Required fields that must appear in the response
     :return: Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
     """
+    if not array:
+        return {'items': list(), 'totalItems': 0}
+
     if select:
         array = select_array(array, select=select, required_fields=required_fields)
 
@@ -130,9 +133,9 @@ def cut_array(array, offset=0, limit=common.database_limit):
     limit = int(limit)
 
     if offset < 0:
-        raise WazuhException(1400)
+        raise WazuhError(1400)
     elif limit < 1:
-        raise WazuhException(1401)
+        raise WazuhError(1401)
     else:
         return array[offset:offset + limit]
 
@@ -498,7 +501,7 @@ def _get_hashing_algorithm(hash_algorithm):
     # check hash algorithm
     algorithm_list = hashlib.algorithms_available
     if hash_algorithm not in algorithm_list:
-        raise WazuhException(1723, "Available algorithms are {0}.".format(', '.join(algorithm_list)))
+        raise WazuhError(1723, "Available algorithms are {0}.".format(', '.join(algorithm_list)))
 
     return hashlib.new(hash_algorithm)
 
@@ -718,7 +721,7 @@ def get_timeframe_in_seconds(timeframe):
     """
     if not timeframe.isdigit():
         if 'h' not in timeframe and 'd' not in timeframe and 'm' not in timeframe and 's' not in timeframe:
-            raise WazuhException(1411, timeframe)
+            raise WazuhError(1411, timeframe)
 
         regex, seconds = re.compile(r'(\d+)(\w)'), 0
         time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's': 1}
@@ -837,7 +840,7 @@ class SQLiteBackend(AbstractDatabaseBackend):
 
     def connect_to_db(self):
         if not glob.glob(self.db_path):
-            raise WazuhException(1600)
+            raise WazuhInternalError(1600)
         return Connection(self.db_path)
 
     def _get_data(self):
@@ -1036,7 +1039,7 @@ class WazuhDBQuery(object):
         :return: A list with processed query (self.fields)
         """
         if not self.query_regex.match(self.q):
-            raise WazuhException(1407, self.q)
+            raise WazuhError(1407, self.q)
 
         level = 0
         for open_level, field, operator, value, close_level, separator in self.query_regex.findall(self.q):
@@ -1168,7 +1171,7 @@ class WazuhDBQuery(object):
                                                                     date_filter['operator'], date_filter['field'])
             self.request[date_filter['field']] = date_filter['value']
         else:
-            raise WazuhException(1412, date_filter['value'])
+            raise WazuhError(1412, date_filter['value'])
 
     def run(self):
         """Builds the query and runs it on the database"""
@@ -1223,7 +1226,7 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
 
     def _add_select_to_query(self):
         if len(self.select) > 1:
-            raise WazuhException(1410)
+            raise WazuhError(1410)
 
         WazuhDBQuery._add_select_to_query(self)
 

@@ -343,18 +343,6 @@ start()
              else
                 continue
              fi
-             # If it is a worker node, don't try to start authd.
-             start_config="$(grep -n "<cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             end_config="$(grep -n "</cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
-                if [ $? != 0 ]; then
-                    sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<node_type>worker" >/dev/null 2>&1
-                    if [ $? = 0 ]; then
-                        continue
-                    fi
-                fi
-             fi
         fi
         if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','

@@ -8,11 +8,13 @@ get_users:
       affected_items:
         - id: 100
           username: administrator
+          allow_run_as: true
           roles:
             - 100
             - 101
         - id: 101
           username: normal
+          allow_run_as: false
           roles:
             - 104
             - 105
@@ -28,22 +30,26 @@ get_users:
       affected_items:
         - id: 100
           username: administrator
+          allow_run_as: true
           roles:
             - 100
             - 101
         - id: 101
           username: normal
+          allow_run_as: false
           roles:
             - 104
             - 105
             - 103
         - id: 102
           username: ossec
+          allow_run_as: false
           roles:
             - 101
             - 104
         - id: 103
           username: python
+          allow_run_as: false
           roles:
             - 101
       failed_items: {}
@@ -56,10 +62,12 @@ get_users:
       affected_items:
         - id: 103
           username: python
+          allow_run_as: false
           roles:
             - 101
         - id: 101
           username: normal
+          allow_run_as: false
           roles:
             - 104
             - 105
@@ -87,6 +95,7 @@ create_user:
       affected_items:
         - id: 106
           username: new_user
+          allow_run_as: false
           roles: []
       failed_items: {}
   - params:
@@ -114,6 +123,7 @@ update_user:
       affected_items:
         - id: 102
           username: ossec
+          allow_run_as: false
           roles:
             - 101
             - 104
@@ -145,11 +155,13 @@ remove_users:
       affected_items:
         - id: 102
           username: ossec
+          allow_run_as: false
           roles:
             - 101
             - 104
         - id: 103
           username: python
+          allow_run_as: false
           roles:
             - 101
       failed_items: {}
@@ -161,6 +173,7 @@ remove_users:
       affected_items:
         - id: 103
           username: python
+          allow_run_as: false
           roles:
             - 101
       failed_items:
@@ -176,12 +189,14 @@ remove_users:
       affected_items:
         - id: 101
           username: normal
+          allow_run_as: false
           roles:
             - 104
             - 105
             - 103
         - id: 103
           username: python
+          allow_run_as: false
           roles:
             - 101
       failed_items:
@@ -196,6 +211,7 @@ remove_users:
       affected_items:
         - id: 101
           username: normal
+          allow_run_as: false
           roles:
             - 104
             - 105

@@ -10,15 +10,12 @@ stages:
   - name: Add a role to the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
         name: "test_i"
-        rule:
-          MATCH:
-            definition: "normal_rule"
     response:
       status_code: 200
       json:
@@ -27,24 +24,19 @@ stages:
             - id: !anyint
               name: test_i
               policies: []
-              rule:
-                MATCH:
-                  definition: normal_rule
+              rules: []
           total_affected_items: 1
 
   # POST /security/roles
   - name: Add a role to the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
         name: "test_i1"
-        rule:
-          FIND:
-            definition: "normal_rule1"
     response:
       status_code: 200
       json:
@@ -53,16 +45,135 @@ stages:
             - id: !anyint
               name: test_i1
               policies: []
-              rule:
-                FIND:
-                  definition: normal_rule1
+              rules: []
           total_affected_items: 1
 
   # POST /security/roles
   - name: Add a role to the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_i2"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: !anyint
+              name: test_i2
+              policies: []
+              rules: []
+          total_affected_items: 1
+
+  # POST /security/roles
+  - name: Add an existent role (name) to the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_i"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4005
+              id:
+                - test_i
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # POST /security/roles
+  - name: Add an existent role to the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_i1"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4005
+              id:
+                - test_i1
+          total_affected_items: 0
+          total_failed_items: 1
+---
+test_name: POST /security/rules
+
+stages:
+
+  # POST /security/rules
+  - name: Add a rule to the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_i"
+        rule:
+          FIND$:
+            definition: "normal_rule"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: !anyint
+              name: test_i
+              rule:
+                FIND$:
+                  definition: "normal_rule"
+          total_affected_items: 1
+
+  # POST /security/rules
+  - name: Add a rule to the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_i1"
+        rule:
+          FIND$:
+            definition: "normal_rule1"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: !anyint
+              name: test_i1
+              rule:
+                FIND$:
+                  definition: "normal_rule1"
+          total_affected_items: 1
+
+  # POST /security/rules
+  - name: Add a rule to the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -78,67 +189,11 @@ stages:
           affected_items:
             - id: !anyint
               name: test_i2
-              policies: []
               rule:
                 FIND$:
-                  definition: normal_rule2
+                  definition: "normal_rule2"
           total_affected_items: 1
 
-  # POST /security/roles
-  - name: Add an existent role (name) to the system
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: POST
-      json:
-        name: "test_i"
-        rule:
-          definition1: "normal_rule1"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 4005
-                message: !anystr
-                remediation: !anything
-              id:
-                - test_i
-          total_affected_items: 0
-          total_failed_items: 1
-        message: !anystr
-
-  # POST /security/roles
-  - name: Add an existent role (rule) to the system
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: POST
-      json:
-        name: "test_i1"
-        rule:
-          definition: "normal_rule"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 4005
-                message: !anystr
-                remediation: !anything
-              id:
-                - test_i1
-          total_affected_items: 0
-          total_failed_items: 1
-        message: !anystr
 ---
 test_name: POST /security/policies
 
@@ -148,7 +203,7 @@ stages:
   - name: Add a policy to the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -186,7 +241,7 @@ stages:
   - name: Add a policy to the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -222,7 +277,7 @@ stages:
   - name: Add a policy to the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -258,7 +313,7 @@ stages:
   - name: Add an existent policy (name) to the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -280,19 +335,16 @@ stages:
           failed_items:
             - error:
                 code: 4009
-                message: !anystr
-                remediation: !anything
               id:
                 - test_i
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # POST /security/policies
   - name: Add an existent policy (policy) to the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -314,19 +366,16 @@ stages:
           failed_items:
             - error:
                 code: 4009
-                message: !anystr
-                remediation: !anything
               id:
                 - test_i1
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # POST /security/policies
   - name: Add an invalid policy to the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -348,19 +397,16 @@ stages:
           failed_items:
             - error:
                 code: 4006
-                message: !anystr
-                remediation: !anystr
               id:
                 - test_i1
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   # POST /security/policies
   - name: Add an invalid policy to the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -374,11 +420,6 @@ stages:
           effect: "allow"
     response:
       status_code: 400
-      json:
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
 ---
 test_name: POST /security/roles/{role_id}/policies/{policy_id}
 
@@ -388,7 +429,7 @@ stages:
   - name: Create link role-policy
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/103/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/103/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -405,7 +446,7 @@ stages:
   - name: Create link role-policy
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/100/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/100/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -422,7 +463,7 @@ stages:
   - name: Create link role-policy (non-existent role)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/999/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -436,8 +477,6 @@ stages:
           failed_items:
             - error:
                 code: !anyint
-                message: !anystr
-                remediation: !anything
               id:
                 - '999'
           total_affected_items: 0
@@ -447,7 +486,7 @@ stages:
   - name: Create link role-policy (non-existent policy)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/101/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/101/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -461,8 +500,6 @@ stages:
           failed_items:
             - error:
                 code: !anyint
-                message: !anystr
-                remediation: !anything
               id:
                 - '999'
                 - '10000'
@@ -473,7 +510,7 @@ stages:
   - name: Create link role-policy (Both non-existent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/999/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -485,23 +522,127 @@ stages:
         <<: *error
 
 ---
+test_name: POST /security/roles/{role_id}/rules
+
+stages:
+
+  # POST /security/roles/{role_id}/rules
+  - name: Create link role-rule
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/103/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        rule_ids: 105
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          total_affected_items: 1
+
+  # POST /security/roles/{role_id}/rules
+  - name: Create link role-rule
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/100/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        rule_ids: 105
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          total_affected_items: 1
+
+  # POST /security/roles/{non-existent role_id}/rules
+  - name: Create link role-rule (non-existent role)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        rule_ids: 104,105
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4002
+              id:
+                - '999'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # POST /security/roles/{role_id}/rules/
+  - name: Create link role-rule (non-existent rule)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/101/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        rule_ids: 999,10000
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4022
+              id:
+                - '999'
+                - '10000'
+          total_affected_items: 0
+          total_failed_items: 2
+
+  # POST /security/roles/{non-existent role_id}/rules
+  - name: Create link role-rule (Both non-existent)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        rule_ids: 999
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: !anyint
+              id:
+                - '999'
+          total_affected_items: 0
+          total_failed_items: 1
+
+---
 test_name: POST /security/user/{username}/roles/{role_id}
 
 stages:
   - name: Create a new user (empty body)
     request: &post_users_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
     response:
       status_code: 400
-      json: &error_spec
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
 
   - name: Create a new user (insecure password)
     request:
@@ -512,18 +653,17 @@ stages:
         password: "new_user"
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Create a new user (secure password)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       json:
         username: "new_user"
         password: "new_user1A!"
+        allow_run_as: true
       method: POST
     response:
       status_code: 200
@@ -535,6 +675,7 @@ stages:
       json:
         username: "new_user"
         password: "new_user1B!"
+        allow_run_as: false
     response:
       status_code: 200
       json:
@@ -543,13 +684,10 @@ stages:
           failed_items:
             - error:
                 code: 5000
-                message: !anystr
-                remediation: !anystr
               id:
                 - new_user
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
   - name: Create a new user (invalid parameters)
     request:
@@ -560,8 +698,6 @@ stages:
         pass: "new_user11A"
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Create a new user (extra parameter)
     request:
@@ -573,8 +709,6 @@ stages:
         pass: "extra"
     response:
       status_code: 400
-      json:
-        code: 5005
 
   - name: Create a new user (extra parameters)
     request:
@@ -593,8 +727,6 @@ stages:
         pass7: "extra"
     response:
       status_code: 400
-      json:
-        code: 5005
 
   - name: Create a new user (missing password parameter)
     request:
@@ -602,10 +734,9 @@ stages:
       <<: *post_users_request
       json:
         username: "new_user1"
+        allow_run_as: true
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Create a new user (missing username parameter)
     request:
@@ -615,8 +746,6 @@ stages:
         password: "new_user11A"
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Create a new user (invalid username parameter)
     request:
@@ -627,8 +756,6 @@ stages:
         username: 1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Create a new user (invalid password parameter)
     request:
@@ -639,13 +766,11 @@ stages:
         username: "new_user1"
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Create a new user (secure password)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       json:
@@ -659,7 +784,7 @@ stages:
   - name: Create link user-role
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/106/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/106/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -676,7 +801,7 @@ stages:
   - name: Create link user-role
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/107/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/107/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -693,7 +818,7 @@ stages:
   - name: Create link user-role (non-existent roles)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/107/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/107/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -707,8 +832,6 @@ stages:
           failed_items:
             - error:
                 code: 4002
-                message: !anystr
-                remediation: !anystr
               id:
                 - '498'
                 - '500'
@@ -719,7 +842,7 @@ stages:
   - name: Create link user-role (valid roles, already linked roles, non-existent roles)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/106/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/106/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -738,15 +861,11 @@ stages:
           failed_items:
             - error:
                 code: 4002
-                message: !anystr
-                remediation: !anystr
               id:
                 - '498'
                 - '500'
             - error:
                 code: 4017
-                message: !anystr
-                remediation: !anything
               id:
                 - '3'
           total_affected_items: 2

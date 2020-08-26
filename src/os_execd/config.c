@@ -304,6 +304,12 @@ cJSON *getClusterConfig(void) {
     os_calloc(OS_MAXSTR,sizeof(char),buffer);
 
     switch (length = OS_RecvSecureClusterTCP(sock, buffer, OS_MAXSTR), length) {
+    case -2:
+        merror("Cluster error detected");
+        free(buffer);
+        close(sock);
+        return NULL;
+                           
     case -1:
         merror("At wcom_main(): OS_RecvSecureClusterTCP(): %s", strerror(errno));
         free(buffer);

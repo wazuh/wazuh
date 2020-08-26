@@ -11,7 +11,7 @@ stages:
     request: &get_ciscat_results_001
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/001/results"
+      url: "{protocol:s}://{host:s}:{port:d}/ciscat/001/results"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -23,7 +23,6 @@ stages:
           failed_items: !anything
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
       # Save some data for future use in the test
       save:
         json:
@@ -62,7 +61,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/001/results?limit=1&search=a
   - name: Try to get ciscat results for agent 001 using limit and search parameter
@@ -80,7 +78,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/001/results?limit=1&profile={returned_profile}
   - name: Try to get ciscat results for agent 001 using profile filtering
@@ -99,7 +96,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/001/results?limit=1&score={returned_score}
   - name: Try to get ciscat results for agent 001 using score filtering
@@ -118,7 +114,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/001/results?limit=1&error={returned_error}
   - name: Try to get ciscat results for agent 001 using error filtering
@@ -137,7 +132,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/001/results?limit=1&fail={returned_fail}
   - name: Try to get ciscat results for agent 001 using fail filtering
@@ -156,7 +150,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/001/results?limit=1&pass={returned_pass}
   - name: Try to get ciscat results for agent 001 using pass filtering
@@ -175,7 +168,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/001/results?limit=1&benchmark={returned_benchmark}
   - name: Try to get ciscat results for agent 001 using benchmark filtering
@@ -194,7 +186,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/001/results?limit=1&notchecked={returned_notchecked}
   - name: Try to get ciscat results for agent 001 using notchecked filtering
@@ -213,7 +204,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/001/results?limit=1&unknown={returned_unknown}
   - name: Try to get ciscat results for agent 001 using unknown filtering
@@ -232,7 +222,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
   # GET /ciscat/001/results?q=benchmark~CIS;(pass>200,fail<100);score!=0
   - name: Filter data by query
@@ -261,7 +250,7 @@ stages:
     request: &get_ciscat_results_002
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/002/results"
+      url: "{protocol:s}://{host:s}:{port:d}/ciscat/002/results"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -273,7 +262,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
       # Save some data for future use in the test
       save:
         json:
@@ -312,7 +300,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/002/results?limit=1&search=a
   - name: Try to get ciscat results for agent 002 using limit and search parameter
@@ -330,7 +317,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/002/results?limit=1&profile={returned_profile}
   - name: Try to get ciscat results for agent 002 using profile filtering
@@ -349,7 +335,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/002/results?limit=1&score={returned_score}
   - name: Try to get ciscat results for agent 002 using score filtering
@@ -368,7 +353,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/002/results?limit=1&error={returned_error}
   - name: Try to get ciscat results for agent 002 using error filtering
@@ -387,7 +371,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/002/results?limit=1&fail={returned_fail}
   - name: Try to get ciscat results for agent 002 using fail filtering
@@ -406,7 +389,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/002/results?limit=1&pass={returned_pass}
   - name: Try to get ciscat results for agent 002 using pass filtering
@@ -425,7 +407,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/002/results?limit=1&benchmark={returned_benchmark}
   - name: Try to get ciscat results for agent 002 using benchmark filtering
@@ -444,7 +425,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/002/results?limit=1&notchecked={returned_notchecked}
   - name: Try to get ciscat results for agent 002 using notchecked filtering
@@ -463,7 +443,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/002/results?limit=1&unknown={returned_unknown}
   - name: Try to get ciscat results for agent 002 using unknown filtering
@@ -482,7 +461,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /ciscat/003/results
@@ -494,7 +472,7 @@ stages:
     request: &get_ciscat_results_003
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/003/results"
+      url: "{protocol:s}://{host:s}:{port:d}/ciscat/003/results"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -506,7 +484,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
       # Save some data for future use in the test
       save:
         json:
@@ -545,7 +522,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/003/results?limit=1&search=a
   - name: Try to get ciscat results for agent 003 using limit and search parameter
@@ -563,7 +539,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/003/results?limit=1&profile={returned_profile}
   - name: Try to get ciscat results for agent 003 using profile filtering
@@ -582,7 +557,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/003/results?limit=1&score={returned_score}
   - name: Try to get ciscat results for agent 003 using score filtering
@@ -601,7 +575,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/003/results?limit=1&error={returned_error}
   - name: Try to get ciscat results for agent 003 using error filtering
@@ -620,7 +593,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/003/results?limit=1&fail={returned_fail}
   - name: Try to get ciscat results for agent 003 using fail filtering
@@ -658,7 +630,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/003/results?limit=1&benchmark={returned_benchmark}
   - name: Try to get ciscat results for agent 003 using benchmark filtering
@@ -677,7 +648,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/003/results?limit=1&notchecked={returned_notchecked}
   - name: Try to get ciscat results for agent 003 using notchecked filtering
@@ -696,7 +666,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/003/results?limit=1&unknown={returned_unknown}
   - name: Try to get ciscat results for agent 003 using unknown filtering
@@ -715,7 +684,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
 ---
 # Another GET /ciscat/{agent_id}/results test to parametrize values for sort and select parameters
@@ -754,7 +722,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/001/results?limit=1&select={field}
   - name: Try to get ciscat results for agent 001 with a selected field answer
@@ -795,7 +762,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/002/results?limit=1&select={field}
   - name: Try to get ciscat results for agent 002 with a selected field answer
@@ -834,7 +800,6 @@ stages:
           total_affected_items: !anyint
           failed_items: !anything
           total_failed_items: 0
-        message: !anystr
 
     # GET /ciscat/003/results?limit=1&select={field}
   - name: Try to get ciscat results for agent 003 with a selected field answer

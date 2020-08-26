@@ -146,12 +146,12 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     fprintf(fp, "Current checksum:\n");
     fprintf(fp, "MD5  (%s) = %s\n", logfile, mf_sum);
-    fprintf(fp, "SHA1 (%s) = %s\n\n", logfile, sf_sum);
+    fprintf(fp, "SHA1 (%s) = %s\n", logfile, sf_sum);
     fprintf(fp, "SHA256 (%s) = %s\n\n", logfile, sf256_sum);
 
     fprintf(fp, "Chained checksum:\n");
     fprintf(fp, "MD5  (%s) = %s\n", logfilesum_old, mf_sum_old);
-    fprintf(fp, "SHA1 (%s) = %s\n\n", logfilesum_old, sf_sum_old);
+    fprintf(fp, "SHA1 (%s) = %s\n", logfilesum_old, sf_sum_old);
     fprintf(fp, "SHA256 (%s) = %s\n\n", logfilesum_old, sf256_sum_old);
     fclose(fp);
 

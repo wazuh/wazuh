@@ -168,11 +168,11 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
  *
  * @param fim_sql FIM database struct.
  * @param file_path File path.
- * @param entry Entry data to be inserted.
- * @param alert_type Type of alert: FIM_ADD or FIM_MODIFICATION.
+ * @param new Entry data to be inserted.
+ * @param saved Entry with existing data.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, int alert_type);
+int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *new, fim_entry_data *saved);
 
 /**
  * @brief Send sync message for all entries.

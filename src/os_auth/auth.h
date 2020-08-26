@@ -88,9 +88,6 @@ void* run_local_server(void *arg);
 // Append key to insertion queue
 void add_insert(const keyentry *entry,const char *group);
 
-// Append key to backup queue
-void add_backup(const keyentry *entry);
-
 // Append key to deletion queue
 void add_remove(const keyentry *entry);
 

@@ -17,14 +17,13 @@ from shutil import copyfile, rmtree
 from time import time, sleep
 
 import requests
-
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.database import Connection
-from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.ossec_queue import OssecQueue
-from wazuh.core.ossec_socket import OssecSocket, OssecSocketJSON
+from wazuh.core.wazuh_socket import OssecSocket, OssecSocketJSON
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, SQLiteBackend, WazuhDBBackend, safe_move
 
@@ -315,7 +314,7 @@ class Agent:
         try:
             data = db_query.run()['items'][0]
         except IndexError:
-            raise WazuhError(1701)
+            raise WazuhResourceNotFound(1701)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
@@ -357,7 +356,7 @@ class Agent:
         # Check if agent has active-response enabled
         agent_conf = self.getconfig('com', 'active-response')
         if agent_conf['active-response']['disabled'] == 'yes':
-            raise WazuhException(1750)
+            raise WazuhError(1750)
 
         return send_restart_command(self.id)
 
@@ -802,7 +801,7 @@ class Agent:
                 raise WazuhError(1703)
 
             if not Agent.group_exists(group_id):
-                raise WazuhError(1710)
+                raise WazuhResourceNotFound(1710)
 
         # Get agent's group
         group_path = path.join(common.groups_path, agent_id)
@@ -938,7 +937,7 @@ class Agent:
                 raise WazuhError(1703)
 
             if not Agent.group_exists(group_id):
-                raise WazuhError(1710)
+                raise WazuhResourceNotFound(1710)
 
         # Get agent's group
         group_name = Agent.get_agents_group_file(agent_id)

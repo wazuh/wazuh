@@ -25,6 +25,7 @@ from wazuh.cluster import get_node_wrapper, get_nodes_info
 from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
+from wazuh.core.wazuh_socket import wazuh_sendsync
 
 
 class DistributedAPI:
@@ -34,7 +35,7 @@ class DistributedAPI:
                  debug: bool = False, request_type: str = 'local_master', current_user: str = '',
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
-                 rbac_permissions: Dict = None, nodes: list = None, cluster_required: bool = False):
+                 rbac_permissions: Dict = None, nodes: list = None):
         """Class constructor.
 
         Parameters
@@ -67,8 +68,6 @@ class DistributedAPI:
             Default `None`, RBAC user's permissions
         nodes : list, optional
             Default `None`, list of system nodes
-        cluster_required : bool, optional
-            True when the cluster must be enabled. False otherwise. Default `False`
         current_user : str
             User who started the request
         """
@@ -88,7 +87,6 @@ class DistributedAPI:
         self.rbac_permissions = rbac_permissions if rbac_permissions is not None else {'rbac_mode': 'black'}
         self.current_user = current_user
         self.nodes = nodes if nodes is not None else list()
-        self.cluster_required = cluster_required
         if not basic_services:
             self.basic_services = ('wazuh-modulesd', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
             if common.install_type != "local":
@@ -112,18 +110,13 @@ class DistributedAPI:
         try:
             self.logger.debug("Receiving parameters {}".format(self.f_kwargs))
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
-            is_cluster_disabled = self.node == local_client and wazuh.core.cluster.cluster.check_cluster_status()
-
-            # If it is a cluster API request and the cluster is not enabled, raise an exception
-            if is_cluster_disabled and self.cluster_required:
-                raise exception.WazuhError(3013)
 
             # First case: execute the request locally.
             # If the distributed api is not enabled
             # If the cluster is disabled or the request type is local_any
             # if the request was made in the master node and the request type is local_master
             # if the request came forwarded from the master node and its type is distributed_master
-            if not is_dapi_enabled or is_cluster_disabled or self.request_type == 'local_any' or \
+            if not is_dapi_enabled or self.request_type == 'local_any' or \
                     (self.request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (self.request_type == 'distributed_master' and self.from_cluster):
 
@@ -236,12 +229,12 @@ class DistributedAPI:
             try:
                 data = await asyncio.wait_for(task, timeout=timeout)
             except asyncio.TimeoutError:
-                raise exception.WazuhException(3021)
+                raise exception.WazuhInternalError(3021)
 
             after = time.time()
             self.logger.debug("Time calculating request result: {}s".format(after - before))
             return data
-        except exception.WazuhError as e:
+        except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
             e.dapi_errors = self.get_error_info(e)
             if self.debug:
                 raise
@@ -423,11 +416,11 @@ class DistributedAPI:
         # get the node(s) who has all available information to answer the request.
         nodes = await self.get_solver_node()
         self.from_cluster = True
+        common.rbac.set(self.rbac_permissions)
+        common.cluster_nodes.set(self.nodes)
+        common.broadcast.set(self.broadcasting)
         if 'node_id' in self.f_kwargs or 'node_list' in self.f_kwargs:
             # Check cluster:read permissions for each node
-            common.rbac.set(self.rbac_permissions)
-            common.cluster_nodes.set(self.nodes)
-            common.broadcast.set(self.broadcasting)
             filter_node_kwarg = {'filter_node': list(nodes)} if nodes else {}
             allowed_nodes = await get_nodes_info(self.get_client(), **filter_node_kwarg)
 
@@ -439,7 +432,11 @@ class DistributedAPI:
                     valid_nodes.append(node)
             del self.f_kwargs['node_id' if 'node_id' in self.f_kwargs else 'node_list']
         else:
-            valid_nodes = list(nodes.items())
+            if nodes:
+                valid_nodes = list(nodes.items())
+            else:
+                broadcasted_nodes = await get_nodes_info(self.get_client())
+                valid_nodes = [(n['name'], []) for n in broadcasted_nodes.affected_items]
             allowed_nodes = wresults.AffectedItemsWazuhResult()
             allowed_nodes.affected_items = list(nodes)
             allowed_nodes.total_affected_items = len(allowed_nodes.affected_items)
@@ -542,18 +539,35 @@ class DistributedAPI:
             return node_name
 
 
-class APIRequestQueue:
+class WazuhRequestQueue:
+    """Represents a queue of Wazuh requests"""
+    def __init__(self, server):
+        self.request_queue = asyncio.Queue()
+        self.server = server
+        self.pending_requests = {}
+
+    def add_request(self, request: bytes):
+        """Add a request to the queue.
+
+        Parameters
+        ----------
+        request : bytes
+            Request to add.
+        """
+        self.logger.debug("Received request: {}".format(request))
+        self.request_queue.put_nowait(request.decode())
+
+
+class APIRequestQueue(WazuhRequestQueue):
     """
     Represents a queue of API requests. This thread will be always in background, it will remain blocked until a
     request is pushed into its request_queue. Then, it will answer the request and get blocked again.
     """
 
     def __init__(self, server):
-        self.request_queue = asyncio.Queue()
-        self.server = server
+        super().__init__(server)
         self.logger = logging.getLogger('wazuh').getChild('dapi')
         self.logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag='Cluster', subtag='D API'))
-        self.pending_requests = {}
 
     async def run(self):
         while True:
@@ -589,13 +603,42 @@ class APIRequestQueue:
             else:
                 self.logger.error(result.message)
 
-    def add_request(self, request: bytes):
-        """Add a request to the queue.
 
-        Parameters
-        ----------
-        request : bytes
-            Request to add.
-        """
-        self.logger.debug("Received request: {}".format(request))
-        self.request_queue.put_nowait(request.decode())
+class SendSyncRequestQueue(WazuhRequestQueue):
+    """
+    Represents a queue of SSync requests. This thread will be always in background, it will remain blocked until a
+    request is pushed into its request_queue. Then, it will answer the request and get blocked again.
+    """
+
+    def __init__(self, server):
+        super().__init__(server)
+        self.logger = logging.getLogger('wazuh').getChild('sendsync')
+        self.logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag='Cluster', subtag='SendSync'))
+
+    async def run(self):
+        while True:
+            names, request = (await self.request_queue.get()).split(' ', 1)
+            names = names.split('*', 1)
+            # name    -> node name the request must be sent to. None if called from a worker node.
+            # id      -> id of the request.
+            # request -> JSON containing request's necessary information
+            name_2 = '' if len(names) == 1 else names[1] + ' '
+
+            node = self.server.clients[names[0]]
+            try:
+                request = json.loads(request, object_hook=c_common.as_wazuh_object)
+                self.logger.info("Receiving SendSync request ({}) from {} ({})".format(
+                    request['daemon_name'], names[0], names[1]))
+                result = await wazuh_sendsync(**request)
+                task_id = await node.send_string(json.dumps(result, cls=c_common.WazuhJSONEncoder).encode())
+            except Exception as e:
+                self.logger.error("Error in SendSync: {}".format(e), exc_info=True)
+                task_id = b'Error in SendSync: ' + str(e).encode()
+
+            if task_id.startswith(b'Error'):
+                self.logger.error(task_id.decode())
+                result = await node.send_request(b'sendsync_err', name_2.encode() + task_id)
+            else:
+                result = await node.send_request(b'sendsync_res', name_2.encode() + task_id)
+            if isinstance(result, WazuhException):
+                self.logger.error(result.message)

@@ -9,10 +9,12 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: all
     response:
       status_code: 200
       json:
@@ -34,12 +36,11 @@ stages:
           failed_items: []
           total_affected_items: 13
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -57,7 +58,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/ciscat/results
@@ -67,7 +67,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/ciscat/results"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -99,12 +99,11 @@ stages:
           failed_items: []
           total_affected_items: 8
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/ciscat/results"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -122,7 +121,6 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/hardware
@@ -132,7 +130,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hardware"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -166,12 +164,11 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hardware"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -193,7 +190,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netaddr
@@ -203,7 +199,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netaddr"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -231,12 +227,11 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netaddr"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -258,7 +253,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netiface
@@ -268,7 +262,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netiface"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -307,12 +301,11 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netiface"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -334,7 +327,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netproto
@@ -344,7 +336,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netproto"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -371,12 +363,11 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netproto"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -398,7 +389,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/os
@@ -408,7 +398,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/os"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -444,12 +434,11 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/os"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -471,7 +460,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/packages
@@ -481,7 +469,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/packages"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages?wait_for_complete=true"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -493,12 +481,11 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/packages"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -512,7 +499,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/ports
@@ -522,7 +508,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/ports"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -561,12 +547,11 @@ stages:
           failed_items: []
           total_affected_items: 12
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/ports"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -588,7 +573,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/processes
@@ -598,7 +582,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/processes"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -610,12 +594,11 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/processes"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -629,7 +612,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/hotfixes
@@ -639,7 +621,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hotfixes"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hotfixes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -651,12 +633,11 @@ stages:
           failed_items: []
           total_affected_items: 1 # Only the agent 000 will have results
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hotfixes"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hotfixes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -670,4 +651,3 @@ stages:
           failed_items: []
           total_affected_items: 1 # Only the agent 000 will have results
           total_failed_items: 0
-        message: !anystr
