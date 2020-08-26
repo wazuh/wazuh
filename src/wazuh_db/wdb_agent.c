@@ -399,7 +399,7 @@ char* wdb_get_agent_name(int id) {
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
-        merror("Error querying Wazuh DB to get the agent name.");
+        merror("Error querying Wazuh DB to get the agent's %d name.", id);
         return NULL;
     }
 

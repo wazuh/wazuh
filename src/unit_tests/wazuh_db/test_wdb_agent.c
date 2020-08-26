@@ -78,26 +78,59 @@ char *__wrap_strerror (int __errnum) {
     return mock_type(char*);
 }
 
+extern cJSON * __real_cJSON_CreateObject(void);
 cJSON * __wrap_cJSON_CreateObject(void) {
     return mock_type(cJSON *);
 }
 
+extern cJSON * __real_cJSON_CreateArray(void);
+cJSON * __wrap_cJSON_CreateArray(void) {
+    return mock_type(cJSON *);
+}
+
+extern cJSON * __real_cJSON_CreateString(const char *string);
+cJSON * __wrap_cJSON_CreateString(const char *string) {
+    check_expected(string);
+    return mock_type(cJSON *);
+}
+
+extern void __real_cJSON_AddItemToObject(cJSON *object, const char *string, cJSON *item);
+void __wrap_cJSON_AddItemToObject(cJSON *object, const char *string, cJSON *item) {
+    check_expected(string);
+    return;
+}
+
+extern void __real_cJSON_AddItemToArray(cJSON *array, cJSON *item);
+void __wrap_cJSON_AddItemToArray(cJSON *array, cJSON *item) {
+    return;
+}
+
+extern cJSON * __real_cJSON_AddNumberToObject(cJSON * const object, const char * const name, const double number);
 cJSON * __wrap_cJSON_AddNumberToObject(cJSON * const object, const char * const name, const double number) {
     check_expected(name);
     check_expected(number);
     return mock_type(cJSON *);
 }
 
+extern cJSON* __real_cJSON_AddStringToObject(cJSON * const object, const char * const name, const char * const string);
 cJSON* __wrap_cJSON_AddStringToObject(cJSON * const object, const char * const name, const char * const string) {
     check_expected(name);
     check_expected(string);
     return mock_type(cJSON *);
 }
 
+extern char* __real_cJSON_PrintUnformatted(const cJSON *item);
 char* __wrap_cJSON_PrintUnformatted(const cJSON *item) {
     return mock_type(char *);
 }
 
+extern cJSON* __real_cJSON_GetObjectItem(const cJSON * const object, const char * const string);
+cJSON* __wrap_cJSON_GetObjectItem(const cJSON * const object, const char * const string) {
+    check_expected(string);
+    return mock_type(cJSON *);
+}
+
+extern void __real_cJSON_Delete(cJSON *item);
 void __wrap_cJSON_Delete(cJSON *item) {
     function_called();
     return;
@@ -1714,6 +1747,62 @@ void test_wdb_delete_agent_belongs_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
+/* Tests wdb_get_agent_name */
+
+void test_wdb_get_agent_name_error_no_json_response(void **state) {
+    int id = 1;
+    char *name = NULL;
+
+    const char *query_str = "global select-agent-name 1";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent's 1 name.");
+
+    name = wdb_get_agent_name(id);
+
+    assert_null(name);
+}
+
+void test_wdb_get_agent_name_success(void **state) {
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+    cJSON *str = NULL;
+    int id = 1;
+    char *name = NULL;
+
+    const char *query_str = "global select-agent-name 1";
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    str = __real_cJSON_CreateString("agent1");
+    __real_cJSON_AddItemToObject(row, "name", str);
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "name");
+    will_return(__wrap_cJSON_GetObjectItem, str);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    name = wdb_get_agent_name(id);
+
+    assert_string_equal("agent1", name);
+
+    __real_cJSON_Delete(root);
+    os_free(name);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -1765,6 +1854,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_error_result, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_get_agent_name */
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_success, setup_wdb_agent, teardown_wdb_agent),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
