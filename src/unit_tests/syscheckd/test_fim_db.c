@@ -1113,6 +1113,9 @@ void test_fim_db_insert_inode_id_nonull(void **state) {
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
 
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 1);
+
     // Inside fim_db_clean_stmt
     {
         will_return(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1178,6 +1181,9 @@ void test_fim_db_insert_inode_id_null(void **state) {
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 0);
 
     // Inside fim_db_clean_stmt
     {

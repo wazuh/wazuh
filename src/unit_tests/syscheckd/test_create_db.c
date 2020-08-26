@@ -261,11 +261,20 @@ int __wrap_fim_db_set_scanned(fdb_t *fim_sql, char *path) {
     return mock();
 }
 
-char *__wrap_get_user(const char *path, int uid, char **sid) {
+#ifndef TEST_WINAGENT
+char *__wrap_get_user(int uid) {
     check_expected(uid);
 
     return mock_type(char*);
 }
+#else
+char *__wrap_get_user(const char *path, char **sid) {
+    check_expected(path);
+    *sid = mock_type(char*);
+
+    return mock_type(char*);
+}
+#endif
 
 const char *__wrap_get_group(int gid) {
     check_expected(gid);
@@ -1403,13 +1412,17 @@ static void test_fim_file_add(void **state) {
     fim_data->item->configuration |= CHECK_SEECHANGES;
 
     // Inside fim_get_data
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
     #else
+    will_return(__wrap_get_user, "0");
+    will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "file");
+
     expect_string(__wrap_w_get_file_permissions, file_path, "file");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
@@ -1498,13 +1511,17 @@ static void test_fim_file_modify(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     // Inside fim_get_data
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
     #else
+    will_return(__wrap_get_user, "0");
+    will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "file");
+
     expect_string(__wrap_w_get_file_permissions, file_path, "file");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
@@ -1557,13 +1574,17 @@ static void test_fim_file_no_attributes(void **state) {
     fim_data->item->index = 1;
 
     // Inside fim_get_data
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
     #else
+    will_return(__wrap_get_user, "0");
+    will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "file");
+
     expect_string(__wrap_w_get_file_permissions, file_path, "file");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
@@ -1627,13 +1648,17 @@ static void test_fim_file_error_on_insert(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     // Inside fim_get_data
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
     #else
+    will_return(__wrap_get_user, "0");
+    will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "file");
+
     expect_string(__wrap_w_get_file_permissions, file_path, "file");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
@@ -1857,12 +1882,10 @@ static void test_fim_checker_fim_regular(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
-    #endif
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
@@ -1903,12 +1926,10 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
-    #endif
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
@@ -2072,12 +2093,10 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
-    #endif
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/test.file");
@@ -2566,8 +2585,9 @@ static void test_fim_checker_fim_regular(void **state) {
     will_return(__wrap_HasFilesystem, 0);
 
     // Inside fim_file
-    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, expanded_path);
 
     expect_string(__wrap_w_get_file_permissions, file_path, expanded_path);
     will_return(__wrap_w_get_file_permissions, "permissions");
@@ -2681,8 +2701,9 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     will_return(__wrap_HasFilesystem, 0);
 
     // Inside fim_file
-    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, expanded_path);
 
     expect_string(__wrap_w_get_file_permissions, file_path, expanded_path);
     will_return(__wrap_w_get_file_permissions, "permissions");
@@ -2778,8 +2799,9 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     fim_data->item->mode = FIM_REALTIME;
 
     // Inside fim_file
-    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "c:\\test.file");
 
     expect_string(__wrap_w_get_file_permissions, file_path, "c:\\test.file");
     will_return(__wrap_w_get_file_permissions, "permissions");
@@ -3570,13 +3592,17 @@ static void test_fim_get_data(void **state) {
                                     CHECK_SHA1SUM |
                                     CHECK_SHA256SUM;
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
     #else
+    will_return(__wrap_get_user, "0");
+    will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "test");
+
     expect_string(__wrap_w_get_file_permissions, file_path, "test");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
@@ -3630,13 +3656,17 @@ static void test_fim_get_data_no_hashes(void **state) {
                                     CHECK_OWNER |
                                     CHECK_GROUP;
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
     #else
+    will_return(__wrap_get_user, "0");
+    will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "test");
+
     expect_string(__wrap_w_get_file_permissions, file_path, "test");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
@@ -3670,13 +3700,17 @@ static void test_fim_get_data_hash_error(void **state) {
     buf.st_gid = 0;
     fim_data->item->statbuf = buf;
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
     #else
+    will_return(__wrap_get_user, "0");
+    will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "test");
+
     expect_string(__wrap_w_get_file_permissions, file_path, "test");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
