@@ -931,23 +931,21 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
 #ifndef WIN32
     char** paths = NULL;
 
-    if (new_data) {
-        if (paths = fim_db_get_paths_from_inode(syscheck.database, new_data->inode, new_data->dev), paths){
-            if (paths[0] && paths[1]) {
-                cJSON *hard_links = cJSON_CreateArray();
-                int i;
-                for(i = 0; paths[i]; i++) {
-                    if(strcmp(file_name, paths[i])) {
-                        cJSON_AddItemToArray(hard_links, cJSON_CreateString(paths[i]));
-                    }
-                    os_free(paths[i]);
+    if (paths = fim_db_get_paths_from_inode(syscheck.database, new_data->inode, new_data->dev), paths){
+        if (paths[0] && paths[1]) {
+            cJSON *hard_links = cJSON_CreateArray();
+            int i;
+            for(i = 0; paths[i]; i++) {
+                if(strcmp(file_name, paths[i])) {
+                    cJSON_AddItemToArray(hard_links, cJSON_CreateString(paths[i]));
                 }
-                cJSON_AddItemToObject(data, "hard_links", hard_links);
-            } else {
-                os_free(paths[0]);
+                os_free(paths[i]);
             }
-            os_free(paths);
+            cJSON_AddItemToObject(data, "hard_links", hard_links);
+        } else {
+            os_free(paths[0]);
         }
+        os_free(paths);
     }
 #endif
 
