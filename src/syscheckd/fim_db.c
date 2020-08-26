@@ -887,6 +887,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *new, fi
         sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT]);
 
         res = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT], 0);
+        inode_id = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT], 1);
         if (res == 1) {
             // The inode has only one entry, delete the entry data.
             fim_db_clean_stmt(fim_sql, FIMDB_STMT_DELETE_DATA);
