@@ -154,7 +154,7 @@ OSHashNode* wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNode *curr
  *       "task_id": {{tid2}}
  *  }]
  * */
-cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object);
+cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) __attribute__((nonnull));
 
 /**
  * Send a request to the task module and executes a callback for all the given responses
@@ -167,7 +167,7 @@ cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object);
  * @retval OS_INVALID on errors
  * 
  * */
-int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request, cJSON* (*success_callback)(int *error, cJSON* input_json), void (*error_callback)(int agent_id));
+int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request, cJSON* (*success_callback)(int *error, cJSON* input_json), void (*error_callback)(int agent_id)) __attribute__((nonnull(1,2)));
 
 /**
  * Callback defined for upgrade command to process task manager information reponse
