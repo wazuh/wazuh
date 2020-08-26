@@ -100,12 +100,13 @@ def test_validate_upgrade(response):
            or response.json().get('code', None) == 1718
     if response.json().get('message', None) == "Upgrade procedure started":
         time.sleep(45)
-        return Box({"upgraded": True})
+        return Box({"upgraded": 1})
     else:
-        return Box({"upgraded": False})
+        return Box({"upgraded": 0})
 
 
 def test_validate_upgrade_result(response, upgraded):
+    upgraded = int(upgraded, 10)
     if upgraded == 1:
         assert response.json().get('message', None) == "Agent upgraded successfully"
     else:
