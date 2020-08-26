@@ -93,7 +93,7 @@ def optimize_resources(auth_context=None, user_id=None):
     :param user_id: Username of the current user
     """
     # For production
-    rbac = RBAChecker(auth_context=auth_context)
+    rbac = RBAChecker(auth_context=auth_context, user_id=user_id)
     # Authorization Context method
     if auth_context:
         policies = rbac.run_auth_context()
@@ -110,8 +110,7 @@ def optimize_resources(auth_context=None, user_id=None):
 
 def get_permissions(user_id=None, auth_context=None):
     with AuthenticationManager() as auth:
-        if auth.user_auth_context(user_id):
-            # Add dummy rbac_policies for developing here
-            return WazuhResult(optimize_resources(auth_context=auth_context))
+        if auth.user_allow_run_as(user_id):
+            return WazuhResult(optimize_resources(auth_context=auth_context, user_id=user_id))
 
     return WazuhResult(optimize_resources(user_id=user_id))

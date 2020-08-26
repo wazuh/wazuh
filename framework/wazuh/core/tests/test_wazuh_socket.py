@@ -134,17 +134,20 @@ def test_OssecSocketJSON_send(mock_send, mock_conn):
     mock_conn.assert_called_once_with('test_path')
 
 
+@pytest.mark.parametrize('raw', [
+    True, False
+])
 @patch('wazuh.core.wazuh_socket.socket.socket.connect')
 @patch('wazuh.core.wazuh_socket.OssecSocket.receive')
 @patch('wazuh.core.wazuh_socket.loads', return_value={'error':0, 'message':None, 'data':'Ok'})
-def test_OssecSocketJSON_receive(mock_loads, mock_receive, mock_conn):
+def test_OssecSocketJSON_receive(mock_loads, mock_receive, mock_conn, raw):
     """Tests OssecSocketJSON.receive function works"""
-
     queue = OssecSocketJSON('test_path')
-
-    response = queue.receive()
-
-    assert isinstance(response, str)
+    response = queue.receive(raw=raw)
+    if raw:
+        assert isinstance(response, dict)
+    else:
+        assert isinstance(response, str)
     mock_conn.assert_called_once_with('test_path')
 
 

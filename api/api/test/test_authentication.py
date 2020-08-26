@@ -25,7 +25,7 @@ test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
 
 security_conf = WazuhResult({
-    'auth_token_exp_timeout': 36000,
+    'auth_token_exp_timeout': 3600,
     'rbac_mode': 'black'
 })
 payload = {
@@ -131,9 +131,6 @@ def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function
 def test_check_token(mock_tokenmanager):
     result = authentication.check_token('wazuh_user', 3600)
     assert result == {'valid': ANY}
-
-    mock_tokenmanager.return_value.__enter__().is_token_valid.assert_called_once_with(username='wazuh_user',
-                                                                                      token_nbf_time=3600)
 
 
 @patch('api.authentication.jwt.decode')

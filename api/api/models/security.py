@@ -7,19 +7,22 @@ from api.models.base_model_ import Body
 
 class CreateUserModel(Body):
     """Create_user model."""
-    def __init__(self, username: str = None, password: str = None):
+    def __init__(self, username: str = None, password: str = None, allow_run_as: bool = None):
         self.swagger_types = {
             'username': str,
             'password': str,
+            'allow_run_as': bool
         }
 
         self.attribute_map = {
             'username': 'username',
-            'password': 'password'
+            'password': 'password',
+            'allow_run_as': 'allow_run_as'
         }
 
         self._username = username
         self._password = password
+        self._allow_run_as = allow_run_as
 
     @property
     def username(self):
@@ -36,6 +39,14 @@ class CreateUserModel(Body):
     @password.setter
     def password(self, passw):
         self._password = passw
+
+    @property
+    def allow_run_as(self):
+        return self._allow_run_as
+
+    @allow_run_as.setter
+    def allow_run_as(self, allow_run_as):
+        self._allow_run_as = allow_run_as
 
 
 class UpdateUserModel(CreateUserModel):
