@@ -317,7 +317,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
         if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
             id_exist = keys.keyentries[index]->id;
             minfo("Duplicated ID '%s' (%s). Saving backup.", id, id_exist);
-            add_backup(keys.keyentries[index]);
+            add_remove(keys.keyentries[index]);
             OS_DeleteKey(&keys, id_exist, 0);
         } else {
             ierror = EDUPID;
@@ -332,7 +332,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
             if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
                 id_exist = keys.keyentries[index]->id;
                 minfo("Duplicated IP '%s' (%s). Saving backup.", ip, id_exist);
-                add_backup(keys.keyentries[index]);
+                add_remove(keys.keyentries[index]);
                 OS_DeleteKey(&keys, id_exist, 0);
             } else {
                 ierror = EDUPIP;
@@ -354,7 +354,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
         if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
             id_exist = keys.keyentries[index]->id;
             minfo("Duplicated name '%s' (%s). Saving backup.", name, id_exist);
-            add_backup(keys.keyentries[index]);
+            add_remove(keys.keyentries[index]);
             OS_DeleteKey(&keys, id_exist, 0);
         } else {
             ierror = EDUPNAME;

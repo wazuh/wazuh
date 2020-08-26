@@ -132,9 +132,6 @@ def test_check_token(mock_tokenmanager):
     result = authentication.check_token('wazuh_user', 3600)
     assert result == {'valid': ANY}
 
-    mock_tokenmanager.return_value.__enter__().is_token_valid.assert_called_once_with(username='wazuh_user',
-                                                                                      token_nbf_time=3600)
-
 
 @patch('api.authentication.jwt.decode')
 @patch('api.authentication.generate_secret', return_value='test_secret_token')

@@ -30,7 +30,7 @@ class InstallCommand(install):
 
     def run(self):
         here = os.path.abspath(os.path.dirname(__file__))
-        with open(os.path.join(here, 'wazuh', 'wazuh.json'), 'w') as f:
+        with open(os.path.join(here, 'wazuh', 'core', 'wazuh.json'), 'w') as f:
             json.dump({'install_type': self.install_type,
                        'wazuh_version': self.wazuh_version,
                        'installation_date': datetime.utcnow().strftime('%a %b %d %H:%M:%S UTC %Y')
@@ -47,7 +47,7 @@ setup(name='wazuh',
       author_email='hello@wazuh.com',
       license='GPLv2',
       packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
-      package_data={'wazuh': ['wazuh.json', 'core/cluster/cluster.json', 'rbac/default/*.yaml']},
+      package_data={'wazuh': ['core/wazuh.json', 'core/cluster/cluster.json', 'rbac/default/*.yaml']},
       include_package_data=True,
       install_requires=[],
       zip_safe=False,

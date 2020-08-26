@@ -355,7 +355,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     os_free(diff);
 
     if (json_event) {
-        if (result = fim_db_insert(syscheck.database, file, new, alert_type), result < 0) {
+        if (result = fim_db_insert(syscheck.database, file, new, saved ? saved->data : NULL), result < 0) {
             free_entry_data(new);
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -503,7 +503,7 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
 
     if ((saved && data && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
-        if (result = fim_db_insert(syscheck.database, key, data, alert_type), result < 0) {
+        if (result = fim_db_insert(syscheck.database, key, data, saved ? saved->data : NULL), result < 0) {
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
 
@@ -929,11 +929,11 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
     cJSON_AddNumberToObject(data, "timestamp", new_data->last_event);
 
 #ifndef WIN32
-    if (old_data != NULL) {
-        char** paths = NULL;
+    char** paths = NULL;
 
-        if(paths = fim_db_get_paths_from_inode(syscheck.database, old_data->inode, old_data->dev), paths){
-            if(paths[0] && paths[1]){
+    if (new_data) {
+        if (paths = fim_db_get_paths_from_inode(syscheck.database, new_data->inode, new_data->dev), paths){
+            if (paths[0] && paths[1]) {
                 cJSON *hard_links = cJSON_CreateArray();
                 int i;
                 for(i = 0; paths[i]; i++) {
@@ -949,7 +949,6 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
             os_free(paths);
         }
     }
-
 #endif
 
     cJSON_AddItemToObject(data, "attributes", fim_attributes_json(new_data));

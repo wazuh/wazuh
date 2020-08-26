@@ -63,7 +63,7 @@ def check_relationships(roles: list = None):
     if roles:
         for role in roles:
             with RolesManager() as rm:
-                users_affected.update(set(rm.get_role_id(role['id'])['users']))
+                users_affected.update(set(rm.get_role_id(role)['users']))
 
     return users_affected
 

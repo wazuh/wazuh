@@ -76,11 +76,11 @@ parse_evaluator parse_values_default_cfg []={
     { "OSSEC PASS: pass123 OSSEC A:'agent5'", "192.0.0.1", "pass123",   {"192.0.0.1", "agent5", NULL},              {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent6' IP:'192.0.0.2'", "192.0.0.1", NULL,             {"192.0.0.2", "agent6", NULL},              {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent6) from: 192.0.0.1", NULL} },
 
-    { "OSSEC A:'agent0'", "192.0.0.1", "pass123",                       {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password\n\n"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
-    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", "pass123",   {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password\n\n"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
-    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", NULL,        {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid request for new agent\n\n"}, {"Invalid request for new agent from: 192.0.0.1", NULL, NULL, NULL} },
-    { "OSSEC A:''", "192.0.0.1", NULL,                                  {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: \n\n"},          {"Invalid agent name:  from 192.0.0.1", NULL, "Received request for a new agent () from: 192.0.0.1", NULL} },
-    { "OSSEC A:'inv;agent'", "192.0.0.1", NULL,                         {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: inv;agent\n\n"}, {"Invalid agent name: inv;agent from 192.0.0.1", NULL, "Received request for a new agent (inv;agent) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent0'", "192.0.0.1", "pass123",                       {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
+    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", "pass123",   {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
+    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", NULL,        {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid request for new agent"}, {"Invalid request for new agent from: 192.0.0.1", NULL, NULL, NULL} },
+    { "OSSEC A:''", "192.0.0.1", NULL,                                  {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: "},          {"Invalid agent name:  from 192.0.0.1", NULL, "Received request for a new agent () from: 192.0.0.1", NULL} },
+    { "OSSEC A:'inv;agent'", "192.0.0.1", NULL,                         {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: inv;agent"}, {"Invalid agent name: inv;agent from 192.0.0.1", NULL, "Received request for a new agent (inv;agent) from: 192.0.0.1", NULL} },
     
     {0}
 };

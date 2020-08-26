@@ -343,7 +343,7 @@ void test_w_enrollment_verify_ca_certificate_null_connection(void **state) {
 
 void test_w_enrollment_verify_ca_certificate_no_certificate(void **state) {
     SSL *ssl = *state;
-    expect_string(__wrap__minfo, formatted_msg, "Registering agent to unverified manager.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Registering agent to unverified manager");
     w_enrollment_verify_ca_certificate(ssl, NULL, "hostname");
 }
 
@@ -355,7 +355,7 @@ void test_verificy_ca_certificate_invalid_certificate(void **state) {
     will_return(__wrap_check_x509_cert, VERIFY_FALSE);
 
     expect_string(__wrap__minfo, formatted_msg, "Verifying manager's certificate");
-    expect_string(__wrap__merror, formatted_msg, "Unable to verify server certificate.");
+    expect_string(__wrap__merror, formatted_msg, "Unable to verify server certificate");
     w_enrollment_verify_ca_certificate(ssl, "BAD_CERTIFICATE", "hostname");
 }
 
@@ -498,7 +498,7 @@ void test_w_enrollment_connect_success(void **state) {
     will_return(__wrap_SSL_new, cfg->ssl);
     will_return(__wrap_SSL_connect, 1);
 
-    expect_string(__wrap__minfo, formatted_msg, "Connected to 127.0.0.1:1234");
+    expect_string(__wrap__mdebug1, formatted_msg, "Connected to 127.0.0.1:1234");
 
     // verify_ca_certificate
     expect_value(__wrap_check_x509_cert, ssl, cfg->ssl);
@@ -588,7 +588,7 @@ void test_w_enrollment_send_message_success(void **state) {
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
     expect_string(__wrap_SSL_write, buf, "OSSEC PASS: test_password OSSEC A:'test_agent' G:'test_group' IP:'192.168.1.1'\n");
     will_return(__wrap_SSL_write, 0);
-    expect_string(__wrap__minfo, formatted_msg,"Request sent to manager");
+    expect_string(__wrap__mdebug1, formatted_msg,"Request sent to manager");
     int ret = w_enrollment_send_message(cfg);
     assert_int_equal(ret, 0);
 }
@@ -663,17 +663,17 @@ void test_w_enrollment_process_agent_key_invalid_format(void **state) {
 }
 
 void test_w_enrollment_process_agent_key_invalid_key(void **state) {
-    char key[] = "OSSEC K:'006 ubuntu1610 NOT_AN_IP 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'\n\n";
+    char key[] = "OSSEC K:'006 ubuntu1610 NOT_AN_IP 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
     expect_string(__wrap_OS_IsValidIP, ip_address, "NOT_AN_IP");
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 0);
-    expect_string(__wrap__merror, formatted_msg, "One of the received key parameters does not have a valid format.");
+    expect_string(__wrap__merror, formatted_msg, "One of the received key parameters does not have a valid format");
     int ret = w_enrollment_process_agent_key(key);
     assert_int_equal(ret,-1);
 }
 
 void test_w_enrollment_process_agent_key_valid_key(void **state) {
-    char key[] = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'\n\n";
+    char key[] = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
     expect_string(__wrap_OS_IsValidIP, ip_address, "192.168.1.1");
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
@@ -699,7 +699,7 @@ void test_w_enrollment_process_agent_key_valid_key(void **state) {
     expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
     will_return(__wrap_OS_MoveFile, 0);
 #endif
-    expect_string(__wrap__minfo, formatted_msg, "Valid key created. Finished.");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     int ret = w_enrollment_process_agent_key(key);
     assert_int_equal(ret,0);
 }
@@ -711,8 +711,7 @@ void test_w_enrollment_process_response_ssl_null(void **state) {
 
 void test_w_enrollment_process_response_ssl_error(void **state) {
      SSL *ssl = *state;
-    expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
-
+    expect_string(__wrap__minfo, formatted_msg, "Waiting for server reply");
     expect_value(__wrap_SSL_read, ssl, ssl);
     expect_any(__wrap_SSL_read, buf);
     expect_any(__wrap_SSL_read, num);
@@ -731,16 +730,16 @@ void test_w_enrollment_process_response_ssl_error(void **state) {
 
 void test_w_enrollment_process_response_message_error(void **state) {
     SSL *ssl = *state;
-    expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
+    expect_string(__wrap__minfo, formatted_msg, "Waiting for server reply");
 
     expect_value(__wrap_SSL_read, ssl, ssl);
     expect_any(__wrap_SSL_read, buf);
     expect_any(__wrap_SSL_read, num);
 
-    will_return(__wrap_SSL_read, "ERROR: Unable to add agent.\n\n");
-    will_return(__wrap_SSL_read, strlen("ERROR: Unable to add agent.\n\n"));
+    will_return(__wrap_SSL_read, "ERROR: Unable to add agent.");
+    will_return(__wrap_SSL_read, strlen("ERROR: Unable to add agent."));
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to add agent.\n\n (from manager)");
+    expect_string(__wrap__merror, formatted_msg, "Unable to add agent. (from manager)");
 
     expect_value(__wrap_SSL_read, ssl, ssl);
     expect_any(__wrap_SSL_read, buf);
@@ -751,24 +750,22 @@ void test_w_enrollment_process_response_message_error(void **state) {
     expect_value(__wrap_SSL_get_error, i, 0);
     will_return(__wrap_SSL_get_error, SSL_ERROR_NONE);
 
-    expect_string(__wrap__minfo, formatted_msg, "Connection closed.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Connection closed.");
 
     int ret = w_enrollment_process_response(ssl);
     assert_int_equal(ret, -1);
 }
 
 void test_w_enrollment_process_response_success(void **state) {
-    const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'\n\n";
+    const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
     SSL *ssl = *state;
-    expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
-
+    expect_string(__wrap__minfo, formatted_msg, "Waiting for server reply");
     expect_value(__wrap_SSL_read, ssl, ssl);
     expect_any(__wrap_SSL_read, buf);
     expect_any(__wrap_SSL_read, num);
     will_return(__wrap_SSL_read, string);
     will_return(__wrap_SSL_read, strlen(string));
 
-    expect_string(__wrap__minfo, formatted_msg, "Received response with agent key");
     // w_enrollment_process_agent_key
     {
         expect_string(__wrap_OS_IsValidIP, ip_address, "192.168.1.1");
@@ -796,11 +793,11 @@ void test_w_enrollment_process_response_success(void **state) {
         expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
         will_return(__wrap_OS_MoveFile, 0);
 #endif
-        expect_string(__wrap__minfo, formatted_msg, "Valid key created. Finished.");
+        expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     }
     expect_value(__wrap_SSL_get_error, i, strlen(string));
     will_return(__wrap_SSL_get_error, SSL_ERROR_NONE);
-    expect_string(__wrap__minfo, formatted_msg, "Connection closed.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Connection closed.");
 
     int ret = w_enrollment_process_response(ssl);
     assert_int_equal(ret, 0);
@@ -815,7 +812,7 @@ void test_w_enrollment_request_key(void **state) {
     w_enrollment_ctx *cfg = *state;
     SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
 
-    expect_string(__wrap__minfo, formatted_msg, "Starting enrollment process to server: valid_hostname");
+    expect_string(__wrap__minfo, formatted_msg, "Requesting a key from server: valid_hostname");
 
     // w_enrollment_connect
     {
@@ -842,7 +839,7 @@ void test_w_enrollment_request_key(void **state) {
         will_return(__wrap_SSL_new, cfg->ssl);
         will_return(__wrap_SSL_connect, 1);
 
-        expect_string(__wrap__minfo, formatted_msg, "Connected to 192.168.1.1:1234");
+        expect_string(__wrap__mdebug1, formatted_msg, "Connected to 192.168.1.1:1234");
 
         // verify_ca_certificate
         expect_value(__wrap_check_x509_cert, ssl, cfg->ssl);
@@ -860,20 +857,18 @@ void test_w_enrollment_request_key(void **state) {
         expect_value(__wrap_SSL_write, ssl, cfg->ssl);
         expect_string(__wrap_SSL_write, buf, "OSSEC PASS: test_password OSSEC A:'test_agent' G:'test_group' IP:'192.168.1.1'\n");
         will_return(__wrap_SSL_write, 0);
-        expect_string(__wrap__minfo, formatted_msg,"Request sent to manager");
+        expect_string(__wrap__mdebug1, formatted_msg,"Request sent to manager");
     }
     // w_enrollment_process_repsonse
     {
-        const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'\n\n";
-        expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
-
+        const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
+        expect_string(__wrap__minfo, formatted_msg, "Waiting for server reply");
         expect_value(__wrap_SSL_read, ssl, cfg->ssl);
         expect_any(__wrap_SSL_read, buf);
         expect_any(__wrap_SSL_read, num);
         will_return(__wrap_SSL_read, string);
         will_return(__wrap_SSL_read, strlen(string));
 
-        expect_string(__wrap__minfo, formatted_msg, "Received response with agent key");
         // w_enrollment_process_agent_key
         {
             expect_string(__wrap_OS_IsValidIP, ip_address, "192.168.1.1");
@@ -901,11 +896,11 @@ void test_w_enrollment_request_key(void **state) {
             expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
             will_return(__wrap_OS_MoveFile, 0);
 #endif
-            expect_string(__wrap__minfo, formatted_msg, "Valid key created. Finished.");
+            expect_string(__wrap__minfo, formatted_msg, "Valid key received");
         }
         expect_value(__wrap_SSL_get_error, i, strlen(string));
         will_return(__wrap_SSL_get_error, SSL_ERROR_NONE);
-        expect_string(__wrap__minfo, formatted_msg, "Connection closed.");
+        expect_string(__wrap__mdebug1, formatted_msg, "Connection closed.");
     }
     int ret = w_enrollment_request_key(cfg, NULL);
     assert_int_equal(ret, 0);
@@ -966,7 +961,7 @@ void test_w_enrollment_load_pass_empty_file(void **state) {
     char buff[1024];
     snprintf(buff, 1024, "Using password specified on file: %s", AUTHDPASS_PATH);
     expect_string(__wrap__minfo, formatted_msg, buff);
-    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided.");
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
 
     w_enrollment_load_pass(cert);
     assert_int_equal(cert->authpass, NULL);
