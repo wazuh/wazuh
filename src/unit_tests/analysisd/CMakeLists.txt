@@ -71,6 +71,9 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern -Wl,--wrap,OSRegex_F
 LIST(APPEND analysisd_names "test_eventinfo_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,Free_Eventinfo")
 
+LIST(APPEND analysisd_names "test_logmsg")
+LIST(APPEND analysisd_flags "-Wl,--wrap,isDebug -Wl,--wrap,OSList_AddData")
+
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
