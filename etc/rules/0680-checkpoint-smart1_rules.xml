@@ -1,7 +1,7 @@
 <!--
   -  CheckPoint Smart-1 Firewalls rules
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -28,6 +28,9 @@
         <if_sid>64220</if_sid>
         <field name="fw_action">Reject</field>
         <description>Reject: Prohibit a packet from passing. Send an ICMP destination-unreachable back to the source host.</description>
+        <mitre>
+            <id>T1095</id>
+        </mitre>
     </rule>
 
     <rule id="64224" level="2">
@@ -118,6 +121,9 @@
         <if_sid>64220</if_sid>
         <match>Replace Malicious code</match>
         <description>Replace Malicious code: Malicious code in the connection was replaced.</description>
+        <mitre>
+            <id>T1001</id>
+        </mitre>
     </rule>	
 		
 	<rule id="64239" level="3">

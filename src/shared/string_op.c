@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -169,6 +169,7 @@ char * w_strtrim(char * string) {
 
 // Add a dynamic field with object nesting
 void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
+
     cJSON *object;
     char *current;
     char *nest = strchr(key, '.');
@@ -176,7 +177,7 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
     if (nest) {
         length = nest - key;
-        current = malloc(length + 1);
+        os_malloc(length + 1, current);
         strncpy(current, key, length);
         current[length] = '\0';
 
@@ -550,6 +551,70 @@ int wstr_end(char *str, const char *str_end) {
     return str_end_len <= str_len && !strcmp(str + str_len - str_end_len, str_end);
 }
 
+void wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str) {
+    char *new_delim = replace_delim ? replace_delim : delim;
+    size_t new_delim_size = strlen(replace_delim ? replace_delim : delim);
+    int count = 0;
+    int splitted_count;
+    char *str_cpy, *str_cpy_ref;
+    char *str_it;
+    char **acc_strs;
+    char *saveptr;
+
+    if (occurrences < 1) {
+        return;
+    }
+
+    os_strdup(str, str_cpy);
+    str_cpy_ref = str_cpy;
+    str_it = strtok_r(str_cpy, delim, &saveptr);
+
+    os_calloc(occurrences, sizeof(char *), acc_strs);
+
+    for (splitted_count = 0; *splitted_str && (*splitted_str)[splitted_count]; splitted_count++);
+
+    for (; str_it && *str_it; count++) {
+        os_strdup(str_it, acc_strs[count]);
+
+        if (count == occurrences - 1) {
+            // Add a new term
+            size_t term_size;
+            char *new_term_it;
+
+            for (count = term_size = 0; count < occurrences; count++) {
+                term_size += strlen(acc_strs[count]);
+            }
+
+            term_size += (occurrences - 1) * new_delim_size + 1;
+
+            os_realloc(*splitted_str, (splitted_count + 2) * sizeof(char *), *splitted_str);
+            os_calloc(term_size, sizeof(char), (*splitted_str)[splitted_count]);
+            (*splitted_str)[splitted_count + 1] = NULL;
+
+            for (count = 0, new_term_it = (*splitted_str)[splitted_count]; count < occurrences; count++) {
+                if (count) {
+                    strncpy(new_term_it, new_delim, new_delim_size);
+                    new_term_it += new_delim_size;
+                }
+                strncpy(new_term_it, acc_strs[count], strlen(acc_strs[count]));
+                new_term_it += strlen(acc_strs[count]);
+                os_free(acc_strs[count]);
+            }
+
+            splitted_count++;
+            count = -1;
+        }
+        str_it = strtok_r(NULL, delim, &saveptr);
+    }
+
+    // Remove residual terms (they are discarded)
+    for (count = 0; acc_strs[count]; count++) {
+        free(acc_strs[count]);
+    }
+    free(acc_strs);
+    free(str_cpy_ref);
+}
+
 /* Check if the specified string is already in the array */
 int w_is_str_in_array(char *const *ar, const char *str)
 {
@@ -560,6 +625,19 @@ int w_is_str_in_array(char *const *ar, const char *str)
         ar++;
     }
     return (0);
+}
+
+// Remove zeros from the end of the decimal number
+void w_remove_zero_dec(char *str_number) {
+    char *base;
+    char *number_end;
+
+    if (base = strchr(str_number, '.'), base) {
+        for (number_end = base; *number_end; number_end++);
+        for (--number_end; base != number_end && *number_end == '0'; number_end--) {
+            *number_end = '\0';
+        }
+    }
 }
 
 /* Similar to strtok_r but checks for full delim appearances */
@@ -602,7 +680,28 @@ char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
     return token;
 }
 
-const char *find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
+
+// Returns the characters number of the string source if, only if, source is included completely in str, 0 in other case.
+int w_compare_str(const char * source, const char * str) {
+    int matching = 0;
+    size_t source_lenght;
+
+    if (!(source && str)) {
+        return -1;
+    }
+
+    source_lenght = strlen(source);
+    if (source_lenght > strlen(str)) {
+        return -2;
+    }
+
+    // Match if result is 0
+    matching = strncmp(source, str, source_lenght);
+
+    return matching == 0 ? source_lenght : 0;
+}
+
+const char * find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
 {
     if (!string_array || !str){
         return NULL;
@@ -616,6 +715,46 @@ const char *find_string_in_array(char * const string_array[], size_t array_len, 
     }
 
     return NULL;
+}
+
+// Parse boolean string
+
+int w_parse_bool(const char * string) {
+    return (strcmp(string, "yes") == 0) ? 1 : (strcmp(string, "no") == 0) ? 0 : -1;
+}
+
+// Parse positive time string into seconds
+
+long w_parse_time(const char * string) {
+    char * end;
+    long seconds = strtol(string, &end, 10);
+
+    if (seconds < 0 || (seconds == LONG_MAX && errno == ERANGE)) {
+        return -1;
+    }
+
+    switch (*end) {
+    case '\0':
+        break;
+    case 'd':
+        seconds *= 86400;
+        break;
+    case 'h':
+        seconds *= 3600;
+        break;
+    case 'm':
+        seconds *= 60;
+        break;
+    case 's':
+        break;
+    case 'w':
+        seconds *= 604800;
+        break;
+    default:
+        return -1;
+    }
+
+    return seconds >= 0 ? seconds : -1;
 }
 
 char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const size_t buffer_size)
@@ -642,4 +781,169 @@ char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const 
     }
 
     return decoded_buffer;
+}
+
+// Length of the initial segment of s which consists entirely of non-escaped bytes different from reject
+
+size_t strcspn_escaped(const char * s, char reject) {
+    char charset[3] = { '\\', reject };
+
+    size_t len = strlen(s);
+    size_t spn_len = 0;
+
+    do {
+        spn_len += strcspn(s + spn_len, charset);
+
+        if (s[spn_len] == '\\') {
+            spn_len += 2;
+        } else {
+            return spn_len;
+        }
+    } while (spn_len < len);
+
+    return len;
+}
+
+// Escape JSON reserved characters
+
+char * wstr_escape_json(const char * string) {
+    const char escape_map[] = {
+        ['\b'] = 'b',
+        ['\t'] = 't',
+        ['\n'] = 'n',
+        ['\f'] = 'f',
+        ['\r'] = 'r',
+        ['\"'] = '\"',
+        ['\\'] = '\\'
+    };
+
+    size_t i = 0;   // Read position
+    size_t j = 0;   // Write position
+    size_t z;       // Span length
+
+    char * output;
+    os_malloc(1, output);
+
+    do {
+        z = strcspn(string + i, "\b\t\n\f\r\"\\");
+
+        if (string[i + z] == '\0') {
+            // End of string
+            os_realloc(output, j + z + 1, output);
+            strncpy(output + j, string + i, z);
+        } else {
+            // Reserved character
+            os_realloc(output, j + z + 3, output);
+            strncpy(output + j, string + i, z);
+            output[j + z] = '\\';
+            output[j + z + 1] = escape_map[(int)string[i + z]];
+            z++;
+            j++;
+        }
+
+        j += z;
+        i += z;
+    } while (string[i] != '\0');
+
+    output[j] = '\0';
+    return output;
+}
+
+// Unescape JSON reserved characters
+
+char * wstr_unescape_json(const char * string) {
+    const char UNESCAPE_MAP[] = {
+        ['b'] = '\b',
+        ['t'] = '\t',
+        ['n'] = '\n',
+        ['f'] = '\f',
+        ['r'] = '\r',
+        ['\"'] = '\"',
+        ['\\'] = '\\'
+    };
+
+    size_t i = 0;   // Read position
+    size_t j = 0;   // Write position
+    size_t z;       // Span length
+
+    char * output;
+    os_malloc(1, output);
+
+    do {
+        z = strcspn(string + i, "\\");
+
+        // Extend output and copy
+        os_realloc(output, j + z + 3, output);
+        strncpy(output + j, string + i, z);
+
+        i += z;
+        j += z;
+
+        if (string[i] != '\0') {
+            // Peek byte following '\'
+            switch (string[++i]) {
+            case '\0':
+                // End of string
+                output[j++] = '\\';
+                break;
+
+            case 'b':
+            case 't':
+            case 'n':
+            case 'f':
+            case 'r':
+            case '\"':
+            case '\\':
+                // Escaped character
+                output[j++] = UNESCAPE_MAP[(int)string[i++]];
+                break;
+
+            default:
+                // Bad escape
+                output[j++] = '\\';
+                output[j++] = string[i++];
+            }
+        }
+    } while (string[i] != '\0');
+
+    output[j] = '\0';
+    return output;
+}
+
+// Lowercase a string
+
+char * w_tolower_str(const char *string) {
+    char *tolower_str;
+    int count;
+
+    if (!string) {
+        return NULL;
+    }
+
+    os_malloc(1, tolower_str);
+
+    for(count = 0; string[count]; count++) {
+        os_realloc(tolower_str, count + 2, tolower_str);
+        tolower_str[count] = tolower(string[count]);
+    }
+
+    tolower_str[count] = '\0';
+
+    return tolower_str;
+}
+
+// Verify the string is not truncated after executing snprintf
+
+int os_snprintf(char *str, size_t size, const char *format, ...) {
+    size_t ret;
+    va_list args;
+
+    va_start(args, format);
+    ret = vsnprintf(str, size, format, args);
+    if (ret >= size) {
+        mwarn("String may be truncated because it is too long.");
+    }
+    va_end(args);
+
+    return ret;
 }

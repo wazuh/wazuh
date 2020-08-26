@@ -7,39 +7,39 @@ CancelUpdateStack:Cloudformation
 CreateStack:Cloudformation
 DeleteStack:Cloudformation
 UpdateStack:Cloudformation
-DeleteConfigRule:AWS​ ​Config
-DeleteConfigurationRecorder:AWS​ ​Config
-DeleteDeliveryChannel:AWS​ ​Config
-DeleteEvaluationResults:AWS​ ​Config
-PutConfigurationRecorder:AWS​ ​Config
-PutConfigRule:AWS​ ​Config
-PutDeliveryChannel:AWS​ ​Config
-PutEvaluations:AWS​ ​Config
-StartConfigRulesEvaluation:AWS​ ​Config
-StartConfigurationRecorder:AWS​ ​Config
-StopConfigurationRecorder:AWS​ ​Config
+DeleteConfigRule:AWS Config
+DeleteConfigurationRecorder:AWS Config
+DeleteDeliveryChannel:AWS Config
+DeleteEvaluationResults:AWS Config
+PutConfigurationRecorder:AWS Config
+PutConfigRule:AWS Config
+PutDeliveryChannel:AWS Config
+PutEvaluations:AWS Config
+StartConfigRulesEvaluation:AWS Config
+StartConfigurationRecorder:AWS Config
+StopConfigurationRecorder:AWS Config
 RunInstances:EC2
 StartInstances:EC2
 StopInstances:EC2
 TerminateInstances:EC2
-AbortEnvironmentUpdate:Elastic​ ​Beanstalk
-CreateApplication:Elastic​ ​Beanstalk
-CreateApplicationVersion:Elastic​ ​Beanstalk
-CreateConfigurationTemplate:Elastic​ ​Beanstalk
-CreateEnvironment:Elastic​ ​Beanstalk
-CreateStorageLocation:Elastic​ ​Beanstalk
-DeleteApplication:Elastic​ ​Beanstalk
-DeleteApplicationVersion:Elastic​ ​Beanstalk
-DeleteConfigurationTemplate:Elastic​ ​Beanstalk
-DeleteEnvironmentConfiguration:Elastic​ ​Beanstalk
-RebuildEnvironment:Elastic​ ​Beanstalk
-RestartAppServer:Elastic​ ​Beanstalk
-SwapEnvironmentCNAMEs:Elastic​ ​Beanstalk
-TerminateEnvironment:Elastic​ ​Beanstalk
-UpdateApplication:Elastic​ ​Beanstalk
-UpdateApplicationVersion:Elastic​ ​Beanstalk
-UpdateConfigurationTemplate:Elastic​ ​Beanstalk
-UpdateEnvironment:Elastic​ ​Beanstalk
+AbortEnvironmentUpdate:Elastic Beanstalk
+CreateApplication:Elastic Beanstalk
+CreateApplicationVersion:Elastic Beanstalk
+CreateConfigurationTemplate:Elastic Beanstalk
+CreateEnvironment:Elastic Beanstalk
+CreateStorageLocation:Elastic Beanstalk
+DeleteApplication:Elastic Beanstalk
+DeleteApplicationVersion:Elastic Beanstalk
+DeleteConfigurationTemplate:Elastic Beanstalk
+DeleteEnvironmentConfiguration:Elastic Beanstalk
+RebuildEnvironment:Elastic Beanstalk
+RestartAppServer:Elastic Beanstalk
+SwapEnvironmentCNAMEs:Elastic Beanstalk
+TerminateEnvironment:Elastic Beanstalk
+UpdateApplication:Elastic Beanstalk
+UpdateApplicationVersion:Elastic Beanstalk
+UpdateConfigurationTemplate:Elastic Beanstalk
+UpdateEnvironment:Elastic Beanstalk
 CreateFileSystem:EFS
 CreateMountTarget:EFS
 DeleteFileSystem:EFS
@@ -118,92 +118,92 @@ ConsoleLogin:Access
 ExitRole:Access
 RenewRole:Access
 SwitchRole:Access
-DeleteCertificate:Certificate​ ​Manager
-RequestCertificate:Certificate​ ​Manager
-ResendValidationEmail:Certificate​ ​Manager
+DeleteCertificate:Certificate Manager
+RequestCertificate:Certificate Manager
+ResendValidationEmail:Certificate Manager
 StopLogging:Cloudtrail
-AllocateConnectionOnInterconnect:Direct​ ​Connect
-AllocateHostedConnection:Direct​ ​Connect
-AllocatePrivateVirtualInterface:Direct​ ​Connect
-AllocatePublicVirtualInterface:Direct​ ​Connect
-AssociateConnectionWithLag:Direct​ ​Connect
-AssociateHostedConnection:Direct​ ​Connect
-AssociateVirtualInterface:Direct​ ​Connect
-ConfirmConnection:Direct​ ​Connect
-ConfirmPrivateVirtualInterface:Direct​ ​Connect
-ConfirmPublicVirtualInterface:Direct​ ​Connect
-CreateConnection:Direct​ ​Connect
-CreateInterconnect:Direct​ ​Connect
-CreateLag:Direct​ ​Connect
-CreatePrivateVirtualInterface:Direct​ ​Connect
-CreatePublicVirtualInterface:Direct​ ​Connect
-DeleteConnection:Direct​ ​Connect
-DeleteInterconnect:Direct​ ​Connect
-DeleteLag:Direct​ ​Connect
-DeleteVirtualInterface:Direct​ ​Connect
-DisassociateConnectionFromLag:Direct​ ​Connect
-UpdateLag:Direct​ ​Connect
-AssociateIamInstanceProfile:EC2​ - VPC
-AssociateAddress:EC2​ ​- VPC
-AssociateRouteTable:EC2​ - VPC
-AssociateSubnetCidrBlock:EC2​ - VPC
-AssociateVpcCidrBlock:EC2​ - VPC
-AttachClassicLinkVpc:EC2​ - VPC
-AttachInternetGateway:EC2​ - VPC
-AttachNetworkInterface:EC2​ - VPC
-AllocateAddress:EC2​ - VPC
-AssignPrivateIpAddresses:EC2​ - VPC
-AttachVpnGateway:EC2​ - VPC
-CreateKeyPair:EC2​ - VPC
-CreateNatGateway:EC2​ - VPC
-CreateNetworkAcl:EC2​ - VPC
-CreateNetworkAclEntry:EC2​ - VPC
-CreateNetworkInterface:EC2​ - VPC
-CreateRoute:EC2​ - VPC
-CreateRouteTable:EC2​ - VPC
-CreateSecurityGroup:EC2​ - VPC
-CreateVpc:EC2​ - VPC
-CreateVpcEndpoint:EC2​ - VPC
-CreateVpcPeeringConnection:EC2​ - VPC
-CreateVpnConnection:EC2​ - VPC
-CreateVpnConnectionRoute:EC2​ - VPC
-CreateVpnGateway:EC2​ - VPC
-DeleteCustomerGateway:EC2​ - VPC
-DeleteDhcpOptions:EC2​ - VPC
-DeleteEgressOnlyInternetGateway:EC2​ - VPC
-DeleteInternetGateway:EC2​ - VPC
-DeleteKeyPair:EC2​ - VPC
-DeleteNatGateway:EC2​ - VPC
-DeleteNetworkAcl:EC2​ - VPC
-DeleteNetworkAclEntry:EC2​ - VPC
-DeleteNetworkInterface:EC2​ - VPC
-DeleteRoute:EC2​ - VPC
-DeleteRouteTable:EC2​ - VPC
-DeleteSecurityGroup:EC2​ ​- VPC
-DeleteVpcEndpoints:EC2​ ​- VPC
-DeleteVpcPeeringConnection:EC2​ ​- VPC
-DeleteVpnConnection:EC2​ ​- VPC
-DeleteVpnConnectionRoute:EC2​ ​- VPC
-DeleteVpnGateway:EC2​ ​- VPC
-DetachClassicLinkVpc:EC2​ ​- VPC
-DetachInternetGateway:EC2​ ​- VPC
-DetachNetworkInterface:EC2​ ​- VPC
-DetachVolume:EC2​ ​- VPC
-DetachVpnGateway:EC2​ ​- VPC
-DisableVgwRoutePropagation:EC2​ ​- VPC
-DisableVpcClassicLink:EC2​ ​- VPC
-DisassociateAddress:EC2​ ​- VPC
-DisassociateIamInstanceProfile:EC2​ ​- VPC
-DisassociateRouteTable:EC2​ ​- VPC
-DisassociateSubnetCidrBlock:EC2​ ​- VPC
-DisassociateVpcCidrBlock:EC2​ ​- VPC
-EnableVgwRoutePropagation:EC2​ ​- VPC
-EnableVolumeIO:EC2​ ​- VPC
-EnableVpcClassicLink:EC2​ ​- VPC
-AuthorizeSecurityGroupEgress:EC2​ ​- Security​ ​Groups
-AuthorizeSecurityGroupIngress:EC2​ ​- Security​ ​Groups
-RevokeSecurityGroupEgress:EC2​ ​- Security​ ​Groups
-RevokeSecurityGroupIngress:EC2​ ​- Security​ ​Groups
+AllocateConnectionOnInterconnect:Direct Connect
+AllocateHostedConnection:Direct Connect
+AllocatePrivateVirtualInterface:Direct Connect
+AllocatePublicVirtualInterface:Direct Connect
+AssociateConnectionWithLag:Direct Connect
+AssociateHostedConnection:Direct Connect
+AssociateVirtualInterface:Direct Connect
+ConfirmConnection:Direct Connect
+ConfirmPrivateVirtualInterface:Direct Connect
+ConfirmPublicVirtualInterface:Direct Connect
+CreateConnection:Direct Connect
+CreateInterconnect:Direct Connect
+CreateLag:Direct Connect
+CreatePrivateVirtualInterface:Direct Connect
+CreatePublicVirtualInterface:Direct Connect
+DeleteConnection:Direct Connect
+DeleteInterconnect:Direct Connect
+DeleteLag:Direct Connect
+DeleteVirtualInterface:Direct Connect
+DisassociateConnectionFromLag:Direct Connect
+UpdateLag:Direct Connect
+AssociateIamInstanceProfile:EC2 - VPC
+AssociateAddress:EC2 - VPC
+AssociateRouteTable:EC2 - VPC
+AssociateSubnetCidrBlock:EC2 - VPC
+AssociateVpcCidrBlock:EC2 - VPC
+AttachClassicLinkVpc:EC2 - VPC
+AttachInternetGateway:EC2 - VPC
+AttachNetworkInterface:EC2 - VPC
+AllocateAddress:EC2 - VPC
+AssignPrivateIpAddresses:EC2 - VPC
+AttachVpnGateway:EC2 - VPC
+CreateKeyPair:EC2 - VPC
+CreateNatGateway:EC2 - VPC
+CreateNetworkAcl:EC2 - VPC
+CreateNetworkAclEntry:EC2 - VPC
+CreateNetworkInterface:EC2 - VPC
+CreateRoute:EC2 - VPC
+CreateRouteTable:EC2 - VPC
+CreateSecurityGroup:EC2 - VPC
+CreateVpc:EC2 - VPC
+CreateVpcEndpoint:EC2 - VPC
+CreateVpcPeeringConnection:EC2 - VPC
+CreateVpnConnection:EC2 - VPC
+CreateVpnConnectionRoute:EC2 - VPC
+CreateVpnGateway:EC2 - VPC
+DeleteCustomerGateway:EC2 - VPC
+DeleteDhcpOptions:EC2 - VPC
+DeleteEgressOnlyInternetGateway:EC2 - VPC
+DeleteInternetGateway:EC2 - VPC
+DeleteKeyPair:EC2 - VPC
+DeleteNatGateway:EC2 - VPC
+DeleteNetworkAcl:EC2 - VPC
+DeleteNetworkAclEntry:EC2 - VPC
+DeleteNetworkInterface:EC2 - VPC
+DeleteRoute:EC2 - VPC
+DeleteRouteTable:EC2 - VPC
+DeleteSecurityGroup:EC2 - VPC
+DeleteVpcEndpoints:EC2 - VPC
+DeleteVpcPeeringConnection:EC2 - VPC
+DeleteVpnConnection:EC2 - VPC
+DeleteVpnConnectionRoute:EC2 - VPC
+DeleteVpnGateway:EC2 - VPC
+DetachClassicLinkVpc:EC2 - VPC
+DetachInternetGateway:EC2 - VPC
+DetachNetworkInterface:EC2 - VPC
+DetachVolume:EC2 - VPC
+DetachVpnGateway:EC2 - VPC
+DisableVgwRoutePropagation:EC2 - VPC
+DisableVpcClassicLink:EC2 - VPC
+DisassociateAddress:EC2 - VPC
+DisassociateIamInstanceProfile:EC2 - VPC
+DisassociateRouteTable:EC2 - VPC
+DisassociateSubnetCidrBlock:EC2 - VPC
+DisassociateVpcCidrBlock:EC2 - VPC
+EnableVgwRoutePropagation:EC2 - VPC
+EnableVolumeIO:EC2 - VPC
+EnableVpcClassicLink:EC2 - VPC
+AuthorizeSecurityGroupEgress:EC2 - Security Groups
+AuthorizeSecurityGroupIngress:EC2 - Security Groups
+RevokeSecurityGroupEgress:EC2 - Security Groups
+RevokeSecurityGroupIngress:EC2 - Security Groups
 ModifyMountTargetSecurityGroups:EFS
 ApplySecurityGroupsToLoadBalancer:ELB
 SetSecurityGroups:ELB

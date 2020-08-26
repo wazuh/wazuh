@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,8 +10,8 @@
 
 /* Common list API */
 
-#ifndef _OS_STORE
-#define _OS_STORE
+#ifndef OS_STORE
+#define OS_STORE
 
 /* Store node */
 typedef struct _OSStoreNode {
@@ -49,5 +49,4 @@ int OSStore_Sort(OSStore *list, void *(sort_data_function)(void *d1, void *d2)) 
 int OSStore_SetMaxSize(OSStore *list, int max_size);
 int OSStore_SetFreeDataPointer(OSStore *list, void (free_data_function)(void *));
 
-#endif
-
+#endif /* OS_STORE */

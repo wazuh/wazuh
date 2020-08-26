@@ -1,6 +1,6 @@
 /*
  * Wazuh Integration with Osquery
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * April 5, 2018.
  *
  * This program is free software; you can redistribute it
@@ -268,7 +268,12 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
     }
 
     mdebug1("Launching '%s' with config file '%s'", osqueryd_path, osquery->config_path);
+
+#ifdef WIN32
+    snprintf(config_path, sizeof(config_path), "--config_path=\"%s\"", osquery->config_path);
+#else
     snprintf(config_path, sizeof(config_path), "--config_path=%s", osquery->config_path);
+#endif
 
     // We check that the osquery demon is not down, in which case we run it again.
 
@@ -580,16 +585,10 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
     osquery->msg_delay = 1000000 / wm_max_eps;
 
 #ifndef WIN32
-    int i;
-
     // Connect to queue
 
-    for (i = 0; i < WM_MAX_ATTEMPTS && (osquery->queue_fd = StartMQ(DEFAULTQPATH, WRITE), osquery->queue_fd < 0); i++) {
-        // Trying to connect to queue
-        sleep(WM_MAX_WAIT);
-    }
-
-    if (i == WM_MAX_ATTEMPTS) {
+    osquery->queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    if (osquery->queue_fd < 0) {
         mterror(WM_OSQUERYMONITOR_LOGTAG, "Can't connect to queue. Closing module.");
         return NULL;
     }

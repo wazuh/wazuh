@@ -2,7 +2,7 @@
   -  Checkpoint via syslog decoders
   -  Author: Daniel Cid.
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
@@ -54,7 +54,7 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
 <!-- \s+\S+ \d\d:\d\d:\d\d (\w+) \d+.\d+.\d+.\d+ \p\S+ rule: -->
 <decoder name="checkpoint-syslog">
   <program_name>^Checkpoint</program_name>
-  <prematch>^\s+\S+ \d\d:\d\d:\d\d </prematch>
+  <prematch>^\s*\S+ \d\d:\d\d:\d\d </prematch>
 </decoder>
 
 <decoder name="checkpoint-syslog-fw">
@@ -77,9 +77,9 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
   <parent>checkpoint-syslog</parent>
   <type>ids</type>
   <prematch offset="after_parent">^monitor|^drop</prematch>
-  <regex offset="after_prematch">attack: (\.+); </regex>
-  <regex>src: (\S+); dst: (\S+); </regex>
-  <regex>proto: (\S+);</regex>
+  <regex offset="after_prematch">attack:\s*(\.+);\s*</regex>
+  <regex>src:\s*(\S+);\s*dst:\s*(\S+);\s*</regex>
+  <regex>proto:\s*(\S+);</regex>
   <order>extra_data, srcip, dstip, protocol</order>
   <fts>name, extra_data, srcip, dstip</fts>
   <ftscomment>First time Checkpoint rule fired.</ftscomment>

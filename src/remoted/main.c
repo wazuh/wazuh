@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -13,8 +13,7 @@
 #include "shared_download.h"
 #include <unistd.h>
 
-/* Global variables */
-int pass_empty_keyfile;
+
 
 /* Prototypes */
 static void help_remoted(void) __attribute__((noreturn));
@@ -166,7 +165,7 @@ int main(int argc, char **argv)
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Setup random */

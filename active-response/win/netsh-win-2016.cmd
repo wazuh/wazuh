@@ -1,5 +1,5 @@
 :: Simple script to block an ip using netsh-advfirewall.
-:: Copyright (C) 2015-2019, Wazuh Inc.
+:: Copyright (C) 2015-2020, Wazuh Inc.
 @ECHO OFF
 ECHO.
 

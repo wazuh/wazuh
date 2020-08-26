@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
@@ -107,7 +107,7 @@ int main(int argc, char **argv)
                 related_values = argv[optind];
 
                 if (os_report_configfilter(related_of, related_values,
-                                           &r_filter, REPORT_RELATED) < 0) {
+                                           &r_filter, REPORT_RELATED)) {
                     merror_exit(CONFIG_ERROR, "user argument");
                 }
                 optind++;
@@ -120,7 +120,7 @@ int main(int argc, char **argv)
                 filter_value = argv[optind];
 
                 if (os_report_configfilter(filter_by, filter_value,
-                                           &r_filter, REPORT_FILTER) < 0) {
+                                           &r_filter, REPORT_FILTER)) {
                     merror_exit(CONFIG_ERROR, "user argument");
                 }
                 optind++;
@@ -163,7 +163,7 @@ int main(int argc, char **argv)
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Exit here if test config is set */
@@ -205,4 +205,3 @@ int main(int argc, char **argv)
 
     exit(0);
 }
-

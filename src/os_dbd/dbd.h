@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-#ifndef _DBD_H
-#define _DBD_H
+#ifndef DBD_H
+#define DBD_H
 
 #include "shared.h"
 #include "db_op.h"
@@ -38,5 +38,4 @@ void OS_DBD(DBConfig *db_config) __attribute__((nonnull)) __attribute__((noretur
 /* Set config pointer for osbd_op */
 void osdb_setconfig(DBConfig *db_config);
 
-#endif /* _DBD_H */
-
+#endif /* DBD_H */

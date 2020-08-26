@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -18,8 +18,8 @@ monitor_config mond;
 void Monitord()
 {
     time_t tm;
-    struct tm *p;
     int counter = 0;
+    struct tm tm_result = { .tm_sec = 0 };
 
     char path[PATH_MAX];
     char path_json[PATH_MAX];
@@ -39,11 +39,11 @@ void Monitord()
 
     /* Get current time before starting */
     tm = time(NULL);
-    p = localtime(&tm);
+    localtime_r(&tm, &tm_result);
 
-    today = p->tm_mday;
-    thismonth = p->tm_mon;
-    thisyear = p->tm_year + 1900;
+    today = tm_result.tm_mday;
+    thismonth = tm_result.tm_mon;
+    thisyear = tm_result.tm_year + 1900;
 
     /* Set internal log path to rotate them */
 #ifdef WIN32
@@ -59,7 +59,7 @@ void Monitord()
 #endif
 
     /* Connect to the message queue or exit */
-    if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
+    if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
@@ -76,19 +76,31 @@ void Monitord()
     /* Main monitor loop */
     while (1) {
         tm = time(NULL);
-        p = localtime(&tm);
+        localtime_r(&tm, &tm_result);
         counter++;
 
 #ifndef LOCAL
         /* Check for unavailable agents, every two minutes */
         if (mond.monitor_agents && counter >= 120) {
+            if (mond.a_queue < 0) {
+                /* Connect to the message queue */
+                if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) > 0) {
+                    /* Send startup message */
+                    snprintf(str, OS_SIZE_1024 - 1, OS_AD_STARTED);
+                    if (SendMSG(mond.a_queue, str, ARGV0,
+                                LOCALFILE_MQ) < 0) {
+                        mond.a_queue = -1;  // We keep trying to reconnect next time.
+                        merror(QUEUE_SEND);
+                    }
+                }
+            }
             monitor_agents();
             counter = 0;
         }
 #endif
 
         /* Day changed, deal with log files */
-        if (today != p->tm_mday) {
+        if (today != tm_result.tm_mday) {
             if (mond.rotate_log) {
                 sleep(mond.day_wait);
                 /* Daily rotation and compression of ossec.log/ossec.json */
@@ -96,12 +108,12 @@ void Monitord()
             }
 
             /* Generate reports */
-            generate_reports(today, thismonth, thisyear, p);
+            generate_reports(today, thismonth, thisyear, &tm_result);
             manage_files(today, thismonth, thisyear);
 
-            today = p->tm_mday;
-            thismonth = p->tm_mon;
-            thisyear = p->tm_year + 1900;
+            today = tm_result.tm_mday;
+            thismonth = tm_result.tm_mon;
+            thisyear = tm_result.tm_year + 1900;
         } else if (mond.rotate_log && mond.size_rotate > 0) {
             if (stat(path, &buf) == 0) {
                 size = buf.st_size;

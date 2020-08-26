@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,8 +10,8 @@
 
 /* Basic logging operations */
 
-#ifndef __LOG_H
-#define __LOG_H
+#ifndef LOG_H
+#define LOG_H
 
 #include "eventinfo.h"
 
@@ -27,5 +27,4 @@ void OS_CustomLog_Flush();
 void OS_Store_Flush();
 int FW_Log(Eventinfo *lf);
 
-#endif
-
+#endif /* LOG_H */

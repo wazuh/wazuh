@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _MCCONFIG__H
-#define _MCCONFIG__H
+#ifndef MCCONFIG_H
+#define MCCONFIG_H
 
 #include "shared.h"
 
@@ -54,4 +54,4 @@ typedef struct _MailConfig {
 #define FORWARD_NOW     4
 #define DONOTGROUP      5
 
-#endif /* _MCCONFIG__H */
+#endif /* MCCONFIG_H */

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-#ifndef _STAT__H
-#define _STAT__H
+#ifndef STAT_H
+#define STAT_H
 
 void LastMsg_Change(const char *log, int t_id);
 int LastMsg_Stats(const char *log, int t_id);
@@ -24,4 +24,4 @@ void Update_Hour(void);
 int Check_Hour(void);
 int Start_Hour(int t_id, int threads_number);
 void Start_Time();
-#endif /* _STAT__H */
+#endif /* STAT_H */

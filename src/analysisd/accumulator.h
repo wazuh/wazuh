@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation.
 */
 
-#ifndef __ACCUMULATOR_H
-#define __ACCUMULATOR_H
+#ifndef ACCUMULATOR_H
+#define ACCUMULATOR_H
 
 #include "eventinfo.h"
 
@@ -18,5 +18,4 @@ int Accumulate_Init(void);
 Eventinfo *Accumulate(Eventinfo *lf);
 void Accumulate_CleanUp(void);
 
-#endif /* __ACCUMULATOR_H */
-
+#endif /* ACCUMULATOR_H */

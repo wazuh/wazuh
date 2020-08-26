@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2015 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,12 +8,12 @@
  * Foundation
 */
 
-#ifndef _CLEANEVENT_H_
-#define _CLEANEVENT_H_
+#ifndef CLEANEVENT_H
+#define CLEANEVENT_H
 
 #include "eventinfo.h"
 
 int OS_CleanMSG(char *msg, Eventinfo *lf);
 
 
-#endif /* _CLEANEVENT_H_ */
+#endif /* CLEANEVENT_H */

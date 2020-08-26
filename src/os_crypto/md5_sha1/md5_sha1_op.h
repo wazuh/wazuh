@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,13 +8,12 @@
  * Foundation
  */
 
-#ifndef __MD5SHA1_OP_H
-#define __MD5SHA1_OP_H
+#ifndef MD5SHA1_OP_H
+#define MD5SHA1_OP_H
 
 #include "../md5/md5_op.h"
 #include "../sha1/sha1_op.h"
 
 int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output, int mode) __attribute((nonnull(1, 3, 4)));
 
-#endif
-
+#endif /* MD5SHA1_OP_H */

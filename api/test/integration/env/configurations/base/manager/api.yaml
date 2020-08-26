@@ -1,0 +1,47 @@
+host: 0.0.0.0
+port: 55000
+
+# Set this option to "yes" in case the API is running behind a proxy server. Values: yes, no
+behind_proxy_server: no
+
+# Advanced configuration
+
+https:
+ enabled: yes
+ key: "api/configuration/ssl/server.key"
+ cert: "api/configuration/ssl/server.crt"
+ use_ca: False
+ ca: "api/configuration/ssl/ca.crt"
+
+# Logging configuration
+# Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
+logs:
+ level: "info"
+ path: "logs/api.log"
+
+# Cross-origin resource sharing: https://github.com/aio-libs/aiohttp-cors#usage
+cors:
+ enabled: no
+ source_route: "*"
+ expose_headers: "*"
+ allow_headers: "*"
+ allow_credentials: no
+
+# Cache (time in seconds)
+cache:
+  enabled: yes
+  time: 0.750
+
+# Access parameters
+access:
+  max_login_attempts: 10000
+  max_request_per_minute: 10000
+
+# Force the use of authd when adding and removing agents. Values: yes, no
+use_only_authd: no
+
+# Drop privileges (Run as ossec user)
+drop_privileges: yes
+
+# Enable features under development
+experimental_features: yes

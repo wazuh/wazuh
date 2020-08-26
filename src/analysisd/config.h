@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _CONFIG__H
-#define _CONFIG__H
+#ifndef CONFIG_H
+#define CONFIG_H
 
 #include "config/config.h"
 #include "config/global-config.h"
@@ -43,4 +43,4 @@ void _getRulesListJSON(RuleNode *list, cJSON *array);
 cJSON *getAnalysisInternalOptions(void);
 cJSON *getManagerLabelsConfig(void);
 
-#endif /* _CONFIG__H */
+#endif /* CONFIG_H */

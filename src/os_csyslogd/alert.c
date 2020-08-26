@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -318,7 +318,7 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config
     char * string;
     int i;
     char msg[OS_MAXSTR];
-    struct tm tm;
+    struct tm tm = { .tm_sec = 0 };
     time_t now;
     char * end;
     char strtime[64];

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * Contributed by Gael Muller (@gaelmuller)
  *
  * This program is free software; you can redistribute it
@@ -321,7 +321,7 @@ void InstallAuthKeys(char *msg)
         fprintf(fp, "%s\n", key);
         fclose(fp);
 
-        printf("INFO: Valid key created. Finished.\n");
+        printf("INFO: Valid key received\n");
     }
     else
         merror_exit("Unknown message received (%s)", msg);

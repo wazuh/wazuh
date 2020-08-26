@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -18,6 +18,8 @@
 
 #ifdef WIN32
 
+char *get_release_from_build(char *os_build);
+
 os_info *get_win_version()
 {
     os_info *info;
@@ -31,6 +33,7 @@ os_info *get_win_version()
     DWORD dwCount = vsize;
     char version[64] = "";
     const DWORD size = 30;
+    unsigned long type = REG_DWORD;
 
     size_t ver_length = 60;
     size_t v_length = 20;
@@ -43,13 +46,13 @@ os_info *get_win_version()
     OSVERSIONINFOEX osvi;
     BOOL bOsVersionInfoEx;
 
-    SYSTEM_INFO si;
+    SYSTEM_INFO si = {0};
     PGNSI pGNSI;
 
     ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
-    if (!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi))) {
+    if (bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi), !bOsVersionInfoEx) {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
         if (!GetVersionEx((OSVERSIONINFO *)&osvi)) {
             free(info);
@@ -84,6 +87,7 @@ os_info *get_win_version()
                 strncat(temp, value, 1022);
                 info->os_name = strdup(temp);
             }
+
             RegCloseKey(RegistryKey);
         }
 
@@ -95,7 +99,6 @@ os_info *get_win_version()
         DWORD winMajor = 0;
         DWORD winMinor = 0;
         dwCount = size;
-        unsigned long type=REG_DWORD;
 
         if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
             merror(SK_REG_OPEN, subkey);
@@ -124,6 +127,17 @@ os_info *get_win_version()
                     info->os_build = strdup(vn_temp);
                 }
             }
+
+            dwCount = vsize;
+            dwRet = RegQueryValueEx(RegistryKey, TEXT("ReleaseId"), NULL, NULL, (LPBYTE)value, &dwCount);
+            if (dwRet != ERROR_SUCCESS) {
+                mdebug1("Could not read the 'ReleaseId' key from Windows registry. (Error %u)",(unsigned int)dwRet);
+                info->os_release = get_release_from_build(info->os_build);
+            }
+            else {
+                info->os_release = strdup(value);
+            }
+
             RegCloseKey(RegistryKey);
         }
         // Windows 6.2 or 6.3
@@ -165,9 +179,11 @@ os_info *get_win_version()
                 info->os_name = strdup("Microsoft Windows XP");
             }
             else if (osvi.dwMinorVersion == 2) {
-                pGNSI = (PGNSI) GetProcAddress(GetModuleHandle("kernel32.dll"),"GetNativeSystemInfo");
+                pGNSI = (PGNSI)(LPSYSTEM_INFO)GetProcAddress(GetModuleHandle("kernel32.dll"),"GetNativeSystemInfo");
                 if (NULL != pGNSI) {
                     pGNSI(&si);
+                } else {
+                    mwarn("It was not possible to retrieve GetNativeSystemInfo from kernek32.dll");
                 }
                 if (osvi.wProductType == VER_NT_WORKSTATION && si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
                     info->os_name = strdup("Microsoft Windows XP Professional x64 Edition");
@@ -217,6 +233,48 @@ os_info *get_win_version()
                  (int)osvi.dwMinorVersion,
                  (int)osvi.dwBuildNumber & 0xFFFF );
 
+    }
+
+    // Read Service Pack
+    if(!info->os_release) {
+        DWORD service_pack = 0;
+        dwCount = sizeof(DWORD);
+        snprintf(subkey, vsize - 1, "%s", "SYSTEM\\CurrentControlSet\\Control\\Windows");
+
+        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
+            merror(SK_REG_OPEN, subkey);
+        }
+        else {
+            dwRet = RegQueryValueEx(RegistryKey, TEXT("CSDVersion"), NULL, &type, (LPBYTE)&service_pack, &dwCount);
+            if (dwRet != ERROR_SUCCESS) {
+                merror("Error reading 'CSDVersion' from Windows registry. (Error %u)",(unsigned int)dwRet);
+            }
+            else {
+                switch(service_pack) {
+                case 256:
+                    info->os_release = strdup("sp1");
+                    break;
+                case 512:
+                    info->os_release = strdup("sp2");
+                    break;
+                case 768:
+                    info->os_release = strdup("sp3");
+                    break;
+                case 1024:
+                    info->os_release = strdup("sp4");
+                    break;
+                case 1280:
+                    info->os_release = strdup("sp5");
+                    break;
+                case 1536:
+                    info->os_release = strdup("sp6");
+                    break;
+                default:
+                    mdebug2("The value of CSDVersion is not a recognizable service pack.: %lu.", service_pack);
+                }
+            }
+            RegCloseKey(RegistryKey);
+        }
     }
 
     // Read Architecture
@@ -273,6 +331,34 @@ os_info *get_win_version()
     return info;
 }
 
+char *get_release_from_build(char *os_build) {
+    char *retval = NULL;
+
+    if (os_build) {
+        if (!strcmp(os_build, "10240")) {
+            os_strdup("1507", retval);
+        } else if (!strcmp(os_build, "10586")) {
+            os_strdup("1511", retval);
+        } else if (!strcmp(os_build, "14393")) {
+            os_strdup("1607", retval);
+        } else if (!strcmp(os_build, "15063")) {
+            os_strdup("1709", retval);
+        } else if (!strcmp(os_build, "17134")) {
+            os_strdup("1803", retval);
+        } else if (!strcmp(os_build, "17763")) {
+            os_strdup("1809", retval);
+        } else if (!strcmp(os_build, "18362")) {
+            os_strdup("1903", retval);
+        } else if (!strcmp(os_build, "18363")) {
+            os_strdup("1909", retval);
+        } else {
+            mdebug1("The release associated with the %s build is not recognized.", os_build);
+        }
+    }
+
+    return retval;
+}
+
 #else
 
 char *OSX_ReleaseName(const int version) {
@@ -285,22 +371,25 @@ char *OSX_ReleaseName(const int version) {
     /* 15 */ "El Capitan",
     /* 16 */ "Sierra",
     /* 17 */ "High Sierra",
-    /* 18 */ "Mojave"};
-    if (version >= 10 && version <= 18)
+    /* 18 */ "Mojave",
+    /* 19 */ "Catalina"};
+    if (version >= 10 && version <= 19)
         return r_names[version%10];
     else
         return "Unknown";
 }
 
+
 os_info *get_unix_version()
 {
     FILE *os_release, *cmd_output, *version_release, *cmd_output_ver;
-    char buff[256];
+    char buff[OS_SIZE_256];
     char *tag, *end;
     char *name = NULL;
     char *id = NULL;
     char *version = NULL;
     char *codename = NULL;
+    char *save_ptr = NULL;
     regmatch_t match[2];
     int match_size;
     struct utsname uts_buf;
@@ -315,10 +404,10 @@ os_info *get_unix_version()
 
     if (os_release) {
         while (fgets(buff, sizeof(buff)- 1, os_release)) {
-            tag = strtok(buff, "=");
+            tag = strtok_r(buff, "=", &save_ptr);
             if (strcmp (tag,"NAME") == 0){
                 if (!name) {
-                    name = strtok(NULL, "\n");
+                    name = strtok_r(NULL, "\n", &save_ptr);
                     if (name[0] == '\"' && (end = strchr(++name, '\"'), end)) {
                         *end = '\0';
                     }
@@ -326,7 +415,7 @@ os_info *get_unix_version()
                 }
             } else if (strcmp (tag,"VERSION") == 0) {
                 if (!version) {
-                    version = strtok(NULL, "\n");
+                    version = strtok_r(NULL, "\n", &save_ptr);
                     if (version[0] == '\"' && (end = strchr(++version, '\"'), end)) {
                         *end = '\0';
                     }
@@ -334,7 +423,7 @@ os_info *get_unix_version()
                 }
             } else if (strcmp (tag,"ID") == 0){
                 if (!id) {
-                    id = strtok(NULL, " \n");
+                    id = strtok_r(NULL, " \n", &save_ptr);
                     if (id[0] == '\"' && (end = strchr(++id, '\"'), end)) {
                         *end = '\0';
                     }
@@ -443,9 +532,9 @@ os_info *get_unix_version()
             info->os_name = strdup("Ubuntu");
             info->os_platform = strdup("ubuntu");
             while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                tag = strtok(buff, "=");
+                tag = strtok_r(buff, "=", &save_ptr);
                 if (strcmp(tag,"DISTRIB_RELEASE") == 0){
-                    info->os_version = strdup(strtok(NULL, "\n"));
+                    info->os_version = strdup(strtok_r(NULL, "\n", &save_ptr));
                     break;
                 }
             }
@@ -545,13 +634,13 @@ os_info *get_unix_version()
             if(fgets(buff,sizeof(buff) - 1, cmd_output) == NULL){
                 mdebug1("Cannot read from command output (uname).");
             // MacOSX
-            } else if(strcmp(strtok(buff, "\n"),"Darwin") == 0){
+            } else if(strcmp(strtok_r(buff, "\n", &save_ptr),"Darwin") == 0){
                 info->os_platform = strdup("darwin");
                 if (cmd_output_ver = popen("sw_vers -productName", "r"), cmd_output_ver) {
                     if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                         mdebug1("Cannot read from command output (sw_vers -productName).");
                     } else {
-                        info->os_name = strdup(strtok(buff, "\n"));
+                        info->os_name = strdup(strtok_r(buff, "\n", &save_ptr));
                     }
                     pclose(cmd_output_ver);
                 }
@@ -559,7 +648,7 @@ os_info *get_unix_version()
                     if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                         mdebug1("Cannot read from command output (sw_vers -productVersion).");
                     } else {
-                        info->os_version = strdup(strtok(buff, "\n"));
+                        info->os_version = strdup(strtok_r(buff, "\n", &save_ptr));
                     }
                     pclose(cmd_output_ver);
                 }
@@ -567,7 +656,7 @@ os_info *get_unix_version()
                     if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                         mdebug1("Cannot read from command output (sw_vers -buildVersion).");
                     } else {
-                        info->os_build = strdup(strtok(buff, "\n"));
+                        info->os_build = strdup(strtok_r(buff, "\n", &save_ptr));
                     }
                     pclose(cmd_output_ver);
                 }
@@ -584,7 +673,7 @@ os_info *get_unix_version()
                     }
                     pclose(cmd_output_ver);
                 }
-            } else if (strcmp(strtok(buff, "\n"),"SunOS") == 0){ // Sun OS
+            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"SunOS") == 0){ // Sun OS
                 info->os_name = strdup("SunOS");
                 info->os_platform = strdup("sunos");
 
@@ -615,7 +704,7 @@ os_info *get_unix_version()
                     pclose(cmd_output);
                   goto free_os_info;
                 }
-            } else if (strcmp(strtok(buff, "\n"),"HP-UX") == 0){ // HP-UX
+            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"HP-UX") == 0){ // HP-UX
                 info->os_name = strdup("HP-UX");
                 info->os_platform = strdup("hp-ux");
                 if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
@@ -628,9 +717,9 @@ os_info *get_unix_version()
                     }
                     pclose(cmd_output_ver);
                 }
-            } else if (strcmp(strtok(buff, "\n"),"OpenBSD") == 0 ||
-                       strcmp(strtok(buff, "\n"),"NetBSD")  == 0 ||
-                       strcmp(strtok(buff, "\n"),"FreeBSD") == 0 ){ // BSD
+            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"OpenBSD") == 0 ||
+                       strcmp(strtok_r(buff, "\n", &save_ptr),"NetBSD")  == 0 ||
+                       strcmp(strtok_r(buff, "\n", &save_ptr),"FreeBSD") == 0 ){ // BSD
                 info->os_name = strdup("BSD");
                 info->os_platform = strdup("bsd");
                 if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
@@ -643,7 +732,7 @@ os_info *get_unix_version()
                     }
                     pclose(cmd_output_ver);
                 }
-            } else if (strcmp(strtok(buff, "\n"),"Linux") == 0){ // Linux undefined
+            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"Linux") == 0){ // Linux undefined
                 info->os_name = strdup("Linux");
                 info->os_platform = strdup("linux");
             }
@@ -709,6 +798,7 @@ free_os_info:
 
 #endif /* WIN32 */
 
+
 void free_osinfo(os_info * osinfo) {
     if (osinfo) {
         free(osinfo->os_name);
@@ -727,8 +817,6 @@ void free_osinfo(os_info * osinfo) {
     }
 }
 
-// Get number of processors
-// Returns 1 on error
 
 int get_nproc() {
 #ifdef __linux__

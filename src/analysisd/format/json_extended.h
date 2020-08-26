@@ -1,10 +1,10 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * All rights reserved.
  *
  */
 
-#ifndef __JSON_EXTENDED_H__
-#define __JSON_EXTENDED_H__
+#ifndef JSON_EXTENDED_H
+#define JSON_EXTENDED_H
 
 #include "eventinfo.h"
 #include "cJSON.h"
@@ -46,6 +46,8 @@ int add_groupGPG13(cJSON* rule, char* group, int firstGPG13);
 int add_groupHIPAA(cJSON* rule, char* group, int firstHIPAA);
 // Parsing NIST_500_83 Compliance groups
 int add_groupNIST(cJSON* rule, char* group, int firstNIST);
+// Parsing TSC Compliance groups
+int add_groupTSC(cJSON* rule, char* group, int firstTSC);
 // Add SCA compliance groups to rule groups
 void add_SCA_groups(cJSON *rule, char* compliance, char* value);
 // Aux functions
@@ -54,4 +56,4 @@ regex_t * compile_regex (const char * regex_text);
 int match_regex (regex_t * r, const char * to_match, char * results[MAX_MATCHES]);
 void trim(char * s);
 int startsWith(const char *pre, const char *str);
-#endif
+#endif /* JSON_EXTENDED_H */

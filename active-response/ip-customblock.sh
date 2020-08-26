@@ -1,7 +1,7 @@
 #!/bin/sh
 # Custom OSSEC block / Easily modifiable for custom responses (touch a file, insert to db, etc).
 # Expect: srcip
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Author: Daniel B. Cid
 # Last modified: Feb 16, 2013
 

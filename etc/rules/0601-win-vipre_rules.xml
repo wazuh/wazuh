@@ -1,12 +1,12 @@
 <!--
   -  Vipre rules
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 
-<group name="vipre">
+<group name="vipre,">
 
 <rule id="90499" level="3">
     <if_sid>60600</if_sid>
@@ -27,6 +27,9 @@
     <if_sid>60600</if_sid>
     <field name="win.system.eventID">^4098$</field>
     <description>User initiated shutdown</description>
+    <mitre>
+      <id>T1529</id>
+    </mitre>
     <options>no_full_log</options>
 </rule>
   
@@ -83,6 +86,9 @@
     <if_sid>60600</if_sid>
     <field name="win.system.eventID">^4106$</field>
     <description>Active protection disabled</description>
+    <mitre>
+      <id>T1089</id>
+    </mitre>
     <options>no_full_log</options>
 </rule>
 
@@ -279,6 +285,9 @@
     <if_sid>60600</if_sid>
     <field name="win.system.eventID">^4141$</field>
     <description>An item has been deleted from quarantine</description>
+    <mitre>
+        <id>T1107</id>
+    </mitre>
     <options>no_full_log</options>
 </rule>
 

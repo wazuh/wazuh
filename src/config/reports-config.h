@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _REPORTSCONFIG_H
-#define _REPORTSCONFIG_H
+#ifndef REPORTSCONFIG_H
+#define REPORTSCONFIG_H
 
 #include "report_op.h"
 
@@ -43,4 +43,4 @@ typedef struct _monitor_config {
     report_config **reports;
 } monitor_config;
 
-#endif /* _REPORTSCONFIG_H */
+#endif /* REPORTSCONFIG_H */

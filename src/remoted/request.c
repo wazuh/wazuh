@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * May 31, 2017.
  *
  * This program is free software; you can redistribute it
@@ -442,6 +442,6 @@ size_t rem_getconfig(const char * section, char ** output) {
     }
 error:
     merror("At request getconfig: Could not get '%s' section", section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }

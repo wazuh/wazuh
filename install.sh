@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Installation script for Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
@@ -89,12 +89,12 @@ Install()
         AUDIT_FLAG="USE_AUDIT=no"
         MSGPACK_FLAG="USE_MSGPACK_OPT=no"
         if [ ${DIST_VER} -lt 5 ]; then
-            SYSC_FLAG="DISABLE_SYSC=true"
+            SYSC_FLAG="DISABLE_SYSC=yes"
         fi
     fi
 
     if [ "X${OS_VERSION_FOR_SYSC}" = "XAIX" ]; then
-        SYSC_FLAG="DISABLE_SYSC=true"
+        SYSC_FLAG="DISABLE_SYSC=yes"
     fi
 
     # Build SQLite library for CentOS 6
@@ -221,31 +221,6 @@ UseRootcheck()
         *)
             ROOTCHECK="yes"
             echo "   - ${yesrootcheck}."
-            ;;
-    esac
-}
-
-##########
-# UseOpenSCAP()
-##########
-UseOpenSCAP()
-{
-    # OpenSCAP config
-    echo ""
-    $ECHO "  3.4- ${runopenscap} ($yes/$no) [$yes]: "
-    if [ "X${USER_ENABLE_OPENSCAP}" = "X" ]; then
-        read AS
-    else
-        AS=${USER_ENABLE_OPENSCAP}
-    fi
-    echo ""
-    case $AS in
-        $nomatch)
-            echo "   - ${norunopenscap}."
-            ;;
-        *)
-            OPENSCAP="yes"
-            echo "   - ${yesrunopenscap}."
             ;;
     esac
 }
@@ -397,9 +372,6 @@ ConfigureClient()
     # Rootcheck?
     UseRootcheck
 
-    # OpenSCAP?
-    UseOpenSCAP
-
     UseSyscollector
 
     UseSecurityConfigurationAssessment
@@ -531,9 +503,6 @@ ConfigureServer()
 
     # Checking if rootcheck should run
     UseRootcheck
-
-    # Checking if OpenSCAP should run
-    UseOpenSCAP
 
     UseSyscollector
 
@@ -1139,8 +1108,6 @@ if [ "x$HYBID" = "xgo" ]; then
     echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _AR__H
-#define _AR__H
+#ifndef ACTIVE_RESPONSE_H
+#define ACTIVE_RESPONSE_H
 
 #include "config/active-response.h"
 #include "config/config.h"
@@ -27,4 +27,4 @@ int AR_ReadConfig(const char *cfgfile);
 extern OSList *active_responses;
 extern OSList *ar_commands;
 
-#endif /* _AR__H */
+#endif /* ACTIVE_RESPONSE_H */

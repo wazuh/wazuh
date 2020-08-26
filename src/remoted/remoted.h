@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __LOGREMOTE_H
-#define __LOGREMOTE_H
+#ifndef LOGREMOTE_H
+#define LOGREMOTE_H
 
 #ifndef ARGV0
 #define ARGV0 "ossec-remoted"
@@ -195,4 +195,4 @@ extern int tcp_keepintvl;
 extern int tcp_keepcnt;
 extern size_t global_counter;
 
-#endif /* __LOGREMOTE_H */
+#endif /* LOGREMOTE_H */

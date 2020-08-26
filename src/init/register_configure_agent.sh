@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # March 6, 2019.
 #
 # This program is free software; you can redistribute it
@@ -76,7 +76,7 @@ add_adress_block() {
         echo "    <server>" >> ${DIRECTORY}/etc/ossec.conf
         echo "      <address>$i</address>" >> ${DIRECTORY}/etc/ossec.conf
         echo "      <port>1514</port>" >> ${DIRECTORY}/etc/ossec.conf
-        echo "      <protocol>udp</protocol>" >> ${DIRECTORY}/etc/ossec.conf
+        echo "      <protocol>tcp</protocol>" >> ${DIRECTORY}/etc/ossec.conf
         echo "    </server>" >> ${DIRECTORY}/etc/ossec.conf
     done
 

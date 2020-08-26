@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Security Configuration Assessment
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * January 25, 2019.
  *
  * This program is free software; you can redistribute it
@@ -15,7 +15,6 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "shared.h"
 
-
 #undef minfo
 #undef mwarn
 #undef merror
@@ -28,15 +27,10 @@
 #define mdebug1(msg, ...) _mtdebug1(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
-typedef struct cis_db_info_t {
-    char *result;
-    cJSON *event;
-    int id;
-} cis_db_info_t;
-
-typedef struct cis_db_hash_info_t {
-    cis_db_info_t **elem;
-} cis_db_hash_info_t;
+#ifdef UNIT_TESTING
+/* Remove static qualifier when testing */
+#define static
+#endif
 
 typedef struct request_dump_t {
     int policy_index;
@@ -65,7 +59,11 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert); // Send alert
 static int wm_sca_check_hash(OSHash *cis_db_hash, const char * const result, const cJSON * const check, const cJSON * const event, int check_index, int policy_index);
 static char *wm_sca_hash_integrity(int policy_index);
 static void wm_sca_free_hash_data(cis_db_info_t *event);
+#ifdef WIN32
+static DWORD WINAPI wm_sca_dump_db_thread(wm_sca_t * data);
+#else
 static void * wm_sca_dump_db_thread(wm_sca_t * data);
+#endif
 static void wm_sca_send_policies_scanned(wm_sca_t * data);
 static int wm_sca_send_dump_end(wm_sca_t * data, unsigned int elements_sent,char * policy_id,int scan_id);  // Send dump end event
 static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg);
@@ -118,9 +116,9 @@ static unsigned int summary_passed = 0;
 static unsigned int summary_failed = 0;
 static unsigned int summary_invalid = 0;
 
-OSHash **cis_db;
-char **last_sha256;
-cis_db_hash_info_t *cis_db_for_hash;
+static OSHash **cis_db;
+static char **last_sha256;
+static cis_db_hash_info_t *cis_db_for_hash;
 
 static w_queue_t * request_queue;
 static wm_sca_t * data_win;
@@ -165,8 +163,8 @@ void * wm_sca_main(wm_sca_t * data) {
 #endif
 
     /* Maximum request interval is the scan interval */
-    if(data->request_db_interval > data->interval) {
-       data->request_db_interval = data->interval;
+    if(data->request_db_interval > data->scan_config.interval) {
+       data->request_db_interval = data->scan_config.interval;
        minfo("The request_db_interval option cannot be higher than the scan interval. It will be redefined to that value.");
     }
 
@@ -210,11 +208,9 @@ void * wm_sca_main(wm_sca_t * data) {
 
 #ifndef WIN32
 
-    for (i = 0; (data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++){
-        wm_delay(1000 * WM_MAX_WAIT);
-    }
+    data->queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-    if (i == WM_MAX_ATTEMPTS) {
+    if (data->queue < 0) {
         merror("Can't connect to queue.");
     }
 
@@ -230,7 +226,7 @@ void * wm_sca_main(wm_sca_t * data) {
 #else
     w_create_thread(NULL,
                     0,
-                    (LPTHREAD_START_ROUTINE)wm_sca_dump_db_thread,
+                    (void *)wm_sca_dump_db_thread,
                     data,
                     0,
                     NULL);
@@ -260,7 +256,7 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
             close(data->queue);
         }
 
-        if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+        if ((data->queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             mwarn("Can't connect to queue.");
         } else {
             if(wm_sendmsg(data->msg_delay, data->queue, msg,WM_SCA_STAMP, SCA_MQ) < 0) {
@@ -275,6 +271,9 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
     return (0);
 }
 
+#ifdef UNIT_TESTING
+__attribute__((weak))
+#endif
 static void wm_sca_send_policies_scanned(wm_sca_t * data) {
     cJSON *policies_obj = cJSON_CreateObject();
     cJSON *policies = cJSON_CreateArray();
@@ -297,62 +296,19 @@ static void wm_sca_send_policies_scanned(wm_sca_t * data) {
 }
 
 static int wm_sca_start(wm_sca_t * data) {
+    char * timestamp = NULL;
 
-    int status = 0;
-    time_t time_start = 0;
-    time_t time_sleep = 0;
+    do {
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(data->scan_config), WM_GCP_LOGTAG, data->scan_on_start);
 
-    if (!data->scan_on_start) {
-        time_start = time(NULL);
-
-        if (data->scan_day) {
-            do {
-                status = check_day_to_scan(data->scan_day, data->scan_time);
-                if (status == 0) {
-                    time_sleep = get_time_to_hour(data->scan_time);
-                } else {
-                    wm_delay(1000); // Sleep one second to avoid an infinite loop
-                    time_sleep = get_time_to_hour("00:00");
-                }
-
-                mdebug2("Sleeping for %d seconds.", (int)time_sleep);
-                wm_delay(1000 * time_sleep);
-
-            } while (status < 0);
-
-        } else if (data->scan_wday >= 0) {
-
-            time_sleep = get_time_to_day(data->scan_wday, data->scan_time);
-            minfo("Waiting for turn to evaluate.");
-            mdebug2("Sleeping for %d seconds.", (int)time_sleep);
-            wm_delay(1000 * time_sleep);
-
-        } else if (data->scan_time) {
-
-            time_sleep = get_time_to_hour(data->scan_time);
-            minfo("Waiting for turn to evaluate.");
-            mdebug2("Sleeping for %d seconds.", (int)time_sleep);
-            wm_delay(1000 * time_sleep);
-
-        } else if (data->next_time == 0 || data->next_time > time_start) {
-
-            // On first run, take into account the interval of time specified
-            time_sleep = data->next_time == 0 ?
-                         (time_t)data->interval :
-                         data->next_time - time_start;
-
-            minfo("Waiting for turn to evaluate.");
-            mdebug2("Sleeping for %ld seconds.", (long)time_sleep);
-            wm_delay(1000 * time_sleep);
-
+        if (time_sleep) {
+            const int next_scan_time = sched_get_next_scan_time(data->scan_config);
+            timestamp = w_get_timestamp(next_scan_time);
+            mtdebug2(WM_SCA_LOGTAG, "Sleeping until: %s", timestamp);
+            os_free(timestamp);
+            w_sleep_until(next_scan_time);
         }
-    }
-
-    while(1) {
-        // Get time and execute
-        time_start = time(NULL);
-
-        minfo("Starting Security Configuration Assessment scan.");
+        mtinfo(WM_SCA_LOGTAG,"Starting Security Configuration Assessment scan.");
 
         /* Do scan for every policy file */
         wm_sca_read_files(data);
@@ -360,52 +316,9 @@ static int wm_sca_start(wm_sca_t * data) {
         /* Send policies scanned for database purge on manager side */
         wm_sca_send_policies_scanned(data);
 
-        wm_delay(1000); // Avoid infinite loop when execution fails
-        time_sleep = time(NULL) - time_start;
+        mtinfo(WM_SCA_LOGTAG, "Security Configuration Assessment scan finished. Duration: %d seconds.", (int)time_sleep);
 
-        minfo("Security Configuration Assessment scan finished. Duration: %d seconds.", (int)time_sleep);
-
-        if (data->scan_day) {
-            int interval = 0, i = 0;
-            interval = data->interval / 60;   // interval in num of months
-
-            do {
-                status = check_day_to_scan(data->scan_day, data->scan_time);
-                if (status == 0) {
-                    time_sleep = get_time_to_hour(data->scan_time);
-                    i++;
-                } else {
-                    wm_delay(1000);
-                    time_sleep = get_time_to_hour("00:00");     // Sleep until the start of the next day
-                }
-
-                mdebug2("Sleeping for %d seconds.", (int)time_sleep);
-                wm_delay(1000 * time_sleep);
-
-            } while ((status < 0) && (i < interval));
-
-        } else {
-
-            if (data->scan_wday >= 0) {
-                time_sleep = get_time_to_day(data->scan_wday, data->scan_time);
-                time_sleep += WEEK_SEC * ((data->interval / WEEK_SEC) - 1);
-                data->next_time = (time_t)time_sleep + time_start;
-            } else if (data->scan_time) {
-                time_sleep = get_time_to_hour(data->scan_time);
-                time_sleep += DAY_SEC * ((data->interval / DAY_SEC) - 1);
-                data->next_time = (time_t)time_sleep + time_start;
-            } else if ((time_t)data->interval >= time_sleep) {
-                time_sleep = data->interval - time_sleep;
-                data->next_time = data->interval + time_start;
-            } else {
-                merror("Interval overtaken.");
-                time_sleep = data->next_time = 0;
-            }
-
-            mdebug2("Sleeping for %d seconds.", (int)time_sleep);
-            wm_delay(1000 * time_sleep);
-        }
-    }
+    } while(FOREVER());
 
     return 0;
 }
@@ -493,16 +406,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 id = -id;
             }
 #else
-            unsigned int id1 = os_random();
-            unsigned int id2 = os_random();
-
-            char random_id[OS_MAXSTR];
-            snprintf(random_id, OS_MAXSTR - 1, "%u%u", id1, id2);
-
-            int id = atoi(random_id);
-            if (id < 0) {
-                id = -id;
-            }
+            int id = wm_sys_get_random_id();
 #endif
             int requirements_satisfied = 0;
 
@@ -567,7 +471,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 /* Send summary */
                 if(integrity_hash && integrity_hash_file) {
-                    wm_delay(1000 * data->summary_delay);
+                    w_time_delay(1000 * data->summary_delay);
                     wm_sca_send_summary(data,id,summary_passed,summary_failed,summary_invalid,policy,time_start,time_end,integrity_hash,integrity_hash_file,first_scan,cis_db_index,checks_number);
                     snprintf(last_sha256[cis_db_index] ,sizeof(os_sha256),"%s",integrity_hash_file);
                 }
@@ -1096,13 +1000,15 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
             mdebug1("Considering rule: '%s'", rule_ref->valuestring);
 
             os_strdup(rule_ref->valuestring, rule_cp);
-            char *rule_cp_ref = rule_cp;
+            char *rule_cp_ref = NULL;
 
         #ifdef WIN32
             char expanded_rule[2048] = {0};
             ExpandEnvironmentStrings(rule_cp, expanded_rule, 2048);
             rule_cp_ref = expanded_rule;
             mdebug2("Rule after variable expansion: '%s'", rule_cp_ref);
+        #else
+            rule_cp_ref = rule_cp;
         #endif
 
             int rule_is_negated = 0;
@@ -1997,7 +1903,8 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
     }
 
     int result_accumulator = RETURN_NOT_FOUND;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
+
     while ((entry = readdir(dp)) != NULL) {
         /* Ignore . and ..  */
         if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
@@ -2025,7 +1932,7 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
 
         if (S_ISDIR(statbuf_local.st_mode)) {
             result = wm_sca_check_dir(f_name, file, pattern, reason);
-        } else if (((strncasecmp(file, "r:", 2) == 0) && OS_Regex(file + 2, entry->d_name))
+        } else if (((file && strncasecmp(file, "r:", 2) == 0) && OS_Regex(file + 2, entry->d_name))
                 || OS_Match2(file, entry->d_name))
         {
             result = wm_sca_check_file_list(f_name, pattern, reason);
@@ -2494,6 +2401,7 @@ static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const 
     cJSON *description = cJSON_GetObjectItem(check, "description");
     cJSON *rationale = cJSON_GetObjectItem(check, "rationale");
     cJSON *remediation = cJSON_GetObjectItem(check, "remediation");
+    cJSON *condition = cJSON_GetObjectItem(check, "condition");
     cJSON *rules = cJSON_GetObjectItem(check, "rules");
 
     if(!pm_id) {
@@ -2579,6 +2487,18 @@ static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const 
     }
 
     cJSON_AddItemToObject(check_information, "rules", cJSON_Duplicate(rules, 1));
+
+    if(!condition) {
+        mdebug1("No 'condition' field found on check.");
+        goto error;
+    }
+
+    if(!condition->valuestring) {
+        mdebug1("Field 'condition' must be a string.");
+        goto error;
+    }
+
+    cJSON_AddStringToObject(check_information, "condition", condition->valuestring);
 
     cJSON *references = cJSON_GetObjectItem(check, "references");
 
@@ -2846,7 +2766,11 @@ char *wm_sca_hash_integrity_file(const char *file) {
     return hash_file;
 }
 
+#ifdef WIN32
+static DWORD WINAPI wm_sca_dump_db_thread(wm_sca_t * data) {
+#else
 static void *wm_sca_dump_db_thread(wm_sca_t * data) {
+#endif
     int i;
 
     while(1) {
@@ -2880,12 +2804,12 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
             unsigned int time = random;
 
             if (request->first_scan) {
-                wm_delay(2000);
+                w_time_delay(2000);
                 mdebug1("Sending first scan results for policy '%s'", data->policies[request->policy_index]->policy_path);
             } else {
                 minfo("Integration checksum failed for policy '%s'. Resending scan results in %d seconds.",
                     data->policies[request->policy_index]->policy_path, random);
-                wm_delay(1000 * time);
+                w_time_delay(1000 * time);
             }
 
             mdebug1("Dumping results to SCA DB for policy '%s' (Policy index: %u)",
@@ -2915,14 +2839,14 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
                 }
             }
 
-            wm_delay(5000);
+            w_time_delay(5000);
 
             int elements_sent = i;
             mdebug1("Sending end of dump control event.");
 
             wm_sca_send_dump_end(data,elements_sent,data->policies[request->policy_index]->policy_id,scan_id);
 
-            wm_delay(2000);
+            w_time_delay(2000);
 
             /* Send summary only for first scan */
             if (request->first_scan) {
@@ -2944,7 +2868,9 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
         }
     }
 
+#ifndef WIN32
     return NULL;
+#endif
 }
 
 
@@ -3025,7 +2951,7 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
 
     /* Create request socket */
     int cfga_queue;
-    if ((cfga_queue = StartMQ(CFGASSESSMENTQUEUEPATH, READ)) < 0) {
+    if ((cfga_queue = StartMQ(CFGASSESSMENTQUEUEPATH, READ, 0)) < 0) {
         merror(QUEUE_ERROR, CFGASSESSMENTQUEUEPATH, strerror(errno));
         pthread_exit(NULL);
     }
@@ -3122,38 +3048,11 @@ cJSON *wm_sca_dump(const wm_sca_t *data) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
 
+    sched_scan_dump(&(data->scan_config), wm_wd);
+
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "scan_on_start", data->scan_on_start ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "skip_nfs", data->skip_nfs ? "yes" : "no");
-    if (data->interval) cJSON_AddNumberToObject(wm_wd, "interval", data->interval);
-    if (data->scan_day) cJSON_AddNumberToObject(wm_wd, "day", data->scan_day);
-
-    switch (data->scan_wday) {
-        case 0:
-            cJSON_AddStringToObject(wm_wd, "wday", "sunday");
-            break;
-        case 1:
-            cJSON_AddStringToObject(wm_wd, "wday", "monday");
-            break;
-        case 2:
-            cJSON_AddStringToObject(wm_wd, "wday", "tuesday");
-            break;
-        case 3:
-            cJSON_AddStringToObject(wm_wd, "wday", "wednesday");
-            break;
-        case 4:
-            cJSON_AddStringToObject(wm_wd, "wday", "thursday");
-            break;
-        case 5:
-            cJSON_AddStringToObject(wm_wd, "wday", "friday");
-            break;
-        case 6:
-            cJSON_AddStringToObject(wm_wd, "wday", "saturday");
-            break;
-        default:
-            break;
-    }
-    if (data->scan_time) cJSON_AddStringToObject(wm_wd, "time", data->scan_time);
 
     if (data->policies && *data->policies) {
         cJSON *policies = cJSON_CreateArray();

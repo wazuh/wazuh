@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2015-2019, Wazuh Inc.
+* Copyright (C) 2015-2020, Wazuh Inc.
 * December 05, 2018.
 *
 * This program is free software; you can redistribute it
@@ -21,33 +21,43 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "string_op.h"
 #include "../../remoted/remoted.h"
+#include "wazuhdb_op.h"
 #include <time.h>
 
-static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response);
-static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_response);
+static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket, char *wdb_response);
+static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket, char *wdb_response);
 static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket);
 static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *wdb_response);
-static int FindCheckResults(Eventinfo *lf, char * policy_id, int *socket,char *wdb_response);
-static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response);
+static int FindCheckResults(Eventinfo *lf, char *policy_id, int *socket, char *wdb_response);
+static int FindPoliciesIds(Eventinfo *lf, int *socket, char *wdb_response);
 static int DeletePolicy(Eventinfo *lf, char *policy, int *socket);
 static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket);
 static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id,int scan_id, int *socket);
-static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, int id , int scan_id, char * result, char *status, char *reason, cJSON *event);
-static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int invalid, int total_checks, int score,char * hash,int update);
+static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, int id , int scan_id, char * result, char *status,
+        char *reason, cJSON *event);
+static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan,
+        int pass,int failed, int invalid, int total_checks, int score,char * hash,int update);
 static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, char *value);
 static int SaveRules(Eventinfo *lf,int *socket, int id_check, char *type, char *rule);
-static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references, char *hash_file);
-static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event);
-static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event);
-static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event);
-static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event);
-static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **status,cJSON **reason,cJSON **policy_id,cJSON **command, cJSON **rules);
-static int CheckPoliciesJSON(cJSON *event,cJSON **policies);
-static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJSON **scan_id);
-static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,cJSON *status,cJSON *reason,char *old_result,cJSON *command);
-static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *invalid,cJSON *total_checks,cJSON *score,cJSON *file,cJSON *policy_id);
-static void PushDumpRequest(char * agent_id, char * policy_id, int first_scan);
-static int pm_send_db(char *msg, char *response, int *sock);
+static int SavePolicyInfo(Eventinfo *lf, int *socket, char *name, char *file, char * id, char *description, char *references,
+        char *hash_file);
+static void HandleCheckEvent(Eventinfo *lf, int *socket, cJSON *event);
+static void HandleScanInfo(Eventinfo *lf, int *socket, cJSON *event);
+static void HandlePoliciesInfo(Eventinfo *lf, int *socket, cJSON *event);
+static void HandleDumpEvent(Eventinfo *lf, int *socket, cJSON *event);
+static int CheckEventJSON(cJSON *event, cJSON **scan_id, cJSON **id, cJSON **name, cJSON **title, cJSON **description,
+        cJSON **rationale, cJSON **remediation, cJSON **compliance, cJSON **condition, cJSON **check, cJSON **reference,
+        cJSON **file, cJSON **directory, cJSON **process, cJSON **registry, cJSON **result, cJSON **status, cJSON **reason,
+        cJSON **policy_id, cJSON **command, cJSON **rules);
+static int CheckPoliciesJSON(cJSON *event, cJSON **policies);
+static int CheckDumpJSON(cJSON *event, cJSON **elements_sent, cJSON **policy_id, cJSON **scan_id);
+static void FillCheckEventInfo(Eventinfo *lf, cJSON *scan_id, cJSON *id, cJSON *name, cJSON *title, cJSON *description,
+        cJSON *rationale, cJSON *remediation, cJSON *compliance, cJSON *reference, cJSON *file,
+        cJSON *directory, cJSON *process, cJSON *registry, cJSON *result, cJSON *status, cJSON *reason, char *old_result,
+        cJSON *command);
+static void FillScanInfo(Eventinfo *lf, cJSON *scan_id, cJSON *name, cJSON *description, cJSON *pass, cJSON *failed,
+        cJSON *invalid, cJSON *total_checks, cJSON *score, cJSON *file, cJSON *policy_id);
+static void PushDumpRequest(char *agent_id, char *policy_id, int first_scan);
 static void *RequestDBThread();
 static int ConnectToSecurityConfigurationAssessmentSocket();
 static int ConnectToSecurityConfigurationAssessmentSocketRemoted();
@@ -137,7 +147,7 @@ end:
 
 static int ConnectToSecurityConfigurationAssessmentSocket() {
 
-    if ((cfga_socket = StartMQ(CFGAQUEUE, WRITE)) < 0) {
+    if ((cfga_socket = StartMQ(CFGAQUEUE, WRITE, 1)) < 0) {
         merror(QUEUE_ERROR, CFGAQUEUE, strerror(errno));
         return -1;
     }
@@ -147,7 +157,7 @@ static int ConnectToSecurityConfigurationAssessmentSocket() {
 
 static int ConnectToSecurityConfigurationAssessmentSocketRemoted() {
 
-    if ((cfgar_socket = StartMQ(CFGARQUEUE, WRITE)) < 0) {
+    if ((cfgar_socket = StartMQ(CFGARQUEUE, WRITE, 1)) < 0) {
         merror(QUEUE_ERROR, CFGARQUEUE, strerror(errno));
         return -1;
     }
@@ -264,7 +274,7 @@ int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response)
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca query %d", lf->agent_id, pm_id);
 
-    if (pm_send_db(msg, response, socket) == 0)
+    if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
         if (!strncmp(response, "ok found", 8))
         {
@@ -282,6 +292,7 @@ int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response)
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -301,7 +312,7 @@ static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_re
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_scan %s", lf->agent_id, policy_id);
 
-    if (pm_send_db(msg, response, socket) == 0)
+    if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
         if (!strncmp(response, "ok found", 8))
         {
@@ -319,6 +330,7 @@ static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_re
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -338,7 +350,7 @@ static int FindCheckResults(Eventinfo *lf, char * policy_id, int *socket,char *w
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_results %s", lf->agent_id, policy_id);
 
-    if (pm_send_db(msg, response, socket) == 0)
+    if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
         if (!strncmp(response, "ok found", 8))
         {
@@ -356,6 +368,7 @@ static int FindCheckResults(Eventinfo *lf, char * policy_id, int *socket,char *w
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 
@@ -376,7 +389,7 @@ static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response) {
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_policies ", lf->agent_id);
 
-    if (pm_send_db(msg, response, socket) == 0)
+    if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
         if (!strncmp(response, "ok found", 8))
         {
@@ -394,6 +407,7 @@ static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response) {
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -413,7 +427,7 @@ static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_policy %s", lf->agent_id, policy);
 
-    if (pm_send_db(msg, response, socket) == 0)
+    if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
         if (!strncmp(response, "ok found", 8))
         {
@@ -429,6 +443,7 @@ static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -448,7 +463,7 @@ static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *wdb_
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_policy_sha256 %s", lf->agent_id, policy);
 
-    if (pm_send_db(msg, response, socket) == 0) {
+    if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR)) {
         if (!strncmp(response, "ok found", 8)) {
             char *result_checks = response + 9;
             snprintf(wdb_response,OS_MAXSTR,"%s",result_checks);
@@ -460,6 +475,7 @@ static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *wdb_
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -479,7 +495,7 @@ static int DeletePolicy(Eventinfo *lf, char *policy, int *socket) {
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca delete_policy %s", lf->agent_id, policy);
 
-    if (pm_send_db(msg, response, socket) == 0)
+    if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
         if (!strncmp(response, "ok", 2))
         {
@@ -495,6 +511,7 @@ static int DeletePolicy(Eventinfo *lf, char *policy, int *socket) {
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -514,7 +531,7 @@ static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket) {
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca delete_check %s", lf->agent_id, policy);
 
-    if (pm_send_db(msg, response, socket) == 0)
+    if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
         if (!strncmp(response, "ok", 2))
         {
@@ -530,6 +547,7 @@ static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket) {
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -549,7 +567,7 @@ static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id,int scan_id,
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca delete_check_distinct %s|%d", lf->agent_id, policy_id,scan_id);
 
-    if (pm_send_db(msg, response, socket) == 0)
+    if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
         if (!strncmp(response, "ok", 2))
         {
@@ -565,6 +583,7 @@ static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id,int scan_id,
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -590,13 +609,15 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, int id , int s
         os_free(json_event);
     }
 
-    if (pm_send_db(msg, response, socket) == 0)
+    if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
+        free(msg);
         os_free(response);
         return 0;
     }
     else
     {
+        free(msg);
         os_free(response);
         return -1;
     }
@@ -619,13 +640,15 @@ static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id,
         snprintf(msg, OS_MAXSTR - 1, "agent %s sca update_scan_info_start %s|%d|%d|%d|%d|%d|%d|%d|%d|%s",lf->agent_id, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,failed,invalid,total_checks,score,hash );
     }
 
-    if (pm_send_db(msg, response, socket) == 0)
+    if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
+        free(msg);
         os_free(response);
         return 0;
     }
     else
     {
+        free(msg);
         os_free(response);
         return -1;
     }
@@ -644,13 +667,15 @@ static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_policy %s|%s|%s|%s|%s|%s",lf->agent_id,name,file,id,description ? description : "NULL",references ? references : "NULL",hash_file);
 
-    if (pm_send_db(msg, response, socket) == 0)
+    if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
+        free(msg);
         os_free(response);
         return 0;
     }
     else
     {
+        free(msg);
         os_free(response);
         return -1;
     }
@@ -671,13 +696,15 @@ static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, ch
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_compliance %d|%s|%s",lf->agent_id, id_check,key,value );
 
-    if (pm_send_db(msg, response, socket) == 0)
+    if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
+        free(msg);
         os_free(response);
         return 0;
     }
     else
     {
+        free(msg);
         os_free(response);
         return -1;
     }
@@ -696,13 +723,15 @@ static int SaveRules(Eventinfo *lf,int *socket, int id_check, char *type, char *
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_rules %d|%s|%s",lf->agent_id, id_check, type, rule);
 
-    if (pm_send_db(msg, response, socket) == 0)
+    if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
+        free(msg);
         os_free(response);
         return 0;
     }
     else
     {
+        free(msg);
         os_free(response);
         return -1;
     }
@@ -720,6 +749,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *description = NULL;
     cJSON *rationale = NULL;
     cJSON *remediation = NULL;
+    cJSON *condition = NULL;
     cJSON *check = NULL;
     cJSON *compliance = NULL;
     cJSON *reference = NULL;
@@ -736,7 +766,10 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
 
     mdebug1("Checking event JSON fields.");
 
-    if(!CheckEventJSON(event,&scan_id,&id,&name,&title,&description,&rationale,&remediation,&compliance,&check,&reference,&file,&directory,&process,&registry,&result,&status,&reason,&policy_id,&command,&rules)) {
+    if(!CheckEventJSON(event, &scan_id, &id, &name, &title, &description, &rationale,
+            &remediation, &compliance, &condition, &check, &reference, &file, &directory,
+            &process, &registry, &result, &status, &reason, &policy_id, &command, &rules))
+    {
 
         int result_event = 0;
         char *wdb_response = NULL;
@@ -751,15 +784,27 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 merror("Error querying policy monitoring database for agent '%s'", lf->agent_id);
                 break;
             case 0: // It exists, update
-                result_event = SaveEventcheck(lf, 1, socket,id->valueint,scan_id ? scan_id->valueint : -1, result ? result->valuestring : NULL, status ? status->valuestring : NULL, reason ? reason->valuestring : NULL, event);
+                result_event = SaveEventcheck(lf, 1, socket, id->valueint,
+                        scan_id ? scan_id->valueint : -1,
+                        result ? result->valuestring : NULL,
+                        status ? status->valuestring : NULL,
+                        reason ? reason->valuestring : NULL,
+                        event
+                );
 
                 if (result){
                     if(strcmp(wdb_response,result->valuestring)) {
-                        FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,status,reason,wdb_response,command);
+                        FillCheckEventInfo(lf, scan_id, id,name, title, description, rationale, remediation,
+                                compliance, reference, file, directory, process, registry, result,
+                                status, reason, wdb_response, command
+                        );
                     }
                 } else if (status && status->valuestring) {
                     if(strcmp(wdb_response, status->valuestring)) {
-                        FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,status,reason,wdb_response,command);
+                        FillCheckEventInfo(lf, scan_id, id,name, title, description, rationale, remediation,
+                                compliance, reference, file, directory, process, registry, result,
+                                status, reason, wdb_response, command
+                        );
                     }
                 }
 
@@ -769,15 +814,27 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 }
                 break;
             case 1: // It not exists, insert
-                result_event = SaveEventcheck(lf, 0, socket,id->valueint,scan_id ? scan_id->valueint : -1, result ? result->valuestring : NULL, status ? status->valuestring : NULL, reason ? reason->valuestring : NULL, event);
+                result_event = SaveEventcheck(lf, 0, socket, id->valueint,
+                        scan_id ? scan_id->valueint : -1,
+                        result ? result->valuestring : NULL,
+                        status ? status->valuestring : NULL,
+                        reason ? reason->valuestring : NULL,
+                        event
+                );
 
                 if (result) {
                     if(strcmp(wdb_response,result->valuestring)) {
-                        FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,status,reason,NULL,command);
+                        FillCheckEventInfo(lf, scan_id, id, name, title, description, rationale, remediation,
+                                compliance, reference, file, directory, process, registry, result,
+                                status, reason, NULL, command
+                        );
                     }
                 } else if (status && status->valuestring) {
                     if(strcmp(wdb_response, status->valuestring)) {
-                        FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,status,reason,NULL,command);
+                        FillCheckEventInfo(lf, scan_id, id, name, title, description, rationale,
+                                remediation, compliance, reference, file, directory,
+                                process, registry, result, status, reason, NULL, command
+                        );
                     }
                 }
 
@@ -1256,7 +1313,12 @@ static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJ
     return retval;
 }
 
-static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **status,cJSON **reason,cJSON **policy_id,cJSON **command, cJSON **rules) {
+static int CheckEventJSON(cJSON *event, cJSON **scan_id, cJSON **id, cJSON **name, cJSON **title,
+        cJSON **description, cJSON **rationale, cJSON **remediation, cJSON **compliance,
+        cJSON **condition, cJSON **check, cJSON **reference, cJSON **file, cJSON **directory,
+        cJSON **process, cJSON **registry, cJSON **result, cJSON **status, cJSON **reason,
+        cJSON **policy_id, cJSON **command, cJSON **rules)
+{
     assert(event);
 
     int retval = 1;
@@ -1361,6 +1423,13 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
         obj = *file;
         if( obj && !obj->valuestring ) {
             merror("Malformed JSON: field 'file' must be a string.");
+            return retval;
+        }
+
+        *condition = cJSON_GetObjectItem(*check, "condition");
+        obj = *condition;
+        if( obj && !obj->valuestring){
+            merror ("Malformed JSON: field 'condition' must be a string");
             return retval;
         }
 
@@ -1511,7 +1580,11 @@ static int CheckPoliciesJSON(cJSON *event,cJSON **policies) {
     return retval;
 }
 
-static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,cJSON *status,cJSON *reason,char *old_result,cJSON *command) {
+static void FillCheckEventInfo(Eventinfo *lf, cJSON *scan_id, cJSON *id, cJSON *name, cJSON *title, cJSON *description,
+        cJSON *rationale, cJSON *remediation, cJSON *compliance, cJSON *reference, cJSON *file,
+        cJSON *directory, cJSON *process, cJSON *registry, cJSON *result, cJSON *status, cJSON *reason,
+        char *old_result, cJSON *command)
+{
     assert(lf);
     fillData(lf, "sca.type", "check");
 
@@ -1777,109 +1850,4 @@ static void PushDumpRequest(char * agent_id, char * policy_id, int first_scan) {
         mwarn("SCA request queue is full.");
         free(msg);
     }
-}
-
-int pm_send_db(char *msg, char *response, int *sock)
-{
-    assert(msg);
-    assert(response);
-
-    int retval = -1;
-    int attempts;
-
-    mdebug1("Sending query to wazuh-db: %s", msg);
-
-    // Connect to socket if disconnected
-    if (*sock < 0)
-    {
-        for (attempts = 1; attempts <= PM_MAX_WAZUH_DB_ATTEMPS && (*sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_128)) < 0; attempts++)
-        {
-            switch (errno)
-            {
-            case ENOENT:
-                mtinfo(ARGV0, "Cannot find '%s'. Waiting %d seconds to reconnect.", WDB_LOCAL_SOCK, attempts);
-                break;
-            default:
-                mtinfo(ARGV0, "Cannot connect to '%s': %s (%d). Waiting %d seconds to reconnect.", WDB_LOCAL_SOCK, strerror(errno), errno, attempts);
-            }
-            sleep(attempts);
-        }
-
-        if (*sock < 0)
-        {
-            mterror(ARGV0, "at pm_send_db(): Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
-            goto end;
-        }
-    }
-
-    int size = strlen(msg);
-
-    // Send msg to Wazuh DB
-    if (OS_SendSecureTCP(*sock, size + 1, msg) != 0)
-    {
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-        {
-            merror("at pm_send_db(): database socket is full");
-        }
-        else if (errno == EPIPE)
-        {
-            // Retry to connect
-            merror("at pm_send_db(): Connection with wazuh-db lost. Reconnecting.");
-            close(*sock);
-
-            if (*sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_128), *sock < 0)
-            {
-                switch (errno)
-                {
-                case ENOENT:
-                    mterror(ARGV0, "Cannot find '%s'.", WDB_LOCAL_SOCK);
-                    break;
-                default:
-                    mterror(ARGV0, "Cannot connect to '%s': %s (%d).", WDB_LOCAL_SOCK, strerror(errno), errno);
-                }
-                goto end;
-            }
-
-            if (OS_SendSecureTCP(*sock, size + 1, msg))
-            {
-                merror("at OS_SendSecureTCP() (retry): %s (%d)", strerror(errno), errno);
-                goto end;
-            }
-        }
-        else
-        {
-            merror("at OS_SendSecureTCP(): %s (%d)", strerror(errno), errno);
-            goto end;
-        }
-    }
-
-    ssize_t length;
-
-    // Receive response from socket
-    length = OS_RecvSecureTCP(*sock, response, OS_SIZE_6144);
-    switch (length)
-    {
-    case OS_SOCKTERR:
-        merror("OS_RecvSecureTCP(): response size is bigger than expected.");
-        break;
-    case -1:
-        merror("at OS_RecvSecureTCP(): %s (%d)", strerror(errno), errno);
-        goto end;
-
-    default:
-        response[length >= 0 ? length : 0] = '\0';
-
-        mdebug1("Got wazuh-db response: %s", response);
-        if (strncmp(response, "ok", 2))
-        {
-            merror("received: '%s'", response);
-            goto end;
-        }
-    }
-
-    retval = 0;
-
-end:
-    free(msg);
-    return retval;
 }

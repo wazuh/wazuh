@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __CFQUEUE_H
-#define __CFQUEUE_H
+#ifndef CFQUEUE_H
+#define CFQUEUE_H
 
 #define MAX_FQUEUE  256
 #define FQ_TIMEOUT  5
@@ -33,5 +33,4 @@ int Init_FileQueue(file_queue *fileq, const struct tm *p, int flags) __attribute
 
 alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int timeout) __attribute__((nonnull));
 
-#endif /* __CFQUEUE_H */
-
+#endif /* CFQUEUE_H */

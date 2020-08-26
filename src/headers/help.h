@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,11 +10,10 @@
 
 /* Help Function */
 
-#ifndef __HELP_H
-#define __HELP_H
+#ifndef HELP_H
+#define HELP_H
 
 void print_header(void);
 void print_version(void) __attribute__((noreturn));
 
-#endif
-
+#endif /* HELP_H */

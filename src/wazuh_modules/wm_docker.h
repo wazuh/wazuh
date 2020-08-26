@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Docker
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * October, 2018.
  *
  * This program is free software; you can redistribute it
@@ -27,6 +27,7 @@ typedef struct wm_docker_t {
     unsigned int interval;             // Time interval to retry to run the listener
     int attempts;                      // Maximum attempts to run the module after fails
     wm_docker_flags_t flags;           // Default flags
+    sched_scan_config scan_config;
 } wm_docker_t;
 
 extern const wm_context WM_DOCKER_CONTEXT;   // Context
