@@ -7851,7 +7851,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's stats by hour"
+      summary: "Get a specified node's stats per hour"
       description: "Return Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the average of alerts per hour"
       operationId: api.controllers.cluster_controller.get_stats_hourly_node
       x-rbac-actions:
@@ -7919,7 +7919,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's stats by week"
+      summary: "Get a specified node's stats per week"
       description: "Return Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the average of alerts per hour for that specific day"
       operationId: api.controllers.cluster_controller.get_stats_weekly_node
       x-rbac-actions:
