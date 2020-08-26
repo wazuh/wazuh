@@ -27,7 +27,7 @@ logger = logging.getLogger('wazuh')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
-async def login_user(request, user: str, auth_context=None, raw=False):
+async def login_user(request, user: str, raw=False):
     """User/password authentication to get an access token.
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
 
@@ -36,8 +36,6 @@ async def login_user(request, user: str, auth_context=None, raw=False):
     request : connexion.request
     user : str
         Name of the user who wants to be authenticated
-    auth_context : dict, optional
-        User's authorization context
     raw : bool, optional
         Respond in raw format
 

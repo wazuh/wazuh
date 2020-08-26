@@ -462,8 +462,7 @@ class WazuhException(Exception):
         4000: {'message': "Permission denied",
                'remediation': "Please, make sure you have permissions to execute the current request. "
                               "For more information on how to set up permissions, please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html"},
-        4001: {'message': 'The body of the request is empty, you must specify what you want to modify',
-               'remediation': "The fields available for update are: name(str), rule(str), policies(list(dict))"},
+        4001: {'message': 'The body of the request is empty, you must specify what you want to modify'},
         4002: {'message': 'The specified role does not exist',
                'remediation': 'Please, create the specified role with the endpoint POST /security/roles'},
         4003: {'message': 'The specified rule is invalid',
