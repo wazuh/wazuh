@@ -9,6 +9,13 @@
  * Foundation.
  */
 
+#ifdef UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #include "wazuh_db/wdb.h"
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_validate.h"
@@ -23,10 +30,9 @@
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER
- * @retval WM_UPGRADE_VERSION_SAME_MANAGER
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
-static int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task, const wm_manager_configs* manager_configs);
+STATIC int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
  * Check if WPK exists for this agent
@@ -39,7 +45,7 @@ static int wm_agent_upgrade_validate_non_custom_version(const char *agent_versio
  * @retval WM_UPGRADE_SYSTEM_NOT_SUPPORTED
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
-static int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch);
+STATIC int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch);
 
 /**
  * Check if a WPK exist for the upgrade version
@@ -52,7 +58,7 @@ static int wm_agent_upgrade_validate_system(const char *platform, const char *os
  * @retval WM_UPGRADE_URL_NOT_FOUND
  * @retval WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
  * */
-static int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version, const char *wpk_repository_config);
+STATIC int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version, const char *wpk_repository_config) __attribute__((nonnull));
 
 static const char* invalid_platforms[] = {
     "darwin",
@@ -138,6 +144,7 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
                     break;
                 } else if (attempts == WM_UPGRADE_WPK_DOWNLOAD_ATTEMPTS) {
                     return_code = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
+                    break;
                 }
                 sleep(attempts);
             }
@@ -171,7 +178,7 @@ int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task) {
     return return_code;
 }
 
-static int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task, const wm_manager_configs* manager_configs) {
+STATIC int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task, const wm_manager_configs* manager_configs) {
     char *manager_version = NULL;
     char *tmp_manager_version = NULL;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
@@ -191,20 +198,20 @@ static int wm_agent_upgrade_validate_non_custom_version(const char *agent_versio
                         return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
                     } else if (wm_agent_upgrade_compare_versions(wpk_version, tmp_manager_version) > 0) {
                         return_code = WM_UPGRADE_NEW_VERSION_GREATER_MASTER;
-                    } else if (wm_agent_upgrade_compare_versions(agent_version, tmp_manager_version) == 0) {
-                        return_code = WM_UPGRADE_VERSION_SAME_MANAGER;
                     }
                 }
             }
 
             os_free(manager_version);
+        } else {
+            return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
         }
     }
 
     return return_code;
 }
 
-static int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch) {
+STATIC int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch) {
     int invalid_platforms_len = 0;
     int invalid_platforms_it = 0;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
@@ -234,7 +241,7 @@ static int wm_agent_upgrade_validate_system(const char *platform, const char *os
     return return_code;
 }
 
-static int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version, const char *wpk_repository_config) {
+STATIC int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version, const char *wpk_repository_config) {
     const char *http_tag = "http://";
     const char *https_tag = "https://";
     char *repository_url = NULL;
@@ -316,6 +323,18 @@ static int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info
             }
             version = next_line + 1;
         }
+        if (version) {
+            if (sha1 = strchr(version, ' '), sha1) {
+                *sha1 = '\0';
+                if (wm_agent_upgrade_compare_versions(wpk_version, version) == 0) {
+                    // Save WPK url, file name and sha1
+                    os_strdup(sha1 + 1, task->wpk_sha1);
+                    os_strdup(file_url, task->wpk_file);
+                    os_free(task->wpk_repository);
+                    os_strdup(path_url, task->wpk_repository);
+                }
+            }
+        }
         if (!task->wpk_repository || !task->wpk_file || !task->wpk_sha1) {
             return_code = WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST;
         }
@@ -337,30 +356,59 @@ int wm_agent_upgrade_compare_versions(const char *version1, const char *version2
     char ver2[10];
     char *tmp_v1 = NULL;
     char *tmp_v2 = NULL;
-    int patch1;
-    int major1;
-    int minor1;
-    int patch2;
-    int major2;
-    int minor2;
+    char *token = NULL;
+    int patch1 = 0;
+    int major1 = 0;
+    int minor1 = 0;
+    int patch2 = 0;
+    int major2 = 0;
+    int minor2 = 0;
     int result = 0;
 
-    strcpy(ver1, version1);
-    strcpy(ver2, version2);
+    if (version1) {
+        strcpy(ver1, version1);
 
-    tmp_v1 = strchr(ver1, 'v');
-    tmp_v2 = strchr(ver2, 'v');
-    tmp_v1++;
-    tmp_v2++;
+        if (tmp_v1 = strchr(ver1, 'v'), tmp_v1) {
+            tmp_v1++;
+        } else {
+            tmp_v1 = ver1;
+        }
 
-    major1 = atoi(strtok(tmp_v1, "."));
-    minor1 = atoi(strtok(NULL, "."));
-    patch1 = atoi(strtok(NULL, "."));
+        if (token = strtok(tmp_v1, "."), token) {
+            major1 = atoi(token);
 
-    major2 = atoi(strtok(tmp_v2, "."));
-    minor2 = atoi(strtok(NULL, "."));
-    patch2 = atoi(strtok(NULL, "."));
-    
+            if (token = strtok(NULL, "."), token) {
+                minor1 = atoi(token);
+
+                if (token = strtok(NULL, "."), token) {
+                    patch1 = atoi(token);
+                }
+            }
+        }
+    }
+
+    if (version2) {
+        strcpy(ver2, version2);
+
+        if (tmp_v2 = strchr(ver2, 'v'), tmp_v2) {
+            tmp_v2++;
+        } else {
+            tmp_v2 = ver2;
+        }
+
+        if (token = strtok(tmp_v2, "."), token) {
+            major2 = atoi(token);
+
+            if (token = strtok(NULL, "."), token) {
+                minor2 = atoi(token);
+
+                if (token = strtok(NULL, "."), token) {
+                    patch2 = atoi(token);
+                }
+            }
+        }
+    }
+
     if (major1 > major2) {
         result = 1;
     } else if (major1 < major2){
@@ -384,12 +432,12 @@ int wm_agent_upgrade_compare_versions(const char *version1, const char *version2
     return result;
 }
 
-bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char **status, int *agent_id) {
-    if (response) {
-        cJSON *error_object = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_ERROR]);
-        cJSON *data_object = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_ERROR_DATA]);
-        cJSON *status_object = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_STATUS]);
-        cJSON *agent_json = cJSON_GetObjectItem(response, task_manager_json_keys[WM_TASK_AGENT_ID]);
+bool wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id) {
+    if (input_json) {
+        cJSON *error_object = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_ERROR]);
+        cJSON *data_object = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_ERROR_DATA]);
+        cJSON *status_object = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_STATUS]);
+        cJSON *agent_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_AGENT_ID]);
         
         if (error_object && (error_object->type == cJSON_Number) && data_object && (data_object->type == cJSON_String) && agent_json
             && (agent_json->type == cJSON_Number)) {
@@ -419,17 +467,19 @@ bool wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *ag
         cJSON *data_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_ERROR_DATA]);
         cJSON *task_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_TASK_ID]);
 
-        if (agent_json && (agent_json->type == cJSON_Number)) {
+        if (agent_id && agent_json && (agent_json->type == cJSON_Number)) {
             *agent_id = agent_json->valueint;
         } else {
             return false;
         }
 
-        if (data_json && (data_json->type == cJSON_String)) {
+        if (data && data_json && (data_json->type == cJSON_String)) {
             os_strdup(data_json->valuestring, *data);
+        } else {
+            return false;
         }
 
-        if (task_json && (task_json->type == cJSON_Number)) {
+        if (task_id && task_json && (task_json->type == cJSON_Number)) {
             *task_id = task_json->valueint;
         }
         return true;

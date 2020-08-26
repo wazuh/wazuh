@@ -45,10 +45,9 @@ int wm_agent_upgrade_validate_status(int last_keep_alive);
  * @retval WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
  * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER
- * @retval WM_UPGRADE_VERSION_SAME_MANAGER
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
-int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *task, wm_upgrade_command command, const wm_manager_configs* manager_configs);
+int wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *task, wm_upgrade_command command, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
  * Check if WPK file exist or download it
@@ -99,12 +98,12 @@ int wm_agent_upgrade_compare_versions(const char *version1, const char *version2
  *      "status": "Done"
  *  }
  * */
-bool wm_agent_upgrade_validate_task_status_message(const cJSON *response, char **status, int *agent_id);
+bool wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id);
 
 /**
  * Validate an upgrade response from the task manager module
  * @param input_json JSON to be validated
- * @param agent_id pointer to a variable where the agent_id will be sotred
+ * @param agent_id pointer to a variable where the agent_id will be stored
  * @param taks_id pointer to a variable where the task_id will be stored
  * @param data pointer to a variable where the data string will be stored
  * @return

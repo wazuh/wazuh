@@ -8,6 +8,14 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
+#ifdef UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_tasks.h"
 #include "wm_agent_upgrade_parsing.h"
@@ -20,55 +28,40 @@ static OSHash *task_table_by_agent_id;
 /**
  * Sends the task information locally to the task module queue
  * */
-static cJSON *wm_agent_send_task_information_master(const cJSON *message_object);
+STATIC cJSON* wm_agent_send_task_information_master(const cJSON *message_object) __attribute__((nonnull));
+
 /**
  * Sends a `send_sync` message into clusterd that will be received by the master node
  * */
-static cJSON *wm_agent_send_task_information_worker(const cJSON *message_object);
+STATIC cJSON* wm_agent_send_task_information_worker(const cJSON *message_object) __attribute__((nonnull));
 
 wm_upgrade_task* wm_agent_upgrade_init_upgrade_task() {
     wm_upgrade_task *task;
     os_calloc(1, sizeof(wm_upgrade_task), task);
-    task->custom_version = NULL;
-    task->wpk_repository = NULL;
-    task->force_upgrade = false;
-    task->use_http = false;
-    task->wpk_file = NULL;
-    task->wpk_sha1 = NULL;
     return task;
 }
 
 wm_upgrade_custom_task* wm_agent_upgrade_init_upgrade_custom_task() {
     wm_upgrade_custom_task *task;
     os_calloc(1, sizeof(wm_upgrade_custom_task), task);
-    task->custom_file_path = NULL;
-    task->custom_installer = NULL;
     return task;
 }
 
 wm_task_info* wm_agent_upgrade_init_task_info() {
     wm_task_info *task_info = NULL;
     os_calloc(1, sizeof(wm_task_info), task_info);
-    task_info->task = NULL;
     return task_info;
 }
 
 wm_agent_info* wm_agent_upgrade_init_agent_info() {
     wm_agent_info *agent_info = NULL;
     os_calloc(1, sizeof(wm_agent_info), agent_info);
-    agent_info->platform = NULL;
-    agent_info->major_version = NULL;
-    agent_info->minor_version = NULL;
-    agent_info->architecture = NULL;
-    agent_info->wazuh_version = NULL;
     return agent_info;
 }
 
 wm_agent_task* wm_agent_upgrade_init_agent_task() {
     wm_agent_task *agent_task = NULL;
     os_calloc(1, sizeof(wm_agent_task), agent_task);
-    agent_task->agent_info = NULL;
-    agent_task->task_info = NULL;
     return agent_task;
 }
 
@@ -86,7 +79,6 @@ void wm_agent_upgrade_free_upgrade_task(wm_upgrade_task* upgrade_task) {
         os_free(upgrade_task->wpk_sha1);
         os_free(upgrade_task);
     }
-    upgrade_task = NULL;
 }
 
 void wm_agent_upgrade_free_upgrade_custom_task(wm_upgrade_custom_task* upgrade_custom_task) {
@@ -95,7 +87,6 @@ void wm_agent_upgrade_free_upgrade_custom_task(wm_upgrade_custom_task* upgrade_c
         os_free(upgrade_custom_task->custom_installer);
         os_free(upgrade_custom_task);
     }
-    upgrade_custom_task = NULL;
 }
 
 void wm_agent_upgrade_free_task_info(wm_task_info* task_info) {
@@ -109,7 +100,6 @@ void wm_agent_upgrade_free_task_info(wm_task_info* task_info) {
         }
         os_free(task_info);
     }
-    task_info = NULL;
 }
 
 void wm_agent_upgrade_free_agent_info(wm_agent_info* agent_info) {
@@ -121,7 +111,6 @@ void wm_agent_upgrade_free_agent_info(wm_agent_info* agent_info) {
         os_free(agent_info->wazuh_version);
         os_free(agent_info);
     }
-    agent_info = NULL;
 }
 
 void wm_agent_upgrade_free_agent_task(wm_agent_task* agent_task) {
@@ -133,7 +122,6 @@ void wm_agent_upgrade_free_agent_task(wm_agent_task* agent_task) {
             wm_agent_upgrade_free_task_info(agent_task->task_info);
         }
         os_free(agent_task);
-        agent_task = NULL;
     }
 }
 
@@ -198,7 +186,7 @@ cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
     }
 }
 
-static cJSON *wm_agent_send_task_information_master(const cJSON *message_object) {
+STATIC cJSON *wm_agent_send_task_information_master(const cJSON *message_object) {
     cJSON* response = NULL;
 
     int sock = OS_ConnectUnixDomain(WM_TASK_MODULE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
@@ -222,9 +210,6 @@ static cJSON *wm_agent_send_task_information_master(const cJSON *message_object)
             case -1:
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RECV_ERROR, strerror(errno));
                 break;
-            case 0:
-                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_EMPTY_MESSAGE);
-                break;
             default:
                 response = cJSON_Parse(buffer);
                 if (!response) {
@@ -242,15 +227,23 @@ static cJSON *wm_agent_send_task_information_master(const cJSON *message_object)
     return response;
 }
 
-static cJSON *wm_agent_send_task_information_worker(const cJSON *message_object) {
+STATIC cJSON *wm_agent_send_task_information_worker(const cJSON *message_object) {
     char response[OS_MAXSTR];
-    cJSON* payload = w_create_sendsync_payload(TASK_MANAGER_WM_NAME, cJSON_Duplicate(message_object, 1));
+    cJSON *message_duplicate = cJSON_Duplicate(message_object, 1);
+
+    cJSON *payload = w_create_sendsync_payload(TASK_MANAGER_WM_NAME, message_duplicate);
+
     char *message = cJSON_PrintUnformatted(payload);
+
     mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_SEND_CLUSTER_MESSAGE, message);
-    w_send_clustered_message("sendsync", message, response);      
+
+    w_send_clustered_message("sendsync", message, response);
+
     mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_RECEIVE_MESSAGE, response);
 
     os_free(message);
+    cJSON_Delete(message_duplicate);
     cJSON_Delete(payload);
+
     return cJSON_Parse(response);   
 }
