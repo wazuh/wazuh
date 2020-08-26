@@ -84,6 +84,16 @@ typedef struct dbsync_context_t {
     cJSON * data;
 } dbsync_context_t;
 
+
+/**
+ * @brief Decoding a event
+ * @param lf struct to save the event decoded
+ * @param rules_hash hash of rules
+ * @param decoder_match struct to save the regex which match
+ * @param node first node of decoders list
+ */
+void DecodeEvent(struct _Eventinfo *lf, OSHash *rules_hash, regex_matching *decoder_match, OSDecoderNode *node);
+
 /**
  * @brief Initialize decoder lists to NULL
  *

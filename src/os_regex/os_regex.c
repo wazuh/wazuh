@@ -13,6 +13,7 @@
 #include <stdlib.h>
 
 #include "os_regex.h"
+#include "shared.h"
 
 
 /*  This function is a wrapper around the compile/execute
@@ -37,3 +38,21 @@ int OS_Regex(const char *pattern, const char *str)
     return (r_code);
 }
 
+
+void OSRegex_free_regex_matching (regex_matching *reg) {
+
+    if (!reg) {
+        return;
+    }
+
+    if (reg->sub_strings) {
+        for (unsigned int i = 0; reg->sub_strings[i]; i++) {
+            os_free(reg->sub_strings[i]);
+        }
+        os_free(reg->sub_strings);
+    }
+
+    if (reg->prts_str) os_free(reg->prts_str[0]);
+    os_free(reg->prts_str);
+    os_free(reg->d_size.prts_str_size);
+}

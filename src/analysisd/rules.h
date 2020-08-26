@@ -18,6 +18,7 @@
 #include "lists.h"
 #include "logmsg.h"
 
+
 /* Event fields - stored on a u_int32_t */
 #define FIELD_SRCIP      0x01
 #define FIELD_ID         0x02
@@ -84,6 +85,9 @@
 #define MAX_RULEINFODETAIL  32
 
 typedef struct EventList EventList;
+struct _Eventinfo;
+
+unsigned int hourly_alerts;
 
 typedef struct _RuleInfoDetail {
     int type;
@@ -237,6 +241,19 @@ RuleInfo *zerorulemember(int id, int level, int maxsize, int frequency,
                          int overwrite, EventList **last_event_list);
 
 /**
+ * @brief Check if a rule matches the event
+ * @param lf event to be processed
+ * @param last_events list of previous events processed
+ * @param cdblists list of cdbs
+ * @param curr_node rule to compare with the event "lf"
+ * @param rule_match stores the regex of the rule
+ * @return the rule information if it matches, otherwise null
+ */
+RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events, ListNode **cdblists,
+                              RuleNode *curr_node, regex_matching *rule_match,
+                              OSList **fts_list, OSHash **fts_store);
+
+/**
  * @brief Set os_analysisd_rulelist to null
  */
 void OS_CreateRuleList(void);
@@ -318,6 +335,9 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 int AddHash_Rule(RuleNode *node);
 
 int _setlevels(RuleNode *node, int nnode);
+
+int doDiff(RuleInfo *rule, struct _Eventinfo *lf);
+
 
 /** Definition of the internal rule IDS **
  ** These SIGIDs cannot be used         **

@@ -17,7 +17,7 @@
 
 
 /* Use the osdecoders to decode the received event */
-void DecodeEvent(Eventinfo *lf, OSHash *rules_hash, regex_matching *decoder_match, OSDecoderNode *node)
+void DecodeEvent(struct _Eventinfo *lf, OSHash *rules_hash, regex_matching *decoder_match, OSDecoderNode *node)
 {
     OSDecoderNode *child_node;
     OSDecoderInfo *nnode;
@@ -173,11 +173,13 @@ void DecodeEvent(Eventinfo *lf, OSHash *rules_hash, regex_matching *decoder_matc
 
                 /* If Regex does not match, return */
                 if (!(result = OSRegex_Execute_ex(llog, nnode->regex, decoder_match))) {
+
                     if (nnode->get_next) {
                         child_node = child_node->next;
                         nnode = child_node->osdecoder;
                         continue;
                     }
+
                     return;
                 }
 
