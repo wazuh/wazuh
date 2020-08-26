@@ -23,7 +23,7 @@ stages:
           expected_roles: []
 
 
-  - name: Login with an authorization context an a valid user
+  - name: Login with an authorization context and a valid user
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate/run_as"

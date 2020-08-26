@@ -176,7 +176,7 @@ class RolesTokenBlacklist(_Base):
     This table contains the roles with an invalid token and for how long
     The information stored is:
         role_id: Affected role id
-        nbf_invalid_until: The tokens that has an nbf prior to this timestamp will be invalidated
+        nbf_invalid_until: The tokens that have an nbf prior to this timestamp will be invalidated
         is_valid_until: Deadline for the rule's validity. To ensure that we can delete this rule,
         the deadline will be the time of token creation plus the time of token validity.
         This way, when we delete this rule, we ensure the invalid tokens have already expired.
@@ -400,7 +400,7 @@ class TokenManager:
     all the methods needed for the token blacklist administration.
     """
 
-    def is_token_valid(self,token_nbf_time: int, user_id: int = None, role_id: int = None):
+    def is_token_valid(self, token_nbf_time: int, user_id: int = None, role_id: int = None):
         """Check if specified token is valid
 
         Parameters
@@ -508,7 +508,7 @@ class TokenManager:
 
         Returns
         -------
-        List of removed users and roles rules
+        List of removed user and role rules
         """
         try:
             list_users, list_roles = list(), list()
@@ -538,7 +538,7 @@ class TokenManager:
 
         Returns
         -------
-        List of removed user's rules
+        List of removed user and role rules
         """
         try:
             list_users, list_roles = list(), list()
@@ -1831,6 +1831,7 @@ class RolesRulesManager:
     This class is the manager of the relationships between the roles and the rules. This class provides
     all the methods needed for the roles-rules administration.
     """
+
     def add_rule_to_role(self, rule_id: int, role_id: int):
         """Add a relation between one specified role and one specified rule.
 
