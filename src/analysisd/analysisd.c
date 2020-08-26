@@ -154,6 +154,8 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args);
 /* Database synchronization thread */
 static void * w_dispatch_dbsync_thread(void * args);
 
+static void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void *args);
+
 typedef struct _clean_msg {
     Eventinfo *lf;
     char *msg;
@@ -211,6 +213,9 @@ static w_queue_t * decode_queue_winevt_input;
 /* Database synchronization input queue */
 static w_queue_t * dispatch_dbsync_input;
 
+/* Upgrade module decoder  */
+static w_queue_t * upgrade_module_input;
+
 /* Hourly alerts mutex */
 static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -233,6 +238,7 @@ static int reported_event = 0;
 static int reported_writer = 0;
 static int reported_winevt = 0;
 static int reported_dbsync;
+static int reported_upgrade_module = 0;
 
 /* Mutexes */
 pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -960,6 +966,9 @@ void OS_ReadMSG_analysisd(int m_queue)
     for (i = 0; i < num_dispatch_dbsync_threads; i++){
         w_create_thread(w_dispatch_dbsync_thread, NULL);
     }
+
+    /* Create upgrade module dispatcher thread */
+    w_create_thread(w_dispatch_upgrade_module_thread, NULL);
 
     /* Create State thread */
     w_create_thread(w_analysisd_state_main,NULL);
@@ -1832,6 +1841,28 @@ void * ad_input_main(void * args) {
                         reported_dbsync = TRUE;
                     }
                 }
+            } else if (msg[0] == UPGRADE_MQ) { 
+                result = -1;
+
+                if (!queue_full(upgrade_module_input)) {
+                    os_strdup(buffer, copy);
+
+                    result = queue_push_ex(upgrade_module_input, copy);
+
+                    if (result == -1) {
+                        free(copy);
+                    }
+                }
+
+                if (result == -1) {
+                    w_inc_dropped_events();
+
+                    if (!reported_upgrade_module) {
+                        mwarn("Upgrade module messge queue is full.");
+                        reported_upgrade_module = TRUE;
+                    }
+                }
+                
             } else {
 
                 os_strdup(buffer, copy);
@@ -2310,6 +2341,53 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
     return NULL;
 }
 
+void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
+    char * msg;
+    Eventinfo * lf;
+
+    while (true) {
+        msg = queue_pop_ex(upgrade_module_input);
+        assert(msg != NULL);
+
+        os_calloc(1, sizeof(Eventinfo), lf);
+        os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+        Zero_Eventinfo(lf);
+
+        if (OS_CleanMSG(msg, lf) < 0) {
+            merror(IMSG_ERROR, msg);
+            Free_Eventinfo(lf);
+            free(msg);
+            continue;
+        }
+        free(msg);
+
+        // Inserts agent id into incomming message and sends it to upgrade module
+        cJSON *message_obj = cJSON_Parse(lf->log);
+        if (message_obj) {
+            int sock = OS_ConnectUnixDomain(WM_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
+            if (sock == OS_SOCKTERR) {
+                merror("Could not connect to upgrade module socket at '%s'. Error: %s", WM_UPGRADE_SOCK, strerror(errno));
+            } else {
+                int agent = atoi(lf->agent_id);
+                cJSON* agents = cJSON_CreateIntArray(&agent, 1);
+                cJSON_AddItemToObject(message_obj, "agents", agents);
+                
+                char *message = cJSON_PrintUnformatted(message_obj);
+                OS_SendSecureTCP(sock, strlen(message), message);
+                os_free(message);
+                
+                close(sock);
+            }
+            cJSON_Delete(message_obj);
+        } else {
+            merror("Could not parse upgrade message: %s", lf->log);
+        }
+        Free_Eventinfo(lf);
+    }
+
+    return NULL;
+}
+
 void * w_process_event_thread(__attribute__((unused)) void * id){
 
     Eventinfo *lf = NULL;
@@ -2767,6 +2845,7 @@ void w_get_queues_size(){
     s_event_queue = ((decode_queue_event_input->elements / (float)decode_queue_event_input->size));
     s_process_event_queue = ((decode_queue_event_output->elements / (float)decode_queue_event_output->size));
     s_dbsync_message_queue = ((dispatch_dbsync_input->elements / (float)dispatch_dbsync_input->size));
+    s_upgrade_message_queue = ((upgrade_module_input->elements / (float)upgrade_module_input->size));
 
     s_writer_archives_queue = ((writer_queue->elements / (float)writer_queue->size));
     s_writer_alerts_queue = ((writer_queue_log->elements / (float)writer_queue_log->size));
@@ -2784,6 +2863,7 @@ void w_get_initial_queues_size(){
     s_event_queue_size = decode_queue_event_input->size;
     s_process_event_queue_size = decode_queue_event_output->size;
     s_dbsync_message_queue_size = dispatch_dbsync_input->size;
+    s_upgrade_message_queue_size = upgrade_module_input->size;
 
     s_writer_alerts_queue_size = writer_queue_log->size;
     s_writer_archives_queue_size = writer_queue->size;
@@ -2833,4 +2913,7 @@ void w_init_queues(){
 
     /* Initialize database synchronization message queue */
     dispatch_dbsync_input = queue_init(getDefine_Int("analysisd", "dbsync_queue_size", 0, 2000000));
+
+    /* Initialize upgrade module message queue */
+    upgrade_module_input = queue_init(getDefine_Int("analysisd", "upgrade_queue_size", 0, 2000000));
 }

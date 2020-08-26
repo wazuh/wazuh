@@ -1026,12 +1026,16 @@ config/%.o: config/%.c
 
 #### Wazuh modules ##
 
-wmodules_c := $(wildcard wazuh_modules/wm*.c)
+wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
 
-ifneq (${TARGET},agent)
+ifeq (${TARGET},agent)
+	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/agent/*.c)
+else ifeq (${TARGET},winagent)
+	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/agent/*.c)
+else
 	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/vulnerability_detector/*.c)
-	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/*.c)
 	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/task_manager/*.c)
+	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/manager/*.c)
 endif
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
@@ -1809,7 +1813,7 @@ clean-internals: clean-unit-tests
 	rm -f ${os_auth_o}
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ${integrator_o}
-	rm -f ${wmodulesd_o} ${wmodules_o}
+	rm -f ${wmodulesd_o} ${wmodules_o} $(wildcard wazuh_modules/agent_upgrade/agent/*.o)
 	rm -f ${wdb_o}
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
