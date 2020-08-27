@@ -34,7 +34,8 @@ list(APPEND task_names "test_wm_task_manager_parsing")
 list(APPEND task_flags "-Wl,--wrap,_mterror -Wl,--wrap,w_get_timestamp")
 
 list(APPEND task_names "test_wm_task_manager_analyze")
-list(APPEND task_flags "-Wl,--wrap,wm_task_manager_get_task_by_agent_id_and_module -Wl,--wrap,wm_task_manager_get_task_by_task_id -Wl,--wrap,wm_task_manager_parse_response -Wl,--wrap,wm_task_manager_parse_response_result")
+list(APPEND task_flags "-Wl,--wrap,wm_task_manager_get_task_by_agent_id_and_module -Wl,--wrap,wm_task_manager_get_task_by_task_id -Wl,--wrap,wm_task_manager_parse_response -Wl,--wrap,wm_task_manager_parse_response_result \
+                        -Wl,--wrap,wm_task_manager_insert_task -Wl,--wrap,wm_task_manager_get_task_status -Wl,--wrap,wm_task_manager_update_task_status")
 
 # Compilig tests
 list(LENGTH task_names count)

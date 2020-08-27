@@ -78,7 +78,7 @@ cJSON* wm_task_manager_analyze_task_api_module(char *command, int *error_code, i
  * @param status Status extracted from task_object.
  * @return JSON object with the response for this task.
  * */
-cJSON* wm_task_manager_analyze_task_upgrade_module(char *command, int *error_code, int agent_id, int task_id, char *status) __attribute__((nonnull));
+cJSON* wm_task_manager_analyze_task_upgrade_module(char *command, int *error_code, int agent_id, int task_id, char *status) __attribute__((nonnull(1, 2)));
 
 #endif
 #endif
