@@ -512,6 +512,7 @@
 #define LOGTEST_ERROR_INITIALIZE_SESSION            "(7311): Failure to initializing session '%s'"
 #define LOGTEST_ERROR_PROCESS_EVENT                 "(7312): Failed to process the event"
 #define LOGTEST_ERROR_FIELD_NOT_FOUND               "(7313): '%s' JSON field not found or is empty"
+#define LOGTEST_ERROR_TOKEN_INVALID_TYPE            "(7309): Failure to remove session. remove_session JSON field must be a string"
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
