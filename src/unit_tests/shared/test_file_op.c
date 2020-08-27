@@ -99,12 +99,14 @@ int __wrap_fclose ( FILE * stream ) {
     return 0;
 }
 
+#ifdef TEST_SERVER
 int __wrap_bzip2_uncompress(const char *filebz2, const char *file) {
 
     check_expected_ptr(filebz2);
     check_expected_ptr(file);
     return mock();
 }
+#endif
 
 extern int __real_fprintf ( FILE * stream, const char * format, ... );
 int __wrap_fprintf ( FILE * stream, const char * format, ... ) {

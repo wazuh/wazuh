@@ -1,7 +1,9 @@
 
 # Tests list and flags
-list(APPEND shared_tests_names "test_file_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,isChroot -Wl,--wrap,stat -Wl,--wrap,chmod -Wl,--wrap,File_DateofChange -Wl,--wrap,getpid -Wl,--wrap,unlink -Wl,--wrap,_merror -Wl,--wrap,_minfo -Wl,--wrap,_mwarn -Wl,--wrap,fopen -Wl,--wrap,_mferror,--wrap=fread,--wrap=fclose,--wrap=fprintf,--wrap=bzip2_uncompress,--wrap=mdebug1")
+if(${TARGET} STREQUAL "server")
+    list(APPEND shared_tests_names "test_file_op")
+    list(APPEND shared_tests_flags "-Wl,--wrap,isChroot -Wl,--wrap,stat -Wl,--wrap,chmod -Wl,--wrap,File_DateofChange -Wl,--wrap,getpid -Wl,--wrap,unlink -Wl,--wrap,_merror -Wl,--wrap,_minfo -Wl,--wrap,_mwarn -Wl,--wrap,fopen -Wl,--wrap,_mferror,--wrap=fread,--wrap=fclose,--wrap=fprintf,--wrap=bzip2_uncompress,--wrap=mdebug1")
+endif()
 
 list(APPEND shared_tests_names "test_integrity_op")
 list(APPEND shared_tests_flags " ")
