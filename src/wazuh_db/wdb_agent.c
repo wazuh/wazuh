@@ -21,7 +21,6 @@
 #define WDBOUTPUT_SIZE OS_MAXSTR
 
 static const char *global_db_queries[] = {
-    [SQL_SELECT_AGENT_GROUP] = "global sql SELECT `group` FROM agent WHERE id = %d;",
     [SQL_SELECT_AGENTS] = "global sql SELECT id FROM agent WHERE id != 0;",
     [SQL_FIND_AGENT] = "global sql SELECT id FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');",
     [SQL_SELECT_FIM_OFFSET] = "global sql SELECT fim_offset FROM agent WHERE id = %d;",
@@ -50,7 +49,7 @@ static const char *global_db_commands[] = {
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
     [WDB_DELETE_AGENT] = "global delete-agent %d",
     [WDB_SELECT_AGENT_NAME] = "global select-agent-name %d",
-    [WDB_SELECT_AGENT_GROUP] = "",
+    [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %d",
     [WDB_SELECT_AGENTS] = "",
     [WDB_FIND_AGENT] = "",
     [WDB_SELECT_FIM_OFFSET] = "",
@@ -420,7 +419,7 @@ char* wdb_agent_group(int id) {
     cJSON *root = NULL;
     cJSON *json_group = NULL;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_SELECT_AGENT_GROUP], id);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_SELECT_AGENT_GROUP], id);
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {

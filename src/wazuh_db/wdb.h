@@ -134,6 +134,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_DELETE_AGENT,
     WDB_STMT_GLOBAL_SELECT_AGENT_NAME,
+    WDB_STMT_GLOBAL_SELECT_AGENT_GROUP,
     WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
     WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
@@ -144,7 +145,6 @@ typedef enum wdb_stmt {
 } wdb_stmt;
 
 typedef enum global_db_query {
-    SQL_SELECT_AGENT_GROUP,
     SQL_SELECT_AGENTS,
     SQL_FIND_AGENT,
     SQL_SELECT_FIM_OFFSET,
@@ -476,7 +476,6 @@ int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status);
  */
 int wdb_remove_agent(int id);
 
-/*  The string must be freed after using. Returns NULL on error. */
 /**
  * @brief Get name from agent table in global.db by using its ID.
  * 
@@ -484,6 +483,14 @@ int wdb_remove_agent(int id);
  * @return A string with the agent name on success or NULL on failure.
  */
 char* wdb_get_agent_name(int id);
+
+/**
+ * @brief Get group from agent table in global.db by using its ID.
+ * 
+ * @param[in] id Id of the agent that the name must be selected.
+ * @return A string with the agent group on success or NULL on failure.
+ */
+char* wdb_agent_group(int id);
 
 /* Update agent group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_group(int id,char *group);
@@ -499,9 +506,6 @@ cJSON *wdb_remove_multiple_agents(char *agent_list);
 
 /* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_group_db(const char *name);
-
-/* Get group from agent. The string must be freed after using. Returns NULL on error. */
-char* wdb_agent_group(int id);
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_create_agent_db(int id, const char *name);
@@ -855,7 +859,7 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
 int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the agent name select request.
+ * @brief Function to parse the select agent name request.
  * 
  * @param wdb the global struct database.
  * @param input String with 'agent_id'.
@@ -863,6 +867,16 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output);
  * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse the select agent group request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with 'agent_id'.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse the agent delete from belongs table request.
@@ -1108,10 +1122,18 @@ int wdb_global_delete_agent(wdb_t *wdb, int id);
  * 
  * @param wdb the Global struct database.
  * @param id Agent id.
- * @retval JSON with the agent name on success.
- * @retval NULL on error.
+ * @return JSON with the agent name on success. NULL on error.
  */
 cJSON* wdb_global_select_agent_name(wdb_t *wdb, int id);
+
+/**
+ * @brief Function to get the group of a particular agent.
+ * 
+ * @param wdb the Global struct database.
+ * @param id Agent id.
+ * @return JSON with the agent group on success. NULL on error.
+ */
+cJSON* wdb_global_select_agent_group(wdb_t *wdb, int id);
 
 /**
  * @brief Function to delete an agent from the belongs table.

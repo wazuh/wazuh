@@ -497,6 +497,15 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_select_agent_name(wdb, next, output);
             }
+        } else if (strcmp(query, "select-agent-group") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_select_agent_group(wdb, next, output);
+            }
         } else if (strcmp(query, "delete-agent-belong") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax.");
@@ -4276,6 +4285,27 @@ int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output)
     if (name = wdb_global_select_agent_name(wdb, agent_id), !name) {
         mdebug1("Error getting agent name from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting agent name from global.db.");
+        return OS_INVALID;
+    }
+
+    out = cJSON_PrintUnformatted(name);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(name);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output) {
+    int agent_id = 0;
+    cJSON *name = NULL;
+    char *out = NULL;
+
+    agent_id = atoi(input);
+
+    if (name = wdb_global_select_agent_group(wdb, agent_id), !name) {
+        mdebug1("Error getting agent group from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agent group from global.db.");
         return OS_INVALID;
     }
 
