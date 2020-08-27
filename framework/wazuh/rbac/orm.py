@@ -177,7 +177,7 @@ class User(_Base):
     id = Column('id', Integer, primary_key=True)
     username = Column(String(32))
     password = Column(String(256))
-    auth_context = Column(Boolean, default=False, nullable=False)
+    allow_run_as = Column(Boolean, default=False, nullable=False)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('username', name='username_restriction'),)
 
@@ -185,10 +185,10 @@ class User(_Base):
     roles = relationship("Roles", secondary='user_roles',
                          backref=backref("rolesu", cascade="all, delete", order_by=UserRoles.role_id), lazy='dynamic')
 
-    def __init__(self, username, password, auth_context=False):
+    def __init__(self, username, password, allow_run_as=False):
         self.username = username
         self.password = password
-        self.auth_context = auth_context
+        self.allow_run_as = allow_run_as
         self.created_at = datetime.utcnow()
 
     def __repr__(self):
@@ -210,7 +210,7 @@ class User(_Base):
         :return: Dict with the information of the user
         """
         return {'id': self.id, 'username': self.username,
-                'roles': self._get_roles_id(), 'auth_context': self.auth_context}
+                'roles': self._get_roles_id(), 'allow_run_as': self.allow_run_as}
 
     def to_dict(self):
         """Return the information of one policy and the roles that have assigned
@@ -219,6 +219,7 @@ class User(_Base):
         """
         with UserRolesManager() as urm:
             return {'id': self.id, 'username': self.username,
+                    'allow_run_as': self.allow_run_as,
                     'roles': [role.id for role in urm.get_all_roles_from_user(user_id=str(self.id))]}
 
 
@@ -463,7 +464,7 @@ class TokenManager:
                 if token_rule.first() and current_time > token_rule.first().is_valid_until:
                     token_rule.delete()
                     self.session.commit()
-                    list_user.append(user_token.username)
+                    list_user.append(user_token.user_id)
             return list_user
         except IntegrityError:
             self.session.rollback()
@@ -501,24 +502,24 @@ class AuthenticationManager:
     It manages users and token generation.
     """
 
-    def add_user(self, username: str, password: str, auth_context: bool = False):
+    def add_user(self, username: str, password: str, allow_run_as: bool = False):
         """Creates a new user if it does not exist.
 
         :param username: string Unique user name
         :param password: string Password provided by user. It will be stored hashed
-        :param auth_context: Flag that indicates if the user can log into the API throw an authorization context
+        :param allow_run_as: Flag that indicates if the user can log into the API throw an authorization context
         :return: True if the user has been created successfully. False otherwise (i.e. already exists)
         """
         try:
             self.session.add(User(username=username, password=generate_password_hash(password),
-                                  auth_context=auth_context))
+                                  allow_run_as=allow_run_as))
             self.session.commit()
             return True
         except IntegrityError:
             self.session.rollback()
             return False
 
-    def update_user(self, user_id: str, password: str):
+    def update_user(self, user_id: str, password: str, allow_run_as: bool):
         """Update the password an existent user
 
         Parameters
@@ -527,6 +528,8 @@ class AuthenticationManager:
             Unique user id
         password : str
             Password provided by user. It will be stored hashed
+        allow_run_as : bool
+            Enable authorization context login method for the new user
 
         Returns
         -------
@@ -535,11 +538,14 @@ class AuthenticationManager:
         try:
             user = self.session.query(User).filter_by(id=user_id).first()
             if user is not None:
-                user.password = generate_password_hash(password)
-                self.session.commit()
-                return True
-            else:
-                return False
+                if password:
+                    user.password = generate_password_hash(password)
+                if allow_run_as is not None:
+                    user.allow_run_as = allow_run_as
+                if password or allow_run_as is not None:
+                    self.session.commit()
+                    return True
+            return False
         except IntegrityError:
             self.session.rollback()
             return False
@@ -614,15 +620,15 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
-    def user_auth_context(self, username: str = None):
-        """Get the auth_context's flag of specified user in the system
+    def user_allow_run_as(self, username: str = None):
+        """Get the allow_run_as's flag of specified user in the system
 
         :param username: string Unique user name
         :return: An specified user
         """
         try:
             if username is not None:
-                return self.session.query(User).filter_by(username=username).first().get_user()['auth_context']
+                return self.session.query(User).filter_by(username=username).first().get_user()['allow_run_as']
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
@@ -2000,7 +2006,7 @@ with open(os.path.join(default_path, "users.yaml"), 'r') as stream:
     with AuthenticationManager() as auth:
         for d_username, payload in default_users[next(iter(default_users))].items():
             auth.add_user(username=d_username, password=payload['password'],
-                          auth_context=payload['auth_context'])
+                          allow_run_as=payload['allow_run_as'])
 
 # Create default roles if they don't exist yet
 with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:

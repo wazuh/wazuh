@@ -1,14 +1,12 @@
 default_rules:
   wui_elastic_admin:
-    description: Administrator permissions for WUI's elastic users.
+    description: "Administrator permissions for WUI's elastic users."
     rule:
       FIND:
-        username:
-          - elastic
+        username: "elastic"
 
   wui_opendistro_admin:
-    description: Administrator permissions for WUI's opendistro users.
+    description: "Administrator permissions for WUI's opendistro users."
     rule:
       FIND:
-        user_name:
-          - admin
+        user_name: "admin"

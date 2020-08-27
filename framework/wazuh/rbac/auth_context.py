@@ -33,12 +33,19 @@ class RBAChecker:
     _regex_prefix = "r'"
 
     # If we don't pass it the role to check, it will take all of the system.
-    def __init__(self, auth_context=None, role=None):
+    def __init__(self, auth_context=None, role=None, user_id=None):
         """Class constructor to match the roles of the system with a given authorization context
 
-        :param auth_context: Authorization context to be checked
-        :param role: Roles(list)/Role/None(All roles in the system) to be checked against the authorization context
+        Parameters
+        ----------
+        auth_context : dict or str
+            Authorization context to be checked
+        role : list of Roles or Role or None
+            Roles(list)/Role/None(All roles in the system) to be checked against the authorization context
+        user_id : int
+            Current user_id
         """
+        self.user_id = user_id
         if auth_context is None:
             auth_context = '{}'
         try:
@@ -280,7 +287,8 @@ class RBAChecker:
         list_roles = list()
         for role in self.roles_list:
             for rule in role['rules']:
-                if self.check_rule(rule['rule']):
+                if (rule['id'] not in orm.required_rules_for_role[1] or self.user_id in orm.admin_user_ids) and \
+                        self.check_rule(rule['rule']):
                     list_roles.append(role['id'])
                     break
 

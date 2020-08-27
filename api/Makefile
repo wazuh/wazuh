@@ -36,18 +36,8 @@ install:
 	$(INSTALL_DIR) $(PREFIX)/api/scripts
 	$(INSTALL_FILE) scripts/wazuh-apid.py ${PREFIX}/api/scripts
 
-	$(INSTALL_DIR) $(PREFIX)/api/service
-	$(INSTALL_EXEC) service/wazuh-api $(PREFIX)/api/service
-	$(INSTALL_EXEC) service/wazuh-api.service $(PREFIX)/api/service
-	$(INSTALL_EXEC) service/install_daemon.sh $(PREFIX)/api/service
-
     # Install scripts/%.py on $(PREFIX)/bin/%
 	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
 
-restore:
-	# Restore old API config
-	. ../api/service/inst-api-functions.sh; restore_old_api ${REVISION}
-
-service:
-    # Install daemon
-	WAZUH_PATH=$(PREFIX) $(PREFIX)/api/service/install_daemon.sh
+    # Restore old API config
+	. ../api/service/inst-api-functions.sh; restore_old_api
