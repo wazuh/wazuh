@@ -21,10 +21,10 @@ def db_setup():
         with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
-                    from wazuh.rbac.preprocessor import optimize_resources
+                    from wazuh.rbac.preprocessor import PreProcessor
     init_db('schema_security_test.sql', test_data_path)
 
-    yield optimize_resources
+    yield PreProcessor
 
 
 permissions = list()
@@ -40,5 +40,8 @@ outputs = [test_case['processed_policies'] for test_case in file]
 @pytest.mark.parametrize('input_, output', zip(inputs, outputs))
 def test_expose_resources(db_setup, input_, output):
     with patch('wazuh.rbac.preprocessor.RBAChecker.run_user_role_link', return_value=input_):
-        preprocessed_policies = db_setup()
+        preprocessor = db_setup()
+        for policy in input_:
+            preprocessor.process_policy(policy)
+        preprocessed_policies = preprocessor.get_optimize_dict()
         assert preprocessed_policies == output

@@ -1740,9 +1740,17 @@ components:
     UsersResponse:
       type: object
       properties:
+        id:
+          type: integer
+          description: "User's id"
         username:
           type: string
-          description: "Policy name"
+        allow_run_as:
+          type: boolean
+          description: "Flag to enable the user to log in using authorization context"
+        roles:
+          type: array
+          description: "User's roles"
 
     # Cluster and manager models
     WazuhDaemonsStatus:
@@ -2548,7 +2556,7 @@ components:
           type: integer
           format: int32
           minimum: 30
-          example: 36000
+          example: 3600
         rbac_mode:
           description: "RBAC mode (white/black)"
           type: string
@@ -3697,7 +3705,7 @@ components:
     file_format:
       in: query
       name: format
-      description: "Select output format to return the file. JSON will format the file in JSON format and XML will return the XML raw file in a string"
+      description: "Filter by file format. For example 'deb' will output deb files."
       schema:
         type: string
         format: alphanumeric
@@ -6740,6 +6748,8 @@ paths:
             $ref: '#/components/responses/ResponseError'
           '401':
             $ref: '#/components/responses/UnauthorizedResponse'
+          '403':
+            $ref: '#/components/responses/PermissionDeniedResponse'
           '405':
             $ref: '#/components/responses/InvalidHTTPMethodResponse'
           '429':
@@ -12737,7 +12747,7 @@ paths:
       tags:
         - security
       summary: "User/password authentication to get an access token"
-      description: "This method should be called to get an API token. This token will expire at some time"
+      description: "This method should be called to get an API token. This token will expire after auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
       parameters:
         - $ref: '#/components/parameters/raw'
@@ -12761,6 +12771,14 @@ paths:
               example: "<generated_token>"
         '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -12779,16 +12797,23 @@ paths:
                 message: "User wazuh logout correctly."
         '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/user/authenticate/run_as:
     post:
       tags:
       - security
       summary: "Auth_context based authentication to get an access token"
-      description: "This method should be called to get an API token. This token will expire at some time"
+      description: "This method should be called to get an API token using an authorization context body. This token will expire after auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
       parameters:
-        - $ref: '#/components/parameters/auth_context'
         - $ref: '#/components/parameters/raw'
       security:
         - basicAuth: []
@@ -12820,8 +12845,8 @@ paths:
       description: 'Get all RBAC actions, including the potential related resources and endpoints.'
       operationId: api.controllers.security_controller.get_rbac_actions
       parameters:
-        - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/endpoint'
+        - $ref: '#/components/parameters/pretty'
       responses:
         '200':
           description: "Return a list of RBAC actions"
@@ -12877,8 +12902,8 @@ paths:
       description: 'This method should be called to get all current defined RBAC resources.'
       operationId: api.controllers.security_controller.get_rbac_resources
       parameters:
-        - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/resource_list'
+        - $ref: '#/components/parameters/pretty'
       responses:
         '200':
           description: "Return all RBAC resources"
@@ -13140,9 +13165,9 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
+        - $ref: '#/components/parameters/role_id'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/role_id'
       requestBody:
         content:
           application/json:
@@ -13678,7 +13703,7 @@ paths:
       tags:
         - security
       summary: "Create a relation between one role and one or more policies"
-      description: "Create a specify relation role-policy, one role may have multiples policies"
+      description: "Create a specified relation role-policy, one role may have multiples policies"
       operationId: api.controllers.security_controller.set_role_policy
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
@@ -13745,8 +13770,8 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a specify relation role-policy"
-      description: "Delete a specify relation role-policy"
+      summary: "Delete a specified relation role-policy"
+      description: "Delete a specified relation role-policy"
       operationId: api.controllers.security_controller.remove_role_policy
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
@@ -13885,8 +13910,8 @@ paths:
     post:
       tags:
         - security
-      summary: "Create a specify relation between one user and one role"
-      description: "Create a specify relation role-policy, one user may have multiples roles"
+      summary: "Create a specified relation between one user and one role"
+      description: "Create a specified relation role-policy, one user may have multiples roles"
       operationId: api.controllers.security_controller.set_user_role
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
@@ -13934,8 +13959,8 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a specify relation user-roles"
-      description: "Delete a specify relation user-roles"
+      summary: "Delete a specified relation user-roles"
+      description: "Delete a specified relation user-roles"
       operationId: api.controllers.security_controller.remove_user_role
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
@@ -14004,6 +14029,7 @@ paths:
                     affected_items:
                       - id: 1
                         username: wazuh
+                        allow_run_as: true
                         roles:
                           - id: 1
                             name: administrator
@@ -14040,6 +14066,14 @@ paths:
                   message: Current user information was shown
         '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/users:
     get:
@@ -14073,32 +14107,47 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - roles:
-                          - 2
+                      - id: 3
                         username: administrator
-                      - roles: []
+                        allow_run_as: true
+                        roles:
+                          - 2
+                      - id: 4
                         username: guest
-                      - roles:
+                        allow_run_as: false
+                        roles: []
+                      - id: 5
+                        username: normal
+                        allow_run_as: false
+                        roles:
                           - 4
                           - 5
                           - 6
-                        username: normal
-                      - roles:
+                      - id: 6
+                        username: ossec
+                        allow_run_as: true
+                        roles:
                           - 2
                           - 5
-                        username: ossec
-                      - roles: []
-                        username: python
-                      - roles:
+                      - username: python
+                        allow_run_as: true
+                        roles: []
+                      - id: 7
+                        username: rbac
+                        allow_run_as: false
+                        roles:
                           - 3
                           - 4
                           - 5
-                        username: rbac
-                      - roles:
-                          - 1
+                      - id: 1
                         username: wazuh
-                      - roles: []
+                        allow_run_as: true
+                        roles:
+                          - 1
+                      - id: 2
                         username: wazuh-wui
+                        allow_run_as: true
+                        roles: []
                     failed_items: []
                     total_affected_items: 8
                     total_failed_items: 0
@@ -14122,6 +14171,9 @@ paths:
       operationId: api.controllers.security_controller.create_user
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:create_user'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
         content:
           application/json:
@@ -14138,12 +14190,15 @@ paths:
                   maxLength: 64
                   minLength: 8
                   format: password
+                allow_run_as:
+                  type: boolean
+                  default: False
               required:
                 - username
                 - password
       responses:
         '200':
-          description: "User created successful"
+          description: "User created successfully"
           content:
             application/json:
               schema:
@@ -14183,6 +14238,8 @@ paths:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/user_ids_delete'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
           description: "User deleted successful"
@@ -14220,6 +14277,8 @@ paths:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/user_id_required'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
         content:
           application/json:
@@ -14231,8 +14290,9 @@ paths:
                   maxLength: 64
                   minLength: 8
                   format: password
-              required:
-                - password
+                allow_run_as:
+                  type: boolean
+                  default: False
       responses:
         '200':
           description: "User updated successful"
@@ -14383,7 +14443,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponse"
               example:
-                auth_token_exp_timeout: 36000
+                auth_token_exp_timeout: 3600
                 rbac_mode: white
         '400':
           $ref: '#/components/responses/ResponseError'

@@ -19,7 +19,7 @@ typedef enum fim_event_mode {
 
 typedef enum fdb_stmt {
     FIMDB_STMT_INSERT_DATA,
-    FIMDB_STMT_INSERT_PATH,
+    FIMDB_STMT_REPLACE_PATH,
     FIMDB_STMT_GET_PATH,
     FIMDB_STMT_UPDATE_DATA,
     FIMDB_STMT_UPDATE_PATH,

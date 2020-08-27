@@ -59,10 +59,15 @@ class OssecSocketJSON(OssecSocket):
     def send(self, msg, header_format="<I"):
         return OssecSocket.send(self, msg_bytes=dumps(msg).encode(), header_format=header_format)
 
-    def receive(self, header_format="<I", header_size=4):
+    def receive(self, header_format="<I", header_size=4, raw=False):
         response = loads(OssecSocket.receive(self, header_format=header_format, header_size=header_size).decode())
-
-        return response
+        if not raw:
+            if 'error' in response.keys():
+                if response['error'] != 0:
+                    raise WazuhException(response['error'], response['message'], cmd_error=True)
+            return response['data']
+        else:
+            return response
 
 
 class WazuhAsyncProtocol(asyncio.Protocol):
@@ -258,7 +263,8 @@ async def wazuh_sendsync(daemon_name=None, message=None):
     try:
         sock = OssecSocketJSON(daemons[daemon_name]['path'])
         sock.send(msg=message, header_format=daemons[daemon_name]['header_format'])
-        data = sock.receive(header_format=daemons[daemon_name]['header_format'], header_size=daemons[daemon_name]['size'])
+        data = sock.receive(header_format=daemons[daemon_name]['header_format'],
+                            header_size=daemons[daemon_name]['size'], raw=True)
         sock.close()
     except WazuhException as e:
         raise e

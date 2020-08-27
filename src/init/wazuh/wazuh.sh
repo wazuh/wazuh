@@ -119,14 +119,4 @@ WazuhUpgrade()
 
     rm -f $DIRECTORY/wodles/cve.db
     rm -f $DIRECTORY/queue/vulnerabilities/cve.db
-
-    # Remove OpenSCAP policies if the module is disabled
-    if stat $DIRECTORY/wodles/oscap/content/* 2> /dev/null ; then
-
-        is_disabled="$(CheckModuleIsEnabled '<wodle name="open-scap">' '</wodle>' 'disabled')"
-
-        if [ "${is_disabled}" = "yes" ]; then
-            rm -f $DIRECTORY/wodles/oscap/content/*
-        fi
-    fi
 }

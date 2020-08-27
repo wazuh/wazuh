@@ -2190,6 +2190,7 @@ stages:
           failed_items: []
           total_affected_items: 21
           total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/stats
@@ -2470,24 +2471,7 @@ stages:
       status_code: 200
       json:
         data:
-          affected_items:
-            - ossec-agentlessd: !anystr
-              ossec-analysisd: !anystr
-              ossec-authd: !anystr
-              ossec-csyslogd: !anystr
-              ossec-dbd: !anystr
-              ossec-execd: !anystr
-              ossec-integratord: !anystr
-              ossec-logcollector: !anystr
-              ossec-maild: !anystr
-              ossec-monitord: !anystr
-              ossec-remoted: !anystr
-              ossec-reportd: !anystr
-              ossec-syscheckd: !anystr
-              wazuh-apid: !anystr
-              wazuh-clusterd: !anystr
-              wazuh-db: !anystr
-              wazuh-modulesd: !anystr
+          affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
