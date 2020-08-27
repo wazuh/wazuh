@@ -534,7 +534,11 @@ class WazuhException(Exception):
                'remediation': 'This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html'},
         6002: {'message': 'The body type is not the one specified in the content-type'},
         6003: {'message': 'Error trying to load the JWT secret',
-               'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/jwt_secret'}
+               'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/jwt_secret'},
+
+        # Logtest
+        7000: {'message': 'Invalid body',
+               'remediation': 'Please use only valid fields: {token, event, log_format, location}'},
 
         # > 9000: Authd
     }

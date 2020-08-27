@@ -88,6 +88,7 @@ EXECQ = os.path.join(ossec_path, 'queue', 'alerts', 'execq')
 # Socket
 AUTHD_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'auth')
 REQUEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'request')
+LOGTEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'logtest')
 
 # Agent upgrading variables
 wpk_repo_url_4_x = "packages.wazuh.com/4.x/wpk/"
