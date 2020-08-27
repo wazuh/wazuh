@@ -597,7 +597,7 @@ char *unescape_syscheck_field(char *sum) {
     return NULL;
 }
 
-char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
+char *get_user(int uid) {
     struct passwd pwd;
     struct passwd *result;
     char *buf;
@@ -656,7 +656,7 @@ void ag_send_syscheck(char * message) {
 
 #else /* #ifndef WIN32 */
 
-char *get_user(const char *path, __attribute__((unused)) int uid, char **sid) {
+char *get_user(const char *path, char **sid) {
     DWORD dwRtnCode = 0;
     DWORD dwSecurityInfoErrorCode = 0;
     PSID pSidOwner = NULL;
