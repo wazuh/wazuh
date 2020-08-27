@@ -89,7 +89,7 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
     return event_array;
 }
 
-cJSON* wm_task_manager_parse_response_result(cJSON *response, const char *module, const char *command, char *status, int create_time, int last_update_time, char *request_command) {
+void wm_task_manager_parse_response_result(cJSON *response, const char *module, const char *command, char *status, int create_time, int last_update_time, char *request_command) {
 
     if (module != NULL) {
         cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_MODULE], module);
@@ -100,7 +100,7 @@ cJSON* wm_task_manager_parse_response_result(cJSON *response, const char *module
     }
 
     if (status != NULL) {
-        if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_RESULT], request_command)){
+        if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_RESULT], request_command)) {
             cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_STATUS], wm_task_manager_decode_status(status));
         } else {
             cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_STATUS], status);
@@ -123,11 +123,9 @@ cJSON* wm_task_manager_parse_response_result(cJSON *response, const char *module
             cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_LAST_UPDATE_TIME], timestamp);
             os_free(timestamp);
         } else {
-            cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_LAST_UPDATE_TIME], last_update_time);
+            cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_LAST_UPDATE_TIME], "0");
         }
     }
-
-    return response;
 }
 
 cJSON* wm_task_manager_parse_response(int error_code, int agent_id, int task_id, char *status) {

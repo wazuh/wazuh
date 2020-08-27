@@ -31,7 +31,7 @@ list(APPEND task_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,sqlite
                         -Wl,--wrap,time -Wl,--wrap,w_sleep_until")
 
 list(APPEND task_names "test_wm_task_manager_parsing")
-list(APPEND task_flags " ")
+list(APPEND task_flags "-Wl,--wrap,_mterror -Wl,--wrap,w_get_timestamp")
 
 # Compilig tests
 list(LENGTH task_names count)
