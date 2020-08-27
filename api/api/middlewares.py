@@ -80,12 +80,18 @@ async def prevent_denial_of_service(request, max_requests=300):
 
         if request_counter > max_requests:
             logger.debug(f'Request rejected due to high request per minute: Source IP: {request.remote}')
-            try:
+            user = None
+            payload = dict(request.raw_headers)
+
+            if b'Authorization' in payload.keys():
                 payload = dict(request.raw_headers)[b'Authorization'].decode().split('.')[1]
-            except KeyError:
+            elif b'authorization' in payload.keys():
                 payload = dict(request.raw_headers)[b'authorization'].decode().split('.')[1]
+            else:
+                user = 'unknown_user'
+
             payload += "=" * ((4 - len(payload) % 4) % 4)
-            request['user'] = loads(b64decode(payload).decode())['sub']
+            request['user'] = loads(b64decode(payload).decode())['sub'] if not user else user
             raise_if_exc(WazuhTooManyRequests(6001))
 
 
