@@ -47,7 +47,9 @@ static const char *global_db_queries[] = {
     [SQL_DELETE_GROUP_BELONG] = "global sql DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = %Q );", 
     [SQL_DELETE_GROUP] = "global sql DELETE FROM `group` WHERE name = %Q;",
     [SQL_SELECT_GROUPS] = "global sql SELECT name FROM `group`;",
-    [SQL_SELECT_KEEPALIVE] = "global sql SELECT last_keepalive FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');"
+    [SQL_SELECT_KEEPALIVE] = "global sql SELECT last_keepalive FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');",
+    [SQL_GET_AGENTS_BY_KEEPALIVE] = "global get-agents-by-keepalive condition %s %d last_id %d",
+    [SQL_GET_ALL_AGENTS] = "global get-all-agents last_id %d"
 };
 
 int wdb_sock_agent = -1;
@@ -472,6 +474,102 @@ int* wdb_get_all_agents() {
 
     array[n] = -1;
     cJSON_Delete(root);
+
+    return array;
+}
+
+int* wdb_get_agents_by_keepalive(const char* condition, int keepalive) {
+    cJSON *root = NULL;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_MAXSTR] = "";
+    char* payload;
+    int last_id = 0;
+    wdbc_result status = WDBC_DUE;
+    char *savedptr = NULL;
+    char* delim = ",";
+    int *array = NULL;    
+    int len = 0;
+
+    while (status == WDBC_DUE) {
+        // Query WazuhDB
+        snprintf(wdbquery, sizeof(wdbquery), global_db_queries[SQL_GET_AGENTS_BY_KEEPALIVE], condition, keepalive, last_id);        
+        int result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+        switch (result) {
+        case -2:
+            merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
+            return NULL;
+        case -1:
+            merror("No response from wazuh-db.");
+            return NULL;
+        }
+        // Parse result
+        status = wdbc_parse_result(wdboutput, &payload);
+        if (status == WDBC_ERROR) {
+            merror("Bad response from wazuh-db: %s", payload);
+            break;
+        }
+        //Realloc new size
+        int new_len = os_strcnt(payload, ' ')+1;
+        os_realloc(array, sizeof(int)*(len+new_len+1), array);
+
+        //Append IDs to array
+        char* agent_id = NULL;
+        for (agent_id = strtok_r(payload, delim, &savedptr); agent_id; agent_id = strtok_r(NULL, delim, &savedptr)) {
+            array[len] = atoi(agent_id);
+            len++;
+        }
+        last_id = array[len];   
+    }
+    //Finish the array
+    array[len] = -1;
+
+    return array;
+}
+
+int* wdb_get_all_agents(void) {
+    cJSON *root = NULL;
+    char wdbquery[OS_BUFFER_SIZE] = "";
+    char wdboutput[OS_MAXSTR] = "";
+    char* payload;
+    int last_id = 0;
+    wdbc_result status = WDBC_DUE;
+    char *savedptr = NULL;
+    char* delim = ",";
+    int *array = NULL;    
+    int len = 0;
+
+    while (status == WDBC_DUE) {
+        // Query WazuhDB
+        snprintf(wdbquery, sizeof(wdbquery), global_db_queries[SQL_GET_ALL_AGENTS], last_id);
+        int result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+        switch (result) {
+        case -2:
+            merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
+            return NULL;
+        case -1:
+            merror("No response from wazuh-db.");
+            return NULL;
+        }
+        // Parse result
+        status = wdbc_parse_result(wdboutput, &payload);
+        if (status == WDBC_ERROR) {
+            merror("Bad response from wazuh-db: %s", payload);
+            break;
+        }
+        //Realloc new size
+        int new_len = os_strcnt(payload, ' ')+1;
+        os_realloc(array, sizeof(int)*(len+new_len+1), array);
+
+        //Append IDs to array
+        char* agent_id = NULL;
+        for (agent_id = strtok_r(payload, delim, &savedptr); agent_id; agent_id = strtok_r(NULL, delim, &savedptr)) {
+            array[len] = atoi(agent_id);
+            len++;
+        }
+        last_id = array[len];   
+    }
+    //Finish the array
+    array[len] = -1;
 
     return array;
 }

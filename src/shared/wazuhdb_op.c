@@ -185,6 +185,8 @@ int wdbc_parse_result(char *result, char **payload) {
         retval = WDBC_ERROR;
     } else if (!strcmp(result, "ign")) {
         retval = WDBC_IGNORE;
+    } else if (!strcmp(result, "due")) {
+        retval = WDBC_DUE;
     }
 
     return retval;

@@ -183,6 +183,8 @@ extern const char *__local_name;
 /* for calloc: x = calloc(4,sizeof(char)) -> os_calloc(4,sizeof(char),x) */
 #define os_calloc(x,y,z) ((z = (__typeof__(z)) calloc(x,y)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
 
+#define os_realloc (x,y,z) (z = (__typeof__(z) realloc(x,y)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
+
 #define os_strdup(x,y) ((y = strdup(x)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
 
 #define os_malloc(x,y) ((y = (__typeof__(y)) malloc(x)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))

@@ -130,7 +130,9 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
-    WDB_STMT_GLOBAL_GET_AGENTS_BY_KEEPALIVE,
+    WDB_STMT_GLOBAL_GET_AGENTS,
+    WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE,
+    WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE,
     WDB_STMT_SIZE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
@@ -162,7 +164,9 @@ typedef enum global_db_query {
     SQL_DELETE_GROUP_BELONG,
     SQL_DELETE_GROUP,
     SQL_SELECT_GROUPS,
-    SQL_SELECT_KEEPALIVE
+    SQL_SELECT_KEEPALIVE,
+    SQL_GET_AGENTS_BY_KEEPALIVE,
+    SQL_GET_ALL_AGENTS
 } global_db_query;
 
 typedef struct wdb_t {
@@ -196,20 +200,12 @@ typedef enum {
     WDB_SYNC_REQ        
 } wdb_sync_status_t;
 
-/// Enumeration of query conditions
-typedef enum {
-    WDB_EQUAL,
-    WDB_GREATER,
-    WDB_LESS,
-    WDB_ANY       
-} wdb_condition_t;
-
 /// Enumeration of sync-agent-info-get-status.
 typedef enum {
-    WDB_CHUNKS_PENDING,       ///< There are still elements to get
-    WDB_CHUNKS_BUFFER_FULL,   ///< There are still elements to get but buffer is full
-    WDB_CHUNKS_COMPLETE,      ///< There aren't any more elements to get
-    WDB_CHUNKS_ERROR          ///< An error occured
+    WDB_CHUNKS_ERROR = -1,  ///< An error occured
+    WDB_CHUNKS_PENDING,     ///< There are still elements to get
+    WDB_CHUNKS_BUFFER_FULL, ///< There are still elements to get but buffer is full
+    WDB_CHUNKS_COMPLETE     ///< There aren't any more elements to get    
 } wdb_chunks_status_t;
 
 extern char *schema_global_sql;
@@ -892,7 +888,7 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
 /**
  * Doxygen here
 */
-wdb_chunks_status_t wdb_get_agent_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char* condition, int keep_alive, char **output);
+wdb_chunks_status_t wdb_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char condition, int keep_alive, char **output);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

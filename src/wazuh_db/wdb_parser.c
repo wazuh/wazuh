@@ -25,6 +25,11 @@ int wdb_parse(char * input, char * output) {
     char * out;
     int result = 0;
 
+    static bool test=false;
+    if (test) {
+        os_strdup("global get-agents-by-keepalive condition > 1598467195 start_id 002", input);
+    }
+
     if (!input) {
         mdebug1("Empty input query.");
         return -1;
@@ -406,14 +411,6 @@ int wdb_parse(char * input, char * output) {
             *next++ = '\0';
         }        
 
-        static bool test=false;        
-        if (test) {
-            char* in = NULL;
-            os_strdup("condition > 1598467195", in);         
-            result = wdb_parse_get_agent_agents_by_keepalive(wdb, in, output);
-            os_free(in);
-        }
-
         if (strcmp(query, "sql") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax.");
@@ -470,7 +467,7 @@ int wdb_parse(char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
-                result = wdb_parse_get_agent_agents_by_keepalive(wdb, next, output);
+                result = wdb_parse_get_agents_by_keepalive(wdb, next, output);
             }
         }
         else {
@@ -4077,11 +4074,11 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
     return OS_SUCCESS;
 }
 
-int wdb_parse_get_agent_agents_by_keepalive(wdb_t* wdb, char* input, char* output) {
+int wdb_parse_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output) {
     static int start_id = 0;
-    char* agent_info_sync = NULL;
+    char* out = NULL;
     char *next = NULL;
-    char* comparator = NULL;
+    char comparator = '<';
     int keep_alive = 0;
     const char delim[2] = " ";
     char *savedptr = NULL;
@@ -4092,40 +4089,95 @@ int wdb_parse_get_agent_agents_by_keepalive(wdb_t* wdb, char* input, char* outpu
         mdebug1("Invalid DB query syntax.");
         mdebug2("DB query error near: %s", input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
-        return OS_INVALID;
+        return WDB_CHUNKS_ERROR;
     }
-
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
         mdebug1("Invalid DB query syntax.");
         mdebug2("DB query error near: %s", input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
-        return OS_INVALID;
+        return WDB_CHUNKS_ERROR;
     }
-    comparator = next;
-
+    comparator = *next;
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
         mdebug1("Invalid DB query syntax.");
         mdebug2("DB query error near: %s", input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
-        return OS_INVALID;
+        return WDB_CHUNKS_ERROR;
     }
     keep_alive = atoi(next);
     
-    /* Get start_id if exists*/
-    next = strtok_r(NULL, delim, &savedptr);
-    if(next && strcmp(input, "start_id") == 0) {  
-        char* test = strtok_r(NULL, delim, &savedptr);    
-        start_id = atoi(next);
+    /* Get start_id*/
+    next = strtok_r(input, delim, &savedptr);
+    if (next == NULL || strcmp(input, "start_id") != 0) {
+        mdebug1("Invalid DB query syntax.");
+        mdebug2("DB query error near: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
+        return WDB_CHUNKS_ERROR;
     }
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid DB query syntax.");
+        mdebug2("DB query error near: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
+        return WDB_CHUNKS_ERROR;
+    }
+    start_id = atoi(next);
     
-    wdb_chunks_status_t status = wdb_get_agent_agents_by_keepalive(wdb, &start_id, comparator, keep_alive, &agent_info_sync);
+    wdb_chunks_status_t status = wdb_get_global_agents_by_keepalive(wdb, &start_id, comparator, keep_alive, &out);
     if (status == WDB_CHUNKS_COMPLETE || status == WDB_CHUNKS_ERROR) {
         start_id = 0;
     }
-    snprintf(output, OS_MAXSTR + 1, "%1d %s", status, agent_info_sync);
-    os_free(agent_info_sync)
+    if (status == WDB_CHUNKS_BUFFER_FULL) {
+        snprintf(output, OS_MAXSTR + 1, "due %s", out);
+    }
+    else {
+        snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    }
+    os_free(out)
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_get_all_agents(wdb_t* wdb, char* input, char* output) {
+    static int start_id = 0;
+    char* out = NULL;
+    char *next = NULL;
+    char comparator = '<';
+    int keep_alive = 0;
+    const char delim[2] = " ";
+    char *savedptr = NULL;
+    
+    /* Get start_id*/
+    next = strtok_r(input, delim, &savedptr);
+    if (next == NULL || strcmp(input, "start_id") != 0) {
+        mdebug1("Invalid DB query syntax.");
+        mdebug2("DB query error near: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
+        return WDB_CHUNKS_ERROR;
+    }
+
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid DB query syntax.");
+        mdebug2("DB query error near: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
+        return WDB_CHUNKS_ERROR;
+    }
+    start_id = atoi(next);
+    
+    wdb_chunks_status_t status = wdb_get_global_all_agents(wdb, &start_id, &out);
+    if (status == WDB_CHUNKS_COMPLETE || status == WDB_CHUNKS_ERROR) {
+        start_id = 0;
+    }
+    if (status == WDB_CHUNKS_BUFFER_FULL) {
+        snprintf(output, OS_MAXSTR + 1, "due %s", out);
+    }
+    else {
+        snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    }
+    os_free(out)
 
     return OS_SUCCESS;
 }
