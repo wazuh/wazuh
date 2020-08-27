@@ -21,6 +21,10 @@
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/wazuh/monitord/monitord_wrappers.h"
 
+#ifdef TEST_WINAGENT
+#include "../wrappers/wazuh/shared/randombytes_wrappers.h"
+#endif
+
 #include "../client-agent/agentd.h"
 
 extern void send_msg_on_startup(void);
@@ -92,6 +96,11 @@ void add_server_config(char* address, int protocol) {
 
 void keys_init(keystore *keys) {
     /* Initialize hashes */
+
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 6);
+#endif
+
     keys->keyhash_id = OSHash_Create();
     keys->keyhash_ip = OSHash_Create();
     keys->keyhash_sock = OSHash_Create();

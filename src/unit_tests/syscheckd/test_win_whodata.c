@@ -27,12 +27,12 @@
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/string_op_wrappers.h"
+#include "../wrappers/wazuh/shared/randombytes_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/config_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 
 #include "syscheckd/syscheck.h"
-
 
 extern int set_winsacl(const char *dir, int position);
 extern int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
@@ -189,6 +189,9 @@ static int test_group_teardown(void **state) {
 OSHash * __real_OSHash_Create();
 int __real_OSHash_SetFreeDataPointer(OSHash * self, void(free_data_function)(void *));
 static int setup_whodata_callback_group(void ** state) {
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#endif
     if (syscheck.wdata.directories = __real_OSHash_Create(), !syscheck.wdata.directories) {
         return -1;
     }
@@ -232,6 +235,9 @@ static int teardown_whodata_callback_group(void ** state) {
 }
 
 static int setup_wdata_dirs_cleanup(void ** state) {
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#endif
     if (syscheck.wdata.directories = __real_OSHash_Create(), !syscheck.wdata.directories) {
         return -1;
     }
@@ -295,6 +301,10 @@ static int setup_state_checker(void ** state) {
 
     if (syscheck.opts = calloc(2, sizeof(char *)), !syscheck.opts)
         return -1;
+
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#endif
 
     if (syscheck.wdata.directories = __real_OSHash_Create(), !syscheck.wdata.directories) {
         return -1;
@@ -374,6 +384,10 @@ static int teardown_state_checker_restore_globals(void ** state) {
 static int teardown_clean_directories_hash(void ** state) {
     // Destroy and recreate the hash table for future tests
     OSHash_Free(syscheck.wdata.directories);
+
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#endif
 
     if (syscheck.wdata.directories = __real_OSHash_Create(), !syscheck.wdata.directories) {
         return -1;
