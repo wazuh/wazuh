@@ -172,8 +172,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return self.get_permission(command)
         elif command == b'sync_i_w_m' or command == b'sync_e_w_m' or command == b'sync_a_w_m':
             return self.setup_sync_integrity(command)
-        elif command == b'sync_i_w_m_e' or command == b'sync_e_w_m_e' or command == b'sync_a_w_m_e':
+        elif command == b'sync_i_w_m_e' or command == b'sync_e_w_m_e':
             return self.end_receiving_integrity_checksums(data.decode())
+        elif command == b'sync_a_w_m_e':
+            return self.end_receiving_agent_info()
         elif command == b'sync_i_w_m_r' or command == b'sync_e_w_m_r' or command == b'sync_a_w_m_r':
             return self.process_sync_error_from_worker(command, data)
         elif command == b'dapi':
@@ -366,6 +368,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         :return: confirmation message
         """
         return super().end_receiving_file(task_and_file_names)
+
+    def end_receiving_agent_info(self) -> Tuple[bytes, bytes]:
+        self.sync_agent_info_free = True
+        return b'ok', b'Agents updated correctly'
 
     async def sync_worker_files(self, task_name: str, received_file: asyncio.Event, logger):
         """

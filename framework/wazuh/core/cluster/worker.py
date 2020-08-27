@@ -16,6 +16,7 @@ import wazuh.core.cluster.cluster
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import client, common as c_common
+from wazuh.core.cluster import local_client
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhClusterError, WazuhInternalError
@@ -96,6 +97,60 @@ class SyncWorker:
             result = await self.worker.send_request(command=self.cmd+b'_r', data=task_id + b' ' + exc_info)
         finally:
             os.unlink(compressed_data_path)
+
+
+class SyncInfo:
+    """
+    Defines methods to synchronize ............
+    """
+    def __init__(self, cmd: bytes, logger, worker):
+        """
+        Class constructor
+
+        :param cmd: Request command to send to the master.
+        dictionary will be iterated to add the files they refer to the zip file that the master will receive.
+        :param logger: Logger to use during synchronization process.
+        :param worker: The WorkerHandler object that creates this one.
+        """
+        self.cmd = cmd
+        # self.agents_to_sync = agents_to_sync
+        self.logger = logger
+        self.worker = worker
+        self.lc = local_client.LocalClient()
+        self.wdb_conn = WazuhDBConnection()
+
+    async def sync(self):
+        """
+        Starts synchronization process with the master and sends necessary information
+        """
+        result = await self.worker.send_request(command=self.cmd+b'_p', data=b'')
+        if isinstance(result, Exception):
+            self.logger.error(f"Error asking for permission: {result}")
+            return
+        elif result == b'False':
+            self.logger.info('Master didnt grant permission to synchronize')
+            return
+        else:
+            self.logger.info("Permission to synchronize granted")
+
+        task_id = await self.worker.send_request(command=self.cmd, data=b'')
+        chunks_to_send = self.wdb_conn.run_wdb_command()
+        self.logger.info(f"NUMERO DE CHUNKS: {len(chunks_to_send)}")
+
+        for chunk in chunks_to_send:
+            # try:
+            data = {
+                'daemon_name': 'wazuh-db',
+                'message': f"global sync-agent-info-set {chunk}"
+            }
+            # self.logger.info("Sending request to master")
+
+            result = await self.lc.execute(command=b'sendasync', data=json.dumps(data).encode(),
+                                           wait_for_complete=False)
+
+        self.logger.info(f"RESULT: ----------------------> {result}")
+        result = await self.worker.send_request(command=self.cmd + b'_e', data=task_id)
+        self.logger.info(f"End of connection: {result}")
 
 
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
@@ -249,16 +304,15 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         :return: None
         """
         agent_info_logger = self.task_loggers["Agent info"]
+
         while True:
             try:
                 if self.connected:
                     before = time.time()
-                    agent_info_logger.info("Starting to send agent status files")
-                    worker_files = wazuh.core.cluster.cluster.get_files_status('worker', self.name, get_md5=False)
-                    await SyncWorker(cmd=b'sync_a_w_m', files_to_sync=worker_files, checksums=worker_files,
-                                     logger=agent_info_logger, worker=self).sync()
+                    agent_info_logger.info("!!!!!! STARTING to send agent-info")
+                    await SyncInfo(cmd=b'sync_a_w_m', logger=agent_info_logger, worker=self).sync()
                     after = time.time()
-                    agent_info_logger.debug2("Time synchronizing agent statuses: {} s".format(after - before))
+                    agent_info_logger.info("!!!!!!! FINISHING. Time synchronizing agent statuses: {} s".format(after - before))
             except exception.WazuhException as e:
                 agent_info_logger.error("Error synchronizing agent status files: {}".format(e))
                 res = await self.send_request(command=b'sync_a_w_m_r',

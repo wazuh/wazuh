@@ -56,13 +56,30 @@ class OssecSocketJSON(OssecSocket):
     def __init__(self, path):
         OssecSocket.__init__(self, path)
 
-    def send(self, msg, header_format="<I"):
-        return OssecSocket.send(self, msg_bytes=dumps(msg).encode(), header_format=header_format)
+    def send(self, msg_bytes, header_format="<I"):
+        return OssecSocket.send(self, msg_bytes=dumps(msg_bytes), header_format=header_format)
+        return OssecSocket.send(self, msg_bytes=msg_bytes, header_format=header_format)
 
     def receive(self, header_format="<I", header_size=4):
-        response = loads(OssecSocket.receive(self, header_format=header_format, header_size=header_size).decode())
+        # response = loads(OssecSocket.receive(self, header_format=header_format, header_size=header_size).decode())
+        response = OssecSocket.receive(self, header_format=header_format, header_size=header_size).decode()
 
         return response
+
+    # def send(self, msg, header_format="<I"):
+    #     try:
+    #         loads(msg)
+    #         return OssecSocket.send(self, msg_bytes=dumps(msg).encode(), header_format=header_format)
+    #     except (ValueError, TypeError):
+    #         return OssecSocket.send(self, msg_bytes=msg.encode(), header_format=header_format)
+    #
+    # def receive(self, header_format="<I", header_size=4):
+    #     response = OssecSocket.receive(self, header_format=header_format, header_size=header_size).decode()
+    #
+    #     try:
+    #         return loads(response)
+    #     except (ValueError, TypeError):
+    #         return response
 
 
 class WazuhAsyncProtocol(asyncio.Protocol):
@@ -223,7 +240,9 @@ class WazuhSocketJSON(WazuhAsyncSocket):
 
 
 daemons = {
-    "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4}}
+    "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4},
+    "wazuh-db": {"protocol": "TCP", "path": common.wdb_socket_path, "header_format": "<I", "size": 4}
+}
 
 
 async def wazuh_sendasync(daemon_name, message=None):
@@ -256,13 +275,21 @@ async def wazuh_sendsync(daemon_name=None, message=None):
         Message in JSON format to be sent to the daemon's socket.
     """
     try:
-        sock = OssecSocketJSON(daemons[daemon_name]['path'])
-        sock.send(msg=message, header_format=daemons[daemon_name]['header_format'])
-        data = sock.receive(header_format=daemons[daemon_name]['header_format'], header_size=daemons[daemon_name]['size'])
+        sock = OssecSocket(daemons[daemon_name]['path'])
+
+        if isinstance(message, dict):
+            message = dumps(message)
+        sock.send(msg_bytes=message.encode(), header_format=daemons[daemon_name]['header_format'])
+        data = sock.receive(header_format=daemons[daemon_name]['header_format'],
+                            header_size=daemons[daemon_name]['size']).decode()
+
         sock.close()
     except WazuhException as e:
         raise e
     except Exception as e:
         raise WazuhInternalError(1014, extra_message=e)
 
-    return data
+    try:
+        return loads(data)
+    except (TypeError, ValueError):
+        return data
