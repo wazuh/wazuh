@@ -68,13 +68,15 @@ def iterate_lists(absolute_path=common.lists_path, only_names=False):
     return output
 
 
-def split_key_value_with_quotes(line):
+def split_key_value_with_quotes(line, file_path='/CDB_LISTS_PATH'):
     """Return the key and value of a cdb list line when they are surrounded by quotes.
 
     Parameters
     ----------
     line : str
         String to split in key and value.
+    file_path : str
+        Relative path of list file which contains "line"
 
     Returns
     -------
@@ -154,7 +156,7 @@ def get_list_from_file(path):
 
                     # Check if key and/or value are surrounded by double quotes
                     else:
-                        key, value = split_key_value_with_quotes(line)
+                        key, value = split_key_value_with_quotes(line, file_path)
 
                     output.append({'key': key, 'value': value})
 
