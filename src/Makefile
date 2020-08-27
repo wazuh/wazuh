@@ -18,9 +18,6 @@ CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null 
 ARCH_FLAGS =
 
 ROUTE_PATH := $(shell pwd)
-# dbsync var
-EXTERNAL_LIBS_FOLDER=../external/
-# end dbsync var
 EXTERNAL_JSON=external/cJSON/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
@@ -51,7 +48,8 @@ SHARED=so
 SELINUX_MODULE=selinux/wazuh.mod
 SELINUX_ENFORCEMENT=selinux/wazuh.te
 SELINUX_POLICY=selinux/wazuh.pp
-DBSYNC=dbsync/
+DBSYNC=shared_modules/dbsync/
+SHARED_UTILS_TEST=shared_modules/utils/tests/
 
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
@@ -599,6 +597,7 @@ BUILD_AGENT+=ossec-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=wazuh-modulesd
 BUILD_AGENT+=build_dbsync
+BUILD_AGENT+=build_shared_utils_test
 
 .PHONY: server local hybrid agent selinux
 
@@ -646,7 +645,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: external win32/dbsync.dll win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
+winagent: external win32/dbsync.dll win32/shared_utils_ut.exe win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl ossec-pre6.conf > default-ossec-pre6.conf
@@ -665,7 +664,14 @@ winagent: external win32/dbsync.dll win32/libwinpthread-1.dll wazuh_modules/sysc
 
 
 win32/dbsync.dll:
-	cd ${DBSYNC} && cmake -DEXTERNAL_LIBS_PATH=${EXTERNAL_LIBS_FOLDER} ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} . && cmake --build .
+	cd ${DBSYNC} && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} . && cmake --build .
+
+win32/shared_utils_ut.exe:
+ifneq (,$(filter ${TEST},YES yes y Y 1))
+ifneq (,$(filter ${DEBUG},YES yes y Y 1))
+	cd ${SHARED_UTILS_TEST} && cmake ${WIN_CMAKE_OPTS} . && cmake --build .
+endif
+endif
 
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 	cp $< $@
@@ -1053,8 +1059,15 @@ config/%.o: config/%.c
 
 #### DBSync ##########
 build_dbsync:
-	cd ${DBSYNC} && cmake -DEXTERNAL_LIBS_PATH=${EXTERNAL_LIBS_FOLDER} ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} . && cmake --build .
+	cd ${DBSYNC} && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} . && cmake --build .
 
+#### shared_modules utils tests ##########
+build_shared_utils_test:
+ifneq (,$(filter ${TEST},YES yes y Y 1))
+ifneq (,$(filter ${DEBUG},YES yes y Y 1))
+	cd ${SHARED_UTILS_TEST} && cmake ${WIN_CMAKE_OPTS} . && cmake --build .
+endif
+endif
 
 #### Wazuh modules ##
 
@@ -1562,7 +1575,6 @@ wazuh-framework: ${shared_o} ${wdblib_o}
 endif
 
 ### wazuh-gtest-gmock ###
-
 
 build_gtest:
 	cd $(EXTERNAL_GOOGLE_TEST) && mkdir -p build && cd build && cmake .. ${WIN_CMAKE_OPTS} ${GTEST_RELEASE_TYPE}  -DBUILD_GMOCK=ON -DBUILD_SHARED_LIBS=0 && cmake --build . && cp -r lib ..
