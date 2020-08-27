@@ -585,7 +585,7 @@ class Agent:
             authd_socket.send(msg)
             data = authd_socket.receive()
             authd_socket.close()
-        except WazuhError as e:
+        except WazuhException as e:
             if e.code == 9008:
                 raise WazuhError(1705, extra_message=name)
             elif e.code == 9007:

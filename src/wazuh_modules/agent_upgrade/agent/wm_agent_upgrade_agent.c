@@ -8,7 +8,13 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifdef CLIENT
+
+#ifdef UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
 
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_agent.h"
@@ -41,7 +47,7 @@ static const char *task_statuses_map[] = {
  * @param queue_fd File descriptor of the upgrade queue
  * @param state upgrade result state
  * */
-static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state);
+STATIC void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state);
 
 /**
  * Checks in the upgrade_results file for a code that determines the result
@@ -51,23 +57,23 @@ static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_sta
  * @retval true information was found on the upgrade_result file
  * @retval either the upgrade_result file does not exist or contains invalid information
  * */
-static bool wm_upgrade_agent_search_upgrade_result(int queue_fd);
+STATIC bool wm_upgrade_agent_search_upgrade_result(int queue_fd);
 
-void wm_agent_upgrade_check_status(wm_agent_configs agent_config) {
+void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
     /**
      *  StartMQ will wait until agent connection which is when the pkg_install.sh will write 
      *  the upgrade result
     */
     int queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-    // wait until pkg_installer script verifies the agent was connected and writes the upgrade_results file
+    // Wait until pkg_installer script verifies the agent was connected and writes the upgrade_result file
     sleep(WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
 
     if (queue_fd < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_QUEUE_FD);
     } else {
         bool result_available = true;
-        unsigned int wait_time = agent_config.upgrade_wait_start;
+        unsigned int wait_time = agent_config->upgrade_wait_start;
         /**
          * This loop will send the upgrade result notification to the manager
          * If the manager is able to update the upgrade status will notify the agent
@@ -79,17 +85,19 @@ void wm_agent_upgrade_check_status(wm_agent_configs agent_config) {
             if(result_available) {
                 sleep(wait_time);
 
-                wait_time *= agent_config.upgrade_wait_factor_increase;
-                if (wait_time > agent_config.upgrade_wait_max) {
-                    wait_time = agent_config.upgrade_wait_max;
+                wait_time *= agent_config->upgrade_wait_factor_increase;
+                if (wait_time > agent_config->upgrade_wait_max) {
+                    wait_time = agent_config->upgrade_wait_max;
                 }
             }
         }
+    #ifndef WIN32
         close(queue_fd);
+    #endif
     }
 }
 
-static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state) {
+STATIC void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state) {
     int msg_delay = 1000000 / wm_max_eps;
     cJSON* root = cJSON_CreateObject();
     cJSON* params = cJSON_CreateObject();
@@ -110,7 +118,7 @@ static void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_sta
     cJSON_Delete(root);
 }
 
-static bool wm_upgrade_agent_search_upgrade_result(int queue_fd) {
+STATIC bool wm_upgrade_agent_search_upgrade_result(int queue_fd) {
     char buffer[20];
     FILE * result_file;
     const char * PATH = WM_AGENT_UPGRADE_RESULT_FILE;
@@ -131,5 +139,3 @@ static bool wm_upgrade_agent_search_upgrade_result(int queue_fd) {
     }
     return false;
 }
-
-#endif

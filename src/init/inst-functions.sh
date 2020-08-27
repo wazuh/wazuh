@@ -963,16 +963,6 @@ InstallLocal()
 
     ### Install API
     ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
-
-    ### restore old API
-    if [ "X${update_only}" = "Xyes" ]; then
-      ${MAKEBIN} --quiet -C ../api restore PREFIX=${PREFIX} REVISION=${REVISION}
-    fi
-
-    ### Install API service
-    if [ "X${INSTALL_API_DAEMON}" = "X" ] || [ "X${INSTALL_API_DAEMON}" = "Xy" ]; then
-        ${MAKEBIN} --quiet -C ../api service PREFIX=${PREFIX}
-    fi
 }
 
 TransferShared()
@@ -1020,14 +1010,6 @@ InstallServer()
     fi
 
     # Install the plugins files
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/content
-
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/wodles/oscap/oscap
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
-
-
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws_s3.py ${PREFIX}/wodles/aws/aws-s3.py
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/wodles/aws/aws-s3
@@ -1073,15 +1055,6 @@ InstallAgent()
     # Install the plugins files
     # Don't install the plugins if they are already installed. This check affects
     # hybrid installation mode
-    if [ ! -d ${PREFIX}/wodles/oscap ]; then
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/content
-
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
-
-    fi
-
     if [ ! -d ${PREFIX}/wodles/aws ]; then
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
         ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws_s3.py ${PREFIX}/wodles/aws/aws-s3

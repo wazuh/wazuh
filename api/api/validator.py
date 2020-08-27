@@ -186,7 +186,7 @@ def format_numbers(value):
 
 
 @draft4_format_checker.checks("numbers_delete")
-def format_numbers(value):
+def format_numbers_delete(value):
     return check_exp(value, _numbers_delete)
 
 

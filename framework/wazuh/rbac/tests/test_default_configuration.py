@@ -23,7 +23,7 @@ def db_setup():
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.orm as rbac
                     import wazuh.rbac.decorators
-                    wazuh.rbac.decorators.rbac.set({'rbac_mode': 'black'})
+                    wazuh.rbac.decorators.rbac.set({'rbac_mode': 'white'})
     init_db('schema_security_test.sql', test_data_path)
 
     yield rbac
