@@ -402,14 +402,9 @@ int wdb_parse(char * input, char * output) {
             return OS_INVALID;
         }
 
-        if (next = wstr_chr(query, ' '), !next) {
-            mdebug1("Invalid DB query syntax.");
-            mdebug2("Global DB query error near: %s", query);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-            wdb_leave(wdb);
-            return OS_INVALID;
-        }
-        *next++ = '\0';
+        if (next = wstr_chr(query, ' '), next) {
+            *next++ = '\0';
+        }        
 
         if (strcmp(query, "sql") == 0) {
             if (!next) {
@@ -448,15 +443,8 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_set_agent_labels(wdb, next, output);
             }
-        } else if (strcmp(query, "sync-agent-info-get") == 0) { 
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                result = wdb_parse_global_sync_agent_info_get(wdb, next, output);
-            }
+        } else if (strcmp(query, "sync-agent-info-get") == 0) {             
+            result = wdb_parse_global_sync_agent_info_get(wdb, next, output);
         } else if (strcmp(query, "sync-agent-info-set") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax.");
@@ -3968,11 +3956,13 @@ int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) 
     static int start_id = 0;
     char* agent_info_sync = NULL;
 
-    char *next = wstr_chr(input, ' ');
-    if(next) {
-        *next++ = '\0';
-        if (strcmp(input, "start_id") == 0) {
-            start_id = atoi(next);
+    if (input) {
+        char *next = wstr_chr(input, ' ');
+        if(next) {
+            *next++ = '\0';
+            if (strcmp(input, "start_id") == 0) {
+                start_id = atoi(next);
+            }
         }
     }
 
