@@ -117,7 +117,7 @@ extern const char* upgrade_error_codes[];
  * @param manager_configs manager configuration parameters
  * @return only on errors, socket will be closed
  * */
-void wm_agent_upgrade_listen_messages(int timeout_sec, const wm_manager_configs* manager_configs) __attribute__((nonnull));
+void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
  * Process and upgrade command. Create the task for each agent_id, dispatches to task manager and

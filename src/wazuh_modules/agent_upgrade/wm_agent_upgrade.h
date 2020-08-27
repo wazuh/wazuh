@@ -20,8 +20,6 @@
 #define WM_UPGRADE_WAIT_MAX 3600
 #define WM_UPGRADE_WAIT_FACTOR_INCREASE 2.0
 
-#define WM_UPGRADE_LISTEN_TIMEOUT 5
-
 /**
  * Configurations on agent side
  */
