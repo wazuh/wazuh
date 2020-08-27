@@ -1104,7 +1104,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
                 goto end;
             }
 
-            syscheck.database->full = false;
+            fim_sql->full = false;
             break;
         }
     }

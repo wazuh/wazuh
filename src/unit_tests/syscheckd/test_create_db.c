@@ -588,7 +588,6 @@ static int setup_fim_double_scan(void **state) {
 
 static int teardown_fim_double_scan(void **state) {
     struct dirent *sd = state[0];
-    free(sd->d_name);
     free(sd);
     free(syscheck.database);
     syscheck.database = NULL;
@@ -636,12 +635,13 @@ static int teardown_fim_scan_realtime(void **state) {
     int *dir_opts = *state;
     int it = 0;
 
-    while (dir_opts[it]) {
+    while (syscheck.dir[it] != NULL) {
         syscheck.opts[it] = dir_opts[it];
         it++;
     }
 
     free(dir_opts);
+    os_free(syscheck.database);
 
     return 0;
 }
@@ -2333,13 +2333,19 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 }
 
 static void test_fim_scan_no_realtime(void **state) {
-    int *dir_opts = calloc(6, sizeof(int));
+    int *dir_opts;
     int it = 0;
+
+    while (syscheck.dir[it] != NULL) {
+        it++;
+    }
+    dir_opts = calloc(it, sizeof(int));
 
     if (!dir_opts) {
         fail();
     }
 
+    it = 0;
     while (syscheck.dir[it] != NULL) {
         dir_opts[it] = syscheck.opts[it];
         syscheck.opts[it] &= ~REALTIME_ACTIVE;
@@ -3015,9 +3021,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     will_return_count(__wrap_stat, 0, 20);
 
     for(i = 0; i < 10; i++) {
-        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
+        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024)) {
             fail();
-
+        }
         str_lowercase(expanded_dirs[i]);
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
     }
