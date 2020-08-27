@@ -58,7 +58,20 @@ unsigned long __wrap_time() {
 }
 #endif
 
-/*---------------AUXILIAR------------------*/
+
+float __wrap_DirSize(const char *path) {
+    check_expected(path);
+
+    return mock();
+}
+
+char *__wrap_seechanges_get_diff_path(char *path) {
+    check_expected(path);
+
+    return mock_type(char*);
+}
+
+/*-----------------------------------------*/
 
 /**
  * Successfully wrappes a fim_db_clean() call
@@ -209,6 +222,7 @@ static int setup_group(void **state) {
 #endif
 
     Read_Syscheck_Config("test_syscheck2.conf");
+
     syscheck.database_store = 0;    // disk
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
     test_mode = 1;
@@ -858,6 +872,9 @@ void test_fim_db_insert_inode_id_nonull(void **state) {
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
 
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 1);
+
     // Inside fim_db_clean_stmt
     {
         will_return(__wrap_sqlite3_reset, SQLITE_OK);
@@ -930,6 +947,9 @@ void test_fim_db_insert_inode_id_null(void **state) {
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 0);
 
     // Inside fim_db_clean_stmt
     {
@@ -1224,16 +1244,43 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
     will_return(__wrap_fim_configuration_directory, 9);
 #endif
     cJSON * json = cJSON_CreateObject();
+
     will_return(__wrap_fim_json_event, json);
     expect_string(__wrap__mdebug2, formatted_msg, "(6220): Sending delete message for file: '/test/path'");
     wraps_fim_db_check_transaction();
+
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
     int alert = 1;
+
     syscheck.opts[1] |= CHECK_SEECHANGES;
+
+#ifndef TEST_WINAGENT
+    char *diff_path;
+
+    diff_path = (char *)malloc(sizeof(char) * (strlen("/var/ossec/queue/diff/local") +
+                                                strlen(test_data->entry->path) + 1));
+
+    snprintf(diff_path, (strlen("/var/ossec/queue/diff/local") + strlen(test_data->entry->path) + 1), "%s%s",
+                "/var/ossec/queue/diff/local", test_data->entry->path);
+
+    expect_string(__wrap_IsDir, file, diff_path);
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, diff_path);
+    will_return(__wrap_DirSize, 200);
+#endif
+
     fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, &alert, (void *) FIM_WHODATA, NULL);
+
     syscheck.opts[1] &= ~CHECK_SEECHANGES;
     // Last commit time should change
     assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);
+
+#ifndef TEST_WINAGENT
+    if (diff_path) {
+        free(diff_path);
+    }
+#endif
 }
 
 void test_fim_db_remove_path_multiple_entry(void **state) {

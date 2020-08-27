@@ -29,12 +29,20 @@ const char *__wrap_get_group(int gid) {
     return mock_type(const char*);
 }
 
-char *__wrap_get_user(__attribute__((unused)) const char *path,
-                      int uid,
-                      __attribute__((unused)) char **sid) {
+#ifndef TEST_WINAGENT
+char *__wrap_get_user(int uid) {
     check_expected(uid);
+
     return mock_type(char*);
 }
+#else
+char *__wrap_get_user(const char *path, char **sid) {
+    check_expected(path);
+    *sid = mock_type(char*);
+
+    return mock_type(char*);
+}
+#endif
 
 unsigned int __wrap_w_directory_exists(const char *path) {
     check_expected(path);
