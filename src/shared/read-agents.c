@@ -1275,13 +1275,13 @@ char **get_agents_monitord(int flag, int mon_time){
 
     switch(flag){
         case GA_ALL:
-            id_array = wdb_get_all_agents(NULL, WDB_ANY);
+            id_array = wdb_get_all_agents();
             break;
         case GA_NOTACTIVE:
-            id_array = wdb_get_all_agents(mon_time * 60, WDB_GREATER);
+            id_array = wdb_get_agents_by_keepalive(">", mon_time * 60);
             break;
         case GA_ACTIVE:
-            id_array = wdb_get_all_agents(mon_time * 60, WDB_LESS);
+            id_array = wdb_get_agents_by_keepalive("<", mon_time * 60);
             break;
         default:
             mdebug1("Invalid flag '%d' trying to get agents.", flag);
