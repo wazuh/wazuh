@@ -2082,10 +2082,14 @@ void test_wdb_get_agent_keepalive_error_empty_json_response(void **state) {
     expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
     will_return(__wrap_wdbc_query_parse_json, response);
     expect_function_call(__wrap_cJSON_Delete);
-    
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "last_keepalive");
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
     keepalive = wdb_get_agent_keepalive(name, ip);
 
-    assert_int_equal(0, keepalive);
+    assert_int_equal(OS_SUCCESS, keepalive);
 
     __real_cJSON_Delete(response);
 }
@@ -2096,12 +2100,17 @@ void test_wdb_get_agent_keepalive_success(void **state) {
     char ip[]="0.0.0.1";
     const char *query_str = "global select-keepalive agent1 0.0.0.1";
     cJSON* response = cJSON_Parse("[{\"last_keepalive\":100}]");
+
     // Calling Wazuh DB
     expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
     expect_string(__wrap_wdbc_query_parse_json, query, query_str);
     expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
     will_return(__wrap_wdbc_query_parse_json, response);
     expect_function_call(__wrap_cJSON_Delete);
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "last_keepalive");
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(response->child, "last_keepalive"));
 
     keepalive = wdb_get_agent_keepalive(name, ip);
 
@@ -2165,6 +2174,122 @@ void test_wdb_get_agent_group_success(void **state) {
 
     __real_cJSON_Delete(root);
     os_free(name);
+}
+
+/* Tests wdb_find_agent */
+
+void test_wdb_find_agent_error_invalid_parameters(void **state)
+{
+    int ret = 0;
+    char *name = NULL;
+    char *ip = NULL;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Empty agent name or ip when trying to get agent name. Agent: ((null)) IP: ((null))");
+
+    ret = wdb_find_agent(name, ip);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_find_agent_error_json_input(void **state)
+{
+    int ret = 0;
+    char *name = "agent1";
+    char *ip = "any";
+
+    will_return(__wrap_cJSON_CreateObject, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
+
+    ret = wdb_find_agent(name, ip);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_find_agent_error_json_output(void **state)
+{
+    int ret = 0;
+    const char *name_str = "agent1";
+    const char *ip_str = "any";
+
+    const char *json_str = "{\"name\":\"agent1\",\"ip\":\"any\"}";
+    const char *query_str = "global find-agent {\"name\":\"agent1\",\"ip\":\"any\"}";
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddStringToObject, name, "name");
+    expect_value(__wrap_cJSON_AddStringToObject, string, name_str);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
+    expect_value(__wrap_cJSON_AddStringToObject, string, ip_str);
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, WDBOUTPUT_SIZE);
+
+    will_return(__wrap_wdbc_query_parse_json, NULL);
+
+    // Hnadling result
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB for agent name.");
+
+    ret = wdb_find_agent(name_str, ip_str);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_find_agent_success(void **state)
+{
+    int ret = 0;
+    const char *name_str = "agent1";
+    const char *ip_str = "any";
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+
+    const char *json_str = "{\"name\":\"agent1\",\"ip\":\"any\"}";
+    const char *query_str = "global find-agent {\"name\":\"agent1\",\"ip\":\"any\"}";
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    __real_cJSON_AddNumberToObject(row, "id", 1);
+    __real_cJSON_AddItemToArray(root, row);
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddStringToObject, name, "name");
+    expect_value(__wrap_cJSON_AddStringToObject, string, name_str);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
+    expect_value(__wrap_cJSON_AddStringToObject, string, ip_str);
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, WDBOUTPUT_SIZE);
+
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "id");
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "id"));
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    ret = wdb_find_agent(name_str, ip_str);
+
+    assert_int_equal(1, ret);
+
+    __real_cJSON_Delete(root);
 }
 
 int main()
@@ -2238,6 +2363,11 @@ int main()
         /* Tests wdb_get_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_find_agent */
+        cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_invalid_parameters, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_json_input, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_json_output, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_find_agent_success, setup_wdb_agent, teardown_wdb_agent)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
