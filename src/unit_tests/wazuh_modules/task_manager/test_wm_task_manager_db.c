@@ -2398,6 +2398,218 @@ void test_wm_task_manager_get_task_by_agent_id_and_module_open_err(void **state)
     assert_null(status);
 }
 
+void test_wm_task_manager_get_task_by_task_id_ok(void **state)
+{
+    int agent_id = 100;
+    char *module = NULL;
+    char *command = NULL;
+    char *status = NULL;
+    int create_time = 0;
+    int last_update = 0;
+    int task_id = 10;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READONLY);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, task_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, i, 1);
+    will_return(__wrap_sqlite3_column_int, agent_id);
+
+    expect_value_count(__wrap_sqlite3_column_text, i, 2, 2);
+    will_return_count(__wrap_sqlite3_column_text, "upgrade_module", 2);
+
+    expect_value_count(__wrap_sqlite3_column_text, i, 3, 2);
+    will_return_count(__wrap_sqlite3_column_text, "upgrade", 2);
+
+    expect_value(__wrap_sqlite3_column_int, i, 4);
+    will_return(__wrap_sqlite3_column_int, 12345);
+
+    expect_value(__wrap_sqlite3_column_int, i, 5);
+    will_return(__wrap_sqlite3_column_int, 67890);
+
+    expect_value_count(__wrap_sqlite3_column_text, i, 6, 2);
+    will_return_count(__wrap_sqlite3_column_text, "In progress", 2);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_get_task_by_task_id(task_id, &module, &command, &status, &create_time, &last_update);
+
+    state[0] = module;
+    state[1] = command;
+
+    assert_int_equal(ret, agent_id);
+    assert_string_equal(module, "upgrade_module");
+    assert_string_equal(command, "upgrade");
+    assert_int_equal(create_time, 12345);
+    assert_int_equal(last_update, 67890);
+    assert_string_equal(status, "In progress");
+
+    os_free(status);
+}
+
+void test_wm_task_manager_get_task_by_task_id_task_id_err(void **state)
+{
+    char *module = NULL;
+    char *command = NULL;
+    char *status = NULL;
+    int create_time = 0;
+    int last_update = 0;
+    int task_id = 10;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READONLY);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, task_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_get_task_by_task_id(task_id, &module, &command, &status, &create_time, &last_update);
+
+    assert_int_equal(ret, OS_NOTFOUND);
+    assert_null(module);
+    assert_null(command);
+    assert_int_equal(create_time, 0);
+    assert_int_equal(last_update, 0);
+    assert_null(status);
+}
+
+void test_wm_task_manager_get_task_by_task_id_step_err(void **state)
+{
+    char *module = NULL;
+    char *command = NULL;
+    char *status = NULL;
+    int create_time = 0;
+    int last_update = 0;
+    int task_id = 10;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READONLY);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, task_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8279): Couldn't execute SQL statement.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_get_task_by_task_id(task_id, &module, &command, &status, &create_time, &last_update);
+
+    assert_int_equal(ret, OS_INVALID);
+    assert_null(module);
+    assert_null(command);
+    assert_int_equal(create_time, 0);
+    assert_int_equal(last_update, 0);
+    assert_null(status);
+}
+
+void test_wm_task_manager_get_task_by_task_id_prepare_err(void **state)
+{
+    char *module = NULL;
+    char *command = NULL;
+    char *status = NULL;
+    int create_time = 0;
+    int last_update = 0;
+    int task_id = 10;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READONLY);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8278): Couldn't prepare SQL statement.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_get_task_by_task_id(task_id, &module, &command, &status, &create_time, &last_update);
+
+    assert_int_equal(ret, OS_INVALID);
+    assert_null(module);
+    assert_null(command);
+    assert_int_equal(create_time, 0);
+    assert_int_equal(last_update, 0);
+    assert_null(status);
+}
+
+void test_wm_task_manager_get_task_by_task_id_open_err(void **state)
+{
+    char *module = NULL;
+    char *command = NULL;
+    char *status = NULL;
+    int create_time = 0;
+    int last_update = 0;
+    int task_id = 10;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READONLY);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8276): DB couldn't be opened.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_get_task_by_task_id(task_id, &module, &command, &status, &create_time, &last_update);
+
+    assert_int_equal(ret, OS_INVALID);
+    assert_null(module);
+    assert_null(command);
+    assert_int_equal(create_time, 0);
+    assert_int_equal(last_update, 0);
+    assert_null(status);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_task_manager_check_db
@@ -2458,6 +2670,12 @@ int main(void) {
         cmocka_unit_test(test_wm_task_manager_get_task_by_agent_id_and_module_step_err),
         cmocka_unit_test(test_wm_task_manager_get_task_by_agent_id_and_module_prepare_err),
         cmocka_unit_test(test_wm_task_manager_get_task_by_agent_id_and_module_open_err),
+        // wm_task_manager_get_task_by_task_id
+        cmocka_unit_test_teardown(test_wm_task_manager_get_task_by_task_id_ok, teardown_strings),
+        cmocka_unit_test(test_wm_task_manager_get_task_by_task_id_task_id_err),
+        cmocka_unit_test(test_wm_task_manager_get_task_by_task_id_step_err),
+        cmocka_unit_test(test_wm_task_manager_get_task_by_task_id_prepare_err),
+        cmocka_unit_test(test_wm_task_manager_get_task_by_task_id_open_err)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
