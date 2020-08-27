@@ -34,7 +34,7 @@ STATIC int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt);
  * @param next_timeout Next task in progress timeout
  * @return OS_SUCCESS on success, OS_INVALID on errors
  * */
-STATIC int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout);
+STATIC int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout) __attribute__((nonnull));
 
 /**
  * Delete old tasks from the tasks DB
