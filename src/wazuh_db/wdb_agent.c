@@ -436,7 +436,7 @@ char* wdb_get_agent_group(int id) {
     return output;
 }
 
-/* Create database for agent from profile. Returns 0 on success or -1 on error. */
+
 int wdb_create_agent_db(int id, const char *name) {
     const char *ROOT = "root";
     char path[OS_FLSIZE + 1];

@@ -492,6 +492,32 @@ char* wdb_get_agent_name(int id);
  */
 char* wdb_get_agent_group(int id);
 
+/**
+ * @brief Create database for agent from profile.
+ * 
+ * @param[in] id Id of the agent.
+ * @param[in] name Name of the agent.
+ * @return OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_create_agent_db(int id, const char *name);
+
+/**
+ * @brief Create database for agent from profile.
+ * 
+ * @param[in] agent_id Id of the agent.
+ * @return OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_create_agent_db2(const char * agent_id);
+
+/**
+ * @brief Remove an agent's database.
+ * 
+ * @param[in] id Id of the agent for whom its database must be deleted.
+ * @param[in] name Name of the agent for whom its database must be deleted.
+ * @return OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_remove_agent_db(int id, const char * name);
+
 /* Update agent group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_group(int id,char *group);
 
@@ -506,11 +532,6 @@ cJSON *wdb_remove_multiple_agents(char *agent_list);
 
 /* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_group_db(const char *name);
-
-/* Create database for agent from profile. Returns 0 on success or -1 on error. */
-int wdb_create_agent_db(int id, const char *name);
-
-int wdb_create_agent_db2(const char * agent_id);
 
 /* Insert or update metadata entries. Returns 0 on success or -1 on error. */
 int wdb_fim_fill_metadata(wdb_t * wdb, char *data);
@@ -535,15 +556,6 @@ int wdb_fim_update_date_entry(wdb_t * wdb, const char *path);
 
 /* Clear entries prior to the first scan. */
 int wdb_fim_clean_old_entries(wdb_t * wdb);
-
-/**
- * @brief Remove an agent's database.
- * 
- * @param[in] id Id of the agent for whom its database must be deleted.
- * @param[in] name Name of the agent for whom its database must be deleted.
- * @return OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_remove_agent_db(int id, const char * name);
 
 /* Prepare SQL query with availability waiting */
 int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail);
