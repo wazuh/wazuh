@@ -81,7 +81,7 @@ int wdb_global_del_agent_labels(wdb_t *wdb, int id) {
     stmt = wdb->stmt[WDB_STMT_GLOBAL_LABELS_DEL];
 
     if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 
@@ -155,7 +155,7 @@ int wdb_global_set_sync_status(wdb_t *wdb, int id, wdb_sync_status_t status) {
         return OS_INVALID;
     }
     if (sqlite3_bind_int(stmt, 2, id) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 
