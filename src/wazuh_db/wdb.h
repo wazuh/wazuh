@@ -136,6 +136,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SELECT_AGENT_NAME,
     WDB_STMT_GLOBAL_SELECT_AGENT_GROUP,
     WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
+    WDB_STMT_GLOBAL_FIND_AGENT,
     WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
@@ -146,7 +147,6 @@ typedef enum wdb_stmt {
 
 typedef enum global_db_query {
     SQL_SELECT_AGENTS,
-    SQL_FIND_AGENT,
     SQL_SELECT_FIM_OFFSET,
     SQL_SELECT_REG_OFFSET,
     SQL_UPDATE_FIM_OFFSET,
@@ -518,6 +518,15 @@ int wdb_create_agent_db2(const char * agent_id);
  */
 int wdb_remove_agent_db(int id, const char * name);
 
+/**
+ * @brief Find agent id by name and address.
+ * 
+ * @param[in] name Name of the agent.
+ * @param[in] ip IP address of the agent.
+ * @return Returns id if success. OS_INVALID on error.
+ */
+int wdb_find_agent(const char *name, const char *ip);
+
 /* Update agent group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_group(int id,char *group);
 
@@ -593,9 +602,6 @@ int wdb_agent_belongs_first_time();
  * @return Returns the agent first registration date.
  */
 time_t get_agent_date_added(int agent_id);
-
-/* Find agent by name and address. Returns id if success, -1 on failure or -2 if it has not been found. */
-int wdb_find_agent(const char *name, const char *ip);
 
 /* Find group by name. Returns id if success or -1 on failure. */
 int wdb_find_group(const char *name);
@@ -901,6 +907,16 @@ int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output
 int wdb_parse_global_delete_agent_belong(wdb_t * wdb, char * input, char * output);
 
 /**
+ * @brief Function to parse the find agent request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String JSON with the agent name and ip.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output);
+
+/**
  * @brief Function to parse the select keepalive request.
  * 
  * @param wdb the global struct database.
@@ -1157,13 +1173,22 @@ cJSON* wdb_global_select_agent_group(wdb_t *wdb, int id);
 int wdb_global_delete_agent_belong(wdb_t *wdb, int id);
 
 /**
+ * @brief Function to get an agent id using the agent name and register ip.
+ * 
+ * @param wdb The Global struct database.
+ * @param name The agent name
+ * @param ip The agent ip
+ * @return JSON with id on success. NULL on error.
+ */
+cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
+
+/**
  * @brief Function to get an agent keepalive using the agent name and register ip.
  * 
  * @param wdb The Global struct database.
  * @param name The agent name
  * @param ip The agent ip
- * @retval JSON with last_keepalive on success.
- * @retval NULL on error.
+ * @return JSON with last_keepalive on success. NULL on error.
  */
 cJSON* wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip);
 

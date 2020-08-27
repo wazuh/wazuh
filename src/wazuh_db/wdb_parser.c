@@ -515,6 +515,15 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_delete_agent_belong(wdb, next, output);
             }
+        } else if (strcmp(query, "find-agent") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_find_agent(wdb, next, output);
+            }
         } else if (strcmp(query, "select-keepalive") == 0) {
             result = wdb_parse_global_select_agent_keepalive(wdb, next, output);
         } else if (strcmp(query, "sync-agent-info-get") == 0) {
@@ -3964,13 +3973,13 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
         return OS_INVALID;
     } else {
-        j_id = cJSON_GetObjectItemCaseSensitive(agent_data, "id");
-        j_name = cJSON_GetObjectItemCaseSensitive(agent_data, "name");
-        j_ip = cJSON_GetObjectItemCaseSensitive(agent_data, "ip");
-        j_register_ip = cJSON_GetObjectItemCaseSensitive(agent_data, "register_ip");
-        j_internal_key = cJSON_GetObjectItemCaseSensitive(agent_data, "internal_key");
-        j_group = cJSON_GetObjectItemCaseSensitive(agent_data, "group");
-        j_date_add = cJSON_GetObjectItemCaseSensitive(agent_data, "date_add");
+        j_id = cJSON_GetObjectItem(agent_data, "id");
+        j_name = cJSON_GetObjectItem(agent_data, "name");
+        j_ip = cJSON_GetObjectItem(agent_data, "ip");
+        j_register_ip = cJSON_GetObjectItem(agent_data, "register_ip");
+        j_internal_key = cJSON_GetObjectItem(agent_data, "internal_key");
+        j_group = cJSON_GetObjectItem(agent_data, "group");
+        j_date_add = cJSON_GetObjectItem(agent_data, "date_add");
 
         // These are the only constraints defined in the database for this
         // set of parameters. All the other parameters could be NULL.
@@ -4020,8 +4029,8 @@ int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output)
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
         return OS_INVALID;
     } else {
-        j_id = cJSON_GetObjectItemCaseSensitive(agent_data, "id");
-        j_name = cJSON_GetObjectItemCaseSensitive(agent_data, "name");
+        j_id = cJSON_GetObjectItem(agent_data, "id");
+        j_name = cJSON_GetObjectItem(agent_data, "name");
 
         if (cJSON_IsNumber(j_id) &&
             cJSON_IsString(j_name) && j_name->valuestring) {
@@ -4078,23 +4087,23 @@ int wdb_parse_global_update_agent_version(wdb_t * wdb, char * input, char * outp
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
         return OS_INVALID;
     } else {
-        j_id = cJSON_GetObjectItemCaseSensitive(agent_data, "id");
-        j_os_name = cJSON_GetObjectItemCaseSensitive(agent_data, "os_name");
-        j_os_version = cJSON_GetObjectItemCaseSensitive(agent_data, "os_version");
-        j_os_major = cJSON_GetObjectItemCaseSensitive(agent_data, "os_major");
-        j_os_minor = cJSON_GetObjectItemCaseSensitive(agent_data, "os_minor");
-        j_os_codename = cJSON_GetObjectItemCaseSensitive(agent_data, "os_codename");
-        j_os_platform = cJSON_GetObjectItemCaseSensitive(agent_data, "os_platform");
-        j_os_build = cJSON_GetObjectItemCaseSensitive(agent_data, "os_build");
-        j_os_uname = cJSON_GetObjectItemCaseSensitive(agent_data, "os_uname");
-        j_os_arch = cJSON_GetObjectItemCaseSensitive(agent_data, "os_arch");
-        j_version = cJSON_GetObjectItemCaseSensitive(agent_data, "version");
-        j_config_sum = cJSON_GetObjectItemCaseSensitive(agent_data, "config_sum");
-        j_merged_sum = cJSON_GetObjectItemCaseSensitive(agent_data, "merged_sum");
-        j_manager_host = cJSON_GetObjectItemCaseSensitive(agent_data, "manager_host");
-        j_node_name = cJSON_GetObjectItemCaseSensitive(agent_data, "node_name");
-        j_agent_ip = cJSON_GetObjectItemCaseSensitive(agent_data, "agent_ip");
-        j_sync_status = cJSON_GetObjectItemCaseSensitive(agent_data, "sync_status");
+        j_id = cJSON_GetObjectItem(agent_data, "id");
+        j_os_name = cJSON_GetObjectItem(agent_data, "os_name");
+        j_os_version = cJSON_GetObjectItem(agent_data, "os_version");
+        j_os_major = cJSON_GetObjectItem(agent_data, "os_major");
+        j_os_minor = cJSON_GetObjectItem(agent_data, "os_minor");
+        j_os_codename = cJSON_GetObjectItem(agent_data, "os_codename");
+        j_os_platform = cJSON_GetObjectItem(agent_data, "os_platform");
+        j_os_build = cJSON_GetObjectItem(agent_data, "os_build");
+        j_os_uname = cJSON_GetObjectItem(agent_data, "os_uname");
+        j_os_arch = cJSON_GetObjectItem(agent_data, "os_arch");
+        j_version = cJSON_GetObjectItem(agent_data, "version");
+        j_config_sum = cJSON_GetObjectItem(agent_data, "config_sum");
+        j_merged_sum = cJSON_GetObjectItem(agent_data, "merged_sum");
+        j_manager_host = cJSON_GetObjectItem(agent_data, "manager_host");
+        j_node_name = cJSON_GetObjectItem(agent_data, "node_name");
+        j_agent_ip = cJSON_GetObjectItem(agent_data, "agent_ip");
+        j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
 
         if (cJSON_IsNumber(j_id)) {
             // Getting each field
@@ -4231,8 +4240,8 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
         return OS_INVALID;
     } else {
-        j_id = cJSON_GetObjectItemCaseSensitive(agent_data, "id");
-        j_sync_status = cJSON_GetObjectItemCaseSensitive(agent_data, "sync_status");
+        j_id = cJSON_GetObjectItem(agent_data, "id");
+        j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
 
         if (cJSON_IsNumber(j_id) && cJSON_IsNumber(j_sync_status)) {
             // Getting each field
@@ -4333,6 +4342,52 @@ int wdb_parse_global_delete_agent_belong(wdb_t * wdb, char * input, char * outpu
     return OS_SUCCESS;
 }
 
+int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output) {
+    cJSON *agent_data = NULL;
+    const char *error = NULL;
+    cJSON *j_name = NULL;
+    cJSON *j_ip = NULL;
+    cJSON *j_id = NULL;
+    char *out = NULL;
+
+    agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
+    if (!agent_data) {
+        mdebug1("Global DB Invalid JSON syntax when finding agent id.");
+        mdebug2("Global DB JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        return OS_INVALID;
+    } else {
+        j_name = cJSON_GetObjectItem(agent_data, "name");
+        j_ip = cJSON_GetObjectItem(agent_data, "ip");
+
+        if (cJSON_IsString(j_name) && cJSON_IsString(j_ip)) {
+            // Getting each field
+            char *name = j_name->valuestring;
+            char *ip = j_ip->valuestring;
+
+            if (j_id = wdb_global_find_agent(wdb, name, ip), !j_id) {
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                cJSON_Delete(agent_data);
+                return OS_INVALID;
+            }
+        } else {
+            mdebug1("Global DB Invalid JSON data when finding agent id.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
+            cJSON_Delete(agent_data);
+            return OS_INVALID;
+        }
+    }
+
+    out = cJSON_PrintUnformatted(j_id);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(j_id);
+    cJSON_Delete(agent_data);
+
+    return OS_SUCCESS;
+}
+
 int wdb_parse_global_select_agent_keepalive(wdb_t * wdb, char * input, char * output) {
    char *out = NULL;
    char *next = NULL;
@@ -4423,11 +4478,11 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
                 return OS_INVALID;
             }
             // Checking for labels
-            json_labels = cJSON_GetObjectItemCaseSensitive(json_agent, "labels");
+            json_labels = cJSON_GetObjectItem(json_agent, "labels");
             if(cJSON_IsArray(json_labels)){
                 // The JSON has a label array
                 // Removing old labels from the labels table before inserting
-                json_field = cJSON_GetObjectItemCaseSensitive(json_agent, "id");
+                json_field = cJSON_GetObjectItem(json_agent, "id");
                 agent_id = cJSON_IsNumber(json_field) ? json_field->valueint : -1;
 
                 if (agent_id == -1){
@@ -4445,9 +4500,9 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
                 }
                 // For every label in array, insert it in the database
                 cJSON_ArrayForEach(json_label, json_labels){
-                    json_key = cJSON_GetObjectItemCaseSensitive(json_label, "key");
-                    json_value = cJSON_GetObjectItemCaseSensitive(json_label, "value");
-                    json_id = cJSON_GetObjectItemCaseSensitive(json_label, "id");
+                    json_key = cJSON_GetObjectItem(json_label, "key");
+                    json_value = cJSON_GetObjectItem(json_label, "value");
+                    json_id = cJSON_GetObjectItem(json_label, "id");
 
                     if(cJSON_IsString(json_key) && json_key->valuestring != NULL && cJSON_IsString(json_value) && 
                         json_value->valuestring != NULL && cJSON_IsNumber(json_id)){

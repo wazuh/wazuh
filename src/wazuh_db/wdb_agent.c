@@ -22,7 +22,6 @@
 
 static const char *global_db_queries[] = {
     [SQL_SELECT_AGENTS] = "global sql SELECT id FROM agent WHERE id != 0;",
-    [SQL_FIND_AGENT] = "global sql SELECT id FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');",
     [SQL_SELECT_FIM_OFFSET] = "global sql SELECT fim_offset FROM agent WHERE id = %d;",
     [SQL_SELECT_REG_OFFSET] = "global sql SELECT reg_offset FROM agent WHERE id = %d;",
     [SQL_UPDATE_FIM_OFFSET] = "global sql UPDATE agent SET fim_offset = %lu WHERE id = %d;",
@@ -51,7 +50,7 @@ static const char *global_db_commands[] = {
     [WDB_SELECT_AGENT_NAME] = "global select-agent-name %d",
     [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %d",
     [WDB_SELECT_AGENTS] = "",
-    [WDB_FIND_AGENT] = "",
+    [WDB_FIND_AGENT] = "global find-agent %s",
     [WDB_SELECT_FIM_OFFSET] = "",
     [WDB_SELECT_REG_OFFSET] = "",
     [WDB_UPDATE_FIM_OFFSET] = "",
@@ -570,11 +569,12 @@ int* wdb_get_all_agents() {
     return array;
 }
 
-/* Find agent by name and address. Returns id if success, -1 on failure */
+
 int wdb_find_agent(const char *name, const char *ip) {
-    int output = -1;
+    int output = OS_INVALID;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
+    cJSON *data_in = NULL;
     cJSON *root = NULL;
     cJSON *json_id = NULL;
 
@@ -583,7 +583,20 @@ int wdb_find_agent(const char *name, const char *ip) {
         return OS_INVALID;
     }
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_queries[SQL_FIND_AGENT], name, ip, ip);
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddStringToObject(data_in, "name", name);
+    cJSON_AddStringToObject(data_in, "ip", ip);
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_FIND_AGENT], cJSON_PrintUnformatted(data_in));
+
+    cJSON_Delete(data_in);
+
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
