@@ -94,6 +94,10 @@ def test_auth_roles(db_setup):
                     role.rules = list_rules
                     _role_rules.return_value = {'rules': list_rules}
                     _rule.side_effect = role.rules
+                    initial_index = 3
+                    for rule in role['rules']:
+                        rule['id'] = initial_index
+                        initial_index += 1
                     test = db_setup(json.dumps(auth.auth), role)
                     if role.name in results[index].roles:
                         assert test.get_user_roles()[0] == role.id

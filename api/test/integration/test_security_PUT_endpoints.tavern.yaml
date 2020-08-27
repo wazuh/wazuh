@@ -414,6 +414,7 @@ stages:
       <<: *put_users_request
       json:
         password: "new_user"
+        allow_run_as: true
     response:
       status_code: 400
 
@@ -423,6 +424,7 @@ stages:
       <<: *put_users_request
       json:
         password: "new_user2A!"
+        allow_run_as: true
     response:
       status_code: 200
       json:
@@ -430,6 +432,7 @@ stages:
           affected_items:
             - id: 103
               username: python
+              allow_run_as: true
           total_affected_items: 1
 
   - name: Update an non-existent user
@@ -441,6 +444,7 @@ stages:
       method: PUT
       json:
         password: "new_user1A"
+        allow_run_as: false
     response:
       status_code: 200
       json:
@@ -468,13 +472,14 @@ stages:
       verify: False
       <<: *put_users_request
       json:
-        password: "new_user1A!!!?"
+        allow_run_as: false
     response:
       status_code: 200
       json:
         data:
           affected_items:
             - username: python
+              allow_run_as: false
           total_affected_items: 1
 
 ---

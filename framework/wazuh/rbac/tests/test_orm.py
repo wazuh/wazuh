@@ -42,31 +42,45 @@ def test_add_token(db_setup):
     """Check token rule is added to database"""
     with db_setup.TokenManager() as tm:
         users = {'newUser', 'newUser1'}
+        roles = {'test', 'test1', 'test2'}
         with db_setup.AuthenticationManager() as am:
             for user in users:
                 am.add_user(username=user, password='testingA1!')
-        # New token rule
-        assert tm.add_user_rules(users=users) != db_setup.SecurityError.ALREADY_EXIST
+        with db_setup.RolesManager() as rm:
+            for role in roles:
+                rm.add_role(name=role)
+        with db_setup.AuthenticationManager() as am:
+            user_ids = [am.get_user(user)['id'] for user in users]
+        with db_setup.RolesManager() as rm:
+            role_ids = [rm.get_role(role)['id'] for role in roles]
 
-    return users
+        # New token rule
+        assert tm.add_user_roles_rules(users=user_ids) != db_setup.SecurityError.ALREADY_EXIST
+        assert tm.add_user_roles_rules(roles=role_ids) != db_setup.SecurityError.ALREADY_EXIST
+
+    return user_ids, role_ids
 
 
 def test_get_all_token_rules(db_setup):
     """Check that rules are correctly created"""
-    users = test_add_token(db_setup)
+    users, roles = test_add_token(db_setup)
     with db_setup.TokenManager() as tm:
-        rules = tm.get_all_rules()
-        for user in rules.keys():
+        user_rules, role_rules = tm.get_all_rules()
+        for user in user_rules.keys():
             assert user in users
+        for role in role_rules.keys():
+            assert role in roles
 
 
 def test_nbf_invalid(db_setup):
     """Check if a user's token is valid by comparing the values with those stored in the database"""
     current_timestamp = int(time())
-    users = test_add_token(db_setup)
+    users, roles = test_add_token(db_setup)
     with db_setup.TokenManager() as tm:
         for user in users:
-            assert not tm.is_token_valid(username=user, token_nbf_time=current_timestamp)
+            assert not tm.is_token_valid(user_id=user, token_nbf_time=current_timestamp)
+        for role in roles:
+            assert not tm.is_token_valid(role_id=role, token_nbf_time=current_timestamp)
 
 
 def test_delete_all_rules(db_setup):
@@ -290,8 +304,8 @@ def test_update_user(db_setup):
     """Check update a user in the database"""
     with db_setup.AuthenticationManager() as am:
         am.add_user(username='toUpdate', password='testingA6!')
-        assert am.update_user(user_id='106', password='testingA0!')
-        assert not am.update_user(user_id='999', password='testingA0!')
+        assert am.update_user(user_id='106', password='testingA0!', allow_run_as=False)
+        assert not am.update_user(user_id='999', password='testingA0!', allow_run_as=True)
 
 
 def test_update_role(db_setup):
