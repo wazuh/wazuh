@@ -65,5 +65,6 @@
 #define LOGTEST_INFO_LOG_EMPTY              "(7203): Empty log for check alert level"
 #define LOGTEST_INFO_LOG_NOALERT            "(7204): Output without rule"
 #define LOGTEST_INFO_LOG_NOLEVEL            "(7205): Rule without alert level"
+#define LOGTEST_INFO_SESSION_REMOVE         "(7206): The session '%s' was closed successfully"
 
 #endif /* INFO_MESSAGES_H */
