@@ -52,7 +52,7 @@ cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int id) {
     stmt = wdb->stmt[WDB_STMT_GLOBAL_LABELS_GET];
 
     if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return NULL;
     }
 
