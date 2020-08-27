@@ -62,6 +62,11 @@ void fim_scan() {
     minfo(FIM_FREQUENCY_STARTED);
     fim_send_scan_info(FIM_SCAN_START);
 
+    fim_diff_folder_size();
+    syscheck.disk_quota_full_msg = true;
+
+    mdebug2(FIM_DIFF_FOLDER_SIZE, DIFF_DIR_PATH, syscheck.diff_folder_size);
+
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
     while (syscheck.dir[it] != NULL) {
@@ -204,6 +209,21 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         }
 
         if (item->configuration & CHECK_SEECHANGES) {
+            if (syscheck.disk_quota_enabled) {
+                char *full_path;
+                full_path = seechanges_get_diff_path(path);
+
+                if (full_path != NULL && IsDir(full_path) == 0) {
+                    syscheck.diff_folder_size -= (DirSize(full_path) / 1024);   // Update diff_folder_size
+
+                    if (!syscheck.disk_quota_full_msg) {
+                        syscheck.disk_quota_full_msg = true;
+                    }
+                }
+
+                os_free(full_path);
+            }
+
             delete_target_file(path);
         }
 
@@ -1262,6 +1282,20 @@ void free_inode_data(fim_inode_data **data) {
     }
     os_free((*data)->paths);
     os_free(*data);
+}
+
+void fim_diff_folder_size(){
+    char *diff_local;
+
+    os_malloc(strlen(DIFF_DIR_PATH) + strlen("/local") + 1, diff_local);
+
+    snprintf(diff_local, strlen(DIFF_DIR_PATH) + strlen("/local") + 1, "%s/local", DIFF_DIR_PATH);
+
+    if (IsDir(diff_local) == 0) {
+        syscheck.diff_folder_size = DirSize(diff_local) / 1024;
+    }
+
+    os_free(diff_local);
 }
 
 // LCOV_EXCL_START

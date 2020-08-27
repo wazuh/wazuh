@@ -466,6 +466,63 @@ off_t FileSize(const char * path) {
 }
 
 
+#ifndef WIN32
+
+float DirSize(const char *path) {
+    struct dirent *dir;
+    struct stat buf;
+    DIR *directory;
+    float folder_size = 0.0;
+    float file_size = 0.0;
+    char *entry;
+
+    if (directory = opendir(path), directory == NULL) {
+        mdebug2("Couldn't open directory '%s'.", path);
+        return -1;
+    }
+
+    while ((dir = readdir(directory)) != NULL) {
+        // Ignore . and ..
+        if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0) {
+            continue;
+        }
+
+        os_malloc(strlen(path) + strlen(dir->d_name) + 2, entry);
+        snprintf(entry, strlen(path) + 2 + strlen(dir->d_name), "%s/%s", path, dir->d_name);
+
+        if (stat(entry, &buf) == -1) {
+            os_free(entry);
+            closedir(directory);
+            return 0;
+        }
+
+        // Recursion if the path points to a directory
+        switch (buf.st_mode & S_IFMT) {
+        case S_IFDIR:
+            folder_size += DirSize(entry);
+            break;
+
+        case S_IFREG:
+            if (file_size = FileSize(entry), file_size != -1) {
+                folder_size += file_size;
+            }
+
+            break;
+
+        default:
+            break;
+        }
+
+        os_free(entry);
+    }
+
+    closedir(directory);
+
+    return folder_size;
+}
+
+#endif
+
 int CreatePID(const char *name, int pid)
 {
     char file[256];
@@ -2951,6 +3008,45 @@ DWORD FileSizeWin(const char * file) {
 
     return -1;
 }
+
+float DirSize(const char *path) {
+    WIN32_FIND_DATA fdFile;
+    HANDLE hFind = NULL;
+    float folder_size = 0.0;
+    float file_size = 0.0;
+
+    char sPath[2048];
+
+    // Specify a file mask. *.* = We want everything!
+    sprintf(sPath, "%s\\*.*", path);
+
+    if ((hFind = FindFirstFile(sPath, &fdFile)) == INVALID_HANDLE_VALUE) {
+        merror(FILE_ERROR, path);
+        return 0;
+    }
+
+    do {
+        if (strcmp(fdFile.cFileName, ".") != 0 && strcmp(fdFile.cFileName, "..") != 0) {
+            // Build up our file path using the passed in
+            //  [path] and the file/foldername we just found:
+            sprintf(sPath, "%s\\%s", path, fdFile.cFileName);
+
+            if (fdFile.dwFileAttributes &FILE_ATTRIBUTE_DIRECTORY) {
+                folder_size += DirSize(sPath);
+            }
+            else {
+                if (file_size = FileSizeWin(sPath), file_size != -1) {
+                    folder_size += file_size;
+                }
+            }
+        }
+    } while (FindNextFile(hFind, &fdFile));
+
+    FindClose(hFind);
+
+    return folder_size;
+}
+
 #endif
 
 

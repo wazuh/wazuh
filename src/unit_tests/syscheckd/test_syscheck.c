@@ -280,6 +280,10 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state)
 
     expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
+    expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
+    
+    expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
+
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
 
@@ -320,6 +324,10 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state)
     will_return(__wrap_fim_db_init, NULL);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
+    
+    expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
@@ -374,6 +382,10 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state)
     expect_string(__wrap__minfo, formatted_msg, "(6002): Monitoring registry entry: 'Entry1 [x64]'.");
 
     expect_string(__wrap__minfo, formatted_msg, "(6003): Monitoring directory/file: 'Dir1', with options ''.");
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
+    
+    expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, "(6206): Ignore 'file' entry 'Dir1'");
 
@@ -438,6 +450,10 @@ void test_Start_win32_Syscheck_whodata_active(void **state)
     will_return(__wrap_fim_db_init, NULL);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
+    
+    expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
