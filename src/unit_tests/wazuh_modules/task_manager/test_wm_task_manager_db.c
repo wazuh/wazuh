@@ -1318,7 +1318,6 @@ void test_wm_task_manager_insert_task_prepare_err(void **state)
     char *module = "upgrade_module";
     char *command = "upgrade";
     int task_id = 0;
-    int now = 123456789;
 
     expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
@@ -1350,7 +1349,6 @@ void test_wm_task_manager_insert_task_open_err(void **state)
     char *module = "upgrade_module";
     char *command = "upgrade";
     int task_id = 0;
-    int now = 123456789;
 
     expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
@@ -1667,6 +1665,516 @@ void test_wm_task_manager_get_task_status_open_err(void **state)
     assert_null(status);
 }
 
+void test_wm_task_manager_update_task_status_ok(void **state)
+{
+    int agent_id = 115;
+    char *module = "upgrade_module";
+    char *status = "Done";
+    char *status_old = "In progress";
+    int task_id = 36;
+    int now = 123456789;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 2);
+    expect_string(__wrap_sqlite3_bind_text, b, module);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, i, 0);
+    will_return(__wrap_sqlite3_column_int, task_id);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, task_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_text, i, 0);
+    will_return(__wrap_sqlite3_column_text, status_old);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 1);
+    expect_string(__wrap_sqlite3_bind_text, b, status);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_time, now);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, now);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, task_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_update_task_status(agent_id, module, status);
+
+    assert_int_equal(ret, WM_TASK_SUCCESS);
+}
+
+void test_wm_task_manager_update_task_status_old_status_err(void **state)
+{
+    int agent_id = 115;
+    char *module = "upgrade_module";
+    char *status = "Done";
+    char *status_old = "Done";
+    int task_id = 36;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 2);
+    expect_string(__wrap_sqlite3_bind_text, b, module);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, i, 0);
+    will_return(__wrap_sqlite3_column_int, task_id);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, task_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_text, i, 0);
+    will_return(__wrap_sqlite3_column_text, status_old);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_update_task_status(agent_id, module, status);
+
+    assert_int_equal(ret, WM_TASK_DATABASE_NO_TASK);
+}
+
+void test_wm_task_manager_update_task_status_task_id_err(void **state)
+{
+    int agent_id = 115;
+    char *module = "upgrade_module";
+    char *status = "Done";
+    int task_id = 0;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 2);
+    expect_string(__wrap_sqlite3_bind_text, b, module);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, i, 0);
+    will_return(__wrap_sqlite3_column_int, task_id);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_update_task_status(agent_id, module, status);
+
+    assert_int_equal(ret, WM_TASK_DATABASE_NO_TASK);
+}
+
+void test_wm_task_manager_update_task_status_status_err(void **state)
+{
+    int agent_id = 115;
+    char *module = "upgrade_module";
+    char *status = "Timeout";
+
+    int ret = wm_task_manager_update_task_status(agent_id, module, status);
+
+    assert_int_equal(ret, WM_TASK_INVALID_STATUS);
+}
+
+void test_wm_task_manager_update_task_status_step3_err(void **state)
+{
+    int agent_id = 115;
+    char *module = "upgrade_module";
+    char *status = "Done";
+    char *status_old = "In progress";
+    int task_id = 36;
+    int now = 123456789;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 2);
+    expect_string(__wrap_sqlite3_bind_text, b, module);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, i, 0);
+    will_return(__wrap_sqlite3_column_int, task_id);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, task_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_text, i, 0);
+    will_return(__wrap_sqlite3_column_text, status_old);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 1);
+    expect_string(__wrap_sqlite3_bind_text, b, status);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_time, now);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, now);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, task_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8279): Couldn't execute SQL statement.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_update_task_status(agent_id, module, status);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wm_task_manager_update_task_status_prepare3_err(void **state)
+{
+    int agent_id = 115;
+    char *module = "upgrade_module";
+    char *status = "Done";
+    char *status_old = "In progress";
+    int task_id = 36;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 2);
+    expect_string(__wrap_sqlite3_bind_text, b, module);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, i, 0);
+    will_return(__wrap_sqlite3_column_int, task_id);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, task_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_text, i, 0);
+    will_return(__wrap_sqlite3_column_text, status_old);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8278): Couldn't prepare SQL statement.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_update_task_status(agent_id, module, status);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wm_task_manager_update_task_status_step2_err(void **state)
+{
+    int agent_id = 115;
+    char *module = "upgrade_module";
+    char *status = "Done";
+    int task_id = 36;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 2);
+    expect_string(__wrap_sqlite3_bind_text, b, module);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, i, 0);
+    will_return(__wrap_sqlite3_column_int, task_id);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, task_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8279): Couldn't execute SQL statement.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_update_task_status(agent_id, module, status);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wm_task_manager_update_task_status_prepare2_err(void **state)
+{
+    int agent_id = 115;
+    char *module = "upgrade_module";
+    char *status = "Done";
+    int task_id = 36;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 2);
+    expect_string(__wrap_sqlite3_bind_text, b, module);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, i, 0);
+    will_return(__wrap_sqlite3_column_int, task_id);
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8278): Couldn't prepare SQL statement.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_update_task_status(agent_id, module, status);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wm_task_manager_update_task_status_step_err(void **state)
+{
+    int agent_id = 115;
+    char *module = "upgrade_module";
+    char *status = "Done";
+    int task_id = 36;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_value(__wrap_sqlite3_bind_text, a, 2);
+    expect_string(__wrap_sqlite3_bind_text, b, module);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8279): Couldn't execute SQL statement.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_update_task_status(agent_id, module, status);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wm_task_manager_update_task_status_prepare_err(void **state)
+{
+    int agent_id = 115;
+    char *module = "upgrade_module";
+    char *status = "Done";
+    int task_id = 36;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8278): Couldn't prepare SQL statement.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_finalize, 0);
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_update_task_status(agent_id, module, status);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wm_task_manager_update_task_status_open_err(void **state)
+{
+    int agent_id = 115;
+    char *module = "upgrade_module";
+    char *status = "Done";
+    int task_id = 36;
+
+    expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8276): DB couldn't be opened.");
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_close_v2,0);
+
+    int ret = wm_task_manager_update_task_status(agent_id, module, status);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_task_manager_check_db
@@ -1709,6 +2217,18 @@ int main(void) {
         cmocka_unit_test(test_wm_task_manager_get_task_status_step_err),
         cmocka_unit_test(test_wm_task_manager_get_task_status_prepare_err),
         cmocka_unit_test(test_wm_task_manager_get_task_status_open_err),
+        // wm_task_manager_update_task_status
+        cmocka_unit_test(test_wm_task_manager_update_task_status_ok),
+        cmocka_unit_test(test_wm_task_manager_update_task_status_old_status_err),
+        cmocka_unit_test(test_wm_task_manager_update_task_status_task_id_err),
+        cmocka_unit_test(test_wm_task_manager_update_task_status_status_err),
+        cmocka_unit_test(test_wm_task_manager_update_task_status_step3_err),
+        cmocka_unit_test(test_wm_task_manager_update_task_status_prepare3_err),
+        cmocka_unit_test(test_wm_task_manager_update_task_status_step2_err),
+        cmocka_unit_test(test_wm_task_manager_update_task_status_prepare2_err),
+        cmocka_unit_test(test_wm_task_manager_update_task_status_step_err),
+        cmocka_unit_test(test_wm_task_manager_update_task_status_prepare_err),
+        cmocka_unit_test(test_wm_task_manager_update_task_status_open_err),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
