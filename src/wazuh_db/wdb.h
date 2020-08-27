@@ -18,6 +18,7 @@
 #include "external/sqlite/sqlite3.h"
 #include "syscheck_op.h"
 #include "rootcheck_op.h"
+#include "wazuhdb_op.h"
 
 #define WDB_AGENT_EMPTY 0
 #define WDB_AGENT_PENDING 1
@@ -482,7 +483,10 @@ int wdb_create_profile(const char *path);
 int wdb_create_file(const char *path, const char *source);
 
 /* Get an array containing the ID of every agent (except 0), ended with -1 */
+/* DOXYGEN here*/
 int* wdb_get_all_agents();
+/* DOXYGEN here*/
+int* wdb_get_agents_by_keepalive(const char* condition, int keepalive);
 
 /* Fill belongs table on start */
 int wdb_agent_belongs_first_time();
@@ -739,7 +743,8 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
 /**
  * Doxygen here
 */
-int wdb_parse_get_agent_agents_by_keepalive(wdb_t* wdb, char* input, char* output);
+int wdb_parse_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output);
+int wdb_parse_get_all_agents(wdb_t* wdb, char* input, char* output);
 
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
@@ -888,7 +893,13 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
 /**
  * Doxygen here
 */
-wdb_chunks_status_t wdb_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char condition, int keep_alive, char **output);
+wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char condition, int keep_alive, char **output);
+/**
+ * Doxygen here
+*/
+wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output);
+
+
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

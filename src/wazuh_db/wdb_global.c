@@ -318,8 +318,8 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb,cJSON * json_agent){
     }
 }
 
-wdb_chunks_status_t wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char comparator, int keep_alive, char **output) {
-    wdb_chunks_status_t status = WDB_CHUNKS_PENDING;
+wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char comparator, int keep_alive, char **output) {
+    wdbc_result status = WDBC_UNKNOWN;
     unsigned response_size = 0;
         
     os_calloc(WDB_MAX_RESPONSE_SIZE, sizeof(char), *output);
@@ -335,31 +335,31 @@ wdb_chunks_status_t wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_age
     else 
     {
         merror("Invalid comparator");
-        return WDB_CHUNKS_ERROR;
+        return WDBC_ERROR;
     }
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("cannot begin transaction");
-        return WDB_CHUNKS_ERROR;
+        return WDBC_ERROR;
     }
 
-    while (status == WDB_CHUNKS_PENDING) {
+    while (status == WDBC_UNKNOWN) {
         //Prepare SQL query
         if (wdb_stmt_cache(wdb, stmt_index) < 0) {
             mdebug1("cannot cache statement");
-            status = WDB_CHUNKS_ERROR;
+            status = WDBC_ERROR;
             break;
         }
         sqlite3_stmt* stmt = wdb->stmt[stmt_index];
         if (sqlite3_bind_int(stmt, 1, *last_agent_id) != SQLITE_OK) {
             merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-            status = WDB_CHUNKS_ERROR;
+            status = WDBC_ERROR;
             break;
         }        
        
         if (sqlite3_bind_int(stmt, 2, keep_alive) != SQLITE_OK) {
             merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-            status = WDB_CHUNKS_ERROR;
+            status = WDBC_ERROR;
             break;
         }
         
@@ -389,30 +389,30 @@ wdb_chunks_status_t wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_age
                 }
                 else {
                     //Pending agents but buffer is full
-                    status = WDB_CHUNKS_BUFFER_FULL;
+                    status = WDBC_DUE;
                 }
                 os_free(id_str);
             }
         }
         else {
             //All agents have been obtained
-            status = WDB_CHUNKS_COMPLETE;
+            status = WDBC_OK;
         }
         cJSON_Delete(sql_agents_response);
     }
     
-    if (response_size > 2) {
+    if (response_size > 0) {
         //Remove last ','
         response_aux--;
     }
     //Add string end
-    *response_aux = '/0';
+    *response_aux = '\0';
 
     return status;
 }
 
-wdb_chunks_status_t wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output) {
-    wdb_chunks_status_t status = WDB_CHUNKS_PENDING;
+wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output) {
+    wdbc_result status = WDBC_UNKNOWN;
     unsigned response_size = 0;
         
     os_calloc(WDB_MAX_RESPONSE_SIZE, sizeof(char), *output);
@@ -420,20 +420,20 @@ wdb_chunks_status_t wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, ch
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("cannot begin transaction");
-        return WDB_CHUNKS_ERROR;
+        return WDBC_ERROR;
     }
 
-    while (status == WDB_CHUNKS_PENDING) {
+    while (status == WDBC_UNKNOWN) {
         //Prepare SQL query
         if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS) < 0) {
             mdebug1("cannot cache statement");
-            status = WDB_CHUNKS_ERROR;
+            status = WDBC_ERROR;
             break;
         }
         sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS];
         if (sqlite3_bind_int(stmt, 1, *last_agent_id) != SQLITE_OK) {
             merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-            status = WDB_CHUNKS_ERROR;
+            status = WDBC_ERROR;
             break;
         }        
         
@@ -463,24 +463,24 @@ wdb_chunks_status_t wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, ch
                 }
                 else {
                     //Pending agents but buffer is full
-                    status = WDB_CHUNKS_BUFFER_FULL;
+                    status = WDBC_DUE;
                 }
                 os_free(id_str);
             }
         }
         else {
             //All agents have been obtained
-            status = WDB_CHUNKS_COMPLETE;
+            status = WDBC_OK;
         }
         cJSON_Delete(sql_agents_response);
     }
     
-    if (response_size > 2) {
+    if (response_size > 0) {
         //Remove last ','
         response_aux--;
     }
     //Add string end
-    *response_aux = '/0';
+    *response_aux = '\0';
 
     return status;
 }

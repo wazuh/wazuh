@@ -48,8 +48,8 @@ static const char *global_db_queries[] = {
     [SQL_DELETE_GROUP] = "global sql DELETE FROM `group` WHERE name = %Q;",
     [SQL_SELECT_GROUPS] = "global sql SELECT name FROM `group`;",
     [SQL_SELECT_KEEPALIVE] = "global sql SELECT last_keepalive FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');",
-    [SQL_GET_AGENTS_BY_KEEPALIVE] = "global get-agents-by-keepalive condition %s %d last_id %d",
-    [SQL_GET_ALL_AGENTS] = "global get-all-agents last_id %d"
+    [SQL_GET_AGENTS_BY_KEEPALIVE] = "global get-agents-by-keepalive condition %s %d start_id %d",
+    [SQL_GET_ALL_AGENTS] = "global get-all-agents start_id %d"
 };
 
 int wdb_sock_agent = -1;
@@ -439,137 +439,92 @@ int wdb_remove_agent_db(int id, const char * name) {
         return -1;
 }
 
-/* Get an array containing the ID of every agent (except 0), ended with -1 */
-int* wdb_get_all_agents() {
-    int n = 0;
-    int *array = NULL;
-    cJSON *json_id = NULL;
-    cJSON *root = NULL;
-    cJSON *item = NULL;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery,"%s", global_db_queries[SQL_SELECT_AGENTS]);
-    root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!root) {
-        merror("Error querying Wazuh DB to get all agents.");
-        return NULL;
-    }
-
-    item = root->child;
-    os_calloc(cJSON_GetArraySize(root) + 1, sizeof(int), array);
-
-    while (item)
-    {
-        json_id = cJSON_GetObjectItemCaseSensitive(item,"id");
-        
-        if(cJSON_IsNumber(json_id)){
-            array[n] = json_id->valueint;
-            n++;
-        }
-
-        item=item->next;
-    }
-
-    array[n] = -1;
-    cJSON_Delete(root);
-
-    return array;
-}
-
 int* wdb_get_agents_by_keepalive(const char* condition, int keepalive) {
-    cJSON *root = NULL;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_MAXSTR] = "";
-    char* payload;
-    int last_id = 0;
-    wdbc_result status = WDBC_DUE;
-    char *savedptr = NULL;
-    char* delim = ",";
+    char wdboutput[OS_MAXSTR] = "";    
+    int last_id = 0;  
     int *array = NULL;    
     int len = 0;
-
+    wdbc_result status = WDBC_DUE;
+    
     while (status == WDBC_DUE) {
         // Query WazuhDB
-        snprintf(wdbquery, sizeof(wdbquery), global_db_queries[SQL_GET_AGENTS_BY_KEEPALIVE], condition, keepalive, last_id);        
-        int result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
-        switch (result) {
-        case -2:
-            merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
-            return NULL;
-        case -1:
-            merror("No response from wazuh-db.");
-            return NULL;
+        snprintf(wdbquery, sizeof(wdbquery), global_db_queries[SQL_GET_AGENTS_BY_KEEPALIVE], condition, keepalive, last_id);
+        if (wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
+            // Parse result
+            char* payload = NULL;
+            status = wdbc_parse_result(wdboutput, &payload);
+            if (status == WDBC_OK || status == WDBC_DUE) {
+                const char delim = ','; 
+                const char sdelim[] = { delim, '\0' };
+                //Realloc new size
+                int new_len = os_strcnt(payload, delim)+1;
+                os_realloc(array, sizeof(int)*(len+new_len+1), array);
+                //Append IDs to array
+                char* agent_id = NULL;
+                char *savedptr = NULL;
+                for (agent_id = strtok_r(payload, sdelim, &savedptr); agent_id; agent_id = strtok_r(NULL, sdelim, &savedptr)) {
+                    array[len] = atoi(agent_id);
+                    len++;
+                }
+                last_id = array[len-1];   
+            }
         }
-        // Parse result
-        status = wdbc_parse_result(wdboutput, &payload);
-        if (status == WDBC_ERROR) {
-            merror("Bad response from wazuh-db: %s", payload);
-            break;
+        else {
+            status = WDBC_ERROR;
         }
-        //Realloc new size
-        int new_len = os_strcnt(payload, ' ')+1;
-        os_realloc(array, sizeof(int)*(len+new_len+1), array);
-
-        //Append IDs to array
-        char* agent_id = NULL;
-        for (agent_id = strtok_r(payload, delim, &savedptr); agent_id; agent_id = strtok_r(NULL, delim, &savedptr)) {
-            array[len] = atoi(agent_id);
-            len++;
-        }
-        last_id = array[len];   
     }
-    //Finish the array
-    array[len] = -1;
+    if (status == WDBC_OK) {
+        array[len] = -1;
+    }
+    else {
+        os_free(array);
+    }  
 
     return array;
 }
 
 int* wdb_get_all_agents(void) {
-    cJSON *root = NULL;
     char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_MAXSTR] = "";
-    char* payload;
-    int last_id = 0;
-    wdbc_result status = WDBC_DUE;
-    char *savedptr = NULL;
-    char* delim = ",";
+    char wdboutput[OS_MAXSTR] = "";    
+    int last_id = 0;  
     int *array = NULL;    
     int len = 0;
-
+    wdbc_result status = WDBC_DUE;
+    
     while (status == WDBC_DUE) {
         // Query WazuhDB
         snprintf(wdbquery, sizeof(wdbquery), global_db_queries[SQL_GET_ALL_AGENTS], last_id);
-        int result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
-        switch (result) {
-        case -2:
-            merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
-            return NULL;
-        case -1:
-            merror("No response from wazuh-db.");
-            return NULL;
+        if (wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {            
+            // Parse result
+            char* payload = NULL;
+            status = wdbc_parse_result(wdboutput, &payload);
+            if (status == WDBC_OK || status == WDBC_DUE) {
+                const char delim = ','; 
+                const char sdelim[] = { delim, '\0' };
+                //Realloc new size
+                int new_len = os_strcnt(payload, delim)+1;
+                os_realloc(array, sizeof(int)*(len+new_len+1), array);
+                //Append IDs to array
+                char* agent_id = NULL;
+                char *savedptr = NULL;
+                for (agent_id = strtok_r(payload, sdelim, &savedptr); agent_id; agent_id = strtok_r(NULL, sdelim, &savedptr)) {
+                    array[len] = atoi(agent_id);
+                    len++;
+                }
+                last_id = array[len-1];   
+            }
         }
-        // Parse result
-        status = wdbc_parse_result(wdboutput, &payload);
-        if (status == WDBC_ERROR) {
-            merror("Bad response from wazuh-db: %s", payload);
-            break;
+        else {
+            status = WDBC_ERROR;
         }
-        //Realloc new size
-        int new_len = os_strcnt(payload, ' ')+1;
-        os_realloc(array, sizeof(int)*(len+new_len+1), array);
-
-        //Append IDs to array
-        char* agent_id = NULL;
-        for (agent_id = strtok_r(payload, delim, &savedptr); agent_id; agent_id = strtok_r(NULL, delim, &savedptr)) {
-            array[len] = atoi(agent_id);
-            len++;
-        }
-        last_id = array[len];   
     }
-    //Finish the array
-    array[len] = -1;
+    if (status == WDBC_OK) {
+        array[len] = -1;
+    }
+    else {
+        os_free(array);
+    }  
 
     return array;
 }

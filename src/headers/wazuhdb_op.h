@@ -7,15 +7,20 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#ifndef WDBOP_H
+#define WDBOP_H
 
 #include "shared.h"
 #include "os_net/os_net.h"
 
 
-typedef enum wdbc_result { WDBC_OK, WDBC_ERROR, WDBC_IGNORE, WDBC_UNKNOWN, WDBC_DUE } wdbc_result;
+typedef enum wdbc_result { WDBC_OK, WDBC_DUE, WDBC_ERROR, WDBC_IGNORE, WDBC_UNKNOWN } wdbc_result;
+extern const char* WDBC_RESULT[];
 
 int wdbc_connect();
 int wdbc_query(const int sock, const char *query, char *response, const int len);
 int wdbc_query_ex(int *sock, const char *query, char *response, const int len);
 int wdbc_parse_result(char *result, char **payload);
 cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, const int len);
+
+#endif

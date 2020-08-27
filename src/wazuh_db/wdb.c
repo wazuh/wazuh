@@ -21,6 +21,14 @@
 #define BUSY_SLEEP 1
 #define MAX_ATTEMPTS 1000
 
+const char* WDBC_RESULT[] = {
+    [WDBC_OK]      = "ok",
+    [WDBC_DUE]     = "due",
+    [WDBC_ERROR]   = "err",
+    [WDBC_IGNORE]  = "ign",
+    [WDBC_UNKNOWN] = "unk"    
+};
+
 static const char *SQL_VACUUM = "VACUUM;";
 static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 static const char *SQL_BEGIN = "BEGIN;";
