@@ -61,24 +61,24 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) _
 
 /**
  * Analyze a api task command.
- * @param task_object JSON object with a task to be analyzed.
+ * @param command Command of the task to be analyzed.
  * @param error_code Variable to store an error code if something is wrong.
  * @param agent_id Agent id extracted from task_object.
  * @param task_id Task id extracted from task_object. 
  * @return JSON object with the response for this task.
  * */
-cJSON* wm_task_manager_analyze_task_api_module(const cJSON *task_object, int *error_code, int agent_id, int task_id) __attribute__((nonnull));
+cJSON* wm_task_manager_analyze_task_api_module(char *command, int *error_code, int agent_id, int task_id) __attribute__((nonnull));
 
 /**
  * Analyze a upgrade_module task by command. Update the tasks DB when necessary.
- * @param task_object JSON object with a task to be analyzed.
+ * @param command Command of the task to be analyzed.
  * @param error_code Variable to store an error code if something is wrong.
  * @param agent_id Agent id extracted from task_object.
  * @param task_id Task id extracted from task_object.
  * @param status Status extracted from task_object.
  * @return JSON object with the response for this task.
  * */
-cJSON* wm_task_manager_analyze_task_upgrade_module(const cJSON *task_object, int *error_code, int agent_id, int task_id, char *status) __attribute__((nonnull));
+cJSON* wm_task_manager_analyze_task_upgrade_module(char *command, int *error_code, int agent_id, int task_id, char *status) __attribute__((nonnull));
 
 #endif
 #endif

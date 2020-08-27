@@ -33,6 +33,9 @@ list(APPEND task_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,sqlite
 list(APPEND task_names "test_wm_task_manager_parsing")
 list(APPEND task_flags "-Wl,--wrap,_mterror -Wl,--wrap,w_get_timestamp")
 
+list(APPEND task_names "test_wm_task_manager_analyze")
+list(APPEND task_flags "-Wl,--wrap,wm_task_manager_get_task_by_agent_id_and_module -Wl,--wrap,wm_task_manager_get_task_by_task_id -Wl,--wrap,wm_task_manager_parse_response -Wl,--wrap,wm_task_manager_parse_response_result")
+
 # Compilig tests
 list(LENGTH task_names count)
 math(EXPR count "${count} - 1")
