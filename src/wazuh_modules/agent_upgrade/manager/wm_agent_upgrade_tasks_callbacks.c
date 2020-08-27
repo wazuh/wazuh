@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_tasks.h"
 #include "wm_agent_upgrade_parsing.h"

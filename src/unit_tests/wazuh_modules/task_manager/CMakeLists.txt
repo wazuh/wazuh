@@ -30,6 +30,9 @@ list(APPEND task_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,sqlite
                         -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,chown -Wl,--wrap,chmod -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_column_text \
                         -Wl,--wrap,time -Wl,--wrap,w_sleep_until")
 
+list(APPEND task_names "test_wm_task_manager_parsing")
+list(APPEND task_flags " ")
+
 # Compilig tests
 list(LENGTH task_names count)
 math(EXPR count "${count} - 1")

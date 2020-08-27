@@ -9,13 +9,6 @@
  * Foundation.
  */
 
-#ifdef UNIT_TESTING
-// Remove static qualifier when unit testing
-#define STATIC
-#else
-#define STATIC static
-#endif
-
 #ifndef WIN32
 
 #include "../wmodules.h"
