@@ -490,7 +490,7 @@ char* wdb_get_agent_name(int id);
  * @param[in] id Id of the agent that the name must be selected.
  * @return A string with the agent group on success or NULL on failure.
  */
-char* wdb_agent_group(int id);
+char* wdb_get_agent_group(int id);
 
 /* Update agent group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_group(int id,char *group);

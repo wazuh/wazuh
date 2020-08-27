@@ -411,8 +411,8 @@ char* wdb_get_agent_name(int id) {
     return output;
 }
 
-/* Get group from agent. The string must be freed after using. Returns NULL on error. */
-char* wdb_agent_group(int id) {
+
+char* wdb_get_agent_group(int id) {
     char *output = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -423,11 +423,11 @@ char* wdb_agent_group(int id) {
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
-        merror("Error querying Wazuh DB to get the agent group name.");
+        merror("Error querying Wazuh DB to get the agent's %d group.", id);
         return NULL;
     }
 
-    json_group = cJSON_GetObjectItemCaseSensitive(root->child,"name");
+    json_group = cJSON_GetObjectItem(root->child,"group");
     if (cJSON_IsString(json_group) && json_group->valuestring != NULL) {
         os_strdup(json_group->valuestring, output);
     }
@@ -554,7 +554,7 @@ int* wdb_get_all_agents() {
 
     while (item)
     {
-        json_id = cJSON_GetObjectItemCaseSensitive(item,"id");
+        json_id = cJSON_GetObjectItem(item,"id");
         
         if(cJSON_IsNumber(json_id)){
             array[n] = json_id->valueint;
@@ -591,7 +591,7 @@ int wdb_find_agent(const char *name, const char *ip) {
         return OS_INVALID;
     }
 
-    json_id = cJSON_GetObjectItemCaseSensitive(root->child,"id");
+    json_id = cJSON_GetObjectItem(root->child,"id");
     if (cJSON_IsNumber(json_id)) {
         output = json_id->valueint;
     }
@@ -628,7 +628,7 @@ long wdb_get_agent_offset(int id_agent, int type) {
         return OS_INVALID;
     }
 
-    json_offset = cJSON_GetObjectItemCaseSensitive(root->child,column);
+    json_offset = cJSON_GetObjectItem(root->child,column);
     output = cJSON_IsNumber(json_offset) ? json_offset->valueint : OS_INVALID;
 
     cJSON_Delete(root);
@@ -687,7 +687,7 @@ int wdb_get_agent_status(int id_agent) {
         return OS_INVALID;
     }
 
-    json_status = cJSON_GetObjectItemCaseSensitive(root->child,"status");
+    json_status = cJSON_GetObjectItem(root->child,"status");
     if (cJSON_IsString(json_status) && json_status->valuestring != NULL) {
         output = !strcmp(json_status->valuestring, "empty") ? WDB_AGENT_EMPTY : !strcmp(json_status->valuestring, "pending") ? WDB_AGENT_PENDING : WDB_AGENT_UPDATED;
     } else {
@@ -837,7 +837,7 @@ int wdb_find_group(const char *name) {
         return OS_INVALID;
     }
 
-    json_group = cJSON_GetObjectItemCaseSensitive(root->child,"id");
+    json_group = cJSON_GetObjectItem(root->child,"id");
     output = cJSON_IsNumber(json_group) ? json_group->valueint : OS_INVALID;
 
     cJSON_Delete(root);
@@ -951,7 +951,7 @@ int wdb_update_groups(const char *dirname) {
 
     while (item)
     {
-        json_name = cJSON_GetObjectItemCaseSensitive(item,"name");
+        json_name = cJSON_GetObjectItem(item,"name");
         
         if(cJSON_IsString(json_name) && json_name->valuestring != NULL ){
             os_strdup(json_name->valuestring, array[n]);
@@ -1078,7 +1078,7 @@ int wdb_agent_belongs_first_time(){
     if ((agents = wdb_get_all_agents())) {
 
         for (i = 0; agents[i] != -1; i++) {
-            group = wdb_agent_group(agents[i]);
+            group = wdb_get_agent_group(agents[i]);
 
             if (group) {
                 wdb_update_agent_multi_group(agents[i],group);
@@ -1188,7 +1188,7 @@ time_t wdb_get_agent_keepalive (const char *name, const char *ip){
         return OS_INVALID;
     }
 
-    json_keepalive = cJSON_GetObjectItemCaseSensitive(root->child,"last_keepalive");
+    json_keepalive = cJSON_GetObjectItem(root->child,"last_keepalive");
     output = cJSON_IsNumber(json_keepalive) ? json_keepalive->valueint : 0;
 
     cJSON_Delete(root);

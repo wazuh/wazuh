@@ -2110,6 +2110,63 @@ void test_wdb_get_agent_keepalive_success(void **state) {
     __real_cJSON_Delete(response);
 }
 
+/* Tests wdb_get_agent_group */
+
+void test_wdb_get_agent_group_error_no_json_response(void **state) {
+    int id = 1;
+    char *name = NULL;
+
+    const char *query_str = "global select-agent-group 1";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent's 1 group.");
+
+    name = wdb_get_agent_group(id);
+
+    assert_null(name);
+}
+
+void test_wdb_get_agent_group_success(void **state) {
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+    cJSON *str = NULL;
+    int id = 1;
+    char *name = NULL;
+
+    const char *query_str = "global select-agent-group 1";
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    str = __real_cJSON_CreateString("default");
+    __real_cJSON_AddItemToObject(row, "group", str);
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "group");
+    will_return(__wrap_cJSON_GetObjectItem, str);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    name = wdb_get_agent_group(id);
+
+    assert_string_equal("default", name);
+
+    __real_cJSON_Delete(root);
+    os_free(name);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -2178,7 +2235,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_empty_json_response, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_success, setup_wdb_agent, teardown_wdb_agent),
-        
+        /* Tests wdb_get_agent_group */
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_success, setup_wdb_agent, teardown_wdb_agent),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
