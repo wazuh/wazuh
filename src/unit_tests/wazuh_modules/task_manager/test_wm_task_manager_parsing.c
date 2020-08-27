@@ -500,6 +500,93 @@ void test_wm_task_manager_parse_response_result_no_module(void **state)
     assert_string_equal(cJSON_GetObjectItem(response, "update_time")->valuestring, "5/5/20 12:55:18.789");
 }
 
+void test_wm_task_manager_parse_message(void **state)
+{
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":1},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade_custom\","
+                      "\"agent\":2}]";
+
+    cJSON *response = wm_task_manager_parse_message(message);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_int_equal(cJSON_GetArraySize(response), 2);
+    cJSON *agent1 = cJSON_GetArrayItem(response, 0);
+    assert_non_null(cJSON_GetObjectItem(agent1, "module"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "module")->valuestring, "upgrade_module");
+    assert_non_null(cJSON_GetObjectItem(agent1, "command"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "command")->valuestring, "upgrade");
+    assert_non_null(cJSON_GetObjectItem(agent1, "agent"));
+    assert_int_equal(cJSON_GetObjectItem(agent1, "agent")->valueint, 1);
+    cJSON *agent2 = cJSON_GetArrayItem(response, 1);
+    assert_non_null(cJSON_GetObjectItem(agent2, "module"));
+    assert_string_equal(cJSON_GetObjectItem(agent2, "module")->valuestring, "upgrade_module");
+    assert_non_null(cJSON_GetObjectItem(agent2, "command"));
+    assert_string_equal(cJSON_GetObjectItem(agent2, "command")->valuestring, "upgrade_custom");
+    assert_non_null(cJSON_GetObjectItem(agent2, "agent"));
+    assert_int_equal(cJSON_GetObjectItem(agent2, "agent")->valueint, 2);
+}
+
+void test_wm_task_manager_parse_message_command_err(void **state)
+{
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":1},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"agent\":2}]";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'command' not found at index '1'");
+
+    cJSON *response = wm_task_manager_parse_message(message);
+
+    assert_null(response);
+}
+
+void test_wm_task_manager_parse_message_module_err(void **state)
+{
+    char *message = "[{\"command\":\"upgrade\","
+                      "\"agent\":1},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade_custom\","
+                      "\"agent\":2}]";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'module' not found at index '0'");
+
+    cJSON *response = wm_task_manager_parse_message(message);
+
+    assert_null(response);
+}
+
+void test_wm_task_manager_parse_message_empty_array_err(void **state)
+{
+    char *message = "[]";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8258): Invalid message. Array of tasks is empty.");
+
+    cJSON *response = wm_task_manager_parse_message(message);
+
+    assert_null(response);
+}
+
+void test_wm_task_manager_parse_message_invalid_json_err(void **state)
+{
+    char *message = "unknown json";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8257): Error parsing JSON event: 'unknown json'");
+
+    cJSON *response = wm_task_manager_parse_message(message);
+
+    assert_null(response);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_task_manager_decode_status
@@ -524,6 +611,12 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_task_manager_parse_response_result_no_status, teardown_json),
         cmocka_unit_test_teardown(test_wm_task_manager_parse_response_result_no_command, teardown_json),
         cmocka_unit_test_teardown(test_wm_task_manager_parse_response_result_no_module, teardown_json),
+        // wm_task_manager_parse_message
+        cmocka_unit_test_teardown(test_wm_task_manager_parse_message, teardown_json),
+        cmocka_unit_test(test_wm_task_manager_parse_message_command_err),
+        cmocka_unit_test(test_wm_task_manager_parse_message_module_err),
+        cmocka_unit_test(test_wm_task_manager_parse_message_empty_array_err),
+        cmocka_unit_test(test_wm_task_manager_parse_message_invalid_json_err)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
