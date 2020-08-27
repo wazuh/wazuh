@@ -17,11 +17,19 @@
 #include "../../wazuh_modules/task_manager/wm_task_manager_parsing.h"
 #include "../../headers/shared.h"
 
-#ifdef TEST_SERVER
-
 const char* wm_task_manager_decode_status(char *status);
 
-#endif
+// Setup / teardown
+
+static int teardown_json(void **state) {
+    if (*state) {
+        cJSON *json = *state;
+        cJSON_Delete(json);
+    }
+    return 0;
+}
+
+// Tests
 
 void test_wm_task_manager_decode_status_done(void **state)
 {
@@ -86,6 +94,99 @@ void test_wm_task_manager_decode_status_unknown(void **state)
     assert_string_equal(ret, "Invalid status");
 }
 
+void test_wm_task_manager_parse_response(void **state)
+{
+    int error_code = 0;
+    int agent_id = 77;
+    int task_id = 124;
+    char *status = "In progress";
+
+    cJSON *response = wm_task_manager_parse_response(error_code, agent_id, task_id, status);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_non_null(cJSON_GetObjectItem(response, "error"));
+    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, error_code);
+    assert_non_null(cJSON_GetObjectItem(response, "data"));
+    assert_string_equal(cJSON_GetObjectItem(response, "data")->valuestring, "Success");
+    assert_non_null(cJSON_GetObjectItem(response, "agent"));
+    assert_int_equal(cJSON_GetObjectItem(response, "agent")->valueint, agent_id);
+    assert_non_null(cJSON_GetObjectItem(response, "task_id"));
+    assert_int_equal(cJSON_GetObjectItem(response, "task_id")->valueint, task_id);
+    assert_non_null(cJSON_GetObjectItem(response, "status"));
+    assert_string_equal(cJSON_GetObjectItem(response, "status")->valuestring, status);
+}
+
+void test_wm_task_manager_parse_response_no_status(void **state)
+{
+    int error_code = 0;
+    int agent_id = 77;
+    int task_id = 124;
+    char *status = NULL;
+
+    cJSON *response = wm_task_manager_parse_response(error_code, agent_id, task_id, status);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_non_null(cJSON_GetObjectItem(response, "error"));
+    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, error_code);
+    assert_non_null(cJSON_GetObjectItem(response, "data"));
+    assert_string_equal(cJSON_GetObjectItem(response, "data")->valuestring, "Success");
+    assert_non_null(cJSON_GetObjectItem(response, "agent"));
+    assert_int_equal(cJSON_GetObjectItem(response, "agent")->valueint, agent_id);
+    assert_non_null(cJSON_GetObjectItem(response, "task_id"));
+    assert_int_equal(cJSON_GetObjectItem(response, "task_id")->valueint, task_id);
+    assert_null(cJSON_GetObjectItem(response, "status"));
+}
+
+void test_wm_task_manager_parse_response_no_task_id(void **state)
+{
+    int error_code = 0;
+    int agent_id = 77;
+    int task_id = OS_INVALID;
+    char *status = "In progress";
+
+    cJSON *response = wm_task_manager_parse_response(error_code, agent_id, task_id, status);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_non_null(cJSON_GetObjectItem(response, "error"));
+    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, error_code);
+    assert_non_null(cJSON_GetObjectItem(response, "data"));
+    assert_string_equal(cJSON_GetObjectItem(response, "data")->valuestring, "Success");
+    assert_non_null(cJSON_GetObjectItem(response, "agent"));
+    assert_int_equal(cJSON_GetObjectItem(response, "agent")->valueint, agent_id);
+    assert_null(cJSON_GetObjectItem(response, "task_id"));
+    assert_non_null(cJSON_GetObjectItem(response, "status"));
+    assert_string_equal(cJSON_GetObjectItem(response, "status")->valuestring, status);
+}
+
+void test_wm_task_manager_parse_response_no_agent_id(void **state)
+{
+    int error_code = 0;
+    int agent_id = OS_INVALID;
+    int task_id = 124;
+    char *status = "In progress";
+
+    cJSON *response = wm_task_manager_parse_response(error_code, agent_id, task_id, status);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_non_null(cJSON_GetObjectItem(response, "error"));
+    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, error_code);
+    assert_non_null(cJSON_GetObjectItem(response, "data"));
+    assert_string_equal(cJSON_GetObjectItem(response, "data")->valuestring, "Success");
+    assert_null(cJSON_GetObjectItem(response, "agent"));
+    assert_non_null(cJSON_GetObjectItem(response, "task_id"));
+    assert_int_equal(cJSON_GetObjectItem(response, "task_id")->valueint, task_id);
+    assert_non_null(cJSON_GetObjectItem(response, "status"));
+    assert_string_equal(cJSON_GetObjectItem(response, "status")->valuestring, status);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_task_manager_decode_status
@@ -96,6 +197,11 @@ int main(void) {
         cmocka_unit_test(test_wm_task_manager_decode_status_timeout),
         cmocka_unit_test(test_wm_task_manager_decode_status_legacy),
         cmocka_unit_test(test_wm_task_manager_decode_status_unknown),
+        // wm_task_manager_parse_response
+        cmocka_unit_test_teardown(test_wm_task_manager_parse_response, teardown_json),
+        cmocka_unit_test_teardown(test_wm_task_manager_parse_response_no_status, teardown_json),
+        cmocka_unit_test_teardown(test_wm_task_manager_parse_response_no_task_id, teardown_json),
+        cmocka_unit_test_teardown(test_wm_task_manager_parse_response_no_agent_id, teardown_json),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

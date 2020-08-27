@@ -163,6 +163,8 @@ void __wrap_w_sleep_until(const time_t new_time){
     check_expected(new_time);
 }
 
+// Tests
+
 void test_wm_task_manager_check_db_ok(void **state)
 {
     int uid = 5;
