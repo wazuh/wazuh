@@ -1552,6 +1552,25 @@ components:
       - stopped
       - running
 
+    ## Logtest models
+#    LogtestLogBody:
+#      type: object
+#      properties:
+#        arguments:
+#          description: "Command arguments"
+#          type: array
+#          items:
+#            type: string
+#        command:
+#          description: "Command running in the agent. If this value starts by `!`, then it refers to a script name instead of a command name"
+#          type: string
+#        custom:
+#          description: "Whether the specified command is a custom command or not"
+#          type: boolean
+#          default: false
+#      required:
+#        - command
+
     # Security models
     Role_id:
       type: string
@@ -3788,6 +3807,27 @@ components:
         type: array
         items:
           type: string
+    location:
+      in: query
+      name: location
+      description: "Path string."
+      schema:
+        type: string
+        format: paths
+    log:
+      in: query
+      name: log
+      description: "Request body corresponding to the event."
+      schema:
+        type: string
+        format: alphanumeric
+    log_format:
+      in: query
+      name: log_format
+      description: "Set the format of the log to be read."
+      schema:
+        type: string
+        format: alphanumeric
     manager_host:
       in: query
       name: manager
@@ -4149,6 +4189,13 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
+    token:
+      in: query
+      name: token
+      description: "Token of the saved session"
+      schema:
+        type: string
+        format: alphanumeric
     type_agents:
       in: query
       name: type
@@ -4981,6 +5028,8 @@ tags:
     description: "Group of agents and centralized configurations"
   - name: lists
     description: "CDB lists management"
+  - name: logtest
+    description: "Logtest, testing and verification tool for rules and decoders"
   - name: manager
     description: "Wazuh manager management"
   - name: mitre
@@ -8806,6 +8855,111 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /logtest:
+    put:
+      tags:
+        - logtest
+      summary: "Run logtest in a specified log"
+      description: "Check if a specified log raises any alert among other information."
+      operationId: api.controllers.logtest_controller.get_logtest_output
+#      x-rbac-actions:
+#        - $ref: '#/x-rbac-catalog/actions/active-response:command'
+      parameters:
+        - $ref: '#/components/parameters/token'
+        - $ref: '#/components/parameters/log_format'
+        - $ref: '#/components/parameters/location'
+        - $ref: '#/components/parameters/log'
+#      requestBody:
+#        content:
+#          application/json:
+#            schema:
+#              $ref: '#/components/schemas/LogtestLogBody'
+      responses:
+        '200':
+          description: "Successfully run the logtest tool."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  timestamp: 2020-06-24T11:28:09.308+0200
+                  rule:
+                    level: 3
+                    description: "Successful sudo to ROOT executed."
+                    id: 5402
+                  agent:
+                    id: 000
+                    name: eva
+                  manager:
+                    name: eva
+                  id: 1592990889.62076
+                  full_log: "Jun 24 11:28:09 eva sudo: eva : TTY=pts/0 ; PWD=/home/eva ; USER=root ; COMMAND=/bin/su"
+                  predecoder:
+                    program_name: sudo
+                    timestamp: "Jun 24 11:28:09"
+                    hostname: eva
+                  decoder:
+                    parent: sudo
+                    name: sudo
+                    ftscomment: "First time user executed the sudo command"
+                  data:
+                    srcuser: eva
+                    dstuser: root
+                    tty: pts/0
+                    pwd: /home/eva
+                    command: /bin/su
+                  location: /var/log/auth.log
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /logtest/sessions/{token}:
+    delete:
+      tags:
+        - logtest
+      summary: "Delete a saved session"
+      description: "Delete the saved session corresponding to {token}"
+      operationId: api.controllers.logtest_controller.end_logtest_session
+#      x-rbac-actions:
+#        - $ref: '#/x-rbac-catalog/actions/active-response:command'
+      parameters:
+        - $ref: '#/components/parameters/token'
+      responses:
+        '200':
+          description: "Successfully deleted the saved session."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: "Successfully deleted the saved session."
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
