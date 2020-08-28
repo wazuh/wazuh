@@ -213,7 +213,7 @@ void Statement::bind(const int32_t index, const std::string& value)
     checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
     ++m_bindParametersIndex;
 }
-void Statement::bind(const int32_t index, const double value)
+void Statement::bind(const int32_t index, const double_t value)
 {
     const auto result{ sqlite3_bind_double(m_stmt.get(), index, value) };
     checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
@@ -264,7 +264,7 @@ int64_t Column::value(const int64_t&) const
 {
     return sqlite3_column_int64(m_stmt.get(), m_index);
 }
-double Column::value(const double&) const
+double_t Column::value(const double_t&) const
 {
     return sqlite3_column_double(m_stmt.get(), m_index);
 }

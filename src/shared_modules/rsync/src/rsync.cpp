@@ -67,25 +67,16 @@ RSYNC_HANDLE rsync_create()
 
 int rsync_close(const RSYNC_HANDLE handle)
 {
-    std::string errorMessage;
-    auto retVal { -1 };
+    std::string message;
+    auto retVal { 0 };
     
-    try
+    if (!RSyncImplementation::instance().releaseContext(handle))
     {
-        RSyncImplementation::instance().releaseContext(handle);
-        retVal = 0;
+        message += "RSYNC invalid context handle.";
+        retVal = -1;
     }
-    catch(const rsync_error& ex)
-    {
-        errorMessage += "RSYNC error, id: " + std::to_string(ex.id()) + ". " + ex.what();
-    }
-    // LCOV_EXCL_START
-    catch(...)
-    {
-        errorMessage += "Unrecognized error.";
-    }
-    // LCOV_EXCL_STOP
-    log_message(errorMessage);
+
+    log_message(message);
     return retVal;
 }
 

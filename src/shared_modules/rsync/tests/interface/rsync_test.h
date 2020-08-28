@@ -10,7 +10,7 @@
  */
 
 #ifndef _RYSNC_TEST_H
-#define _DBYSNC_TEST_H
+#define _RYSNC_TEST_H
 
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"

@@ -9,7 +9,8 @@
  * Foundation.
  */
 
-#pragma once
+#ifndef _DBSYNC_EXCEPTION_H
+#define _DBSYNC_EXCEPTION_H
 #include <stdexcept>
 #include <string>
 
@@ -86,3 +87,5 @@ namespace DbSync
         std::runtime_error m_error;
     };
 }
+
+#endif // _DBSYNC_EXCEPTION_H

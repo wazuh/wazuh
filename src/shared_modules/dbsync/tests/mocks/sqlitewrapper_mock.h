@@ -80,9 +80,9 @@ class MockColumn : public SQLite::IColumn
                     value,
                     (const std::string&),
                     (const override));
-        MOCK_METHOD(double,
+        MOCK_METHOD(double_t,
                     value,
-                    (const double&),
+                    (const double_t&),
                     (const override));
 };
 
@@ -113,7 +113,7 @@ class MockStatement : public SQLite::IStatement
                     (override));
         MOCK_METHOD(void,
                     bind,
-                    (const int32_t index, const double value),
+                    (const int32_t index, const double_t value),
                     (override));
 
         MOCK_METHOD(std::string,

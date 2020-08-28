@@ -163,14 +163,14 @@ TEST_F(SQLiteTest, StatementBindInt)
     EXPECT_NO_THROW(insertStmt.bind(2, "1"));
     EXPECT_NO_THROW(insertStmt.bind(3, int64_t{1l}));
     EXPECT_NO_THROW(insertStmt.bind(4, uint64_t{1lu}));
-    EXPECT_NO_THROW(insertStmt.bind(5, 1.0));
+    EXPECT_NO_THROW(insertStmt.bind(5, double_t{1.0}));
     EXPECT_TRUE(insertStmt.step());
     insertStmt.reset();
     EXPECT_NO_THROW(insertStmt.bind(1, 2));
     EXPECT_NO_THROW(insertStmt.bind(2, "2"));
     EXPECT_NO_THROW(insertStmt.bind(3, int64_t{2l}));
     EXPECT_NO_THROW(insertStmt.bind(4, uint64_t{2lu}));
-    EXPECT_NO_THROW(insertStmt.bind(5, 2.0));
+    EXPECT_NO_THROW(insertStmt.bind(5, double_t{2.0}));
     EXPECT_TRUE(insertStmt.step());
 }
 
@@ -234,6 +234,6 @@ TEST_F(SQLiteTest, ColumnValue)
 
     auto spColumn5{ selectStmt.column(4) };
     EXPECT_TRUE(spColumn5->hasValue());
-    EXPECT_DOUBLE_EQ(4.0, spColumn5->value(double{}));
+    EXPECT_DOUBLE_EQ(4.0, spColumn5->value(double_t{}));
     EXPECT_EQ(SQLITE_FLOAT, spColumn5->type());
 }

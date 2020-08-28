@@ -338,7 +338,7 @@ void SQLiteDBEngine::selectData(const std::string& table,
                             object[name] = column->value(int64_t{});
                             break;
                         case SQLITE_FLOAT:
-                            object[name] = column->value(double{});
+                            object[name] = column->value(double_t{});
                             break;
                         // LCOV_EXCL_START
                         default:
@@ -602,7 +602,7 @@ bool SQLiteDBEngine::bindJsonData(const std::unique_ptr<SQLite::IStatement>& stm
         }
         else if (ColumnType::Double == type)
         {
-            double value
+            double_t value
             {
                 jsData.is_number_float() ? jsData.get<double>() : jsData.is_string()
                 && jsData.get_ref<const std::string&>().size() 
@@ -739,7 +739,7 @@ void SQLiteDBEngine::getTableData(std::unique_ptr<SQLite::IStatement>const& stmt
     }
     else if (ColumnType::Double == type)
     {
-        row[fieldName] = std::make_tuple(type,std::string(),0,0,0,stmt->column(index)->value(double{}));
+        row[fieldName] = std::make_tuple(type,std::string(),0,0,0,stmt->column(index)->value(double_t{}));
     }
     else
     {
@@ -960,7 +960,7 @@ void SQLiteDBEngine::bindFieldData(const std::unique_ptr<SQLite::IStatement>& st
     }
     else if (ColumnType::Double == type)
     {
-        const double value { std::get<GenericTupleIndex::GenDouble>(fieldData) };
+        const auto value { std::get<GenericTupleIndex::GenDouble>(fieldData) };
         stmt->bind(index, value);
     }
     else

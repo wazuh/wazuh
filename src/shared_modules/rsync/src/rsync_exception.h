@@ -9,11 +9,12 @@
  * Foundation.
  */
 
-#pragma once
+#ifndef _RSYNC_EXCEPTION_H
+#define _RSYNC_EXCEPTION_H
 #include <stdexcept>
 #include <string>
 
-constexpr auto ELEMENT_NOT_EXIST       { std::make_pair(1, "Element does not exist") };
+constexpr auto INVALID_HANDLE       { std::make_pair(1, "Invalid handle value.") };
 
 namespace RSync
 {
@@ -35,7 +36,7 @@ namespace RSync
         }
 
         rsync_error(const int id,
-                     const std::string& whatArg)
+                    const std::string& whatArg)
         : m_id{ id }
         , m_error{ whatArg }
         {}
@@ -51,3 +52,5 @@ namespace RSync
         std::runtime_error m_error;
     };
 }
+
+#endif // _RSYNC_EXCEPTION_H

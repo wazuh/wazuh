@@ -28,7 +28,7 @@ namespace RSync
         }
 
         void release();
-        void releaseContext(const RSYNC_HANDLE handle);
+        bool releaseContext(const RSYNC_HANDLE handle);
         RSYNC_HANDLE create();
     private:
 

@@ -24,14 +24,30 @@ file(GLOB RSYNC_SRC
 
 add_library(rsync SHARED
     "${RSYNC_SRC}" )
-    
-if(UNIT_TEST)
-  target_link_libraries(rsync gcov)
-else()
-  target_link_libraries(rsync)
-endif(UNIT_TEST)
 
-if(UNIT_TEST)
-  add_subdirectory(tests)
-  add_subdirectory(integrationTests)
-endif(UNIT_TEST)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_definitions(-DWIN_EXPORT)
+  set_target_properties(rsync PROPERTIES
+        PREFIX ""
+        SUFFIX ".dll"
+        LINK_FLAGS "-Wl,--add-stdcall-alias -static-libgcc -static-libstdc++"
+        POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
+        # MinGW generates position-independent-code for DLL by default
+  )
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  target_link_libraries(rsync gcov)
+  if(UNIT_TEST)
+    include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
+    include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
+
+    link_directories(${SRC_FOLDER}/external/googletest/lib/)
+
+    add_subdirectory(tests)
+    add_subdirectory(integrationTests)
+  endif(UNIT_TEST)
+else()
+    target_link_libraries(rsync)
+endif(CMAKE_BUILD_TYPE STREQUAL "Debug")

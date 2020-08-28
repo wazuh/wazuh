@@ -669,15 +669,15 @@ winagent: external win32/dbsync.dll win32/rsync.dll win32/shared_utils_ut.exe wi
 
 
 win32/dbsync.dll:
-	cd ${DBSYNC} && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} . && cmake --build .
+	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} .. && cmake --build .
 
 win32/rsync.dll:
-	cd ${RSYNC} && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${RSYNC_RELEASE_TYPE} . && cmake --build .
+	cd ${RSYNC} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${RSYNC_RELEASE_TYPE} .. && cmake --build .
 
 win32/shared_utils_ut.exe:
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-	cd ${SHARED_UTILS_TEST} && cmake ${WIN_CMAKE_OPTS} . && cmake --build .
+	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} .. && cmake --build .
 endif
 endif
 
@@ -1077,7 +1077,7 @@ build_rsync:
 build_shared_utils_test:
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-	cd ${SHARED_UTILS_TEST} && cmake ${WIN_CMAKE_OPTS} . && cmake --build .
+	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} .. && cmake --build .
 endif
 endif
 
@@ -1871,13 +1871,14 @@ clean-internals: clean-unit-tests
 	rm -f ${wdb_o}
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
+	rm -rf $(DBSYNC)build
+	rm -rf $(RSYNC)build
+	rm -rf $(SHARED_UTILS_TEST)build
 
 clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}
 	rm -f ${wrappers_shared_o}
 	rm -f ${wrappers_common_o}
-	rm -rf $(DBSYNC)build
-	rm -rf $(RSYNC)build
 
 clean-framework:
 	${MAKE} -C ../framework clean

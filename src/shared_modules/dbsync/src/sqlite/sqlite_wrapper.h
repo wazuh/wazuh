@@ -61,7 +61,7 @@ namespace SQLite
         uint64_t value(const uint64_t&) const override;
         int64_t value(const int64_t&) const override;
         std::string value(const std::string&) const override;
-        double value(const double&) const override;
+        double_t value(const double_t&) const override;
     private:
         std::shared_ptr<sqlite3_stmt> m_stmt;
         const int32_t m_index;
@@ -81,7 +81,7 @@ namespace SQLite
         void bind(const int32_t index, const uint64_t value) override;
         void bind(const int32_t index, const int64_t value) override;
         void bind(const int32_t index, const std::string& value) override;
-        void bind(const int32_t index, const double value) override;
+        void bind(const int32_t index, const double_t value) override;
         int columnsCount() const override;
 
         std::string expand() override;

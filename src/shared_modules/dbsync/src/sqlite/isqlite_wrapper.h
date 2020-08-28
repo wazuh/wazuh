@@ -13,6 +13,7 @@
 #include <string>
 #include <sqlite3.h>
 #include <memory>
+#include <math.h>
 #include "db_exception.h"
 
 namespace SQLite
@@ -58,7 +59,7 @@ namespace SQLite
         virtual uint64_t value(const uint64_t&) const = 0;
         virtual int64_t value(const int64_t&) const = 0;
         virtual std::string value(const std::string&) const = 0;
-        virtual double value(const double&) const = 0;
+        virtual double_t value(const double_t&) const = 0;
     };
 
     class IStatement
@@ -70,7 +71,7 @@ namespace SQLite
         virtual void bind(const int32_t index, const uint64_t value) = 0;
         virtual void bind(const int32_t index, const int64_t value) = 0;
         virtual void bind(const int32_t index, const std::string& value) = 0;
-        virtual void bind(const int32_t index, const double value) = 0;
+        virtual void bind(const int32_t index, const double_t value) = 0;
         virtual int columnsCount() const = 0;
 
         virtual std::string expand() = 0;

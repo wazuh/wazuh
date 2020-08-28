@@ -19,13 +19,10 @@ void RSyncImplementation::release()
     m_remoteSyncContexts.clear();
 }
 
-void RSyncImplementation::releaseContext(const RSYNC_HANDLE handle)
+bool RSyncImplementation::releaseContext(const RSYNC_HANDLE handle)
 {
     std::lock_guard<std::mutex> lock{ m_mutex };
-    if (0 == m_remoteSyncContexts.erase(handle))
-    {
-        throw rsync_error{ ELEMENT_NOT_EXIST};
-    }
+    return 1 == m_remoteSyncContexts.erase(handle);
 }
 
 RSYNC_HANDLE RSyncImplementation::create()
@@ -40,5 +37,13 @@ RSYNC_HANDLE RSyncImplementation::create()
     return handle;
 }
 
-
-
+std::shared_ptr<RSyncImplementation::RSyncContext> RSyncImplementation::remoteSyncContext(const RSYNC_HANDLE handle)
+{
+    std::lock_guard<std::mutex> lock{m_mutex};
+    const auto it{ m_remoteSyncContexts.find(handle) };
+    if (it == m_remoteSyncContexts.end())
+    {
+        throw rsync_error { INVALID_HANDLE };
+    }
+    return it->second;
+}
