@@ -1,0 +1,53 @@
+cmake_minimum_required(VERSION 3.12)
+
+project(rsync)
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++11")
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+include_directories(${CMAKE_SOURCE_DIR}/include/)
+include_directories(${CMAKE_SOURCE_DIR}/src/)
+
+file(GLOB RSYNC_SRC
+    "${CMAKE_SOURCE_DIR}/src/*.cpp")
+
+add_library(rsync SHARED
+    "${RSYNC_SRC}" )
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_definitions(-DWIN_EXPORT)
+  set_target_properties(rsync PROPERTIES
+        PREFIX ""
+        SUFFIX ".dll"
+        LINK_FLAGS "-Wl,--add-stdcall-alias -static-libgcc -static-libstdc++"
+        POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
+        # MinGW generates position-independent-code for DLL by default
+  )
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  target_link_libraries(rsync gcov)
+  if(UNIT_TEST)
+    include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
+    include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
+
+    link_directories(${SRC_FOLDER}/external/googletest/lib/)
+
+    add_subdirectory(tests)
+    add_subdirectory(integrationTests)
+  endif(UNIT_TEST)
+else()
+    target_link_libraries(rsync)
+endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
