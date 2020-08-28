@@ -22,8 +22,6 @@
 
 static const char *global_db_queries[] = {
     [SQL_SELECT_AGENTS] = "global sql SELECT id FROM agent WHERE id != 0;",
-    [SQL_SELECT_AGENT_STATUS] = "global sql SELECT status FROM agent WHERE id = %d;",
-    [SQL_UPDATE_AGENT_STATUS] = "global sql UPDATE agent SET status = %Q WHERE id = %d;",
     [SQL_UPDATE_AGENT_GROUP] = "global sql UPDATE agent SET `group` = %Q WHERE id = %d;",
     [SQL_FIND_GROUP] = "global sql SELECT id FROM `group` WHERE name = %Q;",
     [SQL_INSERT_AGENT_GROUP] = "global sql INSERT INTO `group` (name) VALUES(%Q);",
@@ -51,8 +49,8 @@ static const char *global_db_commands[] = {
     [WDB_SELECT_REG_OFFSET] = "global select-reg-offset %d",
     [WDB_UPDATE_FIM_OFFSET] = "global update-fim-offset %s",
     [WDB_UPDATE_REG_OFFSET] = "global update-reg-offset %s",
-    [WDB_SELECT_AGENT_STATUS] = "",
-    [WDB_UPDATE_AGENT_STATUS] = "",
+    [WDB_SELECT_AGENT_STATUS] = "global select-agent-status %d",
+    [WDB_UPDATE_AGENT_STATUS] = "global update-agent-status %s",
     [WDB_UPDATE_AGENT_GROUP] = "",
     [WDB_FIND_GROUP] = "",
     [WDB_INSERT_AGENT_GROUP] = "",
@@ -696,7 +694,7 @@ int wdb_set_agent_offset(int id, int type, long offset) {
     return result;
 }
 
-/* Set agent updating status. Returns WDB_AGENT_*, or OS_INVALID on error. */
+
 int wdb_get_agent_status(int id_agent) {
     int output = -1;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -704,7 +702,7 @@ int wdb_get_agent_status(int id_agent) {
     cJSON *root = NULL;
     cJSON *json_status = NULL;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_SELECT_AGENT_STATUS], id_agent);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_SELECT_AGENT_STATUS], id_agent);
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
@@ -723,12 +721,14 @@ int wdb_get_agent_status(int id_agent) {
     return output;
 }
 
-/* Set agent updating status. Returns 1, or -1 on error. */
+
 int wdb_set_agent_status(int id_agent, int status) {
     int result = 0;
     const char *str_status = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    cJSON *data_in = NULL;
 
     switch (status) {
     case WDB_AGENT_EMPTY:
@@ -744,12 +744,28 @@ int wdb_set_agent_status(int id_agent, int status) {
         return OS_INVALID;
     }
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_STATUS], str_status, id_agent);
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id_agent);
+    cJSON_AddStringToObject(data_in, "status", str_status);
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_STATUS], cJSON_PrintUnformatted(data_in));
+
+    cJSON_Delete(data_in);
+
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
-            result = 1;
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");
