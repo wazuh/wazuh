@@ -21,6 +21,7 @@
 #define BUSY_SLEEP 1
 #define MAX_ATTEMPTS 1000
 
+/// Strings used with wdbc_result.
 const char* WDBC_RESULT[] = {
     [WDBC_OK]      = "ok",
     [WDBC_DUE]     = "due",

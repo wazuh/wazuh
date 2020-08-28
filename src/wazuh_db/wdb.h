@@ -149,7 +149,6 @@ typedef enum global_db_query {
     SQL_DELETE_AGENT,
     SQL_SELECT_AGENT,
     SQL_SELECT_AGENT_GROUP,
-    SQL_SELECT_AGENTS,
     SQL_FIND_AGENT,
     SQL_SELECT_FIM_OFFSET,
     SQL_SELECT_REG_OFFSET,
@@ -482,10 +481,28 @@ int wdb_create_profile(const char *path);
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source);
 
-/* Get an array containing the ID of every agent (except 0), ended with -1 */
-/* DOXYGEN here*/
+/**
+ * @brief Returns an array containing the ID of every agent (except 0), ended with -1.
+ * This method creates and sends a command to WazuhDB to receive every the ID of every agent.
+ * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
+ * The array is heap allocated memory that must be freed by the caller.
+ * 
+ * @return Pointer to the array, on success.
+ * @retval NULL on errors.
+ */
 int* wdb_get_all_agents();
-/* DOXYGEN here*/
+
+/**
+ * @brief Returns an array containing the ID of every agent (except 0), ended with -1 based on its keep_alive.
+ * This method creates and sends a command to WazuhDB to receive every the ID of every agent.
+ * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
+ * The array is heap allocated memory that must be freed by the caller.
+ * 
+ * @param condition ">" or "<". The condition to match keep alive.
+ * @param keepalive keep_alive to search the agents.
+ * @return Pointer to the array, on success.
+ * @retval NULL on errors.
+ */
 int* wdb_get_agents_by_keepalive(const char* condition, int keepalive);
 
 /* Fill belongs table on start */
@@ -730,7 +747,7 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to update the agents info from workers.
+ * @brief Function to parse agent_info and update the agents info from workers.
  * 
  * @param wdb The global struct database.
  * @param input String with the agents information in JSON format.
@@ -741,9 +758,25 @@ int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * outpu
 int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output);
 
 /**
- * Doxygen here
-*/
+ * @brief Function to parse start_id, condition and keepalive for get-agents-by-keepalive.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with start_id, condition, and keepalive.
+ * @param output Response of the query.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
 int wdb_parse_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output);
+
+/**
+ * @brief Function to parse start_id get-all-agents.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with start_id, condition, and keepalive.
+ * @param output Response of the query.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
 int wdb_parse_get_all_agents(wdb_t* wdb, char* input, char* output);
 
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);

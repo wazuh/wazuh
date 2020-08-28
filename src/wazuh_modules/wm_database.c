@@ -1184,8 +1184,6 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                 break;
             }
 
-            
-
             buffer[count - 1] = '\0';
 
             for (i = 0; i < (size_t)count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {

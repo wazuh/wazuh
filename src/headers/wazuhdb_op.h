@@ -13,8 +13,15 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 
+/// Enumeration of communication with Wazuh DB status.
+typedef enum wdbc_result { 
+        WDBC_OK,        ///< Command processed successfully
+        WDBC_DUE,       ///< Command processed successfully with pending data
+        WDBC_ERROR,     ///< An error occurred
+        WDBC_IGNORE,    ///< Command ignored
+        WDBC_UNKNOWN    ///< Unknown status
+} wdbc_result;
 
-typedef enum wdbc_result { WDBC_OK, WDBC_DUE, WDBC_ERROR, WDBC_IGNORE, WDBC_UNKNOWN } wdbc_result;
 extern const char* WDBC_RESULT[];
 
 int wdbc_connect();
