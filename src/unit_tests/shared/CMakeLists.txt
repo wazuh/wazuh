@@ -4,10 +4,10 @@ if(NOT ${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_names "test_file_op")
     set(FILE_OP_BASE_FLAGS "-Wl,--wrap,isChroot,--wrap,stat,--wrap,chmod,--wrap,getpid \
                             -Wl,--wrap,unlink,--wrap,_merror,--wrap,_minfo,--wrap,_mwarn \
-                            -Wl,--wrap,fopen,--wrap,_mferror,--wrap,fflush,--wrap,fclose, \
+                            -Wl,--wrap,fopen,--wrap,_mferror,--wrap,fflush,--wrap,fclose \
                             -Wl,--wrap,fread,--wrap,fseek,--wrap,fwrite,--wrap,remove \
-                            -Wl,--wrap,fprintf,--wrap,fgets",--wrap,File_DateofChange, \
-                            -Wl,--wrap,bzip2_uncompress,--wrap,mdebug1)
+                            -Wl,--wrap,fprintf,--wrap,fgets,--wrap,File_DateofChange \
+                            -Wl,--wrap,bzip2_uncompress,--wrap,mdebug1")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
 endif()
 
