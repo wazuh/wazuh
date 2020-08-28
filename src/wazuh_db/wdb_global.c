@@ -272,12 +272,12 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb,cJSON * json_agent){
     cJSON *json_field = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("Cannot begin transaction");
+        mdebug1("cannot begin transaction");
         return OS_INVALID;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_UPDATE_AGENT_INFO) < 0) {
-        mdebug1("Cannot cache statement");
+        mdebug1("cannot cache statement");
         return OS_INVALID;
     }
 
@@ -285,7 +285,7 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb,cJSON * json_agent){
 
      for (n = 0 ; global_db_agent_fields[n] ; n++){
         // Every column name of Global DB is stored in global_db_agent_fields 
-        json_field = cJSON_GetObjectItemCaseSensitive(json_agent, global_db_agent_fields[n]+1);
+        json_field = cJSON_GetObjectItem(json_agent, global_db_agent_fields[n]+1);
         index = sqlite3_bind_parameter_index(stmt, global_db_agent_fields[n]);
         if (cJSON_IsNumber(json_field) && index != 0){
             if (sqlite3_bind_int(stmt, index , json_field->valueint) != SQLITE_OK) {
