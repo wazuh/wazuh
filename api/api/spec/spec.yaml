@@ -5891,7 +5891,7 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: "Restart command sent to all selected agents"
+                  message: "Restart command sent to all agents"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

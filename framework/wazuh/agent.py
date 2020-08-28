@@ -457,7 +457,7 @@ def create_group(group_id):
         chown_r(group_path, common.ossec_uid(), common.ossec_gid())
         chmod_r(group_path, 0o660)
         chmod(group_path, 0o770)
-        msg = "Group '{0}' created.".format(group_id)
+        msg = f"Group '{group_id}' created."
     except Exception as e:
         raise WazuhInternalError(1005, extra_message=str(e))
 
