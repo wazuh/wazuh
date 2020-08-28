@@ -2625,6 +2625,315 @@ void test_wdb_set_agent_offset_success_reg(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
+/* Tests wdb_get_agent_status */
+
+void test_wdb_get_agent_status_error_no_json_response(void **state) {
+    int id = 1;
+    int status = 0;
+
+    const char *query_str = "global select-agent-status 1";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent status.");
+
+    status = wdb_get_agent_status(id);
+
+    assert_int_equal(OS_INVALID, status);
+}
+
+void test_wdb_get_agent_status_success(void **state) {
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+    cJSON *str = NULL;
+    int id = 1;
+    int status = 0;
+
+    const char *query_str = "global select-agent-status 1";
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    str = __real_cJSON_CreateString("empty");
+    __real_cJSON_AddItemToObject(row, "status", str);
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "status");
+    will_return(__wrap_cJSON_GetObjectItem, str);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    status = wdb_get_agent_status(id);
+
+    assert_int_equal(WDB_AGENT_EMPTY, status);
+
+    __real_cJSON_Delete(root);
+}
+
+/* Tests wdb_set_agent_status */
+
+void test_wdb_set_agent_status_error_invalid_status(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int status = -1; // Invalid status
+
+    ret = wdb_set_agent_status(id, status);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_status_error_json(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int status = WDB_AGENT_EMPTY;
+
+    will_return(__wrap_cJSON_CreateObject, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
+
+    ret = wdb_set_agent_status(id, status);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_status_error_socket(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int status = WDB_AGENT_EMPTY;
+
+    const char *json_str = "{\"id\":1,\"status\":\"empty\"}";
+    const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"empty\"}";
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "empty");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    // Hnadling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-status {\"id\":1,\"status\":\"empty\"}");
+
+    ret = wdb_set_agent_status(id, status);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_status_error_sql_execution(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int status = WDB_AGENT_EMPTY;
+
+    const char *json_str = "{\"id\":1,\"status\":\"empty\"}";
+    const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"empty\"}";
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "empty");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, -100); // Returning any error
+
+    // Hnadling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-status {\"id\":1,\"status\":\"empty\"}");
+
+    ret = wdb_set_agent_status(id, status);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_status_error_result(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int status = WDB_AGENT_EMPTY;
+
+    const char *json_str = "{\"id\":1,\"status\":\"empty\"}";
+    const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"empty\"}";
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "empty");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
+
+    ret = wdb_set_agent_status(id, status);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_status_success_empty(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int status = WDB_AGENT_EMPTY;
+
+    const char *json_str = "{\"id\":1,\"status\":\"empty\"}";
+    const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"empty\"}";
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "empty");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = wdb_set_agent_status(id, status);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
+void test_wdb_set_agent_status_success_pending(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int status = WDB_AGENT_PENDING;
+
+    const char *json_str = "{\"id\":1,\"status\":\"pending\"}";
+    const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"pending\"}";
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "pending");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = wdb_set_agent_status(id, status);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
+void test_wdb_set_agent_status_success_updated(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int status = WDB_AGENT_UPDATED;
+
+    const char *json_str = "{\"id\":1,\"status\":\"updated\"}";
+    const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"updated\"}";
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "updated");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = wdb_set_agent_status(id, status);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -2713,7 +3022,19 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_offset_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_offset_error_result, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_offset_success_fim, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_set_agent_offset_success_reg, setup_wdb_agent, teardown_wdb_agent)
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_offset_success_reg, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_get_agent_status */
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_status_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_status_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_set_agent_status */
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_error_invalid_status, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_error_json, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_error_socket, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_error_result, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_success_empty, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_success_pending, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_success_updated, setup_wdb_agent, teardown_wdb_agent)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
