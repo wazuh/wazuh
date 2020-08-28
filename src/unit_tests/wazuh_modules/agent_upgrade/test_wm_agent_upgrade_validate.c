@@ -20,8 +20,6 @@
 
 static int unit_testing;
 
-#ifdef TEST_SERVER
-
 int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task, const wm_manager_configs* manager_configs);
 int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch);
 int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version, const char *wpk_repository_config);
@@ -79,8 +77,6 @@ static int teardown_validate_message(void **state) {
     os_free(data);
     return 0;
 }
-
-#endif
 
 static int setup_group(void **state) {
     unit_testing = 1;
@@ -168,8 +164,6 @@ int __wrap_sleep(unsigned int seconds) {
     check_expected(seconds);
     return mock();
 }
-
-#ifdef TEST_SERVER
 
 // Tests
 
@@ -1487,11 +1481,8 @@ void test_wm_agent_upgrade_validate_task_ids_message_null_json(void **state)
     assert_int_equal(ret, false);
 }
 
-#endif
-
 int main(void) {
     const struct CMUnitTest tests[] = {
-#ifdef TEST_SERVER
         // wm_agent_upgrade_validate_id
         cmocka_unit_test(test_wm_agent_upgrade_validate_id_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_id_manager),
@@ -1569,7 +1560,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_validate_task_ids_message_not_task_ok, teardown_validate_message),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_validate_task_ids_message_invalid_json, teardown_validate_message),
         cmocka_unit_test(test_wm_agent_upgrade_validate_task_ids_message_null_json)
-#endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

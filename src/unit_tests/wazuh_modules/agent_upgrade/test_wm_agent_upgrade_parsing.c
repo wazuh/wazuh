@@ -18,8 +18,6 @@
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_tasks.h"
 #include "../../headers/shared.h"
 
-#ifdef TEST_SERVER
-
 int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message);
 wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char** error_message);
 wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message);
@@ -83,8 +81,6 @@ static int teardown_parse_upgrade_agent_status(void **state) {
     return 0;
 }
 
-#endif
-
 // Wrappers
 
 void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
@@ -99,8 +95,6 @@ void __wrap__mterror(const char *tag, const char * file, int line, const char * 
 
     check_expected(formatted_msg);
 }
-
-#ifdef TEST_SERVER
 
 // Tests
 
@@ -1206,11 +1200,8 @@ void test_wm_agent_upgrade_parse_message_invalid_json(void **state)
     assert_string_equal(error, "{\"error\":1,\"data\":\"Could not parse message JSON.\"}");
 }
 
-#endif
-
 int main(void) {
     const struct CMUnitTest tests[] = {
-#ifdef TEST_SERVER
         // wm_agent_upgrade_parse_response_message
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_response_message_complete, teardown_json),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_response_message_without_status, teardown_json),
@@ -1267,7 +1258,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_invalid_command, teardown_parse_agents),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_invalid_agents, teardown_parse_agents),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_invalid_json, teardown_parse_agents)
-#endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

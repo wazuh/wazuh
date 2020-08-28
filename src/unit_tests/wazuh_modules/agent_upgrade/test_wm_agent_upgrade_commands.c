@@ -22,8 +22,6 @@ static int unit_testing;
 
 OSHash *hash_table;
 
-#ifdef TEST_SERVER
-
 cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, wm_upgrade_error_code *error_code, const wm_manager_configs* manager_configs);
 int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs);
 void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request, const wm_manager_configs* manager_configs);
@@ -180,8 +178,6 @@ static int teardown_upgrade_task_string(void **state) {
     os_free(string);
     return 0;
 }
-
-#endif
 
 static int setup_group(void **state) {
     unit_testing = 1;
@@ -481,8 +477,6 @@ cJSON* __wrap_wm_agent_upgrade_parse_response_message(int error_id, const char* 
 
     return mock_type(cJSON *);
 }
-
-#ifdef TEST_SERVER
 
 // Tests
 
@@ -5859,11 +5853,8 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     os_free(config);
 }
 
-#endif
-
 int main(void) {
     const struct CMUnitTest tests[] = {
-#ifdef TEST_SERVER
         // wm_agent_upgrade_send_command_to_agent
         cmocka_unit_test_teardown(test_wm_agent_upgrade_send_command_to_agent_ok, teardown_string),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_send_command_to_agent_recv_error, teardown_string),
@@ -5934,7 +5925,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_custom_command, setup_hash_table, teardown_upgrade_custom_task_string),
         // wm_agent_upgrade_process_upgrade_command
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_command, setup_hash_table, teardown_upgrade_task_string)
-#endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
