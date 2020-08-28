@@ -1194,7 +1194,9 @@ char **get_agents(int flag,int mon_time){
     }
 
     // Unused. See get_all_agents_by_keepalive() to change the time 
-    (void) mon_time;
+    if(mon_time > 0){
+        mdebug1("Parameter not considered in get_agents(). Using DISCON_TIME");
+    }
 
     /* Getting all the information from all the agents at once may result in a huge JSON */
     for (i = 0; id_array[i] != -1; i++){
@@ -1241,7 +1243,8 @@ char **get_agents(int flag,int mon_time){
                 break;
             default:
                 mwarn("Invalid flag '%d' trying to get all agents.", flag);
-                continue;
+                os_free(id_array);
+                return NULL;
         }
 
         os_realloc(agents_array, (array_size + 2) * sizeof(char *), agents_array);
