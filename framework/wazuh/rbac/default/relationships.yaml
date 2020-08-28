@@ -1,3 +1,5 @@
+# WAZUH SYSTEM FILE, PLEASE DO NOT MODIFY
+
 relationships:
   users:
     wazuh:
@@ -6,7 +8,7 @@ relationships:
 
     wazuh-wui:
       role_ids:
-        - readonly
+        - administrator
 
   roles:
     administrator:
@@ -31,6 +33,7 @@ relationships:
       policy_ids:
         - agents_read
         - ciscat_read
+        - cluster_read
         - decoders_read
         - lists_read
         - rules_read
