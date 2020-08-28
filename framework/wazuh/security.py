@@ -983,7 +983,7 @@ def update_security_config(updated_config=None):
     """
     try:
         update_security_conf(updated_config)
-        result = 'Configuration successfully updated'
+        result = 'Configuration was successfully updated'
     except WazuhError as e:
         result = f'Configuration could not be updated. Error: {e}'
 

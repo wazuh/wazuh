@@ -5739,7 +5739,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Agent upgraded successfully
+                message: Agent was successfully upgraded
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6274,7 +6274,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Agent configuration was updated successfully
+                message: Agent configuration was successfully updated
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7124,7 +7124,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All selected information is shown"
+                message: "All selected information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7186,7 +7186,7 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
-                message: "All selected nodes information is shown"
+                message: "All selected information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7257,6 +7257,7 @@ paths:
                         last_keep_alive: "2019-01-11T18:52:16.66Z"
                         sync_agentinfo_free: true
                         sync_extravalid_free: true
+                message: "All selected nodes healthcheck information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7391,7 +7392,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All selected information is shown"
+                message: "All selected information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7484,7 +7485,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
-                message: "API configuration read successfully in all specified nodes"
+                message: "API configuration was successfully read in all specified nodes"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7528,7 +7529,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: "API configuration successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
+                message: "API configuration was successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7571,7 +7572,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: "API configuration successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
+                message: "API configuration was successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -7632,6 +7633,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Processes status successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7683,6 +7685,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Basic information was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7760,6 +7763,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Configuration was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8307,7 +8311,7 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
-                message: Logs read successfully in specified node
+                message: Logs successfully read in specified node
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8465,7 +8469,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: File updated successfully
+                message: "File was successfully updated"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8507,7 +8511,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: File was deleted successfully
+                message: File was successfully deleted
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8602,7 +8606,7 @@ paths:
                     total_affected_items: 3
                     failed_items: []
                     total_failed_items: 0
-                  message: Validation checked successfully in all nodes
+                  message: Validation was successfully checked in all nodes
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8857,6 +8861,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Processes status successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8907,6 +8912,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Basic information was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8983,6 +8989,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Configuration was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9587,6 +9594,7 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
+                message: "Log summarized successfully"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9675,7 +9683,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - $ref: '#/components/schemas/ConfirmationMessage'
               example:
-                message: File updated successfully
+                message: "File was uploaded successfully"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9718,7 +9726,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: File was deleted
+                message: File was deleted successfully
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9784,7 +9792,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "API configuration read successfully"
+                message: "API configuration was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9826,7 +9834,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "API configuration successfully updated. Some settings may require restarting the API to be applied"
+                message: "API configuration was successfully updated. Some settings may require restarting the API to be applied"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9868,7 +9876,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "API configuration successfully updated. Some settings may require restarting the API to be applied"
+                message: "API configuration was successfully updated. Some settings may require restarting the API to be applied"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9946,7 +9954,7 @@ paths:
                     total_affected_items: 1
                     failed_items: []
                     total_failed_items: 0
-                  message: "Validation checked succesfully in all nodes"
+                  message: "Validation was successfully checked in all nodes"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9992,7 +10000,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "Active configuration read successfully on specified node"
+                message: "Active configuration was successfully read in specified node"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
