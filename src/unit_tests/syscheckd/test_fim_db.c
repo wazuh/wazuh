@@ -20,6 +20,7 @@
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/os_utils_wrappers.h"
 #include "../wrappers/wazuh/shared/string_op_wrappers.h"
@@ -27,6 +28,7 @@
 #include "../wrappers/wazuh/shared/integrity_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/seechanges_wrappers.h"
 
 #include "../syscheckd/fim_db.h"
 #include "../config/syscheck-config.h"
@@ -57,19 +59,6 @@ unsigned long __wrap_time() {
     return __real_time();
 }
 #endif
-
-
-float __wrap_DirSize(const char *path) {
-    check_expected(path);
-
-    return mock();
-}
-
-char *__wrap_seechanges_get_diff_path(char *path) {
-    check_expected(path);
-
-    return mock_type(char*);
-}
 
 /*-----------------------------------------*/
 

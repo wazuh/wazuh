@@ -14,6 +14,9 @@
 #include <sys/types.h>
 #include <stdio.h>
 
+#ifdef WIN32
+#include <windows.h>
+#endif
 
 int __wrap_abspath(const char *path, char *buffer, size_t size);
 
@@ -38,5 +41,15 @@ int __wrap_w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
 FILE *__wrap_wfopen(const char * __filename, const char * __modes);
 
 char ** __wrap_wreaddir(const char * name);
+
+#ifndef WIN32
+off_t __wrap_FileSize(const char * path);
+#else
+DWORD __wrap_FileSizeWin(const char * file);
+#endif
+
+int __wrap_rename_ex(const char *source, const char *destination);
+
+float __wrap_DirSize(const char *path);
 
 #endif

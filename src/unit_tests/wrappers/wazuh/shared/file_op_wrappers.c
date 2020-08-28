@@ -91,3 +91,28 @@ char ** __wrap_wreaddir(const char * name) {
     check_expected(name);
     return mock_type(char**);
 }
+
+#ifndef WIN32
+off_t __wrap_FileSize(const char * path) {
+    check_expected(path);
+    return mock();
+}
+#else
+DWORD __wrap_FileSizeWin(const char * file) {
+    check_expected(file);
+    return mock();
+}
+#endif
+
+int __wrap_rename_ex(const char *source, const char *destination) {
+    check_expected(source);
+    check_expected(destination);
+
+    return mock();
+}
+
+float __wrap_DirSize(const char *path) {
+    check_expected(path);
+
+    return mock();
+}

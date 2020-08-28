@@ -17,7 +17,7 @@ int __wrap_delete_target_file(const char *path);
 
 const char *__wrap_get_group(int gid);
 
-#ifndef TEST_WINAGENT
+#ifndef WIN32
 char *__wrap_get_user(int uid);
 #else
 char *__wrap_get_user(const char *path, char **sid);

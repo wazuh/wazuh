@@ -13,4 +13,6 @@
 
 char *__wrap_seechanges_addfile(const char *filename);
 
+char *__wrap_seechanges_get_diff_path(char *path);
+
 #endif

@@ -28,6 +28,7 @@
 #include "../wrappers/wazuh/syscheckd/seechanges_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/win-registry_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/md5_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
@@ -56,18 +57,6 @@ void __wrap_decode_win_attributes(char *str, unsigned int attrs) {
     check_expected(attrs);
 }
 #endif
-
-char *__wrap_seechanges_get_diff_path(char *path) {
-    check_expected(path);
-
-    return mock_type(char*);
-}
-
-float __wrap_DirSize(const char *path) {
-    check_expected(path);
-
-    return mock();
-}
 
 /* setup/teardowns */
 

@@ -18,3 +18,9 @@ char *__wrap_seechanges_addfile(const char *filename) {
 
     return mock_type(char*);
 }
+
+char *__wrap_seechanges_get_diff_path(char *path) {
+    check_expected(path);
+
+    return mock_type(char*);
+}

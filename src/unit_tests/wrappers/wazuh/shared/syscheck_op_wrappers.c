@@ -29,7 +29,7 @@ const char *__wrap_get_group(int gid) {
     return mock_type(const char*);
 }
 
-#ifndef TEST_WINAGENT
+#ifndef WIN32
 char *__wrap_get_user(int uid) {
     check_expected(uid);
 
