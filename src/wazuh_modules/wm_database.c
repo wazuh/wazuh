@@ -307,7 +307,7 @@ void wm_sync_manager() {
                 mterror(WM_DATABASE_LOGTAG, "Couldn't get database status for manager.");
                 break;
             case WDB_AGENT_EMPTY:
-                if (wdb_set_agent_offset(0, WDB_SYSCHECK, buffer.st_size) < 1)
+                if (OS_SUCCESS != wdb_set_agent_offset(0, WDB_SYSCHECK, buffer.st_size))
                     mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for manager.");
             }
         }
@@ -383,7 +383,7 @@ void wm_sync_agents() {
             if (stat(path, &buffer) < 0) {
                 if (errno != ENOENT)
                     mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
-            } else if (wdb_set_agent_offset(id, WDB_SYSCHECK, buffer.st_size) < 1)
+            } else if (OS_SUCCESS != wdb_set_agent_offset(id, WDB_SYSCHECK, buffer.st_size))
                 mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s).", id, entry->name);
 
             snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck-registry", DEFAULTDIR SYSCHECK_DIR, entry->name, entry->ip->ip);
@@ -391,7 +391,7 @@ void wm_sync_agents() {
             if (stat(path, &buffer) < 0) {
                 if (errno != ENOENT)
                     mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
-            } else if (wdb_set_agent_offset(id, WDB_SYSCHECK_REGISTRY, buffer.st_size) < 1)
+            } else if (OS_SUCCESS != wdb_set_agent_offset(id, WDB_SYSCHECK_REGISTRY, buffer.st_size))
                 mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s).", id, entry->name);
         } else {
             // The agent already exists, update group only.
@@ -686,7 +686,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
                 return -1;
             }
 
-            if (wdb_set_agent_offset(id_agent, type, buffer.st_size) < 1) {
+            if (OS_SUCCESS != wdb_set_agent_offset(id_agent, type, buffer.st_size)) {
                 mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s).", id_agent, name);
                 sqlite3_close_v2(db);
                 return -1;
@@ -705,7 +705,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
                 return -1;
             }
 
-            if (offset != buffer.st_size && wdb_set_agent_offset(id_agent, type, offset) < 1) {
+            if (offset != buffer.st_size && OS_SUCCESS != wdb_set_agent_offset(id_agent, type, offset)) {
                 mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s) (post-fill).", id_agent, name);
                 return -1;
             }

@@ -137,6 +137,10 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SELECT_AGENT_GROUP,
     WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
     WDB_STMT_GLOBAL_FIND_AGENT,
+    WDB_STMT_GLOBAL_SELECT_FIM_OFFSET,
+    WDB_STMT_GLOBAL_SELECT_REG_OFFSET,
+    WDB_STMT_GLOBAL_UPDATE_FIM_OFFSET,
+    WDB_STMT_GLOBAL_UPDATE_REG_OFFSET,
     WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
@@ -147,10 +151,6 @@ typedef enum wdb_stmt {
 
 typedef enum global_db_query {
     SQL_SELECT_AGENTS,
-    SQL_SELECT_FIM_OFFSET,
-    SQL_SELECT_REG_OFFSET,
-    SQL_UPDATE_FIM_OFFSET,
-    SQL_UPDATE_REG_OFFSET,
     SQL_SELECT_AGENT_STATUS,
     SQL_UPDATE_AGENT_STATUS,
     SQL_UPDATE_AGENT_GROUP,
@@ -268,12 +268,6 @@ sqlite3* wdb_open_agent(int id_agent, const char *name);
 
 // Open database for agent and store in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_agent2(int agent_id);
-
-/* Get the file offset. Returns -1 on error or NULL. */
-long wdb_get_agent_offset(int id_agent, int type);
-
-/* Set the file offset. Returns number of affected rows, or -1 on failure. */
-int wdb_set_agent_offset(int id_agent, int type, long offset);
 
 /* Set agent updating status. Returns WDB_AGENT_*, or -1 on error. */
 int wdb_get_agent_status(int id_agent);
@@ -526,6 +520,25 @@ int wdb_remove_agent_db(int id, const char * name);
  * @return Returns id if success. OS_INVALID on error.
  */
 int wdb_find_agent(const char *name, const char *ip);
+
+/**
+ * @brief Get the file offset either for syscheck as well as registry.
+ * 
+ * @param[in] id ID of the agent.
+ * @param[in] type An enumerator indicating the offset type. WDB_SYSCHECK or WDB_SYSCHECK_REGISTRY.
+ * @return Returns the offset if success. OS_INVALID on error.
+ */
+long wdb_get_agent_offset(int id, int type);
+
+/**
+ * @brief Set the file offset either for syscheck as well as registry.
+ * 
+ * @param[in] id ID of the agent.
+ * @param[in] type An enumerator indicating the offset type. WDB_SYSCHECK or WDB_SYSCHECK_REGISTRY.
+ * @param[in] offset to be set in the database.
+ * @return Returns OS_SUCCESS if success. OS_INVALID on error.
+ */
+int wdb_set_agent_offset(int id, int type, long offset);
 
 /* Update agent group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_group(int id,char *group);
@@ -917,6 +930,46 @@ int wdb_parse_global_delete_agent_belong(wdb_t * wdb, char * input, char * outpu
 int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output);
 
 /**
+ * @brief Function to parse the select agent fim offset request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with 'agent_id'.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK followed by a JSON with the offset. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_select_fim_offset(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse the select agent reg offset request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with 'agent_id'.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK followed by a JSON with the offset. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_select_reg_offset(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse the update agent fim offset request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with the agent and offset data in JSON format.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_update_fim_offset(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse the update agent reg offset request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with the agent and offset data in JSON format.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_update_reg_offset(wdb_t * wdb, char * input, char * output);
+
+/**
  * @brief Function to parse the select keepalive request.
  * 
  * @param wdb the global struct database.
@@ -1181,6 +1234,44 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id);
  * @return JSON with id on success. NULL on error.
  */
 cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
+
+/**
+ * @brief Function to get the fim offset of a particular agent.
+ * 
+ * @param wdb the Global struct database.
+ * @param id Agent id.
+ * @return JSON with the agent fim offset on success. NULL on error.
+ */
+cJSON* wdb_global_select_agent_fim_offset(wdb_t *wdb, int id);
+
+/**
+ * @brief Function to get the reg offset of a particular agent.
+ * 
+ * @param wdb the Global struct database.
+ * @param id Agent id.
+ * @return JSON with the agent reg offset on success. NULL on error.
+ */
+cJSON* wdb_global_select_agent_reg_offset(wdb_t *wdb, int id);
+
+/**
+ * @brief Function to update an agent fim offset.
+ * 
+ * @param wdb The Global struct database.
+ * @param id The agent ID
+ * @param offset The value of the offset
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_update_agent_fim_offset(wdb_t *wdb, int id, long offset);
+
+/**
+ * @brief Function to update an agent reg offset.
+ * 
+ * @param wdb The Global struct database.
+ * @param id The agent ID
+ * @param offset The value of the offset
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_update_agent_reg_offset(wdb_t *wdb, int id, long offset);
 
 /**
  * @brief Function to get an agent keepalive using the agent name and register ip.

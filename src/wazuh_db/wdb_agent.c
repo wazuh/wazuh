@@ -22,10 +22,6 @@
 
 static const char *global_db_queries[] = {
     [SQL_SELECT_AGENTS] = "global sql SELECT id FROM agent WHERE id != 0;",
-    [SQL_SELECT_FIM_OFFSET] = "global sql SELECT fim_offset FROM agent WHERE id = %d;",
-    [SQL_SELECT_REG_OFFSET] = "global sql SELECT reg_offset FROM agent WHERE id = %d;",
-    [SQL_UPDATE_FIM_OFFSET] = "global sql UPDATE agent SET fim_offset = %lu WHERE id = %d;",
-    [SQL_UPDATE_REG_OFFSET] = "global sql UPDATE agent SET reg_offset = %lu WHERE id = %d;",
     [SQL_SELECT_AGENT_STATUS] = "global sql SELECT status FROM agent WHERE id = %d;",
     [SQL_UPDATE_AGENT_STATUS] = "global sql UPDATE agent SET status = %Q WHERE id = %d;",
     [SQL_UPDATE_AGENT_GROUP] = "global sql UPDATE agent SET `group` = %Q WHERE id = %d;",
@@ -51,10 +47,10 @@ static const char *global_db_commands[] = {
     [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %d",
     [WDB_SELECT_AGENTS] = "",
     [WDB_FIND_AGENT] = "global find-agent %s",
-    [WDB_SELECT_FIM_OFFSET] = "",
-    [WDB_SELECT_REG_OFFSET] = "",
-    [WDB_UPDATE_FIM_OFFSET] = "",
-    [WDB_UPDATE_REG_OFFSET] = "",
+    [WDB_SELECT_FIM_OFFSET] = "global select-fim-offset %d",
+    [WDB_SELECT_REG_OFFSET] = "global select-reg-offset %d",
+    [WDB_UPDATE_FIM_OFFSET] = "global update-fim-offset %s",
+    [WDB_UPDATE_REG_OFFSET] = "global update-reg-offset %s",
     [WDB_SELECT_AGENT_STATUS] = "",
     [WDB_UPDATE_AGENT_STATUS] = "",
     [WDB_UPDATE_AGENT_GROUP] = "",
@@ -613,8 +609,8 @@ int wdb_find_agent(const char *name, const char *ip) {
     return output;
 }
 
-/* Get the file offset. Returns -1 on error. */
-long wdb_get_agent_offset(int id_agent, int type) {
+
+long wdb_get_agent_offset(int id, int type) {
     long int output = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -624,11 +620,11 @@ long wdb_get_agent_offset(int id_agent, int type) {
 
     switch (type) {
     case WDB_SYSCHECK:
-        sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_SELECT_FIM_OFFSET], id_agent);
+        sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_SELECT_FIM_OFFSET], id);
         column = "fim_offset";
         break;
     case WDB_SYSCHECK_REGISTRY:
-        sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_SELECT_REG_OFFSET],id_agent);
+        sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_SELECT_REG_OFFSET],id);
         column = "reg_offset";
         break;
     default:
@@ -648,28 +644,44 @@ long wdb_get_agent_offset(int id_agent, int type) {
     return output;
 }
 
-/* Set the file offset. Returns 1, or -1 on failure. */
-int wdb_set_agent_offset(int id_agent, int type, long offset) {
+
+int wdb_set_agent_offset(int id, int type, long offset) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+
+    cJSON *data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddNumberToObject(data_in, "offset", offset);
 
     switch (type) {
     case WDB_SYSCHECK:
-        sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_FIM_OFFSET], offset, id_agent);
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_FIM_OFFSET], cJSON_PrintUnformatted(data_in));
         break;
     case WDB_SYSCHECK_REGISTRY:
-        sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_REG_OFFSET], offset, id_agent);
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_REG_OFFSET], cJSON_PrintUnformatted(data_in));
         break;
     default:
         return OS_INVALID;
     }
 
+    cJSON_Delete(data_in);
+
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
-            result = 1;
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");
