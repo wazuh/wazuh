@@ -13,8 +13,6 @@
 /* Prototypes */
 static void help_csyslogd(void) __attribute__((noreturn));
 
-/* Database Structure */
-SyslogConfig **syslog_config;
 
 /* Print help statement */
 static void help_csyslogd()

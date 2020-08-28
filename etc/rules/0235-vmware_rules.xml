@@ -3,7 +3,7 @@
   -  Author: Daniel Cid.
   -  Updated by Wazuh, Inc.
   -  Copyright (C) 2015-2020, Wazuh Inc.
-  -  Copyright (C) 2009 Trend Micro Inc. 
+  -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -119,7 +119,6 @@
     <if_sid>19106</if_sid>
     <match>-> VM_STATE_ON</match>
     <description>Virtual machine state changed to ON.</description>
-    <options>alert_by_email</options>
     <group>gpg13_4.13,</group>
   </rule>
 

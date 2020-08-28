@@ -23,6 +23,9 @@ relationships:
         - sca_read
         - syscheck_all
         - syscollector_read
+      rule_ids:
+        - wui_elastic_admin
+        - wui_opendistro_admin
 
     readonly:
       policy_ids:
@@ -35,23 +38,29 @@ relationships:
         - sca_read
         - syscheck_read
         - syscollector_read
+      rule_ids: []
 
     users_admin:
       policy_ids:
         - users_all
+      rule_ids: []
 
     agents_readonly:
       policy_ids:
         - agents_read
+      rule_ids: []
 
     agents_admin:
       policy_ids:
         - agents_all
+      rule_ids: []
 
     cluster_readonly:
       policy_ids:
         - cluster_read
+      rule_ids: []
 
     cluster_admin:
       policy_ids:
         - cluster_all
+      rule_ids: []

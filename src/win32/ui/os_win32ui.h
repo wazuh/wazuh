@@ -47,10 +47,6 @@
 #define SERVER_IP_USED      1
 #define SERVER_HOST_USED    2
 
-/* Prototypes */
-char *decode_base64(const char *src);
-char *encode_base64(int size, char *src);
-
 /* Global ossec config structure */
 typedef struct _ossec_config {
     unsigned short int server_type;

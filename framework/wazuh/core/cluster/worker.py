@@ -13,16 +13,14 @@ import time
 from typing import Tuple, Dict, Callable, List, TextIO, KeysView
 
 import wazuh.core.cluster.cluster
+from wazuh.core import cluster as metadata, common, exception, utils
+from wazuh.core.agent import Agent
 from wazuh.core.cluster import client, common as c_common
-from wazuh import exception, cluster
-from wazuh.core import cluster as metadata
-from wazuh import common, utils
-from wazuh.exception import WazuhException, WazuhClusterError
-from wazuh.core.core_agent import Agent
-from wazuh.database import Connection
 from wazuh.core.cluster.dapi import dapi
-from wazuh.wdb import WazuhDBConnection
-from wazuh.utils import safe_move
+from wazuh.core.database import Connection
+from wazuh.core.exception import WazuhClusterError, WazuhInternalError
+from wazuh.core.utils import safe_move
+from wazuh.core.wdb import WazuhDBConnection
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -156,13 +154,25 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         elif command == b'dapi_res':
             asyncio.create_task(self.forward_dapi_response(data))
             return b'ok', b'Response forwarded to worker'
+        elif command == b'sendsync_res':
+            asyncio.create_task(self.forward_sendsync_response(data))
+            return b'ok', b'Response forwarded to worker'
         elif command == b'dapi_err':
             dapi_client, error_msg = data.split(b' ', 1)
             try:
-                asyncio.create_task(self.manager.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
+                asyncio.create_task(
+                    self.manager.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
             except WazuhClusterError as e:
                 raise WazuhClusterError(3025)
             return b'ok', b'DAPI error forwarded to worker'
+        elif command == b'sendsync_err':
+            sendsync_client, error_msg = data.split(b' ', 1)
+            try:
+                asyncio.create_task(
+                    self.manager.local_server.clients[sendsync_client.decode()].send_request(b'err', error_msg))
+            except WazuhClusterError as e:
+                raise WazuhClusterError(3025)
+            return b'ok', b'SendSync error forwarded to worker'
         elif command == b'dapi':
             self.manager.dapi.add_request(b'master*' + data)
             return b'ok', b'Added request to API requests queue'
@@ -387,7 +397,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             # remove agent from groups
             db_global = glob.glob(common.database_path_global)
             if not db_global:
-                raise WazuhException(1600)
+                raise WazuhInternalError(1600)
 
             conn = Connection(db_global[0])
             agent_ids_db = {'id_agent{}'.format(i): int(i) for i in agents_ids_sublist}
@@ -466,7 +476,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             if data['merged']:  # worker nodes can only receive agent-groups files
                 if data['merge-type'] == 'agent-info':
                     logger.warning("Agent status received in a worker node")
-                    raise WazuhException(3011)
+                    raise WazuhInternalError(3011)
 
                 for name, content, _ in wazuh.core.cluster.cluster.unmerge_agent_info('agent-groups', zip_path, filename):
                     full_unmerged_name = os.path.join(common.ossec_path, name)

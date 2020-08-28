@@ -219,19 +219,30 @@ int __wrap_audit_restore(void) {
 /* Setup */
 
 static int setup_group(void ** state) {
+#ifdef TEST_WINAGENT
     expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck.conf'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$ OK?");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex size 0");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
-    #ifdef TEST_WINAGENT
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$ OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 1");
-    #endif
+#else
+    expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck.conf'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.swp$");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.swp$ OK?");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex size 0");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
+#endif
 
-    #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
+#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
-    #endif
+#endif
 
     if(Read_Syscheck_Config("test_syscheck.conf"))
         fail();
@@ -248,9 +259,9 @@ static int setup_group(void ** state) {
 
     OSHash_Add_ex(syscheck.realtime->dirtb, "key", strdup("data"));
 
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     time_mock_value = 1;
-    #endif
+#endif
 
     return 0;
 }

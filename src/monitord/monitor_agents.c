@@ -55,6 +55,7 @@ void monitor_agents()
                     // Agent is no longer in the database
                     snprintf(str, OS_SIZE_1024 - 1, OS_AG_REMOVED, *cr_agents);
                     if (SendMSG(mond.a_queue, str, ARGV0, LOCALFILE_MQ) < 0) {
+                        mond.a_queue = -1;  // set an invalid fd so we can attempt to reconnect later on.
                         mdebug1("Could not generate removed agent alert for '%s'", *cr_agents);
                         merror(QUEUE_SEND);
                     }
@@ -69,6 +70,7 @@ void monitor_agents()
                     snprintf(str, OS_SIZE_1024 - 1, OS_AG_REMOVED, *cr_agents);
                     if (SendMSG(mond.a_queue, str, ARGV0,
                                 LOCALFILE_MQ) < 0) {
+                        mond.a_queue = -1;  // set an invalid fd so we can attempt to reconnect later on.
                         merror(QUEUE_SEND);
                     }
                 }
@@ -91,6 +93,7 @@ void monitor_agents()
                     snprintf(str, OS_SIZE_1024 - 1, OS_AG_REMOVED, *na_agents_p);
                     if (SendMSG(mond.a_queue, str, ARGV0,
                                 LOCALFILE_MQ) < 0) {
+                        mond.a_queue = -1;  // set an invalid fd so we can attempt to reconnect later on.
                         merror(QUEUE_SEND);
                     }
                 }
@@ -159,6 +162,7 @@ int mon_send_agent_msg(char *agent, char *msg) {
     if (ag_id = wdb_find_agent(ag_name, ag_ip), ag_id > 0) {
         snprintf(header, OS_SIZE_256, "[%03d] (%s) %s", ag_id, ag_name, ag_ip);
         if (SendMSG(mond.a_queue, msg, header, SECURE_MQ) < 0) {
+            mond.a_queue = -1;  // set an invalid fd so we can attempt to reconnect later on.
             merror(QUEUE_SEND);
             return 1;
         }

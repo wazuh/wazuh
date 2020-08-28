@@ -33,7 +33,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
     char agent_id[KEYSIZE + 1] = "";
 
     /* Create the unix queue */
-    if ((arq = StartMQ(path, READ)) < 0) {
+    if ((arq = StartMQ(path, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, path, strerror(errno));
     }
 

@@ -14,7 +14,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from yaml import safe_load
 
-from wazuh.exception import WazuhError
+from wazuh.core.exception import WazuhError
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'security/')
 
@@ -58,7 +58,7 @@ def db_setup():
 
                     decorators.expose_resources = RBAC_bypasser
                     from wazuh import security
-                    from wazuh.results import WazuhResult
+                    from wazuh.core.results import WazuhResult
                     from wazuh.core import security as core_security
     try:
         create_memory_db('schema_security_test.sql', orm._Session())
@@ -108,6 +108,7 @@ def test_security(db_setup, security_function, params, expected_result):
     except WazuhError as e:
         assert str(e.code) == list(expected_result['failed_items'].keys())[0]
 
+
 @pytest.mark.parametrize('security_function, params, expected_result', rbac_cases)
 def test_rbac_catalog(db_setup, security_function, params, expected_result):
     """Verify RBAC catalog functions.
@@ -134,16 +135,16 @@ def test_rbac_catalog(db_setup, security_function, params, expected_result):
 
 def test_revoke_tokens(db_setup):
     """Checks that the return value of revoke_tokens is a WazuhResult."""
-    with patch('wazuh.security.change_secret', side_effect=None):
+    with patch('wazuh.core.security.change_secret', side_effect=None):
         security, WazuhResult, _ = db_setup
-        result = security.revoke_tokens()
+        result = security.revoke_current_user_tokens()
         assert isinstance(result, WazuhResult)
 
 
 @pytest.mark.parametrize('role_list, expected_users', [
-    ([100, 101], {'administrator', 'python', 'ossec'}),
-    ([102], {'rbac'}),
-    ([102, 103, 104], {'normal', 'rbac', 'ossec'})
+    ([100, 101], {100, 103, 102}),
+    ([102], {104}),
+    ([102, 103, 104], {101, 104, 102})
 ])
 def test_check_relationships(db_setup, role_list, expected_users):
     """Check that the relationship between role and user is correct according to
@@ -157,13 +158,13 @@ def test_check_relationships(db_setup, role_list, expected_users):
         Expected users.
     """
     _, _, core_security = db_setup
-    assert core_security.check_relationships(roles=[{'id': role_id} for role_id in role_list]) == expected_users
+    assert core_security.check_relationships(roles=[role_id for role_id in role_list]) == expected_users
 
 
 @pytest.mark.parametrize('role_list, user_list, expected_users', [
-    ([104], None, {'normal', 'rbac', 'ossec'}),
-    ([102, 103], ['administrator'], {'normal', 'rbac', 'administrator'}),
-    ([], ['wazuh', 'wazuh-wui'], {'wazuh', 'wazuh-wui'})
+    ([104], None, {101, 104, 102}),
+    ([102, 103], [100], {101, 104, 100}),
+    ([], [1, 2], {1, 2})
 ])
 def test_invalid_users_tokens(db_setup, role_list, user_list, expected_users):
     """Check that the argument passed to `TokenManager.add_user_rules` formed by `roles` and
@@ -180,6 +181,6 @@ def test_invalid_users_tokens(db_setup, role_list, user_list, expected_users):
     """
     with patch('wazuh.security.TokenManager.add_user_rules') as TM_mock:
         _, _, core_security = db_setup
-        core_security.invalid_users_tokens(roles=[{'id': role_id} for role_id in role_list], users=user_list)
+        core_security.invalid_users_tokens(roles=[role_id for role_id in role_list], users=user_list)
         related_users = TM_mock.call_args.kwargs['users']
         assert set(related_users) == expected_users

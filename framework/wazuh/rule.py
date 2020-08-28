@@ -4,14 +4,14 @@
 
 import os
 
-import wazuh.configuration as configuration
-from wazuh import common
+import wazuh.core.configuration as configuration
+from wazuh.core import common
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
     RULE_REQUIREMENTS, SORT_FIELDS
-from wazuh.exception import WazuhError
+from wazuh.core.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources
-from wazuh.results import AffectedItemsWazuhResult
-from wazuh.utils import process_array
+from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.utils import process_array
 
 
 def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
@@ -88,7 +88,6 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
                          complementary_search=complementary_search, select=select, sort_by=sort_by,
                          sort_ascending=sort_ascending, allowed_sort_fields=SORT_FIELDS, offset=offset,
                          limit=limit, q=q, required_fields=REQUIRED_FIELDS)
-
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

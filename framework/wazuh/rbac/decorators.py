@@ -8,14 +8,15 @@ import re
 from collections import defaultdict
 from functools import wraps
 
-from wazuh.common import rbac, broadcast, cluster_nodes
-from wazuh.configuration import get_ossec_conf
+from wazuh.core.common import rbac, broadcast, cluster_nodes
+from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.cdb_list import iterate_lists
-from wazuh.core.core_utils import get_agents_info, expand_group, get_groups, get_files
+from wazuh.core.utils import get_files
+from wazuh.core.agent import get_agents_info, get_groups, expand_group
 from wazuh.core.rule import format_rule_decoder_file, Status
-from wazuh.exception import WazuhError
-from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager
-from wazuh.results import AffectedItemsWazuhResult
+from wazuh.core.exception import WazuhPermissionError
+from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
+from wazuh.core.results import AffectedItemsWazuhResult
 
 
 def _expand_resource(resource):
@@ -50,8 +51,12 @@ def _expand_resource(resource):
             with AuthenticationManager() as auth:
                 users = auth.get_users()
             for user in users:
-                users_system.add(user['username'])
+                users_system.add(user['user_id'])
             return users_system
+        elif resource_type == 'rule:id':
+            with RulesManager() as rum:
+                rules = rum.get_rules()
+            return {str(rule_id.id) for rule_id in rules}
         elif resource_type == 'rule:file':
             tags = ['rule_include', 'rule_exclude', 'rule_dir']
             format_rules = format_rule_decoder_file(
@@ -284,10 +289,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                     res_list.append("{0}:{1}".format(res_base, params))
             # If we don't find a regex match we obtain the static resource/s
             else:
-                if m.group(2) == '*':  # If resourceless
-                    target_params[m.group(1)] = m.group(2)
-                else:  # Static resource
-                    target_params[m.group(1)] = '*'
+                target_params[m.group(1)] = '*'
                 add_denied = not broadcast.get()
                 res_list.append(r)
     # Create dict of required policies with action: list(resources) pairs
@@ -341,7 +343,7 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
         for res_id, target_param in target.items():
             denied = _get_denied(original, allowed, target_param, res_id)
             for denied_item in denied:
-                result.add_failed_item(id_=denied_item, error=WazuhError(4000,
+                result.add_failed_item(id_=denied_item, error=WazuhPermissionError(4000,
                                                                          extra_message=f'Resource type: {res_id}',
                                                                          ids=denied))
     else:
@@ -397,7 +399,8 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                 except Exception:
                     if add_denied:
                         denied = _get_denied(original_kwargs, allow, target_param, res_id, resources=resources)
-                        raise WazuhError(4000, extra_message=f'Resource type: {res_id}', ids=denied)
+                        raise WazuhPermissionError(4000, extra_message=f'Resource type: {res_id}', ids=denied,
+                                                   title="Permission Denied")
                     else:
                         if target_param != '*':
                             kwargs[target_param] = list()

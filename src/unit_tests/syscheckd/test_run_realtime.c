@@ -291,6 +291,7 @@ unsigned int __wrap_w_directory_exists(const char *path) {
 /* setup/teardown */
 static int setup_group(void **state) {
     will_return_always(__wrap__mdebug1, 0);
+
     Read_Syscheck_Config("test_syscheck.conf");
 
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));

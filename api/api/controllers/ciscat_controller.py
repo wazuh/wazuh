@@ -18,7 +18,8 @@ logger = logging.getLogger('wazuh')
 async def get_agents_ciscat_results(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                                     offset: int = 0, limit: int = None, select: List[str] = None, sort: str = None,
                                     search: str = None, benchmark: str = None, profile: str = None, fail: int = None,
-                                    error: int = None, notchecked: int = None, unknown: int = None, score: int = None):
+                                    error: int = None, notchecked: int = None, unknown: int = None, score: int = None,
+                                    q: str = None):
     """Get CIS-CAT results from an agent
 
     Returns the agent's ciscat results info.
@@ -39,6 +40,7 @@ async def get_agents_ciscat_results(request, agent_id: str, pretty: bool = False
     :param notchecked: Filters by not checked
     :param unknown: Filters by unknown results.
     :param score: Filters by final score
+    :param q: Query to filter results by.
     :return: Data
     """
     f_kwargs = {
@@ -57,7 +59,8 @@ async def get_agents_ciscat_results(request, agent_id: str, pretty: bool = False
             'notchecked': notchecked,
             'unknown': unknown,
             'score': score
-                }
+                },
+        'q': q
             }
 
     dapi = DistributedAPI(f=ciscat.get_ciscat_results,

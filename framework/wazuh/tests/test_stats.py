@@ -3,12 +3,12 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import sys
-from unittest.mock import patch, MagicMock
 from datetime import date
+from unittest.mock import patch, MagicMock
+
 import pytest
 
-from wazuh.exception import WazuhException
-
+from wazuh.core.exception import WazuhException
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):

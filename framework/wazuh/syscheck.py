@@ -3,24 +3,23 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 from glob import glob
 
-from wazuh import common
-from wazuh.core.core_agent import Agent
-from wazuh.core.core_utils import get_agents_info
+from wazuh.core import common
+from wazuh.core.agent import Agent, get_agents_info
+from wazuh.core.database import Connection
+from wazuh.core.exception import WazuhInternalError, WazuhError, WazuhResourceNotFound
+from wazuh.core.ossec_queue import OssecQueue
+from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.syscheck import WazuhDBQuerySyscheck
-from wazuh.database import Connection
-from wazuh.exception import WazuhInternalError, WazuhError
-from wazuh.ossec_queue import OssecQueue
+from wazuh.core.utils import WazuhVersion
+from wazuh.core.wdb import WazuhDBConnection
 from wazuh.rbac.decorators import expose_resources
-from wazuh.results import AffectedItemsWazuhResult
-from wazuh.utils import WazuhVersion
-from wazuh.wdb import WazuhDBConnection
 
 
 @expose_resources(actions=["syscheck:run"], resources=["agent:id:{agent_list}"])
 def run(agent_list=None):
-    """Runs rootcheck and syscheck.
+    """Run syscheck scan.
 
-    :param agent_list: Run rootcheck/syscheck in the agent.
+    :param agent_list: Run syscheck in the agent.
     :return: AffectedItemsWazuhResult.
     """
     result = AffectedItemsWazuhResult(all_msg='Restarting syscheck scan on shown agents',
@@ -59,7 +58,7 @@ def clear(agent_list=None):
     wdb_conn = WazuhDBConnection()
     for agent in agent_list:
         if agent not in get_agents_info():
-            result.add_failed_item(id_=agent, error=WazuhError(1701))
+            result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701))
         else:
             try:
                 wdb_conn.execute("agent {} sql delete from fim_entry".format(agent), delete=True)

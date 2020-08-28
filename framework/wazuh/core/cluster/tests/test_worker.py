@@ -11,10 +11,10 @@ from unittest.mock import patch, mock_open, MagicMock
 import pytest
 import uvloop
 
-from wazuh.exception import WazuhException
+from wazuh.core.exception import WazuhException
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
@@ -23,7 +23,7 @@ with patch('wazuh.common.ossec_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.core.cluster import client, worker
-        from wazuh import common
+        from wazuh.core import common
 
 old_basic_ck = """001 test1 any 54cfda3bfcc817aadc8f317b3f05d676d174cdf893aa2f9ee2a302ef17ae6794
 002 test2 any 7a9c0990dadeca159c239a06031b04d462d6d28dd59628b41dc7e13cc4d3a344
@@ -104,7 +104,7 @@ def test_check_removed_agents(remove_agents_patch, old_ck, new_ck, agents_to_rem
 @patch('shutil.rmtree')
 @patch('os.remove')
 @patch('glob.iglob')
-@patch('wazuh.core.core_agent.Agent.get_agents_overview')
+@patch('wazuh.core.agent.Agent.get_agents_overview')
 @patch('wazuh.core.cluster.worker.Connection')
 @patch('os.path.isdir')
 def test_remove_bulk_agents(isdir_mock, connection_mock, agents_mock, glob_mock, remove_mock, rmtree_mock, wdb_mock,

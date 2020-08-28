@@ -1,4 +1,4 @@
-aiohttp-cache==2.0.0
+aiohttp-cache==2.0.2
 aiohttp-cors==0.7.0
 aiohttp-jinja2==1.2.0
 aiohttp-swagger==1.0.14
@@ -22,7 +22,7 @@ defusedxml==0.6.0
 docker-pycreds==0.4.0
 docker==4.2.0
 docutils==0.15.2
-ecdsa==0.13
+ecdsa==0.13.3
 future==0.17.1
 google-api-core==1.16.0
 google-auth==1.14.1

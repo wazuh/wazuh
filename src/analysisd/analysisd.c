@@ -88,11 +88,7 @@ int __crt_wday;
 struct timespec c_timespec;
 char __shost[512];
 OSDecoderInfo *NULL_Decoder;
-rlim_t nofile;
-int sys_debug_level;
 int num_rule_matching_threads;
-EventList *last_events_list;
-time_t current_time;
 
 /* execd queue */
 static int execdq = 0;
@@ -662,7 +658,7 @@ int main_analysisd(int argc, char **argv)
     }
 
     /* Set the queue */
-    if ((m_queue = StartMQ(DEFAULTQUEUE, READ)) < 0) {
+    if ((m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 
@@ -772,7 +768,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
 #ifndef LOCAL
         if (Config.ar & REMOTE_AR) {
-            if ((arq = StartMQ(ARQUEUE, WRITE)) < 0) {
+            if ((arq = StartMQ(ARQUEUE, WRITE, 1)) < 0) {
                 merror(ARQ_ERROR);
 
                 /* If LOCAL_AR is set, keep it there */
@@ -799,7 +795,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 #endif
 
         if (Config.ar & LOCAL_AR) {
-            if ((execdq = StartMQ(EXECQUEUE, WRITE)) < 0) {
+            if ((execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
                 merror(ARQ_ERROR);
 
                 /* If REMOTE_AR is set, keep it there */
@@ -1951,7 +1947,9 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
     #ifdef PRELUDE_OUTPUT_ENABLED
                 /* Log to prelude */
                 if (Config.prelude) {
-                    if (Config.prelude_log_level <= currently_rule->level) {
+                    RuleInfo *rule = lf->generated_rule;
+
+                    if (rule && Config.prelude_log_level <= rule->level) {
                         OS_PreludeLog(lf);
                     }
                 }
@@ -2541,7 +2539,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     }
 
                     if (do_ar && execdq >= 0) {
-                        OS_Exec(execdq, arq, lf, *rule_ar);
+                        OS_Exec(execdq, &arq, lf, *rule_ar);
                     }
                     rule_ar++;
                 }

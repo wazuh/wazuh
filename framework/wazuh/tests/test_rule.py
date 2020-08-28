@@ -19,8 +19,8 @@ with patch('wazuh.common.ossec_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh import rule
-        from wazuh.results import AffectedItemsWazuhResult
-        from wazuh.exception import WazuhError
+        from wazuh.core.results import AffectedItemsWazuhResult
+        from wazuh.core.exception import WazuhError
 
 
 # Variables
@@ -116,7 +116,7 @@ def test_get_rules_file_status_include(mock_ossec, status, func):
     ['0010-rules_config.xml'],
     ['0015-ossec_rules.xml']
 ])
-@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_rules_file_file_param(mock_config, file_, func):
     """Test getting rules using param filter."""
     d_files = func(filename=file_)
@@ -127,7 +127,7 @@ def test_get_rules_file_file_param(mock_config, file_, func):
         assert d_files.total_affected_items == len(d_files.affected_items)
 
 
-@patch('wazuh.configuration.get_ossec_conf', return_value=None)
+@patch('wazuh.core.configuration.get_ossec_conf', return_value=None)
 def test_failed_get_rules_file(mock_config):
     """
     Test failed get_rules_file function when ossec.conf don't have ruleset section
@@ -157,7 +157,7 @@ def test_failed_get_rules_file(mock_config):
     {'rule_ids': ['1', '2', '4', '8']},
     {'rule_ids': ['3']}  # No exists
 ])
-@patch('wazuh.configuration.get_ossec_conf', return_value=other_rule_ossec_conf)
+@patch('wazuh.core.configuration.get_ossec_conf', return_value=other_rule_ossec_conf)
 def test_get_rules(mock_config, arg):
     """Test get_rules function."""
     result = rule.get_rules(**arg)
@@ -195,7 +195,7 @@ def test_failed_get_rules():
     {'search_text': None},
     {'search_text': "firewall", "complementary_search": False}
 ])
-@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_groups(mock_config, arg):
     """Test get_groups function."""
     result = rule.get_groups(**arg)
@@ -208,7 +208,7 @@ def test_get_groups(mock_config, arg):
 @pytest.mark.parametrize('requirement', [
     'pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13', 'tsc', 'mitre'
 ])
-@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_requirement(mocked_config, requirement):
     """Test get_requirement function."""
     result = rule.get_requirement(requirement=requirement)
@@ -220,7 +220,7 @@ def test_get_requirement(mocked_config, requirement):
 @pytest.mark.parametrize('requirement', [
     'a', 'b', 'c'
 ])
-@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_requirement_invalid(mocked_config, requirement):
     """Test get_requirement (invalid) function."""
     result = rule.get_requirement(requirement=requirement)
@@ -234,7 +234,7 @@ def test_get_requirement_invalid(mocked_config, requirement):
     {'0015-ossec_rules.xml': str},
     {'no_exists.xml': 1415}
 ])
-@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_rules_file_download(mock_config, file_):
     """Test download a specified rule filter."""
     try:
@@ -248,7 +248,7 @@ def test_get_rules_file_download(mock_config, file_):
     {'ruleset/rules/no_exists_os_error.xml': 1414},
     {'no_exists_unk_error.xml': 1414}
 ])
-@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_rules_file_download_failed(mock_config, file_):
     """Test download a specified rule filter."""
     with patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(

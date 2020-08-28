@@ -11,7 +11,7 @@ stages:
     request: &get_decoders
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -224,12 +224,7 @@ stages:
     response:
       status_code: 400
       json: &invalid_select
-        type: !anystr
-        detail: !anystr
-        status: 400
-        remediation: !anystr
         code: 1724
-        dapi_errors: !anything
 
   - name: Show decoders using select (one select is invalid)
     request:
@@ -241,6 +236,22 @@ stages:
       status_code: 400
       json:
         <<: *invalid_select
+
+  - name: Show lists using select and specifying a non-existent file in the filename parameter
+    request:
+      verify: False
+      <<: *get_decoders
+      params:
+        select: 'id'
+        filename: 'invalid'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
 
     # GET /decoders?q=name=agent-upgrade;position=2
   - name: Get decoders using query parameter
@@ -259,6 +270,40 @@ stages:
               position: 2
           failed_items: []
           total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  # GET /decoders?q=details.prematch~wazuh;filename=0005-wazuh_decoders.xml;position<5
+  - name: Get decoders using query parameter
+    request:
+      verify: False
+      <<: *get_decoders
+      params:
+        q: 'details.prematch~wazuh;filename=0005-wazuh_decoders.xml;position<5'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *full_items_array
+              position: 0
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: !anyint
+
+    # GET /decoders?q=details.prematch~wazuh;filename=0005-wazuh_decoders.xml;position>5 (empty response)
+  - name: Get decoders using query parameter
+    request:
+      verify: False
+      <<: *get_decoders
+      params:
+        q: 'details.prematch~wazuh;filename=0005-wazuh_decoders.xml;position>5'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
           total_failed_items: !anyint
 
 ---
@@ -321,7 +366,7 @@ stages:
     request: &get_decoders_with_name
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -493,7 +538,7 @@ stages:
     request: &get_decoders_files
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -729,7 +774,7 @@ stages:
     request: &get_decoders_parents
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/parents"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/parents"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -901,7 +946,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/0005-wazuh_decoders.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -914,7 +959,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/wrongfile/download"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/wrongfile/download"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

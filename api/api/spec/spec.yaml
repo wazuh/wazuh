@@ -9,13 +9,13 @@ info:
     \ or looking up syscheck details.\n"
   version: '4.0.0'
   x-revision: 4000
-  title: 'Wazuh API'
+  title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
     url: 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
 
 servers:
-  - url: '{protocol}://{host}:{port}/v4'
+  - url: '{protocol}://{host}:{port}'
     variables:
       protocol:
         default: https
@@ -51,7 +51,9 @@ x-rbac-catalog:
     'role:id':
       description: "Reference security roles via its id (i.e. role:id:1)"
     'user:id':
-      description: "Reference security users via its username (i.e. user:id:wazuh)"
+      description: "Reference security users via its id (i.e. user:id:1)"
+    'rule:id':
+      description: "Reference security rules via its id (i.e. rule:id:1)"
   actions:
     'active-response:command':
       description: "Allow to execute active response commands in the agents"
@@ -157,12 +159,12 @@ x-rbac-catalog:
         actions: ['ciscat:read']
         resources: ['agent:id:001', 'agent:id:003']
         effect: "deny"
-    'cluster:read_config':
+    'cluster:read':
       description: "Read Wazuh's cluster configuration"
       resources:
         - $ref: '#/x-rbac-catalog/resources/node:id'
       example:
-        actions: ['cluster:read_config']
+        actions: ['cluster:read']
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
     'cluster:read_api_config':
@@ -223,12 +225,12 @@ x-rbac-catalog:
         actions: ['cluster:status']
         resources: ['*:*:*']
         effect: "allow"
-    'manager:read_config':
+    'manager:read':
       description: "Read Wazuh manager configuration"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions: ['manager:read_config']
+        actions: ['manager:read']
         resources: ['*:*:*']
         effect: "allow"
     'manager:read_api_config':
@@ -341,9 +343,10 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/policy:id'
         - $ref: '#/x-rbac-catalog/resources/role:id'
         - $ref: '#/x-rbac-catalog/resources/user:id'
+        - $ref: '#/x-rbac-catalog/resources/rule:id'
       example:
         actions: ['security:read']
-        resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
+        resources: ['policy:id:*', 'role:id:2', 'user:id:5', 'rule:id:3']
         effect: "allow"
     'security:update':
       description: "Allow update the information of system's security resources"
@@ -351,9 +354,10 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/policy:id'
         - $ref: '#/x-rbac-catalog/resources/role:id'
         - $ref: '#/x-rbac-catalog/resources/user:id'
+        - $ref: '#/x-rbac-catalog/resources/rule:id'
       example:
         actions: ['security:update']
-        resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
+        resources: ['policy:id:*', 'role:id:4', 'user:id:3', 'rule:id:4']
         effect: "deny"
     'security:delete':
       description: "Delete system's security resources"
@@ -361,9 +365,10 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/policy:id'
         - $ref: '#/x-rbac-catalog/resources/role:id'
         - $ref: '#/x-rbac-catalog/resources/user:id'
+        - $ref: '#/x-rbac-catalog/resources/rule:id'
       example:
         actions: ['security:update']
-        resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
+        resources: ['policy:id:*', 'role:id:3', 'user:id:4', 'rule:id:2']
         effect: "deny"
     'security:read_config':
       description: "Read current security configuration"
@@ -398,7 +403,7 @@ x-rbac-catalog:
         resources: ['agent:id:*']
         effect: "deny"
     'syscheck:run':
-      description: "Run rootcheck and syscheck"
+      description: "Run syscheck"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
       example:
@@ -423,14 +428,22 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
           example:
-            type: "about:blank"
-            title: "Wazuh Error"
+            title: "Bad Request"
+            detail: "'{invalid_param}' is not a '{expected_type}'. Failed validating 'format' in schema['items']: {'description': '{parameter_name}', 'format': '{expected_format}', 'minLength': {expected_length}, 'type': '{expected_type}', 'x-scope': ['', '#/components/parameters/{parameter_name}']}."
+
+    PermissionDeniedResponse:
+      description: "Response to report a permission denied request"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            title: "Permission Denied"
             detail: "Permission denied: Resource type: *:*"
-            status: 400
             remediation: "Please, make sure you have permissions to execute the current request. For more information on how to set up permissions, please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html"
             code: 4000
             dapi_errors:
-              master-node:
+              unknown-node:
                 error: "Permission denied: Resource type: *:*"
 
     UnauthorizedResponse:
@@ -440,10 +453,66 @@ components:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
-            type: "about:blank"
             title: "Unauthorized"
             detail: "No authorization token provided"
-            status: 401
+
+    InvalidHTTPMethodResponse:
+      description: "Response to an invalid HTTP method"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            title: "Method Not Allowed"
+            detail: "Specified method is invalid for this resource"
+
+    WrongContentTypeResponse:
+      description: "The content-type does not match the body type"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            title: "Wazuh Error"
+            detail: "The body type is not the one specified in the content-type"
+            code: 6002
+
+    RequestTooLargeResponse:
+      description: "Maximum request body size exceeded"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            title: "Request Entity Too Large"
+            detail: "Maximum request body size 1048576 exceeded, actual body size 1225245"
+
+    TooManyRequestsResponse:
+      description: "Maximum number of request per minute reached"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            title: "Wazuh Error"
+            detail: "Maximum number of request per minute reached"
+            remediation: "This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html"
+            code: 6001
+
+    ResourceNotFoundResponse:
+      description: "Resource not found"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            title: "Resource Not Found"
+            detail: "The group does not exist"
+            remediation: "Please, use `GET /agents/groups` to find all available groups://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html"
+            code: 1710
+            dapi_errors:
+              unknown-node:
+                error: "The group does not exist"
 
   schemas:
     ## Common models
@@ -705,19 +774,6 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/AgentIdKey'
-
-    AllItemsResponseRootcheck:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: Items that successfully applied the API call action.
-              items:
-                $ref: '#/components/schemas/RootcheckDatabase'
 
     AllItemsResponseRules:
       allOf:
@@ -1156,11 +1212,9 @@ components:
           description: "Node ID where the agent is reporting to"
         dateAdd:
           type: string
-          format: date-time
           description: "Date when the agent was registered"
         lastKeepAlive:
           type: string
-          format: date-time
           description: "Date when the last keep alive was received from the agent"
 
         os:
@@ -1301,6 +1355,12 @@ components:
       description: "Agent ID"
       format: numbers
 
+    AgentID_DELETE:
+      type: string
+      minLength: 3
+      description: "Agent ID|all"
+      format: numbers_delete
+
     NodeID:
       type: string
       description: "Node ID"
@@ -1312,17 +1372,11 @@ components:
       description: "Group name"
       format: group_names
 
-    GroupFile:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            properties:
-              filename:
-                type: string
-              hash:
-                type: string
+    GroupID_DELETE:
+      type: string
+      minLength: 1
+      description: "Group name|all"
+      format: group_names_delete
 
     AgentConfiguration:
       type: object
@@ -1503,15 +1557,69 @@ components:
       type: string
       format: numbers
       description: "Role ID"
+    Role_id_DELETE:
+      type: string
+      description: "Role ID|all"
+      format: numbers_delete
+    Security_rule_id:
+      type: string
+      format: numbers
+      description: "Rule ID"
+    Security_rule_id_DELETE:
+      type: string
+      format: numbers_delete
+      description: "Rule ID|all"
     Policy_id:
       type: string
       format: numbers
       description: "Policy ID"
+    Policy_id_DELETE:
+      type: string
+      description: "Policy ID|all"
+      format: numbers_delete
+    User_id:
+      type: string
+      format: numbers
+      description: "User ID"
+    User_id_DELETE:
+      type: string
+      format: numbers_delete
+      description: "User ID|all"
     Username:
       type: string
       description: "Username of the user"
       format: alphanumeric
     PoliciesRequest:
+      type: object
+      required:
+        - name
+        - policy
+      properties:
+        name:
+          description: "Policy name"
+          type: string
+        policy:
+          description: "This is the definition of the new policy"
+          type: object
+          properties:
+            actions:
+              type: array
+              description: "These are the actions that the policy performs"
+              items:
+                type: string
+            resources:
+              type: array
+              description: "Resources accessed by policy"
+              items:
+                type: string
+            effect:
+              type: string
+              description: "Effect of the policy"
+          required:
+            - actions
+            - resources
+            - effect
+    PoliciesRequest_no_required:
       type: object
       properties:
         name:
@@ -1578,19 +1686,53 @@ components:
           description: "Role rule"
     RolesRequest:
       type: object
+      required:
+        - name
       properties:
         name:
           type: string
           description: "Role name"
+    RolesRequest_no_required:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Role name"
+    SecurityRulesRequest:
+      type: object
+      required:
+        - name
+        - rule
+      properties:
+        name:
+          type: string
+          description: "Rule name"
         rule:
           type: object
-          description: "Role rule"
+          description: "Rule body"
+    SecurityRulesRequest_no_required:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Rule name"
+        rule:
+          type: object
+          description: "Rule body"
     UsersResponse:
       type: object
       properties:
+        id:
+          type: integer
+          description: "User's id"
         username:
           type: string
-          description: "Policy name"
+        allow_run_as:
+          type: boolean
+          description: "Flag to enable the user to log in using authorization context"
+        roles:
+          type: array
+          description: "User's roles"
 
     # Cluster and manager models
     WazuhDaemonsStatus:
@@ -2225,9 +2367,31 @@ components:
 
     APIconfiguration:
       type: object
-      additionalProperties: false
       minProperties: 1
       properties:
+        access:
+          description: API Security Options
+          type: object
+          additionalProperties: false
+          properties:
+            max_login_attempts:
+              description: "Maximum number of login attempts in {block_time} seconds"
+              type: integer
+              format: int32
+              minimum: 1
+              example: 5
+            block_time:
+              description: "Blocking time for IPs that have exceeded {max_login_attempts}. Time counts from the first attempt"
+              type: integer
+              format: int32
+              minimum: 0
+              example: 300
+            max_request_per_minute:
+              description: "Maximum number of requests allowed per minute"
+              type: integer
+              format: int32
+              minimum: 1
+              example: 300
         behind_proxy_server:
           description: Set this option to "yes" in case the API is running behind a proxy server.
           type: boolean
@@ -2287,34 +2451,6 @@ components:
           description: Enable features under development.
           type: boolean
           default: false
-
-    # Rootcheck models
-    RootcheckDatabase:
-      type: object
-      properties:
-        status:
-          type: string
-          description: "Status of the check, with respect to the previous scan"
-          enum:
-          - outstanding
-          - solved
-        readDay:
-          type: string
-          format: date-time
-          description: "Latest scan date"
-        oldDay:
-          type: string
-          format: date-time
-          description: "Previous scan date"
-        pci:
-          type: string
-          description: "PCI DSS requirement level"
-        cis:
-          type: string
-          description: "CIS compliance requirement level"
-        event:
-          type: string
-          description: "Brief description of what is being checked"
 
     LastScan:
       type: object
@@ -2395,7 +2531,6 @@ components:
 
     SecurityConfiguration:
       type: object
-      additionalProperties: false
       minProperties: 1
       properties:
         auth_token_exp_timeout:
@@ -2403,11 +2538,10 @@ components:
           type: integer
           format: int32
           minimum: 30
-          example: 36000
+          example: 3600
         rbac_mode:
           description: "RBAC mode (white/black)"
           type: string
-          additionalProperties: false
           enum: [white, black]
           example: white
 
@@ -3234,6 +3368,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    command:
+      in: query
+      name: command
+      description: "Filter by command"
+      schema:
+        type: string
+        format: alphanumeric
     component:
       in: path
       name: component
@@ -3479,7 +3620,7 @@ components:
       description: "Filter by policy description"
       schema:
         type: string
-        format: alphanumeric
+        format: alphanumeric_symbols
     directory:
       in: query
       name: directory
@@ -3546,7 +3687,7 @@ components:
     file_format:
       in: query
       name: format
-      description: "Select output format to return the file. JSON will format the file in JSON format and XML will return the XML raw file in a string"
+      description: "Filter by file format. For example 'deb' will output deb files."
       schema:
         type: string
         format: alphanumeric
@@ -3604,6 +3745,7 @@ components:
         format: int32
         default: 500
         minimum: 1
+        maximum: 500
     list_agents:
       in: query
       name: list_agents
@@ -3612,6 +3754,15 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/AgentID'
+    list_agents_delete:
+      in: query
+      name: list_agents
+      description: "List of agent IDs (separated by comma), use the keyword 'all' to select all agents"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/AgentID_DELETE'
     list_groups:
       in: query
       name: list_groups
@@ -3620,17 +3771,15 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupID'
-    list_policies:
+    list_groups_delete:
       in: query
-      name: list_policies
-      description: "Array of policy IDs"
+      name: list_groups
+      description: "List of group IDs (separated by comma), use the keyword 'all' to select all groups"
+      required: true
       schema:
         type: array
         items:
-          type: integer
-          minLength: 1
-          minimum: 2
-          description: "Policy ID"
+          $ref: '#/components/schemas/GroupID_DELETE'
     list_nodes:
       in: query
       name: list_nodes
@@ -3750,6 +3899,15 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Policy_id'
+    policy_ids_rbac_delete:
+      in: query
+      name: 'policy_ids'
+      description: "List of policy IDs (separated by comma), use the keyword 'all' to select all policies"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Policy_id_DELETE'
     policy_ids_rbac_required:
       in: query
       name: 'policy_ids'
@@ -3759,13 +3917,6 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Policy_id'
-    policy_name:
-      in: query
-      name: policy_name
-      description: "Specify an existent policy name"
-      required: True
-      schema:
-        type: string
     endpoint:
       in: query
       name: endpoint
@@ -3785,14 +3936,20 @@ components:
       description: "Query to filter results by. For example q=&quot;status=active&quot;"
       schema:
         type: string
-      allowReserved: true
     rationale:
       in: query
       name: rationale
       description: "Filter by rationale"
       schema:
         type: string
-        format: alphanumeric
+        format: alphanumeric_symbols
+    raw:
+      in: query
+      name: raw
+      description: "Format response in plain text"
+      required: False
+      schema:
+        type: boolean
     registry:
       in: query
       name: registry
@@ -3812,6 +3969,7 @@ components:
       description: "Filter by remediation"
       schema:
         type: string
+        format: alphanumeric_symbols
     rule_requirement:
       in: path
       name: requirement
@@ -3842,20 +4000,53 @@ components:
     role_ids:
       in: query
       name: 'role_ids'
-      description: "List of role IDs"
+      description: "List of role IDs (separated by comma)"
       schema:
         type: array
         items:
           $ref: '#/components/schemas/Role_id'
+    role_ids_delete:
+      in: query
+      name: 'role_ids'
+      description: "List of role IDs (separated by comma), use the keyword 'all' to select all roles"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Role_id_DELETE'
     role_ids_required:
       in: query
       name: 'role_ids'
-      description: "List of role IDs"
+      description: "List of role IDs (separated by comma)"
       required: True
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/Role_id'
+          $ref: '#/components/schemas/Role_id_DELETE'
+    security_rule_id:
+      in: path
+      name: 'rule_id'
+      description: "Specify a rule ID"
+      required: true
+      schema:
+        $ref: '#/components/schemas/Security_rule_id'
+    security_rule_ids:
+      in: query
+      name: 'rule_ids'
+      description: "List of rule IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Security_rule_id'
+    security_rule_ids_delete:
+      in: query
+      name: 'rule_ids'
+      description: "List of rule IDs (separated by comma), use the keyword 'all' to select all rules"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Security_rule_id_DELETE'
     security_position:
       in: query
       name: 'position'
@@ -3864,13 +4055,13 @@ components:
       schema:
         type: integer
         minimum: 0
-    role_name:
+    reason:
       in: query
-      name: role_name
-      description: "Specify and existent role name"
-      required: True
+      name: reason
+      description: "Filter by reason"
       schema:
         type: string
+        format: alphanumeric_symbols
     rule_ids:
       in: query
       name: rule_ids
@@ -3881,13 +4072,6 @@ components:
           type: integer
           format: int32
           minimum: 1
-    rulesetPath:
-      in: query
-      name: path
-      description: "Filter by path"
-      schema:
-        type: string
-        format: ruleset_path
     score:
       in: query
       name: score
@@ -3925,6 +4109,13 @@ components:
       schema:
         type: string
         format: sort
+    status:
+      in: query
+      name: status
+      description: "Filter by status"
+      schema:
+        type: string
+        format: alphanumeric
     statusAgentParam:
       in: query
       name: status
@@ -3957,7 +4148,7 @@ components:
       description: "Filter by title"
       schema:
         type: string
-        format: alphanumeric
+        format: alphanumeric_symbols
     type_agents:
       in: query
       name: type
@@ -3984,6 +4175,30 @@ components:
       description: "Type of file"
       schema:
         type: string
+    user_ids:
+      in: query
+      name: 'user_ids'
+      description: "List of user IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/User_id'
+    user_ids_delete:
+      in: query
+      name: 'user_ids'
+      description: "List of user IDs (separated by comma), use the keyword 'all' to select all users"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/User_id_DELETE'
+    user_id_required:
+      in: path
+      name: 'user_id'
+      description: "User ID"
+      required: True
+      schema:
+        $ref: '#/components/schemas/User_id'
     unknown:
       in: query
       name: unknown
@@ -4072,7 +4287,7 @@ components:
     field:
       in: query
       name: field
-      description: "Indicate a section child, e.g, fields for rule section are include, decoder_dir, etc"
+      description: "Indicate a section child. E.g, fields for *ruleset* section are: decoder_dir, rule_dir, etc"
       schema:
         type: string
         format: names
@@ -4083,10 +4298,10 @@ components:
       schema:
         type: string
         format: date
-    category:
+    tag:
       in: query
-      name: category
-      description: "Filter by category of log"
+      name: tag
+      description: "Wazuh component that logged the event"
       schema:
         type: string
         enum:
@@ -4112,6 +4327,7 @@ components:
         - wazuh-modulesd:aws-s3
         - wazuh-modulesd:azure-logs
         - wazuh-modulesd:ciscat
+        - wazuh-modulesd:control
         - wazuh-modulesd:command
         - wazuh-modulesd:database
         - wazuh-modulesd:docker-listener
@@ -4120,14 +4336,13 @@ components:
         - wazuh-modulesd:osquery
         - wazuh-modulesd:syscollector
         - wazuh-modulesd:vulnerability-detector
-    type_log:
+    log_level:
       in: query
-      name: type_log
+      name: level
       description: "Filter by log level"
       schema:
         type: string
         enum:
-          - all
           - critical
           - debug
           - debug2
@@ -4224,23 +4439,6 @@ components:
       in: query
       name: mitre
       description: Filters by MITRE attack ID.
-      schema:
-        type: string
-        format: alphanumeric
-    rootcheck_status:
-      in: query
-      name: status
-      description: "Filter by scan status"
-      schema:
-        type: string
-        enum:
-        - all
-        - outstanding
-        - solved
-    cis:
-      in: query
-      name: cis
-      description: "Filter by CIS requirement"
       schema:
         type: string
         format: alphanumeric
@@ -4529,14 +4727,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    list_filepath:
-      in: query
-      name: path
-      description: "List file path"
-      required: true
-      schema:
-        type: string
-        format: etc_path
     local.ip:
       in: query
       name: local.ip
@@ -4797,8 +4987,6 @@ tags:
     description: "Attacks information from MITRE database"
   - name: overview
     description: "Overwiew of Wazuh"
-  - name: rootcheck
-    description: "Detection of rootkit, ports and hidden processes and many other scans"
   - name: rules
     description: "Rules management"
   - name: sca
@@ -4819,6 +5007,8 @@ paths:
       summary: 'Root-endpoint info'
       description: "Return basic information about the API"
       operationId: api.controllers.default_controller.default_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
       responses:
         '200':
           description: "API default info"
@@ -4876,6 +5066,16 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents:
     delete:
@@ -4889,7 +5089,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/list_agents_delete'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/older_than'
@@ -4925,6 +5125,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
     get:
       tags:
       - agents
@@ -5051,6 +5257,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
     post:
       tags:
       - agents
@@ -5105,6 +5317,16 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/config/{component}/{configuration}:
     get:
@@ -5150,6 +5372,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/group:
     delete:
@@ -5191,6 +5419,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/group/is_sync:
     get:
@@ -5230,6 +5464,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/group/{group_id}:
     delete:
@@ -5259,6 +5499,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     put:
       tags:
@@ -5294,6 +5542,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/key:
     get:
@@ -5333,6 +5589,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/restart:
     put:
@@ -5371,6 +5633,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/upgrade:
     put:
@@ -5402,6 +5670,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/upgrade_custom:
     put:
@@ -5431,6 +5705,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/{agent_id}/upgrade_result:
     get:
@@ -5464,6 +5744,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/group:
     delete:
@@ -5478,7 +5764,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/list_agents_delete'
         - $ref: '#/components/parameters/group_id_query'
       responses:
         '200':
@@ -5508,6 +5794,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     put:
       tags:
@@ -5562,6 +5856,54 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/group/{group_id}/restart:
+    put:
+      tags:
+        - agents
+      summary: 'Restart all agents in a group'
+      description: 'Restart all agents which belong to a given group'
+      operationId: api.controllers.agents_controller.restart_agents_by_group
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:restart'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/group_id'
+      responses:
+        '200':
+          description: Agents restarted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                example:
+                  message: "Restart command sent to all selected agents"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /groups:
     delete:
@@ -5577,7 +5919,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_groups'
+        - $ref: '#/components/parameters/list_groups_delete'
       responses:
         '200':
           description: "Remove multiple group of multiple agents"
@@ -5608,6 +5950,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     get:
       tags:
@@ -5661,6 +6009,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     post:
       tags:
@@ -5687,6 +6041,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /groups/{group_id}/agents:
     get:
@@ -5807,6 +6167,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /groups/{group_id}/configuration:
     get:
@@ -5869,6 +6237,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
     put:
       tags:
         - groups
@@ -5903,6 +6279,18 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /groups/{group_id}/files:
     get:
@@ -5965,6 +6353,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /groups/{group_id}/files/{file_name}/json:
     get:
@@ -6011,6 +6407,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /groups/{group_id}/files/{file_name}/xml:
     get:
@@ -6038,38 +6442,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
-
-  /groups/{group_id}/restart:
-    put:
-      tags:
-        - groups
-      summary: 'Restart all agents in a group'
-      description: 'Restart all agents which belong to a given group'
-      operationId: api.controllers.agents_controller.restart_agents_by_group
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:restart'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id'
-      responses:
-        '200':
-          description: Agents restarted
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
-                example:
-                  message: "Restart command sent to all selected agents"
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/insert:
     post:
@@ -6136,6 +6516,16 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/insert/quick:
     post:
@@ -6170,6 +6560,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/no_group:
     get:
@@ -6287,6 +6683,59 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/node/{node_id}/restart:
+      put:
+        tags:
+          - agents
+        summary: "Restart all agents which belong to a node"
+        description: "Restart all agents which belong to a specific given node"
+        operationId: api.controllers.agents_controller.restart_agents_by_node
+        x-rbac-actions:
+          - $ref: '#/x-rbac-catalog/actions/cluster:read'
+          - $ref: '#/x-rbac-catalog/actions/agent:restart'
+        parameters:
+          - $ref: '#/components/parameters/pretty'
+          - $ref: '#/components/parameters/wait_for_complete'
+          - $ref: '#/components/parameters/node_id'
+        responses:
+          '200':
+            description: 'Agents restarted'
+            content:
+              application/json:
+                schema:
+                  allOf:
+                    - $ref: '#/components/schemas/ApiResponse'
+                    - type: object
+                      properties:
+                        data:
+                          $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                example:
+                  data:
+                    affected_items:
+                      - "002"
+                      - "003"
+                      - "007"
+                    total_affected_items: 3
+                    failed_items: []
+                    total_failed_items: 0
+                  message: "Restart command sent to all agents"
+          '400':
+            $ref: '#/components/responses/ResponseError'
+          '401':
+            $ref: '#/components/responses/UnauthorizedResponse'
+          '403':
+            $ref: '#/components/responses/PermissionDeniedResponse'
+          '405':
+            $ref: '#/components/responses/InvalidHTTPMethodResponse'
+          '429':
+            $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/outdated:
     get:
@@ -6334,6 +6783,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/restart:
     put:
@@ -6373,6 +6828,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/stats/distinct:
     get:
@@ -6464,6 +6925,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/summary/os:
     get:
@@ -6498,6 +6965,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/summary/status:
     get:
@@ -6534,6 +7007,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /ciscat/{agent_id}/results:
     get:
@@ -6561,7 +7040,7 @@ paths:
         - $ref: '#/components/parameters/notchecked'
         - $ref: '#/components/parameters/unknown'
         - $ref: '#/components/parameters/score'
-
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "List of agents or error description"
@@ -6596,6 +7075,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/local/info:
     get:
@@ -6605,7 +7090,7 @@ paths:
       description: "Return basic information about the cluster node receiving the request"
       operationId: api.controllers.cluster_controller.get_cluster_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6644,6 +7129,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/nodes:
     get:
@@ -6653,7 +7144,7 @@ paths:
       description: "Get information about all nodes in the cluster or a list of them"
       operationId: api.controllers.cluster_controller.get_cluster_nodes
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6664,6 +7155,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/node_type'
         - $ref: '#/components/parameters/list_nodes'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "List of connected nodes"
@@ -6699,6 +7191,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/healthcheck:
     get:
@@ -6708,7 +7206,7 @@ paths:
       description: "Return cluster healthcheck information for all nodes or a list of them. Such information includes last keep alive, last synchronization time and number of agents reporting on each node"
       operationId: api.controllers.cluster_controller.get_healthcheck
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6763,6 +7261,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/status:
     get:
@@ -6808,6 +7312,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/local/config:
     get:
@@ -6817,7 +7327,7 @@ paths:
       description: "Return the current node cluster configuration"
       operationId: api.controllers.cluster_controller.get_config
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6886,6 +7396,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/api/config:
     get:
@@ -6922,6 +7438,10 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        access:
+                          max_login_attempts: 5
+                          block_time: 300
+                          max_request_per_minute: 300
                         logs:
                           path: /var/ossec/logs/api.log
                           level: info
@@ -6969,6 +7489,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     put:
       tags:
@@ -7007,6 +7533,16 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -7041,6 +7577,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/status:
     get:
@@ -7050,7 +7592,7 @@ paths:
       description: "Return the status of all Wazuh daemons in node node_id"
       operationId: api.controllers.cluster_controller.get_status_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7094,6 +7636,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/info:
     get:
@@ -7103,7 +7651,7 @@ paths:
       description: "Return basic information about a specified node such as version, compilation date, installation path"
       operationId: api.controllers.cluster_controller.get_info_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7139,6 +7687,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/configuration:
     get:
@@ -7148,7 +7702,7 @@ paths:
       description: "Return wazuh configuration used in node {node_id}"
       operationId: api.controllers.cluster_controller.get_configuration_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7210,6 +7764,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/stats:
     get:
@@ -7219,7 +7779,7 @@ paths:
       description: "Return Wazuh statistical information in node {node_id} for the current or specified date"
       operationId: api.controllers.cluster_controller.get_stats_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7269,6 +7829,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/stats/hourly:
     get:
@@ -7278,7 +7844,7 @@ paths:
       description: "Return Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the average of alerts per hour"
       operationId: api.controllers.cluster_controller.get_stats_hourly_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7327,6 +7893,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/stats/weekly:
     get:
@@ -7336,7 +7908,7 @@ paths:
       description: "Return Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the average of alerts per hour for that specific day"
       operationId: api.controllers.cluster_controller.get_stats_weekly_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7548,6 +8120,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/stats/analysisd:
     get:
@@ -7557,7 +8135,7 @@ paths:
       description: "Return Wazuh analysisd statistical information in node {node_id}"
       operationId: api.controllers.cluster_controller.get_stats_analysisd_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7626,6 +8204,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/stats/remoted:
     get:
@@ -7635,7 +8219,7 @@ paths:
       description: "Return Wazuh remoted statistical information in node {node_id}"
       operationId: api.controllers.cluster_controller.get_stats_remoted_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7666,6 +8250,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/logs:
     get:
@@ -7675,7 +8265,7 @@ paths:
       description: "Return the last 2000 wazuh log entries in node {node_id}"
       operationId: api.controllers.cluster_controller.get_log_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7684,8 +8274,9 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/category'
-        - $ref: '#/components/parameters/type_log'
+        - $ref: '#/components/parameters/tag'
+        - $ref: '#/components/parameters/log_level'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Wazuh node logs"
@@ -7721,6 +8312,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/logs/summary:
     get:
@@ -7730,7 +8327,7 @@ paths:
       description: "Return a summary of the last 2000 wazuh log entries in node {node_id}"
       operationId: api.controllers.cluster_controller.get_log_summary_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7778,6 +8375,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/files:
     get:
@@ -7787,6 +8390,7 @@ paths:
       description: "Return file contents from any file in cluster node {node_id}"
       operationId: api.controllers.cluster_controller.get_files_node
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
         - $ref: '#/x-rbac-catalog/actions/cluster:read_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -7816,6 +8420,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     put:
       tags:
@@ -7824,6 +8434,7 @@ paths:
       description: "Replace file contents with the data contained in the API request in a specified cluster node"
       operationId: api.controllers.cluster_controller.put_files_node
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
         - $ref: '#/x-rbac-catalog/actions/cluster:delete_file'
         - $ref: '#/x-rbac-catalog/actions/cluster:upload_file'
       parameters:
@@ -7859,6 +8470,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -7867,6 +8486,7 @@ paths:
       description: "Remove a specified file in the node {node-id}"
       operationId: api.controllers.cluster_controller.delete_files_node
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
         - $ref: '#/x-rbac-catalog/actions/cluster:delete_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -7892,6 +8512,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/restart:
     put:
@@ -7901,6 +8527,7 @@ paths:
       description: "Restart all nodes in the cluster or a list of them"
       operationId: api.controllers.cluster_controller.put_restart
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
         - $ref: '#/x-rbac-catalog/actions/cluster:restart'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -7931,6 +8558,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/configuration/validation:
     get:
@@ -7940,7 +8573,7 @@ paths:
       description: "Return whether the Wazuh configuration is correct or not in all cluster nodes or a list of them"
       operationId: api.controllers.cluster_controller.get_conf_validation
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7974,6 +8607,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /cluster/{node_id}/configuration/{component}/{configuration}:
     get:
@@ -7983,7 +8622,7 @@ paths:
       description: "Return the requested configuration in JSON format"
       operationId: api.controllers.cluster_controller.get_node_config
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8021,6 +8660,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /lists:
     get:
@@ -8102,6 +8747,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /lists/files:
     get:
@@ -8152,6 +8803,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/status:
     get:
@@ -8161,7 +8818,7 @@ paths:
       description: "Return the status of all Wazuh daemons"
       operationId: api.controllers.manager_controller.get_status
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8204,6 +8861,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/info:
     get:
@@ -8213,7 +8876,7 @@ paths:
       description: "Return basic information such as version, compilation date, installation path"
       operationId: api.controllers.manager_controller.get_info
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8248,6 +8911,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/configuration:
     get:
@@ -8257,7 +8926,7 @@ paths:
       description: "Return wazuh configuration used"
       operationId: api.controllers.manager_controller.get_configuration
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8318,6 +8987,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/stats:
     get:
@@ -8327,7 +9002,7 @@ paths:
       description: "Return Wazuh statistical information for the current or specified date"
       operationId: api.controllers.manager_controller.get_stats
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8376,6 +9051,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/stats/hourly:
     get:
@@ -8385,7 +9066,7 @@ paths:
       description: "Return Wazuh statistical information per hour. Each number in the averages field represents the average of alerts per hour"
       operationId: api.controllers.manager_controller.get_stats_hourly
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8433,6 +9114,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/stats/weekly:
     get:
@@ -8442,7 +9129,7 @@ paths:
       description: "Return Wazuh statistical information per week. Each number in the averages field represents the average of alerts per hour for that specific day"
       operationId: api.controllers.manager_controller.get_stats_weekly
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8653,6 +9340,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/stats/analysisd:
     get:
@@ -8662,7 +9355,7 @@ paths:
       description: "Return Wazuh analysisd statistical information"
       operationId: api.controllers.manager_controller.get_stats_analysisd
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8730,6 +9423,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/stats/remoted:
     get:
@@ -8739,7 +9438,7 @@ paths:
       description: "Return Wazuh remoted statistical information"
       operationId: api.controllers.manager_controller.get_stats_remoted
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8769,6 +9468,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/logs:
     get:
@@ -8778,7 +9483,7 @@ paths:
       description: "Return the last 2000 wazuh log entries"
       operationId: api.controllers.manager_controller.get_log
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8786,8 +9491,9 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/category'
-        - $ref: '#/components/parameters/type_log'
+        - $ref: '#/components/parameters/tag'
+        - $ref: '#/components/parameters/log_level'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Wazuh logs"
@@ -8823,6 +9529,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/logs/summary:
     get:
@@ -8832,7 +9544,7 @@ paths:
       description: "Return a summary of the last 2000 wazuh log entries"
       operationId: api.controllers.manager_controller.get_log_summary
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8879,6 +9591,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/files:
     get:
@@ -8888,6 +9606,7 @@ paths:
       description: "Return file contents from any file"
       operationId: api.controllers.manager_controller.get_files
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
         - $ref: '#/x-rbac-catalog/actions/manager:read_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -8916,6 +9635,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     put:
       tags:
@@ -8924,6 +9649,7 @@ paths:
       description: "Replace file contents with the data contained in the API request"
       operationId: api.controllers.manager_controller.put_files
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
         - $ref: '#/x-rbac-catalog/actions/manager:delete_file'
         - $ref: '#/x-rbac-catalog/actions/manager:upload_file'
       parameters:
@@ -8954,6 +9680,14 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -8962,6 +9696,7 @@ paths:
       description: "Remove a specified file"
       operationId: api.controllers.manager_controller.delete_files
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
         - $ref: '#/x-rbac-catalog/actions/manager:delete_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -8988,6 +9723,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/api/config:
     get:
@@ -9022,6 +9763,10 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        access:
+                          max_login_attempts: 5
+                          block_time: 300
+                          max_request_per_minute: 300
                         logs:
                           path: /var/ossec/logs/api.log
                           level: info
@@ -9044,6 +9789,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     put:
       tags:
@@ -9080,11 +9831,21 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
         - manager
-      summary: "Restore default API configuration locally"
+      summary: "Restore default API configuration"
       description: "Replace local API configuration with the original one"
       operationId: api.controllers.manager_controller.delete_api_config
       x-rbac-actions:
@@ -9112,6 +9873,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/restart:
     put:
@@ -9121,6 +9888,7 @@ paths:
       description: "Restart the wazuh manager"
       operationId: api.controllers.manager_controller.put_restart
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
         - $ref: '#/x-rbac-catalog/actions/manager:restart'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -9144,16 +9912,22 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/configuration/validation:
     get:
       tags:
       - manager
       summary: "Check Wazuh configuration"
-      description: "Return wether the Wazuh configuration is correct"
+      description: "Return whether the Wazuh configuration is correct"
       operationId: api.controllers.manager_controller.get_conf_validation
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9177,6 +9951,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/configuration/{component}/{configuration}:
     get:
@@ -9186,7 +9966,7 @@ paths:
       description: "Return the requested configuration in JSON format"
       operationId: api.controllers.manager_controller.get_manager_config_ondemand
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9217,6 +9997,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /mitre:
     get:
@@ -9294,268 +10080,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
-
-  /rootcheck:
-    put:
-      tags:
-      - rootcheck
-      summary: "Run a rootcheck scan in all agents"
-      description: "Run syscheck and rootcheck in all agents (Wazuh launches both processes simultaneously)"
-      operationId: api.controllers.rootcheck_controller.put_rootcheck
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Restarting Syscheck/Rootcheck on all agents"
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-    delete:
-      tags:
-      - rootcheck
-      summary: "Clear rootcheck scan results in all agents"
-      description: "Clear rootcheck scan results in all agents"
-      operationId: api.controllers.rootcheck_controller.delete_rootcheck
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Rootcheck database deleted"
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-  /rootcheck/{agent_id}:
-    get:
-      tags:
-      - rootcheck
-      summary: "Get Rootcheck database"
-      description: "Return rootcheck findings and scan results in the specified agent"
-      operationId: api.controllers.rootcheck_controller.get_rootcheck_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/rootcheck_status'
-        - $ref: '#/components/parameters/pci_dss'
-        - $ref: '#/components/parameters/cis'
-      responses:
-        '200':
-          description: "Latest rootcheck scan result"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseRootcheck'
-              example:
-                data:
-                  affected_items:
-                    - status: outstanding
-                      readDay: '2019-03-08T09:20:05Z'
-                      oldDay: '2019-03-08T09:20:05Z'
-                      event: 'System Audit: SSH Hardening - 3: Root can log in. File: /etc/ssh/sshd_config.
-                      Reference: 3 .'
-                    - status: outstanding
-                      readDay: "2019-03-08T09:20:05Z"
-                      oldDay: "2019-03-08T09:20:05Z"
-                      pci_dss: 2.2.4
-                      event: "System Audit: SSH Hardening - 4: No Public Key authentication {PCI_DSS: 2.2.4}. File: /etc/ssh/sshd_config. Reference: 4 ."
-                  failed_items: []
-                  total_affected_items: 2
-                  total_failed_items: 0
-                message: ToDo
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-    put:
-      tags:
-      - rootcheck
-      summary: "Run rootcheck scan in an agent"
-      description: "Run syscheck and rootcheck scans in a specified agent (Wazuh launches both processes at the same time)"
-      operationId: api.controllers.rootcheck_controller.put_rootcheck_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Restarting Syscheck/Rootcheck locally"
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-    delete:
-      tags:
-      - rootcheck
-      summary: "Clear rootcheck scan results for a specified agent"
-      description: "Clear rootcheck scan results for a specified agent"
-      operationId: api.controllers.rootcheck_controller.delete_rootcheck_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Rootcheck database deleted"
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-  /rootcheck/{agent_id}/pci:
-    get:
-      tags:
-      - rootcheck
-      summary: "Get PCI requirements in the rootcheck database"
-      description: "Return a list containing PCI requirements that have been detected by rootcheck scans"
-      operationId: api.controllers.rootcheck_controller.get_rootcheck_pci_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: "PCI requirements list"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - 2.2.4
-                  failed_items: []
-                  total_affected_items: 1
-                  total_failed_items: 0
-                message: ToDo
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-  /rootcheck/{agent_id}/cis:
-    get:
-      tags:
-      - rootcheck
-      summary: "Get CIS requirements in the rootcheck database"
-      description: "Return a list containing CIS requirements that have been detected by rootcheck scans"
-      operationId: api.controllers.rootcheck_controller.get_rootcheck_cis_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: "CIS requirements list"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - 2.3 Debian Linux
-                    - 1.4 Debian Linux
-                  failed_items: []
-                  total_affected_items: 2
-                  total_failed_items: 0
-                message: ToDo
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-  /rootcheck/{agent_id}/last_scan:
-    get:
-      tags:
-      - rootcheck
-      summary: "Get last rootcheck scan dates"
-      description: "Return when the last rootcheck scan started and ended. If the scan is still in progress the end date will be unknown"
-      operationId: api.controllers.rootcheck_controller.get_last_scan_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-      responses:
-        '200':
-          description: "Scan dates"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/LastScan'
-              example:
-                data:
-                  end: "2019-03-08T10:35:21Z"
-                  start: "2019-03-08T10:34:56Z"
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /rules:
     get:
@@ -9645,6 +10175,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /rules/groups:
     get:
@@ -9691,6 +10227,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /rules/requirement/{requirement}:
     get:
@@ -9739,6 +10281,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /rules/files:
     get:
@@ -9794,6 +10342,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /rules/files/{filename}/download:
     get:
@@ -9819,6 +10373,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /sca/{agent_id}:
     get:
@@ -9888,6 +10448,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /sca/{agent_id}/checks/{policy_id}:
     get:
@@ -9907,6 +10473,9 @@ paths:
         - $ref: '#/components/parameters/description'
         - $ref: '#/components/parameters/rationale'
         - $ref: '#/components/parameters/remediation'
+        - $ref: '#/components/parameters/command'
+        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/reason'
         - $ref: '#/components/parameters/full_path_filter'
         - $ref: '#/components/parameters/process'
         - $ref: '#/components/parameters/directory'
@@ -9973,13 +10542,19 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscheck:
     put:
       tags:
       - syscheck
       summary: "Run a syscheck scan in all agents"
-      description: "Run syscheck and rootcheck in all agents (Wazuh launches both processes simultaneously)"
+      description: "Run syscheck in all agents"
       operationId: api.controllers.syscheck_controller.put_syscheck
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscheck:run'
@@ -10014,6 +10589,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscheck/{agent_id}:
     get:
@@ -10041,6 +10622,7 @@ paths:
         - $ref: '#/components/parameters/sha256'
         - $ref: '#/components/parameters/hashfilter'
         - $ref: '#/components/parameters/distinct'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Latest syscheck scan result"
@@ -10094,6 +10676,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -10131,6 +10719,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscheck/{agent_id}/last_scan:
     get:
@@ -10170,6 +10764,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /decoders:
     get:
@@ -10234,6 +10834,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /decoders/files:
     get:
@@ -10286,6 +10892,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /decoders/files/{filename}/download:
     get:
@@ -10311,6 +10923,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /decoders/parents:
     get:
@@ -10367,6 +10985,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscheck:
     delete:
@@ -10380,7 +11004,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/list_agents_delete'
       responses:
         '200':
           description: "Delete syscheck database"
@@ -10417,6 +11041,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/ciscat/results:
     get:
@@ -10503,6 +11133,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/hardware:
     get:
@@ -10590,6 +11226,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/netaddr:
     get:
@@ -10660,6 +11302,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/netiface:
     get:
@@ -10772,6 +11420,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/netproto:
     get:
@@ -10839,6 +11493,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/os:
     get:
@@ -10934,6 +11594,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/packages:
     get:
@@ -11026,6 +11692,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/ports:
     get:
@@ -11121,6 +11793,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/processes:
     get:
@@ -11241,6 +11919,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /experimental/syscollector/hotfixes:
     get:
@@ -11292,6 +11976,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/hardware:
     get:
@@ -11344,6 +12034,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/hotfixes:
     get:
@@ -11364,6 +12060,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/hotfix'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return an agent's hotfix results"
@@ -11391,6 +12088,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/netaddr:
     get:
@@ -11415,6 +12118,7 @@ paths:
         - $ref: '#/components/parameters/address'
         - $ref: '#/components/parameters/broadcast'
         - $ref: '#/components/parameters/netmask'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's network results"
@@ -11445,6 +12149,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/netiface:
     get:
@@ -11477,6 +12187,7 @@ paths:
         - $ref: '#/components/parameters/rx.errors'
         - $ref: '#/components/parameters/tx.dropped'
         - $ref: '#/components/parameters/rx.dropped'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's network interfaces results"
@@ -11519,6 +12230,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/netproto:
     get:
@@ -11542,6 +12259,7 @@ paths:
         - $ref: '#/components/parameters/type_syscollector'
         - $ref: '#/components/parameters/gateway'
         - $ref: '#/components/parameters/dhcp'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's network protocol results"
@@ -11572,6 +12290,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/os:
     get:
@@ -11626,6 +12350,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/packages:
     get:
@@ -11650,6 +12380,7 @@ paths:
         - $ref: '#/components/parameters/architecture'
         - $ref: '#/components/parameters/file_format'
         - $ref: '#/components/parameters/package_version'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's packages results"
@@ -11718,6 +12449,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/ports:
     get:
@@ -11745,6 +12482,7 @@ paths:
         - $ref: '#/components/parameters/tx_queue'
         - $ref: '#/components/parameters/state'
         - $ref: '#/components/parameters/process'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's packages results"
@@ -11813,6 +12551,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /syscollector/{agent_id}/processes:
     get:
@@ -11846,6 +12590,7 @@ paths:
         - $ref: '#/components/parameters/ruser'
         - $ref: '#/components/parameters/sgroup'
         - $ref: '#/components/parameters/suser'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of agent's processes results"
@@ -11933,18 +12678,93 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/user/authenticate:
     get:
       tags:
-      - security
+        - security
       summary: "User/password authentication to get an access token"
-      description: "This method should be called to get an API token. This token will expire at some time"
+      description: "This method should be called to get an API token. This token will expire after auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
       parameters:
-        - $ref: '#/components/parameters/auth_context'
+        - $ref: '#/components/parameters/raw'
       security:
         - basicAuth: []
+      responses:
+        '200':
+          description: "Login successful"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+              example:
+                token: "<generated_token>"
+            text/plain:
+              schema:
+                type: string
+              example: "<generated_token>"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    delete:
+      tags:
+        - security
+      summary: "Logout current user"
+      description: "This method should be called to invalidate all the current user's tokens."
+      operationId: api.controllers.security_controller.logout_user
+      responses:
+        '200':
+          description: "Logout successful"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: "User wazuh logout correctly."
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /security/user/authenticate/run_as:
+    post:
+      tags:
+      - security
+      summary: "Auth_context based authentication to get an access token"
+      description: "This method should be called to get an API token using an authorization context body. This token will expire after auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT /security/config"
+      operationId: api.controllers.security_controller.login_user
+      parameters:
+        - $ref: '#/components/parameters/raw'
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
       responses:
         '200':
           description: "Login successful"
@@ -11968,8 +12788,8 @@ paths:
       description: 'Get all RBAC actions, including the potential related resources and endpoints.'
       operationId: api.controllers.security_controller.get_rbac_actions
       parameters:
-        - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/endpoint'
+        - $ref: '#/components/parameters/pretty'
       responses:
         '200':
           description: "Return a list of RBAC actions"
@@ -12010,6 +12830,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/resources:
     get:
@@ -12019,8 +12845,8 @@ paths:
       description: 'This method should be called to get all current defined RBAC resources.'
       operationId: api.controllers.security_controller.get_rbac_resources
       parameters:
-        - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/resource_list'
+        - $ref: '#/components/parameters/pretty'
       responses:
         '200':
           description: "Return all RBAC resources"
@@ -12053,11 +12879,17 @@ paths:
                 role:id:
                   description: 'Reference security role via its id (i.e. role:id:1)'
                 user:id:
-                  description: 'Reference security user via its username (i.e. user:id:wazuh)'
+                  description: 'Reference security user via its id (i.e. user:id:1)'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/user/revoke:
     put:
@@ -12073,6 +12905,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/roles:
     get:
@@ -12109,30 +12947,32 @@ paths:
                     - id: 1
                       name: 'administrator'
                       policies:
-                        id: 1
-                        name: wazuhPolicy
-                        policy:
-                          actions:
-                            - "agent:read"
-                            - "agent:delete"
-                          effect: allow
-                          resources:
-                            - "agent:id:*"
+                        - 1
+                      users:
+                        - 1
                       rule:
-                        FIND:
-                          r'^auth[a-zA-Z]+$':
-                            - "administrator"
+                        - 1
                     - id: 2
                       name: 'normal_user'
+                      policies:
+                        - 4
+                        - 5
+                      users:
+                        - 3
                       rule:
-                        MATCH:
-                          privileges: 'limit_access'
+                        - 3
                   total_affected_items: 2
                 message: "All available roles were shown"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     post:
       tags:
@@ -12152,9 +12992,6 @@ paths:
               $ref: '#/components/schemas/RolesRequest'
             example:
               name: "normal"
-              rule:
-                MATCH:
-                  definition: "normalRule"
       responses:
         '200':
           description: "Return the information of the new role"
@@ -12182,6 +13019,16 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -12192,7 +13039,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
-        - $ref: '#/components/parameters/role_ids'
+        - $ref: '#/components/parameters/role_ids_delete'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -12244,6 +13091,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/roles/{role_id}:
     put:
@@ -12255,19 +13108,16 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
+        - $ref: '#/components/parameters/role_id'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/role_id'
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RolesRequest'
+              $ref: '#/components/schemas/RolesRequest_no_required'
             example:
               name: "normal"
-              rule:
-                MATCH:
-                  definition: "normalRule"
       responses:
         '200':
           description: "Information of role modified"
@@ -12295,6 +13145,241 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /security/rules:
+    get:
+      tags:
+        - security
+      summary: "Get all security rules"
+      description: "Get a list of security rules from the system or all of them. These rules must be mapped with roles to obtain certain access privileges. For a specific list, indicate the ids separated by commas. Example: ?rule_ids=1,2,3"
+      operationId: api.controllers.security_controller.get_rules
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:read'
+      parameters:
+        - $ref: '#/components/parameters/security_rule_ids'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Return a list of security rules"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRoles'
+              example:
+                data:
+                  affected_items:
+                    - id: 1
+                      name: "admin_rule"
+                      rule:
+                        FIND:
+                          r'^auth[a-zA-Z]+$':
+                            - "administrator"
+                    - id: 2
+                      name: "limit_access_rule"
+                      rule:
+                        MATCH:
+                          privileges: 'limit_access'
+                  total_affected_items: 2
+                message: "All available rules were shown"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    post:
+      tags:
+        - security
+      summary: "Add a new security rule to the system"
+      description: "Add a new security rule"
+      operationId: api.controllers.security_controller.add_rule
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:create'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecurityRulesRequest'
+            example:
+              name:
+                "New_Rule"
+              rule:
+                MATCH:
+                  definition: "normalRule"
+      responses:
+        '200':
+          description: "Return the information of the new security rule"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRoles'
+              example:
+                data:
+                  affected_items:
+                    - id: 3
+                      name: "new_rule"
+                      rule:
+                        MATCH:
+                          definition: "normalRule"
+                      roles: []
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
+                message: "Rule created correctly"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    delete:
+      tags:
+        - security
+      summary: "Delete a list of security rules or all security rules in the system"
+      description: "Roles linked to rules are not going to be removed"
+      operationId: api.controllers.security_controller.remove_rules
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
+      parameters:
+        - $ref: '#/components/parameters/security_rule_ids_delete'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Remove result"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRoles'
+              example:
+                data:
+                  affected_items:
+                    - id: 3
+                      name: "new_rule"
+                      rule:
+                        MATCH:
+                          definition: "normalRule"
+                      roles: []
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
+                message: "All specified rules were deleted"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /security/rules/{rule_id}:
+    put:
+      tags:
+        - security
+      summary: "Modify a security rule"
+      description: "Modify a security rule by specifying its ID"
+      operationId: api.controllers.security_controller.update_rule
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:update'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/security_rule_id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecurityRulesRequest_no_required'
+            example:
+              name: "new_name"
+              rule:
+                MATCH:
+                  definition: "normalRule"
+      responses:
+        '200':
+          description: "Security rule updated successfully"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseUsers'
+                example:
+                  data:
+                    affected_items:
+                      - id: 3
+                        name: "new_name"
+                        rule:
+                          MATCH:
+                            definition: "updated_rule"
+                        roles: []
+                    total_affected_items: 1
+                    failed_items: []
+                    total_failed_items: 0
+                  message: "Rule updated correctly"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/policies:
     get:
@@ -12352,6 +13437,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     post:
       tags:
@@ -12406,6 +13497,16 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -12416,7 +13517,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
-        - $ref: '#/components/parameters/policy_ids_rbac'
+        - $ref: '#/components/parameters/policy_ids_rbac_delete'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -12461,6 +13562,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/policies/{policy_id}:
     put:
@@ -12479,7 +13586,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PoliciesRequest'
+              $ref: '#/components/schemas/PoliciesRequest_no_required'
             example:
               name: 'wazuhPolicy'
               policy:
@@ -12523,13 +13630,23 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/roles/{role_id}/policies:
     post:
       tags:
         - security
       summary: "Create a relation between one role and one or more policies"
-      description: "Create a specify relation role-policy, one role may have multiples policies"
+      description: "Create a specified relation role-policy, one role may have multiples policies"
       operationId: api.controllers.security_controller.set_role_policy
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
@@ -12586,18 +13703,24 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
         - security
-      summary: "Delete a specify relation role-policy"
-      description: "Delete a specify relation role-policy"
+      summary: "Delete a specified relation role-policy"
+      description: "Delete a specified relation role-policy"
       operationId: api.controllers.security_controller.remove_role_policy
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/role_id'
-        - $ref: '#/components/parameters/policy_ids_rbac_required'
+        - $ref: '#/components/parameters/policy_ids_rbac_delete'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -12626,18 +13749,117 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /security/users/{username}/roles:
+  /security/roles/{role_id}/rules:
     post:
       tags:
         - security
-      summary: "Create a specify relation between one user and one role"
-      description: "Create a specify relation role-policy, one user may have multiples roles"
+      summary: "Create a relation between one role and one or more security rules"
+      description: "Create a specific role-rule relation. One role may have multiple security rules"
+      operationId: api.controllers.security_controller.set_role_rule
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:update'
+      parameters:
+        - $ref: '#/components/parameters/role_id'
+        - $ref: '#/components/parameters/security_rule_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Role information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - id: 5
+                      name: normal
+                      policies:
+                        - 2
+                        - 3
+                      rules:
+                        - 3
+                      users: []
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: "All rules were linked to role 5"
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    delete:
+      tags:
+        - security
+      summary: "Delete a specific role-rule relation"
+      description: "Delete a specific role-rule relation"
+      operationId: api.controllers.security_controller.remove_role_rule
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
+      parameters:
+        - $ref: '#/components/parameters/role_id'
+        - $ref: '#/components/parameters/security_rule_ids_delete'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Role information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - id: 3
+                      name: normal
+                      policies: []
+                      rules: []
+                      users: []
+                  failed_items: []
+                  total_affected_items: 2
+                  total_failed_items: 0
+                message: All rules were unlinked from role 3
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /security/users/{user_id}/roles:
+    post:
+      tags:
+        - security
+      summary: "Create a specified relation between one user and one role"
+      description: "Create a specified relation role-policy, one user may have multiples roles"
       operationId: api.controllers.security_controller.set_user_role
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
-        - $ref: '#/components/parameters/username'
+        - $ref: '#/components/parameters/user_id_required'
         - $ref: '#/components/parameters/role_ids_required'
         - $ref: '#/components/parameters/security_position'
         - $ref: '#/components/parameters/pretty'
@@ -12657,31 +13879,37 @@ paths:
               example:
                 data:
                   affected_items:
-                    - roles:
-                        - 3
-                        - 4
-                      username: normal
-                  failed_items: []
+                    - id: 3
+                      username: string
+                      roles:
+                        - 9
+                        - 8
                   total_affected_items: 2
                   total_failed_items: 0
-                message: All roles were linked to user normal
-
+                  failed_items: []
+                message: All roles were linked to user 3
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
         - security
-      summary: "Delete a specify relation user-roles"
-      description: "Delete a specify relation user-roles"
+      summary: "Delete a specified relation user-roles"
+      description: "Delete a specified relation user-roles"
       operationId: api.controllers.security_controller.remove_user_role
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
-        - $ref: '#/components/parameters/username'
-        - $ref: '#/components/parameters/role_ids_required'
+        - $ref: '#/components/parameters/user_id_required'
+        - $ref: '#/components/parameters/role_ids_delete'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -12699,16 +13927,96 @@ paths:
               example:
                 data:
                   affected_items:
-                    - roles: []
-                      username: normal
-                  failed_items: []
-                  total_affected_items: 2
+                    - id: 3
+                      username: string
+                      roles: []
+                  total_affected_items: 1
                   total_failed_items: 0
-                message: All roles were unlinked from user normal
+                  failed_items: []
+                message: All roles were unlinked from user 3
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /security/users/me:
+    get:
+      tags:
+        - security
+      summary: "Get current user information"
+      description: "Get the information of the current user"
+      operationId: api.controllers.security_controller.get_user_me
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Information about current user"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseUsers'
+                example:
+                  data:
+                    affected_items:
+                      - id: 1
+                        username: wazuh
+                        allow_run_as: true
+                        roles:
+                          - id: 1
+                            name: administrator
+                            rule:
+                              FIND:
+                                r'^auth[a-zA-Z]+$':
+                                  - full_admin
+                            policies:
+                              - id: 1
+                                name: agents_all_resourceless
+                                policy:
+                                  actions:
+                                    - agent:create
+                                    - group:create
+                                  resources:
+                                    - "*:*:*"
+                                  effect: allow
+                              - id: 2
+                                name: agents_all_agents
+                                policy:
+                                  actions:
+                                    - agent:read
+                                    - agent:delete
+                                    - agent:modify_group
+                                    - agent:restart
+                                    - agent:upgrade
+                                  resources:
+                                    - agent:id:*
+                                    - agent:group:*
+                                  effect: allow
+                    total_affected_items: 1
+                    total_failed_items: 0
+                    failed_items: []
+                  message: Current user information was shown
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/users:
     get:
@@ -12720,7 +14028,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:read'
       parameters:
-        - $ref: '#/components/parameters/usernames'
+        - $ref: '#/components/parameters/user_ids'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
@@ -12742,32 +14050,47 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - roles:
-                          - 2
+                      - id: 3
                         username: administrator
-                      - roles: []
+                        allow_run_as: true
+                        roles:
+                          - 2
+                      - id: 4
                         username: guest
-                      - roles:
+                        allow_run_as: false
+                        roles: []
+                      - id: 5
+                        username: normal
+                        allow_run_as: false
+                        roles:
                           - 4
                           - 5
                           - 6
-                        username: normal
-                      - roles:
+                      - id: 6
+                        username: ossec
+                        allow_run_as: true
+                        roles:
                           - 2
                           - 5
-                        username: ossec
-                      - roles: []
-                        username: python
-                      - roles:
+                      - username: python
+                        allow_run_as: true
+                        roles: []
+                      - id: 7
+                        username: rbac
+                        allow_run_as: false
+                        roles:
                           - 3
                           - 4
                           - 5
-                        username: rbac
-                      - roles:
-                          - 1
+                      - id: 1
                         username: wazuh
-                      - roles: []
+                        allow_run_as: true
+                        roles:
+                          - 1
+                      - id: 2
                         username: wazuh-wui
+                        allow_run_as: true
+                        roles: []
                     failed_items: []
                     total_affected_items: 8
                     total_failed_items: 0
@@ -12776,6 +14099,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     post:
       tags:
@@ -12785,6 +14114,9 @@ paths:
       operationId: api.controllers.security_controller.create_user
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:create_user'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
         content:
           application/json:
@@ -12801,12 +14133,15 @@ paths:
                   maxLength: 64
                   minLength: 8
                   format: password
+                allow_run_as:
+                  type: boolean
+                  default: False
               required:
                 - username
                 - password
       responses:
         '200':
-          description: "User created successful"
+          description: "User created successfully"
           content:
             application/json:
               schema:
@@ -12825,17 +14160,29 @@ paths:
                     total_affected_items: 1
                     total_failed_items: 0
                   message: User created correctly
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
         - security
-      summary: "Delete a user"
-      description: "Delete a user by specifying their name"
+      summary: "Delete a list of users"
+      description: "Delete a list of users by specifying their IDs"
       operationId: api.controllers.security_controller.delete_users
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
-        - $ref: '#/components/parameters/usernames'
+        - $ref: '#/components/parameters/user_ids_delete'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
           description: "User deleted successful"
@@ -12851,18 +14198,30 @@ paths:
                 example:
                   data:
                     message: 'User deleted correctly'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /security/users/{username}:
+  /security/users/{user_id}:
     put:
       tags:
         - security
       summary: "Modify a user"
-      description: "Modify a user's password by specifying their name"
+      description: "Modify a user's password by specifying their ID"
       operationId: api.controllers.security_controller.update_user
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
-        - $ref: '#/components/parameters/username'
+        - $ref: '#/components/parameters/user_id_required'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
         content:
           application/json:
@@ -12874,8 +14233,9 @@ paths:
                   maxLength: 64
                   minLength: 8
                   format: password
-              required:
-                - password
+                allow_run_as:
+                  type: boolean
+                  default: False
       responses:
         '200':
           description: "User updated successful"
@@ -12898,6 +14258,16 @@ paths:
                     total_failed_items: 0
                     failed_items: []
                   message: User modified correctly
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /overview/agents:
     get:
@@ -12989,6 +14359,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/config:
     get:
@@ -13003,19 +14379,25 @@ paths:
         - $ref: "#/components/parameters/pretty"
         - $ref: "#/components/parameters/wait_for_complete"
       responses:
-        "200":
+        '200':
           description: "Current security configuration"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponse"
               example:
-                auth_token_exp_timeout: 36000
+                auth_token_exp_timeout: 3600
                 rbac_mode: white
-        "400":
-          $ref: "#/components/responses/ResponseError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedResponse"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     put:
       tags:
@@ -13034,12 +14416,18 @@ paths:
             schema:
               $ref: "#/components/schemas/SecurityConfiguration"
       responses:
-        "200":
-          description: "Configuration successfully updated"
-        "400":
-          $ref: "#/components/responses/ResponseError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedResponse"
+        '200':
+          description: 'Configuration successfully updated'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -13053,14 +14441,17 @@ paths:
         - $ref: "#/components/parameters/pretty"
         - $ref: "#/components/parameters/wait_for_complete"
       responses:
-        "200":
-          description: "Configuration successfully restored"
-        "400":
-          $ref: "#/components/responses/ResponseError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedResponse"
+        '200':
+          description: 'Configuration successfully restored'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
 externalDocs:
   description: "Find more about Wazuh API usage"
   url: 'https://documentation.wazuh.com/current/user-manual/api/index.html'
-

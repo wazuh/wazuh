@@ -98,10 +98,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         if(lf->generated_rule->mitre_id) {
             const char **mitre_cpy = (const char**)lf->generated_rule->mitre_id;
             cJSON * mitre = NULL;
-            cJSON *tactics = NULL;
             cJSON * tactic = NULL;
             cJSON * element = NULL;
             int tactic_array_size;
+            mitre_data * data_mitre = NULL;
 
             cJSON_AddItemToObject(rule, "mitre", mitre = cJSON_CreateObject());
             /* Creating id array */
@@ -111,11 +111,14 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             cJSON_AddItemToObject(mitre, "id", mitre_id_array);
             /* Creating tactics array */
             cJSON *mitre_tactic_array = cJSON_CreateArray();
+            /* Creating names array */
+            cJSON *mitre_technique_array = cJSON_CreateArray();
             for (i = 0; lf->generated_rule->mitre_id[i] != NULL; i++){
-                if (tactics = mitre_get_attack(lf->generated_rule->mitre_id[i]), tactics == NULL) {
+                if (data_mitre = mitre_get_attack(lf->generated_rule->mitre_id[i]), !data_mitre) {
                     mwarn("Mitre Technique ID '%s' not found in database.", lf->generated_rule->mitre_id[i]);
                 } else {
-                    cJSON_ArrayForEach(tactic, tactics){
+                    /* Filling tactic array */
+                    cJSON_ArrayForEach(tactic, data_mitre->tactics_array) {
                         int inarray = 0;
                         /* Check if the element is already in the array */
                         cJSON_ArrayForEach(element, mitre_tactic_array){
@@ -124,15 +127,19 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
                             }
                         }
                         if (!inarray) {
-                            cJSON_AddItemToArray(mitre_tactic_array, cJSON_Duplicate(tactic,0));
+                            cJSON_AddItemToArray(mitre_tactic_array, cJSON_Duplicate(tactic, 0));
                         }
                     }
+                    /* Filling technique array */
+                    cJSON_AddItemToArray(mitre_technique_array, cJSON_CreateString(data_mitre->technique_name));
                 }
             }
             if (tactic_array_size = cJSON_GetArraySize(mitre_tactic_array), tactic_array_size > 0) {
-                cJSON_AddItemToObject(mitre, "tactics", mitre_tactic_array);
+                cJSON_AddItemToObject(mitre, "tactic", mitre_tactic_array);
+                cJSON_AddItemToObject(mitre, "technique", mitre_technique_array);
             } else {
                 cJSON_Delete(mitre_tactic_array);
+                cJSON_Delete(mitre_technique_array);
             }
         }
         if(lf->generated_rule->cve) {

@@ -9,7 +9,7 @@ stages:
   - name: Get all users in the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -18,121 +18,160 @@ stages:
       json:
         data:
           affected_items:
-            - username: ossec
-            - username: rbac
-            - username: testing
-            - username: wazuh
-            - username: wazuh-wui
-          failed_items: []
+            - id: 1
+              username: wazuh
+              allow_run_as: false
+              roles:
+                - 1
+            - id: 2
+              username: wazuh-wui
+              allow_run_as: true
+              roles:
+                - 2
+            - id: 99
+              username: testing
+              allow_run_as: false
+              roles:
+                - 99
+            - id: 102
+              username: ossec
+              allow_run_as: false
+              roles:
+                - 101
+                - 104
+            - id: 104
+              username: rbac
+              allow_run_as: false
+              roles:
+                - 104
+                - 102
+                - 103
           total_affected_items: 5
           total_failed_items: 0
-        message: All specified users were shown
+          failed_items: []
 
   - name: Get a specified user by its username (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: ossec
+        user_ids: 102
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: ossec
+            - id: 102
+              username: ossec
+              allow_run_as: false
+              roles:
+                - 101
+                - 104
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: All specified users were shown
 
   - name: Get a specified user by its username (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: administrator
-    response:
-      status_code: 400
-      json: &permission_denied
+        user_ids: 100
+    response: &permission_denied
+      status_code: 403
+      json:
         code: 4000
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: Wazuh Error
-        type: about:blank
 
   - name: Get a list of users by its username (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: wazuh,ossec,rbac
+        user_ids: 1,102,104
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: ossec
-            - username: rbac
-            - username: wazuh
-          failed_items: []
+            - id: 1
+              username: wazuh
+              allow_run_as: false
+              roles:
+                - 1
+            - id: 102
+              username: ossec
+              allow_run_as: false
+              roles:
+                - 101
+                - 104
+            - id: 104
+              username: rbac
+              allow_run_as: false
+              roles:
+                - 104
+                - 102
+                - 103
           total_affected_items: 3
           total_failed_items: 0
-        message: All specified users were shown
+          failed_items: []
 
   - name: Get a list of users by its username (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: administrator,normal
+        user_ids: 100,101
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
   - name: Get a list of users by its username (Both)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: normal,python,guest,ossec,wazuh,administrator
+        user_ids: 101,103,105,102,1,100
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: ossec
-            - username: wazuh
+            - id: 1
+              username: wazuh
+              allow_run_as: false
+              roles:
+                - 1
+            - id: 102
+              username: ossec
+              allow_run_as: false
+              roles:
+                - 101
+                - 104
+          total_affected_items: 2
+          total_failed_items: 4
           failed_items:
             - error:
                 code: 4000
-                message: 'Permission denied: Resource type: user:id'
                 remediation: !anystr
               id:
-                - administrator
-                - guest
-                - normal
-                - python
-          total_affected_items: 2
-          total_failed_items: 4
-        message: Some users could not be shown
+                - '100'
+                - '101'
+                - '103'
+                - '105'
 
 ---
 test_name: GET ROLES RBAC
@@ -142,7 +181,7 @@ stages:
   - name: Get all roles in the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -154,21 +193,58 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        message: No role were shown
 
   - name: Get a specified role by its id (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
         role_ids: 1
     response:
-      status_code: 400
+      <<: *permission_denied
+
+---
+test_name: GET RULES RBAC
+
+stages:
+
+  - name: Get all rules in the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
       json:
-        <<: *permission_denied
+        data:
+          affected_items:
+            - id: 1
+            - id: 2
+            - id: 100
+            - id: 101
+            - id: 102
+            - id: 104
+            - id: 105
+          failed_items: []
+          total_affected_items: 7
+          total_failed_items: 0
+
+  - name: Get a specified rule by its id (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        rule_ids: 103
+    response:
+      <<: *permission_denied
 
 ---
 test_name: GET POLICIES RBAC
@@ -178,7 +254,7 @@ stages:
   - name: Get all policies in the system (All denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -190,13 +266,12 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified policies were shown
 
 
   - name: Get a specified policy by its id (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -210,12 +285,11 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: All specified policies were shown
 
   - name: Get a specified policy by its id (It doesn't exist but we have all the permissions on the resource policies)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -229,18 +303,16 @@ stages:
           failed_items:
             - error:
                 code: 4007
-                message: The specified policy does not exist
-                remediation: Please, create the specified policy with the endpoint POST /security/policies
+                remediation: !anystr
               id:
                 - '999'
           total_affected_items: 0
           total_failed_items: 1
-        message: No policy were shown
 
   - name: Get a list of policies by its id (Existent and no existent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -254,13 +326,11 @@ stages:
           failed_items:
             - error:
                 code: 4007
-                message: The specified policy does not exist
-                remediation: Please, create the specified policy with the endpoint POST /security/policies
+                remediation: !anystr
               id:
                 - '999'
           total_affected_items: 2
           total_failed_items: 1
-        message: Some policies could not be shown
 
 ---
 test_name: GET SECURITY CONFIG
@@ -270,14 +340,12 @@ stages:
   - name: Get current security config (deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      url: "{protocol:s}://{host:s}:{port:d}/security/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: UPDATE SECURITY CONFIG
@@ -287,16 +355,14 @@ stages:
   - name: Update default security config (deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      url: "{protocol:s}://{host:s}:{port:d}/security/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
         auth_token_exp_timeout: 3000
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: UPDATE USERS RBAC
@@ -306,7 +372,7 @@ stages:
   - name: Update one specified user in the system (All allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/guest"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/105"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -317,16 +383,17 @@ stages:
       json:
         data:
           affected_items:
-            - username: guest
+            - id: 105
+              username: guest
+              allow_run_as: false
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: User modified correctly
 
   - name: Update one specified user in the system (All allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/103"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -337,11 +404,12 @@ stages:
       json:
         data:
           affected_items:
-            - username: python
+            - id: 103
+              username: python
+              allow_run_as: false
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: User modified correctly
 
 ---
 test_name: UPDATE ROLES RBAC
@@ -351,15 +419,12 @@ stages:
   - name: Update one specified role in the system (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/104"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
         name: normalUserModified
-        rule:
-          FIND$:
-            definition: normalUserRuleModified
     response:
       status_code: 200
       json:
@@ -367,51 +432,31 @@ stages:
           affected_items:
             - id: 104
               name: normalUserModified
-              rule:
-                FIND$:
-                  definition: normalUserRuleModified
-              policies:
-                - 101
-                - 102
-                - 109
-              users:
-                - normal
-                - ossec
-                - rbac
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        message: Role updated correctly
 
   - name: Update one specified role in the system (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/103"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/103"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
         name: wazuh-wuiModified
-        rule:
-          FIND$:
-            definition: wazuh-wuiRuleModified
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
   - name: Update one admin role in the system (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/1"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
         name: wazuhModified
-        rule:
-          FIND$:
-            definition: wazuhRuleModified
     response:
       status_code: 200
       json:
@@ -420,13 +465,83 @@ stages:
           failed_items:
             - error:
                 code: 4008
-                message: !anystr
                 remediation: !anything
               id:
                 - '1'
           total_affected_items: 0
           total_failed_items: 1
-        message: Role could not be updated
+
+---
+test_name: UPDATE RULES RBAC
+
+stages:
+
+  - name: Update one specified rule in the system (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules/105"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: normalRuleModified
+        rule:
+          MATCH:
+            modified: "modified_rule"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 105
+              name: normalRuleModified
+              rule:
+                MATCH:
+                  modified: "modified_rule"
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+  - name: Update one specified rule in the system (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules/104"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: normalRuleModified
+        rule:
+          MATCH:
+            modified: "modified_rule"
+    response:
+      <<: *permission_denied
+
+  - name: Update one admin rule in the system (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules/1"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: normalRuleModified
+        rule:
+          MATCH:
+            modified: "modified_rule"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4008
+                remediation: !anything
+              id:
+                - '1'
+          total_affected_items: 0
+          total_failed_items: 1
 
 ---
 test_name: UPDATE POLICIES RBAC
@@ -436,7 +551,7 @@ stages:
   - name: Update one specified policy in the system (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/103"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/103"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -465,26 +580,15 @@ stages:
                   - agent:id:097
                   - agent:id:002
                   - agent:id:003
-              roles:
-                - id: 103
-                  name: administrator_test
-                  rule:
-                    MATCH:
-                      definition: administratorRule
-                - id: 105
-                  name: ossec
-                  rule:
-                    MATCH:
-                      definition: ossecRule
+              roles: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: Policy updated correctly
 
   - name: Update one specified policy in the system (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -499,9 +603,7 @@ stages:
             - agent:id:002
             - agent:id:003
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: CREATE LINK USER-ROLES RBAC
@@ -511,7 +613,7 @@ stages:
   - name: Create one specified link between one user and a list of roles (Allow and Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/103/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -522,7 +624,9 @@ stages:
       json:
         data:
           affected_items:
-            - username: python
+            - id: 103
+              username: python
+              allow_run_as: false
               roles:
                 - 101
                 - 100
@@ -542,12 +646,11 @@ stages:
                 code: 4017
               id:
                 - '101'
-        message: Some roles could not be linked to user python
 
   - name: Create one specified link between one user and a list of roles (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/ossec/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/102/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -558,7 +661,8 @@ stages:
       json:
         data:
           affected_items:
-            - roles:
+            - id: 102
+              roles:
                 - 101
                 - 104
                 - 100
@@ -566,8 +670,6 @@ stages:
           failed_items:
             - error:
                 code: 4017
-                message: !anystr
-                remediation: !anything
               id:
                 - '104'
           total_affected_items: 1
@@ -581,23 +683,25 @@ stages:
   - name: Create one specified user (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
         username: newUser
         password: stringA1!
+        allow_run_as: true
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: newUser
+            - id: 106
+              username: newUser
+              allow_run_as: true
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: User created correctly
 
 ---
 test_name: CREATE ROLES AND POLICIES RBAC
@@ -607,24 +711,19 @@ stages:
   - name: Create one specified role (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
         name: newUserRole
-        rule:
-          FIND$:
-            definition: newUser
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
   - name: Create one specified policy (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -638,9 +737,7 @@ stages:
             - role:id:*
             - policy:id:*
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: DELETE LINK ROLE-POLICIES RBAC
@@ -650,7 +747,7 @@ stages:
   - name: Delete one specified link between one user and a list of roles (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/rbac/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/104/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -661,13 +758,12 @@ stages:
       json:
         data:
           affected_items:
-            - roles: []
+            - id: 104
+              roles: []
               username: rbac
           failed_items:
             - error:
                 code: 4016
-                message: !anystr
-                remediation: !anystr
               id:
                 - '5'
                 - '100'
@@ -683,7 +779,7 @@ stages:
   - name: Create one specified link between one role and a list of policies (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/104/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/104/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -695,29 +791,18 @@ stages:
         data:
           affected_items:
             - id: 104
-              name: normalUserModified
-              rule:
-                FIND$:
-                  definition: normalUserRuleModified
               policies:
                 - 101
                 - 102
-                - 109
                 - 105
                 - 106
-              users:
-                - normal
-                - ossec
           total_affected_items: 2
           total_failed_items: 1
           failed_items:
             - error:
                 code: 4000
-                message: 'Permission denied: Resource type: policy:id'
-                remediation: !anystr
               id:
                 - '104'
-        message: !anystr
 
 ---
 test_name: DELETE LINK ROLE-POLICIES RBAC
@@ -727,7 +812,7 @@ stages:
   - name: Delete one specified link between one role and a list of policies (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/104/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/104/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -739,27 +824,88 @@ stages:
         data:
           affected_items:
             - id: 104
-              name: normalUserModified
-              rule:
-                FIND$:
-                  definition: normalUserRuleModified
               policies:
                 - 101
                 - 102
                 - 109
-              users:
-                - normal
-                - ossec
           total_affected_items: 2
           total_failed_items: 1
           failed_items:
             - error:
                 code: 4010
-                message: The specified role-policy does not exist
-                remediation: !anystr
               id:
                 - '104'
-        message: !anystr
+
+---
+test_name: CREATE LINK ROLE-RULES RBAC
+
+stages:
+
+  - name: Create one specified link between one role and a list of rules (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/101/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        rule_ids: 103,104,105
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 101
+              rules:
+                - 101
+                - 103
+                - 105
+          total_affected_items: 2
+          total_failed_items: 1
+          failed_items:
+            - id:
+                - '104'
+              error:
+                code: 4000
+
+---
+test_name: DELETE LINK ROLE-RULES RBAC
+
+stages:
+
+  - name: Delete one specified link between one role and a list of rules (Partially allow) (Agnostic user)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/101/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids: "all"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 101
+              rules:
+                - 105
+          total_affected_items: 2
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Delete one specified link between one role and a list of rules (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/101/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids:
+          - 105
+    response:
+      <<: *permission_denied
 
 ---
 test_name: DELETE USERS RBAC
@@ -769,50 +915,71 @@ stages:
   - name: Delete one specified user in the system (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        usernames: administrator
+        user_ids: 100
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: administrator
+            - id: 100
+              username: administrator
+              allow_run_as: false
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: Users deleted correctly
 
   - name: Delete all allowed user in the system (All)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        user_ids: all
       method: DELETE
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: newUser
-            - username: ossec
-            - username: python
-            - username: rbac
-          failed_items: []
+            - id: 102
+              username: ossec
+              allow_run_as: false
+              roles:
+                - 101
+                - 104
+                - 100
+            - id: 103
+              username: python
+              allow_run_as: false
+              roles:
+                - 101
+                - 100
+            - id: 104
+              username: rbac
+              allow_run_as: false
+              roles: []
+            - id: 106
+              username: newUser
+              allow_run_as: true
+              roles: []
           total_affected_items: 4
           total_failed_items: 0
-        message: Users deleted correctly
+          failed_items: []
 
   - name: Delete all allowed user in the system (All)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        user_ids: all
       method: DELETE
     response:
       status_code: 200
@@ -822,17 +989,16 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        message: No user was deleted
 
   - name: Delete a list of users in the system (Allow and deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        usernames: wazuh,administrator,guest
+        user_ids: 1,100,105
     response:
       status_code: 200
       json:
@@ -841,75 +1007,76 @@ stages:
           failed_items:
             - error:
                 code: 4000
-                message: !anystr
-                remediation: !anystr
               id:
-                - guest
+                - "105"
             - error:
                 code: 5001
-                message: !anystr
-                remediation: !anystr
               id:
-                - administrator
+                - "100"
             - error:
                 code: 5004
-                message: !anystr
-                remediation: !anystr
               id:
-                - wazuh
+                - "1"
           total_affected_items: 0
           total_failed_items: 3
 
 ---
-test_name: DELETE ROLES RBAC
+test_name: DELETE RULES RBAC
 
 stages:
 
-  - name: Delete one specified role in the system (Allow)
+  - name: Delete one specified rule in the system (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 103
+        rule_ids: 103
     response:
       status_code: 200
       json:
         data:
           affected_items:
             - id: 103
-              name: administrator_test
-              rule:
-                MATCH:
-                  definition: administratorRule
-              policies:
-                - 104
-                - 103
-              users:
-                - normal
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        message: All specified roles were deleted
 
-  - name: Delete all roles in the system (Allow and deny)
+  - name: Delete all rules in the system (Allow and deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        rule_ids: all
       method: DELETE
     response:
       status_code: 200
       json:
         data:
-          affected_items: !anything
+          affected_items: # Admin rules cannot be deleted. 105 is denied
+            - id: 100
+            - id: 101
+            - id: 102
+            - id: 104
           failed_items: []
-          total_affected_items: 6
+          total_affected_items: 4
           total_failed_items: 0
-        message: All specified roles were deleted
+
+  - name: Delete one specified rule in the system (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids: 105
+    response:
+      <<: *permission_denied
 
 ---
 test_name: DELETE POLICIES RBAC
@@ -917,10 +1084,9 @@ test_name: DELETE POLICIES RBAC
 stages:
 
   - name: Delete one specified policy in the system (Allow)
-    delay_before: 20
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -945,14 +1111,58 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: All specified policies were deleted
 
   - name: Delete all policies in the system (Allow and deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        policy_ids: all
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 18
+          total_failed_items: 0
+    delay_after: 20
+
+---
+test_name: DELETE ROLES RBAC
+
+stages:
+
+  - name: Delete one specified role in the system (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        role_ids: 103
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 103
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+  - name: Delete all roles in the system (Allow and deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: all
       method: DELETE
     response:
       status_code: 200
@@ -960,9 +1170,9 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 19
+          total_affected_items: 6
           total_failed_items: 0
-        message: All specified policies were deleted
+    delay_after: 20
 
 ---
 test_name: REVOKE TOKENS RBAC
@@ -972,7 +1182,7 @@ stages:
   - name: Revoke all tokens (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/revoke"
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -982,7 +1192,7 @@ stages:
   - name: Revoke all tokens (Invalid token after previous call)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/revoke"
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT

@@ -15,7 +15,6 @@
 
   <rule id="7201" level="4">
     <if_sid>7200</if_sid>
-    <options>alert_by_email</options>
     <if_fts />
     <description>Arpwatch new host detected.</description>
     <group>new_host,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>

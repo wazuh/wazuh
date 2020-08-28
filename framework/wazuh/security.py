@@ -6,47 +6,94 @@ import re
 from copy import deepcopy
 from functools import lru_cache
 
-from api import configuration
-from api.authentication import change_secret
-from wazuh.core.security import check_relationships, invalid_users_tokens
-from wazuh import common
+import api.configuration as configuration
+from wazuh.core import common
+from wazuh.core.exception import WazuhError
+from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
+from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, revoke_tokens
 from wazuh.core.security import load_spec, update_security_conf
-from wazuh.exception import WazuhError
+from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager, \
-    TokenManager, UserRolesManager
-from wazuh.rbac.orm import SecurityError, admin_role_ids, admin_policy_ids
-from wazuh.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.utils import process_array
+    TokenManager, UserRolesManager, RolesRulesManager, RulesManager
+from wazuh.rbac.orm import SecurityError
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
 
 
-@expose_resources(actions=['security:read'], resources=['user:id:{username_list}'],
+def get_user_me():
+    """Get the information of the current user
+
+    Returns
+    -------
+    AffectedItemsWazuhResult with the desired information
+    """
+    result = AffectedItemsWazuhResult(all_msg='Current user information was shown')
+    affected_items = list()
+    with AuthenticationManager() as auth:
+        user = auth.get_user(common.current_user.get())
+        for index, role_id in enumerate(user['roles']):
+            with RolesManager() as rm:
+                role = rm.get_role_id(role_id=role_id)
+                role.pop('users')
+                for index_r, rule_id in enumerate(role['rules']):
+                    with RulesManager() as rum:
+                        role['rules'][index_r] = rum.get_rule(rule_id=rule_id)
+                        role['rules'][index_r].pop('roles')
+                for index_p, policy_id in enumerate(role['policies']):
+                    with PoliciesManager() as pm:
+                        role['policies'][index_p] = pm.get_policy_id(policy_id=policy_id)
+                        role['policies'][index_p].pop('roles')
+                user['roles'][index] = role
+        affected_items.append(user) if user else result.add_failed_item(id_=common.current_user.get(),
+                                                                        error=WazuhError(5001))
+
+    data = process_array(affected_items)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
+
+    return result
+
+
+@expose_resources(actions=['security:read'], resources=['user:id:{user_ids}'],
                   post_proc_kwargs={'exclude_codes': [5001]})
-def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by=None,
-              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+def get_users(user_ids: list = None, offset: int = 0, limit: int = common.database_limit, sort_by: dict = None,
+              sort_ascending: bool = True, search_text: str = None,
+              complementary_search: bool = False, search_in_fields: list = None):
     """Get the information of a specified user
 
-    :param username_list: Name of the user (None for all users)
-    :param offset: First item to return
-    :param limit: Maximum number of items to return
-    :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    Parameters
+    ----------
+    user_ids : list
+        List of user ids
+    offset : int
+        First item to return
+    limit : int
+        Maximum number of items to return
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order
+    search_text : str
+        Text to search
+    complementary_search : bool
+        Find items without the text to search
+    search_in_fields : list
+        Fields to search in
+
+    Returns
+    -------
+    AffectedItemsWazuhResult with the desired information
     """
     result = AffectedItemsWazuhResult(none_msg='No user was shown',
                                       some_msg='Some users could not be shown',
                                       all_msg='All specified users were shown')
     affected_items = list()
     with AuthenticationManager() as auth:
-        for username in username_list:
-            user = auth.get_user(username)
-            affected_items.append(user) if user else result.add_failed_item(id_=username, error=WazuhError(5001))
+        for user_id in user_ids:
+            user = auth.get_user_id(user_id)
+            affected_items.append(user) if user else result.add_failed_item(id_=user_id, error=WazuhError(5001))
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
@@ -58,12 +105,22 @@ def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by
 
 
 @expose_resources(actions=['security:create_user'], resources=['*:*:*'])
-def create_user(username: str = None, password: str = None):
+def create_user(username: str = None, password: str = None, allow_run_as: bool = False):
     """Create a new user
 
-    :param username: Name for the new user
-    :param password: Password for the new user
-    :return: Status message
+    Parameters
+    ----------
+    username : str
+        Name for the new user
+    password : str
+        Password for the new user
+    allow_run_as : bool
+        Enable authorization context login method for the new user
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Status message
     """
     if not _user_password.match(password):
         raise WazuhError(5007)
@@ -71,7 +128,7 @@ def create_user(username: str = None, password: str = None):
     result = AffectedItemsWazuhResult(none_msg='User could not be created',
                                       all_msg='User created correctly')
     with AuthenticationManager() as auth:
-        if auth.add_user(username, password):
+        if auth.add_user(username, password, allow_run_as=allow_run_as):
             operation = auth.get_user(username)
             if operation:
                 result.affected_items.append(operation)
@@ -84,58 +141,75 @@ def create_user(username: str = None, password: str = None):
     return result
 
 
-@expose_resources(actions=['security:update'], resources=['user:id:{username}'])
-def update_user(username=None, password=None):
+@expose_resources(actions=['security:update'], resources=['user:id:{user_id}'])
+def update_user(user_id: str = None, password: str = None, allow_run_as: bool = None):
     """Update a specified user
 
-    :param username: Name for the new user
-    :param password: Password for the new user
-    :return: Status message
+    Parameters
+    ----------
+    user_id : str
+        User ID
+    password : str
+        Password for the new user
+    allow_run_as : bool
+        Enable authorization context login method for the new user
+
+    Returns
+    -------
+    Status message
     """
-    if not _user_password.match(password):
+    if password is None and allow_run_as is None:
+        raise WazuhError(4001)
+    if password and not _user_password.match(password):
         raise WazuhError(5007)
     result = AffectedItemsWazuhResult(all_msg='User modified correctly',
                                       none_msg='User could not be updated')
     with AuthenticationManager() as auth:
-        query = auth.update_user(username[0], password)
-        if not query:
-            result.add_failed_item(id_=username[0], error=WazuhError(5001))
+        query = auth.update_user(user_id[0], password, allow_run_as)
+        if query is False:
+            result.add_failed_item(id_=user_id[0], error=WazuhError(5001))
         else:
-            result.affected_items.append(auth.get_user(username[0]))
+            result.affected_items.append(auth.get_user_id(user_id[0]))
             result.total_affected_items += 1
-            invalid_users_tokens(users=[username[0]])
+            invalid_users_tokens(users=user_id)
 
     return result
 
 
-@expose_resources(actions=['security:delete'], resources=['user:id:{username_list}'],
-                  post_proc_kwargs={'exclude_codes': [5001, 5004]})
-def remove_users(username_list):
+@expose_resources(actions=['security:delete'], resources=['user:id:{user_ids}'],
+                  post_proc_kwargs={'exclude_codes': [5001, 5004, 5008]})
+def remove_users(user_ids):
     """Remove a specified list of users
 
-    :param username_list: List of usernames
-    :return: Status message
+    Parameters
+    ----------
+    user_ids : list
+        List of IDs
+
+    Returns
+    -------
+    Status message
     """
     result = AffectedItemsWazuhResult(none_msg='No user was deleted',
                                       some_msg='Some users could not be deleted',
                                       all_msg='Users deleted correctly')
     with AuthenticationManager() as auth:
-        for username in username_list:
-            if username == common.current_user.get():
-                result.add_failed_item(id_=username, error=WazuhError(5008))
+        for user_id in user_ids:
+            current_user = auth.get_user(common.current_user.get())
+            if not isinstance(current_user, bool) and int(user_id) == int(current_user['id']):
+                result.add_failed_item(id_=user_id, error=WazuhError(5008))
                 continue
-            user = auth.get_user(username)
-            query = auth.delete_user(username)
+            user = auth.get_user_id(user_id)
+            query = auth.delete_user(user_id)
             if not query:
-                result.add_failed_item(id_=username, error=WazuhError(5001))
+                result.add_failed_item(id_=user_id, error=WazuhError(5001))
             elif query == SecurityError.ADMIN_RESOURCES:
-                result.add_failed_item(id_=username, error=WazuhError(5004))
+                result.add_failed_item(id_=user_id, error=WazuhError(5004))
             elif user:
                 result.affected_items.append(user)
                 result.total_affected_items += 1
-                invalid_users_tokens(users=[username])
-        result.affected_items.sort(key=str)
 
+        result.affected_items.sort(key=str)
     return result
 
 
@@ -156,7 +230,7 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     affected_items = list()
-    result = AffectedItemsWazuhResult(none_msg='No role were shown',
+    result = AffectedItemsWazuhResult(none_msg='No roles were shown',
                                       some_msg='Some roles could not be shown',
                                       all_msg='All specified roles were shown')
     with RolesManager() as rm:
@@ -191,8 +265,6 @@ def remove_roles(role_ids):
     with RolesManager() as rm:
         for r_id in role_ids:
             role = rm.get_role_id(int(r_id))
-            if role != SecurityError.ROLE_NOT_EXIST and int(r_id) not in admin_role_ids:
-                related_users = check_relationships([role])
             role_delete = rm.delete_role(int(r_id))
             if role_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=r_id, error=WazuhError(4008))
@@ -201,24 +273,24 @@ def remove_roles(role_ids):
             elif role:
                 result.affected_items.append(role)
                 result.total_affected_items += 1
-                invalid_users_tokens(users=list(related_users))
+
+        invalid_roles_tokens(roles=[role['id'] for role in result.affected_items])
         result.affected_items = sorted(result.affected_items, key=lambda i: i['id'])
 
     return result
 
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'])
-def add_role(name=None, rule=None):
+def add_role(name=None):
     """Creates a role in the system
 
     :param name: The new role name
-    :param rule: The new rule
     :return Role information
     """
     result = AffectedItemsWazuhResult(none_msg='Role could not be created',
                                       all_msg='Role created correctly')
     with RolesManager() as rm:
-        status = rm.add_role(name=name, rule=rule)
+        status = rm.add_role(name=name)
         if status == SecurityError.ALREADY_EXIST:
             result.add_failed_item(id_=name, error=WazuhError(4005))
         elif status == SecurityError.INVALID:
@@ -231,20 +303,19 @@ def add_role(name=None, rule=None):
 
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}'])
-def update_role(role_id=None, name=None, rule=None):
+def update_role(role_id=None, name=None):
     """Updates a role in the system
 
     :param role_id: Role id to be update
     :param name: The new role name
-    :param rule: The new rule
     :return Role information
     """
-    if name is None and rule is None:
+    if name is None:
         raise WazuhError(4001)
     result = AffectedItemsWazuhResult(none_msg='Role could not be updated',
                                       all_msg='Role updated correctly')
     with RolesManager() as rm:
-        status = rm.update_role(role_id=role_id[0], name=name, rule=rule)
+        status = rm.update_role(role_id=role_id[0], name=name)
         if status == SecurityError.ALREADY_EXIST:
             result.add_failed_item(id_=role_id[0], error=WazuhError(4005))
         elif status == SecurityError.INVALID:
@@ -257,7 +328,7 @@ def update_role(role_id=None, name=None, rule=None):
             updated = rm.get_role_id(role_id[0])
             result.affected_items.append(updated)
             result.total_affected_items += 1
-            invalid_users_tokens(roles=[updated])
+            invalid_roles_tokens(roles=role_id)
 
     return result
 
@@ -314,8 +385,6 @@ def remove_policies(policy_ids=None):
     with PoliciesManager() as pm:
         for p_id in policy_ids:
             policy = pm.get_policy_id(int(p_id))
-            if policy != SecurityError.POLICY_NOT_EXIST and int(p_id) not in admin_policy_ids:
-                related_users = check_relationships(policy['roles'])
             policy_delete = pm.delete_policy(int(p_id))
             if policy_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=p_id, error=WazuhError(4008))
@@ -324,7 +393,8 @@ def remove_policies(policy_ids=None):
             elif policy:
                 result.affected_items.append(policy)
                 result.total_affected_items += 1
-                invalid_users_tokens(users=list(related_users))
+                invalid_roles_tokens(roles=policy['roles'])
+
         result.affected_items = sorted(result.affected_items, key=lambda i: i['id'])
 
     return result
@@ -381,9 +451,151 @@ def update_policy(policy_id=None, name=None, policy=None):
             updated = pm.get_policy_id(policy_id[0])
             result.affected_items.append(updated)
             result.total_affected_items += 1
-            invalid_users_tokens(roles=updated['roles'])
+            invalid_roles_tokens(roles=updated['roles'])
 
     return result
+
+
+@expose_resources(actions=['security:read'], resources=['rule:id:{rule_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4022]})
+def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None,
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+    """Return information from all the security rules. It does not return information from its associated roles.
+
+    :param rule_ids: List of rule ids (None for all rules)
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    affected_items = list()
+    result = AffectedItemsWazuhResult(none_msg='No rules were shown',
+                                      some_msg='Some rules could not be shown',
+                                      all_msg='All specified rules were shown')
+
+    with RulesManager() as rum:
+        for ru_id in rule_ids:
+            rule = rum.get_rule(int(ru_id))
+            if rule != SecurityError.RULE_NOT_EXIST:
+                affected_items.append(rule)
+            else:
+                # Rule id does not exist
+                result.add_failed_item(id_=ru_id, error=WazuhError(4022))
+
+    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
+
+    return result
+
+
+@expose_resources(actions=['security:create'], resources=['*:*:*'])
+def add_rule(name=None, rule=None):
+    """Create a rule in the system.
+
+    :param name: The new rule name
+    :param rule: The new rule
+    :return Rule information
+    """
+    result = AffectedItemsWazuhResult(none_msg='Rule could not be created',
+                                      all_msg='Rule created correctly')
+    with RulesManager() as rum:
+        status = rum.add_rule(name=name, rule=rule)
+        if status == SecurityError.ALREADY_EXIST:
+            result.add_failed_item(id_=name, error=WazuhError(4005))
+        elif status == SecurityError.INVALID:
+            result.add_failed_item(id_=name, error=WazuhError(4003))
+        else:
+            result.affected_items.append(rum.get_rule_by_name(name))
+            result.total_affected_items += 1
+
+    return result
+
+
+@expose_resources(actions=['security:delete'], resources=['rule:id:{rule_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4022, 4008]})
+def remove_rules(rule_ids=None):
+    """Remove a rule from the system.
+
+    :param rule_ids: List of rule ids (None for all rules)
+    :return Result of operation
+    """
+    result = AffectedItemsWazuhResult(none_msg='No rule were deleted',
+                                      some_msg='Some rules could not be delete',
+                                      all_msg='All specified rules were deleted')
+    with RulesManager() as rum:
+        for r_id in rule_ids:
+            rule = rum.get_rule(int(r_id))
+            role_delete = rum.delete_rule(int(r_id))
+            if role_delete == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=r_id, error=WazuhError(4008))
+            elif not role_delete:
+                result.add_failed_item(id_=r_id, error=WazuhError(4022))
+            elif rule:
+                result.affected_items.append(rule)
+                result.total_affected_items += 1
+                invalid_roles_tokens(roles=rule['roles'])
+
+        result.affected_items = sorted(result.affected_items, key=lambda i: i['id'])
+
+    return result
+
+
+@expose_resources(actions=['security:update'], resources=['rule:id:{rule_id}'])
+def update_rule(rule_id=None, name=None, rule=None):
+    """Update a rule from the system.
+
+    :param rule_id: Rule id to be updated
+    :param name: The new name
+    :param rule: The new rule
+    :return Rule information
+    """
+    if name is None and rule is None:
+        raise WazuhError(4001)
+    result = AffectedItemsWazuhResult(none_msg='Rule could not be updated',
+                                      all_msg='Rule updated correctly')
+    with RulesManager() as rum:
+        status = rum.update_rule(rule_id=rule_id[0], name=name, rule=rule)
+        if status == SecurityError.ALREADY_EXIST:
+            result.add_failed_item(id_=rule_id[0], error=WazuhError(4005))
+        elif status == SecurityError.INVALID:
+            result.add_failed_item(id_=rule_id[0], error=WazuhError(4003))
+        elif status == SecurityError.RULE_NOT_EXIST:
+            result.add_failed_item(id_=rule_id[0], error=WazuhError(4022))
+        elif status == SecurityError.ADMIN_RESOURCES:
+            result.add_failed_item(id_=rule_id[0], error=WazuhError(4008))
+        else:
+            updated = rum.get_rule(rule_id[0])
+            result.affected_items.append(updated)
+            result.total_affected_items += 1
+            invalid_roles_tokens(roles=updated['roles'])
+
+    return result
+
+
+def get_username(user_id):
+    """Return the username of the specified user_id
+
+    Parameters
+    ----------
+    user_id : list
+        User ID
+
+    Returns
+    -------
+    username if the user_id exists, unknown in other case
+    """
+    with AuthenticationManager() as am:
+        user = am.get_user_id(user_id=user_id[0])
+        username = user['username'] if user else 'unknown'
+
+    return username
 
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}', 'role:id:{role_ids}'],
@@ -393,8 +605,8 @@ def set_user_role(user_id, role_ids, position=None):
 
     Parameters
     ----------
-    user_id : str
-        Username
+    user_id : list
+        User ID
     role_ids : list of int
         List of role ids
     position : int
@@ -407,13 +619,15 @@ def set_user_role(user_id, role_ids, position=None):
     """
     if position is not None and position < 0:
         raise WazuhError(4018)
-    result = AffectedItemsWazuhResult(none_msg=f'No link created to user {user_id[0]}',
-                                      some_msg=f'Some roles could not be linked to user {user_id[0]}',
-                                      all_msg=f'All roles were linked to user {user_id[0]}')
+
+    username = get_username(user_id=user_id)
+    result = AffectedItemsWazuhResult(none_msg=f'No link created to user {username}',
+                                      some_msg=f'Some roles could not be linked to user {username}',
+                                      all_msg=f'All roles were linked to user {username}')
     success = False
     with UserRolesManager() as urm:
         for role_id in role_ids:
-            user_role = urm.add_role_to_user(username=user_id[0], role_id=role_id, position=position)
+            user_role = urm.add_role_to_user(user_id=user_id[0], role_id=role_id, position=position)
             if user_role == SecurityError.ALREADY_EXIST:
                 result.add_failed_item(id_=role_id, error=WazuhError(4017))
             elif user_role == SecurityError.ROLE_NOT_EXIST:
@@ -430,9 +644,9 @@ def set_user_role(user_id, role_ids, position=None):
                     position += 1
         if success:
             with AuthenticationManager() as auth:
-                result.affected_items.append(auth.get_user(user_id[0]))
+                result.affected_items.append(auth.get_user_id(user_id[0]))
             result.affected_items.sort(key=str)
-            invalid_users_tokens(users=[user_id[0]])
+            invalid_users_tokens(users=user_id)
 
     return result
 
@@ -446,13 +660,14 @@ def remove_user_role(user_id, role_ids):
     :param role_ids: List of role ids
     :return User-Roles information
     """
-    result = AffectedItemsWazuhResult(none_msg=f'No role unlinked from user {user_id[0]}',
-                                      some_msg=f'Some roles could not be unlinked from user {user_id[0]}',
-                                      all_msg=f'All roles were unlinked from user {user_id[0]}')
+    username = get_username(user_id=user_id)
+    result = AffectedItemsWazuhResult(none_msg=f'No role unlinked from user {username}',
+                                      some_msg=f'Some roles could not be unlinked from user {username}',
+                                      all_msg=f'All roles were unlinked from user {username}')
     success = False
     with UserRolesManager() as urm:
         for role_id in role_ids:
-            user_role = urm.remove_role_in_user(username=user_id[0], role_id=role_id)
+            user_role = urm.remove_role_in_user(user_id=user_id[0], role_id=role_id)
             if user_role == SecurityError.INVALID:
                 result.add_failed_item(id_=role_id, error=WazuhError(4016))
             elif user_role == SecurityError.ROLE_NOT_EXIST:
@@ -467,9 +682,93 @@ def remove_user_role(user_id, role_ids):
                 result.total_affected_items += 1
         if success:
             with AuthenticationManager() as auth:
-                result.affected_items.append(auth.get_user(user_id[0]))
+                result.affected_items.append(auth.get_user_id(user_id[0]))
             result.affected_items.sort(key=str)
-            invalid_users_tokens(users=[user_id[0]])
+            invalid_users_tokens(users=user_id)
+
+    return result
+
+
+@expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'rule:id:{rule_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4002, 4008, 4022, 4023]})
+def set_role_rule(role_id, rule_ids):
+    """Create a relationship between a role and one or more rules.
+
+    :param role_id: The new role_id
+    :param rule_ids: List of rule ids
+    :return Result of operation
+    """
+    result = AffectedItemsWazuhResult(none_msg=f'No link created to role {role_id[0]}',
+                                      some_msg=f'Some rules could not be linked to role {role_id[0]}',
+                                      all_msg=f'All rules were linked to role {role_id[0]}')
+    success = False
+    with RolesRulesManager() as rrm:
+        for rule_id in rule_ids:
+            role_rule = rrm.add_rule_to_role(role_id=role_id[0], rule_id=rule_id)
+            if role_rule == SecurityError.ALREADY_EXIST:
+                result.add_failed_item(id_=rule_id, error=WazuhError(4023))
+            elif role_rule == SecurityError.ROLE_NOT_EXIST:
+                result.add_failed_item(id_=role_id[0], error=WazuhError(4002))
+            elif role_rule == SecurityError.RULE_NOT_EXIST:
+                result.add_failed_item(id_=rule_id, error=WazuhError(4022))
+            elif role_rule == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=role_id[0], error=WazuhError(4008))
+            else:
+                success = True
+                result.total_affected_items += 1
+        if success:
+            with RolesManager() as rm:
+                result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
+                # Invalidate users with auth_context
+                with AuthenticationManager() as am:
+                    user_list = list()
+                    for user in am.get_users():
+                        if am.user_allow_run_as(username=user['username']):
+                            user_list.append(user['user_id'])
+                invalid_users_tokens(users=user_list)
+            result.affected_items.sort(key=str)
+
+    return result
+
+
+@expose_resources(actions=['security:delete'], resources=['role:id:{role_id}', 'rule:id:{rule_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4002, 4008, 4022, 4024]})
+def remove_role_rule(role_id, rule_ids):
+    """Remove a relationship between a role and one or more rules.
+
+    :param role_id: The new role_id
+    :param rule_ids: List of rule ids
+    :return Result of operation
+    """
+    result = AffectedItemsWazuhResult(none_msg=f'No rule unlinked from role {role_id[0]}',
+                                      some_msg=f'Some rules could not be unlinked from role {role_id[0]}',
+                                      all_msg=f'All rules were unlinked from role {role_id[0]}')
+    success = False
+    with RolesRulesManager() as rrm:
+        for rule_id in rule_ids:
+            role_rule = rrm.remove_rule_in_role(role_id=int(role_id[0]), rule_id=int(rule_id))
+            if role_rule == SecurityError.INVALID:
+                result.add_failed_item(id_=rule_id, error=WazuhError(4024))
+            elif role_rule == SecurityError.ROLE_NOT_EXIST:
+                result.add_failed_item(id_=role_id[0], error=WazuhError(4002))
+            elif role_rule == SecurityError.RULE_NOT_EXIST:
+                result.add_failed_item(id_=rule_id, error=WazuhError(4022))
+            elif role_rule == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=role_id[0], error=WazuhError(4008))
+            else:
+                success = True
+                result.total_affected_items += 1
+        if success:
+            with RolesManager() as rm:
+                result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
+                # Invalidate users with auth_context
+                with AuthenticationManager() as am:
+                    user_list = list()
+                    for user in am.get_users():
+                        if am.user_allow_run_as(username=user['username']):
+                            user_list.append(user['user_id'])
+                invalid_users_tokens(users=user_list)
+            result.affected_items.sort(key=str)
 
     return result
 
@@ -517,7 +816,7 @@ def set_role_policy(role_id, policy_ids, position=None):
             with RolesManager() as rm:
                 result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
                 role = rm.get_role_id(role_id=role_id[0])
-                invalid_users_tokens(roles=[role])
+                invalid_roles_tokens(roles=[role['id']])
             result.affected_items.sort(key=str)
 
     return result
@@ -554,20 +853,27 @@ def remove_role_policy(role_id, policy_ids):
             with RolesManager() as rm:
                 result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
                 role = rm.get_role_id(role_id=role_id[0])
-                invalid_users_tokens(roles=[role])
+                invalid_roles_tokens(roles=[role['id']])
             result.affected_items.sort(key=str)
 
     return result
 
 
+def revoke_current_user_tokens():
+    """Revoke all current user's tokens"""
+    with TokenManager() as tm:
+        with AuthenticationManager() as am:
+            tm.add_user_roles_rules(users={am.get_user(common.current_user.get())['id']})
+
+    return WazuhResult({'msg': f'User {common.current_user.get()} logout correctly.'})
+
+
 @expose_resources(actions=['security:revoke'], resources=['*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': {
                       'none_msg': 'Permission denied in all manager nodes: Resource type: *:*'}})
-def revoke_tokens():
+def wrapper_revoke_tokens():
     """ Revoke all tokens """
-    change_secret()
-    with TokenManager() as tm:
-        tm.delete_all_rules()
+    revoke_tokens()
 
     return WazuhResult({'msg': 'Tokens revoked successfully'})
 
@@ -676,8 +982,7 @@ def update_security_config(updated_config=None):
         Confirmation/Error message.
     """
     try:
-        if update_security_conf(updated_config):
-            revoke_tokens()
+        update_security_conf(updated_config)
         result = 'Configuration successfully updated'
     except WazuhError as e:
         result = f'Configuration could not be updated. Error: {e}'

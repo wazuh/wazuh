@@ -931,3 +931,19 @@ char * w_tolower_str(const char *string) {
 
     return tolower_str;
 }
+
+// Verify the string is not truncated after executing snprintf
+
+int os_snprintf(char *str, size_t size, const char *format, ...) {
+    size_t ret;
+    va_list args;
+
+    va_start(args, format);
+    ret = vsnprintf(str, size, format, args);
+    if (ret >= size) {
+        mwarn("String may be truncated because it is too long.");
+    }
+    va_end(args);
+
+    return ret;
+}

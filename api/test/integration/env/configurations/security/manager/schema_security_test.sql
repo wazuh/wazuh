@@ -6,9 +6,11 @@
  * and/or modify it under the terms of GPLv2.
  */
 
-CREATE TABLE users (username VARCHAR(32) NOT NULL, password VARCHAR(256), auth_context BOOLEAN DEFAULT FALSE NOT NULL, created_at DATETIME, PRIMARY KEY (username));
+CREATE TABLE users (id INTEGER NOT NULL, username VARCHAR(32), password VARCHAR(256), allow_run_as BOOLEAN NOT NULL, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT username_restriction UNIQUE (username), CHECK (allow_run_as IN (0, 1)));
 
-CREATE TABLE roles (id INTEGER NOT NULL, name VARCHAR(20), rule TEXT, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT name_role UNIQUE (name), CONSTRAINT role_definition UNIQUE (rule));
+CREATE TABLE roles (id INTEGER NOT NULL, name VARCHAR(20), created_at DATETIME,	PRIMARY KEY (id), CONSTRAINT name_role UNIQUE (name));
+
+CREATE TABLE rules (id INTEGER NOT NULL, name VARCHAR(20), rule TEXT, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT rule_name UNIQUE (name), CONSTRAINT rule_definition UNIQUE (rule));
 
 CREATE TABLE policies (id INTEGER NOT NULL, name VARCHAR(20), policy TEXT, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT name_policy UNIQUE (name),	CONSTRAINT policy_definition UNIQUE (policy));
 
@@ -16,37 +18,50 @@ CREATE TABLE roles_policies (id INTEGER NOT NULL, role_id INTEGER, policy_id INT
 
 CREATE TABLE user_roles (id INTEGER NOT NULL, user_id INTEGER, role_id INTEGER, level INTEGER,	created_at DATETIME, PRIMARY KEY (id), CONSTRAINT user_role UNIQUE (user_id, role_id), FOREIGN KEY(user_id) REFERENCES users (username) ON DELETE CASCADE, FOREIGN KEY(role_id) REFERENCES roles (id) ON DELETE CASCADE);
 
+CREATE TABLE roles_rules (id INTEGER NOT NULL, role_id INTEGER, rule_id INTEGER, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT role_rule UNIQUE (role_id, rule_id), FOREIGN KEY(role_id) REFERENCES roles (id) ON DELETE CASCADE, FOREIGN KEY(rule_id) REFERENCES rules (id) ON DELETE CASCADE);
 PRAGMA foreign_keys=OFF;
 BEGIN TRANSACTION;
 
 /* Default users */
-INSERT INTO users VALUES('wazuh','pbkdf2:sha256:150000$OMVAATei$cb30da77537eea26b964265dab6f403e9499f18522c7cc9e6ba2cb2d33694e1f',0,'1970-01-01 00:00:00');
-INSERT INTO users VALUES('wazuh-wui','pbkdf2:sha256:150000$wbPFpWBC$e3dee9520837bc0e49dd92c3ea4d59ecf7539a9314be2d5cc7582a9ff37d478f',1,'1970-01-01 00:00:00');
+INSERT INTO users VALUES(1,'wazuh','pbkdf2:sha256:150000$OMVAATei$cb30da77537eea26b964265dab6f403e9499f18522c7cc9e6ba2cb2d33694e1f',0,'1970-01-01 00:00:00');
+INSERT INTO users VALUES(2,'wazuh-wui','pbkdf2:sha256:150000$wbPFpWBC$e3dee9520837bc0e49dd92c3ea4d59ecf7539a9314be2d5cc7582a9ff37d478f',1,'1970-01-01 00:00:00');
 
 /* Testing */
-INSERT INTO users VALUES('administrator','pbkdf2:sha256:150000$QeB4uaGN$af22f78293952aaedad72b21efac557c9c32dea0a1e445080a6cb0f1c6259b62',0,'1970-01-01 00:00:00');
-INSERT INTO users VALUES('normal','pbkdf2:sha256:150000$LtJcBzd0$c768527541e515e9601571b9b9d3f5636b91d47dbe4341df83b8ad7ff51b7893',0,'1970-01-01 00:00:00');
-INSERT INTO users VALUES('ossec','pbkdf2:sha256:150000$TyLx9vsB$be2db27d007fa1d508791b6ccdab9151ed013f875fab444bd18d0d9f6b102380',0,'1970-01-01 00:00:00');
-INSERT INTO users VALUES('python','pbkdf2:sha256:150000$wO4Kq816$92dfe997f796e5d550a2641577d17ed5d1dc136bf64d5376629167159625a1ce',0,'1970-01-01 00:00:00');
-INSERT INTO users VALUES('rbac','pbkdf2:sha256:150000$eQAz1s4i$12c6ffdd7f290a12edf7ab1c7128ffac684abea78db2889494d4f9c8d0b92235',0,'1970-01-01 00:00:00');
-INSERT INTO users VALUES('guest','pbkdf2:sha256:150000$O9tFseJW$7659fc551aa6ed9cf207434d90d1da388f6840ce7bba5967a16949d4a94d1579',0,'1970-01-01 00:00:00');
+INSERT INTO users VALUES(100,'administrator','pbkdf2:sha256:150000$QeB4uaGN$af22f78293952aaedad72b21efac557c9c32dea0a1e445080a6cb0f1c6259b62',0,'1970-01-01 00:00:00');
+INSERT INTO users VALUES(101,'normal','pbkdf2:sha256:150000$LtJcBzd0$c768527541e515e9601571b9b9d3f5636b91d47dbe4341df83b8ad7ff51b7893',0,'1970-01-01 00:00:00');
+INSERT INTO users VALUES(102,'ossec','pbkdf2:sha256:150000$TyLx9vsB$be2db27d007fa1d508791b6ccdab9151ed013f875fab444bd18d0d9f6b102380',0,'1970-01-01 00:00:00');
+INSERT INTO users VALUES(103,'python','pbkdf2:sha256:150000$wO4Kq816$92dfe997f796e5d550a2641577d17ed5d1dc136bf64d5376629167159625a1ce',0,'1970-01-01 00:00:00');
+INSERT INTO users VALUES(104,'rbac','pbkdf2:sha256:150000$eQAz1s4i$12c6ffdd7f290a12edf7ab1c7128ffac684abea78db2889494d4f9c8d0b92235',0,'1970-01-01 00:00:00');
+INSERT INTO users VALUES(105,'guest','pbkdf2:sha256:150000$O9tFseJW$7659fc551aa6ed9cf207434d90d1da388f6840ce7bba5967a16949d4a94d1579',0,'1970-01-01 00:00:00');
 
 /* Default roles */
-INSERT INTO roles VALUES(1,'administrator','{"FIND": {"r''^auth[a-zA-Z]+$''": ["full_admin"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(2,'readonly','{"FIND": {"r''^auth[a-zA-Z]+$''": ["readonly"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(3,'users_admin','{"FIND": {"r''^auth[a-zA-Z]+$''": ["users_admin"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(4,'agents_readonly','{"FIND": {"r''^auth[a-zA-Z]+$''": ["agents_readonly"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(5,'agents_admin','{"FIND": {"r''^auth[a-zA-Z]+$''": ["agents_admin"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(6,'cluster_readonly','{"FIND": {"r''^auth[a-zA-Z]+$''": ["cluster_readonly"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(7,'cluster_admin','{"FIND": {"r''^auth[a-zA-Z]+$''": ["cluster_admin"]}}','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(1,'administrator','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(2,'readonly','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(3,'users_admin','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(4,'agents_readonly','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(5,'agents_admin','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(6,'cluster_readonly','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(7,'cluster_admin','1970-01-01 00:00:00');
 
 /* Testing */
-INSERT INTO roles VALUES(100,'wazuh','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(101,'wazuh-wui','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator-app"]}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(102,'technical','{"MATCH": {"definition": "technicalRule"}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(103,'administrator_test','{"MATCH": {"definition": "administratorRule"}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(104,'normalUser','{"MATCH": {"definition": "normalRule"}}','1970-01-01 00:00:00');
-INSERT INTO roles VALUES(105,'ossec','{"MATCH": {"definition": "ossecRule"}}','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(100,'wazuh','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(101,'wazuh-wui','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(102,'technical','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(103,'administrator_test','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(104,'normalUser','1970-01-01 00:00:00');
+INSERT INTO roles VALUES(105,'ossec','1970-01-01 00:00:00');
+
+/* Default rules */
+INSERT INTO rules VALUES(1,'wui_elastic_admin','{"FIND": {"username": ["elastic"]}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(2,'wui_opendistro_admin','{"FIND": {"user_name": ["admin"]}}','1970-01-01 00:00:00');
+
+/* Testing */
+INSERT INTO rules VALUES(100,'rule1','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator"]}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(101,'rule2','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator-app"]}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(102,'rule3','{"MATCH": {"definition": "technicalRule"}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(103,'rule4','{"MATCH": {"definition": "administratorRule"}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(104,'rule5','{"MATCH": {"definition": "normalRule"}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(105,'rule6','{"MATCH": {"definition": "ossecRule"}}','1970-01-01 00:00:00');
 
 /* Default policies */
 INSERT INTO policies VALUES(1,'agents_all_resourceless','{"actions": ["agent:create", "group:create"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.630121');
@@ -68,13 +83,13 @@ INSERT INTO policies VALUES(16,'sca_read_sca','{"actions": ["sca:read"], "resour
 INSERT INTO policies VALUES(17,'syscheck_read_syscheck','{"actions": ["syscheck:read"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.771236');
 INSERT INTO policies VALUES(18,'syscheck_all_syscheck','{"actions": ["syscheck:clear", "syscheck:read", "syscheck:run"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.793929');
 INSERT INTO policies VALUES(19,'syscollector_read_syscollector','{"actions": ["syscollector:read"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.809009');
-INSERT INTO policies VALUES(20,'cluster_all_resourceless','{"actions": ["cluster:status", "manager:read_config", "manager:read_api_config", "manager:update_api_config", "manager:upload_file", "manager:restart", "manager:delete_file"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.823710');
+INSERT INTO policies VALUES(20,'cluster_all_resourceless','{"actions": ["cluster:status", "manager:read", "manager:read_api_config", "manager:update_api_config", "manager:upload_file", "manager:restart", "manager:delete_file"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.823710');
 INSERT INTO policies VALUES(21,'cluster_all_files','{"actions": ["manager:delete_file", "manager:read_file"], "resources": ["file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.837608');
-INSERT INTO policies VALUES(22,'cluster_all_nodes','{"actions": ["cluster:delete_file", "cluster:read_api_config", "cluster:read_config", "cluster:read_api_config", "cluster:update_api_config", "cluster:restart", "cluster:upload_file"], "resources": ["node:id:*"], "effect": "allow"}','2020-06-16 14:34:31.852327');
+INSERT INTO policies VALUES(22,'cluster_all_nodes','{"actions": ["cluster:delete_file", "cluster:read_api_config", "cluster:read", "cluster:read_api_config", "cluster:update_api_config", "cluster:restart", "cluster:upload_file"], "resources": ["node:id:*"], "effect": "allow"}','2020-06-16 14:34:31.852327');
 INSERT INTO policies VALUES(23,'cluster_all_combination','{"actions": ["cluster:read_file", "cluster:delete_file"], "resources": ["node:id:*&file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.866994');
-INSERT INTO policies VALUES(24,'cluster_read_resourceless','{"actions": ["cluster:status", "manager:read_config", "manager:read_api_config"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.881676');
-INSERT INTO policies VALUES(25,'cluster_read_files','{"actions": ["manager:read_config", "manager:read_api_config"], "resources": ["file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.896095');
-INSERT INTO policies VALUES(26,'cluster_read_nodes','{"actions": ["cluster:read_api_config", "cluster:read_config", "cluster:read_api_config"], "resources": ["node:id:*"], "effect": "allow"}','2020-06-16 14:34:31.911005');
+INSERT INTO policies VALUES(24,'cluster_read_resourceless','{"actions": ["cluster:status", "manager:read", "manager:read_api_config"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.881676');
+INSERT INTO policies VALUES(25,'cluster_read_files','{"actions": ["manager:read", "manager:read_api_config"], "resources": ["file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.896095');
+INSERT INTO policies VALUES(26,'cluster_read_nodes','{"actions": ["cluster:read_api_config", "cluster:read", "cluster:read_api_config"], "resources": ["node:id:*"], "effect": "allow"}','2020-06-16 14:34:31.911005');
 INSERT INTO policies VALUES(27,'cluster_read_combination','{"actions": ["cluster:read_file"], "resources": ["node:id:*&file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.925851');
 
 /* Testing */
@@ -157,20 +172,32 @@ INSERT INTO roles_policies VALUES(119,105,102,8,'1970-01-01 00:00:00');
 INSERT INTO roles_policies VALUES(120,105,103,9,'1970-01-01 00:00:00');
 
 /* Default user-roles links */
-INSERT INTO user_roles VALUES(1,'wazuh',1,0,'1970-01-01 00:00:00');
-INSERT INTO user_roles VALUES(2,'wazuh-wui',2,0,'1970-01-01 00:00:00');
+INSERT INTO user_roles VALUES(1,1,1,0,'1970-01-01 00:00:00');
+INSERT INTO user_roles VALUES(2,2,2,0,'1970-01-01 00:00:00');
 
 /* Testing */
-INSERT INTO user_roles VALUES(100,'administrator',100,0,'1970-01-01 00:00:00');
-INSERT INTO user_roles VALUES(101,'python',101,0,'1970-01-01 00:00:00');
-INSERT INTO user_roles VALUES(102,'administrator',101,1,'1970-01-01 00:00:00');
-INSERT INTO user_roles VALUES(103,'normal',104,0,'1970-01-01 00:00:00');
-INSERT INTO user_roles VALUES(104,'normal',105,1,'1970-01-01 00:00:00');
-INSERT INTO user_roles VALUES(105,'normal',103,2,'1970-01-01 00:00:00');
-INSERT INTO user_roles VALUES(106,'ossec',101,0,'1970-01-01 00:00:00');
-INSERT INTO user_roles VALUES(107,'ossec',104,1,'1970-01-01 00:00:00');
-INSERT INTO user_roles VALUES(108,'rbac',104,0,'1970-01-01 00:00:00');
-INSERT INTO user_roles VALUES(109,'rbac',102,1,'1970-01-01 00:00:00');
-INSERT INTO user_roles VALUES(110,'rbac',103,2,'1970-01-01 00:00:00');
+INSERT INTO user_roles VALUES(100,100,100,0,'1970-01-01 00:00:00');
+INSERT INTO user_roles VALUES(101,103,101,0,'1970-01-01 00:00:00');
+INSERT INTO user_roles VALUES(102,100,101,1,'1970-01-01 00:00:00');
+INSERT INTO user_roles VALUES(103,101,104,0,'1970-01-01 00:00:00');
+INSERT INTO user_roles VALUES(104,101,105,1,'1970-01-01 00:00:00');
+INSERT INTO user_roles VALUES(105,101,103,2,'1970-01-01 00:00:00');
+INSERT INTO user_roles VALUES(106,102,101,0,'1970-01-01 00:00:00');
+INSERT INTO user_roles VALUES(107,102,104,1,'1970-01-01 00:00:00');
+INSERT INTO user_roles VALUES(108,104,104,0,'1970-01-01 00:00:00');
+INSERT INTO user_roles VALUES(109,104,102,1,'1970-01-01 00:00:00');
+INSERT INTO user_roles VALUES(110,104,103,2,'1970-01-01 00:00:00');
+
+/* Default roles-rules links */
+INSERT INTO roles_rules VALUES(1,1,1,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(2,2,2,'1970-01-01 00:00:00');
+
+/* Testing */
+INSERT INTO roles_rules VALUES(100,100,100,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(101,101,101,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(102,102,102,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(103,103,103,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(104,104,104,'1970-01-01 00:00:00');
+INSERT INTO roles_rules VALUES(105,105,105,'1970-01-01 00:00:00');
 
 COMMIT;

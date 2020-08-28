@@ -9,9 +9,9 @@ import re
 from datetime import datetime
 from time import strftime
 
-from wazuh import common
-from wazuh.database import Connection
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.core import common
+from wazuh.core.database import Connection
+from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 
 """
 Wazuh HIDS Python package
@@ -31,9 +31,9 @@ msg += "\n  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rh/python27/root/usr/li
 try:
     from sys import version_info as python_version
     if python_version.major < 2 or (python_version.major == 2 and python_version.minor < 7):
-        raise WazuhException(999, msg)
+        raise WazuhInternalError(999, msg)
 except Exception as e:
-    raise WazuhException(999, msg)
+    raise WazuhInternalError(999, msg)
 
 
 class Wazuh:

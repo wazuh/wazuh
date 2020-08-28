@@ -1,4 +1,3 @@
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -10,9 +9,9 @@ import typing
 import six
 from connexion import ProblemException
 
-from wazuh.common import ossec_path as WAZUH_PATH
-from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
-from api.api_exception import APIException, APIError
+from wazuh.core.common import ossec_path as WAZUH_PATH
+from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError, WazuhPermissionError, \
+    WazuhResourceNotFound, WazuhTooManyRequests, WazuhNotAcceptable
 
 
 def serialize(item):
@@ -38,7 +37,7 @@ def _deserialize(data, klass):
 
     if klass in six.integer_types or klass in (float, str, bool):
         return _deserialize_primitive(data, klass)
-    elif klass == object:
+    elif klass == object or klass == dict:
         return _deserialize_object(data)
     elif klass == datetime.date:
         return deserialize_date(data)
@@ -207,6 +206,25 @@ def _parse_sort_param(sort: str) -> [typing.Dict, None]:
     return {'fields': sort_fields.split(','), 'order': 'desc' if sort[0] == '-' else 'asc'}
 
 
+def _parse_q_param(query: str):
+    """Search and parse q parameter inside the query string
+
+    Parameters
+    ----------
+    query : str
+        String query which can contain q parameter
+
+    Returns
+    -------
+    q : str
+        Parsed query
+    """
+    q = next((q for q in query.split('&') if q.startswith('q=')), None)
+
+    if q:
+        return q[2:]
+
+
 def to_relative_path(full_path):
     """Returns a relative path from Wazuh base directory
 
@@ -218,7 +236,7 @@ def to_relative_path(full_path):
     return os.path.relpath(full_path, WAZUH_PATH)
 
 
-def _create_problem(exc: Exception):
+def _create_problem(exc: Exception, code=None):
     """
     Transforms an exception into a ProblemException according to `exc`
 
@@ -227,6 +245,8 @@ def _create_problem(exc: Exception):
     exc : Exception
         If `exc` is an instance of `WazuhException` it will be casted into a ProblemException, otherwise it will be
         raised
+    code : int
+        HTTP status code for this response
 
     Raises
     ------
@@ -235,29 +255,36 @@ def _create_problem(exc: Exception):
     if isinstance(exc, WazuhException):
         ext = remove_nones_to_dict({'remediation': exc.remediation,
                                     'code': exc.code,
-                                    'dapi_errors': exc.dapi_errors
+                                    'dapi_errors': exc.dapi_errors if exc.dapi_errors != {} else None
                                     })
-    elif isinstance(exc, APIException):
-        ext = remove_nones_to_dict({'code': exc.code})
-    else:
-        ext = None
-    if isinstance(exc, WazuhError):
-        raise ProblemException(status=400, title='Wazuh Error', detail=exc.message, ext=ext)
-    elif isinstance(exc, (WazuhInternalError, WazuhException)):
-        raise ProblemException(status=500, title='Wazuh Internal Error', detail=exc.message, ext=ext)
-    elif isinstance(exc, APIError):
-        raise ProblemException(status=400, title='Wazuh Error', detail=exc.details, ext=ext)
-    elif isinstance(exc, APIException):
-        raise ProblemException(status=500, title='Wazuh Internal Error', detail=exc.details, ext=ext)
+    if isinstance(exc, WazuhInternalError):
+        raise ProblemException(status=500 if not code else code, type=exc.type, title=exc.title, detail=exc.message,
+                               ext=ext)
+    elif isinstance(exc, WazuhPermissionError):
+        raise ProblemException(status=403, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
+    elif isinstance(exc, WazuhResourceNotFound):
+        raise ProblemException(status=404, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
+    elif isinstance(exc, WazuhTooManyRequests):
+        raise ProblemException(status=429, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
+    elif isinstance(exc, WazuhNotAcceptable):
+        raise ProblemException(status=406, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
+    elif isinstance(exc, WazuhError):
+        raise ProblemException(status=400 if not code else code, type=exc.type, title=exc.title, detail=exc.message,
+                               ext=ext)
     raise exc
 
 
 def raise_if_exc(obj):
-    """
-    Checks if obj is an Exception and raises it. Otherwise it is returned
+    """Checks if obj is an Exception and raises it. Otherwise it is returned
 
-    :param obj: object to be checked
-    :return: obj only if it is not an Exception instance
+    Parameters
+    ----------
+    obj : dict or Exception
+        Object to be checked
+
+    Returns
+    -------
+    An obj only if it is not an Exception instance
     """
     if isinstance(obj, Exception):
         _create_problem(obj)

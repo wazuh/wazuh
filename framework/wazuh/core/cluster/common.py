@@ -17,8 +17,9 @@ from typing import Tuple, Dict, Callable
 import cryptography.fernet
 
 import wazuh.core.cluster.utils
-import wazuh.results as wresults
-from wazuh import exception, common, Wazuh
+import wazuh.core.results as wresults
+from wazuh import Wazuh, WazuhException
+from wazuh.core import common, exception
 
 
 class Response:
@@ -341,7 +342,7 @@ class Handler(asyncio.Protocol):
         Forwards a distributed API response from master node.
 
         :param data: Bytes containing local client name and string id separated by ' '
-        :return: sucess/error message
+        :return: success/error message
         """
         client, string_id = data.split(b' ', 1)
         client = client.decode()
@@ -356,6 +357,26 @@ class Handler(asyncio.Protocol):
             exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                   cls=WazuhJSONEncoder).encode()
             res = await self.send_request(b'dapi_err', exc_info)
+
+    async def forward_sendsync_response(self, data: bytes):
+        """
+        Forwards a sendsync response from master node.
+
+        :param data: Bytes containing local client name and string id separated by ' '
+        :return: success/error message
+        """
+        client, string_id = data.split(b' ', 1)
+        client = client.decode()
+        try:
+            await self.get_manager().local_server.clients[client].send_request(b'ok', self.in_str[string_id].payload)
+        except exception.WazuhException as e:
+            self.logger.error(f"Error sending send sync response to local client: {e}")
+            await self.send_request(b'sendsync_err', json.dumps(e, cls=WazuhJSONEncoder).encode())
+        except Exception as e:
+            self.logger.error(f"Error sending send sync response to local client: {e}")
+            exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
+                                  cls=WazuhJSONEncoder).encode()
+            await self.send_request(b'sendsync_err', exc_info)
 
     def data_received(self, message: bytes) -> None:
         """
@@ -391,8 +412,8 @@ class Handler(asyncio.Protocol):
             self.logger.error("Unhandled error processing request '{}': {}".format(command, e), exc_info=True)
             command, payload = b'err', json.dumps(exception.WazuhInternalError(1000, extra_message=str(e)),
                                                   cls=WazuhJSONEncoder).encode()
-
-        self.push(self.msg_build(command, counter, payload))
+        if command is not None:
+            self.push(self.msg_build(command, counter, payload))
 
     def close(self):
         """
@@ -598,7 +619,6 @@ def asyncio_exception_handler(loop, context: Dict):
 
 class WazuhJSONEncoder(json.JSONEncoder):
     def default(self, obj):
-
         if callable(obj):
             result = {'__callable__': {}}
             attributes = result['__callable__']

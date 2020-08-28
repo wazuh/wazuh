@@ -15,12 +15,11 @@ from datetime import datetime
 from typing import Tuple, Dict, Callable
 
 import wazuh.core.cluster.cluster
-from wazuh import common, utils, exception
-from wazuh.core import cluster as metadata
+from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.cluster import server, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
-from wazuh.core.core_agent import Agent
+from wazuh.core.agent import Agent
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -192,6 +191,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         elif command == b'get_health':
             cmd, res = self.get_health(json.loads(data))
             return cmd, json.dumps(res).encode()
+        elif command == b'sendsync':
+            self.server.sendsync.add_request(self.name.encode() + b'*' + data)
+            return b'ok', b'Added request to SendSync requests queue'
         else:
             return super().process_request(command, data)
 
@@ -669,7 +671,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
 class Master(server.AbstractServer):
     """
-    Creates the server. Handles multiple clients and DAPI requests.
+    Creates the server. Handles multiple clients, DAPI and Send Sync requests.
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs, tag="Master")
@@ -677,7 +679,8 @@ class Master(server.AbstractServer):
         self.tasks.append(self.file_status_update)
         self.handler_class = MasterHandler
         self.dapi = dapi.APIRequestQueue(server=self)
-        self.tasks.append(self.dapi.run)
+        self.sendsync = dapi.SendSyncRequestQueue(server=self)
+        self.tasks.extend([self.dapi.run, self.sendsync.run])
         # pending API requests waiting for a response
         self.pending_api_requests = {}
 

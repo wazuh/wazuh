@@ -4,27 +4,30 @@
 
 import logging
 import re
-from json.decoder import JSONDecodeError
+from json import JSONDecodeError
 
 from aiohttp import web
-
-from api.api_exception import APIError
 from api.authentication import generate_token
+from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
-from api.models.token_response import TokenResponse
+from api.models.base_model_ import Body
+from api.models.configuration import SecurityConfigurationModel
+from api.models.security import CreateUserModel, UpdateUserModel, RoleModel, PolicyModel, RuleModel
+from api.models.token_response import TokenResponseModel
 from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
+from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.exception import WazuhError
+from wazuh.core.exception import WazuhPermissionError, WazuhException, WazuhInternalError
+from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.security import revoke_tokens
 from wazuh.rbac import preprocessor
-from api.configuration import default_security_configuration
-from wazuh.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
-async def login_user(request, user: str, auth_context=None):
+async def login_user(request, user: str, raw=False):
     """User/password authentication to get an access token.
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
 
@@ -33,15 +36,19 @@ async def login_user(request, user: str, auth_context=None):
     request : connexion.request
     user : str
         Name of the user who wants to be authenticated
-    auth_context : dict, optional
-        User's authorization context
+    raw : bool, optional
+        Respond in raw format
 
     Returns
     -------
-    TokenResponse
+    TokenResponseModel
     """
-    f_kwargs = {'auth_context': auth_context,
-                'user_id': user}
+    f_kwargs = {'user_id': user}
+    try:
+        # Add authorization context in case there is body in request
+        f_kwargs['auth_context'] = await request.json()
+    except JSONDecodeError:
+        pass
 
     dapi = DistributedAPI(f=preprocessor.get_permissions,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -51,18 +58,81 @@ async def login_user(request, user: str, auth_context=None):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=TokenResponse(token=generate_token(user_id=user, rbac_policies=data.dikt)),
-                             status=200, dumps=dumps)
+    token = None
+    try:
+        token = generate_token(user_id=user, rbac_policies=data.dikt)
+    except WazuhException as e:
+        raise_if_exc(e)
+
+    if raw:
+        return web.Response(text=token, content_type='text/plain', status=200)
+    else:
+        return web.json_response(data=TokenResponseModel(token=token), status=200, dumps=dumps)
 
 
-async def get_users(request, usernames: list = None, pretty=False, wait_for_complete=False,
+async def get_user_me(request, pretty=False, wait_for_complete=False):
+    """Returns information from all system roles.
+
+    Parameters
+    ----------
+    request : connexion.request
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Users information
+    """
+    dapi = DistributedAPI(f=security.get_user_me,
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger,
+                          wait_for_complete=wait_for_complete,
+                          current_user=request['token_info']['sub'],
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def logout_user(request, pretty=False, wait_for_complete=False):
+    """Invalidate all current user's tokens.
+
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Status
+    """
+
+    dapi = DistributedAPI(f=security.revoke_current_user_tokens,
+                          request_type='local_master',
+                          is_async=False,
+                          current_user=request['token_info']['sub'],
+                          wait_for_complete=wait_for_complete,
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def get_users(request, user_ids: list = None, pretty=False, wait_for_complete=False,
                     offset=0, limit=None, search=None, sort=None):
     """Returns information from all system roles.
 
     Parameters
     ----------
     request : connexion.request
-    usernames : list, optional
+    user_ids : list, optional
         List of users to be obtained
     pretty : bool, optional
         Show results in human-readable format
@@ -80,18 +150,20 @@ async def get_users(request, usernames: list = None, pretty=False, wait_for_comp
 
     Returns
     -------
-    Roles information
+    Users information
     """
-    f_kwargs = {'username_list': usernames, 'offset': offset, 'limit': limit,
-                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['username'],
+    f_kwargs = {'user_ids': user_ids, 'offset': offset, 'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None}
+
     dapi = DistributedAPI(f=security.get_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
                           logger=logger,
+                          wait_for_complete=wait_for_complete,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -99,117 +171,103 @@ async def get_users(request, usernames: list = None, pretty=False, wait_for_comp
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-def _check_body(f_kwargs, keys: list = None):
-    """Checks that body is correct.
-
-    Parameters
-    ----------
-    f_kwargs : dict
-        Body to be checked
-    keys : list
-        Keys that the body must have only and exclusively
-
-    Returns
-    -------
-    False if invalid key detected else True
-    """
-    if keys is None:
-        keys = ['username', 'password']
-    for key in f_kwargs.keys():
-        if key not in keys:
-            return False
-
-    return True
-
-
-async def create_user(request):
+async def create_user(request, pretty=False, wait_for_complete=False):
     """Create a new user.
 
     Parameters
     ----------
     request : connexion.request
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
 
     Returns
     -------
     User data
     """
-    validate = False
-    try:
-        f_kwargs = {**await request.json()}
-        validate = _check_body(f_kwargs)
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-    if not validate:
-        raise_if_exc(WazuhError(5005, extra_message='Invalid field found {}'.format(f_kwargs)))
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await CreateUserModel.get_kwargs(request)
+
     dapi = DistributedAPI(f=security.create_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          wait_for_complete=wait_for_complete
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def update_user(request, username: str):
+async def update_user(request, user_id: str, pretty=False, wait_for_complete=False):
     """Modify an existent user.
 
     Parameters
     ----------
     request : connexion.request
-    username : str
-        Username of the user to be updated
+    user_id : str
+        User ID of the user to be updated
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
 
     Returns
     -------
     User data
     """
-    try:
-        f_kwargs = {'username': username, **await request.json()}
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-    validate = _check_body(f_kwargs)
-    if validate is not True:
-        raise WazuhError(5005, extra_message='Invalid field found {}'.format(validate))
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await UpdateUserModel.get_kwargs(request, additional_kwargs={'user_id': user_id})
+
     dapi = DistributedAPI(f=security.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          wait_for_complete=wait_for_complete
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_users(request, usernames: list = None):
+async def delete_users(request, user_ids: list = None, pretty=False, wait_for_complete=False):
     """Delete an existent list of users.
 
     Parameters
     ----------
     request : connexion.request
-    usernames : list, optional
-        Names of the users to be removed
+    user_ids : list, optional
+        IDs of the users to be removed
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
 
     Returns
     -------
     Result of the operation
     """
-    f_kwargs = {'username_list': usernames}
+    if 'all' in user_ids:
+        user_ids = None
+    f_kwargs = {'user_ids': user_ids}
+
     dapi = DistributedAPI(f=security.remove_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
                           logger=logger,
                           current_user=request['token_info']['sub'],
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          wait_for_complete=wait_for_complete
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
@@ -274,14 +332,9 @@ async def add_role(request, pretty: bool = False, wait_for_complete: bool = Fals
     -------
     Role information
     """
-    # get body parameters
-    role_added_model = dict()
-    try:
-        role_added_model = await request.json()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-
-    f_kwargs = {'name': role_added_model['name'], 'rule': role_added_model['rule']}
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await RoleModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=security.add_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -313,6 +366,8 @@ async def remove_roles(request, role_ids: list = None, pretty: bool = False, wai
     -------
     Two list with deleted roles and not deleted roles
     """
+    if 'all' in role_ids:
+        role_ids = None
     f_kwargs = {'role_ids': role_ids}
 
     dapi = DistributedAPI(f=security.remove_roles,
@@ -345,17 +400,158 @@ async def update_role(request, role_id: int, pretty: bool = False, wait_for_comp
     -------
     Role information updated
     """
-    # get body parameters
-    role_added_model = dict()
-    try:
-        role_added_model = await request.json()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-
-    f_kwargs = {'role_id': role_id, 'name': role_added_model.get('name', None),
-                'rule': role_added_model.get('rule', None)}
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await RoleModel.get_kwargs(request, additional_kwargs={'role_id': role_id})
 
     dapi = DistributedAPI(f=security.update_role,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                    offset: int = 0, limit: int = None, search: str = None, sort: str = None):
+    """Get information about the security rules in the system.
+
+    Parameters
+    ----------
+    request : connexion.request
+    rule_ids : list, optional
+        List of rule ids to be obtained
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+    offset : int, optional
+        First item to return
+    limit : int, optional
+        Maximum number of items to return
+    search : str, optional
+        Looks for elements with the specified string
+    sort : str, optional
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order
+
+    Returns
+    -------
+    Rules information
+    """
+    f_kwargs = {'rule_ids': rule_ids, 'offset': offset, 'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
+                }
+
+    dapi = DistributedAPI(f=security.get_rules,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def add_rule(request, pretty: bool = False, wait_for_complete: bool = False):
+    """Add one specified rule.
+
+    Parameters
+    ----------
+    request : request.connexion
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Rule information
+    """
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await RuleModel.get_kwargs(request)
+
+    dapi = DistributedAPI(f=security.add_rule,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def update_rule(request, rule_id: int, pretty: bool = False, wait_for_complete: bool = False):
+    """Update the information of one specified rule.
+
+    Parameters
+    ----------
+    request : connexion.request
+    rule_id : int
+        Specific rule id in the system to be updated
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Rule information updated
+    """
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await RuleModel.get_kwargs(request, additional_kwargs={'rule_id': rule_id})
+
+    dapi = DistributedAPI(f=security.update_rule,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def remove_rules(request, rule_ids: list = None, pretty: bool = False, wait_for_complete: bool = False):
+    """Remove a list of rules from the system.
+
+    Parameters
+    ----------
+    request : connexion.request
+    rule_ids : list, optional
+        List of rule ids to be deleted
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Two lists with deleted rules and failed ones.
+    """
+    if 'all' in rule_ids:
+        rule_ids = None
+    f_kwargs = {'rule_ids': rule_ids}
+
+    dapi = DistributedAPI(f=security.remove_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -430,14 +626,9 @@ async def add_policy(request, pretty: bool = False, wait_for_complete: bool = Fa
     -------
     Policy information
     """
-    # get body parameters
-    policy_added_model = dict()
-    try:
-        policy_added_model = await request.json()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-
-    f_kwargs = {'name': policy_added_model['name'], 'policy': policy_added_model['policy']}
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await PolicyModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=security.add_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -469,6 +660,8 @@ async def remove_policies(request, policy_ids: list = None, pretty: bool = False
     -------
     Two list with deleted roles and not deleted roles
     """
+    if 'all' in policy_ids:
+        policy_ids = None
     f_kwargs = {'policy_ids': policy_ids}
 
     dapi = DistributedAPI(f=security.remove_policies,
@@ -501,16 +694,9 @@ async def update_policy(request, policy_id: int, pretty: bool = False, wait_for_
     -------
     Policy information updated
     """
-    # get body parameters
-    policy_added_model = dict()
-    try:
-        policy_added_model = await request.json()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-
-    f_kwargs = {'policy_id': policy_id,
-                'name': policy_added_model.get('name', None),
-                'policy': policy_added_model.get('policy', None)}
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await PolicyModel.get_kwargs(request, additional_kwargs={'policy_id': policy_id})
 
     dapi = DistributedAPI(f=security.update_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -525,15 +711,15 @@ async def update_policy(request, policy_id: int, pretty: bool = False, wait_for_
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def set_user_role(request, username: str, role_ids: list, position: int = None,
+async def set_user_role(request, user_id: str, role_ids: list, position: int = None,
                         pretty: bool = False, wait_for_complete: bool = False):
     """Add a list of roles to one specified user.
 
     Parameters
     ----------
     request : connexion.request
-    username : str
-        User's username
+    user_id : str
+        User ID
     role_ids : list of int
         List of role ids
     position : int, optional
@@ -548,7 +734,7 @@ async def set_user_role(request, username: str, role_ids: list, position: int = 
     Dict
         User-Role information
     """
-    f_kwargs = {'user_id': username, 'role_ids': role_ids, 'position': position}
+    f_kwargs = {'user_id': user_id, 'role_ids': role_ids, 'position': position}
     dapi = DistributedAPI(f=security.set_user_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -562,14 +748,15 @@ async def set_user_role(request, username: str, role_ids: list, position: int = 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def remove_user_role(request, username: str, role_ids: list, pretty: bool = False,
+async def remove_user_role(request, user_id: str, role_ids: list, pretty: bool = False,
                            wait_for_complete: bool = False):
     """Delete a list of roles of one specified user.
 
     Parameters
     ----------
     request : connexion.request
-    username : str
+    user_id : str
+        User ID
     role_ids : list
         List of roles ids
     pretty : bool, optional
@@ -581,7 +768,9 @@ async def remove_user_role(request, username: str, role_ids: list, pretty: bool 
     -------
     Result of the operation
     """
-    f_kwargs = {'user_id': username, 'role_ids': role_ids}
+    if 'all' in role_ids:
+        role_ids = None
+    f_kwargs = {'user_id': user_id, 'role_ids': role_ids}
 
     dapi = DistributedAPI(f=security.remove_user_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -651,6 +840,8 @@ async def remove_role_policy(request, role_id: int, policy_ids: list, pretty: bo
     -------
     Role information
     """
+    if 'all' in policy_ids:
+        policy_ids = None
     f_kwargs = {'role_id': role_id, 'policy_ids': policy_ids}
 
     dapi = DistributedAPI(f=security.remove_role_policy,
@@ -666,24 +857,95 @@ async def remove_role_policy(request, role_id: int, policy_ids: list, pretty: bo
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_rbac_resources(pretty: bool = False, resource: str = None):
+async def set_role_rule(request, role_id, rule_ids, pretty=False, wait_for_complete=False):
+    """Add a list of rules to one specified role.
+
+    Parameters
+    ----------
+    role_id : int
+        Role ID
+    rule_ids : list of int
+        List of rule IDs
+    pretty : bool
+        Show results in human-readable format
+    wait_for_complete : bool
+        Disable timeout response
+
+    Returns
+    -------
+    dict
+        Role information
+    """
+    f_kwargs = {'role_id': role_id, 'rule_ids': rule_ids}
+
+    dapi = DistributedAPI(f=security.set_role_rule,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def remove_role_rule(request, role_id: int, rule_ids: list, pretty: bool = False,
+                           wait_for_complete: bool = False):
+    """Delete a list of rules of one specified role.
+
+    Parameters
+    ----------
+    request : request.connexion
+    role_id : int
+    rule_ids : list
+        List of rule ids
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Role information
+    """
+    if 'all' in rule_ids:
+        rule_ids = None
+    f_kwargs = {'role_id': role_id, 'rule_ids': rule_ids}
+
+    dapi = DistributedAPI(f=security.remove_role_rule,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def get_rbac_resources(resource: str = None, pretty: bool = False):
     """Gets all the current defined resources for RBAC.
 
     Parameters
     ----------
-    pretty : bool, optional
-        Show results in human-readable format
     resource : str, optional
         Show the information of the specified resource. Ex: agent:id
+    pretty : bool, optional
+        Show results in human-readable format
 
     Returns
     -------
     dict
         RBAC resources
     """
+    f_kwargs = {'resource': resource}
 
     dapi = DistributedAPI(f=security.get_rbac_resources,
-                          f_kwargs=remove_nones_to_dict({'resource': resource}),
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=True,
@@ -709,8 +971,10 @@ async def get_rbac_actions(pretty: bool = False, endpoint: str = None):
     dict
         RBAC actions
     """
+    f_kwargs = {'endpoint': endpoint}
+
     dapi = DistributedAPI(f=security.get_rbac_actions,
-                          f_kwargs=remove_nones_to_dict({'endpoint': endpoint}),
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=True,
@@ -721,26 +985,40 @@ async def get_rbac_actions(pretty: bool = False, endpoint: str = None):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def revoke_all_tokens(request):
-    """Revoke all tokens."""
+async def revoke_all_tokens(request, pretty: bool = False):
+    """Revoke all tokens
 
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format
+
+    Returns
+    -------
+    dict
+        Status message
+    """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=security.revoke_tokens,
+    nodes = await get_system_nodes()
+    if isinstance(nodes, Exception):
+        nodes = None
+
+    dapi = DistributedAPI(f=security.wrapper_revoke_tokens,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
+                          request_type='distributed_master' if nodes is not None else 'local_any',
                           is_async=False,
-                          broadcasting=True,
+                          broadcasting=nodes is not None,
                           wait_for_complete=True,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    status = 200
     if type(data) == AffectedItemsWazuhResult and len(data.affected_items) == 0:
-        raise_if_exc(WazuhError(4000, data.message))
+        raise_if_exc(WazuhPermissionError(4000, data.message))
 
-    return web.json_response(data=data, status=status, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_security_config(request, pretty=False, wait_for_complete=False):
@@ -769,16 +1047,41 @@ async def get_security_config(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_security_config(request, pretty=False, wait_for_complete=False):
-    """Update current security configuration with the given one.
+async def security_revoke_tokens():
+    """Revokes all tokens on all nodes after a change in security configuration."""
+    nodes = await get_system_nodes()
+    if isinstance(nodes, Exception):
+        nodes = None
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    dapi = DistributedAPI(f=revoke_tokens,
+                          request_type='distributed_master' if nodes is not None else 'local_any',
+                          is_async=False,
+                          wait_for_complete=True,
+                          broadcasting=nodes is not None,
+                          logger=logger,
+                          nodes=nodes
+                          )
+    raise_if_exc(await dapi.distribute_function())
+
+
+async def put_security_config(request, pretty=False, wait_for_complete=False):
+    """Update current security configuration with the given one
+
+    Parameters
+    ----------
+    request
+    pretty : bool
+        Show results in human-readable format
+    wait_for_complete : bool
+        Disable timeout response
+
+    Returns
+    -------
+    dict:
+        Status message
     """
-    try:
-        f_kwargs = {"updated_config": await request.json()}
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = {'updated_config': await SecurityConfigurationModel.get_kwargs(request)}
 
     dapi = DistributedAPI(f=security.update_security_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -789,20 +1092,28 @@ async def put_security_config(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
+    await security_revoke_tokens()
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def delete_security_config(request, pretty=False, wait_for_complete=False):
-    """Restore default security configuration.
+    """Restore default security configuration
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Parameters
+    ----------
+    request
+    pretty : bool
+        Show results in human-readable format
+    wait_for_complete : bool
+        Disable timeout response
+
+    Returns
+    -------
+    dict:
+        Status message
     """
-    try:
-        f_kwargs = {"updated_config": default_security_configuration}
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
+    f_kwargs = {"updated_config": await SecurityConfigurationModel.get_kwargs(default_security_configuration)}
 
     dapi = DistributedAPI(f=security.update_security_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -813,5 +1124,6 @@ async def delete_security_config(request, pretty=False, wait_for_complete=False)
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
+    await security_revoke_tokens()
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

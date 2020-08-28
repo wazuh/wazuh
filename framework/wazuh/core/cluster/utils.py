@@ -14,11 +14,11 @@ from glob import glob
 from operator import setitem
 from os.path import join, exists
 
-from wazuh import common
-from wazuh.configuration import get_ossec_conf
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
-from wazuh.results import WazuhResult
-from wazuh.wlogging import WazuhLogger
+from wazuh.core import common
+from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.core.results import WazuhResult
+from wazuh.core.wlogging import WazuhLogger
 
 logger = logging.getLogger('wazuh')
 execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
@@ -166,6 +166,7 @@ def manager_restart():
     finally:
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
+        read_config.cache_clear()
 
     return WazuhResult({'message': 'Restart request sent'})
 
@@ -180,7 +181,7 @@ def get_cluster_items():
                  filter(lambda x: 'permissions' in x, cluster_items['files'].values())))
         return cluster_items
     except Exception as e:
-        raise WazuhException(3005, str(e))
+        raise WazuhError(3005, str(e))
 
 
 @lru_cache()

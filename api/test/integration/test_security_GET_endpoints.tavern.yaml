@@ -10,7 +10,7 @@ stages:
   - name: Try to show the roles of the system
     request: &all_roles_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -25,11 +25,11 @@ stages:
             - id: !anyint
               name: !anystr
               policies: !anything
-              rule: !anything
+              rules: !anything
+              users: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified roles were shown
 
   # GET /security/roles
   - name: Try to show the roles of the system, offset = 0
@@ -87,11 +87,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json: &error_response
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: "about:blank"
 
   # GET /security/roles
   - name: Sort the roles
@@ -147,7 +142,7 @@ stages:
   - name: Search in roles
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -175,8 +170,6 @@ stages:
           affected_items:
             - <<: *roles
             - <<: *roles
-            - <<: *roles
-            - <<: *roles
           total_affected_items: !anyint
 
   # GET /security/roles
@@ -187,8 +180,6 @@ stages:
         sort: +noexist
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   # GET /security/roles
   - name: Search without limit, non existent role
@@ -210,11 +201,6 @@ stages:
         noexist: nothing
     response:
       status_code: 400
-      json: &error_null
-        detail: "Extra query parameter(s) noexist not in spec"
-        status: 400
-        title: null
-        type: "about:blank"
 
   # GET /security/roles
   - name: Invalid parameters - Extra fields
@@ -225,8 +211,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
   # GET /security/roles
   - name: Try to show the roles of the system with a non-existent search
@@ -248,7 +232,7 @@ stages:
   - name: Try to show the policies of the system
     request: &all_policies_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -320,8 +304,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   # GET /security/policies
   - name: Sort the policies
@@ -402,8 +384,6 @@ stages:
         noexist: nothing
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
   # GET /security/policies
   - name: Invalid parameters - Extra fields
@@ -414,8 +394,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
   # GET /security/policies
   - name: Try to show the policies of the system with a non-existent search
@@ -428,6 +406,230 @@ stages:
       json:
         data:
           total_affected_items: 0
+
+---
+test_name: GET /security/rules
+
+stages:
+
+  # GET /security/rules
+  - name: Try to show the rules of the system
+    request: &all_rules_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 1
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: &rules
+            - id: !anyint
+              name: !anystr
+              rule: !anything
+              roles: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  # GET /security/rules
+  - name: Try to show the rules of the system, offset = 0
+    request:
+      <<: *all_rules_request
+      params:
+        limit: 2
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *rules
+            - <<: *rules
+          total_affected_items: !anyint
+      save:
+        json:
+          second_rule_id: data.affected_items[1].id
+          second_rule_name: data.affected_items[1].name
+
+  # GET /security/rules
+  - name: Try to show the rules of the system, offset = 1
+    request:
+      <<: *all_rules_request
+      params:
+        limit: 2
+        offset: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+          - id: !int "{second_rule_id}"
+            name: "{second_rule_name}"
+          - <<: *rules
+          total_affected_items: !anyint
+
+  # GET /security/rules
+  - name: Try to show the rules of the system, without limit
+    request:
+      <<: *all_rules_request
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+          - <<: *rules
+
+  # GET /security/rules
+  - name: Try to get all rules with limit = 0
+    request:
+      <<: *all_rules_request
+      params:
+        limit: 0
+    response:
+      status_code: 400
+
+  # GET /security/rules
+  - name: Sort the rules
+    request:
+      <<: *all_rules_request
+      params:
+        sort: name
+        limit: 2
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *rules
+            - <<: *rules
+          total_affected_items: !anyint
+      save:
+        json:
+          second_rule_id: data.affected_items[1].id
+          second_rule_name: data.affected_items[1].name
+
+  # GET /security/rules
+  - name: Sort the rules, limit=2, offset=1
+    request:
+      <<: *all_rules_request
+      params:
+        sort: name
+        limit: 2
+        offset: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+          - id: !int "{second_rule_id}"
+            name: "{second_rule_name}"
+          - <<: *rules
+          total_affected_items: !anyint
+
+  # GET /security/rules
+  - name: Sort without limit
+    request:
+      <<: *all_rules_request
+      params:
+        sort: -name
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+
+  # GET /security/rules
+  - name: Search in rules
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: administrator
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *rules
+          total_affected_items: !anyint
+
+  # GET /security/rules
+  - name: Search without limit
+    request:
+      <<: *all_rules_request
+      params:
+        search: administrator
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *rules
+            - <<: *rules
+            - <<: *rules
+          total_affected_items: !anyint
+
+  # GET /security/rules
+  - name: Sort without limit, non existent sort parameter
+    request:
+      <<: *all_rules_request
+      params:
+        sort: +noexist
+    response:
+      status_code: 400
+
+  # GET /security/rules
+  - name: Search without limit, non existent rules
+    request:
+      <<: *all_rules_request
+      params:
+        search: noexist
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 0
+
+  # GET /security/rules
+  - name: Invalid parameter
+    request:
+      <<: *all_rules_request
+      params:
+        noexist: nothing
+    response:
+      status_code: 400
+
+  # GET /security/rules
+  - name: Invalid parameters - Extra fields
+    request:
+      <<: *all_rules_request
+      params:
+        search: wazuh
+        noexist: True
+    response:
+      status_code: 400
+
+  # GET /security/rules
+  - name: Try to show the rules of the system with a non-existent search
+    request:
+      <<: *all_rules_request
+      params:
+        search: notexist
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 0
+
 ---
 test_name: GET /security/roles
 
@@ -462,12 +664,48 @@ stages:
           failed_items:
             - error:
                 code: !anyint
-                message: !anystr
-                remediation: !anystr
               id:
                 - '999'
           total_affected_items: 0
           total_failed_items: 1
+---
+test_name: GET /security/rules/{rule_id}
+
+stages:
+
+  # GET /security/rules
+  - name: Try to show a list of rules
+    request:
+      <<: *all_rules_request
+      params:
+        rule_ids: 1,2
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *rules
+          total_affected_items: 2
+
+  # GET /security/rules
+  - name: Try to show a list of unexistent rules
+    request:
+      <<: *all_rules_request
+      params:
+        rule_ids: 1,999
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *rules
+          failed_items:
+            - error:
+                code:
+                  4022
+              id:
+                - '999'
+          total_affected_items: 1
 ---
 test_name: GET /security/policies/{policy_id}
 
@@ -500,6 +738,25 @@ stages:
         <<: *response_error
 
 ---
+test_name: GET /security/user/authenticate
+
+stages:
+
+  - name: Get an API token in raw format
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate"
+      headers:
+        Authorization: "Basic {basic_auth:s}"
+      params:
+        raw: True
+      method: GET
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_token_raw_format
+
+---
 test_name: GET /security/users
 
 stages:
@@ -507,7 +764,7 @@ stages:
   - name: Get all users in the system
     request: &all_users_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -516,66 +773,99 @@ stages:
       json:
         data:
           affected_items:
-            - username: administrator
-              roles:
-                - 100
-                - 101
-            - username: guest
+            - id: 1
+              username: wazuh
+              allow_run_as: false
               roles: []
-            - username: normal
-              roles:
-                - 104
-                - 105
-                - 103
-            - username: ossec
-              roles:
-                - 101
-                - 104
-            - username: python
-              roles:
-                - 101
-            - username: rbac
-              roles:
-                - 104
-                - 102
-                - 103
-            - username: testing
-              roles:
-                - 99
-            - username: wazuh
-              roles:
-                - 1
-            - username: wazuh-wui
-              roles:
-                - 2
+            - id: 2
+              username: wazuh-wui
+              allow_run_as: true
+              roles: []
+            - id: 99
+              username: testing
+              allow_run_as: false
+              roles: []
+            - id: 100
+              username: administrator
+              allow_run_as: false
+              roles: []
+            - id: 101
+              username: normal
+              allow_run_as: false
+              roles: []
+            - id: 102
+              username: ossec
+              allow_run_as: false
+              roles: []
+            - id: 103
+              username: python
+              allow_run_as: false
+              roles: []
+            - id: 104
+              username: rbac
+              allow_run_as: false
+              roles: []
+            - id: 105
+              username: guest
+              allow_run_as: false
+              roles: []
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
+
+---
+test_name: GET /security/users/me
+
+stages:
+
+  - name: Get information about the current user
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/me"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 99
+              username: testing
+              allow_run_as: false
+              roles:
+                - id: 99
+                  name: "testing"
+                  rules: !anything
+                  policies: !anything
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
 
 ---
 test_name: GET /security/users
 
 stages:
 
-  - name: Get a specified user by its username
+  - name: Get a specified user by its id
     request:
       <<: *all_users_request
       params:
-        usernames: wazuh
+        user_ids: 1
     response:
       status_code: 200
       json:
         data:
           affected_items: &user
-            - username: !anystr
+            - id: !anyint
+              username: !anystr
           total_affected_items: 1
 
-  - name: Get a specified user by its username
+  - name: Get a specified user by its id
     request:
       <<: *all_users_request
       params:
-        usernames: wazuh,wazuh-wui
+        user_ids: 1,2
     response:
       status_code: 200
       json:
@@ -585,37 +875,27 @@ stages:
             - <<: *user
           total_affected_items: 2
 
-  - name: Get an user by its username (invalid username)
+  - name: Get an user by its id (invalid id)
     request:
       <<: *all_users_request
       params:
-        usernames: "!!!"
+        user_ids: "!!!"
     response:
       status_code: 400
-      json:
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
 
-  - name: Get an user by its username (invalid username)
+  - name: Get an user by its id (invalid id)
     request:
       <<: *all_users_request
       params:
-        usernames: "####@@@|#|"
+        user_ids: "####@@@|#|"
     response:
       status_code: 400
-      json:
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
 
-  - name: Get an non-existent user by its username
+  - name: Get an non-existent user by its id
     request:
       <<: *all_users_request
       params:
-        usernames: NotFound
+        user_ids: 10000
     response:
       status_code: 200
       json:
@@ -624,19 +904,16 @@ stages:
           failed_items:
             - error:
                 code: 5001
-                message: !anystr
-                remediation: !anystr
               id:
-                - NotFound
+                - '10000'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
 
-  - name: Get two non-existent users by their usernames
+  - name: Get two non-existent users by their ids
     request:
       <<: *all_users_request
       params:
-        usernames: NotFound,NotFound1
+        user_ids: 10000,10001
     response:
       status_code: 200
       json:
@@ -645,61 +922,56 @@ stages:
           failed_items:
             - error:
                 code: 5001
-                message: !anystr
-                remediation: !anystr
               id:
-                - NotFound
-                - NotFound1
+                - '10000'
+                - '10001'
           total_affected_items: 0
           total_failed_items: 2
-        message: !anystr
 
-  - name: Get two non-existent users and an existing one by their usernames
+  - name: Get two non-existent users and an existing one by their ids
     request:
       <<: *all_users_request
       params:
-        usernames: NotFound,NotFound1,wazuh
+        user_ids: 10000,10001,1
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: wazuh
+            - id: 1
+              username: wazuh
+              allow_run_as: false
           failed_items:
             - error:
                 code: 5001
-                message: !anystr
-                remediation: !anystr
               id:
-                - NotFound
-                - NotFound1
+                - '10000'
+                - '10001'
           total_affected_items: 1
           total_failed_items: 2
-        message: !anystr
 
-  - name: Get two non-existent users and two existent by their usernames
+  - name: Get two non-existent users and two existent by their ids
     request:
       <<: *all_users_request
       params:
-        usernames: NotFound,NotFound1,wazuh-wui,wazuh
+        user_ids: 10000,10001,2,1
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: wazuh
-            - username: wazuh-wui
+            - id: 1
+              username: wazuh
+            - id: 2
+              username: wazuh-wui
           failed_items:
             - error:
                 code: 5001
-                message: !anystr
-                remediation: !anystr
               id:
-                - NotFound
-                - NotFound1
+                - '10000'
+                - '10001'
           total_affected_items: 2
           total_failed_items: 2
-        message: !anystr
 ---
 test_name: GET /security/users/?search
 
@@ -725,7 +997,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
 
   - name: Testing complementary search
     request:
@@ -737,36 +1008,48 @@ stages:
       json:
         data:
           affected_items:
-            - username: administrator
+            - id: 99
+              username: testing
+              allow_run_as: false
+              roles:
+                - 99
+            - id: 100
+              username: administrator
+              allow_run_as: false
               roles:
                 - 100
                 - 101
-            - username: guest
-              roles: []
-            - username: normal
+            - id: 101
+              username: normal
+              allow_run_as: false
               roles:
                 - 104
                 - 105
                 - 103
-            - username: ossec
+            - id: 102
+              username: ossec
+              allow_run_as: false
               roles:
                 - 101
                 - 104
-            - username: python
+            - id: 103
+              username: python
+              allow_run_as: false
               roles:
                 - 101
-            - username: rbac
+            - id: 104
+              username: rbac
+              allow_run_as: false
               roles:
                 - 104
                 - 102
                 - 103
-            - username: testing
-              roles:
-                - 99
+            - id: 105
+              username: guest
+              roles: []
           total_affected_items: 7
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
 
 ---
 test_name: GET /security/users/?sort
@@ -782,42 +1065,59 @@ stages:
       json:
         data:
           affected_items:
-            - username: wazuh-wui
+            - id: 2
+              username: wazuh-wui
+              allow_run_as: true
               roles:
                 - 2
-            - username: wazuh
+            - id: 1
+              username: wazuh
+              allow_run_as: false
               roles:
                 - 1
-            - username: testing
+            - id: 99
+              username: testing
+              allow_run_as: false
               roles:
                 - 99
-            - username: rbac
+            - id: 104
+              username: rbac
+              allow_run_as: false
               roles:
                 - 104
                 - 102
                 - 103
-            - username: python
+            - id: 103
+              username: python
+              allow_run_as: false
               roles:
                 - 101
-            - username: ossec
+            - id: 102
+              username: ossec
+              allow_run_as: false
               roles:
                 - 101
                 - 104
-            - username: normal
+            - id: 101
+              username: normal
+              allow_run_as: false
               roles:
                 - 104
                 - 105
                 - 103
-            - username: guest
+            - id: 105
+              username: guest
+              allow_run_as: false
               roles: []
-            - username: administrator
+            - id: 100
+              username: administrator
+              allow_run_as: false
               roles:
                 - 100
                 - 101
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
 
   - name: Testing sort
     request:
@@ -829,42 +1129,59 @@ stages:
       json:
         data:
           affected_items:
-            - username: administrator
+            - id: 100
+              username: administrator
+              allow_run_as: false
               roles:
                 - 100
                 - 101
-            - username: guest
+            - id: 105
+              username: guest
+              allow_run_as: false
               roles: []
-            - username: normal
+            - id: 101
+              username: normal
+              allow_run_as: false
               roles:
                 - 104
                 - 105
                 - 103
-            - username: ossec
+            - id: 102
+              username: ossec
+              allow_run_as: false
               roles:
                 - 101
                 - 104
-            - username: python
+            - id: 103
+              username: python
+              allow_run_as: false
               roles:
                 - 101
-            - username: rbac
+            - id: 104
+              username: rbac
+              allow_run_as: false
               roles:
                 - 104
                 - 102
                 - 103
-            - username: testing
+            - id: 99
+              username: testing
+              allow_run_as: false
               roles:
                 - 99
-            - username: wazuh
+            - id: 1
+              username: wazuh
+              allow_run_as: false
               roles:
                 - 1
-            - username: wazuh-wui
+            - id: 2
+              username: wazuh-wui
+              allow_run_as: true
               roles:
                 - 2
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
 
 ---
 test_name: GET /security/users/?limit,offset
@@ -880,31 +1197,43 @@ stages:
       json:
         data:
           affected_items:
-            - username: ossec
+            - id: 100
+              username: administrator
+              allow_run_as: false
+              roles:
+                - 100
+                - 101
+            - id: 101
+              username: normal
+              allow_run_as: false
+              roles:
+                - 104
+                - 105
+                - 103
+            - id: 102
+              username: ossec
+              allow_run_as: false
               roles:
                 - 101
                 - 104
-            - username: python
+            - id: 103
+              username: python
+              allow_run_as: false
               roles:
                 - 101
-            - username: rbac
+            - id: 104
+              username: rbac
+              allow_run_as: false
               roles:
                 - 104
                 - 102
                 - 103
-            - username: testing
-              roles:
-                - 99
-            - username: wazuh
-              roles:
-                - 1
-            - username: wazuh-wui
-              roles:
-                - 2
+            - id: 105
+              username: guest
+              allow_run_as: false
+              roles: []
           total_affected_items: 9
           total_failed_items: 0
-          failed_items: []
-        message: All specified users were shown
 
   - name: Testing limit
     request:
@@ -916,14 +1245,14 @@ stages:
       json:
         data:
           affected_items:
-            - username: administrator
+            - id: 1
+              username: wazuh
+              allow_run_as: false
               roles:
-                - 100
-                - 101
+                - 1
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
 
 ---
 test_name: GET /security/actions
@@ -932,7 +1261,7 @@ stages:
   - name: Testing RBAC's actions catalog
     request: &rbac_actions_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/actions"
+      url: "{protocol:s}://{host:s}:{port:d}/security/actions"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -942,7 +1271,7 @@ stages:
       status_code: 200
       json:
         active-response:command:
-          description: Allow to execute active response commands in the agents
+          description: !anystr
           resources:
             - agent:id
           example:
@@ -963,7 +1292,7 @@ stages:
       status_code: 200
       json:
         rules:read:
-          description: Read rules files
+          description: !anystr
           resources:
             - rule:file
           example:
@@ -982,7 +1311,7 @@ stages:
   - name: Testing RBAC's actions catalog
     request: &rbac_resources_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/resources"
+      url: "{protocol:s}://{host:s}:{port:d}/security/resources"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1011,7 +1340,7 @@ stages:
         role:id:
           description: Reference security roles via its id (i.e. role:id:1)
         user:id:
-          description: Reference security users via its username (i.e. user:id:wazuh)
+          description: Reference security users via its id (i.e. user:id:1)
 
   - name: Testing RBAC's actions catalog
     request:
@@ -1032,7 +1361,7 @@ stages:
   - name: Get current security configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      url: "{protocol:s}://{host:s}:{port:d}/security/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

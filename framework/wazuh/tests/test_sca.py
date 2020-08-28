@@ -11,7 +11,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from wazuh import exception, common
+from wazuh.core import common, exception
 from wazuh.tests.util import InitWDBSocketMock
 
 with patch('wazuh.common.ossec_uid'):
@@ -24,8 +24,8 @@ with patch('wazuh.common.ossec_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.sca import get_sca_list, fields_translation_sca, \
             get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
-        from wazuh.results import AffectedItemsWazuhResult
-        from wazuh.exception import WazuhError
+        from wazuh.core.results import AffectedItemsWazuhResult
+        from wazuh.core.exception import WazuhResourceNotFound
 
         del sys.modules['wazuh.rbac.orm']
 
@@ -67,7 +67,7 @@ def test_get_sca_list():
     """
     Checks data are properly loaded from database
     """
-    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_sca_test.sql')
         result = get_sca_list(agent_list=['000'])
         assert isinstance(result, AffectedItemsWazuhResult)
@@ -87,7 +87,7 @@ def test_get_sca_list():
         assert result['total_failed_items'] == 1
         assert len(result['failed_items']) == 1
         failed = result['failed_items']
-        assert isinstance(list(failed.keys())[0], WazuhError)
+        assert isinstance(list(failed.keys())[0], WazuhResourceNotFound)
         assert list(failed.keys())[0].to_dict()['code'] == 1701
         assert failed[list(failed.keys())[0]] == {'999'}
 
@@ -98,7 +98,7 @@ def test_get_sca_list_select_param():
     """
     Checks only selected fields are loaded from database
     """
-    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_sca_test.sql')
         fields = ['name', 'policy_id']
         result = get_sca_list(agent_list=['000'], select=fields)
@@ -117,7 +117,7 @@ def test_get_sca_list_search_param():
     """
     Checks only selected fields are loaded from database
     """
-    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_sca_test.sql')
         search = {'value': 'debian', 'negation': False}
         result = get_sca_list(agent_list=['000'], search=search)
@@ -147,7 +147,7 @@ def test_get_sca_checks():
     """
     Checks sca checks data are properly loaded from database
     """
-    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_sca_test.sql')
         result = get_sca_checks('cis_debian', agent_list=['000'])
         assert isinstance(result, AffectedItemsWazuhResult)
@@ -181,7 +181,7 @@ def test_get_sca_checks():
         assert result['total_failed_items'] == 1
         assert len(result['failed_items']) == 1
         failed = result['failed_items']
-        assert isinstance(list(failed.keys())[0], WazuhError)
+        assert isinstance(list(failed.keys())[0], WazuhResourceNotFound)
         assert list(failed.keys())[0].to_dict()['code'] == 1701
         assert failed[list(failed.keys())[0]] == {'999'}
 
@@ -192,7 +192,7 @@ def test_sca_checks_select_and_q():
     """
     Tests filtering using q parameter and selecting multiple fields
     """
-    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_sca_test.sql')
         result = get_sca_checks('cis_debian', agent_list=['000'], q="rules.type!=file",
                                 select=['compliance', 'policy_id', 'result', 'rules']).to_dict()

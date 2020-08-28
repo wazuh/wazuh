@@ -5,12 +5,12 @@
 import os
 from io import StringIO
 
-from wazuh import common
+from wazuh.core import common
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
-from wazuh.exception import WazuhError, WazuhInternalError
+from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.rbac.decorators import expose_resources
-from wazuh.results import WazuhResult
+from wazuh.core.results import WazuhResult
 
 try:
     import configparser
@@ -25,7 +25,7 @@ cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def totals(date):
     """
@@ -37,7 +37,7 @@ def totals(date):
     stat_filename = ""
     try:
         stat_filename = os.path.join(
-            common.stats_path, "totals", str(date.year), MONTHS[date.month-1], f"ossec-totals-{date.strftime('%d')}.log")
+            common.stats_path, "totals", str(date.year), MONTHS[date.month - 1], f"ossec-totals-{date.strftime('%d')}.log")
         stats = open(stat_filename, 'r')
     except IOError:
         raise WazuhError(1308, extra_message=stat_filename)
@@ -76,7 +76,7 @@ def totals(date):
     return WazuhResult({'data': response})
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def hourly():
     """
@@ -106,7 +106,7 @@ def hourly():
     return WazuhResult({'averages': averages, 'interactions': interactions})
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def weekly():
     """
@@ -141,7 +141,7 @@ def weekly():
     return WazuhResult(response)
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_daemons_stats(filename):
     """Returns the stats of an input file.

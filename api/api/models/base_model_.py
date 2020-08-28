@@ -1,10 +1,14 @@
 import pprint
+import typing
+from json import JSONDecodeError
+from typing import List, Dict  # noqa: F401
 
 import six
-import typing
+from connexion import ProblemException
 
 from api import util
-from typing import List
+from api.util import raise_if_exc
+from wazuh.core.exception import WazuhError, WazuhNotAcceptable
 
 T = typing.TypeVar('T')
 
@@ -184,3 +188,49 @@ class Items(Model):
         """
 
         self._items = items
+
+
+class Body(Model):
+    @classmethod
+    async def get_kwargs(cls, request, additional_kwargs: dict = None):
+        try:
+            dikt = request if isinstance(request, dict) else await request.json()
+            f_kwargs = util.deserialize_model(dikt, cls).to_dict()
+        except JSONDecodeError:
+            raise_if_exc(WazuhError(1018))
+
+        invalid = {key for key in dikt.keys() if key not in list(f_kwargs.keys())}
+
+        if invalid:
+            raise ProblemException(status=400, title='Bad Request', detail='Invalid field found {}'.format(invalid))
+
+        if additional_kwargs is not None:
+            f_kwargs.update(additional_kwargs)
+
+        return f_kwargs
+
+    @classmethod
+    def from_dict(cls, dikt):
+        """Returns the dict as a model
+
+        :param dikt: A dict.
+        :type: dict
+        :return: The Agent of this Agent.
+        :rtype: dict
+        """
+        return util.deserialize_model(dikt, cls)
+
+    @classmethod
+    def decode_body(cls, dikt, unicode_error=None, attribute_error=None):
+        try:
+            body = dikt.decode('utf-8')
+        except UnicodeDecodeError:
+            raise_if_exc(WazuhError(unicode_error))
+        except AttributeError:
+            raise_if_exc(WazuhError(attribute_error))
+        return body
+
+    @classmethod
+    def validate_content_type(cls, request, expected_content_type):
+        if request.content_type != expected_content_type:
+            raise_if_exc(WazuhNotAcceptable(6002))
