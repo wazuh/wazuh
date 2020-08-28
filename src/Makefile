@@ -49,6 +49,7 @@ SELINUX_MODULE=selinux/wazuh.mod
 SELINUX_ENFORCEMENT=selinux/wazuh.te
 SELINUX_POLICY=selinux/wazuh.pp
 DBSYNC=shared_modules/dbsync/
+RSYNC=shared_modules/rsync/
 SHARED_UTILS_TEST=shared_modules/utils/tests/
 
 USE_PRELUDE?=no
@@ -71,9 +72,11 @@ endif
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 DBSYNC_TEST=-DUNIT_TEST=ON #--coverage
+RSYNC_TEST=-DUNIT_TEST=ON #--coverage
 endif
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 DBSYNC_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
+RSYNC_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 GTEST_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 endif
 
@@ -250,7 +253,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${DBSYNC}include
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${DBSYNC}include -I${RSYNC}include
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -589,6 +592,9 @@ ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
 BUILD_SERVER+=wazuh-framework
 endif
 
+BUILD_AGENT+=build_dbsync
+BUILD_AGENT+=build_rsync
+BUILD_AGENT+=build_shared_utils_test
 BUILD_AGENT+=ossec-agentd
 BUILD_AGENT+=agent-auth
 BUILD_AGENT+=ossec-logcollector
@@ -596,8 +602,7 @@ BUILD_AGENT+=ossec-syscheckd
 BUILD_AGENT+=ossec-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=wazuh-modulesd
-BUILD_AGENT+=build_dbsync
-BUILD_AGENT+=build_shared_utils_test
+
 
 .PHONY: server local hybrid agent selinux
 
@@ -645,7 +650,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: external win32/dbsync.dll win32/shared_utils_ut.exe win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
+winagent: external win32/dbsync.dll win32/rsync.dll win32/shared_utils_ut.exe win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl ossec-pre6.conf > default-ossec-pre6.conf
@@ -665,6 +670,9 @@ winagent: external win32/dbsync.dll win32/shared_utils_ut.exe win32/libwinpthrea
 
 win32/dbsync.dll:
 	cd ${DBSYNC} && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} . && cmake --build .
+
+win32/rsync.dll:
+	cd ${RSYNC} && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${RSYNC_RELEASE_TYPE} . && cmake --build .
 
 win32/shared_utils_ut.exe:
 ifneq (,$(filter ${TEST},YES yes y Y 1))
@@ -1059,7 +1067,11 @@ config/%.o: config/%.c
 
 #### DBSync ##########
 build_dbsync:
-	cd ${DBSYNC} && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} . && cmake --build .
+	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${DBSYNC_RELEASE_TYPE} .. && cmake --build .
+
+#### RSync ##########
+build_rsync:
+	cd ${RSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${RSYNC_RELEASE_TYPE} .. && cmake --build .
 
 #### shared_modules utils tests ##########
 build_shared_utils_test:
@@ -1865,6 +1877,7 @@ clean-unit-tests:
 	rm -f ${wrappers_shared_o}
 	rm -f ${wrappers_common_o}
 	rm -rf $(DBSYNC)build
+	rm -rf $(RSYNC)build
 
 clean-framework:
 	${MAKE} -C ../framework clean

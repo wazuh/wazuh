@@ -1,7 +1,7 @@
 /*
  * Wazuh RSYNC
  * Copyright (C) 2015-2020, Wazuh Inc.
- * August 18, 2020.
+ * August 26, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,15 +9,10 @@
  * Foundation.
  */
 
-#include "rsync.h"
+#include "gtest/gtest.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void rsync_initialize()
-{}
-
-#ifdef __cplusplus
+int main(int argc, char **argv)
+{
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }
-#endif

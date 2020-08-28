@@ -587,7 +587,7 @@ bool SQLiteDBEngine::bindJsonData(const std::unique_ptr<SQLite::IStatement>& stm
             {
                 jsData.is_number() ? jsData.get<int32_t>() : jsData.is_string()
                 && jsData.get_ref<const std::string&>().size()
-                    ? std::stol(jsData.get_ref<const std::string&>())
+                    ? std::stoi(jsData.get_ref<const std::string&>())
                     : 0
             };
             stmt->bind(cid, value);
