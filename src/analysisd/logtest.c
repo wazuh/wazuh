@@ -122,34 +122,56 @@ void * w_logtest_clients_handler(w_logtest_connection_t * connection) {
         }
         w_mutex_unlock(&connection->mutex);
 
-        switch (size_msg_received = OS_RecvSecureTCP(client, msg_received ,OS_MAXSTR - 1), size_msg_received) {
-        case OS_SOCKTERR:
-            merror(LOGTEST_ERROR_RECV_MSG "response size is bigger than expected");
-            break;
-
+        switch (size_msg_received = OS_RecvSecureTCP(client, msg_received, OS_MAXSTR-1), size_msg_received) {
         case -1:
-            merror(LOGTEST_ERROR_RECV_MSG "%s", strerror(errno));
+            mdebug1(LOGTEST_ERROR_RECV_MSG_ERRNO, strerror(errno));
             break;
 
         case 0:
-            mdebug1(LOGTEST_ERROR_RECV_MSG "empty message from local client.");
+            mdebug1(LOGTEST_ERROR_RECV_MSG_EMPTY_TO);
             break;
 
-        case OS_MAXLEN:
-            merror(LOGTEST_ERROR_RECV_MSG "received message > %i", MAX_DYN_STR);
+        case OS_SOCKTERR:
+            mdebug1(LOGTEST_ERROR_RECV_MSG_OVERSIZE);
+            if (str_response = w_logtest_generate_error_response(LOGTEST_ERROR_RECV_MSG_OVERSIZE), str_response) {
+                OS_SendSecureTCP(client, strlen(str_response), str_response);
+            }
             break;
 
         default:
             if (str_response = w_logtest_process_request(msg_received, connection), str_response) {
                 OS_SendSecureTCP(client, strlen(str_response), str_response);
-                os_free(str_response);
             }
         }
-        
+
+        os_free(str_response);
         close(client);
     }
 
     return NULL;
+}
+
+
+char *w_logtest_generate_error_response(char * msg){
+
+    cJSON * json_response = NULL;
+    cJSON * json_msg_list = NULL;
+    cJSON * json_msg = NULL;
+    char * str_response = NULL;
+
+    json_response =  cJSON_CreateObject();
+    json_msg_list = cJSON_CreateArray();
+    json_msg = cJSON_CreateString(msg);
+
+    cJSON_AddItemToArray(json_msg_list, json_msg);
+    cJSON_AddItemToObject(json_response,W_LOGTEST_JSON_MESSAGES, json_msg_list);
+    cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_CODE, W_LOGTEST_RCODE_ERROR_INPUT);
+
+    str_response = cJSON_PrintUnformatted(json_response);
+
+    cJSON_Delete(json_response);
+
+    return str_response;
 }
 
 
