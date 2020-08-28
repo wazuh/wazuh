@@ -32,7 +32,7 @@ static int setup_group(void **state) {
 
 static int teardown_group(void **state) {
     wm_agent_upgrade *config = *state;
-    #ifndef CLIENT
+    #ifdef TEST_SERVER
     os_free(config->manager_config.wpk_repository);
     #endif
     os_free(config);
@@ -82,7 +82,7 @@ void test_wm_agent_upgrade_dump_enabled(void **state)
 
     config->enabled = 1;
 
-    #ifndef CLIENT
+    #ifdef TEST_SERVER
     os_strdup("wazuh.com/packages", config->manager_config.wpk_repository);
     #endif
 
@@ -95,8 +95,10 @@ void test_wm_agent_upgrade_dump_enabled(void **state)
     assert_non_null(conf);
     assert_non_null(cJSON_GetObjectItem(conf, "enabled"));
     assert_string_equal(cJSON_GetObjectItem(conf, "enabled")->valuestring, "yes");
+    #ifdef TEST_SERVER
     assert_non_null(cJSON_GetObjectItem(conf, "wpk_repository"));
     assert_string_equal(cJSON_GetObjectItem(conf, "wpk_repository")->valuestring, "wazuh.com/packages");
+    #endif
 }
 
 void test_wm_agent_upgrade_dump_disabled(void **state)
@@ -105,7 +107,7 @@ void test_wm_agent_upgrade_dump_disabled(void **state)
 
     config->enabled = 0;
 
-    #ifndef CLIENT
+    #ifdef TEST_SERVER
     os_free(config->manager_config.wpk_repository);
     #endif
 
@@ -125,7 +127,7 @@ void test_wm_agent_upgrade_destroy(void **state)
     wm_agent_upgrade *config = NULL;
     os_calloc(1, sizeof(wm_agent_upgrade), config);
 
-    #ifndef CLIENT
+    #ifdef TEST_SERVER
     os_strdup("wazuh.com/packages", config->manager_config.wpk_repository);
     #endif
 
@@ -144,11 +146,11 @@ void test_wm_agent_upgrade_main_ok(void **state)
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
 
-    #ifdef CLIENT
-    will_return(__wrap_wm_agent_upgrade_check_status, 1);
-    #else 
+    #ifdef TEST_SERVER
     will_return(__wrap_wm_agent_upgrade_listen_messages, 1);
-    #endif 
+    #else
+    will_return(__wrap_wm_agent_upgrade_check_status, 1);
+    #endif
 
     wm_agent_upgrade_main(config);
 }
@@ -167,11 +169,11 @@ void test_wm_agent_upgrade_main_disabled(void **state)
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
 
-    #ifdef CLIENT
-    will_return(__wrap_wm_agent_upgrade_check_status, 1);
-    #else 
+    #ifdef TEST_SERVER
     will_return(__wrap_wm_agent_upgrade_listen_messages, 1);
-    #endif 
+    #else
+    will_return(__wrap_wm_agent_upgrade_check_status, 1);
+    #endif
 
     wm_agent_upgrade_main(config);
 }

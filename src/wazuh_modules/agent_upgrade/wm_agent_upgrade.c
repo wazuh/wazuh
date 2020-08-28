@@ -52,9 +52,9 @@ STATIC void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 
     #ifdef CLIENT
         wm_agent_upgrade_check_status(&upgrade_config->agent_config);
-    #else 
+    #else
         wm_agent_upgrade_listen_messages(&upgrade_config->manager_config);
-    #endif 
+    #endif
 
     return NULL;
 }
