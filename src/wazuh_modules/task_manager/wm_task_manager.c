@@ -206,6 +206,10 @@ void* wm_task_manager_main(wm_task_manager* task_config) {
             close(peer);
         }
         os_free(buffer);
+
+    #ifdef UNIT_TESTING
+        break;
+    #endif
     }
 
     close(sock);
