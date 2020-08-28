@@ -143,6 +143,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_REG_OFFSET,
     WDB_STMT_GLOBAL_SELECT_AGENT_STATUS,
     WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_GROUP,
     WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
@@ -153,7 +154,6 @@ typedef enum wdb_stmt {
 
 typedef enum global_db_query {
     SQL_SELECT_AGENTS,
-    SQL_UPDATE_AGENT_GROUP,
     SQL_FIND_GROUP,
     SQL_INSERT_AGENT_GROUP,
     SQL_INSERT_AGENT_BELONG,
@@ -551,7 +551,13 @@ int wdb_get_agent_status(int id_agent);
  */
 int wdb_set_agent_status(int id_agent, int status);
 
-/* Update agent group. It opens and closes the DB. Returns 0 on success or -1 on error. */
+/**
+ * @brief Update agent group.
+ * 
+ * @param[in] id ID of the agent.
+ * @param[in] group The group to be set.
+ * @return Returns OS_SUCCESS if success. OS_INVALID on error.
+ */
 int wdb_update_agent_group(int id,char *group);
 
 /* Update agent multi group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
@@ -1001,6 +1007,16 @@ int wdb_parse_global_select_agent_status(wdb_t * wdb, char * input, char * outpu
 int wdb_parse_global_update_agent_status(wdb_t * wdb, char * input, char * output);
 
 /**
+ * @brief Function to parse the update agent group request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with the agent and group data in JSON format.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output);
+
+/**
  * @brief Function to parse the select keepalive request.
  * 
  * @param wdb the global struct database.
@@ -1322,6 +1338,16 @@ cJSON* wdb_global_select_agent_status(wdb_t *wdb, int id);
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_update_agent_status(wdb_t *wdb, int id, char *status);
+
+/**
+ * @brief Function to update an agent group.
+ * 
+ * @param wdb The Global struct database.
+ * @param id The agent ID
+ * @param group The group to be set
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group);
 
 /**
  * @brief Function to get an agent keepalive using the agent name and register ip.

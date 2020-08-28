@@ -22,7 +22,6 @@
 
 static const char *global_db_queries[] = {
     [SQL_SELECT_AGENTS] = "global sql SELECT id FROM agent WHERE id != 0;",
-    [SQL_UPDATE_AGENT_GROUP] = "global sql UPDATE agent SET `group` = %Q WHERE id = %d;",
     [SQL_FIND_GROUP] = "global sql SELECT id FROM `group` WHERE name = %Q;",
     [SQL_INSERT_AGENT_GROUP] = "global sql INSERT INTO `group` (name) VALUES(%Q);",
     [SQL_INSERT_AGENT_BELONG] = "global sql INSERT INTO belongs (id_group, id_agent) VALUES(%d, %d);",
@@ -51,7 +50,7 @@ static const char *global_db_commands[] = {
     [WDB_UPDATE_REG_OFFSET] = "global update-reg-offset %s",
     [WDB_SELECT_AGENT_STATUS] = "global select-agent-status %d",
     [WDB_UPDATE_AGENT_STATUS] = "global update-agent-status %s",
-    [WDB_UPDATE_AGENT_GROUP] = "",
+    [WDB_UPDATE_AGENT_GROUP] = "global update-agent-group %s",
     [WDB_FIND_GROUP] = "",
     [WDB_INSERT_AGENT_GROUP] = "",
     [WDB_INSERT_AGENT_BELONG] = "",
@@ -780,21 +779,38 @@ int wdb_set_agent_status(int id_agent, int status) {
     return result;
 }
 
-/* Update agent group. It opens and closes the DB. Returns 1 or -1 on error. */
+
 int wdb_update_agent_group(int id, char *group) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_UPDATE_AGENT_GROUP], group, id);
+    cJSON *data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddStringToObject(data_in, "group", group);
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_GROUP], cJSON_PrintUnformatted(data_in));
+
+    cJSON_Delete(data_in);
+
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
-            if (wdb_update_agent_multi_group(id,group) < 0) {
-                return OS_INVALID;
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
             }
-            result = 1;
+            else if (wdb_update_agent_multi_group(id,group) < 0) {
+                result = OS_INVALID;
+            }
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");

@@ -484,17 +484,10 @@ int wm_sync_agent_group(int id_agent, const char *fname) {
 
     get_agent_group(fname, group, OS_SIZE_65536);
 
-    switch (wdb_update_agent_group(id_agent, *group ? group : NULL)) {
-    case -1:
+    if (OS_SUCCESS != wdb_update_agent_group(id_agent, *group ? group : NULL)) {
         mterror(WM_DATABASE_LOGTAG, "Couldn't sync agent '%s' group.", fname);
         wdb_delete_agent_belongs(id_agent);
         result = -1;
-        break;
-    case 0:
-        mtdebug1(WM_DATABASE_LOGTAG, "No such agent '%s' on DB when updating group.", fname);
-        break;
-    default:
-        break;
     }
 
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agent_group(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
