@@ -17,7 +17,7 @@ int __wrap_wurl_request(const char * url,
                         const char * dest,
                         const char *header,
                         const char *data,
-                        __attribute__((unused)) const long timeout) {
+                        const long timeout) {
     if (url) {
         check_expected(url);
     }
@@ -32,6 +32,10 @@ int __wrap_wurl_request(const char * url,
 
     if (data) {
         check_expected(data);
+    }
+
+    if (timeout) {
+        check_expected(timeout);
     }
 
     return mock();
