@@ -374,9 +374,11 @@
 #define VU_REPORT_NVD_SCORE_ERROR   "(5580): Could not fill the report with the CVE score from the NVD for agent '%.3d'"
 #define VU_REPORT_OVAL_ERROR        "(5581): Could not fill the report with the CVE info from the Vendor feed for agent '%.3d'"
 #define VU_NVD_EMPTY                "(5582): Unavailable vulnerabilities at the NVD database. The scan is aborted."
-#define VU_GET_DEB_STATUS_FEED      "(5583): Couldn't get the Debian feed '%s' to check the status of the packages. This can lead to many false positives."
+#define VU_DEB_STATUS_FEED_ERROR    "(5583): Couldn't get the Debian feed '%s' to check the vulnerable packages."
 #define VU_FILTER_VULN_NVD_ERROR    "(5584): Couldn't verify if the vulnerability '%s' is reported in the NVD feed."
 #define VU_GET_NVD_YEAR_ERROR       "(5585): Couldn't get the NVD configured year."
+#define VU_NO_ENABLED_FEEDS         "(5586): No feeds specified for '%s' provider. Enabling all the available ones."
+#define VU_OFFLINE_CONFLICT         "(5587): Feed conflict. Only '%s' will be updated offline."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
