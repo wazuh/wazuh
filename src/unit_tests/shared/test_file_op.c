@@ -45,25 +45,10 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-static int CreatePID_teardown(void **state) {
-    test_mode = 0;
-    remove("./test_file.tmp");
-
-    if(*state) {
-        free(*state);
-    }
-    test_mode = 1;
-    return 0;
-}
-
 void test_CreatePID_success(void **state)
 {
     (void) state;
     int ret;
-
-    test_mode = 0;
-    FILE* fp = fopen("./test_file.tmp", "a");
-    test_mode = 1;
     char* content = NULL;
 
     *state = content;
@@ -74,17 +59,14 @@ void test_CreatePID_success(void **state)
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, 1);
 
-    expect_value(__wrap_fprintf, stream, 1);
-    expect_string(__wrap_fprintf, formatted_msg, "42\n");
-
-    expect_value(__wrap_fprintf, __stream, fp);
+    expect_value(__wrap_fprintf, __stream, 1);
     expect_string(__wrap_fprintf, formatted_msg, "2345\n");
     will_return(__wrap_fprintf, 0);
 
     expect_string(__wrap_chmod, path, "/var/run/test-2345.pid");
     will_return(__wrap_chmod, 0);
 
-    expect_value(__wrap_fclose, _File, fp);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
     ret = CreatePID("test", 2345);
@@ -95,19 +77,14 @@ void test_CreatePID_failure_chmod(void **state)
 {
     (void) state;
     int ret;
-    test_mode = 0;
-    FILE* fp = fopen("./test_file.tmp", "a");
-    test_mode = 1;
-
-    assert_non_null(fp);
 
     will_return(__wrap_isChroot, 1);
 
     expect_string(__wrap_fopen, path, "/var/run/test-2345.pid");
     expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fopen, 1);
 
-    expect_value(__wrap_fprintf, __stream, fp);
+    expect_value(__wrap_fprintf, __stream, 1);
     expect_string(__wrap_fprintf, formatted_msg, "2345\n");
     will_return(__wrap_fprintf, 0);
 
@@ -116,7 +93,7 @@ void test_CreatePID_failure_chmod(void **state)
     expect_string(__wrap_chmod, path, "/var/run/test-2345.pid");
     will_return(__wrap_chmod, -1);
 
-    expect_value(__wrap_fclose, _File, fp);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
     ret = CreatePID("test", 2345);
@@ -189,6 +166,8 @@ void test_w_is_compressed_gz_file_uncompressed(void **state) {
 
     will_return(__wrap_fread, "fake");
     will_return(__wrap_fread, 2);
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     ret = w_is_compressed_gz_file(path);
     assert_int_equal(ret, 0);
@@ -208,6 +187,8 @@ void test_w_is_compressed_bz2_file_compressed(void **state) {
     // BZh is 0x42 0x5a 0x68
     will_return(__wrap_fread, "BZh");
     will_return(__wrap_fread, 3);
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     ret = w_is_compressed_bz2_file(path);
     assert_int_equal(ret, 1);
@@ -224,12 +205,16 @@ void test_w_is_compressed_bz2_file_uncompressed(void **state) {
 
     will_return(__wrap_fread, "fake");
     will_return(__wrap_fread, 3);
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     ret = w_is_compressed_bz2_file(path);
     assert_int_equal(ret, 0);
 }
 
 // w_uncompress_bz2_gz_file
+
+#ifdef TEST_SERVER
 
 void test_w_uncompress_bz2_gz_file_bz2(void **state) {
 
@@ -251,23 +236,29 @@ void test_w_uncompress_bz2_gz_file_bz2(void **state) {
     expect_string(__wrap_fopen, path, "/test/file.bz2");
     expect_string(__wrap_fopen, mode, "rb");
     will_return(__wrap_fopen, 0);
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     ret = w_uncompress_bz2_gz_file(path, dest);
     assert_int_equal(ret, 0);
 
 }
 
+#endif
+
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_teardown(test_CreatePID_success, CreatePID_teardown),
-        cmocka_unit_test_teardown(test_CreatePID_failure_chmod, CreatePID_teardown),
+        cmocka_unit_test(test_CreatePID_success),
+        cmocka_unit_test(test_CreatePID_failure_chmod),
         cmocka_unit_test(test_CreatePID_failure_fopen),
         cmocka_unit_test(test_DeletePID_success),
         cmocka_unit_test(test_DeletePID_failure),
         cmocka_unit_test(test_w_is_compressed_gz_file_uncompressed),
         cmocka_unit_test(test_w_is_compressed_bz2_file_compressed),
         cmocka_unit_test(test_w_is_compressed_bz2_file_uncompressed),
+#ifdef TEST_SERVER
         cmocka_unit_test(test_w_uncompress_bz2_gz_file_bz2)
+#endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
