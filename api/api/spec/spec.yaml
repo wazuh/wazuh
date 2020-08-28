@@ -10451,7 +10451,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: All selected sca information is shown
+                message: "All selected sca information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10545,7 +10545,7 @@ paths:
                   failed_items: []
                   total_affected_items: 2
                   total_failed_items: 0
-                message: All selected sca/policy information is shown
+                message: "All selected sca/policy information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
