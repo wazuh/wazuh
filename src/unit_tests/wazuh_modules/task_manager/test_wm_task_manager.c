@@ -1328,7 +1328,7 @@ int main(void) {
         cmocka_unit_test(test_wm_task_manager_main_accept_err),
         cmocka_unit_test(test_wm_task_manager_main_select_empty_err),
         cmocka_unit_test(test_wm_task_manager_main_select_err),
-        cmocka_unit_test(test_wm_task_manager_main_worker_err),
+        cmocka_unit_test(test_wm_task_manager_main_worker_err)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

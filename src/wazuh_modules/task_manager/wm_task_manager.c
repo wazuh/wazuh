@@ -142,7 +142,7 @@ STATIC int wm_task_manager_init(wm_task_manager *task_config) {
     return sock;
 }
 
-void* wm_task_manager_main(wm_task_manager* task_config) {
+STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
     int sock;
     int peer;
     char *buffer = NULL;
@@ -221,12 +221,12 @@ void* wm_task_manager_main(wm_task_manager* task_config) {
     return NULL;
 }
 
-void wm_task_manager_destroy(wm_task_manager* task_config) {
+STATIC void wm_task_manager_destroy(wm_task_manager* task_config) {
     mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_FINISH);
     os_free(task_config);
 }
 
-cJSON* wm_task_manager_dump(const wm_task_manager* task_config){
+STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config){
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_info = cJSON_CreateObject();
 

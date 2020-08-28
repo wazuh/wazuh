@@ -9,6 +9,13 @@
  * Foundation.
  */
 
+#ifdef UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
 
@@ -21,9 +28,9 @@
 /**
  * Module main function. It won't return
  * */
-static void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);    
-static void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);  
-static cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
+STATIC void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);    
+STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);  
+STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
 
 /* Context definition */
 const wm_context WM_AGENT_UPGRADE_CONTEXT = {
@@ -33,7 +40,7 @@ const wm_context WM_AGENT_UPGRADE_CONTEXT = {
     (cJSON * (*)(const void *))wm_agent_upgrade_dump
 };
 
-static void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
+STATIC void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 
     // Check if module is enabled
     if (!upgrade_config->enabled) {
@@ -52,7 +59,7 @@ static void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
     return NULL;
 }
 
-static void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config) {
+STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config) {
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_FINISHED);
     #ifndef CLIENT
     os_free(upgrade_config->manager_config.wpk_repository);
@@ -60,7 +67,7 @@ static void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config) {
     os_free(upgrade_config);
 }
 
-static cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
+STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_info = cJSON_CreateObject();
 
@@ -71,7 +78,7 @@ static cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
     }
     #ifndef CLIENT
     if (upgrade_config->manager_config.wpk_repository) {
-        cJSON_AddStringToObject(wm_info, "wpk_repository", WM_UPGRADE_WPK_REPO_URL);
+        cJSON_AddStringToObject(wm_info, "wpk_repository", upgrade_config->manager_config.wpk_repository);
     }
     #endif
     cJSON_AddItemToObject(root,"agent-upgrade",wm_info);

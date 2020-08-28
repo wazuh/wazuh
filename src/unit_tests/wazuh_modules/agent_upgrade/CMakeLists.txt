@@ -24,6 +24,9 @@ set_target_properties(
 target_link_libraries(UPGRADE_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Generate agent upgrade tests
+list(APPEND upgrade_names "test_wm_agent_upgrade")
+list(APPEND upgrade_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,pthread_exit -Wl,--wrap,wm_agent_upgrade_check_status -Wl,--wrap,wm_agent_upgrade_listen_messages")
+
 list(APPEND upgrade_names "test_wm_agent_upgrade_agent")
 list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wm_sendmsg -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose -Wl,--wrap,StartMQ -Wl,--wrap,sleep -Wl,--wrap,close")
 
