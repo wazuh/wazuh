@@ -841,6 +841,462 @@ void test_wm_task_manager_dispatch_parse_err(void **state)
     assert_string_equal(response, result);
 }
 
+void test_wm_task_manager_main_ok(void **state)
+{
+    wm_task_manager *config = *state;
+    int sock = 555;
+    int peer = 1111;
+
+    config->enabled = 1;
+
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":1},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade_custom\","
+                      "\"agent\":2}]";
+
+    cJSON *tasks = cJSON_CreateArray();
+
+    cJSON *task1 = cJSON_CreateObject();
+    cJSON_AddStringToObject(task1, "module", "upgrade_module");
+    cJSON_AddStringToObject(task1, "command", "upgrade");
+    cJSON_AddNumberToObject(task1, "agent", 1);
+
+    cJSON *task2 = cJSON_CreateObject();
+    cJSON_AddStringToObject(task2, "module", "upgrade_module");
+    cJSON_AddStringToObject(task2, "command", "upgrade_custom");
+    cJSON_AddNumberToObject(task2, "agent", 2);
+
+    cJSON_AddItemToArray(tasks, task1);
+    cJSON_AddItemToArray(tasks, task2);
+
+    cJSON *response1 = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response1, "error", WM_TASK_SUCCESS);
+    cJSON_AddStringToObject(response1, "data", "Success");
+    cJSON_AddNumberToObject(response1, "agent", 1);
+
+    cJSON *response2 = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response2, "error", WM_TASK_SUCCESS);
+    cJSON_AddStringToObject(response2, "data", "Success");
+    cJSON_AddNumberToObject(response2, "agent", 2);
+
+    char *response = "[{\"error\":0,\"data\":\"Success\",\"agent\":1},{\"error\":0,\"data\":\"Success\",\"agent\":2}]";
+
+    will_return(__wrap_w_is_worker, 0);
+
+    // wm_task_manager_init
+
+    will_return(__wrap_wm_task_manager_check_db, 0);
+
+    will_return(__wrap_CreateThread, 1);
+
+    will_return(__wrap_OS_BindUnixDomain, sock);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, message);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(message) + 1);
+
+    // wm_task_manager_dispatch
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '[{\"module\":\"upgrade_module\","
+                                                                                 "\"command\":\"upgrade\","
+                                                                                 "\"agent\":1},{"
+                                                                                 "\"module\":\"upgrade_module\","
+                                                                                 "\"command\":\"upgrade_custom\","
+                                                                                 "\"agent\":2}]'");
+
+    expect_string(__wrap_wm_task_manager_parse_message, msg, message);
+    will_return(__wrap_wm_task_manager_parse_message, tasks);
+
+    expect_memory(__wrap_wm_task_manager_analyze_task, task_object, task1, sizeof(task1));
+    will_return(__wrap_wm_task_manager_analyze_task, WM_TASK_SUCCESS);
+    will_return(__wrap_wm_task_manager_analyze_task, response1);
+
+    expect_memory(__wrap_wm_task_manager_analyze_task, task_object, task2, sizeof(task2));
+    will_return(__wrap_wm_task_manager_analyze_task, WM_TASK_SUCCESS);
+    will_return(__wrap_wm_task_manager_analyze_task, response2);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '[{\"error\":0,\"data\":\"Success\",\"agent\":1},{\"error\":0,\"data\":\"Success\",\"agent\":2}]'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, peer);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(response));
+    expect_string(__wrap_OS_SendSecureTCP, msg, response);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_close, fd, peer);
+
+    expect_value(__wrap_close, fd, sock);
+
+    wm_task_manager_main(config);
+}
+
+void test_wm_task_manager_main_recv_max_err(void **state)
+{
+    wm_task_manager *config = *state;
+    int sock = 555;
+    int peer = 1111;
+
+    config->enabled = 1;
+
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":1},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade_custom\","
+                      "\"agent\":2}]";
+
+    will_return(__wrap_w_is_worker, 0);
+
+    // wm_task_manager_init
+
+    will_return(__wrap_wm_task_manager_check_db, 0);
+
+    will_return(__wrap_CreateThread, 1);
+
+    will_return(__wrap_OS_BindUnixDomain, sock);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, message);
+    will_return(__wrap_OS_RecvSecureTCP, OS_MAXLEN);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8256): Received message > '4194304'");
+
+    expect_value(__wrap_close, fd, peer);
+
+    expect_value(__wrap_close, fd, sock);
+
+    wm_task_manager_main(config);
+}
+
+void test_wm_task_manager_main_recv_empty_err(void **state)
+{
+    wm_task_manager *config = *state;
+    int sock = 555;
+    int peer = 1111;
+
+    config->enabled = 1;
+
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":1},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade_custom\","
+                      "\"agent\":2}]";
+
+    will_return(__wrap_w_is_worker, 0);
+
+    // wm_task_manager_init
+
+    will_return(__wrap_wm_task_manager_check_db, 0);
+
+    will_return(__wrap_CreateThread, 1);
+
+    will_return(__wrap_OS_BindUnixDomain, sock);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, message);
+    will_return(__wrap_OS_RecvSecureTCP, 0);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8203): Empty message from local client.");
+
+    expect_value(__wrap_close, fd, peer);
+
+    expect_value(__wrap_close, fd, sock);
+
+    wm_task_manager_main(config);
+}
+
+void test_wm_task_manager_main_recv_err(void **state)
+{
+    wm_task_manager *config = *state;
+    int sock = 555;
+    int peer = 1111;
+
+    config->enabled = 1;
+
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":1},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade_custom\","
+                      "\"agent\":2}]";
+
+    will_return(__wrap_w_is_worker, 0);
+
+    // wm_task_manager_init
+
+    will_return(__wrap_wm_task_manager_check_db, 0);
+
+    will_return(__wrap_CreateThread, 1);
+
+    will_return(__wrap_OS_BindUnixDomain, sock);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, message);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8254): Error in recv(): 'Success'");
+
+    expect_value(__wrap_close, fd, sock);
+
+    wm_task_manager_main(config);
+}
+
+void test_wm_task_manager_main_sockterr_err(void **state)
+{
+    wm_task_manager *config = *state;
+    int sock = 555;
+    int peer = 1111;
+
+    config->enabled = 1;
+
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":1},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade_custom\","
+                      "\"agent\":2}]";
+
+    will_return(__wrap_w_is_worker, 0);
+
+    // wm_task_manager_init
+
+    will_return(__wrap_wm_task_manager_check_db, 0);
+
+    will_return(__wrap_CreateThread, 1);
+
+    will_return(__wrap_OS_BindUnixDomain, sock);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, message);
+    will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8255): Response size is bigger than expected.");
+
+    expect_value(__wrap_close, fd, sock);
+
+    wm_task_manager_main(config);
+}
+
+void test_wm_task_manager_main_accept_err(void **state)
+{
+    wm_task_manager *config = *state;
+    int sock = 555;
+    int peer = 1111;
+
+    config->enabled = 1;
+
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":1},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade_custom\","
+                      "\"agent\":2}]";
+
+    will_return(__wrap_w_is_worker, 0);
+
+    // wm_task_manager_init
+
+    will_return(__wrap_wm_task_manager_check_db, 0);
+
+    will_return(__wrap_CreateThread, 1);
+
+    will_return(__wrap_OS_BindUnixDomain, sock);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, -1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8253): Error in accept(): 'Success'");
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, message);
+    will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8255): Response size is bigger than expected.");
+
+    expect_value(__wrap_close, fd, sock);
+
+    wm_task_manager_main(config);
+}
+
+void test_wm_task_manager_main_select_empty_err(void **state)
+{
+    wm_task_manager *config = *state;
+    int sock = 555;
+    int peer = 1111;
+
+    config->enabled = 1;
+
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":1},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade_custom\","
+                      "\"agent\":2}]";
+
+    will_return(__wrap_w_is_worker, 0);
+
+    // wm_task_manager_init
+
+    will_return(__wrap_wm_task_manager_check_db, 0);
+
+    will_return(__wrap_CreateThread, 1);
+
+    will_return(__wrap_OS_BindUnixDomain, sock);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+
+    will_return(__wrap_select, 0);
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, message);
+    will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8255): Response size is bigger than expected.");
+
+    expect_value(__wrap_close, fd, sock);
+
+    wm_task_manager_main(config);
+}
+
+void test_wm_task_manager_main_select_err(void **state)
+{
+    wm_task_manager *config = *state;
+    int sock = 555;
+    int peer = 1111;
+
+    config->enabled = 1;
+
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":1},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade_custom\","
+                      "\"agent\":2}]";
+
+    will_return(__wrap_w_is_worker, 0);
+
+    // wm_task_manager_init
+
+    will_return(__wrap_wm_task_manager_check_db, 0);
+
+    will_return(__wrap_CreateThread, 1);
+
+    will_return(__wrap_OS_BindUnixDomain, sock);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+
+    will_return(__wrap_select, -1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8252): Error in select(): 'Success'. Exiting...");
+
+    will_return(__wrap_pthread_exit, OS_INVALID);
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, message);
+    will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8255): Response size is bigger than expected.");
+
+    expect_value(__wrap_close, fd, sock);
+
+    wm_task_manager_main(config);
+}
+
+void test_wm_task_manager_main_worker_err(void **state)
+{
+    wm_task_manager *config = *state;
+
+    config->enabled = 1;
+
+    char *message = "[{\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade\","
+                      "\"agent\":1},{"
+                      "\"module\":\"upgrade_module\","
+                      "\"command\":\"upgrade_custom\","
+                      "\"agent\":2}]";
+
+    will_return(__wrap_w_is_worker, 1);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8207): Module Task Manager only runs on Master nodes in cluster configuration.");
+
+    wm_task_manager_main(config);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_task_manager_dump
@@ -863,6 +1319,16 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_no_task_err, teardown_string),
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_db_err, teardown_string),
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_parse_err, teardown_string),
+        // wm_task_manager_main
+        cmocka_unit_test(test_wm_task_manager_main_ok),
+        cmocka_unit_test(test_wm_task_manager_main_recv_max_err),
+        cmocka_unit_test(test_wm_task_manager_main_recv_empty_err),
+        cmocka_unit_test(test_wm_task_manager_main_recv_err),
+        cmocka_unit_test(test_wm_task_manager_main_sockterr_err),
+        cmocka_unit_test(test_wm_task_manager_main_accept_err),
+        cmocka_unit_test(test_wm_task_manager_main_select_empty_err),
+        cmocka_unit_test(test_wm_task_manager_main_select_err),
+        cmocka_unit_test(test_wm_task_manager_main_worker_err),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
