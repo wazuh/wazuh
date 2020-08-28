@@ -49,7 +49,9 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
 
     // Parse message
     if (event_array = wm_task_manager_parse_message(msg), !event_array) {
-        *response = cJSON_PrintUnformatted(wm_task_manager_parse_response(WM_TASK_INVALID_MESSAGE, OS_INVALID, OS_INVALID, NULL));
+        cJSON* db_error = wm_task_manager_parse_response(WM_TASK_INVALID_MESSAGE, OS_INVALID, OS_INVALID, NULL);
+        *response = cJSON_PrintUnformatted(db_error);
+        cJSON_Delete(db_error);
         return strlen(*response);
     }
 
@@ -88,7 +90,10 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
             mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_DB_ERROR, task);
             cJSON_Delete(event_array);
             cJSON_Delete(response_array);
-            *response = cJSON_PrintUnformatted(wm_task_manager_parse_response(WM_TASK_DATABASE_ERROR, OS_INVALID, OS_INVALID, NULL));
+            cJSON_Delete(task_response);
+            cJSON* db_error = wm_task_manager_parse_response(WM_TASK_DATABASE_ERROR, OS_INVALID, OS_INVALID, NULL);
+            *response = cJSON_PrintUnformatted(db_error);
+            cJSON_Delete(db_error);
             return strlen(*response);
         default:
             break;
