@@ -31,10 +31,21 @@ int __wrap_isDebug() {
     return mock();
 }
 
-void * __wrap_OSList_AddData() {
+void * __wrap_OSList_AddData(OSList *list, void *data) {
+    os_free(((os_analysisd_log_msg_t*)data)->msg);
+    os_free(((os_analysisd_log_msg_t*)data)->file);
+    os_free(((os_analysisd_log_msg_t*)data)->func);
+    os_free(data);
     return mock_type(void *);
 }
 
+int __wrap_vsnprintf (char *__restrict __s, size_t __maxlen,
+		            const char *__restrict __format, _G_va_list __arg) {
+
+    check_expected(__format);
+
+    return mock();
+}
 
 /* tests */
 
@@ -147,10 +158,18 @@ void test__os_analysisd_add_logmsg_OK(void **state)
     message->file = strdup("Test_file.c");
     message->func = strdup("TestFunction");
 
+    expect_string(__wrap_vsnprintf, __format, "Test Message");
+    will_return(__wrap_vsnprintf, 0);
+
     will_return(__wrap_OSList_AddData,"test");
 
     _os_analysisd_add_logmsg(list_msg, message->level, message->line, message->func, message->file, message->msg);
 
+    os_free(message->file);
+    os_free(message->func);
+    os_free(message->msg);
+    os_free(list_msg);
+    os_free(message);
 }
 
 int main(void)
