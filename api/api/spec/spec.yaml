@@ -12745,7 +12745,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "User wazuh logout correctly."
+                message: "User wazuh successfully logged out"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12908,7 +12908,7 @@ paths:
       operationId: api.controllers.security_controller.revoke_all_tokens
       responses:
         '200':
-          description: "Tokens revoked succesfully"
+          description: "Tokens succesfully revoked"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12970,7 +12970,7 @@ paths:
                       rule:
                         - 3
                   total_affected_items: 2
-                message: "All available roles were shown"
+                message: "All specified roles were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13022,7 +13022,7 @@ paths:
                         MATCH:
                           definition: limit_access
                   total_affected_items: 1
-                message: Role created correctly
+                message: "Role successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13148,7 +13148,7 @@ paths:
                         MATCH:
                           definition: normalRule8
                   total_affected_items: 1
-                message: Role updated correctly
+                message: Role successfully updated
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13208,7 +13208,7 @@ paths:
                         MATCH:
                           privileges: 'limit_access'
                   total_affected_items: 2
-                message: "All available rules were shown"
+                message: "All specified security rules were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13266,7 +13266,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "Rule created correctly"
+                message: "Security rule successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13318,7 +13318,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified rules were deleted"
+                message: "All specified security rules were deleted"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13377,7 +13377,7 @@ paths:
                     total_affected_items: 1
                     failed_items: []
                     total_failed_items: 0
-                  message: "Rule updated correctly"
+                  message: "Security rule successfully updated"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13440,7 +13440,7 @@ paths:
                           - agent:id:005
                           - agent:id:006
                   total_affected_items: 2
-                message: All available policies were shown
+                message: "All specified policies were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13491,6 +13491,7 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponsePolicies'
               example:
+                #TODO AffectedItemWazuhResult
                 data:
                   id: 2
                   name: 'normal_policy'
@@ -13501,6 +13502,7 @@ paths:
                       - "agent:id:001"
                     effect: "allow"
                   roles: []
+                message: "Policy successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13565,7 +13567,7 @@ paths:
                   failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
-                message: All specified policies were deleted
+                message: "All specified policies were deleted"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13632,7 +13634,7 @@ paths:
                           - agent:id:003
                       roles: []
                   total_affected_items: 1
-                message: Policy updated correctly
+                message: "Policy successfully updated"
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -13800,7 +13802,7 @@ paths:
                   failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
-                message: "All rules were linked to role 5"
+                message: "All security rules were linked to role 5"
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -13845,7 +13847,7 @@ paths:
                   failed_items: []
                   total_affected_items: 2
                   total_failed_items: 0
-                message: All rules were unlinked from role 3
+                message: "All security rules were unlinked from role 3"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14014,7 +14016,7 @@ paths:
                     total_affected_items: 1
                     total_failed_items: 0
                     failed_items: []
-                  message: Current user information was shown
+                  message: "Current user information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14102,7 +14104,7 @@ paths:
                     failed_items: []
                     total_affected_items: 8
                     total_failed_items: 0
-                  message: All specified users were shown
+                  message: "All specified users were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14167,7 +14169,7 @@ paths:
                     failed_items: []
                     total_affected_items: 1
                     total_failed_items: 0
-                  message: User created correctly
+                  message: "User successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14205,7 +14207,8 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseUsers'
                 example:
                   data:
-                    message: 'User deleted correctly'
+                    # TODO AffectedItemWazuhResult
+                    message: "Users successfully deleted"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14265,7 +14268,7 @@ paths:
                     total_affected_items: 1
                     total_failed_items: 0
                     failed_items: []
-                  message: User modified correctly
+                  message: "User successfully updated"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
