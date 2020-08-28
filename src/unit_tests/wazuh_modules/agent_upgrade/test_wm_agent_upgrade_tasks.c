@@ -177,6 +177,10 @@ int __wrap_w_is_worker(void) {
     return mock();
 }
 
+cJSON* __wrap_cJSON_Duplicate(const cJSON *item, int recurse) {
+    return mock_type(cJSON*);
+}
+
 #ifdef TEST_SERVER
 
 // Tests
@@ -654,6 +658,8 @@ void test_wm_agent_send_task_information_worker(void **state)
                                    "\"command\":\"upgrade\","
                                    "\"agent\":10}]}";
 
+    will_return(__wrap_cJSON_Duplicate, input);
+
     expect_string(__wrap_w_create_sendsync_payload, daemon_name, TASK_MANAGER_WM_NAME);
     will_return(__wrap_w_create_sendsync_payload, cluster_request);
 
@@ -811,6 +817,8 @@ void test_wm_agent_upgrade_send_tasks_information_worker(void **state)
                                    "\"agent\":10}]}";
 
     will_return(__wrap_w_is_worker, 1);
+
+    will_return(__wrap_cJSON_Duplicate, input);
 
     expect_string(__wrap_w_create_sendsync_payload, daemon_name, TASK_MANAGER_WM_NAME);
     will_return(__wrap_w_create_sendsync_payload, cluster_request);

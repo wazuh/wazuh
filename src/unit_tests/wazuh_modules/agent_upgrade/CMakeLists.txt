@@ -39,7 +39,8 @@ list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,w
 
 list(APPEND upgrade_names "test_wm_agent_upgrade_tasks")
 list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Next \
-                           -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,close -Wl,--wrap,w_create_sendsync_payload -Wl,--wrap,w_send_clustered_message -Wl,--wrap,w_is_worker")
+                           -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,close -Wl,--wrap,w_create_sendsync_payload -Wl,--wrap,w_send_clustered_message \
+                           -Wl,--wrap,w_is_worker -Wl,--wrap,cJSON_Duplicate")
 
 list(APPEND upgrade_names "test_wm_agent_upgrade_tasks_callbacks")
 list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wm_agent_upgrade_validate_task_ids_message -Wl,--wrap,wm_agent_upgrade_insert_task_id -Wl,--wrap,wm_agent_upgrade_remove_entry \
