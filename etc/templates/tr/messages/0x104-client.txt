@@ -1,5 +1,3 @@
 
  - Sunucu ile iletişimi sağlayabilmek için önce bu aracıyı
-   sunucuya eklemeniz gerekmektedir. Bunu yaptıktan sonra
-   sunucudan yetkilendirme anahtarını aktarmak için 'manage_agents'
-   komutunu çalıştırabilirsiniz.
+   sunucuya eklemeniz gerekmektedir.
