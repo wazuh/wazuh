@@ -2292,6 +2292,112 @@ void test_wdb_find_agent_success(void **state)
     __real_cJSON_Delete(root);
 }
 
+/* Tests wdb_get_agent_offset */
+
+void test_wdb_get_agent_offset_error_invalid_type(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int type = -1; // Invalid type
+
+    ret = wdb_get_agent_offset(id, type);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_get_agent_offset_error_json_output(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int type = WDB_SYSCHECK;
+
+    const char *query_str = "global select-fim-offset 1";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, WDBOUTPUT_SIZE);
+
+    will_return(__wrap_wdbc_query_parse_json, NULL);
+
+    // Hnadling result
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get agent offset.");
+
+    ret = wdb_get_agent_offset(id, type);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_get_agent_offset_success_fim(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int type = WDB_SYSCHECK;
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+
+    const char *query_str = "global select-fim-offset 1";
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    __real_cJSON_AddNumberToObject(row, "fim_offset", 100);
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, WDBOUTPUT_SIZE);
+
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "fim_offset");
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "fim_offset"));
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    ret = wdb_get_agent_offset(id, type);
+
+    assert_int_equal(100, ret);
+
+    __real_cJSON_Delete(root);
+}
+
+void test_wdb_get_agent_offset_success_reg(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int type = WDB_SYSCHECK_REGISTRY;
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+
+    const char *query_str = "global select-reg-offset 1";
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    __real_cJSON_AddNumberToObject(row, "reg_offset", 100);
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, WDBOUTPUT_SIZE);
+
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "reg_offset");
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "reg_offset"));
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    ret = wdb_get_agent_offset(id, type);
+
+    assert_int_equal(100, ret);
+
+    __real_cJSON_Delete(root);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -2367,7 +2473,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_invalid_parameters, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_json_input, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_json_output, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_find_agent_success, setup_wdb_agent, teardown_wdb_agent)
+        cmocka_unit_test_setup_teardown(test_wdb_find_agent_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_get_agent_offset */
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_offset_error_invalid_type, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_offset_error_json_output, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_offset_success_fim, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_offset_success_reg, setup_wdb_agent, teardown_wdb_agent)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
