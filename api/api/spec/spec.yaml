@@ -8550,7 +8550,7 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseNodeIDs'
                 example:
-                  message: Restart command sent to all shown nodes
+                  message: "Restart request sent to all specified nodes"
                   data:
                     affected_items:
                       - 'master-node'

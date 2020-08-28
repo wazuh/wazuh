@@ -904,10 +904,9 @@ EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
 VULN_DETECTOR_DIR := wazuh_modules/vulnerability_detector
-MSU_JSON_GZ := $(VULN_DETECTOR_DIR)/msu.json.gz
 
 .PHONY: deps
-deps: $(EXTERNAL_TAR) $(MSU_JSON_GZ) $(MSU_JSON_GZ)
+deps: $(EXTERNAL_TAR)
 
 external/$(CPYTHON).tar.gz:
 ifneq (,$(PRECOMPILED_RES))
@@ -925,8 +924,6 @@ external/%.tar.gz:
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
 
-$(MSU_JSON_GZ):
-	$(CURL) $@ $(RESOURCES_URL)/vulnerability-detector/windows/$(patsubst $(VULN_DETECTOR_DIR)/%,%,$@)
 
 
 ####################
@@ -1777,7 +1774,7 @@ ifneq ($(wildcard external/cpython/*),)
 endif
 
 clean-deps:
-	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON) $(MSU_JSON_GZ)
+	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON)
 
 clean-internals: clean-unit-tests
 	rm -f $(BUILD_SERVER)
