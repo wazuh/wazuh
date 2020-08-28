@@ -12,7 +12,7 @@
 #include <fstream>
 #include "sqlite_dbengine.h"
 #include "stringHelper.h"
-#include "typedef.h"
+#include "commonDefs.h"
 
 SQLiteDBEngine::SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFactory,
                                const std::string& path,

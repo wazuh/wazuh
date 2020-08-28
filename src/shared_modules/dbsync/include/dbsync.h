@@ -25,7 +25,7 @@
 #define EXPORTED
 #endif
 
-#include "typedef.h"
+#include "commonDefs.h"
 
 #ifdef __cplusplus
 extern "C" {

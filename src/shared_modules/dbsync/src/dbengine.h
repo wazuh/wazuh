@@ -15,8 +15,8 @@
 #include <string>
 #include <vector>
 #include <functional>
-#include <json.hpp>
-#include "typedef.h"
+#include "json.hpp"
+#include "commonDefs.h"
 
 namespace DbSync
 {

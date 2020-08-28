@@ -9,7 +9,9 @@
  * Foundation.
  */
 
-#pragma once
+#ifndef _SQLITE_WRAPPER_FACTORY_H
+#define _SQLITE_WRAPPER_FACTORY_H
+
 #include "sqlite_wrapper.h"
 #include "makeUnique.h"
 class ISQLiteFactory
@@ -45,3 +47,4 @@ public:
     }
 };
 
+#endif // _SQLITE_WRAPPER_FACTORY_H

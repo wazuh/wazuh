@@ -9,11 +9,13 @@
  * Foundation.
  */
 
-#pragma once
+#ifndef _DBENGINE_FACTORY_H
+#define _DBENGINE_FACTORY_H
+
 #include "db_exception.h"
 #include "sqlite/sqlite_dbengine.h"
 #include "sqlite/sqlite_wrapper_factory.h"
-#include "typedef.h"
+#include "commonDefs.h"
 #include <iostream>
 
 namespace DbSync
@@ -36,3 +38,5 @@ namespace DbSync
         }
     };
 }// namespace DbSync
+
+#endif // _DBENGINE_FACTORY_H
