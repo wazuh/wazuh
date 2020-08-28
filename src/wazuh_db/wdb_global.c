@@ -180,7 +180,7 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("cannot begin transaction");
-        return OS_INVALID;
+        return WDB_CHUNKS_ERROR;
     }
 
     //Add array start
@@ -195,7 +195,7 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
         }
         agent_stmt = wdb->stmt[WDB_STMT_GLOBAL_SYNC_REQ_GET];
         if (sqlite3_bind_int(agent_stmt, 1, *last_agent_id) != SQLITE_OK) {
-            merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             status = WDB_CHUNKS_ERROR;
             break;
         }
@@ -229,6 +229,7 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
                     //Set sync status as synced
                     if (OS_SUCCESS != wdb_global_set_sync_status(wdb, agent_id, WDB_SYNCED)) {
                         status = WDB_CHUNKS_ERROR;
+                        os_free(agent_str);
                         break;
                     }
                     //Add new agent
