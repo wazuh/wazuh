@@ -129,6 +129,12 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.sync_response_timeout, 30);
     assert_int_equal(syscheck.sync_queue_size, 64);
     assert_int_equal(syscheck.max_eps, 200);
+    assert_int_equal(syscheck.disk_quota_enabled, true);
+    assert_int_equal(syscheck.disk_quota_limit, 1024 * 1024);
+    assert_int_equal(syscheck.file_size_enabled, true);
+    assert_int_equal(syscheck.file_size_limit, 50 * 1024);
+    assert_int_equal(syscheck.diff_folder_size, 0);
+    assert_non_null(syscheck.diff_size_limit);
 }
 
 void test_Read_Syscheck_Config_invalid(void **state)
@@ -178,6 +184,12 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_int_equal(syscheck.sync_response_timeout, 30);
     assert_int_equal(syscheck.sync_queue_size, 64);
     assert_int_equal(syscheck.max_eps, 200);
+    assert_int_equal(syscheck.disk_quota_enabled, true);
+    assert_int_equal(syscheck.disk_quota_limit, 2 * 1024 * 1024);
+    assert_int_equal(syscheck.file_size_enabled, true);
+    assert_int_equal(syscheck.file_size_limit, 5);
+    assert_int_equal(syscheck.diff_folder_size, 0);
+    assert_non_null(syscheck.diff_size_limit);
 }
 
 void test_Read_Syscheck_Config_unparsed(void **state)
@@ -222,6 +234,12 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.sync_response_timeout, 30);
     assert_int_equal(syscheck.sync_queue_size, 16384);
     assert_int_equal(syscheck.max_eps, 100);
+    assert_int_equal(syscheck.disk_quota_enabled, true);
+    assert_int_equal(syscheck.disk_quota_limit, 1024 * 1024);
+    assert_int_equal(syscheck.file_size_enabled, true);
+    assert_int_equal(syscheck.file_size_limit, 50 * 1024);
+    assert_int_equal(syscheck.diff_folder_size, 0);
+    assert_null(syscheck.diff_size_limit);
 }
 
 void test_getSyscheckConfig(void **state)
@@ -239,9 +257,9 @@ void test_getSyscheckConfig(void **state)
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
     #if defined(TEST_SERVER) || defined(TEST_AGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_items), 19);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 20);
     #elif defined(TEST_WINAGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_items), 22);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 23);
     #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
@@ -254,6 +272,20 @@ void test_getSyscheckConfig(void **state)
     assert_string_equal(cJSON_GetStringValue(file_limit_enabled), "yes");
     cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
     assert_int_equal(file_limit_entries->valueint, 50000);
+
+    cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
+
+    cJSON *disk_quota = cJSON_GetObjectItem(diff, "disk_quota");
+    cJSON *disk_quota_enabled = cJSON_GetObjectItem(disk_quota, "enabled");
+    assert_string_equal(cJSON_GetStringValue(disk_quota_enabled), "yes");
+    cJSON *disk_quota_limit = cJSON_GetObjectItem(disk_quota, "limit");
+    assert_int_equal(disk_quota_limit->valueint, 1024 * 1024);
+
+    cJSON *file_size = cJSON_GetObjectItem(diff, "file_size");
+    cJSON *file_size_enabled = cJSON_GetObjectItem(file_size, "enabled");
+    assert_string_equal(cJSON_GetStringValue(file_size_enabled), "yes");
+    cJSON *file_size_limit = cJSON_GetObjectItem(file_size, "limit");
+    assert_int_equal(file_size_limit->valueint, 50 * 1024);
 
     cJSON *skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
     assert_string_equal(cJSON_GetStringValue(skip_nfs), "yes");
@@ -354,9 +386,9 @@ void test_getSyscheckConfig_no_audit(void **state)
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
     #ifndef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(sys_items), 15);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 16);
     #else
-    assert_int_equal(cJSON_GetArraySize(sys_items), 18);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 19);
     #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
@@ -369,6 +401,20 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_string_equal(cJSON_GetStringValue(file_limit_enabled), "yes");
     cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
     assert_int_equal(file_limit_entries->valueint, 50000);
+
+    cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
+
+    cJSON *disk_quota = cJSON_GetObjectItem(diff, "disk_quota");
+    cJSON *disk_quota_enabled = cJSON_GetObjectItem(disk_quota, "enabled");
+    assert_string_equal(cJSON_GetStringValue(disk_quota_enabled), "yes");
+    cJSON *disk_quota_limit = cJSON_GetObjectItem(disk_quota, "limit");
+    assert_int_equal(disk_quota_limit->valueint, 2 * 1024 * 1024);
+
+    cJSON *file_size = cJSON_GetObjectItem(diff, "file_size");
+    cJSON *file_size_enabled = cJSON_GetObjectItem(file_size, "enabled");
+    assert_string_equal(cJSON_GetStringValue(file_size_enabled), "yes");
+    cJSON *file_size_limit = cJSON_GetObjectItem(file_size, "limit");
+    assert_int_equal(file_size_limit->valueint, 5);
 
     cJSON *skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
     assert_string_equal(cJSON_GetStringValue(skip_nfs), "no");
@@ -461,7 +507,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    assert_int_equal(cJSON_GetArraySize(sys_items), 16);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 17);
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "yes");
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
@@ -472,6 +518,20 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_string_equal(cJSON_GetStringValue(file_limit_enabled), "yes");
     cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
     assert_int_equal(file_limit_entries->valueint, 100000);
+
+    cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
+
+    cJSON *disk_quota = cJSON_GetObjectItem(diff, "disk_quota");
+    cJSON *disk_quota_enabled = cJSON_GetObjectItem(disk_quota, "enabled");
+    assert_string_equal(cJSON_GetStringValue(disk_quota_enabled), "yes");
+    cJSON *disk_quota_limit = cJSON_GetObjectItem(disk_quota, "limit");
+    assert_int_equal(disk_quota_limit->valueint, 1024 * 1024);
+
+    cJSON *file_size = cJSON_GetObjectItem(diff, "file_size");
+    cJSON *file_size_enabled = cJSON_GetObjectItem(file_size, "enabled");
+    assert_string_equal(cJSON_GetStringValue(file_size_enabled), "yes");
+    cJSON *file_size_limit = cJSON_GetObjectItem(file_size, "limit");
+    assert_int_equal(file_size_limit->valueint, 50 * 1024);
 
     cJSON *skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
     assert_string_equal(cJSON_GetStringValue(skip_nfs), "yes");

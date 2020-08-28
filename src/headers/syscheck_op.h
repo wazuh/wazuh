@@ -274,7 +274,7 @@ char *unescape_syscheck_field(char *sum);
  * @param uid The user ID
  * @return The user name on success, NULL on failure
  */
-char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
+char *get_user(int uid);
 
 /**
  * @brief Retrieves the group name from a group ID in UNIX
@@ -295,7 +295,7 @@ const char *get_group(int gid);
  * @param [out] sid The user ID associated to the user
  * @return The user name on success, NULL on failure
  */
-char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
+char *get_user(const char *path, char **sid);
 
 /**
  * @brief Check if a directory exists
