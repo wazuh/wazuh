@@ -2398,6 +2398,233 @@ void test_wdb_get_agent_offset_success_reg(void **state)
     __real_cJSON_Delete(root);
 }
 
+/* Tests wdb_set_agent_offset */
+
+void test_wdb_set_agent_offset_error_json(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int type = -1; // Invalid type
+    long offset = 100;
+
+    will_return(__wrap_cJSON_CreateObject, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
+
+    ret = wdb_set_agent_offset(id, type, offset);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_offset_error_invalid_type(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int type = -1; // Invalid type
+    long offset = 100;
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "offset");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 100);
+
+    ret = wdb_set_agent_offset(id, type, offset);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_offset_error_socket(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int type = WDB_SYSCHECK;
+    long offset = 100;
+
+    const char *json_str = "{\"id\":1,\"offset\":100}";
+    const char *query_str = "global update-fim-offset {\"id\":1,\"offset\":100}";
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "offset");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 100);
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    // Hnadling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-fim-offset {\"id\":1,\"offset\":100}");
+
+    ret = wdb_set_agent_offset(id, type, offset);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_offset_error_sql_execution(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int type = WDB_SYSCHECK;
+    long offset = 100;
+
+    const char *json_str = "{\"id\":1,\"offset\":100}";
+    const char *query_str = "global update-fim-offset {\"id\":1,\"offset\":100}";
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "offset");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 100);
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, -100); // Returning any error
+
+    // Hnadling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-fim-offset {\"id\":1,\"offset\":100}");
+
+    ret = wdb_set_agent_offset(id, type, offset);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_offset_error_result(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int type = WDB_SYSCHECK;
+    long offset = 100;
+
+    const char *json_str = "{\"id\":1,\"offset\":100}";
+    const char *query_str = "global update-fim-offset {\"id\":1,\"offset\":100}";
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "offset");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 100);
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
+
+    ret = wdb_set_agent_offset(id, type, offset);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_offset_success_fim(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int type = WDB_SYSCHECK;
+    long offset = 100;
+
+    const char *json_str = "{\"id\":1,\"offset\":100}";
+    const char *query_str = "global update-fim-offset {\"id\":1,\"offset\":100}";
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "offset");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 100);
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = wdb_set_agent_offset(id, type, offset);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
+void test_wdb_set_agent_offset_success_reg(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    int type = WDB_SYSCHECK_REGISTRY;
+    long offset = 100;
+
+    const char *json_str = "{\"id\":1,\"offset\":100}";
+    const char *query_str = "global update-reg-offset {\"id\":1,\"offset\":100}";
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "offset");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 100);
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = wdb_set_agent_offset(id, type, offset);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -2478,7 +2705,15 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_offset_error_invalid_type, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_offset_error_json_output, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_offset_success_fim, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_offset_success_reg, setup_wdb_agent, teardown_wdb_agent)
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_offset_success_reg, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_set_agent_offset */
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_offset_error_json, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_offset_error_invalid_type, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_offset_error_socket, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_offset_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_offset_error_result, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_offset_success_fim, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_offset_success_reg, setup_wdb_agent, teardown_wdb_agent)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
