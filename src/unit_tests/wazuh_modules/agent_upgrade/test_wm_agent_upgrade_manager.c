@@ -125,14 +125,11 @@ char* __wrap_wm_agent_upgrade_process_agent_result_command(const int* agent_ids,
     return mock_type(char *);
 }
 
-#ifdef TEST_SERVER
-
 // Tests
 
 void test_wm_agent_upgrade_listen_messages_upgrade_command(void **state)
 {
     wm_manager_configs *config = *state;
-    int timeout = 10;
     int socket = 0;
     int peer = 1111;
     char *input = "{\"command\":\"upgrade\","
@@ -196,13 +193,12 @@ void test_wm_agent_upgrade_listen_messages_upgrade_command(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout, config);
+    wm_agent_upgrade_listen_messages(config);
 }
 
 void test_wm_agent_upgrade_listen_messages_upgrade_custom_command(void **state)
 {
     wm_manager_configs *config = *state;
-    int timeout = 10;
     int socket = 0;
     int peer = 1111;
     char *input = "{\"command\":\"upgrade_custom\","
@@ -266,13 +262,12 @@ void test_wm_agent_upgrade_listen_messages_upgrade_custom_command(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout, config);
+    wm_agent_upgrade_listen_messages(config);
 }
 
 void test_wm_agent_upgrade_listen_messages_agent_update_status_command(void **state)
 {
     wm_manager_configs *config = *state;
-    int timeout = 10;
     int socket = 0;
     int peer = 1111;
     char *input = "{\"command\":\"upgrade_update_status\","
@@ -338,13 +333,12 @@ void test_wm_agent_upgrade_listen_messages_agent_update_status_command(void **st
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout, config);
+    wm_agent_upgrade_listen_messages(config);
 }
 
 void test_wm_agent_upgrade_listen_messages_parse_error(void **state)
 {
     wm_manager_configs *config = *state;
-    int timeout = 10;
     int socket = 0;
     int peer = 1111;
     char *input = "Bad JSON";
@@ -385,13 +379,12 @@ void test_wm_agent_upgrade_listen_messages_parse_error(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout, config);
+    wm_agent_upgrade_listen_messages(config);
 }
 
 void test_wm_agent_upgrade_listen_messages_parse_error_with_message(void **state)
 {
     wm_manager_configs *config = *state;
-    int timeout = 10;
     int socket = 0;
     int peer = 1111;
     char *input = "Bad JSON";
@@ -436,13 +429,12 @@ void test_wm_agent_upgrade_listen_messages_parse_error_with_message(void **state
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout, config);
+    wm_agent_upgrade_listen_messages(config);
 }
 
 void test_wm_agent_upgrade_listen_messages_receive_empty(void **state)
 {
     wm_manager_configs *config = *state;
-    int timeout = 10;
     int socket = 0;
     int peer = 1111;
     char *input = "Bad JSON";
@@ -465,13 +457,12 @@ void test_wm_agent_upgrade_listen_messages_receive_empty(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout, config);
+    wm_agent_upgrade_listen_messages(config);
 }
 
 void test_wm_agent_upgrade_listen_messages_receive_error(void **state)
 {
     wm_manager_configs *config = *state;
-    int timeout = 10;
     int socket = 0;
     int peer = 1111;
     char *input = "Bad JSON";
@@ -494,13 +485,12 @@ void test_wm_agent_upgrade_listen_messages_receive_error(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout, config);
+    wm_agent_upgrade_listen_messages(config);
 }
 
 void test_wm_agent_upgrade_listen_messages_receive_sock_error(void **state)
 {
     wm_manager_configs *config = *state;
-    int timeout = 10;
     int socket = 0;
     int peer = 1111;
     char *input = "Bad JSON";
@@ -523,13 +513,12 @@ void test_wm_agent_upgrade_listen_messages_receive_sock_error(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout, config);
+    wm_agent_upgrade_listen_messages(config);
 }
 
 void test_wm_agent_upgrade_listen_messages_accept_error_eintr(void **state)
 {
     wm_manager_configs *config = *state;
-    int timeout = 10;
     int socket = 0;
     int peer = 1111;
     char *input = "Bad JSON";
@@ -557,13 +546,12 @@ void test_wm_agent_upgrade_listen_messages_accept_error_eintr(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout, config);
+    wm_agent_upgrade_listen_messages(config);
 }
 
 void test_wm_agent_upgrade_listen_messages_accept_error(void **state)
 {
     wm_manager_configs *config = *state;
-    int timeout = 10;
     int socket = 0;
     int peer = 1111;
     char *input = "Bad JSON";
@@ -594,13 +582,12 @@ void test_wm_agent_upgrade_listen_messages_accept_error(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout, config);
+    wm_agent_upgrade_listen_messages(config);
 }
 
 void test_wm_agent_upgrade_listen_messages_select_zero(void **state)
 {
     wm_manager_configs *config = *state;
-    int timeout = 10;
     int socket = 0;
     int peer = 1111;
     char *input = "Bad JSON";
@@ -625,13 +612,12 @@ void test_wm_agent_upgrade_listen_messages_select_zero(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout, config);
+    wm_agent_upgrade_listen_messages(config);
 }
 
 void test_wm_agent_upgrade_listen_messages_select_error_eintr(void **state)
 {
     wm_manager_configs *config = *state;
-    int timeout = 10;
     int socket = 0;
     int peer = 1111;
     char *input = "Bad JSON";
@@ -657,13 +643,12 @@ void test_wm_agent_upgrade_listen_messages_select_error_eintr(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout, config);
+    wm_agent_upgrade_listen_messages(config);
 }
 
 void test_wm_agent_upgrade_listen_messages_select_error(void **state)
 {
     wm_manager_configs *config = *state;
-    int timeout = 10;
     int socket = 0;
     errno = 1;
 
@@ -676,27 +661,23 @@ void test_wm_agent_upgrade_listen_messages_select_error(void **state)
 
     expect_value(__wrap_close, fd, socket);
 
-    wm_agent_upgrade_listen_messages(timeout, config);
+    wm_agent_upgrade_listen_messages(config);
 }
 
 void test_wm_agent_upgrade_listen_messages_bind_error(void **state)
 {
     wm_manager_configs *config = *state;
-    int timeout = 10;
 
     will_return(__wrap_OS_BindUnixDomain, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket '/var/ossec/queue/tasks/upgrade': 'Operation not permitted'");
 
-    wm_agent_upgrade_listen_messages(timeout, config);
+    wm_agent_upgrade_listen_messages(config);
 }
-
-#endif
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-#ifdef TEST_SERVER
         // wm_agent_upgrade_listen_messages
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_upgrade_command),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_upgrade_custom_command),
@@ -712,7 +693,6 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_select_error_eintr),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_select_error),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_bind_error)
-#endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

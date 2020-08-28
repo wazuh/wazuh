@@ -9,6 +9,13 @@
  * Foundation.
  */
 
+#ifdef UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #ifndef WIN32
 
 #include "../wmodules.h"
@@ -19,7 +26,7 @@
 // Mutex needed to access tasks DB
 pthread_mutex_t db_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt);
+STATIC int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt);
 
 /**
  * Update old tasks with status in progress to status timeout
@@ -27,14 +34,14 @@ static int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt);
  * @param next_timeout Next task in progress timeout
  * @return OS_SUCCESS on success, OS_INVALID on errors
  * */
-static int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout);
+STATIC int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout) __attribute__((nonnull));
 
 /**
  * Delete old tasks from the tasks DB
  * @param timestamp Deletion limit time
  * @return OS_SUCCESS on success, OS_INVALID on errors
  * */
-static int wm_task_manager_delete_old_entries(int timestamp);
+STATIC int wm_task_manager_delete_old_entries(int timestamp);
 
 static const char *task_queries[] = {
     [WM_TASK_INSERT_TASK] = "INSERT INTO " TASKS_TABLE " VALUES(NULL,?,?,?,?,?,?);",
@@ -46,7 +53,7 @@ static const char *task_queries[] = {
     [WM_TASK_DELETE_OLD_TASKS] = "DELETE FROM " TASKS_TABLE " WHERE CREATE_TIME <= ?;"
 };
 
-static int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt) {
+STATIC int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt) {
     mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_ERROR, sqlite3_errmsg(db));
     wdb_finalize(stmt);
     sqlite3_close_v2(db);
@@ -119,7 +126,7 @@ int wm_task_manager_check_db() {
 void* wm_task_manager_clean_db(void *arg) {
     wm_task_manager *config = (wm_task_manager *)arg;
     time_t next_clean = time(0);
-    time_t next_timeout = next_clean;
+    time_t next_timeout = time(0);
 
     while (1) {
         time_t now = time(0);
@@ -144,10 +151,16 @@ void* wm_task_manager_clean_db(void *arg) {
         }
 
         w_sleep_until(sleep_time);
+
+    #ifdef UNIT_TESTING
+        break;
+    #endif
     }
+
+    return NULL;
 }
 
-static int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout) {
+STATIC int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout) {
     sqlite3 *db = NULL;
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;
@@ -201,7 +214,7 @@ static int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout) 
     return OS_SUCCESS;
 }
 
-static int wm_task_manager_delete_old_entries(int timestamp) {
+STATIC int wm_task_manager_delete_old_entries(int timestamp) {
     sqlite3 *db = NULL;
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;

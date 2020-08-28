@@ -14,13 +14,11 @@
 
 #define WM_AGENT_UPGRADE_LOGTAG ARGV0 ":" AGENT_UPGRADE_WM_NAME
 
-#define WM_UPGRADE_WPK_REPO_URL "packages.wazuh.com/wpk/"
+#define WM_UPGRADE_WPK_REPO_URL "packages.wazuh.com/4.x/wpk/"
 #define WM_UPGRADE_CHUNK_SIZE 512
 #define WM_UPGRADE_WAIT_START 300
 #define WM_UPGRADE_WAIT_MAX 3600
 #define WM_UPGRADE_WAIT_FACTOR_INCREASE 2.0
-
-#define WM_UPGRADE_LISTEN_TIMEOUT 5
 
 /**
  * Configurations on agent side
