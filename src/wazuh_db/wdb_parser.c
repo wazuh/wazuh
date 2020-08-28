@@ -587,6 +587,15 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_update_agent_group(wdb, next, output);
             }
+        } else if (strcmp(query, "find-group") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_find_group(wdb, next, output);
+            }
         } else if (strcmp(query, "select-keepalive") == 0) {
             result = wdb_parse_global_select_agent_keepalive(wdb, next, output);
         } else if (strcmp(query, "sync-agent-info-get") == 0) {
@@ -4674,6 +4683,27 @@ int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output
 
     snprintf(output, OS_MAXSTR + 1, "ok");
     cJSON_Delete(agent_data);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output) {
+    char *group_name = NULL;
+    cJSON *group_id = NULL;
+    char *out = NULL;
+
+    group_name = input;
+
+    if (group_id = wdb_global_find_group(wdb, group_name), !group_id) {
+        mdebug1("Error getting group id from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting group id from global.db.");
+        return OS_INVALID;
+    }
+
+    out = cJSON_PrintUnformatted(group_id);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(group_id);
 
     return OS_SUCCESS;
 }

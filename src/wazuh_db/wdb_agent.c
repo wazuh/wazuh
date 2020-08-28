@@ -22,7 +22,6 @@
 
 static const char *global_db_queries[] = {
     [SQL_SELECT_AGENTS] = "global sql SELECT id FROM agent WHERE id != 0;",
-    [SQL_FIND_GROUP] = "global sql SELECT id FROM `group` WHERE name = %Q;",
     [SQL_INSERT_AGENT_GROUP] = "global sql INSERT INTO `group` (name) VALUES(%Q);",
     [SQL_INSERT_AGENT_BELONG] = "global sql INSERT INTO belongs (id_group, id_agent) VALUES(%d, %d);",
     [SQL_DELETE_GROUP_BELONG] = "global sql DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = %Q );", 
@@ -51,7 +50,7 @@ static const char *global_db_commands[] = {
     [WDB_SELECT_AGENT_STATUS] = "global select-agent-status %d",
     [WDB_UPDATE_AGENT_STATUS] = "global update-agent-status %s",
     [WDB_UPDATE_AGENT_GROUP] = "global update-agent-group %s",
-    [WDB_FIND_GROUP] = "",
+    [WDB_FIND_GROUP] = "global find-group %s",
     [WDB_INSERT_AGENT_GROUP] = "",
     [WDB_INSERT_AGENT_BELONG] = "",
     [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %d",
@@ -878,7 +877,7 @@ int wdb_update_agent_multi_group(int id, char *group) {
     return result;
 }
 
-/* Find group by name. Returns id if success or -1 on failure. */
+
 int wdb_find_group(const char *name) {
     int output = -1;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -886,7 +885,7 @@ int wdb_find_group(const char *name) {
     cJSON *root = NULL;
     cJSON *json_group = NULL;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_FIND_GROUP], name);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_FIND_GROUP], name);
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {

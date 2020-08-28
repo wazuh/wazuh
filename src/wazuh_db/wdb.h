@@ -143,6 +143,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_REG_OFFSET,
     WDB_STMT_GLOBAL_SELECT_AGENT_STATUS,
     WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS,
+    WDB_STMT_GLOBAL_FIND_GROUP,
     WDB_STMT_GLOBAL_UPDATE_AGENT_GROUP,
     WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
@@ -154,7 +155,6 @@ typedef enum wdb_stmt {
 
 typedef enum global_db_query {
     SQL_SELECT_AGENTS,
-    SQL_FIND_GROUP,
     SQL_INSERT_AGENT_GROUP,
     SQL_INSERT_AGENT_BELONG,
     SQL_DELETE_GROUP_BELONG,
@@ -1348,6 +1348,15 @@ int wdb_global_update_agent_status(wdb_t *wdb, int id, char *status);
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group);
+
+/**
+ * @brief Function to get a group id using the group name.
+ * 
+ * @param wdb The Global struct database.
+ * @param group_name The group name.
+ * @return JSON with group id on success. NULL on error.
+ */
+cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name);
 
 /**
  * @brief Function to get an agent keepalive using the agent name and register ip.
