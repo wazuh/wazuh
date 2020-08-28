@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
   - Embedded Wazuh API with Wazuh Manager, there is no need to install Wazuh API ([9860823](https://github.com/wazuh/wazuh/commit/9860823d568f5e6d93550d9b139507c04d2c2eb9))
   - Migrated Wazuh API server from nodejs to python ([#2640](https://github.com/wazuh/wazuh/pull/2640))
   - Added asynchronous aiohttp server for the Wazuh API ([#4474](https://github.com/wazuh/wazuh/issues/4474))
+  - New Wazuh API is approximately 5 times faster on average ([#5834](https://github.com/wazuh/wazuh/issues/5834))
   - Added OpenApi based Wazuh API specification ([#2413](https://github.com/wazuh/wazuh/issues/2413))
   - Improved Wazuh API reference documentation based on OpenApi spec using redoc ([#4967](https://github.com/wazuh/wazuh/issues/4967))
   - Added new yaml Wazuh API configuration file ([#2570](https://github.com/wazuh/wazuh/issues/2570))
