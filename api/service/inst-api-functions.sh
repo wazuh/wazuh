@@ -25,12 +25,6 @@ stop_api_3x(){
 
 
 
-stop_api_4x() {
-    "${PREFIX}"/bin/wazuh-apid stop
-}
-
-
-
 backup_old_api() {
 
     if [ $# -ne 1 ]; then
@@ -45,7 +39,7 @@ backup_old_api() {
 
     # check current REVISION and perform the applicable backup
     if [ "$1" -ge 40000 ]; then
-        stop_api_4x
+        # API doesn't need to be stopped individually in Wazuh 4.0 or later as it is integrated as a daemon.
         backup_old_api_4x
     else
         stop_api_3x
