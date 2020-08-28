@@ -1193,6 +1193,9 @@ char **get_agents(int flag,int mon_time){
         return (NULL);
     }
 
+    // Unused. See get_all_agents_by_keepalive() to change the time 
+    (void) mon_time;
+
     /* Getting all the information from all the agents at once may result in a huge JSON */
     for (i = 0; id_array[i] != -1; i++){
         int status = 0;
@@ -1220,23 +1223,25 @@ char **get_agents(int flag,int mon_time){
         }
         cJSON_Delete(json_agt_info);
     
-        if (flag != GA_ALL) {
-            if (last_keepalive < 0) {
-                continue;
-            }
+        status = last_keepalive > (time(0) - DISCON_TIME) ? 1 : 0;
 
-            if( !(flag == GA_NOTACTIVE && (last_keepalive < (time(0) - (mon_time * 60)) && mon_time > 0))) {
-                if (last_keepalive > (time(0) - DISCON_TIME)) {
-                    status = 1;
-                    if (flag == GA_NOTACTIVE) {
-                        continue;
-                    }
-                } else {
-                    if (flag == GA_ACTIVE) {
-                        continue;
-                    }
+        switch (flag){
+            case GA_ALL:
+            case GA_ALL_WSTATUS:
+                break;
+            case GA_ACTIVE:
+                if(status == 0){
+                    continue;
                 }
-            }
+                break;
+            case GA_NOTACTIVE:
+                if(status == 1){
+                    continue;
+                }
+                break;
+            default:
+                mwarn("Invalid flag '%d' trying to get all agents.", flag);
+                continue;
         }
 
         os_realloc(agents_array, (array_size + 2) * sizeof(char *), agents_array);
@@ -1268,17 +1273,20 @@ char **get_agents_by_keepalive(int flag, int mon_time){
     char **agents_array = NULL;
     int *id_array = NULL;
     int i = 0;
+    int discon_time = 0;
     cJSON *json_agt_info = NULL;
     cJSON *json_field = NULL;
     cJSON *json_name = NULL;
     cJSON *json_ip = NULL;
 
+    discon_time = mon_time > 0 ? mon_time * 60 : DISCON_TIME;
+
     switch(flag){
         case GA_NOTACTIVE:
-            id_array = wdb_get_agents_by_keepalive(">", DISCON_TIME);
+            id_array = wdb_get_agents_by_keepalive(">", discon_time);
             break;
         case GA_ACTIVE:
-            id_array = wdb_get_agents_by_keepalive("<", DISCON_TIME);
+            id_array = wdb_get_agents_by_keepalive("<", discon_time);
             break;
         default:
             mdebug1("Invalid flag '%d' trying to get agents.", flag);
