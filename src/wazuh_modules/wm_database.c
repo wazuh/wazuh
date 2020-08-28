@@ -511,7 +511,7 @@ int wm_sync_shared_group(const char *fname) {
         wdb_remove_group_db(fname);
     }
     else {
-        if( wdb_find_group(fname) <= 0){
+        if(wdb_find_group(fname) <= 0){
             wdb_insert_group(fname);
         }
         closedir(dp);

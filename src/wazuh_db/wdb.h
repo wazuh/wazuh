@@ -145,6 +145,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS,
     WDB_STMT_GLOBAL_FIND_GROUP,
     WDB_STMT_GLOBAL_UPDATE_AGENT_GROUP,
+    WDB_STMT_GLOBAL_INSERT_AGENT_GROUP,
     WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
@@ -155,7 +156,6 @@ typedef enum wdb_stmt {
 
 typedef enum global_db_query {
     SQL_SELECT_AGENTS,
-    SQL_INSERT_AGENT_GROUP,
     SQL_INSERT_AGENT_BELONG,
     SQL_DELETE_GROUP_BELONG,
     SQL_DELETE_GROUP,
@@ -633,17 +633,27 @@ int wdb_agent_belongs_first_time();
  */
 time_t get_agent_date_added(int agent_id);
 
-/* Find group by name. Returns id if success or -1 on failure. */
+/**
+ * @brief Find group by name.
+ * 
+ * @param[in] name The group name.
+ * @return Returns id if success or OS_INVALID on failure.
+ */
 int wdb_find_group(const char *name);
 
-/* Insert a new group. Returns id if success or -1 on failure. */
+/**
+ * @brief Insert a new group.
+ * 
+ * @param[in] name The group name.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
 int wdb_insert_group(const char *name);
 
 /**
  * @brief Delete an agent from belongs table in global.db by using its ID.
  * 
  * @param[in] id Id of the agent to be deleted.
- * @return OS_SUCCESS on success or OS_INVALID on failure.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_delete_agent_belongs(int id);
 
@@ -1017,6 +1027,26 @@ int wdb_parse_global_update_agent_status(wdb_t * wdb, char * input, char * outpu
 int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output);
 
 /**
+ * @brief Function to parse the find group request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with the group name.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse the insert group request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with the group name.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output);
+
+/**
  * @brief Function to parse the select keepalive request.
  * 
  * @param wdb the global struct database.
@@ -1357,6 +1387,15 @@ int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group);
  * @return JSON with group id on success. NULL on error.
  */
 cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name);
+
+/**
+ * @brief Function to insert a group using the group name.
+ * 
+ * @param wdb The Global struct database.
+ * @param group_name The group name.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_insert_agent_group(wdb_t *wdb, char* group_name);
 
 /**
  * @brief Function to get an agent keepalive using the agent name and register ip.

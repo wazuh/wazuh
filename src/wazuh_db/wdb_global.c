@@ -769,6 +769,37 @@ cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name) {
     return result;
 }
 
+int wdb_global_insert_agent_group(wdb_t *wdb, char* group_name) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("cannot begin transaction");
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_INSERT_AGENT_GROUP) < 0) {
+        mdebug1("cannot cache statement");
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_INSERT_AGENT_GROUP];
+
+    if (sqlite3_bind_text(stmt, 1, group_name, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    switch (wdb_step(stmt)) {
+    case SQLITE_ROW:
+    case SQLITE_DONE:
+        return OS_SUCCESS;
+        break;
+    default:
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+}
+
 cJSON* wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip) {
     sqlite3_stmt *stmt = NULL;
     cJSON * result = NULL;

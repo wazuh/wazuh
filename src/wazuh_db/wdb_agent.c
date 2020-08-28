@@ -22,7 +22,6 @@
 
 static const char *global_db_queries[] = {
     [SQL_SELECT_AGENTS] = "global sql SELECT id FROM agent WHERE id != 0;",
-    [SQL_INSERT_AGENT_GROUP] = "global sql INSERT INTO `group` (name) VALUES(%Q);",
     [SQL_INSERT_AGENT_BELONG] = "global sql INSERT INTO belongs (id_group, id_agent) VALUES(%d, %d);",
     [SQL_DELETE_GROUP_BELONG] = "global sql DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = %Q );", 
     [SQL_DELETE_GROUP] = "global sql DELETE FROM `group` WHERE name = %Q;",
@@ -51,7 +50,7 @@ static const char *global_db_commands[] = {
     [WDB_UPDATE_AGENT_STATUS] = "global update-agent-status %s",
     [WDB_UPDATE_AGENT_GROUP] = "global update-agent-group %s",
     [WDB_FIND_GROUP] = "global find-group %s",
-    [WDB_INSERT_AGENT_GROUP] = "",
+    [WDB_INSERT_AGENT_GROUP] = "global insert-agent-group %s",
     [WDB_INSERT_AGENT_BELONG] = "",
     [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %d",
     [WDB_DELETE_GROUP_BELONG] = "",
@@ -850,8 +849,8 @@ int wdb_update_agent_multi_group(int id, char *group) {
                 /* Update de groups table */
                 int id_group = wdb_find_group(multi_group);
 
-                if(id_group <= 0) {
-                    id_group = wdb_insert_group(multi_group);
+                if(id_group <= 0 && OS_SUCCESS == wdb_insert_group(multi_group)) {
+                    id_group = wdb_find_group(multi_group);
                 }
 
                 if (wdb_update_agent_belongs(id_group,id) < 0) {
@@ -864,8 +863,8 @@ int wdb_update_agent_multi_group(int id, char *group) {
             /* Update de groups table */
             int id_group = wdb_find_group(group);
 
-            if (id_group <= 0) {
-                id_group = wdb_insert_group(group);
+            if (id_group <= 0 && OS_SUCCESS == wdb_insert_group(group)) {
+                id_group = wdb_find_group(group);
             }
 
             if ( wdb_update_agent_belongs(id_group,id) < 0) {
@@ -879,7 +878,7 @@ int wdb_update_agent_multi_group(int id, char *group) {
 
 
 int wdb_find_group(const char *name) {
-    int output = -1;
+    int output = OS_INVALID;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     cJSON *root = NULL;
@@ -900,18 +899,22 @@ int wdb_find_group(const char *name) {
     return output;
 }
 
-/* Insert a new group. Returns id if success or -1 on failure. */
+
 int wdb_insert_group(const char *name) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_INSERT_AGENT_GROUP], name);
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_INSERT_AGENT_GROUP], name);
     result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
-            result = wdb_find_group(name);
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");
