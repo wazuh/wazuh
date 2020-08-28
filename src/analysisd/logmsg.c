@@ -24,7 +24,7 @@ void _os_analysisd_add_logmsg(OSList * list, int level, int line, const char * f
 
     /* Generic message */
     new_msg->level = level;
-    os_malloc(OS_BUFFER_SIZE, new_msg->msg);
+    os_calloc(1, OS_BUFFER_SIZE, new_msg->msg);
     va_start(args, msg);
     (void)vsnprintf(new_msg->msg, OS_BUFFER_SIZE, msg, args);
     va_end(args);
