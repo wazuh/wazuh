@@ -499,7 +499,7 @@
 /* Wazuh Logtest error messsages */
 #define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"
 #define LOGTEST_ERROR_ACCEPT_CONN                   "(7301): Failure to accept connection. Errno: %s"
-#define LOGTEST_ERROR_RECV_MSG                      "(7302): Failure to receive message. Errno: %s"
+#define LOGTEST_ERROR_RECV_MSG                      "(7302): Failure to receive message:"
 #define LOGTEST_ERROR_INIT_HASH                     "(7303): Failure to initialize all_sesssions hash"
 #define LOGTEST_ERROR_INV_CONF                      "(7304): Invalid wazuh-logtest configuration"
 #define LOGTEST_ERROR_SIZE_HASH                     "(7305): Failure to resize all_sesssions hash"
@@ -512,6 +512,7 @@
 #define LOGTEST_ERROR_PROCESS_EVENT                 "(7312): Failed to process the event"
 #define LOGTEST_ERROR_FIELD_NOT_FOUND               "(7313): '%s' JSON field not found or is empty"
 #define LOGTEST_ERROR_TOKEN_INVALID_TYPE            "(7309): Failure to remove session. remove_session JSON field must be a string"
+
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

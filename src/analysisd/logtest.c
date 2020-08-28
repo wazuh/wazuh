@@ -122,23 +122,30 @@ void * w_logtest_clients_handler(w_logtest_connection_t * connection) {
         }
         w_mutex_unlock(&connection->mutex);
 
-        if (size_msg_received = recv(client, msg_received, OS_MAXSTR - 1, 0), size_msg_received < 0) {
-            merror(LOGTEST_ERROR_RECV_MSG, strerror(errno));
-            close(client);
-            continue;
-        }
-        msg_received[size_msg_received] = '\0';
+        switch (size_msg_received = OS_RecvSecureTCP(client, msg_received ,OS_MAXSTR - 1), size_msg_received) {
+        case OS_SOCKTERR:
+            merror(LOGTEST_ERROR_RECV_MSG "response size is bigger than expected");
+            break;
 
-        if (str_response = w_logtest_process_request(msg_received, connection), !str_response) {
-            return NULL;
-        }
+        case -1:
+            merror(LOGTEST_ERROR_RECV_MSG "%s", strerror(errno));
+            break;
 
-        if (send(client, str_response, strlen(str_response) + 1, 0) == -1) {
-            merror(LOGTEST_ERROR_RESPONSE, errno, strerror(errno));
-        }
+        case 0:
+            mdebug1(LOGTEST_ERROR_RECV_MSG "empty message from local client.");
+            break;
 
-        /* Cleanup */
-        os_free(str_response);
+        case OS_MAXLEN:
+            merror(LOGTEST_ERROR_RECV_MSG "received message > %i", MAX_DYN_STR);
+            break;
+
+        default:
+            if (str_response = w_logtest_process_request(msg_received, connection), str_response) {
+                OS_SendSecureTCP(client, strlen(str_response), str_response);
+                os_free(str_response);
+            }
+        }
+        
         close(client);
     }
 
