@@ -601,7 +601,7 @@ STATIC int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, con
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
     if (result = wm_agent_upgrade_parse_agent_response(response, &data), !result) {
         if (!data || strncmp("0", data, 1)) {
-            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_SCRIPT_ERROR, data);
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_SCRIPT_ERROR);
             result = OS_INVALID;
         }
     }
