@@ -16,7 +16,7 @@
 #include <memory>
 #include <mutex>
 #include "dbengine_factory.h"
-#include "typedef.h"
+#include "commonDefs.h"
 #include "json.hpp"
 
 namespace DbSync

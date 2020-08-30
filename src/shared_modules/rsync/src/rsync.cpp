@@ -33,7 +33,7 @@ static void log_message(const std::string& msg)
     }
 }
 
-void rsync_initialize(log_fnc_t log_function)
+EXPORTED void rsync_initialize(log_fnc_t log_function)
 {
     if (!gs_logFunction)
     {
@@ -41,12 +41,12 @@ void rsync_initialize(log_fnc_t log_function)
     }
 }
 
-void rsync_teardown(void)
+EXPORTED void rsync_teardown(void)
 {
     RSyncImplementation::instance().release();
 }
 
-RSYNC_HANDLE rsync_create()
+EXPORTED RSYNC_HANDLE rsync_create()
 {
     RSYNC_HANDLE retVal{ nullptr };
     std::string errorMessage;
@@ -65,7 +65,27 @@ RSYNC_HANDLE rsync_create()
     return retVal;
 }
 
-int rsync_close(const RSYNC_HANDLE handle)
+EXPORTED int rsync_start_sync(const RSYNC_HANDLE /*handle*/)
+{
+    return 0;    
+}
+
+EXPORTED int rsync_register_sync_id(const RSYNC_HANDLE /*handle*/, 
+                                    const char* /*message_header_id*/, 
+                                    const DBSYNC_HANDLE /*dbsync_handle*/,
+                                    const cJSON* /*sync_configuration*/,
+                                    sync_callback_data_t /*callback_data*/)
+{
+    return 0;    
+}
+
+EXPORTED int rsync_push_message(const RSYNC_HANDLE /*handle*/,
+                                const char* /*payload*/)
+{
+    return 0;    
+}
+
+EXPORTED int rsync_close(const RSYNC_HANDLE handle)
 {
     std::string message;
     auto retVal { 0 };
@@ -79,8 +99,6 @@ int rsync_close(const RSYNC_HANDLE handle)
     log_message(message);
     return retVal;
 }
-
-    
 
 #ifdef __cplusplus
 }

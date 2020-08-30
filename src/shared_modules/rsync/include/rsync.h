@@ -25,7 +25,7 @@
 #define EXPORTED
 #endif
 
-#include "typedef.h"
+#include "commonDefs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,9 +51,50 @@ EXPORTED void rsync_teardown(void);
 EXPORTED RSYNC_HANDLE rsync_create();
 
 /**
+ * @brief Initializes the \p handle instance.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ */
+EXPORTED int rsync_start_sync(const RSYNC_HANDLE handle);
+
+/**
+ * @brief Stablishes a message-id to be processed in the agent-manager sync.
+ *
+ * @param handle             Current rsync handle being used.
+ * @param message_header_id  Message ID associated to procees messages between
+ *                           agent and manager.
+ * @param dbsync_handle      DBSync handle to synchronize databases.
+ * @param sync_configuration Statement used as a configuration.
+ * @param callback_data      This callback will be called for each result
+ *                           and user data space returned in each callback call.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ */
+EXPORTED int rsync_register_sync_id(const RSYNC_HANDLE handle,
+                                    const char* message_header_id,
+                                    const DBSYNC_HANDLE dbsync_handle,
+                                    const cJSON* sync_configuration,
+                                    sync_callback_data_t callback_data);
+
+/**
+ * @brief Pushes the \p payload message within a queue to process it in an async 
+ *  dispatch queue.
+ *
+ * @param handle  Current rsync handle being used.
+ * @param payload Message to be queued and processed.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ */
+EXPORTED int rsync_push_message(const RSYNC_HANDLE handle,
+                                const char* payload);
+
+/**
  * @brief Turns off an specific rsync instance.
  * 
- * @param handle Handle instance to be close.
+ * @param handle Handle instance to be closed.
  */
 EXPORTED int rsync_close(const RSYNC_HANDLE handle);
 

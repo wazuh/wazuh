@@ -9,7 +9,9 @@
  * Foundation.
  */
 
-#pragma once
+#ifndef _SQLITE_WRAPPER_H
+#define _SQLITE_WRAPPER_H
+
 #include "isqlite_wrapper.h"
 #include "sqlite3.h"
 
@@ -96,3 +98,4 @@ namespace SQLite
     };
 }
 
+#endif // _SQLITE_WRAPPER_H

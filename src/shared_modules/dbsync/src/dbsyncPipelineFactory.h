@@ -15,7 +15,7 @@
 #include <memory>
 #include <functional>
 #include "dbengine.h"
-#include "typedef.h"
+#include "commonDefs.h"
 
 namespace DbSync
 {
