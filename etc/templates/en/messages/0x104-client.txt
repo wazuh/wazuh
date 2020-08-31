@@ -1,3 +1,0 @@
-
- - You first need to add this agent to the server so they
-   can communicate with each other.
