@@ -6,6 +6,7 @@
 
 import glob
 import os
+from contextvars import ContextVar
 from importlib import reload
 from unittest.mock import patch
 
@@ -137,8 +138,10 @@ def test_revoke_tokens(db_setup):
     """Checks that the return value of revoke_tokens is a WazuhResult."""
     with patch('wazuh.core.security.change_secret', side_effect=None):
         security, WazuhResult, _ = db_setup
-        result = security.revoke_current_user_tokens()
-        assert isinstance(result, WazuhResult)
+        mock_current_user = ContextVar('current_user', default='wazuh')
+        with patch("wazuh.sca.common.current_user", new=mock_current_user):
+            result = security.revoke_current_user_tokens()
+            assert isinstance(result, WazuhResult)
 
 
 @pytest.mark.parametrize('role_list, expected_users', [
@@ -161,26 +164,45 @@ def test_check_relationships(db_setup, role_list, expected_users):
     assert core_security.check_relationships(roles=[role_id for role_id in role_list]) == expected_users
 
 
-@pytest.mark.parametrize('role_list, user_list, expected_users', [
-    ([104], None, {101, 104, 102}),
-    ([102, 103], [100], {101, 104, 100}),
-    ([], [1, 2], {1, 2})
+@pytest.mark.parametrize('user_list, expected_users', [
+    ([104], {104}),
+    ([102, 103], {102, 103}),
+    ([], set())
 ])
-def test_invalid_users_tokens(db_setup, role_list, user_list, expected_users):
-    """Check that the argument passed to `TokenManager.add_user_rules` formed by `roles` and
-    `users` is correct.
+def test_invalid_users_tokens(db_setup, user_list, expected_users):
+    """Check that the argument passed to `TokenManager.add_user_roles_rules` formed by `users` is correct.
 
     Parameters
     ----------
-    role_list : list
-        List of role IDs.
     user_list : list
         List of users.
     expected_users : set
         Expected users.
     """
-    with patch('wazuh.security.TokenManager.add_user_rules') as TM_mock:
+    with patch('wazuh.security.TokenManager.add_user_roles_rules') as TM_mock:
         _, _, core_security = db_setup
-        core_security.invalid_users_tokens(roles=[role_id for role_id in role_list], users=user_list)
+        core_security.invalid_users_tokens(users=[user_id for user_id in user_list])
         related_users = TM_mock.call_args.kwargs['users']
         assert set(related_users) == expected_users
+
+
+@pytest.mark.parametrize('role_list, expected_roles', [
+    ([104], {104}),
+    ([102, 103], {102, 103}),
+    ([], set())
+])
+def test_invalid_users_tokens(db_setup, role_list, expected_roles):
+    """Check that the argument passed to `TokenManager.add_user_roles_rules` formed by `roles` is correct.
+
+    Parameters
+    ----------
+    role_list : list
+        List of roles.
+    expected_roles : set
+        Expected roles.
+    """
+    with patch('wazuh.security.TokenManager.add_user_roles_rules') as TM_mock:
+        _, _, core_security = db_setup
+        core_security.invalid_roles_tokens(roles=[role_id for role_id in role_list])
+        related_roles = TM_mock.call_args.kwargs['roles']
+        assert set(related_roles) == expected_roles
