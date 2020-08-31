@@ -19,6 +19,10 @@
 #include "../../headers/sec.h"
 #include "../../addagent/manage_agents.h"
 
+#include "../wrappers/posix/dirent_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
+
 #define EXISTENT_AGENT1 "ExistentAgent1"
 #define EXISTENT_AGENT2 "ExistentAgent2"
 #define EXISTENT_AGENT3 "ExistentAgent3"
@@ -37,56 +41,6 @@
 #define MAX_AGENTS 100000
 
 /* redefinitons/wrapping */
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-int __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    return 1;
-}
-
-void __wrap_OS_RemoveAgentGroup(const char *id) {    
-}
-
-void __wrap_add_remove(const keyentry *entry) {
-}
-
-int __wrap_opendir() {
-    return mock();
-}
-
-int __wrap_closedir() {
-    return 1;
-}
 
 void keys_init(keystore *keys, int rehash_keys, int save_removed) {
     /* Initialize hashes */
@@ -107,7 +61,7 @@ void keys_init(keystore *keys, int rehash_keys, int save_removed) {
 
     /* Add additional entry for sender == keysize */
     os_calloc(1, sizeof(keyentry), keys->keyentries[keys->keysize]);
-    w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);    
+    w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 }
 
 //Params used on enrollment
@@ -141,7 +95,7 @@ static int setup_group(void **state) {
         shost[sizeof(shost) - 1] = '\0';
     }
 
-    /* Initialize queues */    
+    /* Initialize queues */
     insert_tail = &queue_insert;
     remove_tail = &queue_remove;
 
@@ -154,7 +108,7 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-int setup_validate_force_insert_0(void **state) { 
+int setup_validate_force_insert_0(void **state) {
     config.flags.force_insert = 0;
     return 0;
 }
@@ -172,51 +126,51 @@ int setup_validate_register_limit(void **state) {
 
 /* tests */
 
-static void test_w_auth_validate_data(void **state) {    
+static void test_w_auth_validate_data(void **state) {
 
-    char response[2048] = {0};   
+    char response[2048] = {0};
     w_err_t err;
 
     /* New agent / IP*/
-    response[0] = '\0';         
-    err = w_auth_validate_data(response,NEW_IP1, NEW_AGENT1, NULL);  
+    response[0] = '\0';
+    err = w_auth_validate_data(response,NEW_IP1, NEW_AGENT1, NULL);
     assert_int_equal(err, OS_SUCCESS);
-    assert_string_equal(response, "");  
+    assert_string_equal(response, "");
 
     /* any IP*/
-    response[0] = '\0';         
-    err = w_auth_validate_data(response,ANY_IP, NEW_AGENT1, NULL);  
+    response[0] = '\0';
+    err = w_auth_validate_data(response,ANY_IP, NEW_AGENT1, NULL);
     assert_int_equal(err, OS_SUCCESS);
-    assert_string_equal(response, "");  
-    
+    assert_string_equal(response, "");
+
     /* Existent IP */
-    response[0] = '\0'; 
-    expect_string(__wrap__merror, formatted_msg, "Duplicated IP "EXISTENT_IP1);        
-    err = w_auth_validate_data(response,EXISTENT_IP1, NEW_AGENT1, NULL);  
+    response[0] = '\0';
+    expect_string(__wrap__merror, formatted_msg, "Duplicated IP "EXISTENT_IP1);
+    err = w_auth_validate_data(response,EXISTENT_IP1, NEW_AGENT1, NULL);
     assert_int_equal(err, OS_INVALID);
-    assert_string_equal(response, "ERROR: Duplicated IP: "EXISTENT_IP1"");  
+    assert_string_equal(response, "ERROR: Duplicated IP: "EXISTENT_IP1"");
 
     /* Existent Agent Name */
-    response[0] = '\0'; 
-    expect_string(__wrap__merror, formatted_msg, "Invalid agent name "EXISTENT_AGENT1" (duplicated)");        
-    err = w_auth_validate_data(response,NEW_IP1, EXISTENT_AGENT1, NULL);  
+    response[0] = '\0';
+    expect_string(__wrap__merror, formatted_msg, "Invalid agent name "EXISTENT_AGENT1" (duplicated)");
+    err = w_auth_validate_data(response,NEW_IP1, EXISTENT_AGENT1, NULL);
     assert_int_equal(err, OS_INVALID);
-    assert_string_equal(response, "ERROR: Duplicated agent name: "EXISTENT_AGENT1"");  
-   
+    assert_string_equal(response, "ERROR: Duplicated agent name: "EXISTENT_AGENT1"");
+
    /* Manager name */
    char host_name[512];
     if (gethostname(host_name, sizeof(shost) - 1) < 0) {
         strncpy(host_name, "localhost", sizeof(host_name) - 1);
         host_name[sizeof(host_name) - 1] = '\0';
     }
-    char err_response[2048];    
+    char err_response[2048];
     snprintf(err_response, 2048, "ERROR: Invalid agent name: %s", host_name) ;
-    char merror_message[2048];    
-    snprintf(merror_message, 2048, "Invalid agent name %s (same as manager)", host_name);  
-    expect_string(__wrap__merror, formatted_msg, merror_message);        
+    char merror_message[2048];
+    snprintf(merror_message, 2048, "Invalid agent name %s (same as manager)", host_name);
+    expect_string(__wrap__merror, formatted_msg, merror_message);
     err = w_auth_validate_data(response,NEW_IP1, host_name, NULL);
     assert_int_equal(err, OS_INVALID);
-    assert_string_equal(response, err_response);  
+    assert_string_equal(response, err_response);
 
     /* Check no agent was deleted*/
     assert_true(keys.keysize == 3);
@@ -227,61 +181,61 @@ static void test_w_auth_validate_data(void **state) {
     assert_true(index >= 0);
 }
 
-static void test_w_auth_validate_data_force_insert(void **state) {    
+static void test_w_auth_validate_data_force_insert(void **state) {
 
-    char response[2048] = {0};   
+    char response[2048] = {0};
     w_err_t err;
 
     /* Duplicated IP*/
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicated IP '"EXISTENT_IP1"' (001). Saving backup.");            
-    err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL);  
+    expect_string(__wrap__minfo, formatted_msg, "Duplicated IP '"EXISTENT_IP1"' (001). Saving backup.");
+    err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL);
     assert_int_equal(err, OS_SUCCESS);
-    assert_string_equal(response, "");  
+    assert_string_equal(response, "");
 
      /* Duplicated Name*/
     response[0] = '\0';
     expect_string(__wrap__minfo, formatted_msg, "Duplicated name '"EXISTENT_AGENT2"' (002). Saving backup.");
-    err = w_auth_validate_data(response, NEW_IP2, EXISTENT_AGENT2, NULL);  
+    err = w_auth_validate_data(response, NEW_IP2, EXISTENT_AGENT2, NULL);
     assert_int_equal(err, OS_SUCCESS);
-    assert_string_equal(response, "");    
+    assert_string_equal(response, "");
 
     /* Check agents were deleted*/
     int index = 0;
     index = OS_IsAllowedIP(&keys, EXISTENT_IP1);
     assert_true(index < 0);
     index = OS_IsAllowedName(&keys, EXISTENT_AGENT2);
-    assert_true(index < 0);  
+    assert_true(index < 0);
 }
 
 static void test_w_auth_validate_data_register_limit(void **state) {
-    char response[2048] = {0};   
+    char response[2048] = {0};
     char agent_name[2048] = "agent_x";
     char error_message[2048];
     w_err_t err;
 
-    
+
     //Filling most of keys element with a fixed key to reduce computing time
-    char fixed_key[KEYSIZE] = "1234";    
+    char fixed_key[KEYSIZE] = "1234";
     for(unsigned i=0; i<MAX_AGENTS-10; i++) {
         OS_AddNewAgent(&keys, NULL, agent_name, ANY_IP, fixed_key);
     }
-    
+
     //Adding last keys as usual
     for(unsigned i=0; i<10; i++) {
         snprintf(agent_name, 2048, "__agent_%d", i);
-        response[0] = '\0';  
+        response[0] = '\0';
         if(keys.keysize >= (MAX_AGENTS - 2)) {
             snprintf(error_message, 2048, AG_MAX_ERROR, MAX_AGENTS - 2);
             expect_string(__wrap__merror, formatted_msg, error_message);
-            err = w_auth_validate_data(response,ANY_IP, agent_name, NULL);            
+            err = w_auth_validate_data(response,ANY_IP, agent_name, NULL);
             assert_int_equal(err, OS_INVALID);
-            assert_string_equal(response, "ERROR: The maximum number of agents has been reached");  
+            assert_string_equal(response, "ERROR: The maximum number of agents has been reached");
         }
         else {
-            err = w_auth_validate_data(response,ANY_IP, agent_name, NULL);            
+            err = w_auth_validate_data(response,ANY_IP, agent_name, NULL);
             assert_int_equal(err, OS_SUCCESS);
-            assert_string_equal(response, "");  
+            assert_string_equal(response, "");
         }
         OS_AddNewAgent(&keys, NULL, agent_name, ANY_IP, NULL);
     }
@@ -296,7 +250,7 @@ static void test_w_auth_validate_groups(void **state) {
     response[0] = '\0';
     err = w_auth_validate_groups(EXISTENT_GROUP1, response);
     assert_int_equal(err, OS_SUCCESS);
-    assert_string_equal(response, "");  
+    assert_string_equal(response, "");
 
     /* Non existent group*/
     will_return(__wrap_opendir, 0);
@@ -312,7 +266,7 @@ static void test_w_auth_validate_groups(void **state) {
     response[0] = '\0';
     err = w_auth_validate_groups(EXISTENT_GROUP1","EXISTENT_GROUP2, response);
     assert_int_equal(err, OS_SUCCESS);
-    assert_string_equal(response, "");  
+    assert_string_equal(response, "");
 
     /* One Non Existent on multigroups */
     will_return(__wrap_opendir, 1);
@@ -328,13 +282,13 @@ static void test_w_auth_validate_groups(void **state) {
 
 
 int main(void) {
-        
-    const struct CMUnitTest tests[] = { 
-        cmocka_unit_test(test_w_auth_validate_groups),   
+
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test(test_w_auth_validate_groups),
         cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_insert_0),
         cmocka_unit_test_setup(test_w_auth_validate_data_force_insert, setup_validate_force_insert_1),
         cmocka_unit_test_setup(test_w_auth_validate_data_register_limit, setup_validate_register_limit),
-             
+
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

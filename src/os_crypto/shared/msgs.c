@@ -16,7 +16,7 @@
 #include "os_crypto/aes/aes_op.h"
 #include "client-agent/agentd.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 #define static
 #endif
 
