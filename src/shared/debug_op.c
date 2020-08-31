@@ -44,6 +44,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
     char logfile[PATH_MAX + 1];
     char * filename;
     char *timestamp = w_get_timestamp(time(NULL));
+    int tid = (int)gettid();
 
     const char *strlevel[5]={
       "DEBUG",
@@ -66,7 +67,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 
     if (!flags.initialized) {
         w_logging_init();
-        mdebug1("Logging module auto-initialized");  
+        mdebug1("Logging module auto-initialized");
     }
 
     if (filename = strrchr(file, '/'), filename) {
@@ -116,6 +117,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 
             if (dbg_flag > 0) {
                 cJSON_AddNumberToObject(json_log, "pid", pid);
+                cJSON_AddNumberToObject(json_log, "tid", tid);
                 cJSON_AddStringToObject(json_log, "file", file);
                 cJSON_AddNumberToObject(json_log, "line", line);
                 cJSON_AddStringToObject(json_log, "routine", func);
@@ -125,7 +127,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
             cJSON_AddStringToObject(json_log, "description", jsonstr);
 
             output = cJSON_PrintUnformatted(json_log);
-            
+
             w_mutex_lock(&logging_mutex);
             (void)fprintf(fp, "%s", output);
             (void)fprintf(fp, "\n");
@@ -178,7 +180,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
             (void)fprintf(fp, "%s ", timestamp);
 
             if (dbg_flag > 0) {
-                (void)fprintf(fp, "%s[%d] %s:%d at %s(): ", tag, pid, file, line, func);
+                (void)fprintf(fp, "%s[%d-%d] %s:%d at %s(): ", tag, pid, tid, file, line, func);
             } else {
                 (void)fprintf(fp, "%s: ", tag);
             }
@@ -199,7 +201,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
         (void)fprintf(stderr, "%s ", timestamp);
 
         if (dbg_flag > 0) {
-            (void)fprintf(stderr, "%s[%d] %s:%d at %s(): ", tag, pid, file, line, func);
+            (void)fprintf(stderr, "%s[%d-%d] %s:%d at %s(): ", tag, pid, tid, file, line, func);
         } else {
             (void)fprintf(stderr, "%s: ", tag);
         }
@@ -222,7 +224,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 void w_logging_init(){
     flags.initialized = 1;
     w_mutex_init(&logging_mutex, NULL);
-    os_logging_config();    
+    os_logging_config();
 }
 
 void os_logging_config(){
