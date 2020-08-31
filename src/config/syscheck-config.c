@@ -31,6 +31,7 @@ void organize_syscheck_dirs(syscheck_config *syscheck)
         OSMatch **filerestrict;
         int *opts;
         int *recursion_level;
+        int *diff_size;
 
         int i;
         int j;
@@ -46,6 +47,7 @@ void organize_syscheck_dirs(syscheck_config *syscheck)
         os_calloc(dirs + 1, sizeof(OSMatch *), filerestrict);
         os_calloc(dirs + 1, sizeof(int), opts);
         os_calloc(dirs + 1, sizeof(int), recursion_level);
+        os_calloc(dirs + 1, sizeof(int), diff_size);
 
         for (i = 0; i < dirs; ++i) {
 
@@ -88,36 +90,42 @@ void organize_syscheck_dirs(syscheck_config *syscheck)
             recursion_level[i] = syscheck->recursion_level[pos];
             recursion_level[i + 1] = 0;
 
+            diff_size[i] = syscheck->diff_size_limit[pos];
+            diff_size[i + 1] = 0;
+
             syscheck->dir[pos] = NULL;
+
         }
 
-        free(syscheck->dir);
+        os_free(syscheck->dir);
         syscheck->dir = dir;
 
-        free(syscheck->symbolic_links);
+        os_free(syscheck->symbolic_links);
         syscheck->symbolic_links = symbolic_links;
 
-        free(syscheck->tag);
+        os_free(syscheck->tag);
         syscheck->tag = tag;
 
-        free(syscheck->filerestrict);
+        os_free(syscheck->filerestrict);
         syscheck->filerestrict = filerestrict;
 
-        free(syscheck->opts);
+        os_free(syscheck->opts);
         syscheck->opts = opts;
 
-        free(syscheck->recursion_level);
+        os_free(syscheck->recursion_level);
         syscheck->recursion_level = recursion_level;
+
+        os_free(syscheck->diff_size_limit);
+        syscheck->diff_size_limit = diff_size;
     }
     else {
         mdebug2("No directory entries to organize in syscheck configuration.");
     }
 }
 
+void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile,
+                         int recursion_limit, const char *tag, const char *link, int diff_size) {
 
-void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg,
-        const char *restrictfile, int recursion_limit, const char *tag, const char *link)
-{
     unsigned int pl = 0;
     int overwrite = -1;
     int j;
@@ -161,6 +169,16 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             os_calloc(2, sizeof(int), syscheck->opts);
             syscheck->opts[0] = vals;
 
+            os_calloc(2, sizeof(int), syscheck->diff_size_limit);
+
+            // If diff_size has not been set in read_attr, assign -1 to modify it later with the global value
+            if (diff_size == -1) {
+                syscheck->diff_size_limit[0] = -1;
+            }
+            else {
+                syscheck->diff_size_limit[0] = diff_size;
+            }
+
             os_calloc(2, sizeof(OSMatch *), syscheck->filerestrict);
 
             os_calloc(2, sizeof(int), syscheck->recursion_level);
@@ -200,6 +218,17 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             syscheck->opts[pl] = vals;
             syscheck->opts[pl + 1] = 0;
 
+            os_realloc(syscheck->diff_size_limit, (pl + 2) * sizeof(int), syscheck->diff_size_limit);
+
+            if (diff_size == -1) {
+                syscheck->diff_size_limit[pl] = -1;
+            }
+            else {
+                syscheck->diff_size_limit[pl] = diff_size;
+            }
+
+            syscheck->diff_size_limit[pl + 1] = 0;
+
             os_realloc(syscheck->filerestrict, (pl + 2) * sizeof(OSMatch *),
                     syscheck->filerestrict);
             syscheck->filerestrict[pl] = NULL;
@@ -220,6 +249,14 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
                 os_strdup(link, syscheck->symbolic_links[pl]);
             }
             syscheck->opts[pl] = vals;
+
+            if (diff_size == -1) {
+                syscheck->diff_size_limit[pl] = -1;
+            }
+            else {
+                syscheck->diff_size_limit[pl] = diff_size;
+            }
+
             os_free(syscheck->filerestrict[pl]);
             syscheck->recursion_level[pl] = recursion_limit;
             os_free(syscheck->tag[pl]);
@@ -392,7 +429,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
         }
 
         /* Add new entry */
-        dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag, NULL);
+        dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag, NULL, -1);
 
         if (clean_tag)
             free(clean_tag);
@@ -428,6 +465,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     const char *xml_whodata = "whodata";
     const char *xml_recursion_level = "recursion_level";
     const char *xml_tag = "tags";
+    const char *xml_diff_size_limit = "diff_size_limit";
 
     /* Variables for extract options */
     char *restrictfile = NULL;
@@ -437,6 +475,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     char **attrs = g_attrs;
     char **values = g_values;
     int opts = 0;
+    int tmp_diff_size = -1;
 
     /* Variables for extract directories and free memory after that */
     char **dir;
@@ -658,7 +697,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 recursion_limit = syscheck->max_depth;
             }
         }
-
         /* Check tag */
         else if (strcmp(*attrs, xml_tag) == 0) {
             os_free(tag);
@@ -668,15 +706,45 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         else if (strcmp(*attrs, xml_follow_symbolic_link) == 0) {
             if (strcmp(*values, "yes") == 0) {
                 opts |= CHECK_FOLLOW;
-            } else if (strcmp(*values, "no") == 0) {
+            }
+            else if (strcmp(*values, "no") == 0) {
                 opts &= ~ CHECK_FOLLOW;
-            } else {
+            }
+            else {
                 mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                 goto out_free;
             }
-        } else {
+        }
+        else if (strcmp(*attrs, xml_diff_size_limit) == 0) {
+            if (*values) {
+                char *value;
+
+                os_calloc(strlen(*values) + 1, sizeof(char), value);
+                strcpy(value, *values);
+
+                tmp_diff_size = read_data_unit(value);
+
+                if (tmp_diff_size == -1) {
+                    mwarn(FIM_INVALID_OPTION_SKIP, value, *attrs, dirs);
+                    os_free(value);
+                    goto out_free;
+                }
+
+                if (tmp_diff_size < 1) {
+                    tmp_diff_size = 1;      // 1 KB is the minimum
+                }
+
+                os_free(value);
+            }
+            else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        else {
             mwarn(FIM_UNKNOWN_ATTRIBUTE, *attrs);
         }
+
         attrs++;
         values++;
     }
@@ -782,7 +850,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     }
 
                     str_lowercase(real_path);
-                    dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
+                    dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL,
+                                        tmp_diff_size);
                 }
                 os_free(env_variable[i]);
             }
@@ -827,7 +896,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 
         str_lowercase(real_path);
-        dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
+        dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL,
+                            tmp_diff_size);
 
 #else
         /* If it's an environment variable, expand it */
@@ -845,7 +915,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                             }
                         }
 
-                        dump_syscheck_entry(syscheck, env_variable[i], opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
+                        dump_syscheck_entry(syscheck, env_variable[i], opts, 0, restrictfile, recursion_limit,
+                                            clean_tag, NULL, tmp_diff_size);
                     }
                     os_free(env_variable[i]);
                 }
@@ -895,13 +966,16 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
                 if (resolved_path = realpath(g.gl_pathv[gindex], NULL), resolved_path) {
                     if (!strcmp(resolved_path, g.gl_pathv[gindex])) {
-                        dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
+                        dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit,
+                                            clean_tag, NULL, tmp_diff_size);
                     } else {
-                        dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag, g.gl_pathv[gindex]);
+                        dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
+                                            g.gl_pathv[gindex], tmp_diff_size);
                     }
                     os_free(resolved_path);
                 } else {
-                    mdebug1("Could not check the real path of '%s' due to [(%d)-(%s)].", g.gl_pathv[gindex], errno, strerror(errno));
+                    mdebug1("Could not check the real path of '%s' due to [(%d)-(%s)].",
+                            g.gl_pathv[gindex], errno, strerror(errno));
                 }
 
                 gindex++;
@@ -913,9 +987,12 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             char *resolved_path = realpath(real_path, NULL);
 
             if (resolved_path && strcmp(resolved_path, real_path)) {
-                dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag, real_path);
-            } else {
-                dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
+                dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
+                                    real_path, tmp_diff_size);
+            }
+            else {
+                dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL,
+                                    tmp_diff_size);
             }
 
             os_free(resolved_path);
@@ -1006,6 +1083,260 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
     }
 }
 
+int read_data_unit(const char *content) {
+    size_t len_value_str = strlen(content);
+    int converted_value = 0;
+    int read_value = 0;
+    char *value_str;
+
+    // Check that the last character is a 'B' or a 'b', if it is, translate data unit
+    // Else, use written value as KB
+    if (content[len_value_str - 1] == 'B' || content[len_value_str - 1] == 'b') {
+        if (isalpha(content[len_value_str - 2])){
+            os_calloc(len_value_str, sizeof(char), value_str);
+            strncpy(value_str, content, len_value_str - 2);
+
+            if (OS_StrIsNum(value_str)) {
+                read_value = atoi(value_str);
+                
+                switch (content[len_value_str - 2]) {
+                    case 'M':
+                        // Fallthrough
+                    case 'm':
+                        converted_value = read_value * 1024;
+                        break;
+                    case 'G':
+                        // Fallthrough
+                    case 'g':
+                        converted_value = read_value * (1024 * 1024);
+                        break;
+                    case 'T':
+                        // Fallthrough
+                    case 't':
+                        converted_value = read_value * (1024 * 1024 * 1024);
+                        break;
+                    case 'K':
+                        // Fallthrough
+                    case 'k':
+                        // Fallthrough
+                    default:
+                        converted_value = read_value;
+                        break;
+                }
+
+                if (converted_value < 0 && read_value > 0) {  // Overflow
+                    converted_value = INT_MAX;
+                }
+            }
+            else {
+                return -1;
+            }
+
+            os_free(value_str);
+        }
+        else if (isdigit(content[len_value_str - 2])) {
+            return -1;  // Error: limit cannot be set to bytes
+        }
+    }
+    else if (isdigit(content[len_value_str - 1])) {
+        if (!OS_StrIsNum(content)) {
+            return -1;
+        }
+
+        converted_value = atoi(content);     // In KB
+    }
+    else {
+        return -1;
+    }
+
+    return converted_value;
+}
+
+void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
+    const char *xml_disk_quota = "disk_quota";
+    const char *xml_disk_quota_enabled = "enabled";
+    const char *xml_disk_quota_limit = "limit";
+    const char *xml_file_size = "file_size";
+    const char *xml_file_size_enabled = "enabled";
+    const char *xml_file_size_limit = "limit";
+    const char *xml_nodiff = "nodiff";
+
+    int i = 0;
+    int j = 0;
+    xml_node **children = NULL;
+    unsigned int nodiff_size = 0;
+
+    for (i = 0; node[i]; i++) {
+        /* Getting file/dir nodiff */
+        if (strcmp(node[i]->element,xml_nodiff) == 0) {
+#ifdef WIN32
+            /* For Windows, we attempt to expand environment variables */
+            char *new_nodiff = NULL;
+            os_calloc(2048, sizeof(char), new_nodiff);
+
+            if (!ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047)){
+                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                free(new_nodiff);
+                continue;
+            }
+
+            free(node[i]->content);
+            str_lowercase(new_nodiff);
+            node[i]->content = new_nodiff;
+#endif
+            /* Add if regex */
+            if (node[i]->attributes && node[i]->values && node[i]->attributes[0] && node[i]->values[0]) {
+                if (!strcmp(node[i]->attributes[0], "type") && !strcmp(node[i]->values[0], "sregex")) {
+                    OSMatch *mt_pt;
+
+                    if (!syscheck->nodiff_regex) {
+                        os_calloc(2, sizeof(OSMatch *), syscheck->nodiff_regex);
+                        syscheck->nodiff_regex[0] = NULL;
+                        syscheck->nodiff_regex[1] = NULL;
+                    }
+                    else {
+                        while (syscheck->nodiff_regex[nodiff_size] != NULL) {
+                            nodiff_size++;
+                        }
+
+                        os_realloc(syscheck->nodiff_regex,
+                                   sizeof(OSMatch *) * (nodiff_size + 2),
+                                   syscheck->nodiff_regex);
+
+                        syscheck->nodiff_regex[nodiff_size + 1] = NULL;
+                    }
+
+                    os_calloc(1, sizeof(OSMatch), syscheck->nodiff_regex[nodiff_size]);
+                    mdebug1("Found nodiff regex node %s", node[i]->content);
+
+                    if (!OSMatch_Compile(node[i]->content, syscheck->nodiff_regex[nodiff_size], 0)) {
+                        mt_pt = (OSMatch *)syscheck->nodiff_regex[nodiff_size];
+                        merror(REGEX_COMPILE, node[i]->content, mt_pt->error);
+                        return;
+                    }
+                }
+                else {
+                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
+                    return;
+                }
+            }
+            /* Add if simple entry -- check for duplicates */
+            else if (!os_IsStrOnArray(node[i]->content, syscheck->nodiff)) {
+                if (!syscheck->nodiff) {
+                    os_calloc(2, sizeof(char *), syscheck->nodiff);
+
+                    syscheck->nodiff[0] = NULL;
+                    syscheck->nodiff[1] = NULL;
+                }
+                else {
+                    while (syscheck->nodiff[nodiff_size] != NULL) {
+                        nodiff_size++;
+                    }
+
+                    os_realloc(syscheck->nodiff, sizeof(char *) * (nodiff_size + 2), syscheck->nodiff);
+
+                    syscheck->nodiff[nodiff_size + 1] = NULL;
+                }
+
+                os_strdup(node[i]->content, syscheck->nodiff[nodiff_size]);
+            }
+        }
+        else if (strcmp(node[i]->element, xml_disk_quota) == 0) {
+            if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
+                continue;
+            }
+
+            for (j = 0; children[j]; j++) {
+                if (strcmp(children[j]->element, xml_disk_quota_enabled) == 0) {
+                    if (strcmp(children[j]->content, "yes") == 0) {
+                        syscheck->disk_quota_enabled = true;
+                    }
+                    else if (strcmp(children[j]->content, "no") == 0) {
+                        syscheck->disk_quota_enabled = false;
+                    }
+                    else {
+                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        OS_ClearNode(children);
+                        return;
+                    }
+                }
+                else if (strcmp(children[j]->element, xml_disk_quota_limit) == 0) {
+                    if (children[j]->content) {
+                        syscheck->disk_quota_limit = read_data_unit(children[j]->content);
+
+                        if (syscheck->disk_quota_limit == -1) {
+                            merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                            OS_ClearNode(children);
+                            return;
+                        }
+
+                        if (syscheck->disk_quota_limit < 1) {
+                            syscheck->disk_quota_limit = 1;     // 1 KB is the minimum
+                        }
+                    }
+                    else {
+                        merror(XML_VALUEERR, children[j]->element, "");     // Null children[j]->content
+                        OS_ClearNode(children);
+                        return;
+                    }
+                }
+            }
+
+            OS_ClearNode(children);
+        }
+        else if (strcmp(node[i]->element, xml_file_size) == 0) {
+            if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
+                continue;
+            }
+
+            for (j = 0; children[j]; j++) {
+                if (strcmp(children[j]->element, xml_file_size_enabled) == 0) {
+                    if (strcmp(children[j]->content, "yes") == 0) {
+                        syscheck->file_size_enabled = true;
+                    }
+                    else if (strcmp(children[j]->content, "no") == 0) {
+                        syscheck->file_size_enabled = false;
+                    }
+                    else {
+                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        OS_ClearNode(children);
+                        return;
+                    }
+                }
+                else if (strcmp(children[j]->element, xml_file_size_limit) == 0) {
+                    if (children[j]->content) {
+                        syscheck->file_size_limit = read_data_unit(children[j]->content);
+
+                        if (syscheck->file_size_limit == -1) {
+                            merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                            OS_ClearNode(children);
+                            return;
+                        }
+
+                        if (syscheck->file_size_limit < 1) {
+                            syscheck->file_size_limit = 1;      // 1 KB is the minimum
+                        }
+                    }
+                    else {
+                        merror(XML_VALUEERR, children[j]->element, "");     // Null children[j]->content
+                        OS_ClearNode(children);
+                        return;
+                    }
+                }
+            }
+
+            OS_ClearNode(children);
+        }
+    }
+
+    if (syscheck->file_size_enabled && syscheck->disk_quota_limit < syscheck->file_size_limit) {
+        syscheck->disk_quota_limit = syscheck->file_size_limit;
+
+        mdebug2("Setting 'disk_quota' to %d, 'disk_quota' must be greater than 'file_size'",
+                syscheck->disk_quota_limit);
+    }
+}
+
 int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp, int modules)
 {
     int i = 0;
@@ -1051,11 +1382,12 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_synchronization = "synchronization";
     const char *xml_max_eps = "max_eps";
     const char *xml_allow_remote_prefilter_cmd = "allow_remote_prefilter_cmd";
+    const char *xml_diff = "diff";
 
     /* Configuration example
-    <directories check_all="yes">/etc,/usr/bin</directories>
-    <directories check_owner="yes" check_group="yes" check_perm="yes"
-    check_sum="yes">/var/log</directories>
+        <directories check_all="yes">/etc,/usr/bin</directories>
+        <directories check_owner="yes" check_group="yes" check_perm="yes"
+        check_sum="yes">/var/log</directories>
     */
 
     syscheck_config *syscheck;
@@ -1403,6 +1735,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
 #endif
         /* Getting file/dir nodiff */
+        /* This section is checked here for compatibility reasons, nodiff has been moved to the diff section */
         } else if (strcmp(node[i]->element,xml_nodiff) == 0) {
             /* Add if regex */
             if (node[i]->attributes && node[i]->values && node[i]->attributes[0] && node[i]->values[0]) {
@@ -1538,7 +1871,18 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
             parse_synchronization(syscheck, children);
             OS_ClearNode(children);
-        } else if (strcmp(node[i]->element, xml_max_eps) == 0) {
+        }
+        else if (strcmp(node[i]->element, xml_diff) == 0) {
+            children = OS_GetElementsbyNode(xml, node[i]);
+
+            if (children == NULL) {
+                continue;
+            }
+
+            parse_diff(xml, syscheck, children);
+            OS_ClearNode(children);
+        }
+        else if (strcmp(node[i]->element, xml_max_eps) == 0) {
             char * end;
             long value = strtol(node[i]->content, &end, 10);
 
@@ -1550,7 +1894,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         } /* Allow prefilter cmd */
         else if (strcmp(node[i]->element, xml_allow_remote_prefilter_cmd) == 0) {
             if (modules & CAGENT_CONFIG) {
-                mwarn("'%s' option can't be changed using centralized configuration (agent.conf).", xml_allow_remote_prefilter_cmd);
+                mwarn("'%s' option can't be changed using centralized configuration (agent.conf).",
+                      xml_allow_remote_prefilter_cmd);
                 i++;
                 continue;
             }
@@ -1721,6 +2066,10 @@ void Free_Syscheck(syscheck_config * config) {
         }
         if (config->recursion_level) {
             free(config->recursion_level);
+        }
+
+        if (config->diff_size_limit) {
+            os_free(config->diff_size_limit);
         }
 
     #ifdef WIN32

@@ -1,16 +1,27 @@
-/**
+/*
+ * Copyright (C) 2015-2020, Wazuh Inc.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ *
  * Test corresponding to the scheduling capacities
- * described in 'headers/schedule_scan.h' and 
+ * described in 'headers/schedule_scan.h' and
  * 'shared/schedule_scan.c' files
 * */
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include <time.h> 
+#include <time.h>
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
 #include "wmodules_scheduling_helpers.h"
+
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/time_op_wrappers.h"
 
 static const int TEST_INTERVAL = 5 * 60;
 static const int TEST_DELAY    = 5;
@@ -24,8 +35,9 @@ typedef struct state_structure {
 
 static int test_setup(void **state) {
     state_structure *test = calloc(1, sizeof(state_structure));
-    *state = test; 
+    *state = test;
     sched_scan_init(&test->scan_config);
+    current_time = 0;
     return 0;
 }
 
@@ -35,14 +47,15 @@ static int test_teardown(void **state) {
     OS_ClearNode(test->nodes);
     OS_ClearXML(&test->lxml);
     free(test);
+    current_time = 0;
     return 0;
 }
 
 /**
- * Test caclulated time for an INTERVAL with a sleep in 
+ * Test caclulated time for an INTERVAL with a sleep in
  * between
  * */
-static void test_interval_mode(void **state){  
+static void test_interval_mode(void **state){
     state_structure *test = *state;
     const char *string =
         "<interval>5m</interval>"
@@ -90,6 +103,9 @@ static void test_day_of_the_month_consecutive(void **state){
         "<day>20</day>\n"
         "<time>0:00</time>"
     ;
+
+    expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one month. New interval value: 1M");
+
     test->nodes = string_to_xml_node(string, &test->lxml);
     sched_scan_read(&test->scan_config, test->nodes, "");
     // Set to 2 months
@@ -126,7 +142,7 @@ static void test_day_of_the_week(void **state){
     ;
     test->nodes = string_to_xml_node(string, &test->lxml);
     sched_scan_read(&test->scan_config, test->nodes, "");
-    
+
     time_t time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_WDAY_MODE", 0);
     // Sleep past execution moment by 1 hour
     w_time_delay((time_sleep + 3600) * 1000);
@@ -157,8 +173,8 @@ static void test_time_of_day(void **state){
     time_t time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_WDAY_MODE", 0);
     w_time_delay(time_sleep * 1000);
 
-    time_t current_time = time(NULL);
-    struct tm date = *(localtime(&current_time));
+    time_t aux_time = time(NULL);
+    struct tm date = *(localtime(&aux_time));
 
     assert_int_equal(date.tm_hour, 5);
     assert_int_equal(date.tm_min, 18);
@@ -169,9 +185,10 @@ static void test_time_of_day(void **state){
  * */
 static void test_parse_xml_and_dump(void **state){
     state_structure *test = *state;
-    const char *string = 
+    const char *string =
     "<wday>friday</wday>\n"
     "<time>13:14</time>";
+    expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one week. New interval value: 1w");
     test->nodes = string_to_xml_node(string, &test->lxml);
     sched_scan_read(&test->scan_config, test->nodes, "");
     cJSON *data = cJSON_CreateObject();
@@ -193,8 +210,8 @@ static void test_day_of_month_wrap_year(void **state) {
     test->scan_config.scan_day = 5;
     test->scan_config.scan_time = strdup("00:00");
 
-    time_t current_time = time(NULL);
-    struct tm tm = *(localtime(&current_time));
+    time_t aux_time = time(NULL);
+    struct tm tm = *(localtime(&aux_time));
     tm.tm_mon = 11;
     tm.tm_mday = 5; // 5th of December
     // Set simulation time
@@ -218,8 +235,8 @@ static void test_day_of_month_very_long_time(void **state) {
     test->scan_config.scan_day = 1;
     test->scan_config.scan_time = strdup("00:00");
 
-    time_t current_time = time(NULL);
-    struct tm tm = *(localtime(&current_time));
+    time_t aux_time = time(NULL);
+    struct tm tm = *(localtime(&aux_time));
     tm.tm_mon = 10;
     tm.tm_mday = 1; // 1st of November
     // Set simulation time

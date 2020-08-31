@@ -12787,8 +12787,8 @@ paths:
       description: 'Get all RBAC actions, including the potential related resources and endpoints.'
       operationId: api.controllers.security_controller.get_rbac_actions
       parameters:
-        - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/endpoint'
+        - $ref: '#/components/parameters/pretty'
       responses:
         '200':
           description: "Return a list of RBAC actions"
@@ -12844,8 +12844,8 @@ paths:
       description: 'This method should be called to get all current defined RBAC resources.'
       operationId: api.controllers.security_controller.get_rbac_resources
       parameters:
-        - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/resource_list'
+        - $ref: '#/components/parameters/pretty'
       responses:
         '200':
           description: "Return all RBAC resources"
@@ -13107,9 +13107,9 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
+        - $ref: '#/components/parameters/role_id'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/role_id'
       requestBody:
         content:
           application/json:
@@ -14113,6 +14113,9 @@ paths:
       operationId: api.controllers.security_controller.create_user
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:create_user'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
         content:
           application/json:
@@ -14177,6 +14180,8 @@ paths:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/user_ids_delete'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
           description: "User deleted successful"
@@ -14214,6 +14219,8 @@ paths:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/user_id_required'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
         content:
           application/json:
