@@ -89,6 +89,9 @@ def process_array(array, search_text=None, complementary_search=False, search_in
     :param required_fields: Required fields that must appear in the response
     :return: Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
     """
+    if not array:
+        return {'items': list(), 'totalItems': 0}
+
     if select:
         array = select_array(array, select=select, required_fields=required_fields)
 

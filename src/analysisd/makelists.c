@@ -54,7 +54,7 @@ static void help_makelists(void)
     exit(1);
 }
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 __attribute((weak))
 #endif
 int main(int argc, char **argv)

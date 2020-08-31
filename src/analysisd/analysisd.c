@@ -274,7 +274,7 @@ static void help_analysisd(void)
 }
 
 #ifndef TESTRULE
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 __attribute((weak))
 #endif
 int main(int argc, char **argv)

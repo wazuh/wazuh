@@ -37,7 +37,7 @@ current_time = None
 async def prevent_bruteforce_attack(request, block_time=300, attempts=5):
     """This function checks that the IPs that are requesting an API token do not do so repeatedly"""
     global ip_stats, ip_block
-    if 'authenticate' in request.path:
+    if request.path == '/security/user/authenticate' and request.method == 'GET':
         try:
             if time() - block_time >= ip_stats[request.remote]['timestamp']:
                 ip_stats.pop(request.remote)
