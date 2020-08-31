@@ -682,6 +682,7 @@ stages:
           total_affected_items: 1
 
   - name: Delete all rules in the system
+    delay_after: 1
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/rules"
@@ -695,14 +696,20 @@ stages:
       json:
         data:
           affected_items: # Admin rules cannot be deleted
+            - id: 99
             - id: 101
             - id: 102
             - id: 103
             - id: 104
             - id: 105
-          total_affected_items: 5
+          total_affected_items: 6
           total_failed_items: 0
           failed_items: []
+
+---
+test_name: DELETE /security/rules (invalid)
+
+stages:
 
   - name: Delete all rules in the system (invalid)
     request:
