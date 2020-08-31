@@ -15,16 +15,23 @@
 #include <string.h>
 
 #include "../wrappers/common.h"
+#include "../wrappers/posix/stat_wrappers.h"
+#include "../wrappers/linux/inotify_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/mq_op_wrappers.h"
+#include "../wrappers/wazuh/shared/randombytes_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/run_realtime_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
+
 #include "../syscheckd/syscheck.h"
-#include "../wrappers/syscheckd/run_check.h"
 #include "../syscheckd/fim_db.h"
 
 #ifdef TEST_WINAGENT
 
 void set_priority_windows_thread();
 void set_whodata_mode_changes();
-#else
-struct state_t state;
 #endif
 
 /* External 'static' functions prototypes */
@@ -41,176 +48,13 @@ void fim_delete_realtime_watches(int pos);
 
 /* redefinitons/wrapping */
 
-int __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...)
-{
-    check_expected(msg);
-    return 1;
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-#ifdef TEST_AGENT
-char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
-
-int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max) {
-    int ret;
-    char *value;
-    char *pt;
-
-    /* Try to read from the local define file */
-    value = _read_file(high_name, low_name, "./internal_options.conf");
-    if (!value) {
-        merror_exit(DEF_NOT_FOUND, high_name, low_name);
-    }
-
-    pt = value;
-    while (*pt != '\0') {
-        if (!isdigit((int)*pt)) {
-            merror_exit(INV_DEF, high_name, low_name, value);
-        }
-        pt++;
-    }
-
-    ret = atoi(value);
-    if ((ret < min) || (ret > max)) {
-        merror_exit(INV_DEF, high_name, low_name, value);
-    }
-
-    /* Clear memory */
-    free(value);
-
-    return (ret);
-}
-
-int __wrap_isChroot() {
-    return 1;
-}
-#endif
-
-int __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...)
-{
-    check_expected(msg);
-    return 1;
-}
-
-void __wrap__merror_exit(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-#ifndef TEST_WINAGENT
-unsigned int __wrap_sleep(unsigned int seconds) {
-    state.sleep_seconds += seconds;
-    return mock();
-}
-#endif
-
-int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc) {
-    check_expected(message);
-    check_expected(locmsg);
-    check_expected(loc);
-    return mock();
-}
-
-int __wrap_StartMQ(const char *path, short int type) {
-    check_expected(path);
-    check_expected(type);
-    return mock();
-}
-
-int __wrap_audit_set_db_consistency() {
-    return 1;
-}
-
 #ifndef TEST_WINAGENT
 int __wrap_time() {
     return 1;
 }
 #endif
 
-int __wrap_lstat(const char *filename, struct stat *buf) {
-    check_expected(filename);
-    return mock();
-}
-
-void __wrap_fim_checker(char *path) {
-    check_expected(path);
-}
-
-int __wrap_fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
-    check_expected_ptr(fim_sql);
-    check_expected_ptr(storage);
-
-    *file = mock_type(fim_tmp_file *);
-
-    return mock();
-}
-
-int __wrap_fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
-    check_expected_ptr(fim_sql);
-    check_expected_ptr(storage);
-    check_expected_ptr(file);
-
-    return mock();
-}
-
-int __wrap_fim_configuration_directory() {
-    return mock();
-}
-
-int __wrap_inotify_rm_watch() {
-    return mock();
-}
-
-int __wrap_realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int followsl) {
-    check_expected(dir);
-    check_expected(whodata);
-
-    return mock();
-}
-
 #ifdef TEST_WINAGENT
-int __wrap_realtime_start(void) {
-    return 0;
-}
-#endif
-
-int __wrap_os_random() {
-    return 12345;
-}
-
-#ifdef TEST_WINAGENT
-int __wrap_run_whodata_scan(void) {
-    return mock();
-}
-
 int __wrap_audit_restore(void) {
     return mock();
 }
@@ -242,6 +86,12 @@ static int setup_group(void ** state) {
 
 #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
+#endif
+
+    will_return_always(__wrap_os_random, 12345);
+
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
 #endif
 
     if(Read_Syscheck_Config("test_syscheck.conf"))
@@ -280,7 +130,7 @@ static int setup_tmp_file(void **state) {
 /* teardown */
 
 static int teardown_group(void **state) {
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     if (syscheck.realtime) {
         if (syscheck.realtime->dirtb) {
             OSHash_Free(syscheck.realtime->dirtb);
@@ -288,7 +138,7 @@ static int teardown_group(void **state) {
         free(syscheck.realtime);
         syscheck.realtime = NULL;
     }
-    #endif
+#endif
 
     Free_Syscheck(&syscheck);
 
@@ -309,15 +159,13 @@ static int teardown_tmp_file(void **state) {
 void test_fim_whodata_initialize(void **state)
 {
     int ret;
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     int i;
     char *dirs[] = {
         "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
         NULL
     };
     char expanded_dirs[1][OS_SIZE_1024];
-    #endif
-    #ifdef TEST_WINAGENT
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
 
     expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
@@ -336,7 +184,7 @@ void test_fim_whodata_initialize(void **state)
         expect_value(__wrap_realtime_adddir, whodata, 10);
         will_return(__wrap_realtime_adddir, 0);
     }
-    #else
+#else
     expect_string(__wrap_realtime_adddir, dir, "/etc");
     expect_value(__wrap_realtime_adddir, whodata, 2);
     will_return(__wrap_realtime_adddir, 0);
@@ -346,7 +194,7 @@ void test_fim_whodata_initialize(void **state)
     expect_string(__wrap_realtime_adddir, dir, "/usr/sbin");
     expect_value(__wrap_realtime_adddir, whodata, 6);
     will_return(__wrap_realtime_adddir, 0);
-    #endif
+#endif
 
     ret = fim_whodata_initialize();
 
@@ -359,15 +207,15 @@ void test_log_realtime_status(void **state)
 
     log_realtime_status(2);
 
-    expect_string(__wrap__minfo, msg, FIM_REALTIME_STARTED);
+    expect_string(__wrap__minfo, formatted_msg, FIM_REALTIME_STARTED);
     log_realtime_status(1);
     log_realtime_status(1);
 
-    expect_string(__wrap__minfo, msg, FIM_REALTIME_PAUSED);
+    expect_string(__wrap__minfo, formatted_msg, FIM_REALTIME_PAUSED);
     log_realtime_status(2);
     log_realtime_status(2);
 
-    expect_string(__wrap__minfo, msg, FIM_REALTIME_RESUMED);
+    expect_string(__wrap__minfo, formatted_msg, FIM_REALTIME_RESUMED);
     log_realtime_status(1);
 }
 
@@ -644,7 +492,7 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 
     will_return(__wrap_run_whodata_scan, 0);
 
-    will_return(wrap_run_check_CreateThread, (HANDLE)123456);
+    will_return(wrap_CreateThread, (HANDLE)123456);
 
     ret = fim_whodata_initialize();
 
@@ -652,112 +500,102 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 }
 #endif  // WIN_WHODATA
 #endif
-void test_fim_send_sync_msg_10_eps(void ** _state) {
-    (void) _state;
+void test_fim_send_sync_msg_10_eps(void ** state) {
+    (void) state;
     syscheck.sync_max_eps = 10;
 
     // We must not sleep the first 9 times
 
-    state.sleep_seconds = 0;
-
     for (int i = 1; i < syscheck.sync_max_eps; i++) {
-        expect_string(__wrap__mdebug2, msg, FIM_DBSYNC_SEND);
+        expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
         expect_string(__wrap_SendMSG, message, "");
         expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
         expect_value(__wrap_SendMSG, loc, DBSYNC_MQ);
         will_return(__wrap_SendMSG, 0);
 
         fim_send_sync_msg("");
-        assert_int_equal(state.sleep_seconds, 0);
     }
 
-    #ifndef TEST_WINAGENT
-    will_return(__wrap_sleep, 1);
-    #endif
+#ifndef TEST_WINAGENT
+    expect_value(__wrap_sleep, seconds, 1);
+#else
+    expect_value(wrap_Sleep, dwMilliseconds, 1000);
+#endif
 
     // After 10 times, sleep one second
-    expect_string(__wrap__mdebug2, msg, FIM_DBSYNC_SEND);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
     expect_string(__wrap_SendMSG, message, "");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, DBSYNC_MQ);
     will_return(__wrap_SendMSG, 0);
 
     fim_send_sync_msg("");
-    assert_int_equal(state.sleep_seconds, 1);
 }
 
-void test_fim_send_sync_msg_0_eps(void ** _state) {
-    (void) _state;
+void test_fim_send_sync_msg_0_eps(void ** state) {
+    (void) state;
     syscheck.sync_max_eps = 0;
 
     // We must not sleep
-    expect_string(__wrap__mdebug2, msg, FIM_DBSYNC_SEND);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
     expect_string(__wrap_SendMSG, message, "");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, DBSYNC_MQ);
     will_return(__wrap_SendMSG, 0);
 
-    state.sleep_seconds = 0;
-
     fim_send_sync_msg("");
-    assert_int_equal(state.sleep_seconds, 0);
 }
 
-void test_send_syscheck_msg_10_eps(void ** _state) {
-    (void) _state;
+void test_send_syscheck_msg_10_eps(void ** state) {
+    (void) state;
     syscheck.max_eps = 10;
 
     // We must not sleep the first 9 times
 
-    state.sleep_seconds = 0;
-
     for (int i = 1; i < syscheck.max_eps; i++) {
-        expect_string(__wrap__mdebug2, msg, FIM_SEND);
+        expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
         expect_string(__wrap_SendMSG, message, "");
         expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
         expect_value(__wrap_SendMSG, loc, SYSCHECK_MQ);
         will_return(__wrap_SendMSG, 0);
 
         send_syscheck_msg("");
-        assert_int_equal(state.sleep_seconds, 0);
     }
 
-    #ifndef TEST_WINAGENT
-    will_return(__wrap_sleep, 1);
-    #endif
+#ifndef TEST_WINAGENT
+    expect_value(__wrap_sleep, seconds, 1);
+#else
+    expect_value(wrap_Sleep, dwMilliseconds, 1000);
+#endif
 
     // After 10 times, sleep one second
-    expect_string(__wrap__mdebug2, msg, FIM_SEND);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
     expect_string(__wrap_SendMSG, message, "");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, SYSCHECK_MQ);
     will_return(__wrap_SendMSG, 0);
 
     send_syscheck_msg("");
-    assert_int_equal(state.sleep_seconds, 1);
 }
 
-void test_send_syscheck_msg_0_eps(void ** _state) {
-    (void) _state;
+void test_send_syscheck_msg_0_eps(void ** state) {
+    (void) state;
     syscheck.max_eps = 0;
 
     // We must not sleep
-    expect_string(__wrap__mdebug2, msg, FIM_SEND);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
     expect_string(__wrap_SendMSG, message, "");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, SYSCHECK_MQ);
     will_return(__wrap_SendMSG, 0);
 
-    state.sleep_seconds = 0;
-
     send_syscheck_msg("");
-    assert_int_equal(state.sleep_seconds, 0);
 }
 
 void test_fim_send_scan_info(void **state) {
     (void) state;
 
-    expect_string(__wrap__mdebug2, msg, FIM_SEND);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}");
     expect_string(__wrap_SendMSG, message, "{\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, SYSCHECK_MQ);
@@ -774,15 +612,19 @@ void test_fim_link_update(void **state) {
     char *link_path = "/folder/test";
 
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "/boot/");
+    expect_string(__wrap_fim_db_get_path_range, top, "/boot0");
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
 
-    expect_string(__wrap_realtime_adddir, dir, "/folder/test");
+    expect_string(__wrap_realtime_adddir, dir, link_path);
     expect_value(__wrap_realtime_adddir, whodata, 0);
     will_return(__wrap_realtime_adddir, 0);
 
     expect_string(__wrap_fim_checker, path, link_path);
+    expect_value(__wrap_fim_checker, w_evt, 0);
+    expect_value(__wrap_fim_checker, report, 0);
 
     fim_link_update(pos, link_path);
 
@@ -796,6 +638,8 @@ void test_fim_link_update_already_added(void **state) {
     char *link_path = "/folder/test";
 
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "/folder/test/");
+    expect_string(__wrap_fim_db_get_path_range, top, "/folder/test0");
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
@@ -815,12 +659,17 @@ void test_fim_link_check_delete(void **state) {
 
     expect_string(__wrap_lstat, filename, link_path);
     will_return(__wrap_lstat, 0);
+    will_return(__wrap_lstat, 0);
 
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "/etc/");
+    expect_string(__wrap_fim_db_get_path_range, top, "/etc0");
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
 
+    expect_string(__wrap_fim_configuration_directory, path, "/etc");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, -1);
 
     fim_link_check_delete(pos);
@@ -835,7 +684,9 @@ void test_fim_link_check_delete_lstat_error(void **state) {
     char *link_path = "/home";
 
     expect_string(__wrap_lstat, filename, link_path);
+    will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, -1);
+    errno = 0;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: '/home' due to [(0)-(Success)]");
 
@@ -851,6 +702,7 @@ void test_fim_link_check_delete_noentry_error(void **state) {
     char *link_path = "/home";
 
     expect_string(__wrap_lstat, filename, link_path);
+    will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, -1);
 
     errno = ENOENT;
@@ -867,8 +719,11 @@ void test_fim_delete_realtime_watches(void **state) {
 
     unsigned int pos = 1;
 
+    expect_string(__wrap_fim_configuration_directory, path, "");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 0);
-
+    expect_string(__wrap_fim_configuration_directory, path, "data");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 0);
 
     will_return(__wrap_inotify_rm_watch, 1);
@@ -884,6 +739,8 @@ void test_fim_link_delete_range(void **state) {
     fim_tmp_file *tmp_file = *state;
 
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "/media/");
+    expect_string(__wrap_fim_db_get_path_range, top, "/media0");
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, tmp_file);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
@@ -902,6 +759,8 @@ void test_fim_link_delete_range_error(void **state) {
     fim_tmp_file *tmp_file = *state;
 
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "/media/");
+    expect_string(__wrap_fim_db_get_path_range, top, "/media0");
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, tmp_file);
     will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
@@ -929,6 +788,8 @@ void test_fim_link_silent_scan(void **state) {
     will_return(__wrap_realtime_adddir, 0);
 
     expect_string(__wrap_fim_checker, path, link_path);
+    expect_value(__wrap_fim_checker, w_evt, 0);
+    expect_value(__wrap_fim_checker, report, 0);
 
     fim_link_silent_scan(link_path, pos);
 }
@@ -953,6 +814,8 @@ void test_fim_link_reload_broken_link_reload_broken(void **state) {
     char *link_path = "/test";
 
     expect_string(__wrap_fim_checker, path, link_path);
+    expect_value(__wrap_fim_checker, w_evt, 0);
+    expect_value(__wrap_fim_checker, report, 0);
 
     fim_link_reload_broken_link(link_path, pos);
 
@@ -962,11 +825,11 @@ void test_fim_link_reload_broken_link_reload_broken(void **state) {
 
 
 int main(void) {
-    #ifndef WIN_WHODATA
+#ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_fim_whodata_initialize),
 
-        #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
         cmocka_unit_test(test_set_priority_windows_thread_highest),
         cmocka_unit_test(test_set_priority_windows_thread_above_normal),
         cmocka_unit_test(test_set_priority_windows_thread_normal),
@@ -974,7 +837,7 @@ int main(void) {
         cmocka_unit_test(test_set_priority_windows_thread_lowest),
         cmocka_unit_test(test_set_priority_windows_thread_idle),
         cmocka_unit_test(test_set_priority_windows_thread_error),
-        #endif
+#endif
 
         cmocka_unit_test(test_log_realtime_status),
         cmocka_unit_test(test_fim_send_msg),
@@ -985,7 +848,7 @@ int main(void) {
         cmocka_unit_test(test_send_syscheck_msg_10_eps),
         cmocka_unit_test(test_send_syscheck_msg_0_eps),
         cmocka_unit_test(test_fim_send_scan_info),
-        #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
         cmocka_unit_test(test_fim_link_update),
         cmocka_unit_test(test_fim_link_update_already_added),
         cmocka_unit_test(test_fim_link_check_delete),
@@ -997,16 +860,16 @@ int main(void) {
         cmocka_unit_test(test_fim_link_silent_scan),
         cmocka_unit_test(test_fim_link_reload_broken_link_already_monitored),
         cmocka_unit_test(test_fim_link_reload_broken_link_reload_broken),
-        #endif
+#endif
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
-    #else  // WIN_WHODATA
+#else  // WIN_WHODATA
     const struct CMUnitTest eventchannel_tests[] = {
         cmocka_unit_test(test_set_whodata_mode_changes),
         cmocka_unit_test(test_fim_whodata_initialize_eventchannel),
         cmocka_unit_test(test_fim_whodata_initialize_fail_set_policies),
     };
     return cmocka_run_group_tests(eventchannel_tests, setup_group, teardown_group);
-    #endif
+#endif
 }

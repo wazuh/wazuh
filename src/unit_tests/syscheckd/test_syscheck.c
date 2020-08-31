@@ -14,76 +14,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/fs_op_wrappers.h"
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
+
 #include "../syscheckd/syscheck.h"
-
-
-/* redefinitons/wrapping */
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror_exit(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-fdb_t *__wrap_fim_db_init(int memory) {
-    check_expected(memory);
-    return mock_type(fdb_t*);
-}
-
-int __wrap_getDefine_Int() {
-    return mock();
-}
 
 /* setup/teardowns */
 static int setup_group(void **state) {
@@ -150,12 +85,6 @@ void test_read_internal_debug(void **state)
 }
 #ifdef TEST_WINAGENT
 int Start_win32_Syscheck();
-
-int __wrap_File_DateofChange(const char * file)
-{
-    check_expected_ptr(file);
-    return mock();
-}
 
 int __wrap_Read_Syscheck_Config(const char * file)
 {
@@ -475,14 +404,14 @@ int main(void) {
             cmocka_unit_test(test_read_internal),
             cmocka_unit_test(test_read_internal_debug),
         /* Windows specific tests */
-        #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
             cmocka_unit_test(test_Start_win32_Syscheck_no_config_file),
             cmocka_unit_test(test_Start_win32_Syscheck_corrupted_config_file),
             cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_1),
             cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_2),
             cmocka_unit_test(test_Start_win32_Syscheck_dirs_and_registry),
             cmocka_unit_test(test_Start_win32_Syscheck_whodata_active),
-        #endif
+#endif
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

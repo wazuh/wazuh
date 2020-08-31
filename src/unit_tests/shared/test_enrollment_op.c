@@ -9,11 +9,12 @@
 #include "os_auth/check_cert.h"
 #include "os_auth/auth.h"
 
-#ifdef WIN32 
-    #include "unit_tests/wrappers/shared/enrollment_op.h"
-#else
-    static int flag_fopen = 0;
-#endif
+#include "../wrappers/common.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
+#include "../wrappers/externals/openssl/bio_wrappers.h"
+#include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
+#include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
 
 extern int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip);
 extern void w_enrollment_concat_group(char *buff, const char* centralized_group);
@@ -27,139 +28,12 @@ extern char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg);
 extern void w_enrollment_load_pass(w_enrollment_cert *cert_cfg);
 
 /*************** WRAPS ************************/
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror_exit(const char * file, int line, const char * func, const char *msg, ...) 
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-    return;
-}
-
-int __wrap_OS_IsValidIP(const char *ip_address, os_ip *final_ip) {
-    check_expected(ip_address);
-    check_expected(final_ip);
-    return mock_type(int);
-}
-
-int __wrap_check_x509_cert(const SSL *ssl, const char *manager) {
-    check_expected_ptr(ssl);
-    check_expected(manager);
-    return mock_type(int);
-}
-
-char *__wrap_OS_GetHost(const char *host, unsigned int attempts) {
-    check_expected(host);
-    return mock_ptr_type(char *);
-}
-
-SSL_CTX *__wrap_os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, const char *cert, const char *key, const char *ca_cert, int auto_method)
-{
-    check_expected(is_server);
-    check_expected(os_dir);
-    check_expected(ciphers);
-    check_expected(cert);
-    check_expected(key);
-    check_expected(ca_cert);
-    check_expected(auto_method);
-    return mock_ptr_type(SSL_CTX *);
-}
 
 extern SSL *__real_SSL_new(SSL_CTX *ctx);
-SSL *__wrap_SSL_new(SSL_CTX *ctx) {
-    check_expected(ctx);
-    return mock_ptr_type(SSL *);
-}
-
-int __wrap_SSL_connect(SSL *s){
-    return mock_type(int);
-}
-
-int __wrap_SSL_get_error(const SSL *s, int i)
-{
-    check_expected(i);
-    return mock_type(int);
-}
-
-int __wrap_SSL_write(SSL *ssl,	const void *buf, int num) {
-    check_expected(ssl);
-    check_expected(buf);
-    return mock_type(int);
-}
-
-int __wrap_SSL_read(SSL *ssl, void *buf, int num) {
-    check_expected(ssl);
-    snprintf(buf, num, "%s",mock_ptr_type(char*));
-    return mock_type(int);
-}
-
-BIO *__wrap_BIO_new_socket(int sock, int close_flag) {
-    return NULL;
-}
-
-int __wrap_OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6)
-{
-    check_expected(_port);
-    check_expected(_ip);
-    check_expected(ipv6);
-    return mock_type(int);
-}
-
-void __wrap_SSL_set_bio(SSL *s, BIO *rbio, BIO *wbio) {
-    return;    
-}
 
 extern FILE * __real_fopen ( const char * filename, const char * mode );
 FILE * __wrap_fopen ( const char * filename, const char * mode ) {
-    if(!flag_fopen)
+    if(!test_mode)
         return __real_fopen(filename, mode);
     check_expected(filename);
     check_expected(mode);
@@ -168,7 +42,7 @@ FILE * __wrap_fopen ( const char * filename, const char * mode ) {
 
 extern char * __real_fgets(char * buf, int size, FILE *stream);
 char * __wrap_fgets(char * buf, int size, FILE *stream) {
-    if(!flag_fopen)
+    if(!test_mode)
         return __real_fgets(buf, size, stream);
     snprintf(buf, size, "%s", mock_ptr_type(char*));
     check_expected(size);
@@ -178,14 +52,9 @@ char * __wrap_fgets(char * buf, int size, FILE *stream) {
 
 extern int __real_fclose ( FILE * stream );
 int __wrap_fclose ( FILE * stream ) {
-    if(!flag_fopen)
+    if(!test_mode)
         return __real_fclose(stream);
     return 0;
-}
-
-int __wrap_gethostname(char *name, int len) {
-    snprintf(name, len, "%s",mock_type(char*));
-    return mock_type(int);
 }
 
 int __wrap_TempFile(File *file, const char *source, int copy) {
@@ -212,7 +81,7 @@ int __wrap_fprintf ( FILE * stream, const char * format, ... ) {
     vsnprintf(formatted_msg, OS_MAXSTR, format, args);
     va_end(args);
 
-    if(!flag_fopen)
+    if(!test_mode)
         return __real_fprintf(stream, formatted_msg);
 
     check_expected(stream);
@@ -223,12 +92,12 @@ int __wrap_fprintf ( FILE * stream, const char * format, ... ) {
 
 // Setup / Teardown global
 int setup_file_ops(void **state) {
-    flag_fopen = 1;
+    test_mode = 1;
     return 0;
 }
 
 int teardown_file_ops(void **state) {
-    flag_fopen = 0;
+    test_mode = 0;
     return 0;
 }
 
@@ -248,12 +117,12 @@ int test_teardown_concats(void **state) {
 
 // Setup
 int test_setup_context(void **state) {
-    w_enrollment_target* local_target; 
+    w_enrollment_target* local_target;
     local_target = w_enrollment_target_init();
     local_target->manager_name = strdup("valid_hostname");
     local_target->agent_name = NULL;
     local_target->sender_ip = NULL;
-    local_target->port = 1234; 
+    local_target->port = 1234;
     local_target->centralized_group = NULL;
     w_enrollment_cert* local_cert;
     local_cert = w_enrollment_cert_init();
@@ -265,7 +134,7 @@ int test_setup_context(void **state) {
     return 0;
 }
 
-//Teardown 
+//Teardown
 int test_teardown_context(void **state) {
     w_enrollment_ctx *cfg = *state;
     os_free(cfg->target_cfg->manager_name);
@@ -290,7 +159,7 @@ int test_setup_context_2(void **state) {
     local_target->manager_name = strdup("valid_hostname");
     local_target->agent_name = strdup("test_agent");
     local_target->sender_ip = "192.168.1.1";
-    local_target->port = 1234; 
+    local_target->port = 1234;
     local_target->centralized_group = "test_group";
     w_enrollment_cert* local_cert;
     local_cert = w_enrollment_cert_init();
@@ -303,14 +172,14 @@ int test_setup_context_2(void **state) {
     return 0;
 }
 
-//Setup 
+//Setup
 int test_setup_context_3(void **state) {
     w_enrollment_target* local_target;
     local_target = w_enrollment_target_init();
     local_target->manager_name = strdup("valid_hostname");
     local_target->agent_name = strdup("Invalid\'!@Hostname\'");
     local_target->sender_ip = NULL;
-    local_target->port = 1234; 
+    local_target->port = 1234;
     local_target->centralized_group = NULL;
     w_enrollment_cert* local_cert;
     local_cert = w_enrollment_cert_init();
@@ -329,7 +198,7 @@ int test_setup_w_enrolment_request_key(void **state) {
     local_target->manager_name = strdup("valid_hostname");
     local_target->agent_name = "test_agent";
     local_target->sender_ip = "192.168.1.1";
-    local_target->port = 1234; 
+    local_target->port = 1234;
     local_target->centralized_group = "test_group";
     w_enrollment_cert* local_cert;
     local_cert = w_enrollment_cert_init();
@@ -340,7 +209,7 @@ int test_setup_w_enrolment_request_key(void **state) {
     local_cert->ca_cert = strdup("CA_CERT");
     w_enrollment_ctx *cfg = w_enrollment_init(local_target, local_cert);
     *state = cfg;
-    flag_fopen = 1;
+    test_mode = 1;
     return 0;
 }
 
@@ -355,7 +224,7 @@ int test_teardown_w_enrolment_request_key(void **state){
     os_free(cfg->cert_cfg->ciphers);
     os_free(cfg->cert_cfg);
     w_enrollment_destroy(cfg);
-    flag_fopen = 0;
+    test_mode = 0;
     return 0;
 }
 
@@ -368,8 +237,9 @@ int test_setup_ssl_context(void **state) {
     setup_file_ops(state);
     return 0;
 }
+
 //Teardown
-int test_teardow_ssl_context(void **state) {
+int test_teardown_ssl_context(void **state) {
     SSL_free(*state);
     teardown_file_ops(state);
     return 0;
@@ -378,7 +248,7 @@ int test_teardow_ssl_context(void **state) {
 int test_setup_enrollment_load_pass(void **state) {
     w_enrollment_cert *cert_cfg = w_enrollment_cert_init();
     *state = cert_cfg;
-    flag_fopen = 1;
+    test_mode = 1;
     return 0;
 }
 
@@ -388,9 +258,10 @@ int test_teardown_enrollment_load_pass(void **state) {
     os_free(cert_cfg->authpass);
     os_free(cert_cfg->authpass_file);
     os_free(cert_cfg);
-    flag_fopen = 0;
+    test_mode = 0;
     return 0;
 }
+
 /**********************************************/
 /************* w_enrollment_concat_src_ip ****************/
 void test_w_enrollment_concat_src_ip_invalid_ip(void **state) {
@@ -433,7 +304,6 @@ void test_w_enrollment_concat_src_ip_incomaptible_opt(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Incompatible sender_ip options: Forcing IP while using use_source_ip flag.");
     int ret = w_enrollment_concat_src_ip(buf, sender_ip, 1);
     assert_int_equal(ret, -1);
-   
 }
 
 void test_w_enrollment_concat_src_ip_default(void **state) {
@@ -443,7 +313,6 @@ void test_w_enrollment_concat_src_ip_default(void **state) {
     int ret = w_enrollment_concat_src_ip(buf, sender_ip, 0);
     assert_int_equal(ret, 0);
     assert_string_equal(buf, "");
-   
 }
 
 void test_w_enrollment_concat_src_ip_empty_buff(void **state) {
@@ -504,7 +373,7 @@ void test_verificy_ca_certificate_valid_certificate(void **state) {
 /**********************************************/
 /********** w_enrollment_connect *******/
 void test_w_enrollment_connect_empty_address(void **state) {
-    w_enrollment_ctx *cfg = *state;  
+    w_enrollment_ctx *cfg = *state;
     expect_assert_failure(w_enrollment_connect(cfg, NULL));
 }
 
@@ -513,7 +382,7 @@ void test_w_enrollment_connect_empty_config(void **state) {
 }
 
 void test_w_enrollment_connect_invalid_hostname(void **state) {
-    w_enrollment_ctx *cfg = *state; 
+    w_enrollment_ctx *cfg = *state;
 
     expect_string(__wrap_OS_GetHost, host, cfg->target_cfg->manager_name);
     will_return(__wrap_OS_GetHost, NULL);
@@ -524,7 +393,7 @@ void test_w_enrollment_connect_invalid_hostname(void **state) {
 }
 
 void test_w_enrollment_connect_could_not_setup(void **state) {
-    w_enrollment_ctx *cfg = *state; 
+    w_enrollment_ctx *cfg = *state;
 
     expect_string(__wrap_OS_GetHost, host, cfg->target_cfg->manager_name);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
@@ -570,7 +439,7 @@ void test_w_enrollment_connect_socket_error(void **state) {
 }
 
 void test_w_enrollment_connect_SSL_connect_error(void **state) {
-    w_enrollment_ctx *cfg = *state; 
+    w_enrollment_ctx *cfg = *state;
     SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
     // GetHost
     expect_string(__wrap_OS_GetHost, host, cfg->target_cfg->manager_name);
@@ -604,7 +473,7 @@ void test_w_enrollment_connect_SSL_connect_error(void **state) {
 }
 
 void test_w_enrollment_connect_success(void **state) {
-    w_enrollment_ctx *cfg = *state; 
+    w_enrollment_ctx *cfg = *state;
     SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
     // GetHost
     expect_string(__wrap_OS_GetHost, host, cfg->target_cfg->manager_name);
@@ -650,35 +519,35 @@ void test_w_enrollment_send_message_empty_config(void **state) {
 }
 
 void test_w_enrollment_send_message_wrong_hostname(void **state) {
-    w_enrollment_ctx *cfg = *state; 
-    #ifdef WIN32
-        will_return(wrap_enrollment_op_gethostname, NULL);
-        will_return(wrap_enrollment_op_gethostname, -1);
-    #else 
-        will_return(__wrap_gethostname, NULL);
-        will_return(__wrap_gethostname, -1);
-    #endif
+    w_enrollment_ctx *cfg = *state;
+#ifdef WIN32
+    will_return(wrap_gethostname, NULL);
+    will_return(wrap_gethostname, -1);
+#else
+    will_return(__wrap_gethostname, NULL);
+    will_return(__wrap_gethostname, -1);
+#endif
     expect_string(__wrap__merror, formatted_msg, "Unable to extract hostname. Custom agent name not set.");
     int ret = w_enrollment_send_message(cfg);
     assert_int_equal(ret, -1);
 }
 
 void test_w_enrollment_send_message_invalid_hostname(void **state) {
-    w_enrollment_ctx *cfg = *state; 
+    w_enrollment_ctx *cfg = *state;
     expect_string(__wrap__merror, formatted_msg, "Invalid agent name \"Invalid\'!@Hostname\'\". Please pick a valid name.");
     int ret = w_enrollment_send_message(cfg);
     assert_int_equal(ret, -1);
 }
 
 void test_w_enrollment_send_message_fix_invalid_hostname(void **state) {
-    w_enrollment_ctx *cfg = *state; 
-    #ifdef WIN32
-        will_return(wrap_enrollment_op_gethostname, "Invalid\'!@Hostname\'");
-        will_return(wrap_enrollment_op_gethostname, 0);
-    #else 
-        will_return(__wrap_gethostname, "Invalid\'!@Hostname\'");
-        will_return(__wrap_gethostname, 0);
-    #endif
+    w_enrollment_ctx *cfg = *state;
+#ifdef WIN32
+    will_return(wrap_gethostname, "Invalid\'!@Hostname\'");
+    will_return(wrap_gethostname, 0);
+#else
+    will_return(__wrap_gethostname, "Invalid\'!@Hostname\'");
+    will_return(__wrap_gethostname, 0);
+#endif
     // If gethostname returns an invalid string should be fixed by OS_ConvertToValidAgentName
     expect_string(__wrap__minfo, formatted_msg, "Using agent name as: InvalidHostname");
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
@@ -691,14 +560,14 @@ void test_w_enrollment_send_message_fix_invalid_hostname(void **state) {
 }
 
 void test_w_enrollment_send_message_ssl_error(void **state) {
-    w_enrollment_ctx *cfg = *state; 
-    #ifdef WIN32
-        will_return(wrap_enrollment_op_gethostname, "host.name");
-        will_return(wrap_enrollment_op_gethostname, 0);
-    #else
-        will_return(__wrap_gethostname, "host.name");
-        will_return(__wrap_gethostname, 0);
-    #endif
+    w_enrollment_ctx *cfg = *state;
+#ifdef WIN32
+    will_return(wrap_gethostname, "host.name");
+    will_return(wrap_gethostname, 0);
+#else
+    will_return(__wrap_gethostname, "host.name");
+    will_return(__wrap_gethostname, 0);
+#endif
     expect_string(__wrap__minfo, formatted_msg, "Using agent name as: host.name");
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
     expect_string(__wrap_SSL_write, buf, "OSSEC A:'host.name'\n");
@@ -711,7 +580,7 @@ void test_w_enrollment_send_message_ssl_error(void **state) {
 }
 
 void test_w_enrollment_send_message_success(void **state) {
-    w_enrollment_ctx *cfg = *state; 
+    w_enrollment_ctx *cfg = *state;
     expect_string(__wrap__minfo, formatted_msg, "Using agent name as: test_agent");
     expect_string(__wrap_OS_IsValidIP, ip_address, "192.168.1.1");
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
@@ -732,17 +601,17 @@ void test_w_enrollment_store_key_entry_null_key(void **state) {
 void test_w_enrollment_store_key_entry_cannot_open(void **state) {
     const char* key_string = "KEY EXAMPLE STRING";
     char key_file[1024];
-    #ifdef WIN32
+#ifdef WIN32
     expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 0);
-    #else
+#else
     expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
     expect_value(__wrap_TempFile, copy, 0);
     will_return(__wrap_TempFile, NULL);
     will_return(__wrap_TempFile, NULL);
     will_return(__wrap_TempFile, -1);
-    #endif
+#endif
     snprintf(key_file, 1024, "(1103): Could not open file '%s' due to [(2)-(No such file or directory)].", KEYSFILE_PATH);
     expect_string(__wrap__merror, formatted_msg, key_file);
     int ret = w_enrollment_store_key_entry(key_string);
@@ -752,27 +621,28 @@ void test_w_enrollment_store_key_entry_cannot_open(void **state) {
 void test_w_enrollment_store_key_entry_success(void **state) {
     FILE file;
     const char* key_string = "KEY EXAMPLE STRING";
-    #ifdef WIN32 
-        expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
-        expect_string(__wrap_fopen, mode, "w");
-        will_return(__wrap_fopen, &file);
-    
-        expect_value(wrap_enrollment_op_fprintf, stream, &file);
-        expect_string(wrap_enrollment_op_fprintf, formatted_msg, "KEY EXAMPLE STRING\n");
-    #else
-        expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
-        expect_value(__wrap_TempFile, copy, 0);
-        will_return(__wrap_TempFile, strdup("client.keys.temp"));
-        will_return(__wrap_TempFile, 6);
-        will_return(__wrap_TempFile, 0);
+#ifdef WIN32
+    expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, &file);
 
-        expect_value(__wrap_fprintf, stream, 6);
-        expect_string(__wrap_fprintf, formatted_msg, "KEY EXAMPLE STRING\n");
+    expect_value(wrap_fprintf, __stream, &file);
+    expect_string(wrap_fprintf, formatted_msg, "KEY EXAMPLE STRING\n");
+    will_return(wrap_fprintf, 0);
+#else
+    expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
+    expect_value(__wrap_TempFile, copy, 0);
+    will_return(__wrap_TempFile, strdup("client.keys.temp"));
+    will_return(__wrap_TempFile, 6);
+    will_return(__wrap_TempFile, 0);
 
-        expect_string(__wrap_OS_MoveFile, src, "client.keys.temp");
-        expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
-        will_return(__wrap_OS_MoveFile, 0);
-    #endif
+    expect_value(__wrap_fprintf, stream, 6);
+    expect_string(__wrap_fprintf, formatted_msg, "KEY EXAMPLE STRING\n");
+
+    expect_string(__wrap_OS_MoveFile, src, "client.keys.temp");
+    expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
+    will_return(__wrap_OS_MoveFile, 0);
+#endif
     int ret = w_enrollment_store_key_entry(key_string);
     assert_int_equal(ret, 0);
 }
@@ -807,27 +677,28 @@ void test_w_enrollment_process_agent_key_valid_key(void **state) {
     expect_string(__wrap_OS_IsValidIP, ip_address, "192.168.1.1");
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
-    #ifdef WIN32 
-        expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
-        expect_string(__wrap_fopen, mode, "w");
-        will_return(__wrap_fopen, 4);
-    
-        expect_value(wrap_enrollment_op_fprintf, stream, 4);
-        expect_string(wrap_enrollment_op_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
-    #else
-        expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
-        expect_value(__wrap_TempFile, copy, 0);
-        will_return(__wrap_TempFile, strdup("client.keys.temp"));
-        will_return(__wrap_TempFile, 4);
-        will_return(__wrap_TempFile, 0);
+#ifdef WIN32
+    expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, 4);
 
-        expect_value(__wrap_fprintf, stream, 4);
-        expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
+    expect_value(wrap_fprintf, __stream, 4);
+    expect_string(wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
+    will_return(wrap_fprintf, 0);
+#else
+    expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
+    expect_value(__wrap_TempFile, copy, 0);
+    will_return(__wrap_TempFile, strdup("client.keys.temp"));
+    will_return(__wrap_TempFile, 4);
+    will_return(__wrap_TempFile, 0);
 
-        expect_string(__wrap_OS_MoveFile, src, "client.keys.temp");
-        expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
-        will_return(__wrap_OS_MoveFile, 0);
-    #endif
+    expect_value(__wrap_fprintf, stream, 4);
+    expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
+
+    expect_string(__wrap_OS_MoveFile, src, "client.keys.temp");
+    expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
+    will_return(__wrap_OS_MoveFile, 0);
+#endif
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     int ret = w_enrollment_process_agent_key(key);
     assert_int_equal(ret,0);
@@ -842,12 +713,17 @@ void test_w_enrollment_process_response_ssl_error(void **state) {
      SSL *ssl = *state;
     expect_string(__wrap__minfo, formatted_msg, "Waiting for server reply");
     expect_value(__wrap_SSL_read, ssl, ssl);
+    expect_any(__wrap_SSL_read, buf);
+    expect_any(__wrap_SSL_read, num);
     will_return(__wrap_SSL_read, "");
     will_return(__wrap_SSL_read, -1);
+
     expect_value(__wrap_SSL_get_error, i, -1);
     will_return(__wrap_SSL_get_error, SSL_ERROR_WANT_READ);
+
     expect_string(__wrap__merror, formatted_msg, "SSL read (unable to receive message)");
-     expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certifiates may be incorrect!");
+    expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certifiates may be incorrect!");
+
     int ret = w_enrollment_process_response(ssl);
     assert_int_equal(ret, -1);
 }
@@ -855,53 +731,68 @@ void test_w_enrollment_process_response_ssl_error(void **state) {
 void test_w_enrollment_process_response_message_error(void **state) {
     SSL *ssl = *state;
     expect_string(__wrap__minfo, formatted_msg, "Waiting for server reply");
+
     expect_value(__wrap_SSL_read, ssl, ssl);
+    expect_any(__wrap_SSL_read, buf);
+    expect_any(__wrap_SSL_read, num);
+
     will_return(__wrap_SSL_read, "ERROR: Unable to add agent.");
     will_return(__wrap_SSL_read, strlen("ERROR: Unable to add agent."));
+
     expect_string(__wrap__merror, formatted_msg, "Unable to add agent. (from manager)");
+
     expect_value(__wrap_SSL_read, ssl, ssl);
+    expect_any(__wrap_SSL_read, buf);
+    expect_any(__wrap_SSL_read, num);
     will_return(__wrap_SSL_read, "");
     will_return(__wrap_SSL_read, 0);
+
     expect_value(__wrap_SSL_get_error, i, 0);
     will_return(__wrap_SSL_get_error, SSL_ERROR_NONE);
+
     expect_string(__wrap__mdebug1, formatted_msg, "Connection closed.");
+
     int ret = w_enrollment_process_response(ssl);
     assert_int_equal(ret, -1);
 }
 
-void test_w_enrollment_process_response_success(void **state) { 
+void test_w_enrollment_process_response_success(void **state) {
     const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
     SSL *ssl = *state;
     expect_string(__wrap__minfo, formatted_msg, "Waiting for server reply");
     expect_value(__wrap_SSL_read, ssl, ssl);
+    expect_any(__wrap_SSL_read, buf);
+    expect_any(__wrap_SSL_read, num);
     will_return(__wrap_SSL_read, string);
-    will_return(__wrap_SSL_read, strlen(string));    
+    will_return(__wrap_SSL_read, strlen(string));
+
     // w_enrollment_process_agent_key
     {
         expect_string(__wrap_OS_IsValidIP, ip_address, "192.168.1.1");
         expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
         will_return(__wrap_OS_IsValidIP, 1);
-        #ifdef WIN32 
-            expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
-            expect_string(__wrap_fopen, mode, "w");
-            will_return(__wrap_fopen, 4);
-        
-            expect_value(wrap_enrollment_op_fprintf, stream, 4);
-            expect_string(wrap_enrollment_op_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
-        #else
-            expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
-            expect_value(__wrap_TempFile, copy, 0);
-            will_return(__wrap_TempFile, strdup("client.keys.temp"));
-            will_return(__wrap_TempFile, 4);
-            will_return(__wrap_TempFile, 0);
+#ifdef WIN32
+        expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
+        expect_string(__wrap_fopen, mode, "w");
+        will_return(__wrap_fopen, 4);
 
-            expect_value(__wrap_fprintf, stream, 4);
-            expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
+        expect_value(wrap_fprintf, __stream, 4);
+        expect_string(wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
+        will_return(wrap_fprintf, 0);
+#else
+        expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
+        expect_value(__wrap_TempFile, copy, 0);
+        will_return(__wrap_TempFile, strdup("client.keys.temp"));
+        will_return(__wrap_TempFile, 4);
+        will_return(__wrap_TempFile, 0);
 
-            expect_string(__wrap_OS_MoveFile, src, "client.keys.temp");
-            expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
-            will_return(__wrap_OS_MoveFile, 0);
-        #endif
+        expect_value(__wrap_fprintf, stream, 4);
+        expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
+
+        expect_string(__wrap_OS_MoveFile, src, "client.keys.temp");
+        expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
+        will_return(__wrap_OS_MoveFile, 0);
+#endif
         expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     }
     expect_value(__wrap_SSL_get_error, i, strlen(string));
@@ -918,9 +809,9 @@ void test_w_enrollment_request_key_null_cfg(void **state) {
 }
 
 void test_w_enrollment_request_key(void **state) {
-    w_enrollment_ctx *cfg = *state; 
+    w_enrollment_ctx *cfg = *state;
     SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
-    
+
     expect_string(__wrap__minfo, formatted_msg, "Requesting a key from server: valid_hostname");
 
     // w_enrollment_connect
@@ -973,34 +864,38 @@ void test_w_enrollment_request_key(void **state) {
         const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
         expect_string(__wrap__minfo, formatted_msg, "Waiting for server reply");
         expect_value(__wrap_SSL_read, ssl, cfg->ssl);
+        expect_any(__wrap_SSL_read, buf);
+        expect_any(__wrap_SSL_read, num);
         will_return(__wrap_SSL_read, string);
-        will_return(__wrap_SSL_read, strlen(string));        
+        will_return(__wrap_SSL_read, strlen(string));
+
         // w_enrollment_process_agent_key
         {
             expect_string(__wrap_OS_IsValidIP, ip_address, "192.168.1.1");
             expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
             will_return(__wrap_OS_IsValidIP, 1);
-            #ifdef WIN32 
-                expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
-                expect_string(__wrap_fopen, mode, "w");
-                will_return(__wrap_fopen, 4);
-            
-                expect_value(wrap_enrollment_op_fprintf, stream, 4);
-                expect_string(wrap_enrollment_op_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
-            #else
-                expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
-                expect_value(__wrap_TempFile, copy, 0);
-                will_return(__wrap_TempFile, strdup("client.keys.temp"));
-                will_return(__wrap_TempFile, 4);
-                will_return(__wrap_TempFile, 0);
+#ifdef WIN32
+            expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
+            expect_string(__wrap_fopen, mode, "w");
+            will_return(__wrap_fopen, 4);
 
-                expect_value(__wrap_fprintf, stream, 4);
-                expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
+            expect_value(wrap_fprintf, __stream, 4);
+            expect_string(wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
+            will_return(wrap_fprintf, 0);
+#else
+            expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
+            expect_value(__wrap_TempFile, copy, 0);
+            will_return(__wrap_TempFile, strdup("client.keys.temp"));
+            will_return(__wrap_TempFile, 4);
+            will_return(__wrap_TempFile, 0);
 
-                expect_string(__wrap_OS_MoveFile, src, "client.keys.temp");
-                expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
-                will_return(__wrap_OS_MoveFile, 0);
-            #endif
+            expect_value(__wrap_fprintf, stream, 4);
+            expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
+
+            expect_string(__wrap_OS_MoveFile, src, "client.keys.temp");
+            expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
+            will_return(__wrap_OS_MoveFile, 0);
+#endif
             expect_string(__wrap__minfo, formatted_msg, "Valid key received");
         }
         expect_value(__wrap_SSL_get_error, i, strlen(string));
@@ -1014,30 +909,30 @@ void test_w_enrollment_request_key(void **state) {
 /******* w_enrollment_extract_agent_name ********/
 
 void test_w_enrollment_extract_agent_name_localhost_allowed(void **state) {
-    w_enrollment_ctx *cfg = *state; 
+    w_enrollment_ctx *cfg = *state;
     cfg->allow_localhost = 1; // Allow localhost
-    #ifdef WIN32
-        will_return(wrap_enrollment_op_gethostname, "localhost");
-        will_return(wrap_enrollment_op_gethostname, 0);
-    #else 
-        will_return(__wrap_gethostname, "localhost");
-        will_return(__wrap_gethostname, 0);
-    #endif
+#ifdef WIN32
+    will_return(wrap_gethostname, "localhost");
+    will_return(wrap_gethostname, 0);
+#else
+    will_return(__wrap_gethostname, "localhost");
+    will_return(__wrap_gethostname, 0);
+#endif
     char *lhostname = w_enrollment_extract_agent_name(cfg);
     assert_string_equal( lhostname, "localhost");
     os_free(lhostname);
 }
 
 void test_w_enrollment_extract_agent_name_localhost_not_allowed(void **state) {
-    w_enrollment_ctx *cfg = *state; 
+    w_enrollment_ctx *cfg = *state;
     cfg->allow_localhost = 0; // Do not allow localhost
-    #ifdef WIN32
-        will_return(wrap_enrollment_op_gethostname, "localhost");
-        will_return(wrap_enrollment_op_gethostname, 0);
-    #else 
-        will_return(__wrap_gethostname, "localhost");
-        will_return(__wrap_gethostname, 0);
-    #endif
+#ifdef WIN32
+    will_return(wrap_gethostname, "localhost");
+    will_return(wrap_gethostname, 0);
+#else
+    will_return(__wrap_gethostname, "localhost");
+    will_return(__wrap_gethostname, 0);
+#endif
     expect_string(__wrap__merror, formatted_msg, "(4104): Invalid hostname: 'localhost'.");
 
     char *lhostname = w_enrollment_extract_agent_name(cfg);
@@ -1049,42 +944,48 @@ void test_w_enrollment_load_pass_null_cert(void **state) {
 }
 
 void test_w_enrollment_load_pass_empty_file(void **state) {
-    w_enrollment_cert *cert = *state; 
-    
+    w_enrollment_cert *cert = *state;
+
     expect_string(__wrap_fopen, filename, AUTHDPASS_PATH);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 4);
-
+#ifdef WIN32
+    expect_value(wrap_fgets, __stream, 4);
+    will_return(wrap_fgets, "");
+#else
     expect_value(__wrap_fgets, size, 4095);
     expect_value(__wrap_fgets, stream, 4);
     will_return(__wrap_fgets, "");
     will_return(__wrap_fgets, NULL);
-    
+#endif
     char buff[1024];
     snprintf(buff, 1024, "Using password specified on file: %s", AUTHDPASS_PATH);
     expect_string(__wrap__minfo, formatted_msg, buff);
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
-    
+
     w_enrollment_load_pass(cert);
     assert_int_equal(cert->authpass, NULL);
 }
 
 void test_w_enrollment_load_pass_file_with_content(void **state) {
-    w_enrollment_cert *cert = *state; 
-    
+    w_enrollment_cert *cert = *state;
+
     expect_string(__wrap_fopen, filename, AUTHDPASS_PATH);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 4);
-
+#ifdef WIN32
+    expect_value(wrap_fgets, __stream, 4);
+    will_return(wrap_fgets, "content_password");
+#else
     expect_value(__wrap_fgets, size, 4095);
     expect_value(__wrap_fgets, stream, 4);
     will_return(__wrap_fgets, "content_password");
     will_return(__wrap_fgets, "content_password");
-    
+#endif
     char buff[1024];
     snprintf(buff, 1024, "Using password specified on file: %s", AUTHDPASS_PATH);
     expect_string(__wrap__minfo, formatted_msg, buff);
-    
+
     w_enrollment_load_pass(cert);
     assert_string_equal(cert->authpass, "content_password");
 }
@@ -1092,7 +993,7 @@ void test_w_enrollment_load_pass_file_with_content(void **state) {
 /**********************************************/
 int main()
 {
-    const struct CMUnitTest tests[] = 
+    const struct CMUnitTest tests[] =
     {
         // w_enrollment_concat_src_ip
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_src_ip_invalid_ip, test_setup_concats, test_teardown_concats),
@@ -1105,10 +1006,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_group_empty_group, test_setup_concats, test_teardown_concats),
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_group, test_setup_concats, test_teardown_concats),
         //  w_enrollment_verify_ca_certificate
-        cmocka_unit_test_setup_teardown(test_w_enrollment_verify_ca_certificate_null_connection, test_setup_ssl_context, test_teardow_ssl_context),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_verify_ca_certificate_no_certificate, test_setup_ssl_context, test_teardow_ssl_context),
-        cmocka_unit_test_setup_teardown(test_verificy_ca_certificate_invalid_certificate, test_setup_ssl_context, test_teardow_ssl_context),
-        cmocka_unit_test_setup_teardown(test_verificy_ca_certificate_valid_certificate, test_setup_ssl_context, test_teardow_ssl_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_verify_ca_certificate_null_connection, test_setup_ssl_context, test_teardown_ssl_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_verify_ca_certificate_no_certificate, test_setup_ssl_context, test_teardown_ssl_context),
+        cmocka_unit_test_setup_teardown(test_verificy_ca_certificate_invalid_certificate, test_setup_ssl_context, test_teardown_ssl_context),
+        cmocka_unit_test_setup_teardown(test_verificy_ca_certificate_valid_certificate, test_setup_ssl_context, test_teardown_ssl_context),
         // w_enrollment_connect
         cmocka_unit_test_setup_teardown(test_w_enrollment_connect_empty_address, test_setup_context, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_connect_empty_config, test_setup_context, test_teardown_context),
@@ -1136,12 +1037,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_w_enrollment_process_agent_key_valid_key, setup_file_ops, teardown_file_ops),
         // w_enrollment_process_response
         cmocka_unit_test(test_w_enrollment_process_response_ssl_null),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_ssl_error, test_setup_ssl_context, test_teardow_ssl_context),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_message_error, test_setup_ssl_context, test_teardow_ssl_context),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_success, test_setup_ssl_context, test_teardow_ssl_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_ssl_error, test_setup_ssl_context, test_teardown_ssl_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_message_error, test_setup_ssl_context, test_teardown_ssl_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_success, test_setup_ssl_context, test_teardown_ssl_context),
         // w_enrollment_request_key (wrapper)
         cmocka_unit_test(test_w_enrollment_request_key_null_cfg),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_request_key, test_setup_w_enrolment_request_key, test_teardown_w_enrolment_request_key),  
+        cmocka_unit_test_setup_teardown(test_w_enrollment_request_key, test_setup_w_enrolment_request_key, test_teardown_w_enrolment_request_key),
         // w_enrollment_extract_agent_name
         cmocka_unit_test_setup_teardown(test_w_enrollment_extract_agent_name_localhost_allowed, test_setup_context, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_extract_agent_name_localhost_not_allowed, test_setup_context, test_teardown_context),
