@@ -27,7 +27,7 @@
 #define mdebug1(msg, ...) _mtdebug1(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when testing */
 #define static
 #endif
@@ -271,7 +271,7 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
     return (0);
 }
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 __attribute__((weak))
 #endif
 static void wm_sca_send_policies_scanned(wm_sca_t * data) {

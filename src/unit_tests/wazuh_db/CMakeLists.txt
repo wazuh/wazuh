@@ -22,6 +22,12 @@ list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mwarn \
                              -Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg")
 
+list(APPEND wdb_tests_names "test_wdb_global")
+list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mwarn \
+                             -Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_begin2 \
+                             -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,wdb_exec_stmt -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_bind_text \
+                             -Wl,--wrap,sqlite3_bind_parameter_index")
+
 
 # Compilig tests
 list(LENGTH wdb_tests_names count)

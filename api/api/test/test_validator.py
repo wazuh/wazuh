@@ -220,7 +220,9 @@ def test_is_safe_path():
     ("2020-06-24T17:02:53Z", "date-time_or_empty"),
     ("8743b52063cd84097a65d1633f5c74f5", "hash_or_empty"),
     ("test_name", "names_or_empty"),
+    ("", "names_or_empty"),
     ("12345", "numbers_or_empty"),
+    ("", "numbers_or_empty"),
     ("group_name.test", "group_names"),
 ])
 def test_validation_json_ok(value, format):

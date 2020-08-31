@@ -14,7 +14,7 @@
 #include "../addagent/manage_agents.h"
 #include "syscheckd/syscheck.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 #define static
 #endif
 
@@ -479,7 +479,7 @@ char* hostname_parse(const char *path) {
     fclose(fp);
     return manager_hostname;
 }
-           
+
 
 int w_validate_group_name(const char *group, char *response){
 
@@ -515,7 +515,7 @@ int w_validate_group_name(const char *group, char *response){
         free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Multigroup length is over %d characters",OS_SIZE_65536);
         if(response) {
-            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large", group);    
+            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large", group);
         }
         return -3;
     }
@@ -540,7 +540,7 @@ int w_validate_group_name(const char *group, char *response){
         char *individual_group = strtok_r(multi_group_cpy, delim, &save_ptr);
 
         while( individual_group != NULL ) {
-            
+
             /* Spaces are not allowed */
             if(strchr(individual_group,' '))
             {
@@ -555,9 +555,9 @@ int w_validate_group_name(const char *group, char *response){
             if (strlen(individual_group) > MAX_GROUP_NAME) {
                 free(multi_group_cpy);
                 if (response){
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large", individual_group); 
-                } 
-                return -7;   
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large", individual_group);
+                }
+                return -7;
             }
 
             individual_group = strtok_r(NULL, delim, &save_ptr);
@@ -577,7 +577,7 @@ int w_validate_group_name(const char *group, char *response){
     if(comas == strlen(group)){
         free(multi_group_cpy);
         if(response) {
-            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited", group);    
+            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited", group);
         }
         return -1;
     }
@@ -586,7 +586,7 @@ int w_validate_group_name(const char *group, char *response){
     if(group[0] == ',' || group[strlen(group) - 1] == ',' ){
         free(multi_group_cpy);
         if(response) {
-            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','", group);    
+            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','", group);
         }
         return -6;
     }
@@ -594,7 +594,7 @@ int w_validate_group_name(const char *group, char *response){
     if(strspn(group,valid_chars) != strlen(group)){
         free(multi_group_cpy);
         if(response) {
-            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited", group);    
+            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited", group);
         }
         return -1;
     }
@@ -644,10 +644,10 @@ int auth_close(int sock) {
     return (sock >= 0) ? close(sock) : 0;
 }
 
-static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id) {    
+static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id) {
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
-    
+
     cJSON_AddItemToObject(request, "arguments", arguments);
     cJSON_AddStringToObject(request, "function", "add");
     cJSON_AddStringToObject(arguments, "name", name);
@@ -656,7 +656,7 @@ static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const
     if(groups) {
         cJSON_AddStringToObject(arguments, "groups", groups);
     }
-    
+
     if(key) {
         cJSON_AddStringToObject(arguments, "key", key);
     }
@@ -672,7 +672,7 @@ static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const
     return request;
 }
 
-static int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error) { 
+static int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error) {
     int result = 0;
     cJSON* response = NULL;
     cJSON * error = NULL;
@@ -704,7 +704,7 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
                 if (json_format) {
                     printf("%s", buffer);
                 }
-                else {            
+                else {
                     merror("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
                 }
                 result = -1;
@@ -739,13 +739,13 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
                             }
                             result = -2;
                         }
-                        else {            
+                        else {
                             strncpy(key, data_key->valuestring, KEYSIZE);
                             key[KEYSIZE] = '\0';
                         }
                     }
                 }
-            } 
+            }
         }
     }
 
@@ -770,27 +770,27 @@ static cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message)
 
     cJSON_AddStringToObject(request, "daemon_name", daemon_name);
     cJSON_AddItemToObject(request, "message", message);
-    
+
     return request;
 }
 
-static cJSON* w_create_agent_remove_payload(const char *id, const int purge) {    
+static cJSON* w_create_agent_remove_payload(const char *id, const int purge) {
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
-    
+
     cJSON_AddItemToObject(request, "arguments", arguments);
-    cJSON_AddStringToObject(request, "function", "remove");    
+    cJSON_AddStringToObject(request, "function", "remove");
     cJSON_AddStringToObject(arguments, "id", id);
     if (purge >= 0) {
         cJSON_AddNumberToObject(arguments, "purge", purge);
     }
-   
+
     return request;
 }
 
-static int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error) { 
+static int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error) {
     int result = 0;
-    cJSON* response = NULL;    
+    cJSON* response = NULL;
     cJSON * error = NULL;
     cJSON * message = NULL;
 
@@ -809,16 +809,16 @@ static int w_parse_agent_remove_response(const char* buffer, char *err_response,
         if(exit_on_error){
             merror_exit("No such status from response.");
         }
-        result = -2;        
+        result = -2;
     }
     // Error response
     else if (error->valueint > 0) {
         message = cJSON_GetObjectItem(response, "message");
         if (json_format) {
             printf("%s", buffer);
-        } else {            
+        } else {
             merror("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
-        }        
+        }
         result = -1;
     }
 
@@ -841,15 +841,15 @@ static int w_send_clustered_message(const char* command, const char* payload, ch
     char sockname[PATH_MAX + 1] = {0};
     int sock = -1;
     int result = 0;
-    int response_length = 0;    
-    
+    int response_length = 0;
+
     if (isChroot()) {
         strcpy(sockname, CLUSTER_SOCK);
     } else {
         strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
     }
-       
-    if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {        
+
+    if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {
         if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0) {
             if(response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
                 switch (response_length) {
@@ -857,54 +857,54 @@ static int w_send_clustered_message(const char* command, const char* payload, ch
                     merror("Cluster error detected");
                     break;
                 case -1:
-                    merror("OS_RecvSecureClusterTCP(): %s", strerror(errno));  
-                    break;                 
+                    merror("OS_RecvSecureClusterTCP(): %s", strerror(errno));
+                    break;
 
                 case 0:
                     mdebug1("Empty message from local client.");
                     break;
-                    
+
 
                 case OS_MAXLEN:
-                    merror("Received message > %i", OS_MAXSTR);   
-                    break;                 
+                    merror("Received message > %i", OS_MAXSTR);
+                    break;
                 }
                 result = -1;
-            }            
+            }
         }
-        else{                     
-            merror("OS_SendSecureTCPCluster(): %s", strerror(errno));            
-            result = -2;  
+        else{
+            merror("OS_SendSecureTCPCluster(): %s", strerror(errno));
+            result = -2;
         }
         close(sock);
     }
-    else { 
+    else {
         merror("Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-        result = -2;            
-    }    
+        result = -2;
+    }
 
     return result;
 }
 
 //Send a clustered agent add request.
 int w_request_agent_add_clustered(char *err_response, const char *name, const char *ip, const char * groups, char **id, char **key, const int force, const char *agent_id) {
-    int result; 
+    int result;
     char response[OS_MAXSTR + 1];
     char new_id[FILE_SIZE+1] = { '\0' };
     char new_key[KEYSIZE+1] = { '\0' };
 
-    cJSON* message = w_create_agent_add_payload(name, ip, groups, *key, force, agent_id);  
-    cJSON* payload = w_create_sendsync_payload("authd", message); 
+    cJSON* message = w_create_agent_add_payload(name, ip, groups, *key, force, agent_id);
+    cJSON* payload = w_create_sendsync_payload("authd", message);
     char* output = cJSON_PrintUnformatted(payload);
-    cJSON_Delete(payload); 
-    
+    cJSON_Delete(payload);
+
     if(result = w_send_clustered_message("sendsync", output, response), result == 0) {
         result = w_parse_agent_add_response(response, err_response, new_id, new_key, FALSE, FALSE);
     }
-    else if(err_response) { 
-        snprintf(err_response, 2048, "ERROR: Cannot comunicate with master");         
+    else if(err_response) {
+        snprintf(err_response, 2048, "ERROR: Cannot comunicate with master");
     }
-    
+
     free(output);
     if(0 == result) {
         os_strdup(new_id, *id);
@@ -912,23 +912,23 @@ int w_request_agent_add_clustered(char *err_response, const char *name, const ch
     }
 
 
-    return result; 
+    return result;
 }
 
 //Send a clustered agent remove request.
 int w_request_agent_remove_clustered(char *err_response, const char* agent_id, int purge){
-    int result; 
+    int result;
     char response[OS_MAXSTR + 1];
 
-    cJSON* message = w_create_agent_remove_payload(agent_id, purge);  
-    cJSON* payload = w_create_sendsync_payload("authd", message); 
+    cJSON* message = w_create_agent_remove_payload(agent_id, purge);
+    cJSON* payload = w_create_sendsync_payload("authd", message);
     char* output = cJSON_PrintUnformatted(payload);
-    cJSON_Delete(payload); 
+    cJSON_Delete(payload);
 
     if(result = w_send_clustered_message("sendsync", output, response), result == 0) {
         result = w_parse_agent_remove_response(response, err_response, FALSE, FALSE);
     }
-    else if(err_response) { 
+    else if(err_response) {
         snprintf(err_response, 2048, "ERROR: Cannot comunicate with master");
     }
 
@@ -940,20 +940,20 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
 
 //Send a local agent add request.
 int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, const int force, const int json_format, const char *agent_id, int exit_on_error){
-    int result; 
+    int result;
 
-    cJSON* payload = w_create_agent_add_payload(name, ip, groups, key, force, agent_id);  
+    cJSON* payload = w_create_agent_add_payload(name, ip, groups, key, force, agent_id);
     char* output = cJSON_PrintUnformatted(payload);
-    cJSON_Delete(payload); 
+    cJSON_Delete(payload);
 
     if (OS_SendSecureTCP(sock, strlen(output), output) < 0) {
         if(exit_on_error){
             merror_exit("OS_SendSecureTCP(): %s", strerror(errno));
-        }        
+        }
         free(output);
         result = -2;
         return result;
-    }    
+    }
     free(output);
 
     char response[OS_MAXSTR + 1];
@@ -975,7 +975,7 @@ int w_request_agent_add_local(int sock, char *id, const char *name, const char *
         result = w_parse_agent_add_response(response, NULL, id, NULL, json_format, exit_on_error);
     }
 
-    return result; 
+    return result;
 }
 
 
