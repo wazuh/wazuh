@@ -61,7 +61,7 @@
 #define PERM_BEGIN        "Permissions changed from "
 #define PERM_BEGIN_SZ     25
 
-#define LOG_SZ_LIMIT      100
+#define LOG_LIMIT      100
 /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
 
 
@@ -105,7 +105,9 @@ void FreeAlertData(alert_data *al_data)
     os_free(al_data->dstgeoip);
 
 #endif
-    os_free(al_data);
+    // al_data can't be NULL
+    free(al_data);
+    al_data = NULL;
 }
 
 /* Return alert data for the file specified */
@@ -120,9 +122,6 @@ alert_data *GetAlertData(int flag, FILE *fp) {
     str[OS_MAXSTR] = '\0';
 
     while (fgets(str, OS_MAXSTR, fp) != NULL) {
-        if (log_size == LOG_SZ_LIMIT) {
-            return (al_data);
-        }
         /* End of alert */
         if ((strncmp(ALERT_BEGIN, str, ALERT_BEGIN_SZ) == 0 && _r == 2)) {
             // This means that the last fgets readed the beggining of the next alert.
@@ -322,7 +321,7 @@ alert_data *GetAlertData(int flag, FILE *fp) {
 
          /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
             /* It is a log message */
-            else if (log_size < LOG_SZ_LIMIT - 1) {
+            else if (log_size < LOG_LIMIT) {
                 os_clearnl(str, p);
                 if (issyscheck == 1) {
                     if (strncmp(str, "Integrity checksum changed for: '", 33) == 0) {
@@ -336,12 +335,6 @@ alert_data *GetAlertData(int flag, FILE *fp) {
 
                 os_realloc(al_data->log, (log_size + 2) * sizeof(char *), al_data->log);
                 os_strdup(str, al_data->log[log_size]);
-                log_size++;
-                al_data->log[log_size] = NULL;
-
-            } else {
-                os_malloc(28 * sizeof(char), al_data->log[log_size]);
-                strcpy(al_data->log[log_size], "The limit has been reached.\n");
                 log_size++;
                 al_data->log[log_size] = NULL;
             }
