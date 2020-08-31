@@ -1,3 +1,5 @@
+# WAZUH SYSTEM FILE, PLEASE DO NOT MODIFY
+
 default_policies:
   agents_all:
     description: Grant full access to all agents related functionalities.
@@ -79,6 +81,7 @@ default_policies:
           - role:id:*
           - policy:id:*
           - user:id:*
+          - rule:id:*
         effect: allow
 
   users_all:

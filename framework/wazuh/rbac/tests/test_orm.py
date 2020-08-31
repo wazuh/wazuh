@@ -42,31 +42,45 @@ def test_add_token(db_setup):
     """Check token rule is added to database"""
     with db_setup.TokenManager() as tm:
         users = {'newUser', 'newUser1'}
+        roles = {'test', 'test1', 'test2'}
         with db_setup.AuthenticationManager() as am:
             for user in users:
                 am.add_user(username=user, password='testingA1!')
-        # New token rule
-        assert tm.add_user_rules(users=users) != db_setup.SecurityError.ALREADY_EXIST
+        with db_setup.RolesManager() as rm:
+            for role in roles:
+                rm.add_role(name=role)
+        with db_setup.AuthenticationManager() as am:
+            user_ids = [am.get_user(user)['id'] for user in users]
+        with db_setup.RolesManager() as rm:
+            role_ids = [rm.get_role(role)['id'] for role in roles]
 
-    return users
+        # New token rule
+        assert tm.add_user_roles_rules(users=user_ids) != db_setup.SecurityError.ALREADY_EXIST
+        assert tm.add_user_roles_rules(roles=role_ids) != db_setup.SecurityError.ALREADY_EXIST
+
+    return user_ids, role_ids
 
 
 def test_get_all_token_rules(db_setup):
     """Check that rules are correctly created"""
-    users = test_add_token(db_setup)
+    users, roles = test_add_token(db_setup)
     with db_setup.TokenManager() as tm:
-        rules = tm.get_all_rules()
-        for user in rules.keys():
+        user_rules, role_rules = tm.get_all_rules()
+        for user in user_rules.keys():
             assert user in users
+        for role in role_rules.keys():
+            assert role in roles
 
 
 def test_nbf_invalid(db_setup):
     """Check if a user's token is valid by comparing the values with those stored in the database"""
     current_timestamp = int(time())
-    users = test_add_token(db_setup)
+    users, roles = test_add_token(db_setup)
     with db_setup.TokenManager() as tm:
         for user in users:
-            assert not tm.is_token_valid(username=user, token_nbf_time=current_timestamp)
+            assert not tm.is_token_valid(user_id=user, token_nbf_time=current_timestamp)
+        for role in roles:
+            assert not tm.is_token_valid(role_id=role, token_nbf_time=current_timestamp)
 
 
 def test_delete_all_rules(db_setup):
@@ -104,10 +118,10 @@ def test_add_role(db_setup):
     """Check role is added to database"""
     with db_setup.RolesManager() as rm:
         # New role
-        rm.add_role('newRole', {'Unittest': 'Role'})
+        rm.add_role('newRole')
         assert rm.get_role('newRole')
         # New role
-        rm.add_role('newRole1', {'Unittest1': 'Role'})
+        rm.add_role('newRole1')
         assert rm.get_role('newRole1')
 
         # Obtain not existent role
@@ -136,6 +150,19 @@ def test_add_policy(db_setup):
         assert pm.get_policy('noexist') == db_setup.SecurityError.POLICY_NOT_EXIST
 
 
+def test_add_rule(db_setup):
+    """Check rules in the database"""
+    with db_setup.RulesManager() as rum:
+        # New rule
+        rum.add_rule(name='test_rule', rule={'MATCH': {'admin': ['admin_role']}})
+
+        assert rum.get_rule_by_name(rule_name='test_rule')
+
+        # Obtain not existent role
+        assert rum.get_rule(999) == db_setup.SecurityError.RULE_NOT_EXIST
+        assert rum.get_rule_by_name('not_exists') == db_setup.SecurityError.RULE_NOT_EXIST
+
+
 def test_get_user(db_setup):
     """Check users in the database"""
     with db_setup.AuthenticationManager() as am:
@@ -154,7 +181,6 @@ def test_get_roles(db_setup):
         assert roles
         for rol in roles:
             assert isinstance(rol.name, str)
-            assert isinstance(json.loads(rol.rule), dict)
 
         assert roles[0].name == 'administrator'
 
@@ -171,6 +197,19 @@ def test_get_policies(db_setup):
         assert policies[1].name == 'agents_all_agents'
 
 
+def test_get_rules(db_setup):
+    """Check rules in the database"""
+    with db_setup.RulesManager() as rum:
+        rules = rum.get_rules()
+        assert rules
+        for rule in rules:
+            assert isinstance(rule.name, str)
+            assert isinstance(json.loads(rule.rule), dict)
+
+        # Last rule in the database
+        assert rules[-1].name == 'rule6'
+
+
 def test_delete_users(db_setup):
     """Check delete users in the database"""
     with db_setup.AuthenticationManager() as am:
@@ -183,7 +222,7 @@ def test_delete_users(db_setup):
 def test_delete_roles(db_setup):
     """Check delete roles in the database"""
     with db_setup.RolesManager() as rm:
-        rm.add_role(name='toDelete', rule={'Unittest': 'Role'})
+        rm.add_role(name='toDelete')
         len_roles = len(rm.get_roles())
         assert rm.delete_role_by_name(role_name='toDelete')
         assert len_roles == len(rm.get_roles()) + 1
@@ -193,11 +232,37 @@ def test_delete_all_roles(db_setup):
     """Check delete roles in the database"""
     with db_setup.RolesManager() as rm:
         assert rm.delete_all_roles()
-        rm.add_role(name='toDelete', rule={'Unittest': 'Role'})
-        rm.add_role(name='toDelete1', rule={'Unittest1': 'Role'})
+        rm.add_role(name='toDelete')
+        rm.add_role(name='toDelete1')
         len_roles = len(rm.get_roles())
         assert rm.delete_all_roles()
         assert len_roles == len(rm.get_roles()) + 2
+
+
+def test_delete_rules(db_setup):
+    """Check delete rules in the database"""
+    with db_setup.RulesManager() as rum:
+        rum.add_rule(name='toDelete', rule={'Unittest': 'Rule'})
+        len_rules = len(rum.get_rules())
+        assert rum.delete_rule_by_name(rule_name='toDelete')
+        assert len_rules == len(rum.get_rules()) + 1
+
+        # Admin rules
+        for admin_rule in {admin_rule for r in db_setup.required_rules_for_role.values() for admin_rule in r}:
+            assert rum.delete_rule(admin_rule) == db_setup.SecurityError.ADMIN_RESOURCES
+
+
+def test_delete_all_security_rules(db_setup):
+    """Check delete all rules in the database"""
+    with db_setup.RulesManager() as rum:
+        assert rum.delete_all_rules()
+        # Only admin rules are left
+        assert {rule.id for rule in rum.get_rules()} == db_setup.required_rules
+        rum.add_rule(name='toDelete', rule={'Unittest': 'Rule'})
+        rum.add_rule(name='toDelete1', rule={'Unittest1': 'Rule'})
+        len_rules = len(rum.get_rules())
+        assert rum.delete_all_rules()
+        assert len_rules == len(rum.get_rules()) + 2
 
 
 def test_delete_policies(db_setup):
@@ -239,20 +304,32 @@ def test_update_user(db_setup):
     """Check update a user in the database"""
     with db_setup.AuthenticationManager() as am:
         am.add_user(username='toUpdate', password='testingA6!')
-        assert am.update_user(user_id='106', password='testingA0!')
-        assert not am.update_user(user_id='999', password='testingA0!')
+        assert am.update_user(user_id='106', password='testingA0!', allow_run_as=False)
+        assert not am.update_user(user_id='999', password='testingA0!', allow_run_as=True)
 
 
 def test_update_role(db_setup):
     """Check update a role in the database"""
     with db_setup.RolesManager() as rm:
-        rm.add_role(name='toUpdate', rule={'Unittest': 'Role'})
+        rm.add_role(name='toUpdate')
         tid = rm.get_role_id(role_id=106)['id']
         tname = rm.get_role(name='toUpdate')['name']
-        rm.update_role(role_id=tid, name='updatedName', rule={'Unittest1': 'Role'})
+        rm.update_role(role_id=tid, name='updatedName')
         assert tid == rm.get_role(name='updatedName')['id']
         assert tname == 'toUpdate'
         assert rm.get_role(name='updatedName')['name'] == 'updatedName'
+
+
+def test_update_rule(db_setup):
+    """Check update a rule in the database"""
+    with db_setup.RulesManager() as rum:
+        tname = 'toUpdate'
+        rum.add_rule(name=tname, rule={'Unittest': 'Rule'})
+        tid = rum.get_rule_by_name(rule_name=tname)['id']
+        rum.update_rule(rule_id=tid, name='updatedName', rule={'Unittest1': 'Rule'})
+        assert rum.get_rule_by_name(rule_name=tname) == db_setup.SecurityError.RULE_NOT_EXIST
+        assert tid == rum.get_rule_by_name(rule_name='updatedName')['id']
+        assert rum.get_rule(rule_id=tid)['name'] == 'updatedName'
 
 
 def test_update_policy(db_setup):
@@ -287,9 +364,9 @@ def test_add_policy_role(db_setup):
         roles_ids = list()
 
         with db_setup.RolesManager() as rm:
-            rm.add_role(name='normal', rule={'Unittest': 'Role'})
+            rm.add_role(name='normal')
             roles_ids.append(rm.get_role('normal')['id'])
-            rm.add_role(name='advanced', rule={'Unittest1': 'Role'})
+            rm.add_role(name='advanced')
             roles_ids.append(rm.get_role('advanced')['id'])
 
         with db_setup.PoliciesManager() as pm:
@@ -336,9 +413,9 @@ def test_add_user_roles(db_setup):
             user_list.append(am.get_user('normalUser1')['id'])
 
         with db_setup.RolesManager() as rm:
-            assert rm.add_role('normal', rule={'Unittest': 'Role'})
+            assert rm.add_role('normal')
             roles_ids.append(rm.get_role('normal')['id'])
-            assert rm.add_role('advanced', rule={'Unittest1': 'Role'})
+            assert rm.add_role('advanced')
             roles_ids.append(rm.get_role('advanced')['id'])
 
         # New user-role
@@ -350,6 +427,38 @@ def test_add_user_roles(db_setup):
             assert urm.exist_role_user(user_id='4', role_id=role)
 
         return user_list, roles_ids
+
+
+def test_add_role_rule(db_setup):
+    """Check roles-rules relation is added to database"""
+    with db_setup.RolesRulesManager() as rrum:
+        with db_setup.RulesManager() as rum:
+            rum.delete_all_rules()
+        with db_setup.RolesManager() as rm:
+            assert rm.delete_all_roles()
+
+        rule_ids = list()
+        role_ids = list()
+
+        with db_setup.RulesManager() as rum:
+            assert rum.add_rule(name='normalRule', rule={'rule': ['testing']})
+            rule_ids.append(rum.get_rule_by_name('normalRule')['id'])
+            assert rum.add_rule(name='normalRule1', rule={'rule1': ['testing1']})
+            rule_ids.append(rum.get_rule_by_name('normalRule1')['id'])
+
+        with db_setup.RolesManager() as rm:
+            assert rm.add_role('normal')
+            role_ids.append(rm.get_role('normal')['id'])
+            assert rm.add_role('advanced')
+            role_ids.append(rm.get_role('advanced')['id'])
+
+        # New role-rule
+        for role in role_ids:
+            for rule in rule_ids:
+                assert rrum.add_rule_to_role(rule_id=rule, role_id=role)
+                assert rrum.exist_role_rule(rule_id=rule, role_id=role)
+
+        return role_ids, rule_ids
 
 
 def test_add_role_policy(db_setup):
@@ -364,9 +473,9 @@ def test_add_role_policy(db_setup):
         roles_ids = list()
 
         with db_setup.RolesManager() as rm:
-            rm.add_role('normalUnit', rule={'Unittest': 'Role'})
+            rm.add_role('normalUnit')
             roles_ids.append(rm.get_role('normalUnit')['id'])
-            rm.add_role('advancedUnit', rule={'Unittest1': 'Role'})
+            rm.add_role('advancedUnit')
             roles_ids.append(rm.get_role('advancedUnit')['id'])
 
         with db_setup.PoliciesManager() as pm:
@@ -409,9 +518,9 @@ def test_add_user_role_level(db_setup):
             user_id = am.get_user(username='normal_level')['id']
 
         with db_setup.RolesManager() as rm:
-            assert rm.add_role('normal', rule={'Unittest': 'Role'})
+            assert rm.add_role('normal')
             roles_ids.append(rm.get_role('normal')['id'])
-            assert rm.add_role('advanced', rule={'Unittest1': 'Role'})
+            assert rm.add_role('advanced')
             roles_ids.append(rm.get_role('advanced')['id'])
 
         # New role-policy
@@ -421,9 +530,9 @@ def test_add_user_role_level(db_setup):
             assert urm.exist_user_role(user_id=user_id, role_id=role)
 
         new_roles_ids = list()
-        assert rm.add_role('advanced1', rule={'Unittest2': 'Role'})
+        assert rm.add_role('advanced1')
         new_roles_ids.append(rm.get_role(name='advanced1')['id'])
-        assert rm.add_role('advanced2', rule={'Unittest3': 'Role'})
+        assert rm.add_role('advanced2')
         new_roles_ids.append(rm.get_role(name='advanced2')['id'])
 
         position = 1
@@ -448,7 +557,7 @@ def test_add_role_policy_level(db_setup):
         policies_ids = list()
 
         with db_setup.RolesManager() as rm:
-            rm.add_role('normal', rule={'Unittest': 'Role'})
+            rm.add_role('normal')
             role_id = rm.get_role('normal')['id']
 
         with db_setup.PoliciesManager() as pm:
@@ -503,6 +612,19 @@ def test_exist_user_role(db_setup):
         assert urm.exist_user_role(user_id=user_ids[0], role_id=99) == db_setup.SecurityError.ROLE_NOT_EXIST
 
 
+def test_exist_role_rule(db_setup):
+    """Check role-rule relation exist in the database"""
+    with db_setup.RolesRulesManager() as rrum:
+        role_ids, rule_ids = test_add_role_rule(db_setup)
+        for role in role_ids:
+            for rule in rule_ids:
+                assert rrum.exist_role_rule(rule_id=rule, role_id=role)
+
+        assert rrum.exist_role_rule(rule_id=999, role_id=role_ids[0]) == db_setup.SecurityError.RULE_NOT_EXIST
+        assert rrum.exist_role_rule(rule_id=rule_ids[0], role_id=999) == db_setup.SecurityError.ROLE_NOT_EXIST
+        assert not rrum.exist_role_rule(rule_id=rule_ids[0], role_id=1)
+
+
 def test_exist_policy_role(db_setup):
     """Check role-policy relation exist in the database"""
     with db_setup.RolesPoliciesManager() as rpm:
@@ -534,6 +656,26 @@ def test_get_all_roles_from_user(db_setup):
             roles = urm.get_all_roles_from_user(user_id=user_id)
             for role in roles:
                 assert role.id in roles_ids
+
+
+def test_get_all_rules_from_role(db_setup):
+    """Check all rules in one role in the database"""
+    with db_setup.RolesRulesManager() as rrum:
+        role_ids, rule_ids = test_add_role_rule(db_setup)
+        for rule in rule_ids:
+            roles = rrum.get_all_roles_from_rule(rule_id=rule)
+            for role in roles:
+                assert role.id in role_ids
+
+
+def test_get_all_roles_from_rule(db_setup):
+    """Check all roles in one rule in the database"""
+    with db_setup.RolesRulesManager() as rrum:
+        role_ids, rule_ids = test_add_role_rule(db_setup)
+        for role in role_ids:
+            rules = rrum.get_all_rules_from_role(role_id=role)
+            for rule in rules:
+                assert rule.id in rule_ids
 
 
 def test_get_all_users_from_role(db_setup):
@@ -584,6 +726,26 @@ def test_remove_all_users_from_role(db_setup):
             urm.remove_all_users_in_role(role_id=role)
             for index, user in enumerate(user_ids):
                 assert not urm.exist_user_role(role_id=role, user_id=user)
+
+
+def test_remove_all_rules_from_role(db_setup):
+    """Remove all rules in one role in the database"""
+    with db_setup.RolesRulesManager() as rrum:
+        role_ids, rule_ids = test_add_role_rule(db_setup)
+        for role in role_ids:
+            rrum.remove_all_rules_in_role(role_id=role)
+        for index, role in enumerate(role_ids):
+            assert not rrum.exist_role_rule(role_id=role, rule_id=rule_ids[index])
+
+
+def test_remove_all_roles_from_rlue(db_setup):
+    """Remove all roles in one rule in the database"""
+    with db_setup.RolesRulesManager() as rrum:
+        role_ids, rule_ids = test_add_role_rule(db_setup)
+        for rule in rule_ids:
+            rrum.remove_all_roles_in_rule(rule_id=rule)
+        for index, rule in enumerate(rule_ids):
+            assert not rrum.exist_role_rule(role_id=role_ids[index], rule_id=rule)
 
 
 def test_remove_all_policies_from_role(db_setup):

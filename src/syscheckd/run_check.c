@@ -72,7 +72,6 @@ STATIC void fim_link_reload_broken_link(char *path, int index);
 STATIC void fim_delete_realtime_watches(int pos);
 #endif
 
-
 // Send a message
 STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {

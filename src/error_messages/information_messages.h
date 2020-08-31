@@ -53,6 +53,18 @@
 #define FIM_DB_NORMAL_ALERT                 "(6038): Sending DB back to normal alert."
 #define FIM_DB_80_PERCENTAGE_ALERT          "(6039): Sending DB 80%% full alert."
 #define FIM_DB_90_PERCENTAGE_ALERT          "(6039): Sending DB 90%% full alert."
+#define FIM_DIFF_FILE_SIZE_LIMIT            "(6040): Maximum file size limit to generate diff information configured to '%d KB' for '%s'."
+#define FIM_DISK_QUOTA_LIMIT                "(6041): Maximum disk quota size limit configured to '%d KB'."
+#define FIM_FILE_SIZE_LIMIT_DISABLED        "(6042): File size limit disabled."
+#define FIM_DISK_QUOTA_LIMIT_DISABLED       "(6043): Disk quota limit disabled."
+
+/* wazuh-logtest information messages */
+#define LOGTEST_INITIALIZED                 "(7200): Logtest started"
+#define LOGTEST_DISABLED                    "(7201): Logtest disabled"
+#define LOGTEST_INFO_TOKEN_SESSION          "(7202): Session initialized with token '%s'"
+#define LOGTEST_INFO_LOG_EMPTY              "(7203): Empty log for check alert level"
+#define LOGTEST_INFO_LOG_NOALERT            "(7204): Output without rule"
+#define LOGTEST_INFO_LOG_NOLEVEL            "(7205): Rule without alert level"
 
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"

@@ -270,7 +270,7 @@ void __wrap_closeproc(PROCTAB* PT)
     check_expected(PT);
 }
 
-char *__wrap_get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid)
+char *__wrap_get_user(int uid)
 {
     check_expected(uid);
     return mock_type(char*);
@@ -302,7 +302,7 @@ int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags)
 
     return ret;
 }
-  
+
 int __wrap_pthread_cond_init(pthread_cond_t *__cond, const pthread_condattr_t *__cond_attr) {
     function_called();
     return 0;
@@ -2406,7 +2406,7 @@ void test_audit_read_events_select_case_0_healthcheck(void **state)
     expect_value(__wrap_recv, __fd, *audit_sock);
     will_return(__wrap_recv, strlen(buffer));
     will_return(__wrap_recv, buffer);
- 
+
     // In audit_parse()
     expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
@@ -2541,7 +2541,7 @@ void test_audit_read_events_select_success_recv_success(void **state)
     will_return(__wrap_recv, strlen(buffer));
     will_return(__wrap_recv, buffer);
 
-    for (int i = 0; i<2; i++){    
+    for (int i = 0; i<2; i++){
         // In audit_parse()
         expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
         expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
@@ -2622,7 +2622,7 @@ void test_audit_read_events_select_success_recv_success_no_id(void **state)
 
     expect_string(__wrap__mwarn, formatted_msg, "(6928): Couldn't get event ID from Audit message. Line: '         type=SYSC arch=c000003e syscall=263 success=yes exit'.");
 
-    
+
 
     will_return(__wrap_select, 1);
 
@@ -2653,7 +2653,7 @@ void test_audit_read_events_select_success_recv_success_too_long(void **state)
     will_return(__wrap_recv, strlen(buffer));
     will_return(__wrap_recv, buffer);
 
-    
+
     char * buffer2 = "type=SYSCALLmsg=audit(1571914029.306:3004254):aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n";
 
     will_return(__wrap_select, 1);
@@ -2748,6 +2748,6 @@ int main(void) {
         cmocka_unit_test(test_audit_health_check_no_creation_event_detected),
         cmocka_unit_test_setup_teardown(test_audit_health_check_success, setup_hc_success, teardown_hc_success),
     };
-  
+
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

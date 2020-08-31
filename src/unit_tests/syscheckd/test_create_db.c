@@ -190,7 +190,7 @@ int __wrap_delete_target_file(const char *path) {
     return mock();
 }
 
-int __wrap_fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
+int __wrap_fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, fim_entry_data *saved) {
     check_expected_ptr(fim_sql);
     check_expected(file_path);
 
@@ -211,6 +211,12 @@ int __wrap_OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd,
 
 char *__wrap_seechanges_addfile(const char *filename) {
     check_expected(filename);
+
+    return mock_type(char*);
+}
+
+char *__wrap_seechanges_get_diff_path(char *path) {
+    check_expected(path);
 
     return mock_type(char*);
 }
@@ -261,11 +267,20 @@ int __wrap_fim_db_set_scanned(fdb_t *fim_sql, char *path) {
     return mock();
 }
 
-char *__wrap_get_user(const char *path, int uid, char **sid) {
+#ifndef TEST_WINAGENT
+char *__wrap_get_user(int uid) {
     check_expected(uid);
 
     return mock_type(char*);
 }
+#else
+char *__wrap_get_user(const char *path, char **sid) {
+    check_expected(path);
+    *sid = mock_type(char*);
+
+    return mock_type(char*);
+}
+#endif
 
 const char *__wrap_get_group(int gid) {
     check_expected(gid);
@@ -276,6 +291,17 @@ const char *__wrap_get_group(int gid) {
 void __wrap_fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, void *arg) {
     check_expected_ptr(fim_sql);
     check_expected_ptr(entry);
+}
+
+int __wrap_IsDir(const char *file) {
+    check_expected(file);
+    return mock();
+}
+
+float __wrap_DirSize(const char *path) {
+    check_expected(path);
+
+    return mock();
 }
 
 int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max) {
@@ -582,7 +608,7 @@ static void test_fim_json_event(void **state) {
 
     #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606061);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
     #endif
@@ -645,7 +671,7 @@ static void test_fim_json_event_whodata(void **state) {
 
     #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606061);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
     #endif
@@ -724,7 +750,7 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
 
     #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606061);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, paths);
     #endif
@@ -789,7 +815,7 @@ static void test_fim_json_event_hardlink_two_paths(void **state) {
 
     #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606061);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, paths);
     #endif
@@ -1403,13 +1429,17 @@ static void test_fim_file_add(void **state) {
     fim_data->item->configuration |= CHECK_SEECHANGES;
 
     // Inside fim_get_data
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
     #else
+    will_return(__wrap_get_user, "0");
+    will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "file");
+
     expect_string(__wrap_w_get_file_permissions, file_path, "file");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
@@ -1434,6 +1464,13 @@ static void test_fim_file_add(void **state) {
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "file");
     will_return(__wrap_fim_db_get_path, NULL);
+
+    #ifndef TEST_WINAGENT
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 1234);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 2345);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+    #endif
 
     expect_string(__wrap_seechanges_addfile, filename, "file");
     will_return(__wrap_seechanges_addfile, strdup("diff"));
@@ -1491,13 +1528,17 @@ static void test_fim_file_modify(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     // Inside fim_get_data
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
     #else
+    will_return(__wrap_get_user, "0");
+    will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "file");
+
     expect_string(__wrap_w_get_file_permissions, file_path, "file");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
@@ -1525,8 +1566,8 @@ static void test_fim_file_modify(void **state) {
 
     #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 1234);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 2345);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
     #endif
 
@@ -1550,13 +1591,17 @@ static void test_fim_file_no_attributes(void **state) {
     fim_data->item->index = 1;
 
     // Inside fim_get_data
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
     #else
+    will_return(__wrap_get_user, "0");
+    will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "file");
+
     expect_string(__wrap_w_get_file_permissions, file_path, "file");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
@@ -1620,13 +1665,17 @@ static void test_fim_file_error_on_insert(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     // Inside fim_get_data
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
     #else
+    will_return(__wrap_get_user, "0");
+    will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "file");
+
     expect_string(__wrap_w_get_file_permissions, file_path, "file");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
@@ -1654,8 +1703,8 @@ static void test_fim_file_error_on_insert(void **state) {
 
     #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 1234);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 2345);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
     #endif
 
@@ -1791,6 +1840,17 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     will_return(__wrap_lstat, -1);
     errno = ENOENT;
 
+    char *diff_path = "/var/ossec/queue/diff/local/media/test.file";
+
+    expect_string(__wrap_seechanges_get_diff_path, path, path);
+    will_return(__wrap_seechanges_get_diff_path, strdup(diff_path));
+
+    expect_string(__wrap_IsDir, file, diff_path);
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, diff_path);
+    will_return(__wrap_DirSize, 200);
+
     expect_string(__wrap_delete_target_file, path, path);
     will_return(__wrap_delete_target_file, 0);
 
@@ -1850,6 +1910,11 @@ static void test_fim_checker_fim_regular(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
 
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
     will_return(__wrap_fim_db_get_path, NULL);
@@ -1888,6 +1953,11 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
+
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
@@ -2051,6 +2121,11 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
 
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/test.file");
     will_return(__wrap_fim_db_get_path, NULL);
@@ -2071,6 +2146,15 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 
 static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // fim_diff_folder_size
+    expect_string(__wrap_IsDir, file, "/var/ossec/queue/diff/local");
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/local");
+    will_return(__wrap_DirSize, 0.0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 7);
@@ -2134,6 +2218,15 @@ static void test_fim_scan_no_realtime(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
+    // fim_diff_folder_size
+    expect_string(__wrap_IsDir, file, "/var/ossec/queue/diff/local");
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/local");
+    will_return(__wrap_DirSize, 0.0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
+
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 6);
 
@@ -2175,6 +2268,15 @@ static void test_fim_scan_no_realtime(void **state) {
 
 static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // fim_diff_folder_size
+    expect_string(__wrap_IsDir, file, "/var/ossec/queue/diff/local");
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/local");
+    will_return(__wrap_DirSize, 0.0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 6);
@@ -2233,6 +2335,15 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
+    // fim_diff_folder_size
+    expect_string(__wrap_IsDir, file, "/var/ossec/queue/diff/local");
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/local");
+    will_return(__wrap_DirSize, 0.0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
+
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 6);
 
@@ -2283,6 +2394,15 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
 static void test_fim_scan_db_free(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // fim_diff_folder_size
+    expect_string(__wrap_IsDir, file, "/var/ossec/queue/diff/local");
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/local");
+    will_return(__wrap_DirSize, 0.0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 6);
@@ -2344,6 +2464,15 @@ static void test_fim_scan_db_free(void **state) {
 
 static void test_fim_scan_no_limit(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // fim_diff_folder_size
+    expect_string(__wrap_IsDir, file, "/var/ossec/queue/diff/local");
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/local");
+    will_return(__wrap_DirSize, 0.0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 6);
@@ -2497,6 +2626,17 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     will_return(__wrap_stat, -1);
     errno = ENOENT;
 
+    char *diff_path = "queue/diff/local/c\\windows\\system32\\drivers\\etc\\test.exe";
+
+    expect_string(__wrap_seechanges_get_diff_path, path, expanded_path);
+    will_return(__wrap_seechanges_get_diff_path, strdup(diff_path));
+
+    expect_string(__wrap_IsDir, file, diff_path);
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, diff_path);
+    will_return(__wrap_DirSize, 200);
+
     expect_string(__wrap_delete_target_file, path, expanded_path);
     will_return(__wrap_delete_target_file, 0);
 
@@ -2538,8 +2678,9 @@ static void test_fim_checker_fim_regular(void **state) {
     will_return(__wrap_HasFilesystem, 0);
 
     // Inside fim_file
-    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, expanded_path);
 
     expect_string(__wrap_w_get_file_permissions, file_path, expanded_path);
     will_return(__wrap_w_get_file_permissions, "permissions");
@@ -2653,8 +2794,9 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     will_return(__wrap_HasFilesystem, 0);
 
     // Inside fim_file
-    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, expanded_path);
 
     expect_string(__wrap_w_get_file_permissions, file_path, expanded_path);
     will_return(__wrap_w_get_file_permissions, "permissions");
@@ -2750,8 +2892,9 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     fim_data->item->mode = FIM_REALTIME;
 
     // Inside fim_file
-    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "c:\\test.file");
 
     expect_string(__wrap_w_get_file_permissions, file_path, "c:\\test.file");
     will_return(__wrap_w_get_file_permissions, "permissions");
@@ -2803,6 +2946,15 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     int i;
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // fim_diff_folder_size
+    expect_string(__wrap_IsDir, file, "queue/diff/local");
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, "queue/diff/local");
+    will_return(__wrap_DirSize, 0.0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_stat, 0, 11);
@@ -2864,6 +3016,15 @@ static void test_fim_scan_db_full_double_scan_winreg_check(void **state) {
     int i;
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // fim_diff_folder_size
+    expect_string(__wrap_IsDir, file, "queue/diff/local");
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, "queue/diff/local");
+    will_return(__wrap_DirSize, 0.0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_stat, 0, 10);
@@ -2936,6 +3097,15 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
+    // fim_diff_folder_size
+    expect_string(__wrap_IsDir, file, "queue/diff/local");
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, "queue/diff/local");
+    will_return(__wrap_DirSize, 0.0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
+
     // In fim_checker
     will_return_count(__wrap_stat, 0, 10);
 
@@ -2988,6 +3158,15 @@ static void test_fim_scan_db_free(void **state) {
     int i;
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // fim_diff_folder_size
+    expect_string(__wrap_IsDir, file, "queue/diff/local");
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, "queue/diff/local");
+    will_return(__wrap_DirSize, 0.0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_stat, 0, 10);
@@ -3064,6 +3243,15 @@ static void test_fim_scan_no_limit(void **state) {
     int i;
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // fim_diff_folder_size
+    expect_string(__wrap_IsDir, file, "queue/diff/local");
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, "queue/diff/local");
+    will_return(__wrap_DirSize, 0.0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
     will_return_count(__wrap_stat, 0, 10);
@@ -3542,13 +3730,17 @@ static void test_fim_get_data(void **state) {
                                     CHECK_SHA1SUM |
                                     CHECK_SHA256SUM;
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
     #else
+    will_return(__wrap_get_user, "0");
+    will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "test");
+
     expect_string(__wrap_w_get_file_permissions, file_path, "test");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
@@ -3602,13 +3794,17 @@ static void test_fim_get_data_no_hashes(void **state) {
                                     CHECK_OWNER |
                                     CHECK_GROUP;
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
     #else
+    will_return(__wrap_get_user, "0");
+    will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "test");
+
     expect_string(__wrap_w_get_file_permissions, file_path, "test");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
@@ -3642,13 +3838,17 @@ static void test_fim_get_data_hash_error(void **state) {
     buf.st_gid = 0;
     fim_data->item->statbuf = buf;
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
     #else
+    will_return(__wrap_get_user, "0");
+    will_return(__wrap_get_user, strdup("user"));
+    expect_string(__wrap_get_user, path, "test");
+
     expect_string(__wrap_w_get_file_permissions, file_path, "test");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
@@ -3980,6 +4180,29 @@ static void test_fim_process_missing_entry_data_exists(void **state) {
     fim_process_missing_entry("/test", FIM_WHODATA, fim_data->w_evt);
 }
 
+void test_fim_diff_folder_size(void **state) {
+    (void) state;
+    char *diff_local;
+
+    diff_local = (char *)calloc(strlen(DIFF_DIR_PATH) + strlen("/local") + 1, sizeof(char));
+
+    snprintf(diff_local, strlen(DIFF_DIR_PATH) + strlen("/local") + 1, "%s/local", DIFF_DIR_PATH);
+
+    expect_string(__wrap_IsDir, file, diff_local);
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, diff_local);
+    will_return(__wrap_DirSize, 20 * 1024);
+
+    fim_diff_folder_size();
+
+    assert_int_equal(syscheck.diff_folder_size, 20);
+
+    if (diff_local) {
+        free(diff_local);
+    }
+}
+
 // Windows specific tests
 #ifdef TEST_WINAGENT
 static void test_fim_registry_event_null_data(void **state) {
@@ -4232,6 +4455,9 @@ int main(void) {
         cmocka_unit_test(test_fim_process_missing_entry_no_data),
         cmocka_unit_test(test_fim_process_missing_entry_failure),
         cmocka_unit_test_setup(test_fim_process_missing_entry_data_exists, setup_fim_entry),
+
+        /* fim_diff_folder_size */
+        cmocka_unit_test(test_fim_diff_folder_size),
 
         #ifdef TEST_WINAGENT
         /* fim_registry_event */

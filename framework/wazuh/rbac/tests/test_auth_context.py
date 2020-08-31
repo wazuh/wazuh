@@ -67,7 +67,6 @@ def values():
     with open(test_data_path + 'RBAC_rules_roles.json') as f:
         for role in json.load(f):
             roles.append(Map(role))
-            roles[-1].rule = json.dumps(roles[-1].rule)
     with open(test_data_path + 'RBAC_auth-roles.json') as f:
         for result in json.load(f):
             results.append(Map(result))
@@ -89,9 +88,19 @@ def test_auth_roles(db_setup):
     authorization_contexts, roles, results = values()
     for index, auth in enumerate(authorization_contexts):
         for role in roles:
-            test = db_setup(json.dumps(auth.auth), role)
-            if role.name in results[index].roles:
-                assert test.get_user_roles()[0] == role.id
-            else:
-                assert len(test.get_user_roles()) == 0
+            with patch('wazuh.rbac.orm.RolesManager.get_role_id') as _role_rules:
+                with patch('wazuh.rbac.orm.RulesManager.get_rule') as _rule:
+                    list_rules = [{'rule': role.rules[i]} for i, _ in enumerate(role.rules)]
+                    role.rules = list_rules
+                    _role_rules.return_value = {'rules': list_rules}
+                    _rule.side_effect = role.rules
+                    initial_index = 3
+                    for rule in role['rules']:
+                        rule['id'] = initial_index
+                        initial_index += 1
+                    test = db_setup(json.dumps(auth.auth), role)
+                    if role.name in results[index].roles:
+                        assert test.get_user_roles()[0] == role.id
+                    else:
+                        assert len(test.get_user_roles()) == 0
         roles = values()[1]

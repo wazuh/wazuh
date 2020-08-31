@@ -139,8 +139,8 @@ def test_DistributedAPI_distribute_function_mock_solver(cluster_status_mock, api
 def test_DistributedAPI_distribute_function_exception():
     """Test distribute_function when an exception is raised.
     """
-    dapi_kwargs = {'f': manager.restart, 'logger': logger, 'cluster_required': True}
-    raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3013)
+    dapi_kwargs = {'f': manager.restart, 'logger': logger}
+    raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1017)
 
 
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.execute_local_request',

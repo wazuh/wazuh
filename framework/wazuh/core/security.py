@@ -63,27 +63,33 @@ def check_relationships(roles: list = None):
     if roles:
         for role in roles:
             with RolesManager() as rm:
-                users_affected.update(set(rm.get_role_id(role['id'])['users']))
+                users_affected.update(set(rm.get_role_id(role)['users']))
 
     return users_affected
 
 
-def invalid_users_tokens(roles: list = None, users: list = None):
+def invalid_users_tokens(users: list = None):
     """Add the necessary rules to invalidate all affected user's tokens
+
+    Parameters
+    ----------
+    users : list
+        List of modified users
+    """
+    with TokenManager() as tm:
+        tm.add_user_roles_rules(users=set(users))
+
+
+def invalid_roles_tokens(roles: list = None):
+    """Add the necessary rules to invalidate all affected role's tokens
 
     Parameters
     ----------
     roles : list
         List of modified roles
-    users : str
-        Modified user
     """
-    related_users = check_relationships(roles=roles)
-    if users:
-        for user in users:
-            related_users.add(user)
     with TokenManager() as tm:
-        tm.add_user_rules(users=related_users)
+        tm.add_user_roles_rules(roles=set(roles))
 
 
 def revoke_tokens():
