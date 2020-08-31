@@ -136,15 +136,15 @@ class WazuhDBConnection:
         """
         return self._send(f"wazuhdb remove {' '.join(agents_id)}")
 
-    def run_wdb_command(self, command=None):
-        """Get agent-info of agents not_synced.
+    def run_wdb_command(self, command):
+        """Run command in wdb and return list of retrieved information.
 
         The response of wdb socket contains 2 elements, a STATUS and a PAYLOAD.
         State value can be:
             0 -> WDB_CHUNKS_PENDING          | There are still elements to get
             1 -> WDB_CHUNKS_BUFFER_FULL      | There are still elements to get but buffer is full
             2 -> WDB_CHUNKS_COMPLETE         | There aren't any more elements to get
-            3 -> WDB_CHUNKS_ERROR            | An error occured
+            3 -> WDB_CHUNKS_ERROR            | An error occurred
 
         Parameters
         ----------
@@ -156,15 +156,18 @@ class WazuhDBConnection:
         response : list
             List with JSON results
         """
-        if not command:
-            command = f'global sync-agent-info-get '
         response = []
 
         while True:
             status, payload = self._send(command, full_response=True)
 
-            if status != 3 and payload != '[]':
+            # Append payload to response if it is not empty
+            if status == 3:
+                raise WazuhInternalError(2007, extra_message=payload)
+            elif payload != '[]':
                 response.append(payload)
+
+            # Exit if there are no items left to return
             if status != '0' and status != '1':
                 break
 

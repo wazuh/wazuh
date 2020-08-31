@@ -101,56 +101,90 @@ class SyncWorker:
 
 class SyncInfo:
     """
-    Defines methods to synchronize ............
+    Defines methods to send information to self.daemon in the master through sendsync command.
     """
-    def __init__(self, cmd: bytes, logger, worker):
-        """
-        Class constructor
 
-        :param cmd: Request command to send to the master.
-        dictionary will be iterated to add the files they refer to the zip file that the master will receive.
-        :param logger: Logger to use during synchronization process.
-        :param worker: The WorkerHandler object that creates this one.
+    def __init__(self, worker, daemon, msg_format, logger, data_retriever: callable, n_retries=3, expected_res='ok'):
+        """Class constructor
+
+        Parameters
+        ----------
+        worker : WorkerHandler object
+            Instance of worker object
+        daemon : str
+            Daemon name on the master node to which send information.
+        msg_format : str
+            Format of the message to be executed in the master's daemon. It must
+            contain the label '{payload}', which will be replaced with every chunk of data.
+            I. e: 'global sync-agent-info-set {payload}'
+        logger : Logging object
+             Logger to use during synchronization process.
+        data_retriever : Callable
+            Function to be called to obtain chunks of data. It must return a list of chunks.
+        n_retries : int
+            Number of times a chunk has to be resent when it fails.
+        expected_res : str
+            Master's response that will be interpreted as correct. If it doesn't match,
+            send retries will be made.
         """
-        self.cmd = cmd
-        # self.agents_to_sync = agents_to_sync
-        self.logger = logger
         self.worker = worker
+        self.daemon = daemon
+        self.msg_format = msg_format
+        self.logger = logger
+        self.data_retriever = data_retriever
+        self.n_retries = n_retries
+        self.expected_res = expected_res
         self.lc = local_client.LocalClient()
-        self.wdb_conn = WazuhDBConnection()
 
-    async def sync(self):
+    async def sync(self, *args, **kwargs):
+        """Starts synchronization process with the master and sends necessary information
+
+        This method retrieves a list of payloads/chunks from self.data_retriever(*args, **kwargs).
+        The chunks are sent one by one through sendsync command.
+
+        Parameters
+        ----------
+        *args
+            Variable length argument list to be sent as parameter to data_retriever callable
+        **kwargs
+            Arbitrary keyword arguments to be sent as parameter to data_retriever callable.
         """
-        Starts synchronization process with the master and sends necessary information
-        """
-        result = await self.worker.send_request(command=self.cmd+b'_p', data=b'')
-        if isinstance(result, Exception):
-            self.logger.error(f"Error asking for permission: {result}")
+        self.logger.info(f"Obtaining data to be sent to master's {self.daemon}.")
+        try:
+            chunks_to_send = self.data_retriever(*args, **kwargs)
+            self.logger.debug(f"Obtained {len(chunks_to_send)} chunks of data to be sent.")
+        except exception.WazuhException as e:
+            self.logger.error(f"Error obtaining data: {e}")
             return
-        elif result == b'False':
-            self.logger.info('Master didnt grant permission to synchronize')
-            return
-        else:
-            self.logger.info("Permission to synchronize granted")
 
-        task_id = await self.worker.send_request(command=self.cmd, data=b'')
-        chunks_to_send = self.wdb_conn.run_wdb_command()
-        self.logger.info(f"NUMERO DE CHUNKS: {len(chunks_to_send)}")
-
+        self.logger.info(f"Starting sending information to {self.daemon}.")
         for chunk in chunks_to_send:
-            # try:
-            data = {
-                'daemon_name': 'wazuh-db',
-                'message': f"global sync-agent-info-set {chunk}"
-            }
-            # self.logger.info("Sending request to master")
+            data = json.dumps({
+                'daemon_name': self.daemon,
+                'message': self.msg_format.format(payload=chunk)
+            }).encode()
 
-            result = await self.lc.execute(command=b'sendasync', data=json.dumps(data).encode(),
-                                           wait_for_complete=False)
+            try:
+                # Send chunk of data to self.daemon of the master
+                result = await self.lc.execute(command=b'sendasync', data=data,
+                                               wait_for_complete=False)
+                self.logger.debug(f"Master's {self.daemon} response: {result}.")
 
-        self.logger.info(f"RESULT: ----------------------> {result}")
-        result = await self.worker.send_request(command=self.cmd + b'_e', data=task_id)
-        self.logger.info(f"End of connection: {result}")
+                # Retry self.n_retries if result was not ok
+                if not result.startswith(self.expected_res):
+                    for i in range(self.n_retries):
+                        await asyncio.sleep(i * 2)
+                        self.logger.error(f"Response does not start with 'ok'. Retrying... {i}.")
+                        result = await self.lc.execute(command=b'sendasync', data=data,
+                                                       wait_for_complete=False)
+                        self.logger.debug(f"Master's {self.daemon} response: {result}.")
+                        if result.startswith(self.expected_res):
+                            break
+
+            except exception.WazuhException as e:
+                self.logger.error(f"Error sending information to {self.daemon}: {e}")
+
+        self.logger.info(f"Finished sending process to {self.daemon}")
 
 
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
@@ -304,24 +338,18 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         :return: None
         """
         agent_info_logger = self.task_loggers["Agent info"]
+        wdb_conn = WazuhDBConnection()
 
         while True:
-            try:
-                if self.connected:
-                    before = time.time()
-                    agent_info_logger.info("!!!!!! STARTING to send agent-info")
-                    await SyncInfo(cmd=b'sync_a_w_m', logger=agent_info_logger, worker=self).sync()
-                    after = time.time()
-                    agent_info_logger.info("!!!!!!! FINISHING. Time synchronizing agent statuses: {} s".format(after - before))
-            except exception.WazuhException as e:
-                agent_info_logger.error("Error synchronizing agent status files: {}".format(e))
-                res = await self.send_request(command=b'sync_a_w_m_r',
-                                              data=json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
-            except Exception as e:
-                agent_info_logger.error("Error synchronizing agent status files: {}".format(e))
-                exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
-                                      cls=c_common.WazuhJSONEncoder)
-                res = await self.send_request(command=b'sync_a_w_m_r', data=exc_info.encode())
+            if self.connected:
+                agent_info_logger.info("Starting agent-info sync process.")
+                before = time.time()
+                await SyncInfo(
+                    worker=self, daemon='wazuh-db', msg_format='global sync-agent-info-set {payload}',
+                    logger=agent_info_logger, data_retriever=wdb_conn.run_wdb_command
+                ).sync('global sync-agent-info-get ')
+                after = time.time()
+                agent_info_logger.debug2("Time synchronizing agent statuses: {} s".format(after - before))
 
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_files'])
 

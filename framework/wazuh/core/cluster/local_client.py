@@ -55,9 +55,6 @@ class LocalClientHandler(client.AbstractClient):
         elif command == b'ok':
             if data.startswith(b'Error'):
                 return b'err', self.process_error_from_peer(data)
-            # elif data not in self.in_str:
-            #     return b'err', self.process_error_from_peer(b'Error receiving string: ID ' + data + b' not found.')
-            # self.response = self.in_str[data].payload
             self.response = data
             self.response_available.set()
             return b'ok', b'Sendsync response received'
@@ -68,6 +65,10 @@ class LocalClientHandler(client.AbstractClient):
             self.response_available.set()
             return b'ok', b'Response received'
         elif command == b'dapi_err':
+            self.response = data
+            self.response_available.set()
+            return b'ok', b'Response received'
+        elif command == b'err':
             self.response = data
             self.response_available.set()
             return b'ok', b'Response received'
