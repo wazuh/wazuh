@@ -483,7 +483,7 @@ int wdb_create_file(const char *path, const char *source);
 
 /**
  * @brief Returns an array containing the ID of every agent (except 0), ended with -1.
- * This method creates and sends a command to WazuhDB to receive every the ID of every agent.
+ * This method creates and sends a command to WazuhDB to receive the ID of every agent.
  * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
  * The array is heap allocated memory that must be freed by the caller.
  * 
@@ -494,7 +494,7 @@ int* wdb_get_all_agents();
 
 /**
  * @brief Returns an array containing the ID of every agent (except 0), ended with -1 based on its keep_alive.
- * This method creates and sends a command to WazuhDB to receive every the ID of every agent.
+ * This method creates and sends a command to WazuhDB to receive the ID of every agent.
  * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
  * The array is heap allocated memory that must be freed by the caller.
  * 
@@ -924,12 +924,31 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
 int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
 
 /**
- * Doxygen here
-*/
+ * @brief Gets every agent ID based on the keepalive.
+ *        Response is prepared in one chunk, 
+ *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
+ *        Multiple calls to this function can be required to fully obtain all agents.
+ *       
+ * @param wdb The Global struct database.
+ * @param last_agent_id ID where to start querying.
+ * @param condition '<' or '>' condition used to compare keepalive.
+ * @param keep_alive value of keepalive to search for agents.
+ * @param output buffer where the response is written. Must be de-allocated by the caller.
+ * @return wdbc_result to represent if all agents has being obtained or any error occurred.
+ */
 wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char condition, int keep_alive, char **output);
+
 /**
- * Doxygen here
-*/
+ * @brief Gets every agent ID.
+ *        Response is prepared in one chunk, 
+ *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
+ *        Multiple calls to this function can be required to fully obtain all agents.
+ *       
+ * @param wdb The Global struct database.
+ * @param last_agent_id ID where to start querying.
+ * @param output buffer where the response is written. Must be de-allocated by the caller.
+ * @return wdbc_result to represent if all agents has being obtained or any error occurred.
+ */
 wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output);
 
 

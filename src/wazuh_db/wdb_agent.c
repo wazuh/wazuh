@@ -439,8 +439,8 @@ int wdb_remove_agent_db(int id, const char * name) {
 }
 
 int* wdb_get_agents_by_keepalive(const char* condition, int keepalive) {
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_MAXSTR] = "";    
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
     int last_id = 0;  
     int *array = NULL;    
     int len = 0;
@@ -484,8 +484,8 @@ int* wdb_get_agents_by_keepalive(const char* condition, int keepalive) {
 }
 
 int* wdb_get_all_agents(void) {
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_MAXSTR] = "";    
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
     int last_id = 0;  
     int *array = NULL;    
     int len = 0;

@@ -352,13 +352,13 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
         }
         sqlite3_stmt* stmt = wdb->stmt[stmt_index];
         if (sqlite3_bind_int(stmt, 1, *last_agent_id) != SQLITE_OK) {
-            merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             status = WDBC_ERROR;
             break;
         }        
        
         if (sqlite3_bind_int(stmt, 2, keep_alive) != SQLITE_OK) {
-            merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             status = WDBC_ERROR;
             break;
         }
@@ -432,7 +432,7 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
         }
         sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS];
         if (sqlite3_bind_int(stmt, 1, *last_agent_id) != SQLITE_OK) {
-            merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             status = WDBC_ERROR;
             break;
         }        
