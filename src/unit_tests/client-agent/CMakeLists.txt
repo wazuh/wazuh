@@ -23,12 +23,13 @@ target_link_libraries(CLIENT-AGENT ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Generate Analysisd tests
 list(APPEND client-agent_names "test_start_agent")
-set(START_AGENT_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1 -Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int \
-                                -Wl,--wrap,OS_ConnectUDP -Wl,--wrap,OS_ConnectTCP -Wl,--wrap,OS_SetRecvTimeout -Wl,--wrap,resolveHostname \
-                                -Wl,--wrap,send_msg -Wl,--wrap,recv -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,fseek -Wl,--wrap,fprintf -Wl,--wrap,fflush \
-                                -Wl,--wrap,ReadSecMSG -Wl,--wrap,wnet_select")
+set(START_AGENT_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1 \
+                            -Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl,--wrap,OS_ConnectUDP \
+                            -Wl,--wrap,OS_ConnectTCP -Wl,--wrap,OS_SetRecvTimeout -Wl,--wrap,resolveHostname \
+                            -Wl,--wrap,send_msg -Wl,--wrap,recv -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,fseek \
+                            -Wl,--wrap,fprintf -Wl,--wrap,fflush -Wl,--wrap,ReadSecMSG -Wl,--wrap,wnet_select")
 if(${TARGET} STREQUAL "winagent")
-    list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS}")
+    list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS} -Wl,--wrap,os_random")
 else()
     list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS} -Wl,--wrap=close")
 endif()

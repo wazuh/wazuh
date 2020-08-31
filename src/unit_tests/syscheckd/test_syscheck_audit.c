@@ -13,202 +13,30 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-
+#include "../wrappers/common.h"
 #include "syscheckd/syscheck.h"
+
+#include "../wrappers/externals/audit/libaudit_wrappers.h"
+#include "../wrappers/externals/procpc/readproc_wrappers.h"
+#include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/libc/stdlib_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
+#include "../wrappers/wazuh/shared/audit_op_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/fs_op_wrappers.h"
+#include "../wrappers/wazuh/shared/mq_op_wrappers.h"
+#include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
+#include "../wrappers/wazuh/shared/vector_op_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+
 #include "external/procps/readproc.h"
 
-extern volatile int hc_thread_active;
 extern volatile int audit_health_check_creation;
-
-int test_mode = 0;
+extern volatile int hc_thread_active;
 int hc_success = 0;
 
-/* redefinitons/wrapping */
-
-int __wrap_OS_ConnectUnixDomain()
-{
-    return mock();
-}
-
-int __wrap_IsDir(const char * file)
-{
-    check_expected(file);
-    return mock();
-}
-
-int __wrap_IsLink(const char * file)
-{
-    check_expected(file);
-    return mock();
-}
-
-int __wrap_IsFile(const char * file)
-{
-    check_expected(file);
-    return mock();
-}
-
-int __wrap_IsSocket(const char * sock)
-{
-    check_expected(sock);
-    return mock();
-}
-
-int __wrap_audit_restart()
-{
-    return mock();
-}
-
-int __wrap__minfo()
-{
-    return 0;
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-
-    check_expected(formatted_msg);
-
-    va_end(args);
-
-    return;
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-
-    check_expected(formatted_msg);
-
-    va_end(args);
-
-    return;
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-
-    check_expected(formatted_msg);
-
-    va_end(args);
-
-    return;
-}
-
-void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(msg);
-
-    va_start(args, msg);
-
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-
-    check_expected(formatted_msg);
-
-    va_end(args);
-
-    return;
-}
-
-int __wrap_fopen(const char *filename, const char *mode)
-{
-    check_expected(filename);
-    check_expected(mode);
-    return mock();
-}
-
-char * __wrap_realpath(const char * path, char * resolved_path)
-{
-    snprintf(resolved_path, OS_SIZE_1024, "%s", mock_ptr_type(char *));
-    return resolved_path;
-}
-
-size_t __real_fwrite(const void * ptr, size_t size, size_t count, FILE * stream);
-size_t __wrap_fwrite(const void * ptr, size_t size, size_t count, FILE * stream)
-{
-    if ((void*)stream > (void*)ptr) {
-        return __real_fwrite(ptr, size, count, stream);
-    }
-    return 1;
-}
-
-int __wrap_fprintf()
-{
-    return 1;
-}
-
-int __real_fclose(FILE *fp);
-int __wrap_fclose(FILE *fp)
-{
-    if (test_mode) {
-        return mock();
-    }
-    else {
-        return __real_fclose(fp);
-    }
-}
-
-int __wrap_unlink()
-{
-    return mock();
-}
-
-int __wrap_symlink(const char *path1, const char *path2)
-{
-    check_expected(path1);
-    check_expected(path2);
-    return mock();
-}
-
-int __wrap_audit_open()
-{
-    return 1;
-}
-
-int __wrap_audit_close()
-{
-    return 1;
-}
-
-int __wrap_audit_get_rule_list()
-{
-    return mock();
-}
-
-int __wrap_W_Vector_length()
-{
-    return mock();
-}
-
-int __wrap_search_audit_rule()
-{
-    return mock();
-}
-
-int __wrap_audit_add_rule()
-{
-    return mock();
-}
 
 int __wrap_audit_delete_rule(const char *path, const char *key) {
     check_expected(path);
@@ -217,78 +45,7 @@ int __wrap_audit_delete_rule(const char *path, const char *key) {
     return mock();
 }
 
-int __wrap_W_Vector_insert_unique()
-{
-    return mock();
-}
-
-int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc)
-{
-    check_expected(message);
-    return 1;
-}
-
-int __wrap_fim_whodata_event(whodata_evt * w_evt)
-{
-    check_expected(w_evt->process_id);
-    check_expected(w_evt->user_id);
-    check_expected(w_evt->group_id);
-    check_expected(w_evt->process_name);
-    check_expected(w_evt->path);
-    check_expected(w_evt->audit_uid);
-    check_expected(w_evt->effective_uid);
-    check_expected(w_evt->inode);
-    check_expected(w_evt->ppid);
-    return 1;
-}
-
-const char *__wrap_get_group(int gid) {
-    return mock_ptr_type(const char *);
-}
-
-PROCTAB* __wrap_openproc(int flags, ...)
-{
-    check_expected(flags);
-    return mock_type(PROCTAB*);
-}
-
-proc_t* __wrap_readproc(PROCTAB *restrict const PT, proc_t *restrict p)
-{
-    check_expected(PT);
-    check_expected(p);
-
-    return mock_type(proc_t*);
-}
-
-void __wrap_freeproc(proc_t* p)
-{
-    check_expected(p);
-}
-
-void __wrap_closeproc(PROCTAB* PT)
-{
-    check_expected(PT);
-}
-
-char *__wrap_get_user(int uid)
-{
-    check_expected(uid);
-    return mock_type(char*);
-}
-
-int __wrap_readlink(void **state) {
-    return mock();
-}
-
-int __wrap_select(int nfds, fd_set *restrict readfds, fd_set *restrict writefds, fd_set *restrict errorfds, struct timeval *restrict timeout)
-{
-    if(audit_thread_active) audit_thread_active--;
-    if(hc_thread_active) hc_thread_active--;
-    return mock();
-}
-
-int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags)
-{
+int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
     int ret;
     int n;
     check_expected(__fd);
@@ -327,15 +84,10 @@ int __wrap_pthread_mutex_unlock (pthread_mutex_t *__mutex) {
 }
 
 int __wrap_CreateThread(void * (*function_pointer)(void *), void *data) {
-    return 1;
-}
-
-unsigned int __wrap_sleep(unsigned int seconds) {
     if(hc_success) {
         audit_health_check_creation = 1;
     }
-
-    return 0;
+    return 1;
 }
 
 /* setup/teardown */
@@ -353,8 +105,7 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-static int free_string(void **state)
-{
+static int free_string(void **state) {
     char * string = *state;
     free(string);
     return 0;
@@ -367,21 +118,18 @@ static int test_audit_read_events_setup(void **state) {
     return 0;
 }
 
-static int test_audit_read_events_teardown(void **state)
-{
+static int test_audit_read_events_teardown(void **state) {
     int *audit_sock = *state;
     free(audit_sock);
     return 0;
 }
 
-static int setup_hc_success(void **state)
-{
+static int setup_hc_success(void **state) {
     hc_success = 1;
     return 0;
 }
 
-static int teardown_hc_success(void **state)
-{
+static int teardown_hc_success(void **state) {
     hc_success = 0;
     return 0;
 }
@@ -389,8 +137,7 @@ static int teardown_hc_success(void **state)
 /* tests */
 
 
-void test_check_auditd_enabled_success(void **state)
-{
+void test_check_auditd_enabled_success(void **state) {
     (void) state;
     int ret;
 
@@ -427,8 +174,7 @@ void test_check_auditd_enabled_success(void **state)
     free(mock_proc);
 }
 
-void test_check_auditd_enabled_openproc_error(void **state)
-{
+void test_check_auditd_enabled_openproc_error(void **state) {
     (void) state;
     int ret;
 
@@ -439,8 +185,7 @@ void test_check_auditd_enabled_openproc_error(void **state)
     assert_int_equal(ret, -1);
 }
 
-void test_check_auditd_enabled_readproc_error(void **state)
-{
+void test_check_auditd_enabled_readproc_error(void **state) {
     (void) state;
     int ret;
 
@@ -458,23 +203,29 @@ void test_check_auditd_enabled_readproc_error(void **state)
 }
 
 
-void test_init_auditd_socket_success(void **state)
-{
+void test_init_auditd_socket_success(void **state) {
     (void) state;
     int ret;
 
+    expect_any(__wrap_OS_ConnectUnixDomain, path);
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, 124);
+
     ret = init_auditd_socket();
     assert_int_equal(ret, 124);
 }
 
 
-void test_init_auditd_socket_failure(void **state)
-{
+void test_init_auditd_socket_failure(void **state) {
     (void) state;
     int ret;
 
+    expect_any(__wrap_OS_ConnectUnixDomain, path);
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, -5);
+
     expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/ossec/audit'.");
 
     ret = init_auditd_socket();
@@ -482,8 +233,7 @@ void test_init_auditd_socket_failure(void **state)
 }
 
 
-void test_set_auditd_config_audit3_plugin_created(void **state)
-{
+void test_set_auditd_config_audit3_plugin_created(void **state) {
     (void) state;
 
     // Audit 3
@@ -509,8 +259,7 @@ void test_set_auditd_config_audit3_plugin_created(void **state)
 }
 
 
-void test_set_auditd_config_wrong_audit_version(void **state)
-{
+void test_set_auditd_config_wrong_audit_version(void **state) {
     (void) state;
 
     // Not Audit 3
@@ -527,8 +276,7 @@ void test_set_auditd_config_wrong_audit_version(void **state)
 }
 
 
-void test_set_auditd_config_audit2_plugin_created(void **state)
-{
+void test_set_auditd_config_audit2_plugin_created(void **state) {
     (void) state;
 
     // Not Audit 3
@@ -557,8 +305,7 @@ void test_set_auditd_config_audit2_plugin_created(void **state)
 }
 
 
-void test_set_auditd_config_audit_socket_not_created(void **state)
-{
+void test_set_auditd_config_audit_socket_not_created(void **state) {
     (void) state;
 
     syscheck.restart_audit = 0;
@@ -588,8 +335,7 @@ void test_set_auditd_config_audit_socket_not_created(void **state)
 }
 
 
-void test_set_auditd_config_audit_socket_not_created_restart(void **state)
-{
+void test_set_auditd_config_audit_socket_not_created_restart(void **state) {
     (void) state;
 
     syscheck.restart_audit = 1;
@@ -607,6 +353,8 @@ void test_set_auditd_config_audit_socket_not_created_restart(void **state)
     expect_string(__wrap_IsFile, file, audit3_socket);
     will_return(__wrap_IsFile, 0);
 
+    expect_string(__wrap__minfo, formatted_msg, "(6023): No socket found at '/var/ossec/queue/ossec/audit'. Restarting Auditd service.");
+
     expect_string(__wrap_IsSocket, sock, "/var/ossec/queue/ossec/audit");
     will_return(__wrap_IsSocket, 1);
 
@@ -619,8 +367,7 @@ void test_set_auditd_config_audit_socket_not_created_restart(void **state)
 }
 
 
-void test_set_auditd_config_audit_plugin_not_created(void **state)
-{
+void test_set_auditd_config_audit_plugin_not_created(void **state) {
     (void) state;
 
     // Audit 3
@@ -630,19 +377,29 @@ void test_set_auditd_config_audit_plugin_not_created(void **state)
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
 
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/var/ossec/etc/af_wazuh.conf'");
+
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, path, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
+    expect_any_always(__wrap_fprintf, __stream);
+    expect_any_always(__wrap_fprintf, formatted_msg);
+    will_return_always(__wrap_fprintf, 1);
+    will_return_always(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
     expect_string(__wrap_symlink, path1, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_symlink, path2, audit3_socket);
     will_return(__wrap_symlink, 1);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (/var/ossec/etc/af_wazuh.conf) was modified. Restarting Auditd service.");
 
     // Restart
     syscheck.restart_audit = 1;
@@ -655,13 +412,14 @@ void test_set_auditd_config_audit_plugin_not_created(void **state)
 }
 
 
-void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state)
-{
+void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
     (void) state;
 
     // Audit 3
     expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
     will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/var/ossec/etc/af_wazuh.conf'");
 
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
@@ -669,7 +427,7 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state)
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, path, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 0);
 
@@ -682,9 +440,10 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state)
 }
 
 
-void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state)
-{
+void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) {
     (void) state;
+
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/var/ossec/etc/af_wazuh.conf'");
 
     // Audit 3
     expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
@@ -696,10 +455,16 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state)
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, path, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
+    expect_any_always(__wrap_fprintf, __stream);
+    expect_any_always(__wrap_fprintf, formatted_msg);
+    will_return_always(__wrap_fprintf, 1);
+    will_return_always(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, -1);
 
     expect_string(__wrap__merror, formatted_msg, "(1140): Could not close file '/var/ossec/etc/af_wazuh.conf' due to [(0)-(Success)].");
@@ -711,9 +476,10 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state)
 }
 
 
-void test_set_auditd_config_audit_plugin_not_created_recreate_symlink(void **state)
-{
+void test_set_auditd_config_audit_plugin_not_created_recreate_symlink(void **state) {
     (void) state;
+
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/var/ossec/etc/af_wazuh.conf'");
 
     // Audit 3
     expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
@@ -725,10 +491,16 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink(void **sta
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, path, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
+    expect_any_always(__wrap_fprintf, __stream);
+    expect_any_always(__wrap_fprintf, formatted_msg);
+    will_return_always(__wrap_fprintf, 1);
+    will_return_always(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
@@ -737,6 +509,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink(void **sta
     will_return(__wrap_symlink, -1);
     errno = EEXIST;
 
+    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
     will_return(__wrap_unlink, 0);
 
     // Delete and create
@@ -756,8 +529,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink(void **sta
 }
 
 
-void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(void **state)
-{
+void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(void **state) {
     (void) state;
 
     // Audit 3
@@ -767,13 +539,21 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(vo
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
 
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/var/ossec/etc/af_wazuh.conf'");
+
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, path, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
+    expect_any_always(__wrap_fprintf, __stream);
+    expect_any_always(__wrap_fprintf, formatted_msg);
+    will_return_always(__wrap_fprintf, 1);
+    will_return_always(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
@@ -782,12 +562,15 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(vo
     will_return(__wrap_symlink, -1);
     errno = EEXIST;
 
+    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
     will_return(__wrap_unlink, 0);
 
     // Delete and create
     expect_string(__wrap_symlink, path1, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_symlink, path2, audit3_socket);
     will_return(__wrap_symlink, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (/var/ossec/etc/af_wazuh.conf) was modified. Restarting Auditd service.");
 
     // Restart
     syscheck.restart_audit = 1;
@@ -800,13 +583,14 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(vo
 }
 
 
-void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void **state)
-{
+void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void **state) {
     (void) state;
 
     // Audit 3
     expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
     will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/var/ossec/etc/af_wazuh.conf'");
 
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
@@ -814,10 +598,16 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, path, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
+    expect_any_always(__wrap_fprintf, __stream);
+    expect_any_always(__wrap_fprintf, formatted_msg);
+    will_return_always(__wrap_fprintf, 1);
+    will_return_always(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
@@ -826,6 +616,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void
     will_return(__wrap_symlink, -1);
     errno = EEXIST;
 
+    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
     will_return(__wrap_unlink, 0);
 
     // Delete and create
@@ -842,13 +633,14 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void
 }
 
 
-void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_unlink_error(void **state)
-{
+void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_unlink_error(void **state) {
     (void) state;
 
     // Audit 3
     expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
     will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/var/ossec/etc/af_wazuh.conf'");
 
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
@@ -856,10 +648,16 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_unlink_err
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, path, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
+    expect_any_always(__wrap_fprintf, __stream);
+    expect_any_always(__wrap_fprintf, formatted_msg);
+    will_return_always(__wrap_fprintf, 1);
+    will_return_always(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
@@ -868,6 +666,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_unlink_err
     will_return(__wrap_symlink, -1);
     errno = EEXIST;
 
+    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
     will_return(__wrap_unlink, -1);
 
     expect_string(__wrap__merror, formatted_msg, "(1123): Unable to delete file: '/etc/audit/plugins.d/af_wazuh.conf' due to [(17)-(File exists)].");
@@ -879,8 +678,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_unlink_err
 }
 
 
-void test_audit_get_id(void **state)
-{
+void test_audit_get_id(void **state) {
     (void) state;
 
     const char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 res=1";
@@ -893,8 +691,7 @@ void test_audit_get_id(void **state)
 }
 
 
-void test_audit_get_id_begin_error(void **state)
-{
+void test_audit_get_id_begin_error(void **state) {
     (void) state;
 
     const char* event = "audit1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 res=1";
@@ -906,8 +703,7 @@ void test_audit_get_id_begin_error(void **state)
 }
 
 
-void test_audit_get_id_end_error(void **state)
-{
+void test_audit_get_id_end_error(void **state) {
     (void) state;
 
     const char* event = "type=LOGIN msg=audit(1571145421.379:659";
@@ -920,8 +716,7 @@ void test_audit_get_id_end_error(void **state)
 }
 
 
-void test_init_regex(void **state)
-{
+void test_init_regex(void **state) {
     (void) state;
     int ret;
 
@@ -931,8 +726,7 @@ void test_init_regex(void **state)
 }
 
 
-void test_add_audit_rules_syscheck_not_added(void **state)
-{
+void test_add_audit_rules_syscheck_not_added(void **state) {
     (void) state;
 
     char *entry = "/var/test";
@@ -943,8 +737,14 @@ void test_add_audit_rules_syscheck_not_added(void **state)
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
+    // Audit open
+    will_return(__wrap_audit_open, 1);
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 0);
+
+    // Audit close
+    will_return(__wrap_audit_close, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
@@ -956,6 +756,8 @@ void test_add_audit_rules_syscheck_not_added(void **state)
 
     // Add rule
     will_return(__wrap_audit_add_rule, 1);
+    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
+    expect_string(__wrap_W_Vector_insert_unique, element, "/var/test");
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_W_Vector_insert_unique, 1);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -973,8 +775,7 @@ void test_add_audit_rules_syscheck_not_added(void **state)
 }
 
 
-void test_add_audit_rules_syscheck_not_added_new(void **state)
-{
+void test_add_audit_rules_syscheck_not_added_new(void **state) {
     (void) state;
 
     char *entry = "/var/test";
@@ -985,8 +786,14 @@ void test_add_audit_rules_syscheck_not_added_new(void **state)
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
+    // Audit open
+    will_return(__wrap_audit_open, 1);
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 0);
+
+    // Audit close
+    will_return(__wrap_audit_close, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
@@ -998,6 +805,8 @@ void test_add_audit_rules_syscheck_not_added_new(void **state)
 
     // Add rule
     will_return(__wrap_audit_add_rule, 1);
+    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
+    expect_string(__wrap_W_Vector_insert_unique, element, "/var/test");
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_W_Vector_insert_unique, 0);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -1015,8 +824,7 @@ void test_add_audit_rules_syscheck_not_added_new(void **state)
 }
 
 
-void test_add_audit_rules_syscheck_not_added_error(void **state)
-{
+void test_add_audit_rules_syscheck_not_added_error(void **state) {
     (void) state;
 
     char *entry = "/var/test";
@@ -1027,8 +835,14 @@ void test_add_audit_rules_syscheck_not_added_error(void **state)
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
+    // Audit open
+    will_return(__wrap_audit_open, 1);
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 0);
+
+    // Audit close
+    will_return(__wrap_audit_close, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
@@ -1054,8 +868,7 @@ void test_add_audit_rules_syscheck_not_added_error(void **state)
 }
 
 
-void test_add_audit_rules_syscheck_not_added_first_error(void **state)
-{
+void test_add_audit_rules_syscheck_not_added_first_error(void **state) {
     (void) state;
 
     char *entry = "/var/test";
@@ -1066,8 +879,14 @@ void test_add_audit_rules_syscheck_not_added_first_error(void **state)
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
+    // Audit open
+    will_return(__wrap_audit_open, 1);
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 0);
+
+    // Audit close
+    will_return(__wrap_audit_close, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
@@ -1093,8 +912,7 @@ void test_add_audit_rules_syscheck_not_added_first_error(void **state)
 }
 
 
-void test_add_audit_rules_syscheck_added(void **state)
-{
+void test_add_audit_rules_syscheck_added(void **state) {
     (void) state;
 
     char *entry = "/var/test";
@@ -1105,8 +923,14 @@ void test_add_audit_rules_syscheck_added(void **state)
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
+    // Audit open
+    will_return(__wrap_audit_open, 1);
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 5);
+
+    // Audit close
+    will_return(__wrap_audit_close, 1);
 
     // Audit added rules
     will_return(__wrap_W_Vector_length, 3);
@@ -1115,6 +939,8 @@ void test_add_audit_rules_syscheck_added(void **state)
     will_return(__wrap_search_audit_rule, 1);
 
     // Add rule
+    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
+    expect_string(__wrap_W_Vector_insert_unique, element, "/var/test");
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_W_Vector_insert_unique, 0);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -1132,8 +958,7 @@ void test_add_audit_rules_syscheck_added(void **state)
 }
 
 
-void test_add_audit_rules_syscheck_max(void **state)
-{
+void test_add_audit_rules_syscheck_max(void **state) {
     (void) state;
 
     char *entry = "/var/test";
@@ -1148,8 +973,14 @@ void test_add_audit_rules_syscheck_max(void **state)
     syscheck.opts[1] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 3;
 
+    // Audit open
+    will_return(__wrap_audit_open, 1);
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 5);
+
+    // Audit close
+    will_return(__wrap_audit_close, 1);
 
     // Audit added rules
     will_return(__wrap_W_Vector_length, 3);
@@ -1173,8 +1004,7 @@ void test_add_audit_rules_syscheck_max(void **state)
 }
 
 
-void test_filterkey_audit_events_custom(void **state)
-{
+void test_filterkey_audit_events_custom(void **state) {
     (void) state;
     int ret;
     char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=test_key";
@@ -1184,7 +1014,6 @@ void test_filterkey_audit_events_custom(void **state)
     syscheck.audit_key[0] = calloc(strlen(key) + 2, sizeof(char));
     snprintf(syscheck.audit_key[0], strlen(key) + 1, "%s", key);
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"test_key\"'");
 
     ret = filterkey_audit_events(event);
@@ -1196,8 +1025,7 @@ void test_filterkey_audit_events_custom(void **state)
 }
 
 
-void test_filterkey_audit_events_discard(void **state)
-{
+void test_filterkey_audit_events_discard(void **state) {
     (void) state;
 
     char *key = "test_key";
@@ -1216,14 +1044,12 @@ void test_filterkey_audit_events_discard(void **state)
 }
 
 
-void test_filterkey_audit_events_hc(void **state)
-{
+void test_filterkey_audit_events_hc(void **state) {
     (void) state;
 
     int ret;
     char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=\"wazuh_hc\"";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_hc\"'");
 
     ret = filterkey_audit_events(event);
@@ -1232,14 +1058,12 @@ void test_filterkey_audit_events_hc(void **state)
 }
 
 
-void test_filterkey_audit_events_fim(void **state)
-{
+void test_filterkey_audit_events_fim(void **state) {
     (void) state;
 
     int ret;
     char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=\"wazuh_fim\"";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     ret = filterkey_audit_events(event);
@@ -1248,8 +1072,7 @@ void test_filterkey_audit_events_fim(void **state)
 }
 
 
-void test_gen_audit_path(void **state)
-{
+void test_gen_audit_path(void **state) {
     (void) state;
 
     char * cwd = "/root";
@@ -1264,8 +1087,7 @@ void test_gen_audit_path(void **state)
 }
 
 
-void test_gen_audit_path2(void **state)
-{
+void test_gen_audit_path2(void **state) {
     (void) state;
 
     char * cwd = "/root";
@@ -1280,8 +1102,7 @@ void test_gen_audit_path2(void **state)
 }
 
 
-void test_gen_audit_path3(void **state)
-{
+void test_gen_audit_path3(void **state) {
     (void) state;
 
     char * cwd = "/";
@@ -1296,8 +1117,7 @@ void test_gen_audit_path3(void **state)
 }
 
 
-void test_gen_audit_path4(void **state)
-{
+void test_gen_audit_path4(void **state) {
     (void) state;
 
     char * cwd = "/";
@@ -1311,8 +1131,7 @@ void test_gen_audit_path4(void **state)
 }
 
 
-void test_gen_audit_path5(void **state)
-{
+void test_gen_audit_path5(void **state) {
     (void) state;
 
     char * cwd = "/root/test";
@@ -1327,8 +1146,7 @@ void test_gen_audit_path5(void **state)
 }
 
 
-void test_gen_audit_path6(void **state)
-{
+void test_gen_audit_path6(void **state) {
     (void) state;
 
     char * cwd = "/root";
@@ -1342,8 +1160,7 @@ void test_gen_audit_path6(void **state)
 }
 
 
-void test_gen_audit_path7(void **state)
-{
+void test_gen_audit_path7(void **state) {
     (void) state;
 
     char * cwd = "/root";
@@ -1357,8 +1174,7 @@ void test_gen_audit_path7(void **state)
 }
 
 
-void test_gen_audit_path8(void **state)
-{
+void test_gen_audit_path8(void **state) {
     (void) state;
 
     char * cwd = "/root";
@@ -1371,8 +1187,7 @@ void test_gen_audit_path8(void **state)
     assert_string_equal(ret, "/root/file");
 }
 
-void test_get_process_parent_info_failed(void **state)
-{
+void test_get_process_parent_info_failed(void **state) {
     (void) state;
 
     char *parent_name;
@@ -1398,8 +1213,7 @@ void test_get_process_parent_info_failed(void **state)
 
 }
 
-void test_get_process_parent_info_passsed(void **state)
-{
+void test_get_process_parent_info_passsed(void **state) {
     (void) state;
 
     char *parent_name;
@@ -1421,8 +1235,7 @@ void test_get_process_parent_info_passsed(void **state)
     assert_string_equal(parent_cwd, "");
 }
 
-void test_audit_parse(void **state)
-{
+void test_audit_parse(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -1433,7 +1246,6 @@ void test_audit_parse(void **state)
         type=PROCTITLE msg=audit(1571914029.306:3004254): proctitle=726D0074657374 \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     expect_value(__wrap_get_user, uid, 0);
@@ -1443,24 +1255,24 @@ void test_audit_parse(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6334): Audit: Invalid 'auid' value read. Check Audit configuration (PAM).");
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, msg,
-        "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
 
+    expect_string(__wrap_realpath, path, "/root/test/test");
     will_return(__wrap_realpath, "/root/test/test");
+    will_return(__wrap_realpath, (char *) 1);
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 44082);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->process_name, "74657374C3B1");
     expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/test");
-    expect_value(__wrap_fim_whodata_event, w_evt->audit_uid, 0);
     expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->inode, "19");
     expect_value(__wrap_fim_whodata_event, w_evt->ppid, 3211);
@@ -1469,8 +1281,7 @@ void test_audit_parse(void **state)
 }
 
 
-void test_audit_parse3(void **state)
-{
+void test_audit_parse3(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -1482,7 +1293,6 @@ void test_audit_parse3(void **state)
         type=PROCTITLE msg=audit(1571914029.306:3004254): proctitle=726D0074657374 \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     expect_value(__wrap_get_user, uid, 0);
@@ -1490,13 +1300,12 @@ void test_audit_parse3(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, msg,
-        "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=28, path=/root/test/test, pname=74657374C3B1");
 
@@ -1505,7 +1314,6 @@ void test_audit_parse3(void **state)
     expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->process_name, "74657374C3B1");
     expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/test");
-    expect_value(__wrap_fim_whodata_event, w_evt->audit_uid, 0);
     expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->inode, "28");
     expect_value(__wrap_fim_whodata_event, w_evt->ppid, 3211);
@@ -1514,8 +1322,7 @@ void test_audit_parse3(void **state)
 }
 
 
-void test_audit_parse4(void **state)
-{
+void test_audit_parse4(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -1528,7 +1335,6 @@ void test_audit_parse4(void **state)
         type=PROCTITLE msg=audit(1571923546.947:3004294): proctitle=6D760066696C655FC3B1002E2E2F74657374C3B1322F66696C655FC3B163 \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     expect_value(__wrap_get_user, uid, 0);
@@ -1538,15 +1344,12 @@ void test_audit_parse4(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, msg,
-        "(6248): audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
-    expect_string(__wrap__mdebug2, msg,
-        "(6249): audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6248): audit_event_1/2: uid=root, auid=root, euid=root, gid=root, pid=51452, ppid=3212, inode=19, path=/root/test/testñ/test, pname=file_ñ");
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -1576,8 +1379,7 @@ void test_audit_parse4(void **state)
 }
 
 
-void test_audit_parse_hex(void **state)
-{
+void test_audit_parse_hex(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -1590,7 +1392,6 @@ void test_audit_parse_hex(void **state)
         type=PROCTITLE msg=audit(1571923546.947:3004294): proctitle=6D760066696C655FC3B1002E2E2F74657374C3B1322F66696C655FC3B163 \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     expect_value(__wrap_get_user, uid, 0);
@@ -1600,15 +1401,12 @@ void test_audit_parse_hex(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, msg,
-        "(6248): audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
-    expect_string(__wrap__mdebug2, msg,
-        "(6249): audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6248): audit_event_1/2: uid=root, auid=root, euid=root, gid=root, pid=51452, ppid=3212, inode=29, path=/root/test/testñ/file_ñ, pname=file_ñ");
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -1638,8 +1436,7 @@ void test_audit_parse_hex(void **state)
 }
 
 
-void test_audit_parse_empty_fields(void **state)
-{
+void test_audit_parse_empty_fields(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -1647,15 +1444,13 @@ void test_audit_parse_empty_fields(void **state)
         type=PROCTITLE msg=audit(1571914029.306:3004254): proctitle=726D0074657374 \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     audit_parse(buffer);
 }
 
 
-void test_audit_parse_delete(void **state)
-{
+void test_audit_parse_delete(void **state) {
     (void) state;
 
     char * buffer = "type=CONFIG_CHANGE msg=audit(1571920603.069:3004276): auid=0 ses=5 op=\"remove_rule\" key=\"wazuh_fim\" list=4 res=1";
@@ -1669,14 +1464,19 @@ void test_audit_parse_delete(void **state)
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
     expect_string(__wrap__mdebug1, formatted_msg, "(6275): Reloading Audit rules.");
 
+    // Audit open
+    will_return(__wrap_audit_open, 1);
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 5);
+
+    // Audit close
+    will_return(__wrap_audit_close, 1);
 
     // Audit added rules
     will_return(__wrap_W_Vector_length, 3);
@@ -1685,11 +1485,16 @@ void test_audit_parse_delete(void **state)
     will_return(__wrap_search_audit_rule, 1);
 
     // Add rule
+    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
+    expect_string(__wrap_W_Vector_insert_unique, element, "/var/test");
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_W_Vector_insert_unique, 1);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6276): Audit rules reloaded. Rules loaded: 1");
 
@@ -1701,8 +1506,7 @@ void test_audit_parse_delete(void **state)
 }
 
 
-void test_audit_parse_delete_recursive(void **state)
-{
+void test_audit_parse_delete_recursive(void **state) {
     (void) state;
 
     char * buffer = "type=CONFIG_CHANGE msg=audit(1571920603.069:3004276): auid=0 ses=5 op=remove_rule key=\"wazuh_fim\" list=4 res=1";
@@ -1716,20 +1520,28 @@ void test_audit_parse_delete_recursive(void **state)
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
-    expect_string_count(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY, 4);
     expect_string_count(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'", 4);
 
+    // Audit open
+    will_return_always(__wrap_audit_open, 5);
+
     // Read loaded rules in Audit
-    will_return_count(__wrap_audit_get_rule_list, 5, -1);
+    will_return_always(__wrap_audit_get_rule_list, 5);
+
+    // Audit close
+    will_return_always(__wrap_audit_close, 5);
 
     // Audit added rules
-    will_return_count(__wrap_W_Vector_length, 3, -1);
+    will_return_always(__wrap_W_Vector_length, 3);
 
     // Rule already not added
-    will_return_count(__wrap_search_audit_rule, 5, -1);
+    will_return_always(__wrap_search_audit_rule, 5);
 
     expect_string_count(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed", 4);
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+    expect_string_count(__wrap_SendMSG, locmsg, SYSCHECK, 5);
+    expect_value_count(__wrap_SendMSG, loc, LOCALFILE_MQ, 5);
+    will_return_always(__wrap_SendMSG, 1);
 
     expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
     expect_string(__wrap__mdebug1, formatted_msg, "(6275): Reloading Audit rules.");
@@ -1759,8 +1571,7 @@ void test_audit_parse_delete_recursive(void **state)
 }
 
 
-void test_audit_parse_mv(void **state)
-{
+void test_audit_parse_mv(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -1774,7 +1585,6 @@ void test_audit_parse_mv(void **state)
         type=PROCTITLE msg=audit(1571925844.299:3004308): proctitle=6D76002E2F7465737400666F6C646572 \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     expect_value(__wrap_get_user, uid, 30);
@@ -1784,13 +1594,12 @@ void test_audit_parse_mv(void **state)
     expect_value(__wrap_get_user, uid, 50);
     will_return(__wrap_get_user, strdup("user50"));
 
+    expect_value(__wrap_get_group, gid, 40);
     will_return(__wrap_get_group, "src");
 
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, msg,
-        "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6247): audit_event: uid=user30, auid=user20, euid=user50, gid=src, pid=52277, ppid=3210, inode=28, path=/root/test/folder/test, pname=/usr/bin/mv");
 
@@ -1808,8 +1617,7 @@ void test_audit_parse_mv(void **state)
 }
 
 
-void test_audit_parse_mv_hex(void **state)
-{
+void test_audit_parse_mv_hex(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -1823,7 +1631,6 @@ void test_audit_parse_mv_hex(void **state)
         type=PROCTITLE msg=audit(1571925844.299:3004308): proctitle=6D76002E2F7465737400666F6C646572 \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     expect_value(__wrap_get_user, uid, 30);
@@ -1833,13 +1640,12 @@ void test_audit_parse_mv_hex(void **state)
     expect_value(__wrap_get_user, uid, 50);
     will_return(__wrap_get_user, strdup("user50"));
 
+    expect_value(__wrap_get_group, gid, 40);
     will_return(__wrap_get_group, "src");
 
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, msg,
-        "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6247): audit_event: uid=user30, auid=user20, euid=user50, gid=src, pid=52277, ppid=3210, inode=28, path=/root/test/folder/test, pname=/usr/bin/mv");
 
@@ -1857,8 +1663,7 @@ void test_audit_parse_mv_hex(void **state)
 }
 
 
-void test_audit_parse_rm(void **state)
-{
+void test_audit_parse_rm(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -1870,7 +1675,6 @@ void test_audit_parse_rm(void **state)
         type=PROCTITLE msg=audit(1571988027.797:3004340): proctitle=726D002D726600666F6C6465722F \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     expect_value(__wrap_get_user, uid, 30);
@@ -1880,13 +1684,12 @@ void test_audit_parse_rm(void **state)
     expect_value(__wrap_get_user, uid, 2);
     will_return(__wrap_get_user, strdup("daemon"));
 
+    expect_value(__wrap_get_group, gid, 5);
     will_return(__wrap_get_group, "tty");
 
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, msg,
-        "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6247): audit_event: uid=user30, auid=daemon, euid=daemon, gid=tty, pid=56650, ppid=3211, inode=24, path=/root/test/, pname=/usr/bin/rm");
 
@@ -1904,8 +1707,7 @@ void test_audit_parse_rm(void **state)
 }
 
 
-void test_audit_parse_chmod(void **state)
-{
+void test_audit_parse_chmod(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -1915,7 +1717,6 @@ void test_audit_parse_chmod(void **state)
         type=PROCTITLE msg=audit(1571992092.822:3004348): proctitle=63686D6F6400373737002F726F6F742F746573742F66696C65 \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     expect_value(__wrap_get_user, uid, 99);
@@ -1925,13 +1726,12 @@ void test_audit_parse_chmod(void **state)
     expect_value(__wrap_get_user, uid, 29);
     will_return(__wrap_get_user, strdup("user29"));
 
+    expect_value(__wrap_get_group, gid, 78);
     will_return(__wrap_get_group, "");
 
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, msg,
-        "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
 
@@ -1950,8 +1750,7 @@ void test_audit_parse_chmod(void **state)
 }
 
 
-void test_audit_parse_rm_hc(void **state)
-{
+void test_audit_parse_rm_hc(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -1963,17 +1762,14 @@ void test_audit_parse_rm_hc(void **state)
         type=PROCTITLE msg=audit(1571988027.797:3004340): proctitle=726D002D726600666F6C6465722F \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_hc\"'");
-    expect_string(__wrap__mdebug2, msg, FIM_HEALTHCHECK_DELETE);
     expect_string(__wrap__mdebug2, formatted_msg, "(6253): Whodata health-check: Detected file deletion event (263)");
 
     audit_parse(buffer);
 }
 
 
-void test_audit_parse_add_hc(void **state)
-{
+void test_audit_parse_add_hc(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -1985,17 +1781,14 @@ void test_audit_parse_add_hc(void **state)
         type=PROCTITLE msg=audit(1571988027.797:3004340): proctitle=726D002D726600666F6C6465722F \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_hc\"'");
-    expect_string(__wrap__mdebug2, msg, FIM_HEALTHCHECK_CREATE);
     expect_string(__wrap__mdebug2, formatted_msg, "(6252): Whodata health-check: Detected file creation event (257)");
 
     audit_parse(buffer);
 }
 
 
-void test_audit_parse_unknown_hc(void **state)
-{
+void test_audit_parse_unknown_hc(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -2007,17 +1800,14 @@ void test_audit_parse_unknown_hc(void **state)
         type=PROCTITLE msg=audit(1571988027.797:3004340): proctitle=726D002D726600666F6C6465722F \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_hc\"'");
-    expect_string(__wrap__mdebug2, msg, FIM_HEALTHCHECK_UNRECOGNIZED_EVENT);
     expect_string(__wrap__mdebug2, formatted_msg, "(6254): Whodata health-check: Unrecognized event (90)");
 
     audit_parse(buffer);
 }
 
 
-void test_audit_parse_delete_folder(void **state)
-{
+void test_audit_parse_delete_folder(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -2029,8 +1819,8 @@ void test_audit_parse_delete_folder(void **state)
         type=PROCTITLE msg=audit(1572878838.610:220): proctitle=726D002D72660074657374 \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+    expect_string(__wrap__minfo, formatted_msg, "(6027): Monitored directory '/root/test' was removed: Audit rule removed.");
 
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
@@ -2039,15 +1829,17 @@ void test_audit_parse_delete_folder(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, msg, "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
 
+    expect_string(__wrap_realpath, path, "/root/test");
     will_return(__wrap_realpath, "/root/test");
+    will_return(__wrap_realpath, (char *) 1);
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 62845);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
@@ -2060,13 +1852,15 @@ void test_audit_parse_delete_folder(void **state)
     expect_value(__wrap_fim_whodata_event, w_evt->ppid, 4340);
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Monitored directory was removed: Audit rule removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     audit_parse(buffer);
 }
 
 
-void test_audit_parse_delete_folder_hex(void **state)
-{
+void test_audit_parse_delete_folder_hex(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -2078,8 +1872,8 @@ void test_audit_parse_delete_folder_hex(void **state)
         type=PROCTITLE msg=audit(1572878838.610:220): proctitle=726D002D72660074657374 \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+    expect_string(__wrap__minfo, formatted_msg, "(6027): Monitored directory '/root/test/testñ' was removed: Audit rule removed.");
 
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
@@ -2088,15 +1882,18 @@ void test_audit_parse_delete_folder_hex(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, msg, "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
 
+    expect_string(__wrap_realpath, path, "/root/test");
     will_return(__wrap_realpath, "/root/test");
+    will_return(__wrap_realpath, (char *) 1);
+
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 62845);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
@@ -2109,13 +1906,15 @@ void test_audit_parse_delete_folder_hex(void **state)
     expect_value(__wrap_fim_whodata_event, w_evt->ppid, 4340);
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Monitored directory was removed: Audit rule removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     audit_parse(buffer);
 }
 
 
-void test_audit_parse_delete_folder_hex3_error(void **state)
-{
+void test_audit_parse_delete_folder_hex3_error(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -2128,7 +1927,6 @@ void test_audit_parse_delete_folder_hex3_error(void **state)
         type=PROCTITLE msg=audit(1572878838.610:220): proctitle=726D002D72660074657374 \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '0'");
@@ -2141,6 +1939,7 @@ void test_audit_parse_delete_folder_hex3_error(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
@@ -2153,14 +1952,20 @@ void test_audit_parse_delete_folder_hex3_error(void **state)
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '5'");
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
+
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     audit_parse(buffer);
 }
 
 
-void test_audit_parse_delete_folder_hex4_error(void **state)
-{
+void test_audit_parse_delete_folder_hex4_error(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -2174,7 +1979,6 @@ void test_audit_parse_delete_folder_hex4_error(void **state)
         type=PROCTITLE msg=audit(1572878838.610:220): proctitle=726D002D72660074657374 \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '0'");
@@ -2187,6 +1991,7 @@ void test_audit_parse_delete_folder_hex4_error(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
@@ -2200,14 +2005,20 @@ void test_audit_parse_delete_folder_hex4_error(void **state)
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '6'");
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
+
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     audit_parse(buffer);
 }
 
 
-void test_audit_parse_delete_folder_hex5_error(void **state)
-{
+void test_audit_parse_delete_folder_hex5_error(void **state) {
     (void) state;
 
     char * buffer = " \
@@ -2222,7 +2033,6 @@ void test_audit_parse_delete_folder_hex5_error(void **state)
         type=PROCTITLE msg=audit(1572878838.610:220): proctitle=726D002D72660074657374 \
     ";
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '0'");
@@ -2235,6 +2045,7 @@ void test_audit_parse_delete_folder_hex5_error(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
@@ -2247,14 +2058,20 @@ void test_audit_parse_delete_folder_hex5_error(void **state)
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '7'");
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
+
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     audit_parse(buffer);
 }
 
 /* audit_health_check() tests */
-void test_audit_health_check_fail_to_add_rule(void **state)
-{
+void test_audit_health_check_fail_to_add_rule(void **state) {
     int ret;
 
     will_return(__wrap_audit_add_rule, -1);
@@ -2267,8 +2084,7 @@ void test_audit_health_check_fail_to_add_rule(void **state)
     assert_int_equal(hc_thread_active, 0);
 }
 
-void test_audit_health_check_fail_to_create_hc_file(void **state)
-{
+void test_audit_health_check_fail_to_create_hc_file(void **state) {
     int ret;
 
     hc_thread_active = 0;
@@ -2282,14 +2098,17 @@ void test_audit_health_check_fail_to_create_hc_file(void **state)
     expect_function_call(__wrap_pthread_cond_wait);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string_count(__wrap_fopen, filename, "/var/ossec/tmp/audit_hc", 10);
+    expect_string_count(__wrap_fopen, path, "/var/ossec/tmp/audit_hc", 10);
     expect_string_count(__wrap_fopen, mode, "w", 10);
     will_return_count(__wrap_fopen, 0, 10);
 
     expect_string_count(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_FILE, 10);
 
+    expect_value_count(__wrap_sleep, seconds, 1, 10);
+
     expect_string(__wrap__mdebug1, formatted_msg, FIM_HEALTHCHECK_CREATE_ERROR);
 
+    expect_string(__wrap_unlink, file, "/var/ossec/tmp/audit_hc");
     will_return(__wrap_unlink, 0);
 
     expect_string(__wrap_audit_delete_rule, path, "/var/ossec/tmp");
@@ -2302,8 +2121,7 @@ void test_audit_health_check_fail_to_create_hc_file(void **state)
     assert_int_equal(hc_thread_active, 0);
 }
 
-void test_audit_health_check_no_creation_event_detected(void **state)
-{
+void test_audit_health_check_no_creation_event_detected(void **state) {
     int ret;
 
     hc_thread_active = 0;
@@ -2317,14 +2135,18 @@ void test_audit_health_check_no_creation_event_detected(void **state)
     expect_function_call(__wrap_pthread_cond_wait);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string_count(__wrap_fopen, filename, "/var/ossec/tmp/audit_hc", 10);
+    expect_string_count(__wrap_fopen, path, "/var/ossec/tmp/audit_hc", 10);
     expect_string_count(__wrap_fopen, mode, "w", 10);
     will_return_count(__wrap_fopen, 1, 10);
 
+    expect_value_count(__wrap_fclose, _File, 1, 10);
     will_return_count(__wrap_fclose, 0, 10);
+
+    expect_value_count(__wrap_sleep, seconds, 1, 10);
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_HEALTHCHECK_CREATE_ERROR);
 
+    expect_string(__wrap_unlink, file, "/var/ossec/tmp/audit_hc");
     will_return(__wrap_unlink, 0);
 
     expect_string(__wrap_audit_delete_rule, path, "/var/ossec/tmp");
@@ -2337,8 +2159,7 @@ void test_audit_health_check_no_creation_event_detected(void **state)
     assert_int_equal(hc_thread_active, 0);
 }
 
-void test_audit_health_check_success(void **state)
-{
+void test_audit_health_check_success(void **state) {
     int ret;
 
     hc_thread_active = 0;
@@ -2352,14 +2173,18 @@ void test_audit_health_check_success(void **state)
     expect_function_call(__wrap_pthread_cond_wait);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/tmp/audit_hc");
+    expect_string(__wrap_fopen, path, "/var/ossec/tmp/audit_hc");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
+
+    expect_value(__wrap_sleep, seconds, 1);
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_HEALTHCHECK_SUCCESS);
 
+    expect_string(__wrap_unlink, file, "/var/ossec/tmp/audit_hc");
     will_return(__wrap_unlink, 0);
 
     expect_string(__wrap_audit_delete_rule, path, "/var/ossec/tmp");
@@ -2373,25 +2198,27 @@ void test_audit_health_check_success(void **state)
 }
 
 
-void test_audit_read_events_select_error(void **state)
-{
+void test_audit_read_events_select_error(void **state) {
     (void) state;
     int *audit_sock = *state;
     audit_thread_active = 1;
     errno = EEXIST;
 
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
+
     // Switch
     will_return(__wrap_select, -1);
     expect_string(__wrap__merror, formatted_msg, "(1114): Error during select()-call due to [(17)-(File exists)].");
+    expect_value(__wrap_sleep, seconds, 1);
 
     audit_read_events(audit_sock, READING_MODE);
 }
 
-void test_audit_read_events_select_case_0_healthcheck(void **state)
-{
+void test_audit_read_events_select_case_0(void **state) {
     (void) state;
     int *audit_sock = *state;
-    hc_thread_active = 3;
+    audit_thread_active = 1;
     errno = EEXIST;
     char * buffer = " \
         type=SYSCALL msg=audit(1571914029.306:3004254): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c5f8170490 a2=0 a3=7ff365c5eca0 items=2 ppid=3211 pid=44082 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"test\" exe=\"74657374C3B1\" key=\"wazuh_fim\"\n\
@@ -2400,15 +2227,19 @@ void test_audit_read_events_select_case_0_healthcheck(void **state)
         type=PATH msg=audit(1571914029.306:3004254): item=1 name=\"test\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0\n\
         type=PROCTITLE msg=audit(1571914029.306:3004254): proctitle=726D0074657374\n";
 
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
     // Switch
     will_return(__wrap_select, 1);
+    will_return(__wrap_select, 0);
+
     // If (!byteRead)
     expect_value(__wrap_recv, __fd, *audit_sock);
     will_return(__wrap_recv, strlen(buffer));
     will_return(__wrap_recv, buffer);
 
     // In audit_parse()
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
     expect_value(__wrap_get_user, uid, 0);
@@ -2416,43 +2247,41 @@ void test_audit_read_events_select_case_0_healthcheck(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "root");
 
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, msg,
-        "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
 
+    expect_string(__wrap_realpath, path, "/root/test/test");
     will_return(__wrap_realpath, "/root/test/test");
+    will_return(__wrap_realpath, (char *) 1);
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 44082);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->process_name, "74657374C3B1");
     expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/test");
-    expect_value(__wrap_fim_whodata_event, w_evt->audit_uid, 0);
     expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->inode, "19");
     expect_value(__wrap_fim_whodata_event, w_evt->ppid, 3211);
 
-    will_return(__wrap_select, 0);
-    will_return(__wrap_select, 1);
-
-    audit_read_events(audit_sock, HEALTHCHECK_MODE);
+    audit_read_events(audit_sock, READING_MODE);
 }
 
-void test_audit_read_events_select_success_recv_error_audit_connection_closed(void **state)
-{
+void test_audit_read_events_select_success_recv_error_audit_connection_closed(void **state) {
     (void) state;
     int *audit_sock = *state;
-    audit_thread_active = 2;
+    audit_thread_active = 1;
     errno = EEXIST;
     int counter = 0;
     int max_retries = 5;
 
+    will_return(__wrap_FOREVER, 1);
+
     // Switch
     will_return(__wrap_select, 1);
 
@@ -2460,26 +2289,42 @@ void test_audit_read_events_select_success_recv_error_audit_connection_closed(vo
     expect_value(__wrap_recv, __fd, *audit_sock);
     will_return(__wrap_recv, 0);
     expect_string(__wrap__mwarn, formatted_msg, "(6912): Audit: connection closed.");
+    expect_value(__wrap_sleep, seconds, 1);
+    expect_string(__wrap__minfo, formatted_msg, "(6029): Audit: reconnecting... (1)");
 
     // init_auditd_socket failure
+    expect_any(__wrap_OS_ConnectUnixDomain, path);
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, -5);
     expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/ossec/audit'.");
+
     while (++counter < max_retries){
+        expect_any(__wrap__minfo, formatted_msg);
+        expect_value(__wrap_sleep, seconds, 1);
         // init_auditd_socket failure
+        expect_any(__wrap_OS_ConnectUnixDomain, path);
+        expect_any(__wrap_OS_ConnectUnixDomain, type);
+        expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
         will_return(__wrap_OS_ConnectUnixDomain, -5);
         expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/ossec/audit'.");
     }
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Connection closed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     audit_read_events(audit_sock, READING_MODE);
 }
 
-void test_audit_read_events_select_success_recv_error_audit_reconnect(void **state)
-{
+void test_audit_read_events_select_success_recv_error_audit_reconnect(void **state) {
     (void) state;
     int *audit_sock = *state;
-    audit_thread_active = 2;
+    audit_thread_active = 1;
     errno = EEXIST;
+
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
 
     // Switch
     will_return(__wrap_select, 1);
@@ -2488,13 +2333,28 @@ void test_audit_read_events_select_success_recv_error_audit_reconnect(void **sta
     expect_value(__wrap_recv, __fd, *audit_sock);
     will_return(__wrap_recv, 0);
     expect_string(__wrap__mwarn, formatted_msg, "(6912): Audit: connection closed.");
+    expect_value(__wrap_sleep, seconds, 1);
+    expect_string(__wrap__minfo, formatted_msg, "(6029): Audit: reconnecting... (1)");
 
     // init_auditd_socket failure
+    expect_any(__wrap_OS_ConnectUnixDomain, path);
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, -5);
     expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/ossec/audit'.");
+
     // While (*audit_sock < 0)
     // init_auditd_socket succes
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_value(__wrap_sleep, seconds, 1);
+    expect_any(__wrap_OS_ConnectUnixDomain, path);
+    expect_any(__wrap_OS_ConnectUnixDomain, type);
+    expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, 124);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6030): Audit: connected.");
+    will_return(__wrap_audit_open, 1);
+    will_return(__wrap_audit_close, 1);
 
     // In audit_reload_rules()
     syscheck.dir = calloc (2, sizeof(char *));
@@ -2504,18 +2364,15 @@ void test_audit_read_events_select_success_recv_error_audit_reconnect(void **sta
     will_return(__wrap_audit_get_rule_list, 1);
     expect_string(__wrap__mdebug1, formatted_msg, "(6276): Audit rules reloaded. Rules loaded: 0");
 
-    will_return(__wrap_select, 1);
-
     audit_read_events(audit_sock, READING_MODE);
 
     free(syscheck.dir);
 }
 
-void test_audit_read_events_select_success_recv_success(void **state)
-{
+void test_audit_read_events_select_success_recv_success(void **state) {
     (void) state;
     int *audit_sock = *state;
-    audit_thread_active = 2;
+    audit_thread_active = 1;
     errno = EEXIST;
     char * buffer = " \
         type=SYSCALL msg=audit(1571914029.306:3004254): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c5f8170490 a2=0 a3=7ff365c5eca0 items=2 ppid=3211 pid=44082 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"test\" exe=\"74657374C3B1\" key=\"wazuh_fim\"\n\
@@ -2531,7 +2388,8 @@ void test_audit_read_events_select_success_recv_success(void **state)
         type=PROCTITLE msg=audit(1571914029.306:3004255): proctitle=726D0074657374\n\
         type=EOE msg=audit(1571914029.306:3004255):\n";
 
-
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
 
     // Switch
     will_return(__wrap_select, 1);
@@ -2543,7 +2401,6 @@ void test_audit_read_events_select_success_recv_success(void **state)
 
     for (int i = 0; i<2; i++){
         // In audit_parse()
-        expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
         expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
         expect_value(__wrap_get_user, uid, 0);
@@ -2551,43 +2408,43 @@ void test_audit_read_events_select_success_recv_success(void **state)
         expect_value(__wrap_get_user, uid, 0);
         will_return(__wrap_get_user, strdup("root"));
 
+        expect_value(__wrap_get_group, gid, 0);
         will_return(__wrap_get_group, "root");
 
         will_return(__wrap_readlink, 0);
         will_return(__wrap_readlink, 0);
 
-        expect_string(__wrap__mdebug2, msg,
-            "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
         expect_string(__wrap__mdebug2, formatted_msg,
             "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
 
+        expect_string(__wrap_realpath, path, "/root/test/test");
         will_return(__wrap_realpath, "/root/test/test");
+        will_return(__wrap_realpath, (char *) 1);
 
         expect_value(__wrap_fim_whodata_event, w_evt->process_id, 44082);
         expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
         expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
         expect_string(__wrap_fim_whodata_event, w_evt->process_name, "74657374C3B1");
         expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/test");
-        expect_value(__wrap_fim_whodata_event, w_evt->audit_uid, 0);
         expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
         expect_string(__wrap_fim_whodata_event, w_evt->inode, "19");
         expect_value(__wrap_fim_whodata_event, w_evt->ppid, 3211);
     }
 
-    will_return(__wrap_select, 1);
-
     audit_read_events(audit_sock, READING_MODE);
 }
 
-void test_audit_read_events_select_success_recv_success_no_endline(void **state)
-{
+void test_audit_read_events_select_success_recv_success_no_endline(void **state) {
     (void) state;
     int *audit_sock = *state;
-    audit_thread_active = 2;
+    audit_thread_active = 1;
     errno = EEXIST;
     char * buffer = " \
         type=SYSCALL msg=audit(1571914029.306:3004254): arch=c000003e syscall=263 success=yes exit\
     ";
+
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
 
     // Switch
     will_return(__wrap_select, 1);
@@ -2597,20 +2454,20 @@ void test_audit_read_events_select_success_recv_success_no_endline(void **state)
     will_return(__wrap_recv, strlen(buffer));
     will_return(__wrap_recv, buffer);
 
-    will_return(__wrap_select, 1);
-
     audit_read_events(audit_sock, READING_MODE);
 }
 
-void test_audit_read_events_select_success_recv_success_no_id(void **state)
-{
+void test_audit_read_events_select_success_recv_success_no_id(void **state) {
     (void) state;
     int *audit_sock = *state;
-    audit_thread_active = 2;
+    audit_thread_active = 1;
     errno = EEXIST;
     char * buffer = " \
         type=SYSC arch=c000003e syscall=263 success=yes exit\n\
     ";
+
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
 
     // Switch
     will_return(__wrap_select, 1);
@@ -2622,19 +2479,18 @@ void test_audit_read_events_select_success_recv_success_no_id(void **state)
 
     expect_string(__wrap__mwarn, formatted_msg, "(6928): Couldn't get event ID from Audit message. Line: '         type=SYSC arch=c000003e syscall=263 success=yes exit'.");
 
-
-
-    will_return(__wrap_select, 1);
-
     audit_read_events(audit_sock, READING_MODE);
 }
 
-void test_audit_read_events_select_success_recv_success_too_long(void **state)
-{
+void test_audit_read_events_select_success_recv_success_too_long(void **state) {
     (void) state;
     int *audit_sock = *state;
-    audit_thread_active = 3;
+    audit_thread_active = 1;
     errno = EEXIST;
+
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
 
     // Event too long, 65535 char
     char * buffer = malloc(65530 * sizeof(char));
@@ -2664,8 +2520,6 @@ void test_audit_read_events_select_success_recv_success_too_long(void **state)
     will_return(__wrap_recv, buffer2);
 
     expect_string(__wrap__mwarn, formatted_msg, "(6929): Caching Audit message: event too long. Event with ID: '1571914029.306:3004254' will be discarded.");
-
-    will_return(__wrap_select, 1);
 
     audit_read_events(audit_sock, READING_MODE);
 
@@ -2736,7 +2590,7 @@ int main(void) {
         cmocka_unit_test(test_audit_parse_delete_folder_hex4_error),
         cmocka_unit_test(test_audit_parse_delete_folder_hex5_error),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_error, test_audit_read_events_setup, test_audit_read_events_teardown),
-        cmocka_unit_test_setup_teardown(test_audit_read_events_select_case_0_healthcheck, test_audit_read_events_setup, test_audit_read_events_teardown),
+        cmocka_unit_test_setup_teardown(test_audit_read_events_select_case_0, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_error_audit_connection_closed, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_error_audit_reconnect, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success, test_audit_read_events_setup, test_audit_read_events_teardown),

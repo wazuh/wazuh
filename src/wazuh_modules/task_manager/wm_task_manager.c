@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
 #else
@@ -212,7 +212,7 @@ STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
         }
         os_free(buffer);
 
-    #ifdef UNIT_TESTING
+    #ifdef WAZUH_UNIT_TESTING
         break;
     #endif
     }

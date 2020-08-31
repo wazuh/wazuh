@@ -1534,7 +1534,7 @@ void test_wm_agent_upgrade_send_upgrade_script_err(void **state)
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8121): The script executed in the agent with error code '2'");
+    expect_string(__wrap__mterror, formatted_msg, "(8121): Script execution failed in the agent.");
 
     int res = wm_agent_upgrade_send_upgrade(agent, wpk_file, installer);
 

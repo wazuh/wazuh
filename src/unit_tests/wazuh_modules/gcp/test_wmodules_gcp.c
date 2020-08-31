@@ -18,6 +18,10 @@
 #include "../../os_xml/os_xml.h"
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/wm_gcp.h"
+#include "../../wrappers/libc/stdlib_wrappers.h"
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/schedule_scan_wrappers.h"
 
 static const char *XML_ENABLED = "enabled";
 static const char *XML_PROJECT_ID = "project_id";
@@ -57,50 +61,6 @@ int replace_configuration_value(XML_NODE nodes, const char *tag, const char *new
     }
     // If we got here, the given tag was not found
     return -2;
-}
-
-/* wraps */
-int __wrap_sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char *MODULE_NAME) {
-    check_expected_ptr(nodes);
-    check_expected(MODULE_NAME);
-
-    return mock();
-}
-
-char *__wrap_realpath(const char *path, char *resolved_path) {
-    check_expected(path);
-
-    snprintf(resolved_path, PATH_MAX, "%s", mock_type(char*));
-
-    return mock_type(char*);
-}
-
-int __wrap_IsFile(const char *file) {
-    check_expected(file);
-
-    return mock();
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
 }
 
 /* setup/teardown */

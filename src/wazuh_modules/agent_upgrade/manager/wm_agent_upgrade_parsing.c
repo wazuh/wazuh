@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
 #else

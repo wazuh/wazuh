@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifdef UNIT_TESTING
-// Remove static qualifier when unit testing
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
 #define STATIC
 #else
 #define STATIC static

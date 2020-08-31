@@ -145,7 +145,7 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
         os_free(buffer);
         close(peer);
 
-    #ifdef UNIT_TESTING
+    #ifdef WAZUH_UNIT_TESTING
         break;
     #endif
     }
