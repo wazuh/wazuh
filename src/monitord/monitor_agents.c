@@ -82,7 +82,7 @@ void monitor_agents()
     /* Delete old agents when using key-polling module */
     if(mond.delete_old_agents > 0) {
         char **na_agents;
-        na_agents = get_agents_by_keepalive(GA_NOTACTIVE, mond.delete_old_agents);
+        na_agents = get_agents_by_keepalive(GA_NOTACTIVE, mond.delete_old_agents * 60);
 
         char **na_agents_p = na_agents;
 
