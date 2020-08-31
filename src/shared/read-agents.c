@@ -1317,7 +1317,6 @@ char **get_agents_by_keepalive(int flag, int keepalive){
         }
 
         cJSON_Delete(json_agt_info);
-
         os_realloc(agents_array, (array_size + 2) * sizeof(char *), agents_array);
         os_strdup(agent_name_ip, agents_array[array_size]);
 
