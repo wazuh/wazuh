@@ -404,7 +404,7 @@ int wdb_parse(char * input, char * output) {
 
         if (next = wstr_chr(query, ' '), next) {
             *next++ = '\0';
-        }        
+        }
 
         if (strcmp(query, "sql") == 0) {
             if (!next) {
@@ -427,7 +427,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "insert-agent") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for insert-agent.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -436,7 +436,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "update-agent-name") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for update-agent-name.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -445,7 +445,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "update-agent-version") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for update-agent-version.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -454,7 +454,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "get-labels") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for get-labels.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -463,7 +463,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "set-labels") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for set-labels.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -472,7 +472,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "update-keepalive") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for update-keepalive.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -481,7 +481,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "delete-agent") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for delete-agent.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -490,7 +490,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "select-agent-name") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for select-agent-name.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -499,7 +499,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "select-agent-group") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for select-agent-group.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -508,7 +508,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "delete-agent-belong") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for delete-agent-belong.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -517,7 +517,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "find-agent") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for find-agent.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -526,7 +526,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "select-fim-offset") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for select-fim-offset.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -535,7 +535,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "select-reg-offset") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for select-reg-offset.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -544,7 +544,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "update-fim-offset") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for update-fim-offset.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -553,7 +553,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "update-reg-offset") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for update-reg-offset.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -562,7 +562,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "select-agent-status") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for select-agent-status.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -571,7 +571,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "update-agent-status") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for update-agent-status.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -580,7 +580,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "update-agent-group") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for update-agent-group.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -589,7 +589,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "find-group") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for find-group.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -598,7 +598,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "insert-agent-group") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for insert-agent-group.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -607,7 +607,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "insert-agent-belong") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for insert-agent-belong.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -616,7 +616,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "delete-group-belong") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for delete-group-belong.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -625,7 +625,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "delete-group") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for delete-group.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -635,19 +635,47 @@ int wdb_parse(char * input, char * output) {
         } else if (strcmp(query, "select-groups") == 0) {
             result = wdb_parse_global_select_groups(wdb, output);
         } else if (strcmp(query, "select-keepalive") == 0) {
-            result = wdb_parse_global_select_agent_keepalive(wdb, next, output);
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for select-keepalive.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_select_agent_keepalive(wdb, next, output);
+            }
         } else if (strcmp(query, "sync-agent-info-get") == 0) {
             result = wdb_parse_global_sync_agent_info_get(wdb, next, output);
         } else if (strcmp(query, "sync-agent-info-set") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug1("Global DB Invalid DB query syntax for sync-agent-info-set.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
                 result = wdb_parse_global_sync_agent_info_set(wdb, next, output);
             }
-        } else {
+        } 
+        else if (strcmp(query, "get-agents-by-keepalive") == 0) { 
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for get-agents-by-keepalive.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_get_agents_by_keepalive(wdb, next, output);
+            }
+        }
+        else if (strcmp(query, "get-all-agents") == 0) { 
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for get-all-agents.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_get_all_agents(wdb, next, output);
+            }
+        }
+        else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
@@ -4100,10 +4128,10 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
             // Getting each field
             int id = j_id->valueint;
             char* name = j_name->valuestring;
-            char* ip = (j_ip && cJSON_IsString(j_ip)) ? j_ip->valuestring : NULL;
-            char* register_ip = (j_register_ip && cJSON_IsString(j_register_ip)) ? j_register_ip->valuestring : NULL;
-            char* internal_key = (j_internal_key && cJSON_IsString(j_internal_key)) ? j_internal_key->valuestring : NULL;
-            char* group = (j_group && cJSON_IsString(j_group)) ? j_group->valuestring : NULL;
+            char* ip = cJSON_IsString(j_ip) ? j_ip->valuestring : NULL;
+            char* register_ip = cJSON_IsString(j_register_ip) ? j_register_ip->valuestring : NULL;
+            char* internal_key = cJSON_IsString(j_internal_key) ? j_internal_key->valuestring : NULL;
+            char* group = cJSON_IsString(j_group) ? j_group->valuestring : NULL;
             int date_add = j_date_add->valueint;
 
             if (OS_SUCCESS != wdb_global_insert_agent(wdb, id, name, ip, register_ip, internal_key, group, date_add)) {
@@ -4218,22 +4246,23 @@ int wdb_parse_global_update_agent_version(wdb_t * wdb, char * input, char * outp
         if (cJSON_IsNumber(j_id)) {
             // Getting each field
             int id = j_id->valueint;
-            char *os_name = (j_os_name && cJSON_IsString(j_os_name)) ? j_os_name->valuestring : NULL;
-            char *os_version = (j_os_version && cJSON_IsString(j_os_version)) ? j_os_version->valuestring : NULL;
-            char *os_major = (j_os_major && cJSON_IsString(j_os_major)) ? j_os_major->valuestring : NULL;
-            char *os_minor = (j_os_minor && cJSON_IsString(j_os_minor)) ? j_os_minor->valuestring : NULL;
-            char *os_codename = (j_os_codename && cJSON_IsString(j_os_codename)) ? j_os_codename->valuestring : NULL;
-            char *os_platform = (j_os_platform && cJSON_IsString(j_os_platform)) ? j_os_platform->valuestring : NULL;
-            char *os_build = (j_os_build && cJSON_IsString(j_os_build)) ? j_os_build->valuestring : NULL;
-            char *os_uname = (j_os_uname && cJSON_IsString(j_os_uname)) ? j_os_uname->valuestring : NULL;
-            char *os_arch = (j_os_arch && cJSON_IsString(j_os_arch)) ? j_os_arch->valuestring : NULL;
-            char *version = (j_version && cJSON_IsString(j_version)) ? j_version->valuestring : NULL;
-            char *config_sum = (j_config_sum && cJSON_IsString(j_config_sum)) ? j_config_sum->valuestring : NULL;
-            char *merged_sum = (j_merged_sum && cJSON_IsString(j_merged_sum)) ? j_merged_sum->valuestring : NULL;
-            char *manager_host = (j_manager_host && cJSON_IsString(j_manager_host)) ? j_manager_host->valuestring : NULL;
-            char *node_name = (j_node_name && cJSON_IsString(j_node_name)) ? j_node_name->valuestring : NULL;
-            char *agent_ip = (j_agent_ip && cJSON_IsString(j_agent_ip)) ? j_agent_ip->valuestring : NULL;
-            wdb_sync_status_t sync_status = (j_sync_status && j_sync_status->valueint == 1) ? WDB_SYNC_REQ : WDB_SYNCED;
+            char *os_name = cJSON_IsString(j_os_name) ? j_os_name->valuestring : NULL;
+            char *os_version = cJSON_IsString(j_os_version) ? j_os_version->valuestring : NULL;
+            char *os_major = cJSON_IsString(j_os_major) ? j_os_major->valuestring : NULL;
+            char *os_minor = cJSON_IsString(j_os_minor) ? j_os_minor->valuestring : NULL;
+            char *os_codename = cJSON_IsString(j_os_codename) ? j_os_codename->valuestring : NULL;
+            char *os_platform = cJSON_IsString(j_os_platform) ? j_os_platform->valuestring : NULL;
+            char *os_build = cJSON_IsString(j_os_build) ? j_os_build->valuestring : NULL;
+            char *os_uname = cJSON_IsString(j_os_uname) ? j_os_uname->valuestring : NULL;
+            char *os_arch = cJSON_IsString(j_os_arch) ? j_os_arch->valuestring : NULL;
+            char *version = cJSON_IsString(j_version) ? j_version->valuestring : NULL;
+            char *config_sum = cJSON_IsString(j_config_sum) ? j_config_sum->valuestring : NULL;
+            char *merged_sum = cJSON_IsString(j_merged_sum) ? j_merged_sum->valuestring : NULL;
+            char *manager_host = cJSON_IsString(j_manager_host) ? j_manager_host->valuestring : NULL;
+            char *node_name = cJSON_IsString(j_node_name) ? j_node_name->valuestring : NULL;
+            char *agent_ip = cJSON_IsString(j_agent_ip) ? j_agent_ip->valuestring : NULL;
+            wdb_sync_status_t sync_status = (cJSON_IsNumber(j_sync_status) && j_sync_status->valueint == 1) ? 
+                                            WDB_SYNC_REQ : WDB_SYNCED;
 
             if (OS_SUCCESS != wdb_global_update_agent_version(wdb, id, os_name, os_version, os_major, os_minor, os_codename,
                                                               os_platform, os_build, os_uname, os_arch, version, config_sum,
@@ -4356,7 +4385,7 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
         if (cJSON_IsNumber(j_id) && cJSON_IsNumber(j_sync_status)) {
             // Getting each field
             int id = j_id->valueint;
-            wdb_sync_status_t sync_status = (j_sync_status && j_sync_status->valueint == 1) ? WDB_SYNC_REQ : WDB_SYNCED;
+            wdb_sync_status_t sync_status = (j_sync_status->valueint == 1) ? WDB_SYNC_REQ : WDB_SYNCED;
 
             if (OS_SUCCESS != wdb_global_update_agent_keepalive(wdb, id, sync_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
@@ -4986,6 +5015,90 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
 
     snprintf(output, OS_MAXSTR + 1, "ok");
     cJSON_Delete(root);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output) {
+    static int start_id = 0;
+    char* out = NULL;
+    char *next = NULL;
+    char comparator = '<';
+    int keep_alive = 0;
+    const char delim[2] = " ";
+    char *savedptr = NULL;
+
+    /* Get keepalive condition */
+    next = strtok_r(input, delim, &savedptr);
+    if (next == NULL || strcmp(input, "condition") != 0) {
+        mdebug1("Invalid arguments 'condition' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
+        return WDB_CHUNKS_ERROR;
+    }
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments 'condition' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
+        return WDB_CHUNKS_ERROR;
+    }
+    comparator = *next;
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+       mdebug1("Invalid arguments 'condition' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
+        return WDB_CHUNKS_ERROR;
+    }
+    keep_alive = atoi(next);
+    
+    /* Get start_id*/
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL || strcmp(next, "start_id") != 0) {
+        mdebug1("Invalid arguments 'condition' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
+        return WDB_CHUNKS_ERROR;
+    }
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments 'condition' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
+        return WDB_CHUNKS_ERROR;
+    }
+    start_id = atoi(next);
+    
+    wdbc_result status = wdb_global_get_agents_by_keepalive(wdb, &start_id, comparator, keep_alive, &out);
+    snprintf(output, OS_MAXSTR + 1, "%s %s", WDBC_RESULT[status], out);
+
+    os_free(out)
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_get_all_agents(wdb_t* wdb, char* input, char* output) {
+    int start_id = 0;
+    char* out = NULL;
+    char *next = NULL;
+    const char delim[2] = " ";
+    char *savedptr = NULL;
+    
+    /* Get start_id*/
+    next = strtok_r(input, delim, &savedptr);
+    if (next == NULL || strcmp(input, "start_id") != 0) {
+        mdebug1("Invalid arguments 'start_id' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
+        return WDB_CHUNKS_ERROR;
+    }
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments 'start_id' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
+        return WDB_CHUNKS_ERROR;
+    }
+    start_id = atoi(next);
+    
+    wdbc_result status = wdb_global_get_all_agents(wdb, &start_id, &out);
+    snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
+    
+    os_free(out)
 
     return OS_SUCCESS;
 }

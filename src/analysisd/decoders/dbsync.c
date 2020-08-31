@@ -16,7 +16,7 @@
 #include "../eventinfo.h"
 #include "wazuhdb_op.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when unit testing */
 #define static
 

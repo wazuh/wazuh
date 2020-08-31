@@ -2432,6 +2432,8 @@ void test_wdb_set_agent_offset_error_invalid_type(void **state)
     expect_string(__wrap_cJSON_AddNumberToObject, name, "offset");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 100);
 
+    expect_function_call(__wrap_cJSON_Delete);
+
     ret = wdb_set_agent_offset(id, type, offset);
 
     assert_int_equal(OS_INVALID, ret);

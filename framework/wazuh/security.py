@@ -1,7 +1,7 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-import json
+
 import re
 from copy import deepcopy
 from functools import lru_cache
@@ -10,13 +10,13 @@ import api.configuration as configuration
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.core.security import check_relationships, invalid_users_tokens, revoke_tokens
+from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, revoke_tokens
 from wazuh.core.security import load_spec, update_security_conf
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager, \
-    TokenManager, UserRolesManager, RolesRulesManager, RulesManager, required_rules_for_role
-from wazuh.rbac.orm import SecurityError, admin_role_ids, admin_policy_ids
+    TokenManager, UserRolesManager, RolesRulesManager, RulesManager
+from wazuh.rbac.orm import SecurityError
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
@@ -171,7 +171,7 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
         else:
             result.affected_items.append(auth.get_user_id(user_id[0]))
             result.total_affected_items += 1
-            invalid_users_tokens(users=[user_id[0]])
+            invalid_users_tokens(users=user_id)
 
     return result
 
@@ -208,9 +208,8 @@ def remove_users(user_ids):
             elif user:
                 result.affected_items.append(user)
                 result.total_affected_items += 1
-                invalid_users_tokens(users=[user_id])
-        result.affected_items.sort(key=str)
 
+        result.affected_items.sort(key=str)
     return result
 
 
@@ -266,8 +265,6 @@ def remove_roles(role_ids):
     with RolesManager() as rm:
         for r_id in role_ids:
             role = rm.get_role_id(int(r_id))
-            if role != SecurityError.ROLE_NOT_EXIST and int(r_id) not in admin_role_ids:
-                related_users = check_relationships([role['id']])
             role_delete = rm.delete_role(int(r_id))
             if role_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=r_id, error=WazuhError(4008))
@@ -276,7 +273,8 @@ def remove_roles(role_ids):
             elif role:
                 result.affected_items.append(role)
                 result.total_affected_items += 1
-                invalid_users_tokens(users=list(related_users))
+
+        invalid_roles_tokens(roles=[role['id'] for role in result.affected_items])
         result.affected_items = sorted(result.affected_items, key=lambda i: i['id'])
 
     return result
@@ -330,7 +328,7 @@ def update_role(role_id=None, name=None):
             updated = rm.get_role_id(role_id[0])
             result.affected_items.append(updated)
             result.total_affected_items += 1
-            invalid_users_tokens(roles=[updated['id']])
+            invalid_roles_tokens(roles=role_id)
 
     return result
 
@@ -387,8 +385,6 @@ def remove_policies(policy_ids=None):
     with PoliciesManager() as pm:
         for p_id in policy_ids:
             policy = pm.get_policy_id(int(p_id))
-            if policy != SecurityError.POLICY_NOT_EXIST and int(p_id) not in admin_policy_ids:
-                related_users = check_relationships(policy['roles'])
             policy_delete = pm.delete_policy(int(p_id))
             if policy_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=p_id, error=WazuhError(4008))
@@ -397,7 +393,8 @@ def remove_policies(policy_ids=None):
             elif policy:
                 result.affected_items.append(policy)
                 result.total_affected_items += 1
-                invalid_users_tokens(users=list(related_users))
+                invalid_roles_tokens(roles=policy['roles'])
+
         result.affected_items = sorted(result.affected_items, key=lambda i: i['id'])
 
     return result
@@ -454,7 +451,7 @@ def update_policy(policy_id=None, name=None, policy=None):
             updated = pm.get_policy_id(policy_id[0])
             result.affected_items.append(updated)
             result.total_affected_items += 1
-            invalid_users_tokens(roles=updated['roles'])
+            invalid_roles_tokens(roles=updated['roles'])
 
     return result
 
@@ -535,11 +532,6 @@ def remove_rules(rule_ids=None):
     with RulesManager() as rum:
         for r_id in rule_ids:
             rule = rum.get_rule(int(r_id))
-            if rule != SecurityError.RULE_NOT_EXIST and int(r_id) not in {required_rule
-                                                                          for r in required_rules_for_role.values()
-                                                                          for required_rule in r}:
-                related_users = check_relationships(rule['roles'])
-
             role_delete = rum.delete_rule(int(r_id))
             if role_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=r_id, error=WazuhError(4008))
@@ -548,7 +540,8 @@ def remove_rules(rule_ids=None):
             elif rule:
                 result.affected_items.append(rule)
                 result.total_affected_items += 1
-                invalid_users_tokens(users=list(related_users))
+                invalid_roles_tokens(roles=rule['roles'])
+
         result.affected_items = sorted(result.affected_items, key=lambda i: i['id'])
 
     return result
@@ -581,7 +574,7 @@ def update_rule(rule_id=None, name=None, rule=None):
             updated = rum.get_rule(rule_id[0])
             result.affected_items.append(updated)
             result.total_affected_items += 1
-            invalid_users_tokens(roles=updated['roles'])
+            invalid_roles_tokens(roles=updated['roles'])
 
     return result
 
@@ -653,7 +646,7 @@ def set_user_role(user_id, role_ids, position=None):
             with AuthenticationManager() as auth:
                 result.affected_items.append(auth.get_user_id(user_id[0]))
             result.affected_items.sort(key=str)
-            invalid_users_tokens(users=[user_id[0]])
+            invalid_users_tokens(users=user_id)
 
     return result
 
@@ -691,7 +684,7 @@ def remove_user_role(user_id, role_ids):
             with AuthenticationManager() as auth:
                 result.affected_items.append(auth.get_user_id(user_id[0]))
             result.affected_items.sort(key=str)
-            invalid_users_tokens(users=[user_id[0]])
+            invalid_users_tokens(users=user_id)
 
     return result
 
@@ -726,8 +719,13 @@ def set_role_rule(role_id, rule_ids):
         if success:
             with RolesManager() as rm:
                 result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
-                role = rm.get_role_id(role_id=role_id[0])
-                invalid_users_tokens(roles=[role['id']])
+                # Invalidate users with auth_context
+                with AuthenticationManager() as am:
+                    user_list = list()
+                    for user in am.get_users():
+                        if am.user_allow_run_as(username=user['username']):
+                            user_list.append(user['user_id'])
+                invalid_users_tokens(users=user_list)
             result.affected_items.sort(key=str)
 
     return result
@@ -763,8 +761,13 @@ def remove_role_rule(role_id, rule_ids):
         if success:
             with RolesManager() as rm:
                 result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
-                role = rm.get_role_id(role_id=role_id[0])
-                invalid_users_tokens(roles=[role['id']])
+                # Invalidate users with auth_context
+                with AuthenticationManager() as am:
+                    user_list = list()
+                    for user in am.get_users():
+                        if am.user_allow_run_as(username=user['username']):
+                            user_list.append(user['user_id'])
+                invalid_users_tokens(users=user_list)
             result.affected_items.sort(key=str)
 
     return result
@@ -813,7 +816,7 @@ def set_role_policy(role_id, policy_ids, position=None):
             with RolesManager() as rm:
                 result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
                 role = rm.get_role_id(role_id=role_id[0])
-                invalid_users_tokens(roles=[role['id']])
+                invalid_roles_tokens(roles=[role['id']])
             result.affected_items.sort(key=str)
 
     return result
@@ -850,7 +853,7 @@ def remove_role_policy(role_id, policy_ids):
             with RolesManager() as rm:
                 result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
                 role = rm.get_role_id(role_id=role_id[0])
-                invalid_users_tokens(roles=[role['id']])
+                invalid_roles_tokens(roles=[role['id']])
             result.affected_items.sort(key=str)
 
     return result
@@ -859,7 +862,8 @@ def remove_role_policy(role_id, policy_ids):
 def revoke_current_user_tokens():
     """Revoke all current user's tokens"""
     with TokenManager() as tm:
-        tm.add_user_rules(users={common.current_user.get()})
+        with AuthenticationManager() as am:
+            tm.add_user_roles_rules(users={am.get_user(common.current_user.get())['id']})
 
     return WazuhResult({'msg': f'User {common.current_user.get()} logout correctly.'})
 

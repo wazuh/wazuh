@@ -140,7 +140,7 @@ class UserRoles(_Base):
 
 
 # Declare basic tables
-class TokenBlacklist(_Base):
+class UsersTokenBlacklist(_Base):
     """
     This table contains the users with an invalid token and for how long
     The information stored is:
@@ -150,12 +150,12 @@ class TokenBlacklist(_Base):
         the deadline will be the time of token creation plus the time of token validity.
         This way, when we delete this rule, we ensure the invalid tokens have already expired.
     """
-    __tablename__ = "token_blacklist"
+    __tablename__ = "users_token_blacklist"
 
     user_id = Column('user_id', Integer, primary_key=True)
     nbf_invalid_until = Column('nbf_invalid_until', Integer)
     is_valid_until = Column('is_valid_until', Integer)
-    __table_args__ = (UniqueConstraint('user_id', name='user_rule'),)
+    __table_args__ = (UniqueConstraint('user_id', name='user_invalidation_rule'),)
 
     def __init__(self, user_id):
         self.user_id = user_id
@@ -168,6 +168,37 @@ class TokenBlacklist(_Base):
         :return: Dict with the information
         """
         return {'user_id': self.user_id, 'nbf_invalid_until': self.nbf_invalid_until,
+                'is_valid_until': self.is_valid_until}
+
+
+class RolesTokenBlacklist(_Base):
+    """
+    This table contains the roles with an invalid token and for how long
+    The information stored is:
+        role_id: Affected role id
+        nbf_invalid_until: The tokens that have an nbf prior to this timestamp will be invalidated
+        is_valid_until: Deadline for the rule's validity. To ensure that we can delete this rule,
+        the deadline will be the time of token creation plus the time of token validity.
+        This way, when we delete this rule, we ensure the invalid tokens have already expired.
+    """
+    __tablename__ = "roles_token_blacklist"
+
+    role_id = Column('role_id', Integer, primary_key=True)
+    nbf_invalid_until = Column('nbf_invalid_until', Integer)
+    is_valid_until = Column('is_valid_until', Integer)
+    __table_args__ = (UniqueConstraint('role_id', name='role_invalidation_rule'),)
+
+    def __init__(self, role_id):
+        self.role_id = role_id
+        self.nbf_invalid_until = int(time())
+        self.is_valid_until = self.nbf_invalid_until + security_conf['auth_token_exp_timeout']
+
+    def to_dict(self):
+        """Return the information of the token rule.
+
+        :return: Dict with the information
+        """
+        return {'role_id': self.role_id, 'nbf_invalid_until': self.nbf_invalid_until,
                 'is_valid_until': self.is_valid_until}
 
 
@@ -369,13 +400,15 @@ class TokenManager:
     all the methods needed for the token blacklist administration.
     """
 
-    def is_token_valid(self, user_id: int, token_nbf_time: int):
+    def is_token_valid(self, token_nbf_time: int, user_id: int = None, role_id: int = None):
         """Check if specified token is valid
 
         Parameters
         ----------
         user_id : int
-            Current token's username
+            Current token's user id
+        role_id : int
+            Current token's role id
         token_nbf_time : int
             Token's issue timestamp
 
@@ -384,65 +417,87 @@ class TokenManager:
         True if is valid, False if not
         """
         try:
-            rule = self.session.query(TokenBlacklist).filter_by(user_id=user_id).first()
-            return not rule or (token_nbf_time > rule.nbf_invalid_until)
+            user_rule = self.session.query(UsersTokenBlacklist).filter_by(user_id=user_id).first()
+            role_rule = self.session.query(RolesTokenBlacklist).filter_by(role_id=role_id).first()
+            return (not user_rule or (token_nbf_time > user_rule.nbf_invalid_until)) and \
+                   (not role_rule or (token_nbf_time > role_rule.nbf_invalid_until))
         except IntegrityError:
             return True
 
     def get_all_rules(self):
-        """Return a dictionary where keys are user_ids and the value of each them is nbf_invalid_until
+        """Return two dictionaries where keys are role_ids and user_ids and the value of each them is nbf_invalid_until
 
         Returns
         -------
         dict
         """
         try:
-            rules = map(TokenBlacklist.to_dict, self.session.query(TokenBlacklist).all())
-            format_rules = dict()
-            for rule in list(rules):
-                format_rules[rule['user_id']] = rule['nbf_invalid_until']
-            return format_rules
+            users_rules = map(UsersTokenBlacklist.to_dict, self.session.query(UsersTokenBlacklist).all())
+            roles_rules = map(RolesTokenBlacklist.to_dict, self.session.query(RolesTokenBlacklist).all())
+            users_format_rules, roles_format_rules = dict(), dict()
+            for rule in list(users_rules):
+                users_format_rules[rule['user_id']] = rule['nbf_invalid_until']
+            for rule in list(roles_rules):
+                roles_format_rules[rule['role_id']] = rule['nbf_invalid_until']
+            return users_format_rules, roles_format_rules
         except IntegrityError:
             return SecurityError.TOKEN_RULE_NOT_EXIST
 
-    def add_user_rules(self, users: set):
-        """Add new rules for users-token. Both, nbf_invalid_until and is_valid_until are generated automatically
+    def add_user_roles_rules(self, users: set = None, roles: set = None):
+        """Add new rules for users-token or roles-token.
+        Both, nbf_invalid_until and is_valid_until are generated automatically
 
         Parameters
         ----------
         users : set
             Set with the affected users
+        roles : set
+            Set with the affected roles
 
         Returns
         -------
         True if the success, SecurityError.ALREADY_EXIST if failed
         """
+        if users is None:
+            users = set()
+        if roles is None:
+            roles = set()
+
         try:
             self.delete_all_expired_rules()
             for user_id in users:
                 self.delete_rule(user_id=user_id)
-                self.session.add(TokenBlacklist(user_id=user_id))
+                self.session.add(UsersTokenBlacklist(user_id=user_id))
                 self.session.commit()
+            for role_id in roles:
+                self.delete_rule(role_id=role_id)
+                self.session.add(RolesTokenBlacklist(role_id=role_id))
+                self.session.commit()
+
             return True
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
 
-    def delete_rule(self, user_id: str):
-        """Remove the rule for the specified user
+    def delete_rule(self, user_id: int = None, role_id: int = None):
+        """Remove the rule for the specified role
 
         Parameters
         ----------
         user_id : int
             Desired user_id
+        role_id : int
+            Desired role_id
 
         Returns
         -------
         True if success, SecurityError.TOKEN_RULE_NOT_EXIST if failed
         """
         try:
-            self.session.query(TokenBlacklist).filter_by(user_id=user_id).delete()
+            self.session.query(UsersTokenBlacklist).filter_by(user_id=user_id).delete()
+            self.session.query(RolesTokenBlacklist).filter_by(role_id=role_id).delete()
             self.session.commit()
+
             return True
         except IntegrityError:
             self.session.rollback()
@@ -453,19 +508,27 @@ class TokenManager:
 
         Returns
         -------
-        List of removed user's rules
+        List of removed user and role rules
         """
         try:
-            list_user = list()
+            list_users, list_roles = list(), list()
             current_time = int(time())
-            tokens_in_blacklist = self.session.query(TokenBlacklist).all()
-            for user_token in tokens_in_blacklist:
-                token_rule = self.session.query(TokenBlacklist).filter_by(user_id=user_token.user_id)
+            users_tokens_in_blacklist = self.session.query(UsersTokenBlacklist).all()
+            for user_token in users_tokens_in_blacklist:
+                token_rule = self.session.query(UsersTokenBlacklist).filter_by(user_id=user_token.user_id)
                 if token_rule.first() and current_time > token_rule.first().is_valid_until:
                     token_rule.delete()
                     self.session.commit()
-                    list_user.append(user_token.user_id)
-            return list_user
+                    list_users.append(user_token.user_id)
+            roles_tokens_in_blacklist = self.session.query(RolesTokenBlacklist).all()
+            for role_token in roles_tokens_in_blacklist:
+                token_rule = self.session.query(RolesTokenBlacklist).filter_by(role_id=role_token.role_id)
+                if token_rule.first() and current_time > token_rule.first().is_valid_until:
+                    token_rule.delete()
+                    self.session.commit()
+                    list_roles.append(role_token.role_id)
+
+            return list_users, list_roles
         except IntegrityError:
             self.session.rollback()
             return False
@@ -475,16 +538,24 @@ class TokenManager:
 
         Returns
         -------
-        List of removed user's rules
+        List of removed user and role rules
         """
         try:
-            list_user = list()
-            tokens_in_blacklist = self.session.query(TokenBlacklist).all()
-            for user_token in tokens_in_blacklist:
-                list_user.append(user_token.user_id)
-                self.session.query(TokenBlacklist).filter_by(user_id=user_token.user_id).delete()
-                self.session.commit()
-            return list_user
+            list_users, list_roles = list(), list()
+            users_tokens_in_blacklist = self.session.query(UsersTokenBlacklist).all()
+            roles_tokens_in_blacklist = self.session.query(RolesTokenBlacklist).all()
+            clean = False
+            for user_token in users_tokens_in_blacklist:
+                list_roles.append(user_token.user_id)
+                self.session.query(UsersTokenBlacklist).filter_by(user_id=user_token.user_id).delete()
+                clean = True
+            for role_token in roles_tokens_in_blacklist:
+                list_roles.append(role_token.role_id)
+                self.session.query(RolesTokenBlacklist).filter_by(role_id=role_token.role_id).delete()
+                clean = True
+
+            clean and self.session.commit()
+            return list_users, list_roles
         except IntegrityError:
             self.session.rollback()
             return False
@@ -648,7 +719,8 @@ class AuthenticationManager:
         for user in users:
             if user is not None:
                 user_dict = {
-                    'user_id': str(user.id)
+                    'user_id': str(user.id),
+                    'username': user.username
                 }
                 user_ids.append(user_dict)
         return user_ids
@@ -1759,6 +1831,7 @@ class RolesRulesManager:
     This class is the manager of the relationships between the roles and the rules. This class provides
     all the methods needed for the roles-rules administration.
     """
+
     def add_rule_to_role(self, rule_id: int, role_id: int):
         """Add a relation between one specified role and one specified rule.
 

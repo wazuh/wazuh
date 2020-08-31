@@ -10,7 +10,7 @@
 
 #include "syscheck_op.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 /* Replace assert with mock_assert */
 extern void mock_assert(const int result, const char* const expression,
                         const char * const file, const int line);
@@ -19,27 +19,14 @@ extern void mock_assert(const int result, const char* const expression,
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 
 #ifdef WIN32
-#include "unit_tests/wrappers/shared/syscheck_op.h"
+#include "unit_tests/wrappers/windows/aclapi_wrappers.h"
+#include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
+#include "unit_tests/wrappers/windows/fileapi_wrappers.h"
+#include "unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "unit_tests/wrappers/windows/sddl_wrappers.h"
+#include "unit_tests/wrappers/windows/securitybaseapi_wrappers.h"
+#include "unit_tests/wrappers/windows/winbase_wrappers.h"
 
-#undef  CreateFile
-#define CreateFile      wrap_syscheck_op_CreateFile
-#define CloseHandle     wrap_syscheck_op_CloseHandle
-#define GetLastError    wrap_syscheck_op_GetLastError
-#undef  FormatMessage
-#define FormatMessage   wrap_syscheck_op_FormatMessage
-#define LocalFree       wrap_syscheck_op_LocalFree
-#define GetSecurityInfo wrap_syscheck_op_GetSecurityInfo
-#undef  ConvertSidToStringSid
-#define ConvertSidToStringSid   wrap_syscheck_op_ConvertSidToStringSid
-#undef  LookupAccountSid
-#define LookupAccountSid        wrap_syscheck_op_LookupAccountSid
-#define IsValidSid              wrap_syscheck_op_IsValidSid
-#undef  GetFileSecurity
-#define GetFileSecurity             wrap_syscheck_op_GetFileSecurity
-#define GetSecurityDescriptorDacl   wrap_syscheck_op_GetSecurityDescriptorDacl
-#define GetAclInformation           wrap_syscheck_op_GetAclInformation
-#define GetAce                      wrap_syscheck_op_GetAce
-#define GetFileAttributesA          wrap_syscheck_op_GetFileAttributesA
 #endif
 #endif
 
@@ -53,18 +40,22 @@ int delete_target_file(const char *path) {
     drive[1] = path[0];
 
     char *windows_path = strchr(path, ':');
+
     if (windows_path == NULL) {
         mdebug1("Incorrect path. This does not contain ':' ");
         return 0;
     }
-    strncat(full_path, drive,2);
+
+    strncat(full_path, drive, 2);
     strncat(full_path, (windows_path + 1), PATH_MAX - strlen(full_path) - 1);
 #else
     strncat(full_path, path, PATH_MAX - strlen(full_path) - 1);
 #endif
+
     if(rmdir_ex(full_path) == 0){
         return(remove_empty_folders(full_path));
     }
+
     return 1;
 }
 
@@ -597,7 +588,7 @@ char *unescape_syscheck_field(char *sum) {
     return NULL;
 }
 
-char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
+char *get_user(int uid) {
     struct passwd pwd;
     struct passwd *result;
     char *buf;
@@ -656,7 +647,7 @@ void ag_send_syscheck(char * message) {
 
 #else /* #ifndef WIN32 */
 
-char *get_user(const char *path, __attribute__((unused)) int uid, char **sid) {
+char *get_user(const char *path, char **sid) {
     DWORD dwRtnCode = 0;
     DWORD dwSecurityInfoErrorCode = 0;
     PSID pSidOwner = NULL;

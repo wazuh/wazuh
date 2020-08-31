@@ -179,12 +179,14 @@ int wdbc_parse_result(char *result, char **payload) {
         *payload = ptr;
     }
 
-    if (!strcmp(result, "ok")) {
+    if (!strcmp(result, WDBC_RESULT[WDBC_OK])) {
         retval = WDBC_OK;
-    } else if (!strcmp(result, "err")) {
+    } else if (!strcmp(result, WDBC_RESULT[WDBC_ERROR])) {
         retval = WDBC_ERROR;
-    } else if (!strcmp(result, "ign")) {
+    } else if (!strcmp(result, WDBC_RESULT[WDBC_IGNORE])) {
         retval = WDBC_IGNORE;
+    } else if (!strcmp(result, WDBC_RESULT[WDBC_DUE])) {
+        retval = WDBC_DUE;
     }
 
     return retval;
