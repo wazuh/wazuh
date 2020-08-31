@@ -5,9 +5,10 @@ import json
 
 from wazuh import WazuhError
 from wazuh.core.logtest import send_logtest_msg
+from wazuh.rbac.decorators import expose_resources
 
 
-# TODO add RBAC
+@expose_resources(actions=['logtest:run'], resources=['*:*:*'])
 def get_logtest_output(**kwargs):
     """Get the logtest output after sending a JSON to its socket.
 
@@ -36,7 +37,7 @@ def get_logtest_output(**kwargs):
     return json.loads(response)
 
 
-# TODO add RBAC
+@expose_resources(actions=['logtest:end_session'], resources=['*:*:*'])
 def end_logtest_session(token: str = None):
     """End the logtest session for the introduced token.
 
