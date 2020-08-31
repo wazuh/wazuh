@@ -18,6 +18,7 @@
 #include "external/sqlite/sqlite3.h"
 #include "syscheck_op.h"
 #include "rootcheck_op.h"
+#include "wazuhdb_op.h"
 
 #define WDB_AGENT_EMPTY 0
 #define WDB_AGENT_PENDING 1
@@ -130,6 +131,9 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
+    WDB_STMT_GLOBAL_GET_AGENTS,
+    WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE,
+    WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE,
     WDB_STMT_SIZE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
@@ -145,7 +149,6 @@ typedef enum global_db_query {
     SQL_DELETE_AGENT,
     SQL_SELECT_AGENT,
     SQL_SELECT_AGENT_GROUP,
-    SQL_SELECT_AGENTS,
     SQL_FIND_AGENT,
     SQL_SELECT_FIM_OFFSET,
     SQL_SELECT_REG_OFFSET,
@@ -161,7 +164,9 @@ typedef enum global_db_query {
     SQL_DELETE_GROUP_BELONG,
     SQL_DELETE_GROUP,
     SQL_SELECT_GROUPS,
-    SQL_SELECT_KEEPALIVE
+    SQL_SELECT_KEEPALIVE,
+    SQL_GET_AGENTS_BY_KEEPALIVE,
+    SQL_GET_ALL_AGENTS
 } global_db_query;
 
 typedef struct wdb_t {
@@ -197,10 +202,10 @@ typedef enum {
 
 /// Enumeration of sync-agent-info-get-status.
 typedef enum {
-    WDB_CHUNKS_PENDING,       ///< There are still elements to get
-    WDB_CHUNKS_BUFFER_FULL,   ///< There are still elements to get but buffer is full
-    WDB_CHUNKS_COMPLETE,      ///< There aren't any more elements to get
-    WDB_CHUNKS_ERROR          ///< An error occured
+    WDB_CHUNKS_ERROR = -1,  ///< An error occured
+    WDB_CHUNKS_PENDING,     ///< There are still elements to get
+    WDB_CHUNKS_BUFFER_FULL, ///< There are still elements to get but buffer is full
+    WDB_CHUNKS_COMPLETE     ///< There aren't any more elements to get    
 } wdb_chunks_status_t;
 
 extern char *schema_global_sql;
@@ -476,8 +481,29 @@ int wdb_create_profile(const char *path);
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source);
 
-/* Get an array containing the ID of every agent (except 0), ended with -1 */
+/**
+ * @brief Returns an array containing the ID of every agent (except 0), ended with -1.
+ * This method creates and sends a command to WazuhDB to receive the ID of every agent.
+ * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
+ * The array is heap allocated memory that must be freed by the caller.
+ * 
+ * @return Pointer to the array, on success.
+ * @retval NULL on errors.
+ */
 int* wdb_get_all_agents();
+
+/**
+ * @brief Returns an array containing the ID of every agent (except 0), ended with -1 based on its keep_alive.
+ * This method creates and sends a command to WazuhDB to receive the ID of every agent.
+ * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
+ * The array is heap allocated memory that must be freed by the caller.
+ * 
+ * @param condition ">" or "<". The condition to match keep alive.
+ * @param keepalive keep_alive to search the agents.
+ * @return Pointer to the array, on success.
+ * @retval NULL on errors.
+ */
+int* wdb_get_agents_by_keepalive(const char* condition, int keepalive);
 
 /* Fill belongs table on start */
 int wdb_agent_belongs_first_time();
@@ -721,7 +747,7 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to update the agents info from workers.
+ * @brief Function to parse agent_info and update the agents info from workers.
  * 
  * @param wdb The global struct database.
  * @param input String with the agents information in JSON format.
@@ -730,6 +756,28 @@ int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * outpu
  * @retval -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse start_id, condition and keepalive for get-agents-by-keepalive.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with start_id, condition, and keepalive.
+ * @param output Response of the query.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output);
+
+/**
+ * @brief Function to parse start_id get-all-agents.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with start_id, condition, and keepalive.
+ * @param output Response of the query.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_get_all_agents(wdb_t* wdb, char* input, char* output);
 
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
@@ -874,6 +922,36 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
  * @retval -1 On error.
  */
 int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
+
+/**
+ * @brief Gets every agent ID based on the keepalive.
+ *        Response is prepared in one chunk, 
+ *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
+ *        Multiple calls to this function can be required to fully obtain all agents.
+ *       
+ * @param wdb The Global struct database.
+ * @param last_agent_id ID where to start querying.
+ * @param condition '<' or '>' condition used to compare keepalive.
+ * @param keep_alive value of keepalive to search for agents.
+ * @param output buffer where the response is written. Must be de-allocated by the caller.
+ * @return wdbc_result to represent if all agents has being obtained or any error occurred.
+ */
+wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char condition, int keep_alive, char **output);
+
+/**
+ * @brief Gets every agent ID.
+ *        Response is prepared in one chunk, 
+ *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
+ *        Multiple calls to this function can be required to fully obtain all agents.
+ *       
+ * @param wdb The Global struct database.
+ * @param last_agent_id ID where to start querying.
+ * @param output buffer where the response is written. Must be de-allocated by the caller.
+ * @return wdbc_result to represent if all agents has being obtained or any error occurred.
+ */
+wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output);
+
+
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

@@ -443,7 +443,7 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_set_agent_labels(wdb, next, output);
             }
-        } else if (strcmp(query, "sync-agent-info-get") == 0) {             
+        } else if (strcmp(query, "sync-agent-info-get") == 0) { 
             result = wdb_parse_global_sync_agent_info_get(wdb, next, output);
         } else if (strcmp(query, "sync-agent-info-set") == 0) {
             if (!next) {
@@ -454,7 +454,28 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_sync_agent_info_set(wdb, next, output);
             }
-        } else {
+        } 
+        else if (strcmp(query, "get-agents-by-keepalive") == 0) { 
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_get_agents_by_keepalive(wdb, next, output);
+            }
+        }
+        else if (strcmp(query, "get-all-agents") == 0) { 
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_get_all_agents(wdb, next, output);
+            }
+        }
+        else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
@@ -4054,6 +4075,90 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
 
     snprintf(output, OS_MAXSTR + 1, "ok");
     cJSON_Delete(root);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output) {
+    static int start_id = 0;
+    char* out = NULL;
+    char *next = NULL;
+    char comparator = '<';
+    int keep_alive = 0;
+    const char delim[2] = " ";
+    char *savedptr = NULL;
+
+    /* Get keepalive condition */
+    next = strtok_r(input, delim, &savedptr);
+    if (next == NULL || strcmp(input, "condition") != 0) {
+        mdebug1("Invalid arguments 'condition' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
+        return WDB_CHUNKS_ERROR;
+    }
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments 'condition' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
+        return WDB_CHUNKS_ERROR;
+    }
+    comparator = *next;
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+       mdebug1("Invalid arguments 'condition' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
+        return WDB_CHUNKS_ERROR;
+    }
+    keep_alive = atoi(next);
+    
+    /* Get start_id*/
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL || strcmp(next, "start_id") != 0) {
+        mdebug1("Invalid arguments 'condition' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
+        return WDB_CHUNKS_ERROR;
+    }
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments 'condition' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
+        return WDB_CHUNKS_ERROR;
+    }
+    start_id = atoi(next);
+    
+    wdbc_result status = wdb_global_get_agents_by_keepalive(wdb, &start_id, comparator, keep_alive, &out);
+    snprintf(output, OS_MAXSTR + 1, "%s %s", WDBC_RESULT[status], out);
+
+    os_free(out)
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_get_all_agents(wdb_t* wdb, char* input, char* output) {
+    int start_id = 0;
+    char* out = NULL;
+    char *next = NULL;
+    const char delim[2] = " ";
+    char *savedptr = NULL;
+    
+    /* Get start_id*/
+    next = strtok_r(input, delim, &savedptr);
+    if (next == NULL || strcmp(input, "start_id") != 0) {
+        mdebug1("Invalid arguments 'start_id' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
+        return WDB_CHUNKS_ERROR;
+    }
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments 'start_id' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
+        return WDB_CHUNKS_ERROR;
+    }
+    start_id = atoi(next);
+    
+    wdbc_result status = wdb_global_get_all_agents(wdb, &start_id, &out);
+    snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
+    
+    os_free(out)
 
     return OS_SUCCESS;
 }
