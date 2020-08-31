@@ -24,7 +24,7 @@ def get_logtest_output(**kwargs):
     Returns
     -------
     dict
-        Logtest result after analyzing the event.
+        Logtest response after analyzing the event.
     """
     for kwarg in kwargs.keys():
         if kwarg not in ['token', 'event', 'log_format', 'location']:
@@ -36,6 +36,23 @@ def get_logtest_output(**kwargs):
     return json.loads(response)
 
 
+# TODO add RBAC
 def end_logtest_session(token: str = None):
-    # TODO Core-team must confirm what kind of message will end the session
-    raise NotImplemented
+    """End the logtest session for the introduced token.
+
+    Parameters
+    ----------
+    token : str
+        Logtest session token.
+
+    Returns
+    -------
+    dict
+        Logtest response to the message.
+    """
+    if token is None:
+        raise WazuhError(7001)
+
+    response = send_logtest_msg(json.dumps({'remove_session': token}))
+
+    return json.loads(response)

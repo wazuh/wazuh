@@ -5,7 +5,7 @@
 import json
 
 from wazuh.core import common
-from wazuh.core.ossec_socket import OssecSocket
+from wazuh.core.wazuh_socket import OssecSocket
 
 
 def send_logtest_msg(msg: str):
@@ -23,7 +23,7 @@ def send_logtest_msg(msg: str):
     """
     logtest_socket = OssecSocket(common.LOGTEST_SOCKET)
     logtest_socket.send(msg)
-    data = logtest_socket.receive()
+    response = logtest_socket.receive()
     logtest_socket.close()
 
-    return data.rstrip(b'\x00').decode()
+    return response.rstrip(b'\x00').decode()

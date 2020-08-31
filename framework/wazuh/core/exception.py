@@ -545,7 +545,10 @@ class WazuhException(Exception):
 
         # Logtest
         7000: {'message': 'Invalid logtest body',
-               'remediation': 'Please use only valid fields: {token, event, log_format, location}'}
+               'remediation': 'Please use only valid fields: {token, event, log_format, location}'},
+        7001: {'message': 'Error trying to read logtest session token',
+               'remediation': 'Make sure you introduce the token within the field "token"'}
+
         # > 9000: Authd
     }
 
