@@ -19,12 +19,8 @@
 
 static int unit_testing;
 
-#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
-
 void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state);
 bool wm_upgrade_agent_search_upgrade_result(int queue_fd);
-
-#endif
 
 // Setup / teardown
 
@@ -121,8 +117,6 @@ int __wrap_sleep(unsigned int seconds) {
 int __wrap_close() {
     return 1;
 }
-
-#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
 
 // Tests
 
@@ -552,11 +546,8 @@ void test_wm_agent_upgrade_check_status_queue_error(void **state)
     wm_agent_upgrade_check_status(config);
 }
 
-#endif
-
 int main(void) {
     const struct CMUnitTest tests[] = {
-#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
         // wm_upgrade_agent_send_ack_message
         cmocka_unit_test_setup(test_wm_upgrade_agent_send_ack_message_successful, setup_test_executions),
         cmocka_unit_test_setup(test_wm_upgrade_agent_send_ack_message_failed, setup_test_executions),
@@ -570,7 +561,6 @@ int main(void) {
         cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_successful, setup_test_executions),
         cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_time_limit, setup_test_executions),
         cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_queue_error, setup_test_executions)
-#endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

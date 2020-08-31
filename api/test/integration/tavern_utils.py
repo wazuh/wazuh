@@ -1,5 +1,7 @@
 import json
 import time
+from base64 import b64decode
+from json import loads
 
 from box import Box
 
@@ -177,3 +179,17 @@ def test_validate_restart_by_node_rbac(response, permitted_agents):
         assert response.status_code == 403
         assert response.json()['code'] == 4000
         assert 'agent:id' in response.json()['detail']
+
+
+def test_validate_auth_context(response, expected_roles=None):
+    """Check that the authorization context has been matched with the correct rules
+
+    Parameters
+    ----------
+    response : Request response
+    expected_roles : list
+        List of expected roles after checking the authorization context
+    """
+    token = response.json()['token'].split('.')[1]
+    payload = loads(b64decode(token + '===').decode())
+    assert payload['rbac_roles'] == expected_roles

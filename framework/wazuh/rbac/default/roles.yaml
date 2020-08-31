@@ -1,3 +1,5 @@
+# WAZUH SYSTEM FILE, PLEASE DO NOT MODIFY
+
 default_roles:
   administrator:
     description: Administrator role of the system, this role have full access to the system.

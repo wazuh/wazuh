@@ -1,3 +1,5 @@
+# WAZUH SYSTEM FILE, PLEASE DO NOT MODIFY
+
 default_rules:
   wui_elastic_admin:
     description: "Administrator permissions for WUI's elastic users."

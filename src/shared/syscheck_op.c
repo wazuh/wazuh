@@ -53,18 +53,22 @@ int delete_target_file(const char *path) {
     drive[1] = path[0];
 
     char *windows_path = strchr(path, ':');
+
     if (windows_path == NULL) {
         mdebug1("Incorrect path. This does not contain ':' ");
         return 0;
     }
-    strncat(full_path, drive,2);
+
+    strncat(full_path, drive, 2);
     strncat(full_path, (windows_path + 1), PATH_MAX - strlen(full_path) - 1);
 #else
     strncat(full_path, path, PATH_MAX - strlen(full_path) - 1);
 #endif
+
     if(rmdir_ex(full_path) == 0){
         return(remove_empty_folders(full_path));
     }
+
     return 1;
 }
 
@@ -597,7 +601,7 @@ char *unescape_syscheck_field(char *sum) {
     return NULL;
 }
 
-char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
+char *get_user(int uid) {
     struct passwd pwd;
     struct passwd *result;
     char *buf;
@@ -656,7 +660,7 @@ void ag_send_syscheck(char * message) {
 
 #else /* #ifndef WIN32 */
 
-char *get_user(const char *path, __attribute__((unused)) int uid, char **sid) {
+char *get_user(const char *path, char **sid) {
     DWORD dwRtnCode = 0;
     DWORD dwSecurityInfoErrorCode = 0;
     PSID pSidOwner = NULL;

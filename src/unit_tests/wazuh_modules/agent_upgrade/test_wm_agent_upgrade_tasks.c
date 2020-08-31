@@ -17,8 +17,6 @@
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_tasks.h"
 #include "../../headers/shared.h"
 
-#ifdef TEST_SERVER
-
 cJSON *wm_agent_send_task_information_master(const cJSON *message_object);
 cJSON *wm_agent_send_task_information_worker(const cJSON *message_object);
 
@@ -57,8 +55,6 @@ static int teardown_jsons(void **state) {
     cJSON_Delete(json2);
     return 0;
 }
-
-#endif
 
 // Wrappers
 
@@ -177,7 +173,9 @@ int __wrap_w_is_worker(void) {
     return mock();
 }
 
-#ifdef TEST_SERVER
+cJSON* __wrap_cJSON_Duplicate(const cJSON *item, int recurse) {
+    return mock_type(cJSON*);
+}
 
 // Tests
 
@@ -654,6 +652,8 @@ void test_wm_agent_send_task_information_worker(void **state)
                                    "\"command\":\"upgrade\","
                                    "\"agent\":10}]}";
 
+    will_return(__wrap_cJSON_Duplicate, input);
+
     expect_string(__wrap_w_create_sendsync_payload, daemon_name, TASK_MANAGER_WM_NAME);
     will_return(__wrap_w_create_sendsync_payload, cluster_request);
 
@@ -812,6 +812,8 @@ void test_wm_agent_upgrade_send_tasks_information_worker(void **state)
 
     will_return(__wrap_w_is_worker, 1);
 
+    will_return(__wrap_cJSON_Duplicate, input);
+
     expect_string(__wrap_w_create_sendsync_payload, daemon_name, TASK_MANAGER_WM_NAME);
     will_return(__wrap_w_create_sendsync_payload, cluster_request);
 
@@ -846,11 +848,8 @@ void test_wm_agent_upgrade_send_tasks_information_worker(void **state)
     assert_non_null(output);
 }
 
-#endif
-
 int main(void) {
     const struct CMUnitTest tests[] = {
-#ifdef TEST_SERVER
         // wm_agent_upgrade_upgrade_success_callback
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_create_task_entry_ok, setup_agent_task, teardown_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_create_task_entry_duplicate, setup_agent_task, teardown_agent_task),
@@ -875,7 +874,6 @@ int main(void) {
         // wm_agent_upgrade_send_tasks_information
         cmocka_unit_test_teardown(test_wm_agent_upgrade_send_tasks_information_master, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_send_tasks_information_worker, teardown_jsons),
-#endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

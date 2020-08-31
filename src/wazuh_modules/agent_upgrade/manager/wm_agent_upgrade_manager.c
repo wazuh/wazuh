@@ -36,9 +36,7 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start."
 };
 
-void wm_agent_upgrade_listen_messages(int timeout_sec, const wm_manager_configs* manager_configs) {
-
-    struct timeval timeout = { timeout_sec, 0 };
+void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs) {
 
     // Initialize task hashmap
     wm_agent_upgrade_init_task_map();
@@ -57,7 +55,7 @@ void wm_agent_upgrade_listen_messages(int timeout_sec, const wm_manager_configs*
         FD_ZERO(&fdset);
         FD_SET(sock, &fdset);
 
-        switch (select(sock + 1, &fdset, NULL, NULL, &timeout)) {
+        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SELECT_ERROR, strerror(errno));

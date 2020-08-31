@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Pagerduty Integration
 #
 # Copyright (C) 2015-2020, Wazuh Inc.

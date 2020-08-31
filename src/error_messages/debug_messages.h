@@ -18,7 +18,7 @@
 #define VU_LOCAL_FETCH        "(5403): Fetching feed from '%s'"
 #define VU_DOWNLOAD_START     "(5404): Trying to download '%s'"
 #define VU_DOWNLOAD_FAIL      "(5405): The download can not be completed. Retrying in '%d' seconds."
-#define VU_UPDATE_DATE        "(5406): The feed '%s' is in its latest version. Update date: '%s'"
+#define VU_UPDATE_DATE        "(5406): The feed '%s' is in its latest version."
 #define VU_DB_TIMESTAMP_FEED  "(5407): The feed '%s%s' is outdated. Fetching the last version."
 #define VU_UPDATE_JSON_FEED   "(5408): Updating from '%s'"
 #define VU_DISCARD_MATCH_N    "(5409): The matching configuration node '%s' from '%s' will be discarded because it is contemplated by '%s' (%s%s%s%s%s%s%s)."
@@ -31,8 +31,8 @@
 #define VU_INS_CPES_SEC       "(5416): Inserting CPEs section."
 #define VU_INS_CPES_DIC       "(5417): Inserting Wazuh's CPE dictonary."
 #define VU_INS_MSU            "(5418): Inserting Microsoft Security Update dictonary."
-#define VU_INS_NVD_SEC        "(5419): Inserting NVD vulnerabilities section."
-#define VU_INS_RH_SEC         "(5420): Inserting RedHat vulnerabilities section."
+#define VU_INS_VUL_SEC        "(5419): Inserting %s vulnerabilities section."
+#define VU_DEB_STATUS_FEED    "(5420): Indexing vulnerabilities from the Debian Security Tracker."
 #define VU_INDEX_TIME         "(5421): It took '%ld' seconds to '%s' vulnerabilities."
 #define VU_INS_TEST_SEC       "(5422): Inserting '%s' vulnerabilities references."
 #define VU_UPDATE_VU_CO       "(5423): Inserting '%s' vulnerabilities conditions."
@@ -48,7 +48,7 @@
 #define VU_AGENT_UNSOPPORTED  "(5433): Agent '%.3d' has an unsupported Wazuh version: '%s'"
 #define VU_UNS_OS_VERSION     "(5434): Agent '%.3d' has an unsupported OS version: '%s'"
 #define VU_AG_NO_TARGET       "(5435): The analysis can not be launched because there are no target agents."
-/* ID 5436 is available */
+#define VU_DEB_STATUS_FETCH   "(5436): Fetching Debian Security Tracker from '%s'"
 #define VU_AGENT_SOFTWARE_REQ "(5437): Collecting agent '%.3d' software."
 #define VU_AG_FULL_SCAN       "(5438): A full scan will be run on agent '%.3d'"
 #define VU_AG_PART_SCAN       "(5439): A partial scan will be run on agent '%.3d'"
@@ -88,6 +88,7 @@
 #define VU_NO_SRC_VERSION     "(5480): Unable to get the source '%s' version for agent '%.3d'"
 #define VU_NO_SRC_NAME        "(5481): Unable to get the source '%s' name for agent '%.3d'"
 #define VU_VULN_SEND_AG_FEED  "(5482): A total of '%d' vulnerabilities have been reported for agent '%.3d' thanks to the '%s' feed."
+#define VU_NO_HOTFIX_DISABLED "(5483): No MSU data found, so the Windows hotfixes scan will be disabled for agent '%.3d'"
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
@@ -237,6 +238,9 @@
 #define FIM_NUM_WATCHES                     "(6345): Folders monitored with real-time engine: %u"
 #define FIM_REALTIME_CALLBACK               "(6346): Realtime watch deleted for '%s'"
 #define FIM_DIR_RECURSION_LEVEL             "(6347): Directory '%s' is already on the max recursion_level (%d), it will not be scanned."
+#define FIM_DIFF_FOLDER_SIZE                "(6348): Size of '%s' folder: %.5f KB."
+#define FIM_BIG_FILE_REPORT_CHANGES         "(6349): File '%s' is too big for configured maximum size to perform diff operation."
+#define FIM_DISK_QUOTA_LIMIT_REACHED        "(6350): The maximum configured size for the '%s' folder has been reached, the diff operation cannot be performed."
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"

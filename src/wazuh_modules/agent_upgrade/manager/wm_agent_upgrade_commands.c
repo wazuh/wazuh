@@ -592,14 +592,20 @@ STATIC int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, con
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
+    char *data = NULL;
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
     snprintf(command, OS_MAXSTR, "%.3d com upgrade %s %s", agent_id, wpk_file, installer);
 
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
-    result = wm_agent_upgrade_parse_agent_response(response, NULL);
-    
+    if (result = wm_agent_upgrade_parse_agent_response(response, &data), !result) {
+        if (!data || strncmp("0", data, 1)) {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_SCRIPT_ERROR);
+            result = OS_INVALID;
+        }
+    }
+
     os_free(command);
     os_free(response);
 

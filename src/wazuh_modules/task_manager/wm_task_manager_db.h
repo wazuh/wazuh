@@ -43,7 +43,7 @@ int wm_task_manager_check_db();
  * Delete entries older than a configurable period of time from the tasks DB.
  * @param arg Module configuration.
  * */
-void* wm_task_manager_clean_db(void *arg);
+void* wm_task_manager_clean_db(void *arg) __attribute__((nonnull));
 
 /**
  * Insert a new task in the tasks DB.
@@ -52,7 +52,7 @@ void* wm_task_manager_clean_db(void *arg);
  * @param command Command to be executed in the agent.
  * @return ID of the task recently created when succeed, <=0 otherwise.
  * */
-int wm_task_manager_insert_task(int agent_id, const char *module, const char *command);
+int wm_task_manager_insert_task(int agent_id, const char *module, const char *command) __attribute__((nonnull));
 
 /**
  * Get the status of a task from the tasks DB.
@@ -61,7 +61,7 @@ int wm_task_manager_insert_task(int agent_id, const char *module, const char *co
  * @param status String where the status of the task will be stored.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wm_task_manager_get_task_status(int agent_id, const char *module, char **status);
+int wm_task_manager_get_task_status(int agent_id, const char *module, char **status) __attribute__((nonnull));
 
 /**
  * Update the status of a task in the tasks DB.
@@ -70,7 +70,7 @@ int wm_task_manager_get_task_status(int agent_id, const char *module, char **sta
  * @param status New status of the task.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wm_task_manager_update_task_status(int agent_id, const char *module, const char *status);
+int wm_task_manager_update_task_status(int agent_id, const char *module, const char *status) __attribute__((nonnull(2)));
 
 /**
  * Get task by agent_id and module from the tasks DB.
@@ -82,7 +82,7 @@ int wm_task_manager_update_task_status(int agent_id, const char *module, const c
  * @param last_update_time Integer where the last_update_time of the task will be stored.
  * @return task_id when succeed, < 0 otherwise.
  * */
-int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *module, char **command, char **status, int *create_time, int *last_update_time);
+int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *module, char **command, char **status, int *create_time, int *last_update_time) __attribute__((nonnull));
 
 /**
  * Get task by task_id from the tasks DB.
@@ -97,7 +97,7 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
  * @retval agent_id if the task was found
  * @retval OS_NOTFOUND if the task was not found
  * */
-int wm_task_manager_get_task_by_task_id(int task_id, char **module, char **command, char **status, int *create_time, int *last_update_time);
+int wm_task_manager_get_task_by_task_id(int task_id, char **module, char **command, char **status, int *create_time, int *last_update_time) __attribute__((nonnull));
 
 #endif
 #endif

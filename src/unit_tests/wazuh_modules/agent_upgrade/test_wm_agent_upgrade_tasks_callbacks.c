@@ -122,8 +122,6 @@ cJSON* __wrap_wm_agent_upgrade_send_tasks_information(const cJSON *message_objec
     return mock_type(cJSON *);
 }
 
-#ifdef TEST_SERVER
-
 // Tests
 
 void test_wm_agent_upgrade_upgrade_success_callback_ok(void **state)
@@ -704,11 +702,8 @@ void test_wm_agent_upgrade_task_module_callback_request_error(void **state)
     assert_null(cJSON_GetArrayItem(output, 0));
 }
 
-#endif
-
 int main(void) {
     const struct CMUnitTest tests[] = {
-#ifdef TEST_SERVER
         // wm_agent_upgrade_upgrade_success_callback
         cmocka_unit_test_teardown(test_wm_agent_upgrade_upgrade_success_callback_ok, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_upgrade_success_callback_no_task_id, teardown_jsons),
@@ -724,7 +719,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_error_callback_error, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_success_error_callback_error, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_request_error, teardown_jsons)
-#endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
