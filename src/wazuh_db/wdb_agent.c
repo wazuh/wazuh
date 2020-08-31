@@ -48,7 +48,9 @@ static const char *global_db_queries[] = {
     [SQL_DELETE_GROUP] = "global sql DELETE FROM `group` WHERE name = %Q;",
     [SQL_SELECT_GROUPS] = "global sql SELECT name FROM `group`;",
     [SQL_SELECT_KEEPALIVE] = "global sql SELECT last_keepalive FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');",
-    [SQL_GET_AGENT_INFO] = "global get-agent-info %d"
+    [SQL_GET_AGENT_INFO] = "global get-agent-info %d",
+    [SQL_GET_AGENTS_BY_KEEPALIVE] = "global get-agents-by-keepalive condition %s %d start_id %d",
+    [SQL_GET_ALL_AGENTS] = "global get-all-agents start_id %d"
 };
 
 int wdb_sock_agent = -1;
