@@ -22,7 +22,6 @@
 
 static const char *global_db_queries[] = {
     [SQL_SELECT_AGENTS] = "global sql SELECT id FROM agent WHERE id != 0;",
-    [SQL_INSERT_AGENT_BELONG] = "global sql INSERT INTO belongs (id_group, id_agent) VALUES(%d, %d);",
     [SQL_DELETE_GROUP_BELONG] = "global sql DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = %Q );", 
     [SQL_DELETE_GROUP] = "global sql DELETE FROM `group` WHERE name = %Q;",
     [SQL_SELECT_GROUPS] = "global sql SELECT name FROM `group`;"
@@ -51,7 +50,7 @@ static const char *global_db_commands[] = {
     [WDB_UPDATE_AGENT_GROUP] = "global update-agent-group %s",
     [WDB_FIND_GROUP] = "global find-group %s",
     [WDB_INSERT_AGENT_GROUP] = "global insert-agent-group %s",
-    [WDB_INSERT_AGENT_BELONG] = "",
+    [WDB_INSERT_AGENT_BELONG] = "global insert-agent-belong %s",
     [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %d",
     [WDB_DELETE_GROUP_BELONG] = "",
     [WDB_DELETE_GROUP] = "",
@@ -853,8 +852,8 @@ int wdb_update_agent_multi_group(int id, char *group) {
                     id_group = wdb_find_group(multi_group);
                 }
 
-                if (wdb_update_agent_belongs(id_group,id) < 0) {
-                    return -1;
+                if (OS_SUCCESS != wdb_update_agent_belongs(id_group,id)) {
+                    return OS_INVALID;
                 }
 
                 multi_group = strtok_r(NULL, delim, &save_ptr);
@@ -867,7 +866,7 @@ int wdb_update_agent_multi_group(int id, char *group) {
                 id_group = wdb_find_group(group);
             }
 
-            if ( wdb_update_agent_belongs(id_group,id) < 0) {
+            if (OS_SUCCESS != wdb_update_agent_belongs(id_group,id)) {
                 return OS_INVALID;
             }
         }
@@ -929,18 +928,35 @@ int wdb_insert_group(const char *name) {
     return result;
 }
 
-/* Update agent belongs table. It opens and closes the DB. Returns 1 or -1 on error. */
+
 int wdb_update_agent_belongs(int id_group, int id_agent) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_INSERT_AGENT_BELONG], id_group, id_agent);
+    cJSON *data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id_group", id_group);
+    cJSON_AddNumberToObject(data_in, "id_agent", id_agent);
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_INSERT_AGENT_BELONG], cJSON_PrintUnformatted(data_in));
+
+    cJSON_Delete(data_in);
+
     result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
-            result = 1;
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");

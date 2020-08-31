@@ -135,7 +135,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_DELETE_AGENT,
     WDB_STMT_GLOBAL_SELECT_AGENT_NAME,
     WDB_STMT_GLOBAL_SELECT_AGENT_GROUP,
-    WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
     WDB_STMT_GLOBAL_FIND_AGENT,
     WDB_STMT_GLOBAL_SELECT_FIM_OFFSET,
     WDB_STMT_GLOBAL_SELECT_REG_OFFSET,
@@ -146,6 +145,8 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_FIND_GROUP,
     WDB_STMT_GLOBAL_UPDATE_AGENT_GROUP,
     WDB_STMT_GLOBAL_INSERT_AGENT_GROUP,
+    WDB_STMT_GLOBAL_INSERT_AGENT_BELONG,
+    WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
     WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
@@ -156,7 +157,6 @@ typedef enum wdb_stmt {
 
 typedef enum global_db_query {
     SQL_SELECT_AGENTS,
-    SQL_INSERT_AGENT_BELONG,
     SQL_DELETE_GROUP_BELONG,
     SQL_DELETE_GROUP,
     SQL_SELECT_GROUPS
@@ -560,6 +560,47 @@ int wdb_set_agent_status(int id_agent, int status);
  */
 int wdb_update_agent_group(int id,char *group);
 
+/**
+ * @brief Get the agent first registration date.
+ * 
+ * @param[in] agent_id The agent ID.
+ * @return Returns the agent first registration date.
+ */
+time_t get_agent_date_added(int agent_id);
+
+/**
+ * @brief Find group by name.
+ * 
+ * @param[in] name The group name.
+ * @return Returns id if success or OS_INVALID on failure.
+ */
+int wdb_find_group(const char *name);
+
+/**
+ * @brief Insert a new group.
+ * 
+ * @param[in] name The group name.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_insert_group(const char *name);
+
+/**
+ * @brief Delete an agent from belongs table in global.db by using its ID.
+ * 
+ * @param[in] id Id of the agent to be deleted.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_delete_agent_belongs(int id);
+
+/**
+ * @brief Update agent belongs table.
+ * 
+ * @param[in] id_group Id of the group to be updated.
+ * @param[in] id_agent Id of the agent to be updated.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_update_agent_belongs(int id_group, int id_agent);
+
 /* Update agent multi group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
 int wdb_update_agent_multi_group(int id, char *group);
 
@@ -624,41 +665,6 @@ int* wdb_get_all_agents();
 
 /* Fill belongs table on start */
 int wdb_agent_belongs_first_time();
-
-/**
- * @brief Get the agent first registration date.
- * 
- * @param[in] agent_id The agent ID.
- * @return Returns the agent first registration date.
- */
-time_t get_agent_date_added(int agent_id);
-
-/**
- * @brief Find group by name.
- * 
- * @param[in] name The group name.
- * @return Returns id if success or OS_INVALID on failure.
- */
-int wdb_find_group(const char *name);
-
-/**
- * @brief Insert a new group.
- * 
- * @param[in] name The group name.
- * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_insert_group(const char *name);
-
-/**
- * @brief Delete an agent from belongs table in global.db by using its ID.
- * 
- * @param[in] id Id of the agent to be deleted.
- * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_delete_agent_belongs(int id);
-
-/* Update agent belongs table. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_belongs(int id_group, int id_agent);
 
 /* Delete FIM events of an agent. Returns number of affected rows on success or -1 on error. */
 int wdb_delete_fim(int id);
@@ -1047,6 +1053,16 @@ int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output);
 
 /**
+ * @brief Function to parse the insert agent to belongs table request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with the group id and agent id in JSON format.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * output);
+
+/**
  * @brief Function to parse the select keepalive request.
  * 
  * @param wdb the global struct database.
@@ -1396,6 +1412,16 @@ cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name);
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_insert_agent_group(wdb_t *wdb, char* group_name);
+
+/**
+ * @brief Function to insert an agent to the belongs table.
+ * 
+ * @param wdb The Global struct database.
+ * @param id_group The group id.
+ * @param id_agent The agent id.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent);
 
 /**
  * @brief Function to get an agent keepalive using the agent name and register ip.
