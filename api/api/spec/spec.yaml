@@ -305,6 +305,22 @@ x-rbac-catalog:
         actions: ['lists:read']
         resources: ['list:path:etc/lists/audit-keys']
         effect: "deny"
+    'logtest:end_session':
+      description: "End logtest session"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'logtest:end_session' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
+    'logtest:run':
+      description: "Use logtest tool"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'logtest:run' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
     'rules:read':
       description: "Read rules files"
       resources:
@@ -1552,24 +1568,24 @@ components:
       - stopped
       - running
 
-    ## Logtest models
-#    LogtestLogBody:
-#      type: object
-#      properties:
-#        arguments:
-#          description: "Command arguments"
-#          type: array
-#          items:
-#            type: string
-#        command:
-#          description: "Command running in the agent. If this value starts by `!`, then it refers to a script name instead of a command name"
-#          type: string
-#        custom:
-#          description: "Whether the specified command is a custom command or not"
-#          type: boolean
-#          default: false
-#      required:
-#        - command
+    # Logtest models
+    LogtestRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: "Token for the logtest session"
+        log_format:
+          type: string
+          description: "Allowed values: syslog, json, snort-full, squid, eventlog, eventchannel, audit, mysql_log, postgresql_log, nmapg, iis, command, full_command, djb-multilog, multi-line"
+        location:
+          type: string
+          description: "Path string"
+        log:
+          type: string
+          description: "Event to look for"
 
     # Security models
     Role_id:
@@ -4189,10 +4205,11 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
-    token:
-      in: query
+    logtest_token:
+      in: path
       name: token
-      description: "Token of the saved session"
+      description: "Token of the logtest saved session"
+      required: true
       schema:
         type: string
         format: alphanumeric
@@ -5029,7 +5046,7 @@ tags:
   - name: lists
     description: "CDB lists management"
   - name: logtest
-    description: "Logtest, testing and verification tool for rules and decoders"
+    description: "Logtest: testing and verification tool for rules and decoders"
   - name: manager
     description: "Wazuh manager management"
   - name: mitre
@@ -8864,19 +8881,19 @@ paths:
         - logtest
       summary: "Run logtest in a specified log"
       description: "Check if a specified log raises any alert among other information."
-      operationId: api.controllers.logtest_controller.get_logtest_output
-#      x-rbac-actions:
-#        - $ref: '#/x-rbac-catalog/actions/active-response:command'
+      operationId: api.controllers.logtest_controller.run_logtest_tool
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/logtest:run'
       parameters:
-        - $ref: '#/components/parameters/token'
-        - $ref: '#/components/parameters/log_format'
-        - $ref: '#/components/parameters/location'
-        - $ref: '#/components/parameters/log'
-#      requestBody:
-#        content:
-#          application/json:
-#            schema:
-#              $ref: '#/components/schemas/LogtestLogBody'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        description: "Run logtest with the parameters below"
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogtestRequest'
       responses:
         '200':
           description: "Successfully run the logtest tool."
@@ -8891,26 +8908,38 @@ paths:
                     level: 3
                     description: "Successful sudo to ROOT executed."
                     id: 5402
+                    mitre:
+                      id: ["T1169"]
+                      tactics: ["Privilege Escalation"]
+                    firedtimes: 1
+                    mail: false
+                    groups: ["syslog", "sudo"]
+                    pci_dss: ["10.2.5", "10.2.2"]
+                    gpg13: ["7.6", "7.8", "7.13"]
+                    gdpr: ["IV_32.2"]
+                    hipaa: ["164.312.b"]
+                    nist_800_53: ["AU.14", "AC.7", "AC.6"]
+                    tsc: ["CC6.8", "CC7.2", "CC7.3"]
                   agent:
                     id: 000
-                    name: eva
+                    name: wazuh
                   manager:
-                    name: eva
+                    name: wazuh
                   id: 1592990889.62076
-                  full_log: "Jun 24 11:28:09 eva sudo: eva : TTY=pts/0 ; PWD=/home/eva ; USER=root ; COMMAND=/bin/su"
+                  full_log: "Jun 24 11:28:09 wazuh sudo: wazuh : TTY=pts/0 ; PWD=/home/wazuh ; USER=root ; COMMAND=/bin/su"
                   predecoder:
                     program_name: sudo
                     timestamp: "Jun 24 11:28:09"
-                    hostname: eva
+                    hostname: wazuh
                   decoder:
                     parent: sudo
                     name: sudo
                     ftscomment: "First time user executed the sudo command"
                   data:
-                    srcuser: eva
+                    srcuser: wazuh
                     dstuser: root
                     tty: pts/0
-                    pwd: /home/eva
+                    pwd: /home/wazuh
                     command: /bin/su
                   location: /var/log/auth.log
         '400':
@@ -8935,10 +8964,12 @@ paths:
       summary: "Delete a saved session"
       description: "Delete the saved session corresponding to {token}"
       operationId: api.controllers.logtest_controller.end_logtest_session
-#      x-rbac-actions:
-#        - $ref: '#/x-rbac-catalog/actions/active-response:command'
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/logtest:end_session'
       parameters:
-        - $ref: '#/components/parameters/token'
+        - $ref: '#/components/parameters/logtest_token'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
           description: "Successfully deleted the saved session."

@@ -7,13 +7,13 @@ import logging
 from aiohttp import web
 from api.encoder import dumps, prettify
 from api.util import remove_nones_to_dict, raise_if_exc
-from wazuh import logtest
+# from wazuh import logtest # Uncomment when merged with the logtest functions
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh')
 
 
-async def get_logtest_output(request, pretty: bool = False, wait_for_complete: bool = False, token: str = None,
+async def run_logtest_tool(request, pretty: bool = False, wait_for_complete: bool = False, token: str = None,
                              log_format: str = None, location: str = None, log: str = None):
     """Get the logtest output after sending a JSON to its socket.
     Parameters
@@ -44,7 +44,7 @@ async def get_logtest_output(request, pretty: bool = False, wait_for_complete: b
 
     dapi = DistributedAPI(f=logtest.get_logtest_output,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
+                          request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
@@ -55,7 +55,7 @@ async def get_logtest_output(request, pretty: bool = False, wait_for_complete: b
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def end_logtest_session(request, pretty: bool = False, wait_for_complete: bool = False, token: str = None)
+async def end_logtest_session(request, pretty: bool = False, wait_for_complete: bool = False, token: str = None):
     """Get the logtest output after sending a JSON to its socket.
     Parameters
     ----------
@@ -75,7 +75,7 @@ async def end_logtest_session(request, pretty: bool = False, wait_for_complete: 
 
     dapi = DistributedAPI(f=logtest.end_logtest_session,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
+                          request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
