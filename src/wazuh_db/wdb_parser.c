@@ -614,6 +614,26 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_insert_agent_belong(wdb, next, output);
             }
+        } else if (strcmp(query, "delete-group-belong") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_delete_group_belong(wdb, next, output);
+            }
+        } else if (strcmp(query, "delete-group") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_delete_group(wdb, next, output);
+            }
+        } else if (strcmp(query, "select-groups") == 0) {
+            result = wdb_parse_global_select_groups(wdb, output);
         } else if (strcmp(query, "select-keepalive") == 0) {
             result = wdb_parse_global_select_agent_keepalive(wdb, next, output);
         } else if (strcmp(query, "sync-agent-info-get") == 0) {
@@ -4779,6 +4799,56 @@ int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * outpu
 
     snprintf(output, OS_MAXSTR + 1, "ok");
     cJSON_Delete(agent_data);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_delete_group_belong(wdb_t * wdb, char * input, char * output) {
+    char *group_name = NULL;
+
+    group_name = input;
+
+    if (OS_SUCCESS != wdb_global_delete_group_belong(wdb, group_name)) {
+        mdebug1("Error deleting group from belongs table in global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error deleting group from belongs table in global.db.");
+        return OS_INVALID;
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_delete_group(wdb_t * wdb, char * input, char * output) {
+    char *group_name = NULL;
+
+    group_name = input;
+
+    if (OS_SUCCESS != wdb_global_delete_group(wdb, group_name)) {
+        mdebug1("Error deleting group in global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error deleting group in global.db.");
+        return OS_INVALID;
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_select_groups(wdb_t * wdb, char * output) {
+    cJSON *groups = NULL;
+    char *out = NULL;
+
+    if (groups = wdb_global_select_groups(wdb), !groups) {
+        mdebug1("Error getting groups from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting groups from global.db.");
+        return OS_INVALID;
+    }
+
+    out = cJSON_PrintUnformatted(groups);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(groups);
 
     return OS_SUCCESS;
 }

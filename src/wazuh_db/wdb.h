@@ -147,6 +147,9 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_INSERT_AGENT_GROUP,
     WDB_STMT_GLOBAL_INSERT_AGENT_BELONG,
     WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
+    WDB_STMT_GLOBAL_DELETE_GROUP_BELONG,
+    WDB_STMT_GLOBAL_DELETE_GROUP,
+    WDB_STMT_GLOBAL_SELECT_GROUPS,
     WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
@@ -156,10 +159,7 @@ typedef enum wdb_stmt {
 } wdb_stmt;
 
 typedef enum global_db_query {
-    SQL_SELECT_AGENTS,
-    SQL_DELETE_GROUP_BELONG,
-    SQL_DELETE_GROUP,
-    SQL_SELECT_GROUPS
+    SQL_SELECT_AGENTS
 } global_db_query;
 
 typedef enum global_db_access {
@@ -585,6 +585,15 @@ int wdb_find_group(const char *name);
 int wdb_insert_group(const char *name);
 
 /**
+ * @brief Update agent belongs table.
+ * 
+ * @param[in] id_group Id of the group to be updated.
+ * @param[in] id_agent Id of the agent to be updated.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_update_agent_belongs(int id_group, int id_agent);
+
+/**
  * @brief Delete an agent from belongs table in global.db by using its ID.
  * 
  * @param[in] id Id of the agent to be deleted.
@@ -593,13 +602,20 @@ int wdb_insert_group(const char *name);
 int wdb_delete_agent_belongs(int id);
 
 /**
- * @brief Update agent belongs table.
+ * @brief Delete group from belongs table.
  * 
- * @param[in] id_group Id of the group to be updated.
- * @param[in] id_agent Id of the agent to be updated.
+ * @param[in] name The group name.
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_belongs(int id_group, int id_agent);
+int wdb_remove_group_from_belongs_db(const char *name);
+
+/**
+ * @brief Delete group.
+ * 
+ * @param[in] name The group name.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_remove_group_db(const char *name);
 
 /* Update agent multi group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
 int wdb_update_agent_multi_group(int id, char *group);
@@ -609,9 +625,6 @@ int wdb_update_groups(const char *dirname);
 
 /* Remove agents databases from id's list. */
 cJSON *wdb_remove_multiple_agents(char *agent_list);
-
-/* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_remove_group_db(const char *name);
 
 /* Insert or update metadata entries. Returns 0 on success or -1 on error. */
 int wdb_fim_fill_metadata(wdb_t * wdb, char *data);
@@ -1063,6 +1076,35 @@ int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output
 int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * output);
 
 /**
+ * @brief Function to parse the delete group from belongs table request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with the group name.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_delete_group_belong(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse the delete group request.
+ * 
+ * @param wdb the global struct database.
+ * @param input String with the group name.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_delete_group(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse the select groups request.
+ * 
+ * @param wdb the global struct database.
+ * @param output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_select_groups(wdb_t * wdb, char * output);
+
+/**
  * @brief Function to parse the select keepalive request.
  * 
  * @param wdb the global struct database.
@@ -1422,6 +1464,32 @@ int wdb_global_insert_agent_group(wdb_t *wdb, char* group_name);
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent);
+
+/**
+ * @brief Function to delete a group from belongs table using the group name.
+ * 
+ * @param wdb The Global struct database.
+ * @param group_name The group name.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_delete_group_belong(wdb_t *wdb, char* group_name);
+
+/**
+ * @brief Function to delete a group by using the name.
+ * 
+ * @param wdb The Global struct database.
+ * @param group_name The group name.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_delete_group(wdb_t *wdb, char* group_name);
+
+/**
+ * @brief Function to get a list of groups.
+ * 
+ * @param wdb The Global struct database.
+ * @return JSON with all the groups on success. NULL on error.
+ */
+cJSON* wdb_global_select_groups(wdb_t *wdb);
 
 /**
  * @brief Function to get an agent keepalive using the agent name and register ip.

@@ -22,9 +22,6 @@
 
 static const char *global_db_queries[] = {
     [SQL_SELECT_AGENTS] = "global sql SELECT id FROM agent WHERE id != 0;",
-    [SQL_DELETE_GROUP_BELONG] = "global sql DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = %Q );", 
-    [SQL_DELETE_GROUP] = "global sql DELETE FROM `group` WHERE name = %Q;",
-    [SQL_SELECT_GROUPS] = "global sql SELECT name FROM `group`;"
 };
 
 int wdb_sock_agent = -1;
@@ -52,9 +49,9 @@ static const char *global_db_commands[] = {
     [WDB_INSERT_AGENT_GROUP] = "global insert-agent-group %s",
     [WDB_INSERT_AGENT_BELONG] = "global insert-agent-belong %s",
     [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %d",
-    [WDB_DELETE_GROUP_BELONG] = "",
-    [WDB_DELETE_GROUP] = "",
-    [WDB_SELECT_GROUPS] = "",
+    [WDB_DELETE_GROUP_BELONG] = "global delete-group-belong %s",
+    [WDB_DELETE_GROUP] = "global delete-group %s",
+    [WDB_SELECT_GROUPS] = "global select-groups",
     [WDB_SELECT_KEEPALIVE] = "global select-keepalive %s %s"
 };
 
@@ -1002,6 +999,71 @@ int wdb_delete_agent_belongs(int id) {
 }
 
 
+int wdb_remove_group_from_belongs_db(const char *name) {
+    int result = 0;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_DELETE_GROUP_BELONG], name);
+    result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+    }
+
+    return result;
+}
+
+
+int wdb_remove_group_db(const char *name) {
+    int result = 0;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+
+    if (OS_INVALID == wdb_remove_group_from_belongs_db(name)) {
+        merror("At wdb_remove_group_from_belongs_db(): couldn't delete '%s' from 'belongs' table.", name);
+        return OS_INVALID;
+    }
+
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_DELETE_GROUP], name);
+    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+    }
+
+    return result;
+}
+
+
 int wdb_update_groups(const char *dirname) {
     int result = 0;
     int n = 0;
@@ -1010,11 +1072,9 @@ int wdb_update_groups(const char *dirname) {
     cJSON *json_name = NULL;
     cJSON *item = NULL;
     cJSON *root = NULL;
-    char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
 
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery,"%s", global_db_queries[SQL_SELECT_GROUPS]);
-    root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    root = wdbc_query_parse_json(&wdb_sock_agent, global_db_commands[WDB_SELECT_GROUPS], wdboutput, sizeof(wdboutput));
 
     if (!root) {
         merror("Error querying Wazuh DB to update groups.");
@@ -1090,60 +1150,6 @@ int wdb_update_groups(const char *dirname) {
     return result;
 }
 
-/* Delete group from belongs table. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_remove_group_from_belongs_db(const char *name) {
-    int result = 0;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_DELETE_GROUP_BELONG], name);
-    result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
-
-    switch (result) {
-        case OS_SUCCESS:
-            break;
-        case OS_INVALID:
-            mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-        default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-    }
-
-    return result;
-}
-
-/* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_remove_group_db(const char *name) {
-    int result = 0;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-
-    if (wdb_remove_group_from_belongs_db(name) == OS_INVALID) {
-        merror("At wdb_remove_group_from_belongs_db(): couldn't delete '%s' from 'belongs' table.", name);
-        return OS_INVALID;
-    }
-
-    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_DELETE_GROUP], name);
-    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
-
-    switch (result) {
-        case OS_SUCCESS:
-            break;
-        case OS_INVALID:
-            mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-        default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-    }
-
-    return result;
-}
 
 int wdb_agent_belongs_first_time(){
     int i;
