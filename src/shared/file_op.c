@@ -16,6 +16,12 @@
 
 #include "../external/zlib/zlib.h"
 
+#ifdef WAZUH_UNIT_TESTING
+#ifdef WIN32
+#include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#endif
+#endif
+
 #ifndef WIN32
 #include <regex.h>
 #else
@@ -3207,3 +3213,68 @@ end:
 
     return buffer;
 }
+
+/* Check if a file is gzip compressed. */
+int w_is_compressed_gz_file(const char * path) {
+    unsigned char buf[2];
+    int retval = 0;
+    FILE *fp;
+
+    fp = fopen(path, "rb");
+
+    /* Magic number: 1f 8b */
+    if (fp && fread(buf, 1, 2, fp) == 2) {
+        if (buf[0] == 0x1f && buf[1] == 0x8b) {
+            retval = 1;
+        }
+    }
+
+    if (fp) {
+        fclose(fp);
+    }
+
+    return retval;
+}
+
+/* Check if a file is bzip2 compressed. */
+int w_is_compressed_bz2_file(const char * path) {
+    unsigned char buf[3];
+    int retval = 0;
+    FILE *fp;
+
+    fp = fopen(path, "rb");
+
+    /* Magic number: 42 5a 68 */
+    if (fp && fread(buf, 1, 3, fp) == 3) {
+        if (buf[0] == 0x42 && buf[1] == 0x5a && buf[2] == 0x68) {
+            retval = 1;
+        }
+    }
+
+    if (fp) {
+        fclose(fp);
+    }
+
+    return retval;
+}
+
+#ifndef CLIENT
+
+int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
+    int result = 1;
+
+    if (w_is_compressed_bz2_file(path)) {
+        result = bzip2_uncompress(path, dest);
+    }
+
+    if (w_is_compressed_gz_file(path)) {
+        result = w_uncompress_gzfile(path, dest);
+    }
+
+    if (!result) {
+        mdebug1("The file '%s' was successfully uncompressed into '%s'", path, dest);
+    }
+
+    return result;
+}
+#endif
