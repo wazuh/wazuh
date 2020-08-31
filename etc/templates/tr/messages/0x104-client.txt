@@ -1,3 +1,0 @@
-
- - Sunucu ile iletişimi sağlayabilmek için önce bu aracıyı
-   sunucuya eklemeniz gerekmektedir.

@@ -1,3 +1,0 @@
-
- - Um mit dem Server zu kommunizieren müssen Sie erst den
-   Agent auf dem Server hinzufügen.

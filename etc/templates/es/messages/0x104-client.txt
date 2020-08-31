@@ -1,3 +1,0 @@
-
- - Debe de añadir este agente en el servidor para que puedan
-   comunicarse entre ellos.

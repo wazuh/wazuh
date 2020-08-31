@@ -1,3 +1,0 @@
-
- - Először hozzá kell adnia ezt a klienst a szerverhez,
-   így azok tudnak kommunikálni egymással.

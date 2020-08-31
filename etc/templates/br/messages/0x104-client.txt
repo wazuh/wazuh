@@ -1,3 +1,0 @@
-
- - Para se comunicar com o servidor, você primeiro precisa
-   adicionar este cliente a ele.

@@ -1,3 +1,0 @@
-
- - Come prima cosa devi aggiungere questo agent al server affinchè possano comunicare
-   tra di loro.

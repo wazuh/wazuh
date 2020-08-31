@@ -1,3 +1,0 @@
-
- - Najpierw musisz dodać tego agenta do serwera aby
-   umożliwić komunikację między nimi.

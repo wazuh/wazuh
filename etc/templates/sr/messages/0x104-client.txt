@@ -1,2 +1,0 @@
- - Moraš prvo dodati ovog agenta serveru tako da
-   mogu da komuniciraju jedan sa drugim.
