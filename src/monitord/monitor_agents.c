@@ -20,7 +20,7 @@ void monitor_agents()
     char **cr_agents;
     char **av_agents;
 
-    av_agents = get_agents_by_keepalive(GA_ACTIVE,mond.delete_old_agents);
+    av_agents = get_agents_by_keepalive(GA_ACTIVE,mond.delete_old_agents > 0 ? mond.delete_old_agents * 60 : DISCON_TIME);
 
     /* No agent saved */
     if (!mond.agents) {
@@ -82,7 +82,7 @@ void monitor_agents()
     /* Delete old agents when using key-polling module */
     if(mond.delete_old_agents > 0) {
         char **na_agents;
-        na_agents = get_agents_by_keepalive(GA_NOTACTIVE,mond.delete_old_agents);
+        na_agents = get_agents_by_keepalive(GA_NOTACTIVE, mond.delete_old_agents);
 
         char **na_agents_p = na_agents;
 

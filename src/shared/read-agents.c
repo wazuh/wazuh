@@ -1271,25 +1271,22 @@ char **get_agents(int flag,int mon_time){
 }
 
 /* List available agents for monitord */
-char **get_agents_by_keepalive(int flag, int mon_time){
+char **get_agents_by_keepalive(int flag, int keepalive){
     size_t array_size = 0;
     char **agents_array = NULL;
     int *id_array = NULL;
     int i = 0;
-    int discon_time = 0;
     cJSON *json_agt_info = NULL;
     cJSON *json_field = NULL;
     cJSON *json_name = NULL;
     cJSON *json_ip = NULL;
 
-    discon_time = mon_time > 0 ? mon_time * 60 : DISCON_TIME;
-
     switch(flag){
         case GA_NOTACTIVE:
-            id_array = wdb_get_agents_by_keepalive(">", discon_time);
+            id_array = wdb_get_agents_by_keepalive(">", keepalive);
             break;
         case GA_ACTIVE:
-            id_array = wdb_get_agents_by_keepalive("<", discon_time);
+            id_array = wdb_get_agents_by_keepalive("<", keepalive);
             break;
         default:
             mdebug1("Invalid flag '%d' trying to get agents.", flag);
