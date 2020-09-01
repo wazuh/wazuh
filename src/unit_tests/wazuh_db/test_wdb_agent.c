@@ -23,6 +23,9 @@
 #define WDBOUTPUT_SIZE OS_MAXSTR
 
 int test_mode = 0;
+int set_payload = 0;
+
+char test_payload[OS_MAXSTR] = { 0 };
 
 /* redefinitons/wrapping */
 
@@ -187,10 +190,18 @@ int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int
     check_expected(query);
     check_expected(len);
 
+    if (1 == set_payload) {
+        strncpy(response, test_payload, strlen(test_payload));
+    }
+
     return mock_type(int);
 }
 
 int __wrap_wdbc_parse_result(char *result, char **payload) {
+    if (1 == set_payload) {
+        *payload = result+3; // It takes into account OK and the space
+    }
+
     return mock_type(int);
 }
 
@@ -2936,6 +2947,78 @@ void test_wdb_set_agent_status_success_updated(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
+/* Tests wdb_get_agents_by_keepalive */
+
+void test_wdb_get_agents_by_keepalive_wdbc_query_error(void **state) {
+    const char *condition = ">";
+    int keepalive = 10;
+
+    const char *query_str = "global get-agents-by-keepalive condition > 10 start_id 0";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    int *array = wdb_get_agents_by_keepalive(condition, keepalive);
+
+    assert_null(array);
+}
+
+void test_wdb_get_agents_by_keepalive_wdbc_parse_error(void **state) {
+    const char *condition = ">";
+    int keepalive = 10;
+
+    const char *query_str = "global get-agents-by-keepalive condition > 10 start_id 0";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+
+    int *array = wdb_get_agents_by_keepalive(condition, keepalive);
+
+    assert_null(array);
+}
+
+void test_wdb_get_agents_by_keepalive_success(void **state) {
+    const char *condition = ">";
+    int keepalive = 10;
+
+    const char *query_str = "global get-agents-by-keepalive condition > 10 start_id 0";
+
+    // Setting the payload
+    set_payload = 1;
+    strncpy(test_payload, "ok 1,2,3", 8);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    int *array = wdb_get_agents_by_keepalive(condition, keepalive);
+
+    assert_int_equal(1, array[0]);
+    assert_int_equal(2, array[1]);
+    assert_int_equal(3, array[2]);
+    assert_int_equal(-1, array[3]);
+
+    os_free(array);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -3036,7 +3119,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_error_result, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_success_empty, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_success_pending, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_success_updated, setup_wdb_agent, teardown_wdb_agent)
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_success_updated, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_get_agents_by_keepalive */
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_keepalive_wdbc_query_error, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_keepalive_wdbc_parse_error, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_keepalive_success, setup_wdb_agent, teardown_wdb_agent)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

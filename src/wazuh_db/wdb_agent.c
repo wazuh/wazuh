@@ -549,6 +549,7 @@ int* wdb_get_agents_by_keepalive(const char* condition, int keepalive) {
             status = WDBC_ERROR;
         }
     }
+
     if (status == WDBC_OK) {
         array[len] = -1;
     }
