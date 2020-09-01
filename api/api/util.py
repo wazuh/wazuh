@@ -274,8 +274,6 @@ def _create_problem(exc: Exception, code=None):
     elif isinstance(exc, WazuhError):
         raise ProblemException(status=400 if not code else code, type=exc.type, title=exc.title, detail=exc.message,
                                ext=ext)
-    elif isinstance(exc, APIError):
-        raise ProblemException(status=400 if not code else code, title='APIError', detail=exc.__str__())
 
     raise exc
 
