@@ -13,7 +13,6 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../../wrappers/common.h"
 #include "../../wrappers/posix/select_wrappers.h"
 #include "../../wrappers/posix/unistd_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"

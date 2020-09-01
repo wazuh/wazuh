@@ -7,24 +7,20 @@
  * Foundation
  */
 
-#include "time_op_wrappers.h"
+#include "privsep_op_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
-time_t current_time = 0;
+int __wrap_Privsep_GetUser(const char *name) {
+    check_expected(name);
 
-void __wrap_w_sleep_until(const time_t new_time){
-    current_time = new_time;
+    return mock();
 }
 
-void __wrap_w_time_delay(unsigned long int msec){
-    current_time += (msec/1000);
-}
+int __wrap_Privsep_GetGroup(const char *name) {
+    check_expected(name);
 
-char* __wrap_w_get_timestamp(time_t time) {
-    check_expected(time);
-
-    return mock_type(char*);
+    return mock();
 }

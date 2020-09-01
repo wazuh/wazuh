@@ -13,6 +13,9 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/time_op_wrappers.h"
+
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/task_manager/wm_task_manager_parsing.h"
 #include "../../headers/shared.h"
@@ -27,27 +30,6 @@ static int teardown_json(void **state) {
         cJSON_Delete(json);
     }
     return 0;
-}
-
-// Wrappers
-
-void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-char* __wrap_w_get_timestamp(time_t time) {
-    check_expected(time);
-
-    return mock_type(char*);
 }
 
 // Tests
