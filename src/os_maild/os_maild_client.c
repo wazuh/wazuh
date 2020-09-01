@@ -18,45 +18,46 @@
 /**
  * @brief Function to add a json field to the alert buffer.
  * @param json_object JSON object that where the field will be looked for.
- * @param logs Alert buffer.
- * @param body_size Size of the buffer.
- * @param field Field to look for.
- * @param field_name Name that will be used for the field in the alert.
+ * @param field Field to look for int he json_object.
+ * @param dest Alert buffer.
+ * @param size Remaining size of the buffer on the entry, remaining size of the buffer on exit.
+ * @param prefix Name that will be used for the field in the alert.
  */
-void add_field_from_json(const cJSON *json_object, char *logs, size_t *body_size, const char *field, const char *field_name) {
+void add_field_from_json(const cJSON *json_object, const char *field, char *dest, size_t *size, const char *prefix) {
     cJSON *json_field;
     size_t log_size = 0;
     char *value = NULL;
 
     json_field = cJSON_GetObjectItem(json_object, field);
-    if (json_field) {
-        switch (json_field->type) {
-            case cJSON_String:
-                if (json_field->valuestring != NULL) {
-                    os_strdup(json_field->valuestring, value);
-                }
-            break;
-
-            case cJSON_Number:
-                value = w_long_str((long) json_field->valuedouble);
-            break;
-        }
-        if (value != NULL) {
-            log_size = strlen(value) + strlen(field_name) + 3;
-            if (*body_size > log_size) {
-                strcat(logs, field_name);
-                strncat(logs, value, *body_size);
-                strcat(logs, "\r\n");
-                *(body_size) -= log_size;
-            }
-        }
+    if (json_field == NULL) {
+        return ;
     }
-    os_free(value);
+
+    switch (json_field->type) {
+        case cJSON_String:
+            if (json_field->valuestring != NULL) {
+                os_strdup(json_field->valuestring, value);
+            }
+        break;
+
+        case cJSON_Number:
+            value = w_long_str((long) json_field->valuedouble);
+        break;
+    }
+    if (value != NULL) {
+        log_size = strlen(value) + strlen(prefix) + 3;
+        if (*size > log_size) {
+            strcat(dest, prefix);
+            strncat(dest, value, *size);
+            strcat(dest, "\r\n");
+            *(size) -= log_size;
+        }
+        os_free(value);
+    }
 }
 
 /* Receive a Message on the Mail queue */
-MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg **msg_sms)
-{
+MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg **msg_sms) {
     int i = 0, sms_set = 0, donotgroup = 0;
     size_t body_size = OS_MAXSTR - 3, log_size;
     char logs[OS_MAXSTR + 1];
@@ -328,8 +329,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
     return (mail);
 }
 
-MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sms)
-{
+MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sms) {
     int i = 0, sms_set = 0, donotgroup = 0;
     size_t body_size = OS_MAXSTR - 3, log_size;
     char logs[OS_MAXSTR + 1] = "";
@@ -373,66 +373,66 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
 
     if (json_object = cJSON_GetObjectItem(al_json,"syscheck"), json_object){
 
-        add_field_from_json(json_object, logs, &body_size, "path", "File: ");
-        add_field_from_json(json_object, logs, &body_size, "event", "Event: ");
-        add_field_from_json(json_object, logs, &body_size, "mode", "Mode: ");
-        add_field_from_json(json_object, logs, &body_size, "size_before", "Size before: ");
-        add_field_from_json(json_object, logs, &body_size, "size_after", "Size after: ");
-        add_field_from_json(json_object, logs, &body_size, "md5_before", "Old md5sum was: ");
-        add_field_from_json(json_object, logs, &body_size, "md5_after", "New md5sum is: ");
-        add_field_from_json(json_object, logs, &body_size, "sha1_before", "Old sha1sum was: ");
-        add_field_from_json(json_object, logs, &body_size, "sha1_after", "New sha1sum is: ");
-        add_field_from_json(json_object, logs, &body_size, "sha256_before", "Old sha256sum was: ");
-        add_field_from_json(json_object, logs, &body_size, "sha256_after", "New sha256sum is: ");
+        add_field_from_json(json_object, "path", logs, &body_size, "File: ");
+        add_field_from_json(json_object, "event", logs, &body_size, "Event: ");
+        add_field_from_json(json_object, "mode", logs, &body_size, "Mode: ");
+        add_field_from_json(json_object, "size_before", logs, &body_size, "Size before: ");
+        add_field_from_json(json_object, "size_after", logs, &body_size, "Size after: ");
+        add_field_from_json(json_object, "md5_before", logs, &body_size, "Old md5sum was: ");
+        add_field_from_json(json_object, "md5_after", logs, &body_size, "New md5sum is: ");
+        add_field_from_json(json_object, "sha1_before", logs, &body_size, "Old sha1sum was: ");
+        add_field_from_json(json_object, "sha1_after", logs, &body_size, "New sha1sum is: ");
+        add_field_from_json(json_object, "sha256_before", logs, &body_size, "Old sha256sum was: ");
+        add_field_from_json(json_object, "sha256_after", logs, &body_size, "New sha256sum is: ");
 
         strcat(logs, "\nAttributes\n");
         body_size -= 12;
 
-        add_field_from_json(json_object, logs, &body_size, "size_after", "- Size: ");
-        add_field_from_json(json_object, logs, &body_size, "perm_after", "- Permissions: ");
-        add_field_from_json(json_object, logs, &body_size, "inode_after", "- Inode: ");
-        add_field_from_json(json_object, logs, &body_size, "sha256_after", "- New sha256sum is: ");
-        add_field_from_json(json_object, logs, &body_size, "uname", "- User name: ");
-        add_field_from_json(json_object, logs, &body_size, "gname", "- Group name: ");
-        add_field_from_json(json_object, logs, &body_size, "md5_after", "- MD5: ");
-        add_field_from_json(json_object, logs, &body_size, "sha1_after", "- SHA1: ");
-        add_field_from_json(json_object, logs, &body_size, "sha256_after", "- SHA256: ");
+        add_field_from_json(json_object, "size_after", logs, &body_size, "- Size: ");
+        add_field_from_json(json_object, "perm_after", logs, &body_size, "- Permissions: ");
+        add_field_from_json(json_object, "inode_after", logs, &body_size, "- Inode: ");
+        add_field_from_json(json_object, "sha256_after", logs, &body_size, "- New sha256sum is: ");
+        add_field_from_json(json_object, "uname", logs, &body_size, "- User name: ");
+        add_field_from_json(json_object, "gname", logs, &body_size, "- Group name: ");
+        add_field_from_json(json_object, "md5_after", logs, &body_size, "- MD5: ");
+        add_field_from_json(json_object, "sha1_after", logs, &body_size, "- SHA1: ");
+        add_field_from_json(json_object, "sha256_after", logs, &body_size, "- SHA256: ");
 
         // get audit information
         if (json_audit = cJSON_GetObjectItem(json_object,"audit"), json_audit){
 
             json_field = cJSON_GetObjectItem(json_audit,"user");
             if (json_field) {
-                add_field_from_json(json_field, logs, &body_size, "name", "- (Audit) User name: ");
+                add_field_from_json(json_field, "name", logs, &body_size, "- (Audit) User name: ");
             }
 
             json_field = cJSON_GetObjectItem(json_audit,"login_user");
             if (json_field) {
-                add_field_from_json(json_field, logs, &body_size, "name", "- (Audit) Audit name: ");
+                add_field_from_json(json_field, "name", logs, &body_size, "- (Audit) Audit name: ");
             }
 
             json_field = cJSON_GetObjectItem(json_audit,"effective_user");
             if (json_field) {
-                add_field_from_json(json_field, logs, &body_size, "name", "- (Audit) Effective name: ");
+                add_field_from_json(json_field, "name", logs, &body_size, "- (Audit) Effective name: ");
             }
 
             json_field = cJSON_GetObjectItem(json_audit,"group");
             if (json_field) {
-                add_field_from_json(json_field, logs, &body_size, "name", "- (Audit) Group name: ");
+                add_field_from_json(json_field, "name", logs, &body_size, "- (Audit) Group name: ");
             }
 
             json_field = cJSON_GetObjectItem(json_audit,"process");
             if (json_field) {
-                add_field_from_json(json_field, logs, &body_size, "id", "- (Audit) Process id: ");
-                add_field_from_json(json_field, logs, &body_size, "name", "- (Audit) Process name: ");
-                add_field_from_json(json_field, logs, &body_size, "cwd", "- (Audit) Process cwd: ");
-                add_field_from_json(json_field, logs, &body_size, "parent_name", "- (Audit) Parent process name: ");
-                add_field_from_json(json_field, logs, &body_size, "ppid", "- (Audit) Parent process id: ");
-                add_field_from_json(json_field, logs, &body_size, "parent_cwd", "- (Audit) Parent process cwd: ");
+                add_field_from_json(json_field, "id", logs, &body_size, "- (Audit) Process id: ");
+                add_field_from_json(json_field, "name", logs, &body_size, "- (Audit) Process name: ");
+                add_field_from_json(json_field, "cwd", logs, &body_size, "- (Audit) Process cwd: ");
+                add_field_from_json(json_field, "parent_name", logs, &body_size, "- (Audit) Parent process name: ");
+                add_field_from_json(json_field, "ppid", logs, &body_size, "- (Audit) Parent process id: ");
+                add_field_from_json(json_field, "parent_cwd", logs, &body_size, "- (Audit) Parent process cwd: ");
             }
         }
 
-        add_field_from_json(json_object, logs, &body_size, "diff", "\n- Changed content:\n");
+        add_field_from_json(json_object, "diff", logs, &body_size, "\n- Changed content:\n");
 
     } else if(json_field = cJSON_GetObjectItem(al_json,"full_log"), json_field){
 
@@ -682,8 +682,7 @@ end:
 }
 
 /* Read cJSON and save in printed with email format */
-void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int counter)
-{
+void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int counter) {
     char *key;
     size_t log_size;
     char *tab_child;

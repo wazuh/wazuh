@@ -65,10 +65,8 @@
 /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
 
 
-void FreeAlertData(alert_data *al_data)
-{
+void FreeAlertData(alert_data *al_data) {
     char **p;
-
     os_free(al_data->alertid);
     os_free(al_data->date);
     os_free(al_data->location);
@@ -112,6 +110,7 @@ void FreeAlertData(alert_data *al_data)
 
 /* Return alert data for the file specified */
 alert_data *GetAlertData(int flag, FILE *fp) {
+
     alert_data *al_data;
     os_calloc(1, sizeof(alert_data), al_data);
 
@@ -123,20 +122,18 @@ alert_data *GetAlertData(int flag, FILE *fp) {
 
     while (fgets(str, OS_MAXSTR, fp) != NULL) {
         /* End of alert */
-        if ((strncmp(ALERT_BEGIN, str, ALERT_BEGIN_SZ) == 0 && _r == 2)) {
-            // This means that the last fgets readed the beggining of the next alert.
-            if (fseek(fp, -strlen(str), SEEK_CUR) != -1) {
-                _r = 0;
-                return (al_data);
-            } else {
-                goto l_error;
-            }
-        }
-
-        /* Check for the header */
         if (strncmp(ALERT_BEGIN, str, ALERT_BEGIN_SZ) == 0) {
             char *m;
             size_t z = 0;
+            /* End of the alert. */
+            if (_r == 2) {
+                if (fseek(fp, -strlen(str), SEEK_CUR) != -1) {
+                    return (al_data);
+                } else {
+                    goto l_error;
+                }
+            }
+
             p = str + ALERT_BEGIN_SZ + 1;
 
             m = strstr(p, ":");
@@ -339,81 +336,17 @@ alert_data *GetAlertData(int flag, FILE *fp) {
                 al_data->log[log_size] = NULL;
             }
         }
-        continue;
-l_error:
-        /* Free the memory */
-        _r = 0;
-        os_free(al_data->date);
-        os_free(al_data->location);
-        os_free(al_data->comment);
-        os_free(al_data->srcip);
-
-#ifdef LIBGEOIP_ENABLED
-        os_free(al_data->srcgeoip);
-        os_free(al_data->dstgeoip);
-
-#endif
-        os_free(al_data->user);
-        os_free(al_data->filename);
-        os_free(al_data->group);
-        os_free(al_data->old_md5);
-        os_free(al_data->new_md5);
-        os_free(al_data->old_sha1);
-        os_free(al_data->new_sha1);
-        os_free(al_data->old_sha256);
-        os_free(al_data->new_sha256);
-
-/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-
-        os_free(al_data->file_size);
-        os_free(al_data->owner_chg);
-        os_free(al_data->group_chg);
-        os_free(al_data->perm_chg);
-
-/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-        while (log_size > 0) {
-            log_size--;
-            os_free(al_data->log[log_size]);
-        }
     }
+
     // We reached the end of the alert and the information is saved.
-    if (feof(fp) && strncmp(str, "\0",1) == 0 && _r == 2) {
+    if (feof(fp) && *str == '\0' && _r == 2) {
         return al_data;
     }
 
-    os_free(al_data->alertid);
-    os_free(al_data->group);
-    os_free(al_data->location);
-    os_free(al_data->date);
-
-    while (log_size > 0) {
-        log_size--;
-        os_free(al_data->log[log_size]);
-    }
-
-    os_free(al_data->log);
-    os_free(al_data->comment);
-    os_free(al_data->srcip);
-    os_free(al_data->dstip);
-    os_free(al_data->user);
-    os_free(al_data->old_md5);
-    os_free(al_data->new_md5);
-    os_free(al_data->old_sha1);
-    os_free(al_data->new_sha1);
-    os_free(al_data->old_sha256);
-    os_free(al_data->new_sha256);
-    os_free(al_data->filename);
-/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-    os_free(al_data->file_size);
-    os_free(al_data->owner_chg);
-    os_free(al_data->group_chg);
-    os_free(al_data->perm_chg);
-/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-#ifdef LIBGEOIP_ENABLED
-    os_free(al_data->srcgeoip);
-    os_free(al_data->dstgeoip);
-#endif
-
+l_error:
+    /* Free the memory */
+    _r = 0;
+    FreeAlertData(al_data);
     /* We need to clean end of file before returning */
     clearerr(fp);
     return (NULL);
