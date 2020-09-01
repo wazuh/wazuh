@@ -1059,19 +1059,14 @@ main()
     if [ "X$INSTYPE" = "Xserver" ]; then
         echo ""
         echo " - ${addserveragent}"
-        echo "   ${runma}:"
-        echo ""
-        echo "   $INSTALLDIR/bin/manage_agents"
         echo ""
         echo "   ${moreinfo}"
         echo "   https://documentation.wazuh.com/"
         echo ""
 
-    elif [ "X$INSTYPE" = "Xagent" ]; then
-        catMsg "0x104-client"
-        echo "   $INSTALLDIR/bin/manage_agents"
-        echo ""
-        echo "   ${moreinfo}"
+    elif [ "X$INSTYPE" = "Xagent" ]; then  
+        echo ""      
+        echo " - ${moreinfo}"
         echo "   https://documentation.wazuh.com/"
         echo ""
     fi
