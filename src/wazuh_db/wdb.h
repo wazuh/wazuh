@@ -618,7 +618,13 @@ int wdb_remove_group_from_belongs_db(const char *name);
  */
 int wdb_remove_group_db(const char *name);
 
-/* Update agent multi group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+/**
+ * @brief Update agent multi group.
+ * 
+ * @param[in] id The agent id.
+ * @param[in] group The group name.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
 int wdb_update_agent_multi_group(int id, char *group);
 
 /* Update groups table. It opens and closes the DB. Returns number of affected rows or -1 on error. */

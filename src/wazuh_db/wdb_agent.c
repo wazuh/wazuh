@@ -870,10 +870,8 @@ int wdb_update_agent_group(int id, char *group) {
     return result;
 }
 
-/* Update agent multi group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_multi_group(int id, char *group) {
-    int result = 0;
 
+int wdb_update_agent_multi_group(int id, char *group) {
     /* Wipe out the agent multi groups relation for this agent */
     if (wdb_delete_agent_belongs(id) < 0) {
         return OS_INVALID;
@@ -920,7 +918,7 @@ int wdb_update_agent_multi_group(int id, char *group) {
         }
     }
 
-    return result;
+    return OS_SUCCESS;
 }
 
 
