@@ -1,7 +1,6 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-import json
 
 from wazuh import WazuhError
 from wazuh.core.logtest import send_logtest_msg
@@ -32,9 +31,9 @@ def get_logtest_output(**kwargs):
             # kwargs are not valid
             raise WazuhError(7000)
 
-    response = send_logtest_msg(json.dumps({param: value for param, value in kwargs.items() if value is not None}))
+    response = send_logtest_msg({param: value for param, value in kwargs.items() if value is not None})
 
-    return json.loads(response)
+    return response
 
 
 @expose_resources(actions=['logtest:end_session'], resources=['*:*:*'])
@@ -54,6 +53,6 @@ def end_logtest_session(token: str = None):
     if token is None:
         raise WazuhError(7001)
 
-    response = send_logtest_msg(json.dumps({'remove_session': token}))
+    response = send_logtest_msg({'remove_session': token})
 
-    return json.loads(response)
+    return response
