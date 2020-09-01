@@ -1,0 +1,35 @@
+---
+test_name: PUT /logtest
+
+marks:
+  - base_tests
+
+stages:
+
+  - name: Run logtest with an invalid body
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/logtest"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        name: "invalid_body"
+    response:
+      status_code: 400
+      json:
+        code: 7000
+
+  - name: Try to end logtest session without token
+      request:
+        verify: False
+        url: "{protocol:s}://{host:s}:{port:d}/logtest/sessions/"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {test_login_token}"
+          content-type: application/json
+      response:
+        status_code: 400
+        json:
+          code: 7001

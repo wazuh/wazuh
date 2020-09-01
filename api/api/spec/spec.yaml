@@ -3823,27 +3823,6 @@ components:
         type: array
         items:
           type: string
-    location:
-      in: query
-      name: location
-      description: "Path string."
-      schema:
-        type: string
-        format: paths
-    log:
-      in: query
-      name: log
-      description: "Request body corresponding to the event."
-      schema:
-        type: string
-        format: alphanumeric
-    log_format:
-      in: query
-      name: log_format
-      description: "Set the format of the log to be read."
-      schema:
-        type: string
-        format: alphanumeric
     manager_host:
       in: query
       name: manager

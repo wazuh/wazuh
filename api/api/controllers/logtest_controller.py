@@ -14,7 +14,7 @@ logger = logging.getLogger('wazuh')
 
 
 async def run_logtest_tool(request, pretty: bool = False, wait_for_complete: bool = False, token: str = None,
-                             log_format: str = None, location: str = None, log: str = None):
+                           log_format: str = None, location: str = None, log: str = None):
     """Get the logtest output after sending a JSON to its socket.
     Parameters
     ----------
