@@ -1,6 +1,0 @@
-
- - U dient eerst deze agent aan de server toe te voegen
-   zodat ze met elkaar kunnen communiceren. Als u dit
-   gedaan heeft dan kunt u de 'manage_agents' tool ge-
-   bruiken om de authenticatiesleutel te importeren
-   vanaf de server.

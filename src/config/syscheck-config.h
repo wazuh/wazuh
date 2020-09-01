@@ -54,6 +54,7 @@ typedef enum fdb_stmt {
 #define MAX_DIR_ENTRY   128
 #define SYSCHECK_WAIT   1
 #define MAX_FILE_LIMIT  2147483647
+#define MIN_COMP_ESTIM  0.4         // Minimum value to be taken by syscheck.comp_estimation_perc
 
 /* Checking options */
 #define CHECK_SIZE          00000001
@@ -263,6 +264,15 @@ typedef struct _config {
     char **ignore;                  /* list of files/dirs to ignore */
     OSMatch **ignore_regex;         /* regex of files/dirs to ignore */
 
+    int disk_quota_enabled;         /* Enable diff disk quota limit */
+    int disk_quota_limit;           /* Controls the increase of the size of the queue/diff/local folder (in KB) */
+    int file_size_enabled;          /* Enable diff file size limit */
+    int file_size_limit;            /* Avoids generating a backup from a file bigger than this limit (in KB) */
+    int *diff_size_limit;           /* Apply the file size limit option in a specific directory */
+    float diff_folder_size;         /* Save size of queue/diff/local folder */
+    float comp_estimation_perc;     /* Estimation of the percentage of compression each file will have */
+    uint16_t disk_quota_full_msg;   /* Specify if the full disk_quota message can be written (Once per scan) */
+
     char **nodiff;                  /* list of files/dirs to never output diff */
     OSMatch **nodiff_regex;         /* regex of files/dirs to never output diff */
 
@@ -314,6 +324,26 @@ typedef struct _config {
 void organize_syscheck_dirs(syscheck_config *syscheck) __attribute__((nonnull(1)));
 
 /**
+ * @brief Converts the value written in the configuration to a determined data unit in KB
+ *
+ * @param content Read content from the configuration
+ *
+ * @return Read value on success, -1 on failure
+ */
+int read_data_unit(const char *content);
+
+/**
+ * @brief Read diff configuration
+ *
+ * Read disk_quota, file_size and nodiff options
+ *
+ * @param xml XML structure containing Wazuh's configuration
+ * @param syscheck Syscheck configuration structure
+ * @param node XML node to continue reading the configuration file
+ */
+void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node);
+
+/**
  * @brief Adds (or overwrite if exists) an entry to the syscheck configuration structure
  *
  * @param syscheck Syscheck configuration structure
@@ -324,8 +354,11 @@ void organize_syscheck_dirs(syscheck_config *syscheck) __attribute__((nonnull(1)
  * @param recursion_level The recursion level to be set
  * @param tag The tag to be set
  * @param link If the added entry is pointed by a symbolic link
+ * @param diff_size Maximum size to calculate diff for files in the directory
  */
-void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag, const char *link) __attribute__((nonnull(1, 2)));
+void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile,
+                            int recursion_level, const char *tag, const char *link,
+                            int diff_size) __attribute__((nonnull(1, 2)));
 
 /**
  * @brief Converts a bit mask with syscheck options to a human readable format
