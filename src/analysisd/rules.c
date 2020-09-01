@@ -14,15 +14,22 @@
 #include "compiled_rules/compiled_rules.h"
 #include "analysisd.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 /* Global definition */
 RuleInfo *currently_rule;
 int default_timeframe;
 
 /* Do diff mutex */
-static pthread_mutex_t do_diff_mutex = PTHREAD_MUTEX_INITIALIZER;
+STATIC pthread_mutex_t do_diff_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Hourly alerts mutex */
-static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
+STATIC pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Change path for test rule */
 #ifdef TESTRULE
@@ -31,17 +38,17 @@ static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 /* Prototypes */
-static int getattributes(char **attributes,
+STATIC int getattributes(char **attributes,
                   char **values,
                   int *id, int *level,
                   int *maxsize, int *timeframe,
                   int *frequency, int *accuracy,
                   int *noalert, int *ignore_time, int *overwrite,
                   OSList* log_msg);
-static int doesRuleExist(int sid, RuleNode *r_node);
-static void Rule_AddAR(RuleInfo *config_rule);
-static char *loadmemory(char *at, const char *str, OSList* log_msg);
-static void printRuleinfo(const RuleInfo *rule, int node);
+STATIC int doesRuleExist(int sid, RuleNode *r_node);
+STATIC void Rule_AddAR(RuleInfo *config_rule);
+STATIC char *loadmemory(char *at, const char *str, OSList* log_msg);
+STATIC void printRuleinfo(const RuleInfo *rule, int node);
 
 /* Will initialize the rules list */
 void Rules_OP_CreateRules() {
@@ -670,7 +677,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             os_calloc(1, sizeof(FieldInfo), config_ruleinfo->fields[ifield]);
 
                             if (strcasecmp(rule_opt[k]->attributes[0], xml_name) == 0) {
-                                // Avoid static fields
+                                // Avoid STATIC fields
                                 if (strcasecmp(rule_opt[k]->values[0], xml_srcuser) &&
                                     strcasecmp(rule_opt[k]->values[0], xml_dstuser) &&
                                     strcasecmp(rule_opt[k]->values[0], xml_user) &&
@@ -689,7 +696,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                     config_ruleinfo->fields[ifield]->name = loadmemory(config_ruleinfo->fields[ifield]->name,
                                                                                         rule_opt[k]->values[0], log_msg);
                                 else {
-                                    smerror(log_msg, "Field '%s' is static.", rule_opt[k]->values[0]);
+                                    smerror(log_msg, "Field '%s' is STATIC.", rule_opt[k]->values[0]);
                                     goto cleanup;
                                 }
 
@@ -1784,7 +1791,7 @@ cleanup:
  * If *at already exist, realloc the memory and cat str on it.
  * Returns the new string
  */
-static char *loadmemory(char *at, const char *str, OSList* log_msg)
+STATIC char *loadmemory(char *at, const char *str, OSList* log_msg)
 {
     if (at == NULL) {
         size_t strsize = 0;
@@ -1993,7 +2000,7 @@ int get_info_attributes(char **attributes, char **values, OSList* log_msg)
 }
 
 /* Get the attributes */
-static int getattributes(char **attributes, char **values,
+STATIC int getattributes(char **attributes, char **values,
                   int *id, int *level,
                   int *maxsize, int *timeframe,
                   int *frequency, int *accuracy,
@@ -2111,7 +2118,7 @@ static int getattributes(char **attributes, char **values,
 }
 
 /* Bind active responses to a rule */
-static void Rule_AddAR(RuleInfo *rule_config)
+STATIC void Rule_AddAR(RuleInfo *rule_config)
 {
     unsigned int rule_ar_size = 0;
     int mark_to_ar = 0;
@@ -2242,7 +2249,7 @@ static void Rule_AddAR(RuleInfo *rule_config)
     return;
 }
 
-static void printRuleinfo(const RuleInfo *rule, int node)
+STATIC void printRuleinfo(const RuleInfo *rule, int node)
 {
     mdebug1("%d : rule:%d, level %d, timeout: %d",
            node,
@@ -2307,7 +2314,7 @@ int _setlevels(RuleNode *node, int nnode)
 /* Test if a rule id exists
  * return 1 if exists, otherwise 0
  */
-static int doesRuleExist(int sid, RuleNode *r_node)
+STATIC int doesRuleExist(int sid, RuleNode *r_node)
 {
     while (r_node) {
         /* Check if the sigid matches */

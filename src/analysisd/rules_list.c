@@ -13,10 +13,17 @@
 #include "eventinfo.h"
 #include "analysisd.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 
 /* _OS_Addrule: Internal AddRule */
-static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
-static int _AddtoRule(int sid, int level, int none, const char *group,
+STATIC RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
+STATIC int _AddtoRule(int sid, int level, int none, const char *group,
                RuleNode *r_node, RuleInfo *read_rule);
 
 
@@ -33,7 +40,7 @@ RuleNode *OS_GetFirstRule()
 }
 
 /* Search all rules, including children */
-static int _AddtoRule(int sid, int level, int none, const char *group,
+STATIC int _AddtoRule(int sid, int level, int none, const char *group,
                RuleNode *r_node, RuleInfo *read_rule)
 {
     int r_code = 0;
@@ -187,7 +194,7 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
 }
 
 /* Add a rule in the chain */
-static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
+STATIC RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
 {
     RuleNode *tmp_rulenode = _rulenode;
 
