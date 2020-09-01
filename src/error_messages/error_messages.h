@@ -502,7 +502,7 @@
 #define LOGTEST_ERROR_RECV_MSG_ERRNO                "(7302): Failure to receive message: Errno: %s"
 #define LOGTEST_ERROR_INIT_HASH                     "(7303): Failure to initialize all_sessions hash"
 #define LOGTEST_ERROR_INV_CONF                      "(7304): Invalid wazuh-logtest configuration"
-#define LOGTEST_ERROR_SIZE_HASH                     "(7305): Failure to resize all_sesssions hash"
+#define LOGTEST_ERROR_SIZE_HASH                     "(7305): Failure to resize all_sessions hash"
 #define LOGTEST_ERROR_JSON_PARSE                    "(7306): Error parsing JSON"
 #define LOGTEST_ERROR_JSON_PARSE_POS                "(7307): Error in position %i, ... %s ..."
 #define LOGTEST_ERROR_JSON_REQUIRED_SFIELD          "(7308): '%s' JSON field is required and must be a string"
