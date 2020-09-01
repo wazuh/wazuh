@@ -13,14 +13,36 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../../wrappers/common.h"
+#include "../../wrappers/posix/unistd_wrappers.h"
+#include "../../wrappers/wazuh/shared/cluster_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/hash_op_wrappers.h"
+#include "../../wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
+
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_tasks.h"
 #include "../../headers/shared.h"
+
+extern OSHash *task_table_by_agent_id;
 
 cJSON *wm_agent_send_task_information_master(const cJSON *message_object);
 cJSON *wm_agent_send_task_information_worker(const cJSON *message_object);
 
 // Setup / teardown
+
+static int setup_group(void **state) {
+    wm_agent_upgrade_init_task_map();
+    test_mode = 1;
+    return 0;
+}
+
+static int teardown_group(void **state) {
+    wm_agent_upgrade_destroy_task_map();
+    test_mode = 0;
+    return 0;
+}
 
 static int setup_agent_task(void **state) {
     wm_agent_task *agent_task = NULL;
@@ -56,127 +78,6 @@ static int teardown_jsons(void **state) {
     return 0;
 }
 
-// Wrappers
-
-void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mtdebug1(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data) {
-    check_expected(key);
-    check_expected(data);
-
-    return mock();
-}
-
-void *__wrap_OSHash_Get_ex(const OSHash *self, const char *key) {
-    check_expected(key);
-
-    return mock_type(void*);
-}
-
-int __wrap_OSHash_Update_ex(OSHash *self, const char *key, void *data) {
-    check_expected(key);
-    check_expected(data);
-
-    return mock();
-}
-
-void *__wrap_OSHash_Delete_ex(OSHash *self, const char *key) {
-    check_expected(key);
-
-    return mock_type(void*);
-}
-
-int __wrap_OSHash_Begin(unsigned int *index) {
-    check_expected(index);
-
-    return mock();
-}
-
-int __wrap_OSHash_Next(unsigned int *index, OSHashNode *current) {
-    check_expected(index);
-
-    return mock();
-}
-
-int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) {
-    check_expected(path);
-    check_expected(type);
-    check_expected(max_msg_size);
-
-    return mock();
-}
-
-int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
-    check_expected(sock);
-    check_expected(size);
-    if (msg) check_expected(msg);
-
-    return mock();
-}
-
-int __wrap_OS_RecvSecureTCP(int sock, char *ret, uint32_t size) {
-    check_expected(sock);
-    check_expected(size);
-
-    if (mock()) {
-        strncpy(ret, mock_type(char*), size);
-    }
-
-    return mock();
-}
-
-int __wrap_close(int fd) {
-    check_expected(fd);
-    return 0;
-}
-
-cJSON* __wrap_w_create_sendsync_payload(const char *daemon_name, cJSON *message) {
-    check_expected(daemon_name);
-
-    return mock_type(cJSON*);
-}
-
-int __wrap_w_send_clustered_message(const char* command, const char* payload, char* response) {
-    check_expected(command);
-    check_expected(payload);
-
-    strcpy(response, mock_type(char*));
-
-    return mock();
-}
-
-int __wrap_w_is_worker(void) {
-    return mock();
-}
-
-cJSON* __wrap_cJSON_Duplicate(const cJSON *item, int recurse) {
-    return mock_type(cJSON*);
-}
-
 // Tests
 
 void test_wm_agent_upgrade_create_task_entry_ok(void **state)
@@ -184,6 +85,7 @@ void test_wm_agent_upgrade_create_task_entry_ok(void **state)
     int agent_id = 6;
     wm_agent_task *agent_task = *state;
 
+    expect_value(__wrap_OSHash_Add_ex, self, task_table_by_agent_id);
     expect_string(__wrap_OSHash_Add_ex, key, "6");
     expect_memory(__wrap_OSHash_Add_ex, data, agent_task, sizeof(agent_task));
     will_return(__wrap_OSHash_Add_ex, OSHASH_SUCCESS);
@@ -198,6 +100,7 @@ void test_wm_agent_upgrade_create_task_entry_duplicate(void **state)
     int agent_id = 6;
     wm_agent_task *agent_task = *state;
 
+    expect_value(__wrap_OSHash_Add_ex, self, task_table_by_agent_id);
     expect_string(__wrap_OSHash_Add_ex, key, "6");
     expect_memory(__wrap_OSHash_Add_ex, data, agent_task, sizeof(agent_task));
     will_return(__wrap_OSHash_Add_ex, OSHASH_DUPLICATED);
@@ -215,11 +118,10 @@ void test_wm_agent_upgrade_insert_task_id_ok(void **state)
 
     agent_task->task_info = wm_agent_upgrade_init_task_info();
 
+    expect_value(__wrap_OSHash_Get_ex, self, task_table_by_agent_id);
     expect_string(__wrap_OSHash_Get_ex, key, "8");
     will_return(__wrap_OSHash_Get_ex, agent_task);
 
-    expect_string(__wrap_OSHash_Update_ex, key, "8");
-    expect_memory(__wrap_OSHash_Update_ex, data, agent_task, sizeof(agent_task));
     will_return(__wrap_OSHash_Update_ex, OSHASH_SUCCESS);
 
     wm_agent_upgrade_insert_task_id(agent_id, task_id);
@@ -232,6 +134,7 @@ void test_wm_agent_upgrade_insert_task_id_err(void **state)
     int agent_id = 8;
     int task_id = 100;
 
+    expect_value(__wrap_OSHash_Get_ex, self, task_table_by_agent_id);
     expect_string(__wrap_OSHash_Get_ex, key, "8");
     will_return(__wrap_OSHash_Get_ex, NULL);
 
@@ -243,6 +146,7 @@ void test_wm_agent_upgrade_remove_entry_ok(void **state)
     int agent_id = 10;
     wm_agent_task *agent_task = *state;
 
+    expect_value(__wrap_OSHash_Delete_ex, self, task_table_by_agent_id);
     expect_string(__wrap_OSHash_Delete_ex, key, "10");
     will_return(__wrap_OSHash_Delete_ex, agent_task);
 
@@ -253,6 +157,7 @@ void test_wm_agent_upgrade_remove_entry_err(void **state)
 {
     int agent_id = 10;
 
+    expect_value(__wrap_OSHash_Delete_ex, self, task_table_by_agent_id);
     expect_string(__wrap_OSHash_Delete_ex, key, "10");
     will_return(__wrap_OSHash_Delete_ex, NULL);
 
@@ -263,7 +168,7 @@ void test_wm_agent_upgrade_get_first_node(void **state)
 {
     int index = 0;
 
-    expect_value(__wrap_OSHash_Begin, index, index);
+    expect_value(__wrap_OSHash_Begin, self, task_table_by_agent_id);
     will_return(__wrap_OSHash_Begin, 1);
 
     OSHashNode* ret = wm_agent_upgrade_get_first_node(&index);
@@ -276,7 +181,7 @@ void test_wm_agent_upgrade_get_next_node(void **state)
     int index = 0;
     OSHashNode *node = *state;
 
-    expect_value(__wrap_OSHash_Next, index, index);
+    expect_value(__wrap_OSHash_Next, self, task_table_by_agent_id);
     will_return(__wrap_OSHash_Next, 1);
 
     OSHashNode* ret = wm_agent_upgrade_get_next_node(&index, node);
@@ -340,7 +245,6 @@ void test_wm_agent_send_task_information_master_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, strlen(response) + 1);
 
@@ -353,8 +257,6 @@ void test_wm_agent_send_task_information_master_ok(void **state)
                                                                                                           "\"data\":\"Success\","
                                                                                                           "\"agent\":10,"
                                                                                                           "\"task_id\":101}]'");
-
-    expect_value(__wrap_close, fd, socket);
 
     cJSON *output = wm_agent_send_task_information_master(input);
 
@@ -413,14 +315,11 @@ void test_wm_agent_send_task_information_master_json_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, strlen(response) + 1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8105): Response from task manager does not have a valid JSON format.");
-
-    expect_value(__wrap_close, fd, socket);
 
     cJSON *output = wm_agent_send_task_information_master(input);
 
@@ -486,14 +385,11 @@ void test_wm_agent_send_task_information_master_recv_error(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8111): Error in recv(): 'Success'");
-
-    expect_value(__wrap_close, fd, socket);
 
     cJSON *output = wm_agent_send_task_information_master(input);
 
@@ -559,14 +455,11 @@ void test_wm_agent_send_task_information_master_sockterr_error(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
-
-    expect_value(__wrap_close, fd, socket);
 
     cJSON *output = wm_agent_send_task_information_master(input);
 
@@ -746,7 +639,6 @@ void test_wm_agent_upgrade_send_tasks_information_master(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, strlen(response) + 1);
 
@@ -759,8 +651,6 @@ void test_wm_agent_upgrade_send_tasks_information_master(void **state)
                                                                                                           "\"data\":\"Success\","
                                                                                                           "\"agent\":10,"
                                                                                                           "\"task_id\":101}]'");
-
-    expect_value(__wrap_close, fd, socket);
 
     cJSON *output = wm_agent_upgrade_send_tasks_information(input);
 
@@ -875,5 +765,5 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_send_tasks_information_master, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_send_tasks_information_worker, teardown_jsons),
     };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

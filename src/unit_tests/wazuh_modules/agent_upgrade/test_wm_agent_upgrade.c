@@ -13,6 +13,10 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../../wrappers/posix/pthread_wrappers.h"
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
+
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/agent_upgrade/wm_agent_upgrade.h"
 #include "../../headers/shared.h"
@@ -45,33 +49,6 @@ static int teardown_json(void **state) {
         cJSON_Delete(json);
     }
     return 0;
-}
-
-// Wrappers
-
-void __wrap__mtinfo(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-int __wrap_pthread_exit() {
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs) {
-    return mock();
 }
 
 // Tests

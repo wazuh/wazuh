@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
 #else
@@ -152,7 +152,7 @@ void* wm_task_manager_clean_db(void *arg) {
 
         w_sleep_until(sleep_time);
 
-    #ifdef UNIT_TESTING
+    #ifdef WAZUH_UNIT_TESTING
         break;
     #endif
     }

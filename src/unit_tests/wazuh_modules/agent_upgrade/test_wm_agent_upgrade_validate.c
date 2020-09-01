@@ -13,12 +13,19 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../../wrappers/common.h"
+#include "../../wrappers/libc/stdio_wrappers.h"
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/url_wrappers.h"
+#include "../../wrappers/wazuh/os_crypto/sha1_op_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
+
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_validate.h"
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_tasks.h"
 #include "../../headers/shared.h"
-
-static int unit_testing;
 
 int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task, const wm_manager_configs* manager_configs);
 int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch);
@@ -79,90 +86,13 @@ static int teardown_validate_message(void **state) {
 }
 
 static int setup_group(void **state) {
-    unit_testing = 1;
+    test_mode = 1;
     return 0;
 }
 
 static int teardown_group(void **state) {
-    unit_testing = 0;
+    test_mode = 0;
     return 0;
-}
-
-// Wrappers
-
-void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mtdebug1(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-char* __wrap_wurl_http_get(const char * url) {
-    check_expected(url);
-
-    return mock_type(char *);
-}
-
-char* __wrap_wdb_agent_version(int id) {
-    check_expected(id);
-
-    return mock_type(char *);
-}
-
-extern FILE* __real_fopen(const char* path, const char* mode);
-FILE* __wrap_fopen(const char* path, const char* mode) {
-    if(unit_testing) {
-        check_expected(path);
-        check_expected(mode);
-        return mock_ptr_type(FILE*);
-    }
-    return __real_fopen(path, mode);
-}
-
-int __wrap_fclose() {
-    return 0;
-}
-
-int __wrap_OS_SHA1_File(const char *fname, char *output, int mode) {
-    check_expected(fname);
-    check_expected(mode);
-
-    snprintf(output, 41, "%s", mock_type(char *));
-
-    return mock();
-}
-
-int __wrap_wurl_request(const char * url, const char * dest, const char *header, const char *data) {
-    if (url) check_expected(url);
-    if (dest) check_expected(dest);
-    if (header) check_expected(header);
-    if (data) check_expected(data);
-
-    return mock();
-}
-
-int __wrap_sleep(unsigned int seconds) {
-    check_expected(seconds);
-    return mock();
 }
 
 // Tests
@@ -1088,6 +1018,9 @@ void test_wm_agent_upgrade_validate_wpk_exist(void **state)
     will_return(__wrap_OS_SHA1_File, sha1);
     will_return(__wrap_OS_SHA1_File, 0);
 
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
+
     int ret = wm_agent_upgrade_validate_wpk(task);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
@@ -1111,11 +1044,15 @@ void test_wm_agent_upgrade_validate_wpk_exist_diff_sha1(void **state)
     will_return(__wrap_OS_SHA1_File, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File, 0);
 
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8161): Downloading WPK file from: 'https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk'");
 
     expect_string(__wrap_wurl_request, url, "https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk");
     expect_string(__wrap_wurl_request, dest, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
+    expect_value(__wrap_wurl_request, timeout, WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT);
     will_return(__wrap_wurl_request, 0);
 
     expect_string(__wrap_OS_SHA1_File, fname, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
@@ -1146,13 +1083,14 @@ void test_wm_agent_upgrade_validate_wpk_download_retry(void **state)
 
     expect_string(__wrap_wurl_request, url, "https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk");
     expect_string(__wrap_wurl_request, dest, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
+    expect_value(__wrap_wurl_request, timeout, WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT);
     will_return(__wrap_wurl_request, 1);
 
     expect_value(__wrap_sleep, seconds, 1);
-    will_return(__wrap_sleep, 1);
 
     expect_string(__wrap_wurl_request, url, "https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk");
     expect_string(__wrap_wurl_request, dest, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
+    expect_value(__wrap_wurl_request, timeout, WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT);
     will_return(__wrap_wurl_request, 0);
 
     expect_string(__wrap_OS_SHA1_File, fname, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
@@ -1183,6 +1121,7 @@ void test_wm_agent_upgrade_validate_wpk_download_diff_sha1(void **state)
 
     expect_string(__wrap_wurl_request, url, "https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk");
     expect_string(__wrap_wurl_request, dest, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
+    expect_value(__wrap_wurl_request, timeout, WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT);
     will_return(__wrap_wurl_request, 0);
 
     expect_string(__wrap_OS_SHA1_File, fname, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
@@ -1213,34 +1152,35 @@ void test_wm_agent_upgrade_validate_wpk_download_retry_max(void **state)
 
     expect_string(__wrap_wurl_request, url, "https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk");
     expect_string(__wrap_wurl_request, dest, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
+    expect_value(__wrap_wurl_request, timeout, WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT);
     will_return(__wrap_wurl_request, 1);
 
     expect_value(__wrap_sleep, seconds, 1);
-    will_return(__wrap_sleep, 1);
 
     expect_string(__wrap_wurl_request, url, "https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk");
     expect_string(__wrap_wurl_request, dest, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
+    expect_value(__wrap_wurl_request, timeout, WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT);
     will_return(__wrap_wurl_request, 1);
 
     expect_value(__wrap_sleep, seconds, 2);
-    will_return(__wrap_sleep, 1);
 
     expect_string(__wrap_wurl_request, url, "https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk");
     expect_string(__wrap_wurl_request, dest, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
+    expect_value(__wrap_wurl_request, timeout, WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT);
     will_return(__wrap_wurl_request, 1);
 
     expect_value(__wrap_sleep, seconds, 3);
-    will_return(__wrap_sleep, 1);
 
     expect_string(__wrap_wurl_request, url, "https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk");
     expect_string(__wrap_wurl_request, dest, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
+    expect_value(__wrap_wurl_request, timeout, WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT);
     will_return(__wrap_wurl_request, 1);
 
     expect_value(__wrap_sleep, seconds, 4);
-    will_return(__wrap_sleep, 1);
 
     expect_string(__wrap_wurl_request, url, "https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk");
     expect_string(__wrap_wurl_request, dest, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
+    expect_value(__wrap_wurl_request, timeout, WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT);
     will_return(__wrap_wurl_request, 1);
 
     int ret = wm_agent_upgrade_validate_wpk(task);
@@ -1266,6 +1206,9 @@ void test_wm_agent_upgrade_validate_wpk_custom_exist(void **state)
     expect_string(__wrap_fopen, path, "/tmp/test.wpk");
     expect_string(__wrap_fopen, mode, "rb");
     will_return(__wrap_fopen, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     int ret = wm_agent_upgrade_validate_wpk_custom(task);
 

@@ -13,14 +13,19 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../../wrappers/common.h"
+#include "../../wrappers/libc/stdio_wrappers.h"
+#include "../../wrappers/posix/unistd_wrappers.h"
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/os_crypto/sha1_op_wrappers.h"
+#include "../../wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
+
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_manager.h"
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_tasks.h"
 #include "../../headers/shared.h"
-
-static int unit_testing;
-
-OSHash *hash_table;
 
 cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, wm_upgrade_error_code *error_code, const wm_manager_configs* manager_configs);
 int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs);
@@ -35,16 +40,6 @@ int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, const char
 cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task);
 
 // Setup / teardown
-
-static int setup_hash_table(void **state) {
-    hash_table = OSHash_Create();
-    return 0;
-}
-
-static int teardown_hash_table(void **state) {
-    OSHash_Free(hash_table);
-    return 0;
-}
 
 static int setup_config(void **state) {
     wm_manager_configs *config = NULL;
@@ -92,7 +87,7 @@ static int teardown_config_agent_task(void **state) {
 }
 
 static int setup_analyze_agent_task(void **state) {
-    setup_hash_table(state);
+    setup_hash_table();
     wm_manager_configs *config = NULL;
     wm_agent_task *agent_task = NULL;
     os_calloc(1, sizeof(wm_manager_configs), config);
@@ -104,7 +99,7 @@ static int setup_analyze_agent_task(void **state) {
 }
 
 static int teardown_analyze_agent_task(void **state) {
-    teardown_hash_table(state);
+    teardown_hash_table();
     wm_manager_configs *config = state[0];
     wm_agent_task *agent_task = state[1];
     os_free(config);
@@ -113,7 +108,7 @@ static int teardown_analyze_agent_task(void **state) {
 }
 
 static int setup_config_nodes(void **state) {
-    setup_hash_table(state);
+    setup_hash_table();
     wm_manager_configs *config = NULL;
     OSHashNode *node = NULL;
     OSHashNode *node_next = NULL;
@@ -137,7 +132,7 @@ static int setup_config_nodes(void **state) {
 }
 
 static int teardown_config_nodes(void **state) {
-    teardown_hash_table(state);
+    teardown_hash_table();
     wm_manager_configs *config = (wm_manager_configs *)state[0];
     OSHashNode *node = (OSHashNode *)state[1];
     OSHashNode *node_next = node->next;
@@ -162,7 +157,7 @@ static int teardown_agent_status_task_string(void **state) {
 }
 
 static int teardown_upgrade_custom_task_string(void **state) {
-    teardown_hash_table(state);
+    teardown_hash_table();
     wm_upgrade_custom_task *task = state[0];
     char *string = state[1];
     wm_agent_upgrade_free_upgrade_custom_task(task);
@@ -171,7 +166,7 @@ static int teardown_upgrade_custom_task_string(void **state) {
 }
 
 static int teardown_upgrade_task_string(void **state) {
-    teardown_hash_table(state);
+    teardown_hash_table();
     wm_upgrade_task *task = state[0];
     char *string = state[1];
     wm_agent_upgrade_free_upgrade_task(task);
@@ -180,302 +175,13 @@ static int teardown_upgrade_task_string(void **state) {
 }
 
 static int setup_group(void **state) {
-    unit_testing = 1;
+    test_mode = 1;
     return 0;
 }
 
 static int teardown_group(void **state) {
-    unit_testing = 0;
+    test_mode = 0;
     return 0;
-}
-
-// Wrappers
-
-void __wrap__mtinfo(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mtwarn(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mtdebug1(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mtdebug2(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-int __wrap_isChroot() {
-    return mock();
-}
-
-int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) {
-    check_expected(path);
-    check_expected(type);
-    check_expected(max_msg_size);
-
-    return mock();
-}
-
-int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
-    check_expected(sock);
-    check_expected(size);
-    if (msg) check_expected(msg);
-
-    return mock();
-}
-
-int __wrap_OS_RecvSecureTCP(int sock, char *ret, uint32_t size) {
-    check_expected(sock);
-    check_expected(size);
-
-    if (mock()) {
-        strncpy(ret, mock_type(char*), size);
-    }
-
-    return mock();
-}
-
-int __wrap_close(int fd) {
-    check_expected(fd);
-    return 0;
-}
-
-cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status) {
-    check_expected(command);
-    check_expected(agent_id);
-    if (status) check_expected(status);
-
-    return mock_type(cJSON *);
-}
-
-int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request) {
-    cJSON* json = cJSON_GetArrayItem(task_module_request, 0);
-    cJSON* json_next = cJSON_GetArrayItem(task_module_request, 1);
-
-    check_expected(json);
-    if (json_next) check_expected(json_next);
-
-    cJSON_AddItemToArray(json_response, mock_type(cJSON *));
-    if (json_next) cJSON_AddItemToArray(json_response, mock_type(cJSON *));
-
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data) {
-    check_expected(agent_response);
-
-    if (data && strchr(agent_response, ' ')) {
-        *data = strchr(agent_response, ' ') + 1;
-    }
-
-    return mock();
-}
-
-extern FILE* __real_fopen(const char* path, const char* mode);
-FILE* __wrap_fopen(const char* path, const char* mode) {
-    if(unit_testing) {
-        check_expected(path);
-        check_expected(mode);
-        return mock_ptr_type(FILE*);
-    }
-    return __real_fopen(path, mode);
-}
-
-extern size_t __real_fread(void *ptr, size_t size, size_t n, FILE *stream);
-size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream) {
-    if (unit_testing) {
-        strncpy((char *) ptr, mock_type(char *), n);
-        return mock();
-    }
-    return __real_fread(ptr, size, n, stream);
-}
-
-int __wrap_fclose() {
-    return 0;
-}
-
-int __wrap_OS_SHA1_File(const char *fname, char *output, int mode) {
-    check_expected(fname);
-    check_expected(mode);
-
-    snprintf(output, 41, "%s", mock_type(char *));
-
-    return mock();
-}
-
-OSHashNode* __wrap_wm_agent_upgrade_get_first_node(unsigned int *index) {
-    if (mock()) {
-        return mock_type(OSHashNode *);
-    } else {
-        return OSHash_Begin(hash_table, index);
-    }
-}
-
-OSHashNode* __wrap_wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNode *current) {
-    if (mock()) {
-        return mock_type(OSHashNode *);
-    } else {
-        return OSHash_Next(hash_table, index, current);
-    }
-}
-
-int __wrap_wm_agent_upgrade_compare_versions(const char *version1, const char *version2) {
-    check_expected(version1);
-    check_expected(version2);
-
-    return mock();
-}
-
-bool __wrap_wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id) {
-    check_expected(input_json);
-    if (status) os_strdup(mock_type(char *), *status);
-    if (agent_id) *agent_id = mock();
-
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_validate_id(int agent_id) {
-    check_expected(agent_id);
-
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_validate_status(int last_keep_alive) {
-    check_expected(last_keep_alive);
-
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *task, wm_upgrade_command command, const wm_manager_configs* manager_configs) {
-    check_expected(command);
-    check_expected(manager_configs);
-
-    if (command == WM_UPGRADE_UPGRADE) {
-        wm_upgrade_task *upgrade_task = (wm_upgrade_task *)task;
-        os_strdup(mock_type(char*), upgrade_task->wpk_file);
-        os_strdup(mock_type(char*), upgrade_task->wpk_sha1);
-    }
-
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task) {
-    return mock();
-}
-
-int __wrap_wdb_agent_info(int id, char **platform, char **os_major, char **os_minor, char **arch, char **version, int *last_keepalive) {
-    check_expected(id);
-
-    os_strdup(mock_type(char *), *platform);
-    os_strdup(mock_type(char *), *os_major);
-    os_strdup(mock_type(char *), *os_minor);
-    os_strdup(mock_type(char *), *arch);
-    os_strdup(mock_type(char *), *version);
-    *last_keepalive = mock();
-
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* ag_task) {
-    check_expected(agent_id);
-
-#ifdef TEST_SERVER
-    char key[128];
-    sprintf(key, "%d", agent_id);
-    OSHash_Add_ex(hash_table, key, ag_task);
-#endif
-
-    return mock();
-}
-
-void __wrap_wm_agent_upgrade_remove_entry(int agent_id) {
-    check_expected(agent_id);
-
-#ifdef TEST_SERVER
-    char key[128];
-    sprintf(key, "%d", agent_id);
-    wm_agent_task *agent_task = (wm_agent_task *)OSHash_Delete_ex(hash_table, key);
-    if (agent_task) {
-        wm_agent_upgrade_free_agent_task(agent_task);
-    }
-#endif
-}
-
-cJSON* __wrap_wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
-    int agent_int;
-    int task_int;
-
-    check_expected(error_id);
-    check_expected(message);
-    if (agent_id) {
-        agent_int = *agent_id;
-        check_expected(agent_int);
-    }
-    if (task_id) {
-        task_int = *task_id;
-        check_expected(task_int);
-    }
-    if (status) {
-        check_expected(status);
-    }
-
-    return mock_type(cJSON *);
 }
 
 // Tests
@@ -504,14 +210,11 @@ void test_wm_agent_upgrade_send_command_to_agent_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, response_size);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'Command received OK.'");
-
-    expect_value(__wrap_close, fd, socket);
 
     char *res = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
@@ -525,6 +228,7 @@ void test_wm_agent_upgrade_send_command_to_agent_recv_error(void **state)
 {
     int socket = 555;
     char *command = "Command to agent: restart agent now.";
+    char *response = "Error.";
 
     will_return(__wrap_isChroot, 1);
 
@@ -543,13 +247,11 @@ void test_wm_agent_upgrade_send_command_to_agent_recv_error(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8111): Error in recv(): 'Success'");
-
-    expect_value(__wrap_close, fd, socket);
 
     char *res = wm_agent_upgrade_send_command_to_agent(command, 0);
 
@@ -581,14 +283,11 @@ void test_wm_agent_upgrade_send_command_to_agent_sockterr_error(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
-
-    expect_value(__wrap_close, fd, socket);
 
     char *res = wm_agent_upgrade_send_command_to_agent(command, 0);
 
@@ -718,14 +417,11 @@ void test_wm_agent_upgrade_send_lock_restart_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
@@ -761,14 +457,11 @@ void test_wm_agent_upgrade_send_lock_restart_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not restart agent'");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
@@ -805,14 +498,11 @@ void test_wm_agent_upgrade_send_open_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
@@ -850,14 +540,11 @@ void test_wm_agent_upgrade_send_open_retry_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res1) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res1);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
@@ -879,14 +566,11 @@ void test_wm_agent_upgrade_send_open_retry_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res2);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res2) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res2);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
@@ -920,34 +604,24 @@ void test_wm_agent_upgrade_send_open_retry_err(void **state)
 
     expect_value_count(__wrap_OS_RecvSecureTCP, sock, socket, 10);
     expect_value_count(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR, 10);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
@@ -972,8 +646,6 @@ void test_wm_agent_upgrade_send_open_retry_err(void **state)
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
-
-    expect_value_count(__wrap_close, fd, socket, 10);
 
     expect_string_count(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res, 10);
     will_return_count(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID, 10);
@@ -1020,14 +692,11 @@ void test_wm_agent_upgrade_send_write_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
@@ -1052,20 +721,20 @@ void test_wm_agent_upgrade_send_write_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
 
-    expect_value(__wrap_close, fd, socket);
-
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
 
     will_return(__wrap_fread, chunk);
     will_return(__wrap_fread, 0);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     int res = wm_agent_upgrade_send_write(agent, wpk_file, file_path, chunk_size);
 
@@ -1110,14 +779,11 @@ void test_wm_agent_upgrade_send_write_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res1) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res1);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
@@ -1142,17 +808,17 @@ void test_wm_agent_upgrade_send_write_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res2);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res2) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not write file in agent'");
 
-    expect_value(__wrap_close, fd, socket);
-
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res2);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     int res = wm_agent_upgrade_send_write(agent, wpk_file, file_path, chunk_size);
 
@@ -1204,14 +870,11 @@ void test_wm_agent_upgrade_send_close_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
@@ -1248,14 +911,11 @@ void test_wm_agent_upgrade_send_close_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not close file in agent'");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
@@ -1293,14 +953,11 @@ void test_wm_agent_upgrade_send_sha1_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a12c312ada12ab321a253a'");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
@@ -1338,14 +995,11 @@ void test_wm_agent_upgrade_send_sha1_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not calculate sha1 in agent'");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
@@ -1383,14 +1037,11 @@ void test_wm_agent_upgrade_send_sha1_invalid_sha1(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a21c312ada12ab321a253a'");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
@@ -1431,14 +1082,11 @@ void test_wm_agent_upgrade_send_upgrade_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 0'");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
@@ -1476,14 +1124,11 @@ void test_wm_agent_upgrade_send_upgrade_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not run script in agent'");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
@@ -1521,20 +1166,17 @@ void test_wm_agent_upgrade_send_upgrade_script_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 2'");
 
-    expect_value(__wrap_close, fd, socket);
-
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8121): The script executed in the agent with error code '2'");
+    expect_string(__wrap__mterror, formatted_msg, "(8121): Script execution failed in the agent.");
 
     int res = wm_agent_upgrade_send_upgrade(agent, wpk_file, installer);
 
@@ -1589,7 +1231,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -1602,7 +1243,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -1625,9 +1265,11 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     // Close file
 
@@ -1638,7 +1280,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -1651,7 +1292,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_sha1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_sha1) + 1);
 
@@ -1664,7 +1304,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
@@ -1681,8 +1320,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a12c312ada12ab321a253a'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com upgrade test.wpk upgrade.sh'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 0'");
-
-    expect_value_count(__wrap_close, fd, socket, 6);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
@@ -1745,7 +1382,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -1758,7 +1394,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -1781,9 +1416,11 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     // Close file
 
@@ -1794,7 +1431,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -1807,7 +1443,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_sha1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_sha1) + 1);
 
@@ -1820,7 +1455,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
@@ -1837,8 +1471,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a12c312ada12ab321a253a'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com upgrade test.wpk upgrade.bat'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 0'");
-
-    expect_value_count(__wrap_close, fd, socket, 6);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
@@ -1906,7 +1538,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_custom_installer_ok(
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -1919,7 +1550,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_custom_installer_ok(
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -1942,9 +1572,11 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_custom_installer_ok(
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     // Close file
 
@@ -1955,7 +1587,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_custom_installer_ok(
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -1968,7 +1599,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_custom_installer_ok(
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_sha1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_sha1) + 1);
 
@@ -1981,7 +1611,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_custom_installer_ok(
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
@@ -1998,8 +1627,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_custom_installer_ok(
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 2c312ada12ab321a253ad321af65983fa412e3a1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com upgrade test.wpk test.sh'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 0'");
-
-    expect_value_count(__wrap_close, fd, socket, 6);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
@@ -2066,7 +1693,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_default_installer_ok
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -2079,7 +1705,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_default_installer_ok
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -2102,9 +1727,11 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_default_installer_ok
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     // Close file
 
@@ -2115,7 +1742,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_default_installer_ok
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -2128,7 +1754,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_default_installer_ok
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_sha1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_sha1) + 1);
 
@@ -2141,7 +1766,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_default_installer_ok
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
@@ -2158,8 +1782,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_default_installer_ok
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 2c312ada12ab321a253ad321af65983fa412e3a1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com upgrade test.wpk upgrade.sh'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 0'");
-
-    expect_value_count(__wrap_close, fd, socket, 6);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
@@ -2222,7 +1844,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -2235,7 +1856,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -2258,9 +1878,11 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     // Close file
 
@@ -2271,7 +1893,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -2284,7 +1905,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_sha1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_sha1) + 1);
 
@@ -2297,7 +1917,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
@@ -2314,8 +1933,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a12c312ada12ab321a253a'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com upgrade test.wpk upgrade.sh'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
-
-    expect_value_count(__wrap_close, fd, socket, 6);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
@@ -2377,7 +1994,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -2390,7 +2006,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -2413,9 +2028,11 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     // Close file
 
@@ -2426,7 +2043,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -2439,7 +2055,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_sha1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_sha1) + 1);
 
@@ -2457,8 +2072,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com sha1 test.wpk'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a21c312ada12ab321a253a'");
-
-    expect_value_count(__wrap_close, fd, socket, 5);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
@@ -2517,7 +2130,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -2530,7 +2142,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -2553,9 +2164,11 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     // Close file
 
@@ -2566,7 +2179,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
@@ -2579,8 +2191,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com close test.wpk'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
-
-    expect_value_count(__wrap_close, fd, socket, 4);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
@@ -2638,7 +2248,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -2651,7 +2260,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -2671,9 +2279,11 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     expect_string_count(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade", 6);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com lock_restart -1'");
@@ -2682,8 +2292,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com write 5 test.wpk test\n'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
-
-    expect_value_count(__wrap_close, fd, socket, 3);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
@@ -2739,7 +2347,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -2752,61 +2359,51 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
@@ -2833,8 +2430,6 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
-
-    expect_value_count(__wrap_close, fd, socket, 11);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string_count(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_err, 10);
@@ -2887,15 +2482,12 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_lock_restart_err(void **sta
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
     expect_string_count(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade", 2);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_err);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
@@ -3008,7 +2600,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -3021,7 +2612,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -3044,9 +2634,11 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     // Close file
 
@@ -3057,7 +2649,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -3070,7 +2661,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_sha1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_sha1) + 1);
 
@@ -3083,7 +2673,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
@@ -3100,8 +2689,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_ok(void **state)
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a12c312ada12ab321a253a'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '025 com upgrade test.wpk upgrade.sh'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 0'");
-
-    expect_value_count(__wrap_close, fd, socket, 6);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
@@ -3131,6 +2718,7 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_ok(void **state)
     // wm_agent_upgrade_remove_entry
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agent_id);
+    will_return(__wrap_wm_agent_upgrade_remove_entry, 1);
 
     wm_agent_upgrade_start_upgrades(response, request, config);
 
@@ -3242,7 +2830,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_legacy_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -3255,7 +2842,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_legacy_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -3278,9 +2864,11 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_legacy_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     // Close file
 
@@ -3291,7 +2879,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_legacy_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -3304,7 +2891,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_legacy_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_sha1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_sha1) + 1);
 
@@ -3317,7 +2903,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_legacy_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
@@ -3334,8 +2919,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_legacy_ok(void **state)
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a12c312ada12ab321a253a'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '025 com upgrade test.wpk upgrade.sh'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 0'");
-
-    expect_value_count(__wrap_close, fd, socket, 6);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
@@ -3371,6 +2954,7 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_legacy_ok(void **state)
     // wm_agent_upgrade_remove_entry
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agent_id);
+    will_return(__wrap_wm_agent_upgrade_remove_entry, 1);
 
     wm_agent_upgrade_start_upgrades(response, request, config);
 
@@ -3485,7 +3069,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_custom_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -3498,7 +3081,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_custom_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -3521,9 +3103,11 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_custom_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     // Close file
 
@@ -3534,7 +3118,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_custom_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -3547,7 +3130,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_custom_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_sha1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_sha1) + 1);
 
@@ -3560,7 +3142,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_custom_ok(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
@@ -3577,8 +3158,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_custom_ok(void **state)
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a12c312ada12ab321a253a'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '025 com upgrade test.wpk upgrade.sh'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 0'");
-
-    expect_value_count(__wrap_close, fd, socket, 6);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
@@ -3608,6 +3187,7 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_custom_ok(void **state)
     // wm_agent_upgrade_remove_entry
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agent_id);
+    will_return(__wrap_wm_agent_upgrade_remove_entry, 1);
 
     wm_agent_upgrade_start_upgrades(response, request, config);
 
@@ -3717,15 +3297,12 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_err(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
     expect_string_count(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade", 2);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '025 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_err);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
@@ -3750,6 +3327,7 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_err(void **state)
     // wm_agent_upgrade_remove_entry
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agent_id);
+    will_return(__wrap_wm_agent_upgrade_remove_entry, 1);
 
     wm_agent_upgrade_start_upgrades(response, request, config);
 
@@ -3949,15 +3527,12 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_multiple(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
     expect_string_count(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade", 2);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '025 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
-
-    expect_value(__wrap_close, fd, socket);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_err);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
@@ -3982,6 +3557,7 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_multiple(void **state)
     // wm_agent_upgrade_remove_entry
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agent_id);
+    will_return(__wrap_wm_agent_upgrade_remove_entry, 1);
 
     // wm_agent_upgrade_get_next_node
 
@@ -4009,7 +3585,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_multiple(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -4022,7 +3597,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_multiple(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -4045,9 +3619,11 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_multiple(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     // Close file
 
@@ -4058,7 +3634,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_multiple(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -4071,7 +3646,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_multiple(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_sha1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_sha1) + 1);
 
@@ -4084,7 +3658,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_multiple(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
@@ -4101,8 +3674,6 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_multiple(void **state)
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a12c312ada12ab321a253a'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '035 com upgrade test.wpk upgrade.sh'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 0'");
-
-    expect_value_count(__wrap_close, fd, socket, 6);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
@@ -4132,6 +3703,7 @@ void test_wm_agent_upgrade_start_upgrades_upgrade_multiple(void **state)
     // wm_agent_upgrade_remove_entry
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agent_id_next);
+    will_return(__wrap_wm_agent_upgrade_remove_entry, 1);
 
     wm_agent_upgrade_start_upgrades(response, request, config);
 
@@ -5392,7 +4964,6 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -5405,7 +4976,6 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -5428,9 +4998,11 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     // Close file
 
@@ -5441,7 +5013,6 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -5454,7 +5025,6 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_sha1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_sha1) + 1);
 
@@ -5467,7 +5037,6 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
@@ -5484,8 +5053,6 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a12c312ada12ab321a253a'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '001 com upgrade test.wpk test.sh'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 0'");
-
-    expect_value_count(__wrap_close, fd, socket, 6);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
@@ -5515,6 +5082,7 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     // wm_agent_upgrade_remove_entry
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agents[0]);
+    will_return(__wrap_wm_agent_upgrade_remove_entry, 1);
 
     char *result = wm_agent_upgrade_process_upgrade_custom_command(agents, upgrade_custom_task, config);
 
@@ -5719,7 +5287,6 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -5732,7 +5299,6 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -5755,9 +5321,11 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
 
     // Close file
 
@@ -5768,7 +5336,6 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
@@ -5781,7 +5348,6 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_sha1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_sha1) + 1);
 
@@ -5794,7 +5360,6 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, 1);
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
@@ -5811,8 +5376,6 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a12c312ada12ab321a253a'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '001 com upgrade test.wpk upgrade.sh'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 0'");
-
-    expect_value_count(__wrap_close, fd, socket, 6);
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
@@ -5842,6 +5405,7 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     // wm_agent_upgrade_remove_entry
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agents[0]);
+    will_return(__wrap_wm_agent_upgrade_remove_entry, 1);
 
     char *result = wm_agent_upgrade_process_upgrade_command(agents, upgrade_task, config);
 

@@ -34,6 +34,13 @@
 #define AUDIT_HEALTHCHECK_KEY "wazuh_hc"
 #define AUDIT_HEALTHCHECK_FILE AUDIT_HEALTHCHECK_DIR "/audit_hc"
 
+#ifndef WAZUH_UNIT_TESTING
+#define audit_thread_status() ((mode == READING_MODE && audit_thread_active) || \
+                                (mode == HEALTHCHECK_MODE && hc_thread_active))
+#else
+#define audit_thread_status() FOREVER()
+#endif
+
 // Global variables
 W_Vector *audit_added_rules;
 W_Vector *audit_added_dirs;
@@ -1256,8 +1263,7 @@ void audit_read_events(int *audit_sock, int mode) {
     os_malloc(BUF_SIZE * sizeof(char), buffer);
     os_malloc(BUF_SIZE, cache);
 
-    while ((mode == READING_MODE && audit_thread_active)
-       || (mode == HEALTHCHECK_MODE && hc_thread_active)) {
+    while (audit_thread_status()) {
         FD_ZERO(&fdset);
         FD_SET(*audit_sock, &fdset);
 
