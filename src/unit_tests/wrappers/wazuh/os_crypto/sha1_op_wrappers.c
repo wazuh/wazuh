@@ -7,23 +7,17 @@
  * Foundation
  */
 
-#include "pthread_wrappers.h"
+#include "sha1_op_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
+int __wrap_OS_SHA1_File(const char *fname, os_sha1 output, int mode) {
+    check_expected(fname);
+    check_expected(mode);
 
-int __wrap_pthread_mutex_lock(__attribute__((unused)) pthread_mutex_t *x) {
-    function_called();
-    return 0;
-}
+    snprintf(output, 41, "%s", mock_type(char *));
 
-int __wrap_pthread_mutex_unlock(__attribute__((unused)) pthread_mutex_t *x) {
-    function_called();
-    return 0;
-}
-
-int __wrap_pthread_exit() {
     return mock();
 }

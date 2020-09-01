@@ -47,4 +47,8 @@ int __wrap_wdbi_query_clear(wdb_t *wdb, wdb_component_t component, const char *p
 
 cJSON* __wrap_wdbc_query_parse_json(int *sock, const char *query, char *response, const int len);
 
+int __wrap_wdb_agent_info(int id, char **platform, char **os_major, char **os_minor, char **arch, char **version, int *last_keepalive);
+
+char* __wrap_wdb_agent_version(int id);
+
 #endif

@@ -7,23 +7,12 @@
  * Foundation
  */
 
-#include "pthread_wrappers.h"
+#include "cluster_op_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
-
-int __wrap_pthread_mutex_lock(__attribute__((unused)) pthread_mutex_t *x) {
-    function_called();
-    return 0;
-}
-
-int __wrap_pthread_mutex_unlock(__attribute__((unused)) pthread_mutex_t *x) {
-    function_called();
-    return 0;
-}
-
-int __wrap_pthread_exit() {
+int __wrap_w_is_worker(void) {
     return mock();
 }

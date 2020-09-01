@@ -8,11 +8,9 @@
  */
 
 
-#ifndef URL_WRAPPERS_H
-#define URL_WRAPPERS_H
+#ifndef CLUSTER_OP_WRAPPERS_H
+#define CLUSTER_OP_WRAPPERS_H
 
-int __wrap_wurl_request(const char * url, const char * dest, const char *header, const char *data, const long timeout);
-
-char* __wrap_wurl_http_get(const char * url);
+int __wrap_w_is_worker(void);
 
 #endif

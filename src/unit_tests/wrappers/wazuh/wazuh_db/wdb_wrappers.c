@@ -146,3 +146,22 @@ cJSON* __wrap_wdbc_query_parse_json(__attribute__((unused)) int *sock,
 
     return mock_ptr_type(cJSON *);
 }
+
+int __wrap_wdb_agent_info(int id, char **platform, char **os_major, char **os_minor, char **arch, char **version, int *last_keepalive) {
+    check_expected(id);
+
+    os_strdup(mock_type(char *), *platform);
+    os_strdup(mock_type(char *), *os_major);
+    os_strdup(mock_type(char *), *os_minor);
+    os_strdup(mock_type(char *), *arch);
+    os_strdup(mock_type(char *), *version);
+    *last_keepalive = mock();
+
+    return mock();
+}
+
+char* __wrap_wdb_agent_version(int id) {
+    check_expected(id);
+
+    return mock_type(char *);
+}

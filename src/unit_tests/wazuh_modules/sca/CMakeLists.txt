@@ -9,7 +9,7 @@
 list(APPEND tests_names "test_wm_sca")
 list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
                          -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=FOREVER,--wrap=IsFile,--wrap=getDefine_Int \
-                         -Wl,--wrap=StartMQ,--wrap=CreateThread,--wrap=wm_exec,--wrap=wm_sendmsg")
+                         -Wl,--wrap=StartMQ,--wrap=CreateThread,--wrap=wm_exec,--wrap=wm_sendmsg,--wrap=opendir")
 list(APPEND use_shared_libs 1)
 
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")

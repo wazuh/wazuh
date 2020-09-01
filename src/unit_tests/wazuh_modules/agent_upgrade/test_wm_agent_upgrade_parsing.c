@@ -13,6 +13,9 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
+
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_parsing.h"
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_tasks.h"
@@ -79,21 +82,6 @@ static int teardown_parse_upgrade_agent_status(void **state) {
         wm_agent_upgrade_free_agent_status_task(task);
     }
     return 0;
-}
-
-// Wrappers
-
-void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
 }
 
 // Tests

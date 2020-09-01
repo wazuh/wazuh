@@ -65,4 +65,6 @@ extern cJSON * __real_cJSON_Parse(const char *value);
 
 char * __wrap_cJSON_PrintUnformatted(const cJSON *item);
 
+cJSON* __wrap_cJSON_Duplicate(const cJSON *item, int recurse);
+
 #endif

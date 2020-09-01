@@ -8,11 +8,15 @@
  */
 
 
-#ifndef URL_WRAPPERS_H
-#define URL_WRAPPERS_H
+#ifndef SHA1_OP_WRAPPERS_H
+#define SHA1_OP_WRAPPERS_H
 
-int __wrap_wurl_request(const char * url, const char * dest, const char *header, const char *data, const long timeout);
+#include "headers/shared.h"
+#include <string.h>
+#include <sys/types.h>
 
-char* __wrap_wurl_http_get(const char * url);
+typedef char os_sha1[41];
+
+int __wrap_OS_SHA1_File(const char *fname, os_sha1 output, int mode);
 
 #endif

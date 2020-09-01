@@ -1,0 +1,272 @@
+/* Copyright (C) 2015-2020, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
+
+#include "../../common.h"
+#include "wm_agent_upgrade_wrappers.h"
+#include <stddef.h>
+#include <stdarg.h>
+#include <setjmp.h>
+#include <cmocka.h>
+
+OSHash *hash_table;
+
+int setup_hash_table() {
+    hash_table = OSHash_Create();
+    return 0;
+}
+
+int teardown_hash_table() {
+    OSHash_Free(hash_table);
+    return 0;
+}
+
+int __wrap_wm_agent_upgrade_check_status(__attribute__((unused)) const wm_agent_configs* agent_config) {
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_listen_messages(__attribute__((unused)) const wm_manager_configs* manager_configs) {
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error) {
+    check_expected(buffer);
+
+    *task = mock_type(void*);
+    *agent_ids = mock_type(int*);
+    *error = mock_type(char*);
+
+    return mock();
+}
+
+char* __wrap_wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task) {
+    check_expected_ptr(agent_ids);
+    check_expected_ptr(task);
+
+    return mock_type(char *);
+}
+
+char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task) {
+    check_expected_ptr(agent_ids);
+    check_expected_ptr(task);
+
+    return mock_type(char *);
+}
+
+char* __wrap_wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upgrade_agent_status_task* task) {
+    check_expected_ptr(agent_ids);
+    check_expected_ptr(task);
+
+    return mock_type(char *);
+}
+
+cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status) {
+    check_expected(command);
+    check_expected(agent_id);
+    if (status) check_expected(status);
+
+    return mock_type(cJSON *);
+}
+
+int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request) {
+    cJSON* json = cJSON_GetArrayItem(task_module_request, 0);
+    cJSON* json_next = cJSON_GetArrayItem(task_module_request, 1);
+
+    check_expected(json);
+    if (json_next) check_expected(json_next);
+
+    cJSON_AddItemToArray(json_response, mock_type(cJSON *));
+    if (json_next) cJSON_AddItemToArray(json_response, mock_type(cJSON *));
+
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data) {
+    check_expected(agent_response);
+
+    if (data && strchr(agent_response, ' ')) {
+        *data = strchr(agent_response, ' ') + 1;
+    }
+
+    return mock();
+}
+
+OSHashNode* __wrap_wm_agent_upgrade_get_first_node(unsigned int *index) {
+    if (mock()) {
+        return mock_type(OSHashNode *);
+    } else {
+        return OSHash_Begin(hash_table, index);
+    }
+}
+
+OSHashNode* __wrap_wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNode *current) {
+    if (mock()) {
+        return mock_type(OSHashNode *);
+    } else {
+        return OSHash_Next(hash_table, index, current);
+    }
+}
+
+int __wrap_wm_agent_upgrade_compare_versions(const char *version1, const char *version2) {
+    check_expected(version1);
+    check_expected(version2);
+
+    return mock();
+}
+
+bool __wrap_wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id) {
+    check_expected(input_json);
+    if (status) os_strdup(mock_type(char *), *status);
+    if (agent_id) *agent_id = mock();
+
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_validate_id(int agent_id) {
+    check_expected(agent_id);
+
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_validate_status(int last_keep_alive) {
+    check_expected(last_keep_alive);
+
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_validate_version(__attribute__((unused)) const wm_agent_info *agent_info, void *task, wm_upgrade_command command, const wm_manager_configs* manager_configs) {
+    check_expected(command);
+    check_expected(manager_configs);
+
+    if (command == WM_UPGRADE_UPGRADE) {
+        wm_upgrade_task *upgrade_task = (wm_upgrade_task *)task;
+        os_strdup(mock_type(char*), upgrade_task->wpk_file);
+        os_strdup(mock_type(char*), upgrade_task->wpk_sha1);
+    }
+
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_validate_wpk(__attribute__((unused)) const wm_upgrade_task *task) {
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_validate_wpk_custom(__attribute__((unused)) const wm_upgrade_custom_task *task) {
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* ag_task) {
+    check_expected(agent_id);
+
+    char key[128];
+    sprintf(key, "%d", agent_id);
+    OSHash_Add_ex(hash_table, key, ag_task);
+
+    return mock();
+}
+
+void __wrap_wm_agent_upgrade_remove_entry(int agent_id) {
+    check_expected(agent_id);
+
+    if (mock()) {
+        char key[128];
+        sprintf(key, "%d", agent_id);
+        wm_agent_task *agent_task = (wm_agent_task *)OSHash_Delete_ex(hash_table, key);
+        if (agent_task) {
+            if (agent_task->agent_info) {
+                os_free(agent_task->agent_info->platform);
+                os_free(agent_task->agent_info->major_version);
+                os_free(agent_task->agent_info->minor_version);
+                os_free(agent_task->agent_info->architecture);
+                os_free(agent_task->agent_info->wazuh_version);
+                os_free(agent_task->agent_info);
+            }
+            if (agent_task->task_info) {
+                if (agent_task->task_info->task) {
+                    if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
+                        wm_upgrade_task* upgrade_task = agent_task->task_info->task;
+                        os_free(upgrade_task->custom_version);
+                        os_free(upgrade_task->wpk_repository);
+                        os_free(upgrade_task->wpk_file);
+                        os_free(upgrade_task->wpk_sha1);
+                        os_free(upgrade_task);
+                    } else if (WM_UPGRADE_UPGRADE_CUSTOM == agent_task->task_info->command) {
+                        wm_upgrade_custom_task* upgrade_custom_task = agent_task->task_info->task;
+                        os_free(upgrade_custom_task->custom_file_path);
+                        os_free(upgrade_custom_task->custom_installer);
+                        os_free(upgrade_custom_task);
+                    }
+                }
+                os_free(agent_task->task_info);
+            }
+            os_free(agent_task);
+        }
+    }
+}
+
+cJSON* __wrap_wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
+    int agent_int;
+    int task_int;
+
+    check_expected(error_id);
+    check_expected(message);
+    if (agent_id) {
+        agent_int = *agent_id;
+        check_expected(agent_int);
+    }
+    if (task_id) {
+        task_int = *task_id;
+        check_expected(task_int);
+    }
+    if (status) {
+        check_expected(status);
+    }
+
+    return mock_type(cJSON *);
+}
+
+cJSON* __wrap_w_create_sendsync_payload(const char *daemon_name, __attribute__ ((__unused__)) cJSON *message) {
+    check_expected(daemon_name);
+
+    return mock_type(cJSON*);
+}
+
+int __wrap_w_send_clustered_message(const char* command, const char* payload, char* response) {
+    check_expected(command);
+    check_expected(payload);
+
+    strcpy(response, mock_type(char*));
+
+    return mock();
+}
+
+bool __wrap_wm_agent_upgrade_validate_task_ids_message(__attribute__ ((__unused__)) const cJSON *input_json, int *agent_id, int *task_id, char** data) {
+    if (agent_id) *agent_id = mock();
+    if (task_id) *task_id = mock();
+    if (data) os_strdup(mock_type(char *), *data);
+
+    return mock();
+}
+
+void __wrap_wm_agent_upgrade_insert_task_id(int agent_id, int task_id) {
+    check_expected(agent_id);
+    check_expected(task_id);
+}
+
+char* __wrap_wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size) {
+    check_expected(command);
+    check_expected(command_size);
+
+    return mock_type(char *);
+}
+
+cJSON* __wrap_wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
+    check_expected(message_object);
+
+    return mock_type(cJSON *);
+}

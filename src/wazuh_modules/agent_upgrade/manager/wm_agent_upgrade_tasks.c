@@ -23,7 +23,7 @@
 #include "shared.h"
 
 /* Hash table of current tasks based on agent_id */
-static OSHash *task_table_by_agent_id;
+STATIC OSHash *task_table_by_agent_id;
 
 /**
  * Sends the task information locally to the task module queue

@@ -92,3 +92,7 @@ cJSON * __wrap_cJSON_Parse(__attribute__ ((__unused__)) const char *value) {
 char * __wrap_cJSON_PrintUnformatted(__attribute__ ((__unused__)) const cJSON *item) {
     return mock_type(char *);
 }
+
+cJSON* __wrap_cJSON_Duplicate(__attribute__ ((__unused__)) const cJSON *item, __attribute__ ((__unused__)) int recurse) {
+    return mock_type(cJSON*);
+}

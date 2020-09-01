@@ -13,6 +13,9 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
+
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_tasks.h"
 #include "../../headers/shared.h"
@@ -27,99 +30,6 @@ static int teardown_jsons(void **state) {
     }
     cJSON_Delete(json1);
     return 0;
-}
-
-// Wrappers
-
-void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mtdebug1(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-bool __wrap_wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *agent_id, int *task_id, char** data) {
-    if (agent_id) *agent_id = mock();
-    if (task_id) *task_id = mock();
-    if (data) os_strdup(mock_type(char *), *data);
-
-    return mock();
-}
-
-void __wrap_wm_agent_upgrade_insert_task_id(int agent_id, int task_id) {
-    check_expected(agent_id);
-    check_expected(task_id);
-}
-
-void __wrap_wm_agent_upgrade_remove_entry(int agent_id) {
-    check_expected(agent_id);
-}
-
-cJSON* __wrap_wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
-    int agent_int;
-    int task_int;
-
-    check_expected(error_id);
-    check_expected(message);
-    if (agent_id) {
-        agent_int = *agent_id;
-        check_expected(agent_int);
-    }
-    if (task_id) {
-        task_int = *task_id;
-        check_expected(task_int);
-    }
-    if (status) {
-        check_expected(status);
-    }
-
-    return mock_type(cJSON *);
-}
-
-bool __wrap_wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id) {
-    check_expected(input_json);
-    if (status) os_strdup(mock_type(char *), *status);
-    if (agent_id) *agent_id = mock();
-
-    return mock();
-}
-
-char* __wrap_wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size) {
-    check_expected(command);
-    check_expected(command_size);
-
-    return mock_type(char *);
-}
-
-int __wrap_wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data) {
-    check_expected(agent_response);
-
-    return mock();
-}
-
-cJSON* __wrap_wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
-    check_expected(message_object);
-
-    return mock_type(cJSON *);
 }
 
 // Tests
@@ -164,6 +74,7 @@ void test_wm_agent_upgrade_upgrade_success_callback_no_task_id(void **state)
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 1);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agent);
+    will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
     expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_FAILURE);
     expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, data);
@@ -404,6 +315,7 @@ void test_wm_agent_upgrade_task_module_callback_success_callback_ok(void **state
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 1);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 10);
+    will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
     expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_FAILURE);
     expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, "Error");
@@ -543,6 +455,7 @@ void test_wm_agent_upgrade_task_module_callback_error_callback_error(void **stat
     will_return(__wrap_wm_agent_upgrade_send_tasks_information, task_response);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 12);
+    will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
     expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
     expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
@@ -550,6 +463,7 @@ void test_wm_agent_upgrade_task_module_callback_error_callback_error(void **stat
     will_return(__wrap_wm_agent_upgrade_parse_response_message, error1);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 10);
+    will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
     expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
     expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
@@ -647,6 +561,7 @@ void test_wm_agent_upgrade_task_module_callback_success_error_callback_error(voi
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 0);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 12);
+    will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
     expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
     expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
@@ -654,6 +569,7 @@ void test_wm_agent_upgrade_task_module_callback_success_error_callback_error(voi
     will_return(__wrap_wm_agent_upgrade_parse_response_message, error1);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 10);
+    will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
     expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
     expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);

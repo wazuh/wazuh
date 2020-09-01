@@ -10,6 +10,9 @@
  */
 
 #ifdef WAZUH_UNIT_TESTING
+#ifdef WIN32
+#include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#endif
 // Remove static qualifier when unit testing
 #define STATIC
 #else
