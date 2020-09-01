@@ -1176,7 +1176,7 @@ agent_status_t get_agent_status(int agent_id){
 }
 
 /* List available agents */
-char **get_agents(int flag,int mon_time){
+char **get_agents(int flag){
     size_t array_size = 0;
     char **agents_array = NULL;
     int *id_array = NULL;
@@ -1193,12 +1193,6 @@ char **get_agents(int flag,int mon_time){
         return (NULL);
     }
 
-    // Unused. See get_all_agents_by_keepalive() to change the time 
-    if(mon_time > 0){
-        mdebug1("Parameter not considered in get_agents(). Using DISCON_TIME");
-    }
-
-    /* Getting all the information from all the agents at once may result in a huge JSON */
     for (i = 0; id_array[i] != -1; i++){
         int status = 0;
         int last_keepalive = -1;
@@ -1277,7 +1271,6 @@ char **get_agents_by_keepalive(int flag, int keepalive){
     int *id_array = NULL;
     int i = 0;
     cJSON *json_agt_info = NULL;
-    cJSON *json_field = NULL;
     cJSON *json_name = NULL;
     cJSON *json_ip = NULL;
 

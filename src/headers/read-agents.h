@@ -58,7 +58,7 @@ void delete_sqlite(const char *id, const char *name);
 void delete_diff(const char *name);
 
 /* Get all available agents */
-char **get_agents(int flag, int mon_time);
+char **get_agents(int flag);
 
 /* List agents for monitord */
 char **get_agents_by_keepalive(int flag, int mon_time);
