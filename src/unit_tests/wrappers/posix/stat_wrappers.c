@@ -20,7 +20,7 @@ int __wrap_chmod(const char *path) {
     return mock();
 }
 
-int __wrap_chown(const char *__file, __uid_t __owner, __gid_t __group) {
+int __wrap_chown(const char *__file, int __owner, int __group) {
     check_expected(__file);
     check_expected(__owner);
     check_expected(__group);

@@ -44,10 +44,10 @@ STATIC int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout) 
 STATIC int wm_task_manager_delete_old_entries(int timestamp);
 
 static const char *task_queries[] = {
-    [WM_TASK_INSERT_TASK] = "INSERT INTO " TASKS_TABLE " VALUES(NULL,?,?,?,?,?,?);",
+    [WM_TASK_INSERT_TASK] = "INSERT INTO " TASKS_TABLE " VALUES(NULL,?,?,?,?,?,?,?);",
     [WM_TASK_GET_LAST_AGENT_TASK] = "SELECT *, MAX(CREATE_TIME) FROM " TASKS_TABLE " WHERE AGENT_ID = ? AND MODULE = ?;",
     [WM_TASK_GET_TASK_STATUS] = "SELECT STATUS FROM " TASKS_TABLE " WHERE TASK_ID = ?;",
-    [WM_TASK_UPDATE_TASK_STATUS] = "UPDATE " TASKS_TABLE " SET STATUS = ?, LAST_UPDATE_TIME = ? WHERE TASK_ID = ?;",
+    [WM_TASK_UPDATE_TASK_STATUS] = "UPDATE " TASKS_TABLE " SET STATUS = ?, LAST_UPDATE_TIME = ?, ERROR_MESSAGE = ? WHERE TASK_ID = ?;",
     [WM_TASK_GET_TASK_BY_TASK_ID] = "SELECT * FROM " TASKS_TABLE " WHERE TASK_ID = ?;",
     [WM_TASK_GET_TASK_BY_STATUS] = "SELECT * FROM " TASKS_TABLE " WHERE STATUS = ?;",
     [WM_TASK_DELETE_OLD_TASKS] = "DELETE FROM " TASKS_TABLE " WHERE CREATE_TIME <= ?;"
@@ -194,7 +194,7 @@ STATIC int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout) 
 
             sqlite3_bind_text(stmt, 1, task_statuses[WM_TASK_TIMEOUT], -1, NULL);
             sqlite3_bind_int(stmt, 2, time(0));
-            sqlite3_bind_int(stmt, 3, task_id);
+            sqlite3_bind_int(stmt, 4, task_id);
 
             if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
                 mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
@@ -371,7 +371,7 @@ int wm_task_manager_get_task_status(int agent_id, const char *module, char **sta
     return WM_TASK_SUCCESS;
 }
 
-int wm_task_manager_update_task_status(int agent_id, const char *module, const char *status) {
+int wm_task_manager_update_task_status(int agent_id, const char *module, const char *status, const char *error) {
     sqlite3 *db = NULL;
     sqlite3_stmt *stmt = NULL;
     int result = 0;
@@ -444,7 +444,10 @@ int wm_task_manager_update_task_status(int agent_id, const char *module, const c
 
     sqlite3_bind_text(stmt, 1, status, -1, NULL);
     sqlite3_bind_int(stmt, 2, time(0));
-    sqlite3_bind_int(stmt, 3, task_id);
+    if (error) {
+        sqlite3_bind_text(stmt, 3, error, -1, NULL);
+    }
+    sqlite3_bind_int(stmt, 4, task_id);
 
     if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
@@ -460,7 +463,7 @@ int wm_task_manager_update_task_status(int agent_id, const char *module, const c
     return WM_TASK_SUCCESS;
 }
 
-int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *module, char **command, char **status, int *create_time, int *last_update_time) {
+int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *module, char **command, char **status, char **error, int *create_time, int *last_update_time) {
     sqlite3 *db = NULL;
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;
@@ -495,6 +498,7 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
         *create_time = sqlite3_column_int(stmt, 4);
         *last_update_time = sqlite3_column_int(stmt, 5);
         sqlite_strdup((char*)sqlite3_column_text(stmt, 6), *status);
+        sqlite_strdup((char*)sqlite3_column_text(stmt, 7), *error);
         result = task_id;
     }
 
@@ -507,7 +511,7 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
     return result;
 }
 
-int wm_task_manager_get_task_by_task_id(int task_id, char **module, char **command, char **status, int *create_time, int *last_update_time) {
+int wm_task_manager_get_task_by_task_id(int task_id, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) {
     sqlite3 *db = NULL;
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;
@@ -535,6 +539,7 @@ int wm_task_manager_get_task_by_task_id(int task_id, char **module, char **comma
         *create_time = sqlite3_column_int(stmt, 4);
         *last_update_time = sqlite3_column_int(stmt, 5);
         sqlite_strdup((char*)sqlite3_column_text(stmt, 6), *status);
+        sqlite_strdup((char*)sqlite3_column_text(stmt, 7), *error);
         result = agent_id;
         break;
     case SQLITE_DONE:

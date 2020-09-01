@@ -68,9 +68,10 @@ int wm_task_manager_get_task_status(int agent_id, const char *module, char **sta
  * @param agent_id ID of the agent where the task is being executed.
  * @param module Name of the module where the message comes from.
  * @param status New status of the task.
+ * @param status Error string of the task in case of failure.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wm_task_manager_update_task_status(int agent_id, const char *module, const char *status) __attribute__((nonnull(2)));
+int wm_task_manager_update_task_status(int agent_id, const char *module, const char *status, const char *error) __attribute__((nonnull(2)));
 
 /**
  * Get task by agent_id and module from the tasks DB.
@@ -78,11 +79,12 @@ int wm_task_manager_update_task_status(int agent_id, const char *module, const c
  * @param module Name of the module where the task is stored.
  * @param command String where the command of the task will be stored.
  * @param status String where the status of the task will be stored.
+ * @param error String where the error message of the task will be stored.
  * @param create_time Integer where the create_time of the task will be stored.
  * @param last_update_time Integer where the last_update_time of the task will be stored.
  * @return task_id when succeed, < 0 otherwise.
  * */
-int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *module, char **command, char **status, int *create_time, int *last_update_time) __attribute__((nonnull));
+int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *module, char **command, char **status, char **error, int *create_time, int *last_update_time) __attribute__((nonnull));
 
 /**
  * Get task by task_id from the tasks DB.
@@ -90,6 +92,7 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
  * @param module Name of the module where the task is stored.
  * @param command String where the command of the task will be stored.
  * @param status String where the status of the task will be stored.
+ * @param error String where the error message of the task will be stored.
  * @param create_time Integer where the create_time of the task will be stored.
  * @param last_update_time Integer where the last_update_time of the task will be stored.
  * @return result
@@ -97,7 +100,7 @@ int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *mo
  * @retval agent_id if the task was found
  * @retval OS_NOTFOUND if the task was not found
  * */
-int wm_task_manager_get_task_by_task_id(int task_id, char **module, char **command, char **status, int *create_time, int *last_update_time) __attribute__((nonnull));
+int wm_task_manager_get_task_by_task_id(int task_id, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) __attribute__((nonnull));
 
 #endif
 #endif

@@ -44,9 +44,10 @@ cJSON* wm_agent_upgrade_parse_response_message(int error_id, const char* message
  * @param command task command
  * @param agent_id agent id
  * @param status optional status string
+ * @param error optional error message
  * @return json to be sent
  * */
-cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id,  const char* status);
+cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status, const char* error);
 
 /**
  * Parse a response message from the agent

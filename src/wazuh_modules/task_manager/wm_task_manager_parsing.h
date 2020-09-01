@@ -113,11 +113,12 @@ cJSON* wm_task_manager_parse_response(int error_code, int agent_id, int task_id,
  * @param module Module of the task when receiving a request for a specific task.
  * @param command Command of the task when receiving a request for a specific task.
  * @param status Status of the task when receiving a request for a specific task.
+ * @param error Error message of the task when receiving a request for a specific task.
  * @param create_time Date of creation task.
  * @param last_update_time Date of update task.
  * @param request_command Command that requested the query.
  * */
-void wm_task_manager_parse_response_result(cJSON *response, const char *module, const char *command, char *status, int create_time, int last_update_time, char *request_command) __attribute__((nonnull(1)));
+void wm_task_manager_parse_response_result(cJSON *response, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command) __attribute__((nonnull(1)));
 
 #endif
 #endif

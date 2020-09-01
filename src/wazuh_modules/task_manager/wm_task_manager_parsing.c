@@ -89,7 +89,7 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
     return event_array;
 }
 
-void wm_task_manager_parse_response_result(cJSON *response, const char *module, const char *command, char *status, int create_time, int last_update_time, char *request_command) {
+void wm_task_manager_parse_response_result(cJSON *response, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command) {
 
     if (module != NULL) {
         cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_MODULE], module);
@@ -105,6 +105,10 @@ void wm_task_manager_parse_response_result(cJSON *response, const char *module, 
         } else {
             cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_STATUS], status);
         }
+    }
+
+    if (error != NULL) {
+        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_DATA], error);
     }
 
     if (create_time != OS_INVALID) {

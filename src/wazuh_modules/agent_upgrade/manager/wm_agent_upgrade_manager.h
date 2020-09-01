@@ -40,6 +40,13 @@ typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_NEW_VERSION_GREATER_MASTER,
     WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST,
     WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH,
+    WM_UPGRADE_SEND_LOCK_RESTART_ERROR,
+    WM_UPGRADE_SEND_OPEN_ERROR,
+    WM_UPGRADE_SEND_WRITE_ERROR,
+    WM_UPGRADE_SEND_CLOSE_ERROR,
+    WM_UPGRADE_SEND_SHA1_ERROR,
+    WM_UPGRADE_SEND_UPGRADE_ERROR,
+    WM_UPGRADE_UPGRADE_ERROR,
     WM_UPGRADE_UNKNOWN_ERROR
 } wm_upgrade_error_code;
 
@@ -125,9 +132,10 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
  * @param agent_ids array with the list of agents id
  * @param task pointer to a wm_upgrade_task structure
  * @param manager_configs manager configuration parameters
+ * @param upgrade_agents flag to indicate if there are agents valid to upgrade
  * @return string with the response
  * */
-char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
+char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs, int *upgrade_agents) __attribute__((nonnull));
 
 /**
  * Process and upgrade custom command. Create the task for each agent_id, dispatches to task manager and
@@ -135,9 +143,10 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
  * @param agent_ids array with the list of agents id
  * @param task pointer to a wm_upgrade_custom_task structure
  * @param manager_configs manager configuration parameters
+ * @param upgrade_agents flag to indicate if there are agents valid to upgrade
  * @return string with the response
  * */
-char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
+char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs, int *upgrade_agents) __attribute__((nonnull));
 
 /**
  * Process and agent_upgraded command
@@ -145,6 +154,12 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
  * @param task Task with the update information
  * */
 char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const wm_upgrade_agent_status_task* task) __attribute__((nonnull));
+
+/**
+ * Start the upgrade procedure for the agents
+ * @param manager_configs manager configuration parameters
+ * */
+void wm_agent_upgrade_start_upgrades(const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
  * Send a command to the agent and return the response

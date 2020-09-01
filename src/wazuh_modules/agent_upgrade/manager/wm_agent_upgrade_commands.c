@@ -50,27 +50,23 @@ STATIC cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_
  * @retval WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
  * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER
- * @retval WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST
- * @retval WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH
  * @retval WM_UPGRADE_UNKNOWN_ERROR
  * */
 STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
- * Start the upgrade procedure for the agents
- * @param json_response cJSON array where the responses for each agent will be stored
- * @param task_module_request cJSON array with the agents to be upgraded
- * @param manager_configs manager configuration parameters
- * */
-STATIC void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request, const wm_manager_configs* manager_configs) __attribute__((nonnull));
-
-/**
  * Send WPK file to agent and verify SHA1
  * @param agent_task structure with the information of the agent and the WPK
  * @param manager_configs manager configuration parameters
- * @return error code
- * @retval OS_SUCCESS on success
- * @retval OS_INVALID on errors
+ * @return return_code
+ * @retval WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST
+ * @retval WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH
+ * @retval WM_UPGRADE_SEND_LOCK_RESTART_ERROR
+ * @retval WM_UPGRADE_SEND_OPEN_ERROR
+ * @retval WM_UPGRADE_SEND_WRITE_ERROR
+ * @retval WM_UPGRADE_SEND_CLOSE_ERROR
+ * @retval WM_UPGRADE_SEND_SHA1_ERROR
+ * @retval WM_UPGRADE_SEND_UPGRADE_ERROR
  * */
 STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
@@ -141,12 +137,13 @@ STATIC int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, con
  * Sends a single message to the task module and returns a response
  * @param command wm_upgrade_command that will be used to generate the message
  * @param agent_id id of the agent
- * @param status in case the command is an status update
+ * @param status_task optional string in case the command is an status update
+ * @param error_task optional string in case the command is an status update to failed
  * @return cJSON with the response from the task manager
  * */
-STATIC cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task);
+STATIC cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task, const char* error_task);
 
-char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs) {
+char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs, int *upgrade_agents) {
     char* response = NULL;
     int agent = 0;
     int agent_id = 0;
@@ -181,7 +178,12 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
         }
     }
 
-    wm_agent_upgrade_start_upgrades(json_response, json_task_module_request, manager_configs);
+    // Send request to task module and store task ids
+    if (!wm_agent_upgrade_task_module_callback(json_response, json_task_module_request, wm_agent_upgrade_upgrade_success_callback, wm_agent_upgrade_remove_entry)) {
+        *upgrade_agents = 1;
+    } else {
+        mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_NO_AGENTS_TO_UPGRADE);
+    }
 
     response = cJSON_PrintUnformatted(json_response);
 
@@ -191,7 +193,7 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
     return response;
 }
 
-char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs) {
+char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs, int *upgrade_agents) {
     char* response = NULL;
     int agent = 0;
     int agent_id = 0;
@@ -224,7 +226,12 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
         }
     }
 
-    wm_agent_upgrade_start_upgrades(json_response, json_task_module_request, manager_configs);
+    // Send request to task module and store task ids
+    if (!wm_agent_upgrade_task_module_callback(json_response, json_task_module_request, wm_agent_upgrade_upgrade_success_callback, wm_agent_upgrade_remove_entry)) {
+        *upgrade_agents = 1;
+    } else {
+        mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_NO_AGENTS_TO_UPGRADE);
+    }
 
     response = cJSON_PrintUnformatted(json_response);
 
@@ -236,28 +243,35 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
 
 char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const wm_upgrade_agent_status_task* task) {
     // Only one id of agent will reach at a time
-    int agent_id = 0;
+    char* response = NULL;
     int agent = 0;
+    int agent_id = 0;
     cJSON* json_response = cJSON_CreateArray();
     cJSON *json_task_module_request = cJSON_CreateArray();
 
     while (agent_id = agent_ids[agent++], agent_id != OS_INVALID) {
+        cJSON *request = NULL;
+
         if (task->message) {
             mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACK_RECEIVED, agent_id, task->error_code, task->message);
         }
         // Send task update to task manager and bring back the response
-        cJSON *request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_id, task->status);
-        cJSON_AddItemToArray(json_task_module_request, request);        
-    }    
+        if (task->error_code) {
+            request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_id, task->status, upgrade_error_codes[WM_UPGRADE_UPGRADE_ERROR]);
+        } else {
+            request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_id, task->status, NULL);
+        }
+        cJSON_AddItemToArray(json_task_module_request, request);
+    }
 
     wm_agent_upgrade_task_module_callback(json_response, json_task_module_request, wm_agent_upgrade_update_status_success_callback, NULL);
 
-    char *message = cJSON_PrintUnformatted(json_response);
+    response = cJSON_PrintUnformatted(json_response);
 
     cJSON_Delete(json_task_module_request);
     cJSON_Delete(json_response);
 
-    return message;
+    return response;
 }
 
 STATIC cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, wm_upgrade_error_code *error_code, const wm_manager_configs* manager_configs) {
@@ -283,7 +297,7 @@ STATIC cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_
             int result = wm_agent_upgrade_create_task_entry(agent_id, agent_task);
 
             if (result == OSHASH_SUCCESS) {
-                task_request = wm_agent_upgrade_parse_task_module_request(agent_task->task_info->command, agent_id, NULL);
+                task_request = wm_agent_upgrade_parse_task_module_request(agent_task->task_info->command, agent_id, NULL, NULL);
             } else if (result == OSHASH_DUPLICATED) {
                 *error_code = WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS;
             } else {
@@ -317,7 +331,7 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
     }
 
     // Validate if there is a task in progress for this agent
-    status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_GET_STATUS, agent_task->agent_info->agent_id, NULL);
+    status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_GET_STATUS, agent_task->agent_info->agent_id, NULL, NULL);
     if (!wm_agent_upgrade_validate_task_status_message(status_json, &status, NULL)) {
         validate_result = WM_UPGRADE_TASK_MANAGER_COMMUNICATION;
     } else if (status && !strcmp(status, task_statuses[WM_TASK_IN_PROGRESS])) {
@@ -334,74 +348,70 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
     // Validate Wazuh version to upgrade
     validate_result = wm_agent_upgrade_validate_version(agent_task->agent_info, agent_task->task_info->task, agent_task->task_info->command, manager_configs);
 
-    if (validate_result != WM_UPGRADE_SUCCESS) {
-        return validate_result;
-    }
-
-    // Validate WPK file
-    if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
-        validate_result = wm_agent_upgrade_validate_wpk((wm_upgrade_task *)agent_task->task_info->task);
-    } else {
-        validate_result = wm_agent_upgrade_validate_wpk_custom((wm_upgrade_custom_task *)agent_task->task_info->task);
-    }
-
     return validate_result;
 }
 
-STATIC void wm_agent_upgrade_start_upgrades(cJSON *json_response, const cJSON* task_module_request, const wm_manager_configs* manager_configs) {
+void wm_agent_upgrade_start_upgrades(const wm_manager_configs* manager_configs) {
     unsigned int index = 0;
     OSHashNode *node = NULL;
     char *agent_key = NULL;
     wm_agent_task *agent_task = NULL;
 
-    // Send request to task module and store task ids
-    if (!wm_agent_upgrade_task_module_callback(json_response, task_module_request, wm_agent_upgrade_upgrade_success_callback, wm_agent_upgrade_remove_entry)) {
-        node = wm_agent_upgrade_get_first_node(&index);
+    node = wm_agent_upgrade_get_first_node(&index);
 
-        while (node) {
-            cJSON *status_json = NULL;
-            agent_key = node->key;
-            int agent_id;
-            agent_task = (wm_agent_task *)node->data;
-            node = wm_agent_upgrade_get_next_node(&index, node);
+    while (node) {
+        int error_code = WM_UPGRADE_SUCCESS;
+        cJSON *status_json = NULL;
+        agent_key = node->key;
+        int agent_id;
+        agent_task = (wm_agent_task *)node->data;
+        node = wm_agent_upgrade_get_next_node(&index, node);
 
-            if (!wm_agent_upgrade_send_wpk_to_agent(agent_task, manager_configs)) {
+        if (error_code = wm_agent_upgrade_send_wpk_to_agent(agent_task, manager_configs), error_code == WM_UPGRADE_SUCCESS) {
 
-                if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
-                    wm_upgrade_task *upgrade_task = agent_task->task_info->task;
-                    if (upgrade_task->custom_version && (wm_agent_upgrade_compare_versions(upgrade_task->custom_version, WM_UPGRADE_NEW_UPGRADE_MECHANISM) < 0)) {
-                        // Update task to "Legacy". The agent won't report the result of the upgrade task
-                        status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_LEGACY]);
-                    } else {
-                        // Update task to "In progress"
-                        status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_IN_PROGRESS]);
-                    }
+            if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
+                wm_upgrade_task *upgrade_task = agent_task->task_info->task;
+                if (upgrade_task->custom_version && (wm_agent_upgrade_compare_versions(upgrade_task->custom_version, WM_UPGRADE_NEW_UPGRADE_MECHANISM) < 0)) {
+                    // Update task to "Legacy". The agent won't report the result of the upgrade task
+                    status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_LEGACY], NULL);
                 } else {
-                    // Update task to "In progress". There is no way to know if this task should be legacy
-                    status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_IN_PROGRESS]);
+                    // Update task to "In progress"
+                    status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_IN_PROGRESS], NULL);
                 }
             } else {
-                // Update task to "Failed"
-                status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_FAILED]);
+                // Update task to "In progress". There is no way to know if this task should be legacy
+                status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_IN_PROGRESS], NULL);
             }
-
-            wm_agent_upgrade_validate_task_status_message(status_json, NULL, &agent_id);
-
-            wm_agent_upgrade_remove_entry(atoi(agent_key));
-
-            cJSON_Delete(status_json);
+        } else {
+            // Update task to "Failed"
+            status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_FAILED], upgrade_error_codes[WM_UPGRADE_UPGRADE_ERROR]);
         }
-    } else {
-        mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_NO_AGENTS_TO_UPGRADE);
+
+        wm_agent_upgrade_validate_task_status_message(status_json, NULL, &agent_id);
+
+        wm_agent_upgrade_remove_entry(atoi(agent_key));
+
+        cJSON_Delete(status_json);
     }
 }
 
 STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs) {
-    int result = OS_INVALID;
+    int result = WM_UPGRADE_SUCCESS;
     char *file_path = NULL;
     char *file_sha1 = NULL;
     char *wpk_path = NULL;
     char *installer = NULL;
+
+    // Validate WPK file
+    if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
+        result = wm_agent_upgrade_validate_wpk((wm_upgrade_task *)agent_task->task_info->task);
+    } else {
+        result = wm_agent_upgrade_validate_wpk_custom((wm_upgrade_custom_task *)agent_task->task_info->task);
+    }
+
+    if (result != WM_UPGRADE_SUCCESS) {
+        return result;
+    }
 
     mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SENDING_WPK_TO_AGENT, agent_task->agent_info->agent_id);
 
@@ -438,26 +448,33 @@ STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, c
     wpk_path = basename_ex(file_path);
 
     // lock_restart
-    if (!wm_agent_upgrade_send_lock_restart(agent_task->agent_info->agent_id)) {
-
-        // open wb
-        if (!wm_agent_upgrade_send_open(agent_task->agent_info->agent_id, wpk_path)) {
-
-            // write
-            if (!wm_agent_upgrade_send_write(agent_task->agent_info->agent_id, wpk_path, file_path, manager_configs->chunk_size)) {
-
-                // close
-                if (!wm_agent_upgrade_send_close(agent_task->agent_info->agent_id, wpk_path)) {
-
-                    // sha1
-                    result = wm_agent_upgrade_send_sha1(agent_task->agent_info->agent_id, wpk_path, file_sha1);
-                }
-            }
-        }
+    if (wm_agent_upgrade_send_lock_restart(agent_task->agent_info->agent_id)) {
+        result = WM_UPGRADE_SEND_LOCK_RESTART_ERROR;
     }
 
-    if (!result) {
-        result = wm_agent_upgrade_send_upgrade(agent_task->agent_info->agent_id, wpk_path, installer);
+    // open wb
+    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_open(agent_task->agent_info->agent_id, wpk_path)) {
+        result = WM_UPGRADE_SEND_OPEN_ERROR;
+    }
+
+    // write
+    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_write(agent_task->agent_info->agent_id, wpk_path, file_path, manager_configs->chunk_size)) {
+        result = WM_UPGRADE_SEND_WRITE_ERROR;
+    }
+
+    // close
+    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_close(agent_task->agent_info->agent_id, wpk_path)) {
+        result = WM_UPGRADE_SEND_CLOSE_ERROR;
+    }
+
+    // sha1
+    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_sha1(agent_task->agent_info->agent_id, wpk_path, file_sha1)) {
+        result = WM_UPGRADE_SEND_SHA1_ERROR;
+    }
+
+    // upgrade
+    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_upgrade(agent_task->agent_info->agent_id, wpk_path, installer)) {
+        result = WM_UPGRADE_SEND_UPGRADE_ERROR;
     }
 
     os_free(file_path);
@@ -612,8 +629,8 @@ STATIC int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, con
     return result;
 }
 
-STATIC cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task) {
-    cJSON *message_object = wm_agent_upgrade_parse_task_module_request(command, agent_id, status_task);
+STATIC cJSON* wm_agent_upgrade_send_single_task(wm_upgrade_command command, int agent_id, const char* status_task, const char* error_task) {
+    cJSON *message_object = wm_agent_upgrade_parse_task_module_request(command, agent_id, status_task, error_task);
     cJSON *message_array = cJSON_CreateArray();
     cJSON_AddItemToArray(message_array, message_object);
 

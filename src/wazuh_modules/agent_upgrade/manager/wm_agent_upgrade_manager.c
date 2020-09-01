@@ -33,6 +33,13 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_NEW_VERSION_GREATER_MASTER] = "Upgrading an agent to a version higher than the manager requires the force flag.",
     [WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST] = "The WPK file does not exist.",
     [WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH] = "The WPK sha1 of the file is not valid.",
+    [WM_UPGRADE_SEND_LOCK_RESTART_ERROR] = "Send lock restart error.",
+    [WM_UPGRADE_SEND_OPEN_ERROR] = "Send open file error.",
+    [WM_UPGRADE_SEND_WRITE_ERROR] = "Send write file error.",
+    [WM_UPGRADE_SEND_CLOSE_ERROR] = "Send close file error.",
+    [WM_UPGRADE_SEND_SHA1_ERROR] = "Send verify sha1 error.",
+    [WM_UPGRADE_SEND_UPGRADE_ERROR] = "Send upgrade command error.",
+    [WM_UPGRADE_UPGRADE_ERROR] = "Upgrade procedure exited with error code.",
     [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start."
 };
 
@@ -79,6 +86,7 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
 
         // Get request string
         char *buffer = NULL;
+        int upgrade_agents = 0;
 
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         int length;
@@ -108,14 +116,14 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
             case WM_UPGRADE_UPGRADE:
                 // Upgrade command
                 if (task && agent_ids) {
-                    message = wm_agent_upgrade_process_upgrade_command(agent_ids, (wm_upgrade_task *)task, manager_configs);
+                    message = wm_agent_upgrade_process_upgrade_command(agent_ids, (wm_upgrade_task *)task, manager_configs, &upgrade_agents);
                 }
                 wm_agent_upgrade_free_upgrade_task(task);
                 break;
             case WM_UPGRADE_UPGRADE_CUSTOM:
                 // Upgrade custom command
                 if (task && agent_ids) {
-                    message = wm_agent_upgrade_process_upgrade_custom_command(agent_ids, (wm_upgrade_custom_task *)task, manager_configs);
+                    message = wm_agent_upgrade_process_upgrade_custom_command(agent_ids, (wm_upgrade_custom_task *)task, manager_configs, &upgrade_agents);
                 }
                 wm_agent_upgrade_free_upgrade_custom_task(task);
                 break;
@@ -144,6 +152,10 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
 
         os_free(buffer);
         close(peer);
+
+        if (upgrade_agents) {
+            wm_agent_upgrade_start_upgrades(manager_configs);
+        }
 
     #ifdef WAZUH_UNIT_TESTING
         break;
