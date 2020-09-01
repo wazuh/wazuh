@@ -122,27 +122,56 @@ void * w_logtest_clients_handler(w_logtest_connection_t * connection) {
         }
         w_mutex_unlock(&connection->mutex);
 
-        if (size_msg_received = recv(client, msg_received, OS_MAXSTR - 1, 0), size_msg_received < 0) {
-            merror(LOGTEST_ERROR_RECV_MSG, strerror(errno));
-            close(client);
-            continue;
-        }
-        msg_received[size_msg_received] = '\0';
+        switch (size_msg_received = OS_RecvSecureTCP(client, msg_received, OS_MAXSTR-1), size_msg_received) {
+        case -1:
+            mdebug1(LOGTEST_ERROR_RECV_MSG_ERRNO, strerror(errno));
+            break;
 
-        if (str_response = w_logtest_process_request(msg_received, connection), !str_response) {
-            return NULL;
+        case 0:
+            mdebug1(LOGTEST_ERROR_RECV_MSG_EMPTY_TO);
+            break;
+
+        case OS_SOCKTERR:
+            mdebug1(LOGTEST_ERROR_RECV_MSG_OVERSIZE);
+            if (str_response = w_logtest_generate_error_response(LOGTEST_ERROR_RECV_MSG_OVERSIZE), str_response) {
+                OS_SendSecureTCP(client, strlen(str_response), str_response);
+            }
+            break;
+
+        default:
+            if (str_response = w_logtest_process_request(msg_received, connection), str_response) {
+                OS_SendSecureTCP(client, strlen(str_response), str_response);
+            }
         }
 
-        if (send(client, str_response, strlen(str_response) + 1, 0) == -1) {
-            merror(LOGTEST_ERROR_RESPONSE, errno, strerror(errno));
-        }
-
-        /* Cleanup */
         os_free(str_response);
         close(client);
     }
 
     return NULL;
+}
+
+
+char *w_logtest_generate_error_response(char * msg){
+
+    cJSON * json_response = NULL;
+    cJSON * json_msg_list = NULL;
+    cJSON * json_msg = NULL;
+    char * str_response = NULL;
+
+    json_response =  cJSON_CreateObject();
+    json_msg_list = cJSON_CreateArray();
+    json_msg = cJSON_CreateString(msg);
+
+    cJSON_AddItemToArray(json_msg_list, json_msg);
+    cJSON_AddItemToObject(json_response,W_LOGTEST_JSON_MESSAGES, json_msg_list);
+    cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_CODE, W_LOGTEST_RCODE_ERROR_INPUT);
+
+    str_response = cJSON_PrintUnformatted(json_response);
+
+    cJSON_Delete(json_response);
+
+    return str_response;
 }
 
 
