@@ -500,10 +500,10 @@
 /* Wazuh Logtest error messsages */
 #define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"
 #define LOGTEST_ERROR_ACCEPT_CONN                   "(7301): Failure to accept connection. Errno: %s"
-#define LOGTEST_ERROR_RECV_MSG                      "(7302): Failure to receive message. Errno: %s"
-#define LOGTEST_ERROR_INIT_HASH                     "(7303): Failure to initialize all_sesssions hash"
+#define LOGTEST_ERROR_RECV_MSG_ERRNO                "(7302): Failure to receive message: Errno: %s"
+#define LOGTEST_ERROR_INIT_HASH                     "(7303): Failure to initialize all_sessions hash"
 #define LOGTEST_ERROR_INV_CONF                      "(7304): Invalid wazuh-logtest configuration"
-#define LOGTEST_ERROR_SIZE_HASH                     "(7305): Failure to resize all_sesssions hash"
+#define LOGTEST_ERROR_SIZE_HASH                     "(7305): Failure to resize all_sessions hash"
 #define LOGTEST_ERROR_JSON_PARSE                    "(7306): Error parsing JSON"
 #define LOGTEST_ERROR_JSON_PARSE_POS                "(7307): Error in position %i, ... %s ..."
 #define LOGTEST_ERROR_JSON_REQUIRED_SFIELD          "(7308): '%s' JSON field is required and must be a string"
@@ -512,7 +512,10 @@
 #define LOGTEST_ERROR_INITIALIZE_SESSION            "(7311): Failure to initializing session '%s'"
 #define LOGTEST_ERROR_PROCESS_EVENT                 "(7312): Failed to process the event"
 #define LOGTEST_ERROR_FIELD_NOT_FOUND               "(7313): '%s' JSON field not found or is empty"
-#define LOGTEST_ERROR_TOKEN_INVALID_TYPE            "(7309): Failure to remove session. remove_session JSON field must be a string"
+#define LOGTEST_ERROR_RECV_MSG_EMPTY_TO             "(7314): Failure to receive message: empty or reception timeout"
+#define LOGTEST_ERROR_RECV_MSG_OVERSIZE             "(7315): Failure to receive message: size is bigger than expected"
+#define LOGTEST_ERROR_TOKEN_INVALID_TYPE            "(7316): Failure to remove session. remove_session JSON field must be a string"
+
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
