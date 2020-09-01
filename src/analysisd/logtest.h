@@ -317,5 +317,11 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
  */
 int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_response, OSList * list_msg,
                                              w_logtest_connection_t * connection);
+/*
+ * @brief Generate failure response with \ref W_LOGTEST_JSON_CODE =  \ref W_LOGTEST_RCODE_ERROR_INPUT
+ * @param msg string error description at \ref W_LOGTEST_JSON_MESSAGES field
+ * @return string (json format) with the response
+ */
+char * w_logtest_generate_error_response(char * msg);
 
 #endif

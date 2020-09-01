@@ -248,7 +248,7 @@ void test_w_logtest_init_OSHash_create_fail(void **state)
 
     will_return(__wrap_OSHash_Create, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(7303): Failure to initialize all_sesssions hash");
+    expect_string(__wrap__merror, formatted_msg, "(7303): Failure to initialize all_sessions hash");
 
     w_logtest_init();
 
@@ -265,7 +265,7 @@ void test_w_logtest_init_OSHash_setSize_fail(void **state)
     expect_value(__wrap_OSHash_setSize, new_size, 2048);
     will_return(__wrap_OSHash_setSize, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(7305): Failure to resize all_sesssions hash");
+    expect_string(__wrap__merror, formatted_msg, "(7305): Failure to resize all_sessions hash");
 
     w_logtest_init();
 
