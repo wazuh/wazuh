@@ -162,11 +162,6 @@ typedef enum wdb_stmt {
     WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
 
-typedef enum global_db_query {
-    SQL_GET_AGENTS_BY_KEEPALIVE,
-    SQL_GET_ALL_AGENTS
-} global_db_query;
-
 typedef enum global_db_access {
     WDB_INSERT_AGENT,
     WDB_UPDATE_AGENT_NAME,
@@ -177,7 +172,8 @@ typedef enum global_db_access {
     WDB_DELETE_AGENT,
     WDB_SELECT_AGENT_NAME,
     WDB_SELECT_AGENT_GROUP,
-    WDB_SELECT_AGENTS,
+    WDB_GET_ALL_AGENTS,
+    WDB_GET_AGENTS_BY_KEEPALIVE,
     WDB_FIND_AGENT,
     WDB_SELECT_FIM_OFFSET,
     WDB_SELECT_REG_OFFSET,

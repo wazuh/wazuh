@@ -20,11 +20,6 @@
 #define WDBQUERY_SIZE OS_BUFFER_SIZE
 #define WDBOUTPUT_SIZE OS_MAXSTR
 
-static const char *global_db_queries[] = {
-    [SQL_GET_AGENTS_BY_KEEPALIVE] = "global get-agents-by-keepalive condition %s %d start_id %d",
-    [SQL_GET_ALL_AGENTS] = "global get-all-agents start_id %d"
-};
-
 int wdb_sock_agent = -1;
 
 static const char *global_db_commands[] = {
@@ -37,7 +32,8 @@ static const char *global_db_commands[] = {
     [WDB_DELETE_AGENT] = "global delete-agent %d",
     [WDB_SELECT_AGENT_NAME] = "global select-agent-name %d",
     [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %d",
-    [WDB_SELECT_AGENTS] = "",
+    [WDB_GET_ALL_AGENTS] = "global get-all-agents start_id %d",
+    [WDB_GET_AGENTS_BY_KEEPALIVE] = "global get-agents-by-keepalive condition %s %d start_id %d",
     [WDB_FIND_AGENT] = "global find-agent %s",
     [WDB_SELECT_FIM_OFFSET] = "global select-fim-offset %d",
     [WDB_SELECT_REG_OFFSET] = "global select-reg-offset %d",
@@ -521,14 +517,14 @@ int wdb_remove_agent_db(int id, const char * name) {
 int* wdb_get_agents_by_keepalive(const char* condition, int keepalive) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
-    int last_id = 0;  
-    int *array = NULL;    
+    int last_id = 0;
+    int *array = NULL;
     int len = 0;
     wdbc_result status = WDBC_DUE;
-    
+
     while (status == WDBC_DUE) {
         // Query WazuhDB
-        snprintf(wdbquery, sizeof(wdbquery), global_db_queries[SQL_GET_AGENTS_BY_KEEPALIVE], condition, keepalive, last_id);
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_KEEPALIVE], condition, keepalive, last_id);
         if (wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
             // Parse result
             char* payload = NULL;
@@ -546,7 +542,7 @@ int* wdb_get_agents_by_keepalive(const char* condition, int keepalive) {
                     array[len] = atoi(agent_id);
                     len++;
                 }
-                last_id = array[len-1];   
+                last_id = array[len-1];
             }
         }
         else {
@@ -558,7 +554,7 @@ int* wdb_get_agents_by_keepalive(const char* condition, int keepalive) {
     }
     else {
         os_free(array);
-    }  
+    }
 
     return array;
 }
@@ -574,7 +570,7 @@ int* wdb_get_all_agents(void) {
     
     while (status == WDBC_DUE) {
         // Query WazuhDB
-        snprintf(wdbquery, sizeof(wdbquery), global_db_queries[SQL_GET_ALL_AGENTS], last_id);
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_ALL_AGENTS], last_id);
         if (wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
             // Parse result
             char* payload = NULL;
