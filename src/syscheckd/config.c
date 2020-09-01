@@ -69,6 +69,13 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.sync_max_eps = 10;
     syscheck.max_eps        = 100;
     syscheck.allow_remote_prefilter_cmd  = false;
+    syscheck.disk_quota_enabled = true;
+    syscheck.disk_quota_limit = 1024 * 1024; // 1 GB
+    syscheck.file_size_enabled = true;
+    syscheck.file_size_limit = 50 * 1024; // 50 MB
+    syscheck.diff_folder_size = 0;
+    syscheck.comp_estimation_perc = 0.9;    // 90%
+    syscheck.disk_quota_full_msg = true;
     syscheck.audit_key = NULL;
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
@@ -93,6 +100,14 @@ int Read_Syscheck_Config(const char *cfgfile)
                 syscheck.enable_whodata = 1;
 
                 break;  // Exit loop with the first whodata directory
+            }
+        }
+    }
+
+    if (syscheck.diff_size_limit) {
+        for (it = 0; syscheck.diff_size_limit[it]; it++) {
+            if (syscheck.diff_size_limit[it] == -1) {
+                syscheck.diff_size_limit[it] = syscheck.file_size_limit;
             }
         }
     }
@@ -179,6 +194,20 @@ cJSON *getSyscheckConfig(void) {
     cJSON_AddNumberToObject(file_limit, "entries", syscheck.file_limit);
     cJSON_AddItemToObject(syscfg, "file_limit", file_limit);
 
+    cJSON *diff = cJSON_CreateObject();
+
+    cJSON *disk_quota = cJSON_CreateObject();
+    cJSON_AddStringToObject(disk_quota, "enabled", syscheck.disk_quota_enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(disk_quota, "limit", syscheck.disk_quota_limit);
+    cJSON_AddItemToObject(diff, "disk_quota", disk_quota);
+
+    cJSON *file_size = cJSON_CreateObject();
+    cJSON_AddStringToObject(file_size, "enabled", syscheck.file_size_enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(file_size, "limit", syscheck.file_size_limit);
+    cJSON_AddItemToObject(diff, "file_size", file_size);
+
+    cJSON_AddItemToObject(syscfg, "diff", diff);
+
     if (syscheck.dir) {
         cJSON *dirs = cJSON_CreateArray();
         for (i=0;syscheck.dir[i];i++) {
@@ -210,6 +239,11 @@ cJSON *getSyscheckConfig(void) {
             if (syscheck.tag && syscheck.tag[i]) {
                 cJSON_AddStringToObject(pair,"tags",syscheck.tag[i]);
             }
+
+            if (syscheck.file_limit_enabled && syscheck.diff_size_limit[i]) {
+                cJSON_AddNumberToObject(pair, "diff_size_limit", syscheck.diff_size_limit[i]);
+            }
+
             cJSON_AddItemToArray(dirs, pair);
         }
         cJSON_AddItemToObject(syscfg,"directories",dirs);

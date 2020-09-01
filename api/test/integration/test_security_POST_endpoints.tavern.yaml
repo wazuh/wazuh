@@ -663,6 +663,7 @@ stages:
       json:
         username: "new_user"
         password: "new_user1A!"
+        allow_run_as: true
       method: POST
     response:
       status_code: 200
@@ -674,6 +675,7 @@ stages:
       json:
         username: "new_user"
         password: "new_user1B!"
+        allow_run_as: false
     response:
       status_code: 200
       json:
@@ -732,6 +734,7 @@ stages:
       <<: *post_users_request
       json:
         username: "new_user1"
+        allow_run_as: true
     response:
       status_code: 400
 

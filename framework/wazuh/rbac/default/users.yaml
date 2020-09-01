@@ -1,10 +1,12 @@
+# WAZUH SYSTEM FILE, PLEASE DO NOT MODIFY
+
 default_users:
   wazuh:
     description: Superuser of Wazuh.
     password: wazuh
-    auth_context: False
+    allow_run_as: False
 
   wazuh-wui:
     description: Superuser of Wazuh UI
     password: wazuh-wui
-    auth_context: True
+    allow_run_as: True
