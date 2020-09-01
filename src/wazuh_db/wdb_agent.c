@@ -52,7 +52,6 @@ static const char *global_db_commands[] = {
     [WDB_SELECT_KEEPALIVE] = "global select-keepalive %s %s"
 };
 
-
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *internal_key, const char *group, int keep_date) {
     int result = 0;
     time_t date_add = 0;
@@ -111,7 +110,6 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
     return result;
 }
 
-
 int wdb_update_agent_name(int id, const char *name) {
     int result = 0;
     cJSON *data_in = NULL;
@@ -154,7 +152,6 @@ int wdb_update_agent_name(int id, const char *name) {
 
     return result;
 }
-
 
 int wdb_update_agent_version (int id,
                               const char *os_name,
@@ -230,7 +227,6 @@ int wdb_update_agent_version (int id,
     return result;
 }
 
-
 cJSON* wdb_get_agent_labels(int id) {
     cJSON *root = NULL;
     // Making use of a big buffer for the output because
@@ -248,7 +244,6 @@ cJSON* wdb_get_agent_labels(int id) {
 
     return root;
 }
-
 
 int wdb_set_agent_labels(int id, const char *labels) {
     int result = 0;
@@ -282,7 +277,6 @@ int wdb_set_agent_labels(int id, const char *labels) {
 
     return result;
 }
-
 
 int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status) {
     int result = 0;
@@ -327,7 +321,6 @@ int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status) {
     return result;
 }
 
-
 int wdb_remove_agent(int id) {
     int result = 0 ;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -369,7 +362,6 @@ int wdb_remove_agent(int id) {
     return result;
 }
 
-
 char* wdb_get_agent_name(int id) {
     char *output = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -394,7 +386,6 @@ char* wdb_get_agent_name(int id) {
     return output;
 }
 
-
 char* wdb_get_agent_group(int id) {
     char *output = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -418,7 +409,6 @@ char* wdb_get_agent_group(int id) {
     cJSON_Delete(root);
     return output;
 }
-
 
 int wdb_create_agent_db(int id, const char *name) {
     const char *ROOT = "root";
@@ -492,7 +482,6 @@ int wdb_create_agent_db(int id, const char *name) {
     return 0;
 }
 
-
 int wdb_remove_agent_db(int id, const char * name) {
     char path[PATH_MAX];
     char path_aux[PATH_MAX];
@@ -512,7 +501,6 @@ int wdb_remove_agent_db(int id, const char * name) {
     } else
         return OS_INVALID;
 }
-
 
 int* wdb_get_agents_by_keepalive(const char* condition, int keepalive) {
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -560,7 +548,6 @@ int* wdb_get_agents_by_keepalive(const char* condition, int keepalive) {
     return array;
 }
 
-
 int* wdb_get_all_agents(void) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -606,7 +593,6 @@ int* wdb_get_all_agents(void) {
     return array;
 }
 
-
 int wdb_find_agent(const char *name, const char *ip) {
     int output = OS_INVALID;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -650,7 +636,6 @@ int wdb_find_agent(const char *name, const char *ip) {
     return output;
 }
 
-
 long wdb_get_agent_offset(int id, int type) {
     long int output = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -684,7 +669,6 @@ long wdb_get_agent_offset(int id, int type) {
     cJSON_Delete(root);
     return output;
 }
-
 
 int wdb_set_agent_offset(int id, int type, long offset) {
     int result = 0;
@@ -738,7 +722,6 @@ int wdb_set_agent_offset(int id, int type, long offset) {
     return result;
 }
 
-
 int wdb_get_agent_status(int id_agent) {
     int output = -1;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -764,7 +747,6 @@ int wdb_get_agent_status(int id_agent) {
     cJSON_Delete(root);
     return output;
 }
-
 
 int wdb_set_agent_status(int id_agent, int status) {
     int result = 0;
@@ -824,7 +806,6 @@ int wdb_set_agent_status(int id_agent, int status) {
     return result;
 }
 
-
 int wdb_update_agent_group(int id, char *group) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -869,7 +850,6 @@ int wdb_update_agent_group(int id, char *group) {
 
     return result;
 }
-
 
 int wdb_update_agent_multi_group(int id, char *group) {
     /* Wipe out the agent multi groups relation for this agent */
@@ -921,7 +901,6 @@ int wdb_update_agent_multi_group(int id, char *group) {
     return OS_SUCCESS;
 }
 
-
 int wdb_find_group(const char *name) {
     int output = OS_INVALID;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -943,7 +922,6 @@ int wdb_find_group(const char *name) {
     cJSON_Delete(root);
     return output;
 }
-
 
 int wdb_insert_group(const char *name) {
     int result = 0;
@@ -973,7 +951,6 @@ int wdb_insert_group(const char *name) {
 
     return result;
 }
-
 
 int wdb_update_agent_belongs(int id_group, int id_agent) {
     int result = 0;
@@ -1017,7 +994,6 @@ int wdb_update_agent_belongs(int id_group, int id_agent) {
     return result;
 }
 
-
 int wdb_delete_agent_belongs(int id) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -1047,7 +1023,6 @@ int wdb_delete_agent_belongs(int id) {
     return result;
 }
 
-
 int wdb_remove_group_from_belongs_db(const char *name) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -1076,7 +1051,6 @@ int wdb_remove_group_from_belongs_db(const char *name) {
 
     return result;
 }
-
 
 int wdb_remove_group_db(const char *name) {
     int result = 0;
@@ -1111,7 +1085,6 @@ int wdb_remove_group_db(const char *name) {
 
     return result;
 }
-
 
 int wdb_update_groups(const char *dirname) {
     int result = 0;
@@ -1198,7 +1171,6 @@ int wdb_update_groups(const char *dirname) {
 
     return result;
 }
-
 
 int wdb_agent_belongs_first_time(){
     int i;
@@ -1324,4 +1296,3 @@ time_t wdb_get_agent_keepalive (const char *name, const char *ip){
     cJSON_Delete(root);
     return output;
 }
-
