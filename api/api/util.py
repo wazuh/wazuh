@@ -9,6 +9,7 @@ import typing
 import six
 from connexion import ProblemException
 
+from api.api_exception import APIError
 from wazuh.core.common import ossec_path as WAZUH_PATH
 from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError, WazuhPermissionError, \
     WazuhResourceNotFound, WazuhTooManyRequests, WazuhNotAcceptable
@@ -252,11 +253,13 @@ def _create_problem(exc: Exception, code=None):
     ------
         ProblemException or `exc` exception type
     """
+    ext = None
     if isinstance(exc, WazuhException):
         ext = remove_nones_to_dict({'remediation': exc.remediation,
                                     'code': exc.code,
                                     'dapi_errors': exc.dapi_errors if exc.dapi_errors != {} else None
                                     })
+
     if isinstance(exc, WazuhInternalError):
         raise ProblemException(status=500 if not code else code, type=exc.type, title=exc.title, detail=exc.message,
                                ext=ext)
@@ -271,6 +274,7 @@ def _create_problem(exc: Exception, code=None):
     elif isinstance(exc, WazuhError):
         raise ProblemException(status=400 if not code else code, type=exc.type, title=exc.title, detail=exc.message,
                                ext=ext)
+
     raise exc
 
 
