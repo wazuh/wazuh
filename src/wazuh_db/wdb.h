@@ -155,6 +155,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
+    WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE,
@@ -164,32 +165,33 @@ typedef enum wdb_stmt {
 
 typedef enum global_db_access {
     WDB_INSERT_AGENT,
+    WDB_INSERT_AGENT_GROUP,
+    WDB_INSERT_AGENT_BELONG,
     WDB_UPDATE_AGENT_NAME,
     WDB_UPDATE_AGENT_VERSION,
-    WDB_GET_AGENT_LABELS,
-    WDB_SET_AGENT_LABELS,
     WDB_UPDATE_AGENT_KEEPALIVE,
-    WDB_DELETE_AGENT,
-    WDB_SELECT_AGENT_NAME,
-    WDB_SELECT_AGENT_GROUP,
+    WDB_UPDATE_AGENT_STATUS,
+    WDB_UPDATE_AGENT_GROUP,
+    WDB_UPDATE_FIM_OFFSET,
+    WDB_UPDATE_REG_OFFSET,
+    WDB_SET_AGENT_LABELS,
     WDB_GET_ALL_AGENTS,
     WDB_GET_AGENTS_BY_KEEPALIVE,
     WDB_FIND_AGENT,
+    WDB_GET_AGENT_INFO,
+    WDB_GET_AGENT_LABELS,
+    WDB_SELECT_AGENT_NAME,
+    WDB_SELECT_AGENT_GROUP,
+    WDB_SELECT_AGENT_STATUS,
+    WDB_SELECT_KEEPALIVE,
     WDB_SELECT_FIM_OFFSET,
     WDB_SELECT_REG_OFFSET,
-    WDB_UPDATE_FIM_OFFSET,
-    WDB_UPDATE_REG_OFFSET,
-    WDB_SELECT_AGENT_STATUS,
-    WDB_UPDATE_AGENT_STATUS,
-    WDB_UPDATE_AGENT_GROUP,
     WDB_FIND_GROUP,
-    WDB_INSERT_AGENT_GROUP,
-    WDB_INSERT_AGENT_BELONG,
-    WDB_DELETE_AGENT_BELONG,
-    WDB_DELETE_GROUP_BELONG,
-    WDB_DELETE_GROUP,
     WDB_SELECT_GROUPS,
-    WDB_SELECT_KEEPALIVE
+    WDB_DELETE_AGENT,
+    WDB_DELETE_GROUP,
+    WDB_DELETE_AGENT_BELONG,
+    WDB_DELETE_GROUP_BELONG
 } global_db_access;
 
 typedef struct wdb_t {
@@ -383,6 +385,23 @@ int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output);
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *internal_key, const char *group, int keep_date);
 
 /**
+ * @brief Insert a new group.
+ * 
+ * @param[in] name The group name.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_insert_group(const char *name);
+
+/**
+ * @brief Update agent belongs table.
+ * 
+ * @param[in] id_group Id of the group to be updated.
+ * @param[in] id_agent Id of the agent to be updated.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_update_agent_belongs(int id_group, int id_agent);
+
+/**
  * @brief Update agent name in global.db.
  * 
  * @param[in] id The agent ID.
@@ -432,12 +451,41 @@ int wdb_update_agent_version(int id,
                              wdb_sync_status_t sync_status);
 
 /**
- * @brief Returns a JSON with all the agent's labels.
+ * @brief Update agent's last keepalive ond modifies the cluster synchronization status.
  * 
- * @param[in] id Id of the agent for whom the labels are requested.
- * @return JSON* with the labels on success or NULL on failure.
+ * @param[in] id Id of the agent for whom the keepalive must be updated.
+ * @param[in] sync_status Enumeration with the cluster synchronization status to be set.
+ * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-cJSON* wdb_get_agent_labels(int id);
+int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status);
+
+/**
+ * @brief Set agent updating status.
+ * 
+ * @param[in] id ID of the agent.
+ * @param[in] status The status to be set. WDB_AGENT_EMPTY, WDB_AGENT_PENDING or WDB_AGENT_UPDATED.
+ * @return Returns OS_SUCCESS if success. OS_INVALID on error.
+ */
+int wdb_set_agent_status(int id_agent, int status);
+
+/**
+ * @brief Update agent group.
+ * 
+ * @param[in] id ID of the agent.
+ * @param[in] group The group to be set.
+ * @return Returns OS_SUCCESS if success. OS_INVALID on error.
+ */
+int wdb_update_agent_group(int id,char *group);
+
+/**
+ * @brief Set the file offset either for syscheck as well as registry.
+ * 
+ * @param[in] id ID of the agent.
+ * @param[in] type An enumerator indicating the offset type. WDB_SYSCHECK or WDB_SYSCHECK_REGISTRY.
+ * @param[in] offset to be set in the database.
+ * @return Returns OS_SUCCESS if success. OS_INVALID on error.
+ */
+int wdb_set_agent_offset(int id, int type, long offset);
 
 /**
  * @brief Update agent's labels.
@@ -449,21 +497,52 @@ cJSON* wdb_get_agent_labels(int id);
 int wdb_set_agent_labels(int id, const char *labels);
 
 /**
- * @brief Update agent's last keepalive ond modifies the cluster synchronization status.
+ * @brief Returns an array containing the ID of every agent (except 0), ended with -1.
+ * This method creates and sends a command to WazuhDB to receive the ID of every agent.
+ * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
+ * The array is heap allocated memory that must be freed by the caller.
  * 
- * @param[in] id Id of the agent for whom the keepalive must be updated.
- * @param[in] sync_status Enumeration with the cluster synchronization status to be set.
- * @return OS_SUCCESS on success or OS_INVALID on failure.
+ * @return Pointer to the array, on success.
+ * @retval NULL on errors.
  */
-int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status);
+int* wdb_get_all_agents();
 
 /**
- * @brief Delete an agent from agent table in global.db by using its ID.
+ * @brief Returns an array containing the ID of every agent (except 0), ended with -1 based on its keep_alive.
+ * This method creates and sends a command to WazuhDB to receive the ID of every agent.
+ * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
+ * The array is heap allocated memory that must be freed by the caller.
  * 
- * @param[in] id Id of the agent to be deleted.
- * @return OS_SUCCESS on success or OS_INVALID on failure.
+ * @param [in] condition The symbol ">" or "<". The condition to match keep alive.
+ * @param [in] keepalive The keep_alive to search the agents.
+ * @return Pointer to the array, on success. NULL on errors.
  */
-int wdb_remove_agent(int id);
+int* wdb_get_agents_by_keepalive(const char* condition, int keepalive);
+
+/**
+ * @brief Find agent id by name and address.
+ * 
+ * @param[in] name Name of the agent.
+ * @param[in] ip IP address of the agent.
+ * @return Returns id if success. OS_INVALID on error.
+ */
+int wdb_find_agent(const char *name, const char *ip);
+
+/**
+ * @brief Returns a JSON with all the agent's information.
+ * 
+ * @param[in] id Id of the agent for whom the information is requested.
+ * @return JSON* with the information on success or NULL on failure.
+ */
+cJSON* wdb_get_agent_info(int id);
+
+/**
+ * @brief Returns a JSON with all the agent's labels.
+ * 
+ * @param[in] id Id of the agent for whom the labels are requested.
+ * @return JSON* with the labels on success or NULL on failure.
+ */
+cJSON* wdb_get_agent_labels(int id);
 
 /**
  * @brief Get name from agent table in global.db by using its ID.
@@ -480,6 +559,80 @@ char* wdb_get_agent_name(int id);
  * @return A string with the agent group on success or NULL on failure.
  */
 char* wdb_get_agent_group(int id);
+
+/**
+ * @brief Get agent updating status.
+ * 
+ * @param[in] id_agent ID of the agent.
+ * @return Returns the WDB_AGENT_* status if success. OS_INVALID on error.
+ */
+int wdb_get_agent_status(int id_agent);
+
+/**
+ * @brief Function to get the agent last keepalive.
+ * 
+ * @param [in] name String with the name of the agent.
+ * @param [in] ip String with the ip of the agent.
+ * @return Returns this value, 0 on NULL or OS_INVALID on error.
+ */
+time_t wdb_get_agent_keepalive (const char *name, const char *ip);
+
+/**
+ * @brief Get the file offset either for syscheck as well as registry.
+ * 
+ * @param[in] id ID of the agent.
+ * @param[in] type An enumerator indicating the offset type. WDB_SYSCHECK or WDB_SYSCHECK_REGISTRY.
+ * @return Returns the offset if success. OS_INVALID on error.
+ */
+long wdb_get_agent_offset(int id, int type);
+
+/**
+ * @brief Find group by name.
+ * 
+ * @param[in] name The group name.
+ * @return Returns id if success or OS_INVALID on failure.
+ */
+int wdb_find_group(const char *name);
+
+/**
+ * @brief Update groups table.
+ * 
+ * @param[in] name The groups directory.
+ * @return Returns OS_SUCCESS if success or OS_INVALID on failure.
+ */
+int wdb_update_groups(const char *dirname);
+
+/**
+ * @brief Delete an agent from agent table in global.db by using its ID.
+ * 
+ * @param[in] id Id of the agent to be deleted.
+ * @return OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_remove_agent(int id);
+
+/**
+ * @brief Delete group.
+ * 
+ * @param[in] name The group name.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_remove_group_db(const char *name);
+
+/**
+ * @brief Delete an agent from belongs table in global.db by using its ID.
+ * 
+ * @param[in] id Id of the agent to be deleted.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_delete_agent_belongs(int id);
+
+/**
+ * @brief Delete group from belongs table.
+ * 
+ * @param[in] name The group name.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_remove_group_from_belongs_db(const char *name);
 
 /**
  * @brief Create database for agent from profile.
@@ -508,117 +661,6 @@ int wdb_create_agent_db2(const char * agent_id);
 int wdb_remove_agent_db(int id, const char * name);
 
 /**
- * @brief Find agent id by name and address.
- * 
- * @param[in] name Name of the agent.
- * @param[in] ip IP address of the agent.
- * @return Returns id if success. OS_INVALID on error.
- */
-int wdb_find_agent(const char *name, const char *ip);
-
-/**
- * @brief Get the file offset either for syscheck as well as registry.
- * 
- * @param[in] id ID of the agent.
- * @param[in] type An enumerator indicating the offset type. WDB_SYSCHECK or WDB_SYSCHECK_REGISTRY.
- * @return Returns the offset if success. OS_INVALID on error.
- */
-long wdb_get_agent_offset(int id, int type);
-
-/**
- * @brief Set the file offset either for syscheck as well as registry.
- * 
- * @param[in] id ID of the agent.
- * @param[in] type An enumerator indicating the offset type. WDB_SYSCHECK or WDB_SYSCHECK_REGISTRY.
- * @param[in] offset to be set in the database.
- * @return Returns OS_SUCCESS if success. OS_INVALID on error.
- */
-int wdb_set_agent_offset(int id, int type, long offset);
-
-/**
- * @brief Get agent updating status.
- * 
- * @param[in] id_agent ID of the agent.
- * @return Returns the WDB_AGENT_* status if success. OS_INVALID on error.
- */
-int wdb_get_agent_status(int id_agent);
-
-/**
- * @brief Set agent updating status.
- * 
- * @param[in] id ID of the agent.
- * @param[in] status The status to be set. WDB_AGENT_EMPTY, WDB_AGENT_PENDING or WDB_AGENT_UPDATED.
- * @return Returns OS_SUCCESS if success. OS_INVALID on error.
- */
-int wdb_set_agent_status(int id_agent, int status);
-
-/**
- * @brief Update agent group.
- * 
- * @param[in] id ID of the agent.
- * @param[in] group The group to be set.
- * @return Returns OS_SUCCESS if success. OS_INVALID on error.
- */
-int wdb_update_agent_group(int id,char *group);
-
-/**
- * @brief Get the agent first registration date.
- * 
- * @param[in] agent_id The agent ID.
- * @return Returns the agent first registration date.
- */
-time_t get_agent_date_added(int agent_id);
-
-/**
- * @brief Find group by name.
- * 
- * @param[in] name The group name.
- * @return Returns id if success or OS_INVALID on failure.
- */
-int wdb_find_group(const char *name);
-
-/**
- * @brief Insert a new group.
- * 
- * @param[in] name The group name.
- * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_insert_group(const char *name);
-
-/**
- * @brief Update agent belongs table.
- * 
- * @param[in] id_group Id of the group to be updated.
- * @param[in] id_agent Id of the agent to be updated.
- * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_update_agent_belongs(int id_group, int id_agent);
-
-/**
- * @brief Delete an agent from belongs table in global.db by using its ID.
- * 
- * @param[in] id Id of the agent to be deleted.
- * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_delete_agent_belongs(int id);
-
-/**
- * @brief Delete group from belongs table.
- * 
- * @param[in] name The group name.
- * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_remove_group_from_belongs_db(const char *name);
-
-/**
- * @brief Delete group.
- * 
- * @param[in] name The group name.
- * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_remove_group_db(const char *name);
-
-/**
  * @brief Update agent multi group.
  * 
  * @param[in] id The agent id.
@@ -627,8 +669,20 @@ int wdb_remove_group_db(const char *name);
  */
 int wdb_update_agent_multi_group(int id, char *group);
 
-/* Update groups table. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_groups(const char *dirname);
+/**
+ * @brief Fill belongs table on start.
+ * 
+ * @return Returns OS_SUCCESS.
+ */
+int wdb_agent_belongs_first_time();
+
+/**
+ * @brief Get the agent first registration date.
+ * 
+ * @param[in] agent_id The agent ID.
+ * @return Returns the agent first registration date.
+ */
+time_t get_agent_date_added(int agent_id);
 
 /* Remove agents databases from id's list. */
 cJSON *wdb_remove_multiple_agents(char *agent_list);
@@ -679,32 +733,6 @@ int wdb_create_profile(const char *path);
 
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source);
-
-/**
- * @brief Returns an array containing the ID of every agent (except 0), ended with -1.
- * This method creates and sends a command to WazuhDB to receive the ID of every agent.
- * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
- * The array is heap allocated memory that must be freed by the caller.
- * 
- * @return Pointer to the array, on success.
- * @retval NULL on errors.
- */
-int* wdb_get_all_agents();
-
-/**
- * @brief Returns an array containing the ID of every agent (except 0), ended with -1 based on its keep_alive.
- * This method creates and sends a command to WazuhDB to receive the ID of every agent.
- * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
- * The array is heap allocated memory that must be freed by the caller.
- * 
- * @param [in] condition The symbol ">" or "<". The condition to match keep alive.
- * @param [in] keepalive The keep_alive to search the agents.
- * @return Pointer to the array, on success. NULL on errors.
- */
-int* wdb_get_agents_by_keepalive(const char* condition, int keepalive);
-
-/* Fill belongs table on start */
-int wdb_agent_belongs_first_time();
 
 /* Delete FIM events of an agent. Returns number of affected rows on success or -1 on error. */
 int wdb_delete_fim(int id);
@@ -927,6 +955,17 @@ int wdb_parse_global_update_agent_version(wdb_t * wdb, char * input, char * outp
  * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to get all the agent information in global.db.
+ * 
+ * @param wdb The global struct database.
+ * @param input String with 'agent_id'.
+ * @param output Response of the query in JSON format.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_get_agent_info(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse string with agent's labels and set them in labels table in global database.
@@ -1198,9 +1237,6 @@ wdb_t * wdb_backup(wdb_t *wdb, int version);
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */
 int wdb_create_backup(const char * agent_id, int version);
-
-/* Gets the agent last keepalive. Returns this value, 0 on NULL or OS_INVALID on error */
-time_t wdb_get_agent_keepalive (const char *name, const char *ip);
 
 /**
  * @brief Query the checksum of a data range
@@ -1572,6 +1608,16 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
 int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
 
 /**
+ * @brief Function to get the information of a particular agent stored in Wazuh DB.
+ * 
+ * @param wdb The Global struct database.
+ * @param id Agent id.
+ * @retval JSON with agent information on success.
+ * @retval NULL on error.
+ */
+cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
+
+/*
  * @brief Gets every agent ID based on the keepalive.
  *        Response is prepared in one chunk, 
  *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
@@ -1598,8 +1644,6 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
  * @return wdbc_result to represent if all agents has being obtained or any error occurred.
  */
 wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output);
-
-
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

@@ -675,6 +675,16 @@ int wdb_parse(char * input, char * output) {
                 result = wdb_parse_get_all_agents(wdb, next, output);
             }
         }
+        else if (strcmp(query, "get-agent-info") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_get_agent_info(wdb, next, output);
+            }
+        } 
         else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
@@ -5015,6 +5025,27 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
 
     snprintf(output, OS_MAXSTR + 1, "ok");
     cJSON_Delete(root);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
+    int agent_id = 0;
+    cJSON *agent_info = NULL;
+    char *out = NULL;
+
+    agent_id = atoi(input);
+
+    if (agent_info = wdb_global_get_agent_info(wdb, agent_id), !agent_info) {
+        mdebug1("Error getting agent information from Wazuh DB.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agent information from global.db.");
+        return OS_INVALID;
+    }
+
+    out = cJSON_PrintUnformatted(agent_info);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(agent_info);
 
     return OS_SUCCESS;
 }
