@@ -388,10 +388,6 @@ WriteAgent()
     # Syscollector configuration
     WriteSyscollector "agent"
 
-    # Agent upgrade
-    cat ${AGENT_UPGRADE_AGENT_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
     # Configuration assessment configuration
     WriteConfigurationAssessment
 
