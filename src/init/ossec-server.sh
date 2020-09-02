@@ -23,7 +23,7 @@ fi
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
-DAEMONS="wazuh-clusterd wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
+DAEMONS="wazuh-clusterd wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd wazuh-apid"
 OP_DAEMONS="wazuh-clusterd ossec-maild ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
 
 # Reverse order of daemons
@@ -43,20 +43,6 @@ MAX_ITERATION="10"
 
 MAX_KILL_TRIES=600
 
-start_api()
-{
-    ${DIR}/bin/wazuh-apid start
-}
-
-stop_api()
-{
-    ${DIR}/bin/wazuh-apid stop
-}
-
-status_api()
-{
-    ${DIR}/bin/wazuh-apid status
-}
 
 checkpid()
 {
@@ -242,7 +228,6 @@ status()
     if [ $USE_JSON = true ]; then
         echo -n ']}'
     fi
-    status_api
 }
 
 testconfig()
@@ -394,8 +379,6 @@ start()
         fi
     done
 
-    start_api
-
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
@@ -516,8 +499,6 @@ stopa()
         fi
         rm -f ${DIR}/var/run/${i}*.pid
     done
-
-    stop_api
 
     if [ $USE_JSON = true ]; then
         echo -n ']}'

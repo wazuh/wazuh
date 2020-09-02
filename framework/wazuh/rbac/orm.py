@@ -321,8 +321,7 @@ class Rules(_Base):
     name = Column('name', String(20))
     rule = Column('rule', TEXT)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
-    __table_args__ = (UniqueConstraint('name', name='rule_name'),
-                      UniqueConstraint('rule', name='rule_definition'))
+    __table_args__ = (UniqueConstraint('name', name='rule_name'),)
 
     # Relations
     roles = relationship("Roles", secondary='roles_rules',

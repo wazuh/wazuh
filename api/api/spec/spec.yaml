@@ -1115,6 +1115,24 @@ components:
               items:
                   $ref: '#/components/schemas/ValidationStatus'
 
+    AllItemsResponseWazuhStats:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                anyOf:
+                  - $ref: '#/components/schemas/WazuhStats'
+                  - $ref: '#/components/schemas/WazuhHourlyStats'
+                  - $ref: '#/components/schemas/WazuhWeeklyStats'
+                  - $ref: '#/components/schemas/WazuhAnalysisdStats'
+                  - $ref: '#/components/schemas/WazuhRemotedStats'
+        - $ref: '#/components/schemas/AllItemsResponse'
+
     BasicInfo:
       type: object
       properties:
@@ -1891,7 +1909,7 @@ components:
           type: object
 
     WazuhStats:
-      type: array
+      type: object
       items:
         type: object
         properties:
@@ -7800,35 +7818,39 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  - hour: 15
-                    alerts:
-                      - sigid: 5303
-                        level: 3
-                        times: 1
-                      - sigid: 5501
-                        level: 3
-                        times: 4
-                      - sigid: 221
-                        level: 0
-                        times: 653
-                    totalAlerts: 658
-                    events: 4387
-                    firewall: 0
-                  - hour: 16
-                    alerts:
-                      - sigid: 5521
-                        level: 0
-                        times: 1
-                      - sigid: 530
-                        level: 0
-                        times: 120
-                    totalAlerts: 121
-                    events: 4379
-                    syscheck: 0
-                    firewall: 0
+                  affected_items:
+                    - hour: 15
+                      alerts:
+                        - sigid: 5303
+                          level: 3
+                          times: 1
+                        - sigid: 5501
+                          level: 3
+                          times: 4
+                        - sigid: 221
+                          level: 0
+                          times: 653
+                      totalAlerts: 658
+                      events: 4387
+                      firewall: 0
+                    - hour: 16
+                      alerts:
+                        - sigid: 5521
+                          level: 0
+                          times: 1
+                        - sigid: 530
+                          level: 0
+                          times: 120
+                      totalAlerts: 121
+                      events: 4379
+                      syscheck: 0
+                      firewall: 0
+                  total_affected_items: 2
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7844,7 +7866,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's stats by hour"
+      summary: "Get a specified node's stats per hour"
       description: "Return Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the average of alerts per hour"
       operationId: api.controllers.cluster_controller.get_stats_hourly_node
       x-rbac-actions:
@@ -7864,35 +7886,39 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhHourlyStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                  interactions: 0
+                  affected_items:
+                    - averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                      interactions: 0
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7908,7 +7934,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's stats by week"
+      summary: "Get a specified node's stats per week"
       description: "Return Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the average of alerts per hour for that specific day"
       operationId: api.controllers.cluster_controller.get_stats_weekly_node
       x-rbac-actions:
@@ -7928,198 +7954,202 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhWeeklyStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  Sun:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Mon:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Tue:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Wed:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Thu:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Fri:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Sat:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
+                  affected_items:
+                    - Sun:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Mon:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Tue:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Wed:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Thu:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Fri:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Sat:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                  total_affected_items: 7
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8155,55 +8185,59 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhAnalysisdStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  total_events_decoded: 5
-                  syscheck_events_decoded: 0
-                  syscheck_edps: 0
-                  syscollector_events_decoded: 0
-                  syscollector_edps: 0
-                  rootcheck_events_decoded: 0
-                  rootcheck_edps: 0
-                  sca_events_decoded: 0
-                  sca_edps: 0
-                  hostinfo_events_decoded: 0
-                  hostinfo_edps: 0
-                  winevt_events_decoded: 0
-                  winevt_edps: 0
-                  other_events_decoded: 5
-                  other_events_edps: 1
-                  events_processed: 5
-                  events_edps: 1
-                  events_received: 5
-                  events_dropped: 0
-                  alerts_written: 0
-                  firewall_written: 0
-                  fts_written: 0
-                  syscheck_queue_usage: 0
-                  syscheck_queue_size: 16384
-                  syscollector_queue_usage: 0
-                  syscollector_queue_size: 16384
-                  rootcheck_queue_usage: 0
-                  rootcheck_queue_size: 16384
-                  sca_queue_usage: 0
-                  sca_queue_size: 16384
-                  hostinfo_queue_usage: 0
-                  hostinfo_queue_size: 16384
-                  winevt_queue_usage: 0
-                  winevt_queue_size: 16384
-                  event_queue_usage: 0
-                  event_queue_size: 16384
-                  rule_matching_queue_usage: 0
-                  rule_matching_queue_size: 16384
-                  alerts_queue_usage: 0
-                  alerts_queue_size: 16384
-                  firewall_queue_usage: 0
-                  firewall_queue_size: 16384
-                  statistical_queue_usage: 0
-                  statistical_queue_size: 16384
-                  archives_queue_usage: 0
-                  archives_queue_size: 16384
+                  affected_items:
+                    - total_events_decoded: 5
+                      syscheck_events_decoded: 0
+                      syscheck_edps: 0
+                      syscollector_events_decoded: 0
+                      syscollector_edps: 0
+                      rootcheck_events_decoded: 0
+                      rootcheck_edps: 0
+                      sca_events_decoded: 0
+                      sca_edps: 0
+                      hostinfo_events_decoded: 0
+                      hostinfo_edps: 0
+                      winevt_events_decoded: 0
+                      winevt_edps: 0
+                      other_events_decoded: 5
+                      other_events_edps: 1
+                      events_processed: 5
+                      events_edps: 1
+                      events_received: 5
+                      events_dropped: 0
+                      alerts_written: 0
+                      firewall_written: 0
+                      fts_written: 0
+                      syscheck_queue_usage: 0
+                      syscheck_queue_size: 16384
+                      syscollector_queue_usage: 0
+                      syscollector_queue_size: 16384
+                      rootcheck_queue_usage: 0
+                      rootcheck_queue_size: 16384
+                      sca_queue_usage: 0
+                      sca_queue_size: 16384
+                      hostinfo_queue_usage: 0
+                      hostinfo_queue_size: 16384
+                      winevt_queue_usage: 0
+                      winevt_queue_size: 16384
+                      event_queue_usage: 0
+                      event_queue_size: 16384
+                      rule_matching_queue_usage: 0
+                      rule_matching_queue_size: 16384
+                      alerts_queue_usage: 0
+                      alerts_queue_size: 16384
+                      firewall_queue_usage: 0
+                      firewall_queue_size: 16384
+                      statistical_queue_usage: 0
+                      statistical_queue_size: 16384
+                      archives_queue_usage: 0
+                      archives_queue_size: 16384
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8239,17 +8273,21 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhRemotedStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  queue_size: 0
-                  total_queue_size: 131072
-                  tcp_sessions: 0
-                  evt_count: 0
-                  ctrl_msg_count: 0
-                  discarded_count: 0
-                  msg_sent: 0
-                  recv_bytes: 0
+                  affected_items:
+                    - queue_size: 0
+                      total_queue_size: 131072
+                      tcp_sessions: 0
+                      evt_count: 0
+                      ctrl_msg_count: 0
+                      discarded_count: 0
+                      msg_sent: 0
+                      recv_bytes: 0
+                  total_affected_items: 0
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9025,35 +9063,39 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  - hour: 15
-                    alerts:
-                      - sigid: 5303
-                        level: 3
-                        times: 1
-                      - sigid: 5501
-                        level: 3
-                        times: 4
-                      - sigid: 221
-                        level: 0
-                        times: 653
-                    totalAlerts: 658
-                    events: 4387
-                    firewall: 0
-                  - hour: 16
-                    alerts:
-                      - sigid: 5521
-                        level: 0
-                        times: 1
-                      - sigid: 530
-                        level: 0
-                        times: 120
-                    totalAlerts: 121
-                    events: 4379
-                    syscheck: 0
-                    firewall: 0
+                  affected_items:
+                    - hour: 15
+                      alerts:
+                        - sigid: 5303
+                          level: 3
+                          times: 1
+                        - sigid: 5501
+                          level: 3
+                          times: 4
+                        - sigid: 221
+                          level: 0
+                          times: 653
+                      totalAlerts: 658
+                      events: 4387
+                      firewall: 0
+                    - hour: 16
+                      alerts:
+                        - sigid: 5521
+                          level: 0
+                          times: 1
+                        - sigid: 530
+                          level: 0
+                          times: 120
+                      totalAlerts: 121
+                      events: 4379
+                      syscheck: 0
+                      firewall: 0
+                  total_affected_items: 2
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9088,35 +9130,39 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhHourlyStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                  interactions: 0
+                  affected_items:
+                    - averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                      interactions: 0
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9151,198 +9197,202 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhWeeklyStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  Sun:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Mon:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Tue:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Wed:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Thu:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Fri:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Sat:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
+                  affected_items:
+                    - Sun:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Mon:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Tue:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Wed:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Thu:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Fri:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Sat:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                  total_affected_items: 7
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9373,59 +9423,63 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/WazuhAnalysisdStats'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  total_events_decoded: 5
-                  syscheck_events_decoded: 0
-                  syscheck_edps: 0
-                  syscollector_events_decoded: 0
-                  syscollector_edps: 0
-                  rootcheck_events_decoded: 0
-                  rootcheck_edps: 0
-                  sca_events_decoded: 0
-                  sca_edps: 0
-                  hostinfo_events_decoded: 0
-                  hostinfo_edps: 0
-                  winevt_events_decoded: 0
-                  winevt_edps: 0
-                  other_events_decoded: 5
-                  other_events_edps: 1
-                  events_processed: 5
-                  events_edps: 1
-                  events_received: 5
-                  events_dropped: 0
-                  alerts_written: 0
-                  firewall_written: 0
-                  fts_written: 0
-                  syscheck_queue_usage: 0
-                  syscheck_queue_size: 16384
-                  syscollector_queue_usage: 0
-                  syscollector_queue_size: 16384
-                  rootcheck_queue_usage: 0
-                  rootcheck_queue_size: 16384
-                  sca_queue_usage: 0
-                  sca_queue_size: 16384
-                  hostinfo_queue_usage: 0
-                  hostinfo_queue_size: 16384
-                  winevt_queue_usage: 0
-                  winevt_queue_size: 16384
-                  event_queue_usage: 0
-                  event_queue_size: 16384
-                  rule_matching_queue_usage: 0
-                  rule_matching_queue_size: 16384
-                  alerts_queue_usage: 0
-                  alerts_queue_size: 16384
-                  firewall_queue_usage: 0
-                  firewall_queue_size: 16384
-                  statistical_queue_usage: 0
-                  statistical_queue_size: 16384
-                  archives_queue_usage: 0
-                  archives_queue_size: 16384
+                  affected_items:
+                    - total_events_decoded: 5
+                      syscheck_events_decoded: 0
+                      syscheck_edps: 0
+                      syscollector_events_decoded: 0
+                      syscollector_edps: 0
+                      rootcheck_events_decoded: 0
+                      rootcheck_edps: 0
+                      sca_events_decoded: 0
+                      sca_edps: 0
+                      hostinfo_events_decoded: 0
+                      hostinfo_edps: 0
+                      winevt_events_decoded: 0
+                      winevt_edps: 0
+                      other_events_decoded: 5
+                      other_events_edps: 1
+                      events_processed: 5
+                      events_edps: 1
+                      events_received: 5
+                      events_dropped: 0
+                      alerts_written: 0
+                      firewall_written: 0
+                      fts_written: 0
+                      syscheck_queue_usage: 0
+                      syscheck_queue_size: 16384
+                      syscollector_queue_usage: 0
+                      syscollector_queue_size: 16384
+                      rootcheck_queue_usage: 0
+                      rootcheck_queue_size: 16384
+                      sca_queue_usage: 0
+                      sca_queue_size: 16384
+                      hostinfo_queue_usage: 0
+                      hostinfo_queue_size: 16384
+                      winevt_queue_usage: 0
+                      winevt_queue_size: 16384
+                      event_queue_usage: 0
+                      event_queue_size: 16384
+                      rule_matching_queue_usage: 0
+                      rule_matching_queue_size: 16384
+                      alerts_queue_usage: 0
+                      alerts_queue_size: 16384
+                      firewall_queue_usage: 0
+                      firewall_queue_size: 16384
+                      statistical_queue_usage: 0
+                      statistical_queue_size: 16384
+                      archives_queue_usage: 0
+                      archives_queue_size: 16384
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9460,17 +9514,21 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhRemotedStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  queue_size: 0
-                  total_queue_size: 131072
-                  tcp_sessions: 0
-                  evt_count: 0
-                  ctrl_msg_count: 0
-                  discarded_count: 0
-                  msg_sent: 0
-                  recv_bytes: 0
+                  affected_items:
+                    - queue_size: 0
+                      total_queue_size: 131072
+                      tcp_sessions: 0
+                      evt_count: 0
+                      ctrl_msg_count: 0
+                      discarded_count: 0
+                      msg_sent: 0
+                      recv_bytes: 0
+                  total_affected_items: 0
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
