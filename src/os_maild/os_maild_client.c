@@ -25,6 +25,7 @@
  */
 void add_field_from_json(const cJSON *json_object, const char *field, char *dest, size_t *size, const char *prefix) {
     cJSON *json_field;
+    cJSON *item;
     size_t log_size = 0;
     char *value = NULL;
 
@@ -43,7 +44,14 @@ void add_field_from_json(const cJSON *json_object, const char *field, char *dest
         case cJSON_Number:
             value = w_long_str((long) json_field->valuedouble);
         break;
+
+        case cJSON_Array:
+            cJSON_ArrayForEach(item, json_field) {
+                wm_strcat(&value, item->valuestring, ',');
+            }
+        break;
     }
+
     if (value != NULL) {
         log_size = strlen(value) + strlen(prefix) + 3;
         if (*size > log_size) {
@@ -376,6 +384,8 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         add_field_from_json(json_object, "path", logs, &body_size, "File: ");
         add_field_from_json(json_object, "event", logs, &body_size, "Event: ");
         add_field_from_json(json_object, "mode", logs, &body_size, "Mode: ");
+        add_field_from_json(json_object, "changed_attributes", logs, &body_size, "Changed attributes: ");
+
         add_field_from_json(json_object, "size_before", logs, &body_size, "Size before: ");
         add_field_from_json(json_object, "size_after", logs, &body_size, "Size after: ");
         add_field_from_json(json_object, "md5_before", logs, &body_size, "Old md5sum was: ");
@@ -384,19 +394,20 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         add_field_from_json(json_object, "sha1_after", logs, &body_size, "New sha1sum is: ");
         add_field_from_json(json_object, "sha256_before", logs, &body_size, "Old sha256sum was: ");
         add_field_from_json(json_object, "sha256_after", logs, &body_size, "New sha256sum is: ");
-
         strcat(logs, "\nAttributes\n");
         body_size -= 12;
 
-        add_field_from_json(json_object, "size_after", logs, &body_size, "- Size: ");
-        add_field_from_json(json_object, "perm_after", logs, &body_size, "- Permissions: ");
-        add_field_from_json(json_object, "inode_after", logs, &body_size, "- Inode: ");
-        add_field_from_json(json_object, "sha256_after", logs, &body_size, "- New sha256sum is: ");
-        add_field_from_json(json_object, "uname", logs, &body_size, "- User name: ");
-        add_field_from_json(json_object, "gname", logs, &body_size, "- Group name: ");
-        add_field_from_json(json_object, "md5_after", logs, &body_size, "- MD5: ");
-        add_field_from_json(json_object, "sha1_after", logs, &body_size, "- SHA1: ");
-        add_field_from_json(json_object, "sha256_after", logs, &body_size, "- SHA256: ");
+        add_field_from_json(json_object, "size_after", logs, &body_size, " - Size: ");
+        add_field_from_json(json_object, "perm_after", logs, &body_size, " - Permissions: ");
+        add_field_from_json(json_object, "mtime_after", logs, &body_size, " - Date: ");
+        add_field_from_json(json_object, "inode_after", logs, &body_size, " - Inode: ");
+        add_field_from_json(json_object, "uname_after", logs, &body_size, " - User name: ");
+        add_field_from_json(json_object, "uid_after", logs, &body_size, " - User ID: ");
+        add_field_from_json(json_object, "gname_after", logs, &body_size, " - Group name: ");
+        add_field_from_json(json_object, "gid_after", logs, &body_size, " - Group ID: ");
+        add_field_from_json(json_object, "md5_after", logs, &body_size, " - MD5: ");
+        add_field_from_json(json_object, "sha1_after", logs, &body_size, " - SHA1: ");
+        add_field_from_json(json_object, "sha256_after", logs, &body_size, " - SHA256: ");
 
         // get audit information
         if (json_audit = cJSON_GetObjectItem(json_object,"audit"), json_audit){
