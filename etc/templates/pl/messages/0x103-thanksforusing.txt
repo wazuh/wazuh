@@ -8,7 +8,6 @@
 
     Więcej informacji można znaleźć na stronie:
                - http://www.wazuh.com
-               - http://www.ossec.net
 
          --- Naciśnij klawisz ENTER, aby zakończyć. ---
            --- (Może więcej informacji poniżej). ---

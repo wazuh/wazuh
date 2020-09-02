@@ -70,7 +70,6 @@ if [ "$1" = "conf" ]; then
   NEWCONFIG="./ossec.conf.temp"
   SYSCHECK="yes"
   ROOTCHECK="yes"
-  OPENSCAP="no"
   SYSCOLLECTOR="yes"
   SECURITY_CONFIGURATION_ASSESSMENT="yes"
   ACTIVERESPONSE="yes"

@@ -27,7 +27,6 @@
 /* Prototypes */
 static void help_logcollector(void) __attribute__((noreturn));
 
-int lc_debug_level;
 
 /* Print help statement */
 static void help_logcollector()
@@ -179,7 +178,7 @@ int main(int argc, char **argv)
     mdebug1(STARTED_MSG);
 
     /* Start the queue */
-    if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+    if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQPATH);
     }
 

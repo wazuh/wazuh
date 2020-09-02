@@ -233,11 +233,6 @@ int main(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    /* Load ossec uid and gid for creating backups */
-    if (OS_LoadUid() < 0) {
-        merror_exit("Couldn't get user and group id.");
-    }
-
     /* Chroot to the default directory */
     if (Privsep_Chroot(dir) < 0) {
         merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));

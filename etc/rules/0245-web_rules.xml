@@ -146,7 +146,6 @@
   <rule id="31122" level="5">
     <if_sid>31120</if_sid>
     <id>^500</id>
-    <options>alert_by_email</options>
     <description>Web server 500 error code (Internal Error).</description>
     <group>system_error,</group>
   </rule>
@@ -154,7 +153,6 @@
   <rule id="31123" level="4">
     <if_sid>31120</if_sid>
     <id>^503</id>
-    <options>alert_by_email</options>
     <description>Web server 503 error code (Service unavailable).</description>
   </rule>
 

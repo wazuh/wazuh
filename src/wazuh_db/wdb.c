@@ -104,7 +104,7 @@ static const char *SQL_STMT[] = {
 };
 
 sqlite3 *wdb_global = NULL;
-wdb_config config;
+wdb_config wconfig;
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 wdb_t * db_pool_begin;
 wdb_t * db_pool_last;
@@ -697,7 +697,7 @@ void wdb_commit_old() {
 
         // Commit condition: more than commit_time_min seconds elapsed from the last query, or more than commit_time_max elapsed from the transaction began.
 
-        if (node->transaction && (cur_time - node->last > config.commit_time_min || cur_time - node->transaction_begin_time > config.commit_time_max)) {
+        if (node->transaction && (cur_time - node->last > wconfig.commit_time_min || cur_time - node->transaction_begin_time > wconfig.commit_time_max)) {
             struct timespec ts_start, ts_end;
 
             gettime(&ts_start);
@@ -719,7 +719,7 @@ void wdb_close_old() {
 
     w_mutex_lock(&pool_mutex);
 
-    for (node = db_pool_begin; node && db_pool_size > config.open_db_limit; node = next) {
+    for (node = db_pool_begin; node && db_pool_size > wconfig.open_db_limit; node = next) {
         next = node->next;
 
         if (node->refcount == 0 && !node->transaction) {
