@@ -38,6 +38,24 @@ TEST_F(RSyncTest, Initialization)
     ASSERT_NE(nullptr, handle);
 }
 
+TEST_F(RSyncTest, startSync)
+{
+    const auto handle { rsync_create() };
+    ASSERT_EQ(0, rsync_start_sync(handle));
+}
+
+TEST_F(RSyncTest, registerSyncId)
+{
+    const auto handle { rsync_create() };
+    ASSERT_EQ(0, rsync_register_sync_id(handle, nullptr, nullptr, nullptr, {}));
+}
+
+TEST_F(RSyncTest, pushMessage)
+{
+    const auto handle { rsync_create() };
+    ASSERT_EQ(0, rsync_push_message(handle, nullptr));
+}
+
 TEST_F(RSyncTest, CloseWithoutInitialization)
 {
     
