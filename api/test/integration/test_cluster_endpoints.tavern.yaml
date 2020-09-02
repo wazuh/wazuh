@@ -2165,30 +2165,9 @@ stages:
       status_code: 200
       json:
         data:
-          affected_items:
-            - ossec-agentlessd: !anything
-            - ossec-analysisd: !anything
-            - ossec-authd: !anything
-            - ossec-csyslogd: !anything
-            - ossec-dbd: !anything
-            - ossec-execd: !anything
-            - ossec-integratord: !anything
-            - ossec-logcollector: !anything
-            - ossec-monitord: !anything
-            - ossec-remoted: !anything
-            - ossec-rootcheck: !anything
-            - ossec-syscheckd: !anything
-            - sca: !anything
-            - wazuh-db: !anything
-            - wazuh-modulesd: !anything
-            - wazuh-modulesd:ciscat: !anything
-            - wazuh-modulesd:control: !anything
-            - wazuh-modulesd:database: !anything
-            - wazuh-modulesd:download: !anything
-            - wazuh-modulesd:osquery: !anything
-            - wazuh-modulesd:syscollector: !anything
+          affected_items: !anything
           failed_items: []
-          total_affected_items: 21
+          total_affected_items: !anyint
           total_failed_items: 0
         message: !anystr
 
