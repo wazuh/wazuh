@@ -1156,8 +1156,12 @@ agent_status_t get_agent_status(int agent_id){
     json_field = cJSON_GetObjectItem(json_agt_info->child, "last_keepalive");
     if(cJSON_IsNumber(json_field)){
         last_keepalive = json_field->valueint;
+        cJSON_Delete(json_agt_info);
+    
+    } else{
+        cJSON_Delete(json_agt_info);
+        return GA_STATUS_INV;
     }
-    cJSON_Delete(json_agt_info);
 
     if (last_keepalive < 0) {
         return (GA_STATUS_INV);

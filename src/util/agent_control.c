@@ -383,7 +383,7 @@ int main(int argc, char **argv)
         }
 
         if (agt_id != -1) {
-            agt_status = get_agent_status(agt_id);
+            agt_status = get_agent_status(atoi(keys.keyentries[agt_id]->id));
 
             agt_info = get_agent_info(keys.keyentries[agt_id]->name,
                                       keys.keyentries[agt_id]->ip->ip,
