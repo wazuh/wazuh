@@ -103,11 +103,11 @@ void test_wm_agent_upgrade_create_task_entry_duplicate(void **state)
     expect_value(__wrap_OSHash_Add_ex, self, task_table_by_agent_id);
     expect_string(__wrap_OSHash_Add_ex, key, "6");
     expect_memory(__wrap_OSHash_Add_ex, data, agent_task, sizeof(agent_task));
-    will_return(__wrap_OSHash_Add_ex, OSHASH_DUPLICATED);
+    will_return(__wrap_OSHash_Add_ex, OSHASH_DUPLICATE);
 
     int ret = wm_agent_upgrade_create_task_entry(agent_id, agent_task);
 
-    assert_int_equal(ret, OSHASH_DUPLICATED);
+    assert_int_equal(ret, OSHASH_DUPLICATE);
 }
 
 void test_wm_agent_upgrade_insert_task_id_ok(void **state)

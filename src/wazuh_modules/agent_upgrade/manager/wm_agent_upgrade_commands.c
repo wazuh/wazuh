@@ -375,14 +375,14 @@ void wm_agent_upgrade_start_upgrades(const wm_manager_configs* manager_configs) 
                 if (upgrade_task->custom_version && (wm_agent_upgrade_compare_versions(upgrade_task->custom_version, WM_UPGRADE_NEW_UPGRADE_MECHANISM) < 0)) {
                     // Update task to "Legacy". The agent won't report the result of the upgrade task
                     status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_LEGACY], NULL);
+                    wm_agent_upgrade_validate_task_status_message(status_json, NULL, &agent_id);
                 }
             }
         } else {
             // Update task to "Failed"
             status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_FAILED], upgrade_error_codes[error_code]);
+            wm_agent_upgrade_validate_task_status_message(status_json, NULL, &agent_id);
         }
-
-        wm_agent_upgrade_validate_task_status_message(status_json, NULL, &agent_id);
 
         wm_agent_upgrade_remove_entry(atoi(agent_key));
 

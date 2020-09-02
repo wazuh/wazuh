@@ -61,15 +61,6 @@ void test_wm_task_manager_decode_status_failed(void **state)
     assert_string_equal(ret, "Error");
 }
 
-void test_wm_task_manager_decode_status_new(void **state)
-{
-    char *status = "New";
-
-    const char *ret = wm_task_manager_decode_status(status);
-
-    assert_string_equal(ret, "The agent is outdated since the task could not start");
-}
-
 void test_wm_task_manager_decode_status_timeout(void **state)
 {
     char *status = "Timeout";
@@ -212,7 +203,7 @@ void test_wm_task_manager_parse_response_result(void **state)
     expect_value(__wrap_w_get_timestamp, time, last_update);
     will_return(__wrap_w_get_timestamp, last_update_timestamp);
 
-    wm_task_manager_parse_response_result(response, module, command, status, create_time, last_update, req_command);
+    wm_task_manager_parse_response_result(response, module, command, status, NULL, create_time, last_update, req_command);
 
     *state = response;
 
@@ -246,7 +237,7 @@ void test_wm_task_manager_parse_response_result_last_update_0(void **state)
     expect_value(__wrap_w_get_timestamp, time, create_time);
     will_return(__wrap_w_get_timestamp, create_time_timestamp);
 
-    wm_task_manager_parse_response_result(response, module, command, status, create_time, last_update, req_command);
+    wm_task_manager_parse_response_result(response, module, command, status, NULL, create_time, last_update, req_command);
 
     *state = response;
 
@@ -280,7 +271,7 @@ void test_wm_task_manager_parse_response_result_no_last_update(void **state)
     expect_value(__wrap_w_get_timestamp, time, create_time);
     will_return(__wrap_w_get_timestamp, create_time_timestamp);
 
-    wm_task_manager_parse_response_result(response, module, command, status, create_time, last_update, req_command);
+    wm_task_manager_parse_response_result(response, module, command, status, NULL, create_time, last_update, req_command);
 
     *state = response;
 
@@ -313,7 +304,7 @@ void test_wm_task_manager_parse_response_result_no_create_time(void **state)
     expect_value(__wrap_w_get_timestamp, time, last_update);
     will_return(__wrap_w_get_timestamp, last_update_timestamp);
 
-    wm_task_manager_parse_response_result(response, module, command, status, create_time, last_update, req_command);
+    wm_task_manager_parse_response_result(response, module, command, status, NULL, create_time, last_update, req_command);
 
     *state = response;
 
@@ -351,7 +342,7 @@ void test_wm_task_manager_parse_response_result_status_upgrade_result(void **sta
     expect_value(__wrap_w_get_timestamp, time, last_update);
     will_return(__wrap_w_get_timestamp, last_update_timestamp);
 
-    wm_task_manager_parse_response_result(response, module, command, status, create_time, last_update, req_command);
+    wm_task_manager_parse_response_result(response, module, command, status, NULL, create_time, last_update, req_command);
 
     *state = response;
 
@@ -390,7 +381,7 @@ void test_wm_task_manager_parse_response_result_no_status(void **state)
     expect_value(__wrap_w_get_timestamp, time, last_update);
     will_return(__wrap_w_get_timestamp, last_update_timestamp);
 
-    wm_task_manager_parse_response_result(response, module, command, status, create_time, last_update, req_command);
+    wm_task_manager_parse_response_result(response, module, command, status, NULL, create_time, last_update, req_command);
 
     *state = response;
 
@@ -428,7 +419,7 @@ void test_wm_task_manager_parse_response_result_no_command(void **state)
     expect_value(__wrap_w_get_timestamp, time, last_update);
     will_return(__wrap_w_get_timestamp, last_update_timestamp);
 
-    wm_task_manager_parse_response_result(response, module, command, status, create_time, last_update, req_command);
+    wm_task_manager_parse_response_result(response, module, command, status, NULL, create_time, last_update, req_command);
 
     *state = response;
 
@@ -466,7 +457,7 @@ void test_wm_task_manager_parse_response_result_no_module(void **state)
     expect_value(__wrap_w_get_timestamp, time, last_update);
     will_return(__wrap_w_get_timestamp, last_update_timestamp);
 
-    wm_task_manager_parse_response_result(response, module, command, status, create_time, last_update, req_command);
+    wm_task_manager_parse_response_result(response, module, command, status, NULL, create_time, last_update, req_command);
 
     *state = response;
 
@@ -575,7 +566,6 @@ int main(void) {
         cmocka_unit_test(test_wm_task_manager_decode_status_done),
         cmocka_unit_test(test_wm_task_manager_decode_status_in_progress),
         cmocka_unit_test(test_wm_task_manager_decode_status_failed),
-        cmocka_unit_test(test_wm_task_manager_decode_status_new),
         cmocka_unit_test(test_wm_task_manager_decode_status_timeout),
         cmocka_unit_test(test_wm_task_manager_decode_status_legacy),
         cmocka_unit_test(test_wm_task_manager_decode_status_unknown),

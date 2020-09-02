@@ -15,7 +15,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_manager.h"
 
-int setup_hash_table();
+int setup_hash_table(void (free_data_function)(wm_agent_task* agent_task));
 
 int teardown_hash_table();
 
@@ -25,13 +25,13 @@ int __wrap_wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_co
 
 int __wrap_wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error);
 
-char* __wrap_wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task);
+char* __wrap_wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs, int *upgrade_agents);
 
-char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task);
+char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs, int *upgrade_agents);
 
 char* __wrap_wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upgrade_agent_status_task* task);
 
-cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status);
+cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status, const char* error);
 
 int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request);
 
@@ -57,7 +57,7 @@ int __wrap_wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *ta
 
 int __wrap_wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* ag_task);
 
-void __wrap_wm_agent_upgrade_remove_entry(int agent_id);
+int __wrap_wm_agent_upgrade_remove_entry(int agent_id);
 
 cJSON* __wrap_wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status);
 

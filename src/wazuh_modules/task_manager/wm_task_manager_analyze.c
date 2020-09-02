@@ -9,21 +9,58 @@
  * Foundation.
  */
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #ifndef WIN32
 
 #include "../wmodules.h"
 #include "wm_task_manager_db.h"
 #include "wm_task_manager_parsing.h"
 
-cJSON* wm_task_manager_analyze_task(const cJSON *task_object, char *module, char *command, int *error_code) {
+/**
+ * Analyze a api task command.
+ * @param command Command of the task to be analyzed.
+ * @param error_code Variable to store an error code if something is wrong.
+ * @param agent_id Agent id extracted from task_object.
+ * @param task_id Task id extracted from task_object.
+ * @return JSON object with the response for this task.
+ * */
+STATIC cJSON* wm_task_manager_analyze_task_api_module(char *command, int *error_code, int agent_id, int task_id) __attribute__((nonnull));
+
+/**
+ * Analyze a upgrade_module task by command. Update the tasks DB when necessary.
+ * @param command Command of the task to be analyzed.
+ * @param error_code Variable to store an error code if something is wrong.
+ * @param agent_id Agent id extracted from task_object.
+ * @param task_id Task id extracted from task_object.
+ * @param status Status extracted from task_object.
+ * @param status Error string extracted from task_object.
+ * @return JSON object with the response for this task.
+ * */
+STATIC cJSON* wm_task_manager_analyze_task_upgrade_module(char *command, int *error_code, int agent_id, int task_id, char *status, char *error) __attribute__((nonnull(1, 2)));
+
+cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
     cJSON *response = NULL;
     cJSON *tmp = NULL;
 
+    char *module = NULL;
+    char *command = NULL;
     int agent_id = OS_INVALID;
     int task_id = OS_INVALID;
     char *status = NULL;
     char *error = NULL;
 
+    if (tmp = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_MODULE]), tmp && tmp->type == cJSON_String) {
+        os_strdup(tmp->valuestring, module);
+    }
+    if (tmp = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_COMMAND]), tmp && tmp->type == cJSON_String) {
+        os_strdup(tmp->valuestring, command);
+    }
     if (tmp = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_AGENT_ID]), tmp && tmp->type == cJSON_Number) {
         agent_id = tmp->valueint;
     }
@@ -37,22 +74,26 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, char *module, char
         os_strdup(tmp->valuestring, error);
     }
 
-    if (!strcmp(task_manager_modules_list[WM_TASK_UPGRADE_MODULE], module)) {
-        response = wm_task_manager_analyze_task_upgrade_module(command, error_code, agent_id, task_id, status, error);
-    } else if (!strcmp(task_manager_modules_list[WM_TASK_API_MODULE], module)) {
-        response = wm_task_manager_analyze_task_api_module(command, error_code, agent_id, task_id);
-    } else {
-        *error_code = WM_TASK_INVALID_MODULE;
-        response = wm_task_manager_parse_response(WM_TASK_INVALID_MODULE, agent_id, task_id, status);
+    if (module && command) {
+        if (!strcmp(task_manager_modules_list[WM_TASK_UPGRADE_MODULE], module)) {
+            response = wm_task_manager_analyze_task_upgrade_module(command, error_code, agent_id, task_id, status, error);
+        } else if (!strcmp(task_manager_modules_list[WM_TASK_API_MODULE], module)) {
+            response = wm_task_manager_analyze_task_api_module(command, error_code, agent_id, task_id);
+        } else {
+            *error_code = WM_TASK_INVALID_MODULE;
+            response = wm_task_manager_parse_response(WM_TASK_INVALID_MODULE, agent_id, task_id, status);
+        }
     }
 
+    os_free(module);
+    os_free(command);
     os_free(status);
     os_free(error);
 
     return response;
 }
 
-cJSON* wm_task_manager_analyze_task_upgrade_module(char *command, int *error_code, int agent_id, int task_id, char *status, char *error) {
+STATIC cJSON* wm_task_manager_analyze_task_upgrade_module(char *command, int *error_code, int agent_id, int task_id, char *status, char *error) {
     cJSON *response = NULL;
     int result = 0;
     char *status_result = NULL;
@@ -115,7 +156,7 @@ cJSON* wm_task_manager_analyze_task_upgrade_module(char *command, int *error_cod
     return response;
 }
 
-cJSON* wm_task_manager_analyze_task_api_module(char *command, int *error_code, int agent_id, int task_id) {
+STATIC cJSON* wm_task_manager_analyze_task_api_module(char *command, int *error_code, int agent_id, int task_id) {
     cJSON *response = NULL;
     int create_time = OS_INVALID;
     int last_update_time = OS_INVALID;

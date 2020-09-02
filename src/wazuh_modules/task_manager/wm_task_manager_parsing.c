@@ -44,7 +44,7 @@ static const char *error_codes[] = {
     [WM_TASK_UNKNOWN_ERROR] = "Unknown error"
 };
 
-cJSON* wm_task_manager_parse_message(const char *msg, char **module, char **command) {
+cJSON* wm_task_manager_parse_message(const char *msg) {
     cJSON *event_array = NULL;
     cJSON *task_object = NULL;
     cJSON *module_json = NULL;
@@ -75,8 +75,6 @@ cJSON* wm_task_manager_parse_message(const char *msg, char **module, char **comm
             mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_MODULE], task);
             cJSON_Delete(event_array);
             return NULL;
-        } else {
-            *module = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_MODULE])->valuestring;
         }
 
         // Detect command
@@ -84,8 +82,6 @@ cJSON* wm_task_manager_parse_message(const char *msg, char **module, char **comm
             mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_COMMAND], task);
             cJSON_Delete(event_array);
             return NULL;
-        } else {
-            *command = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_COMMAND])->valuestring;
         }
     }
 

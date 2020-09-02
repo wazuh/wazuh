@@ -182,7 +182,7 @@ void test_wm_agent_upgrade_parse_task_module_request_complete(void **state)
     int agent_id = 10;
     char *status = "Done";
 
-    cJSON *response = wm_agent_upgrade_parse_task_module_request(command, agent_id, status);
+    cJSON *response = wm_agent_upgrade_parse_task_module_request(command, agent_id, status, NULL);
 
     *state = response;
 
@@ -201,7 +201,7 @@ void test_wm_agent_upgrade_parse_task_module_request_without_status(void **state
     int command = 1;
     int agent_id = 10;
 
-    cJSON *response = wm_agent_upgrade_parse_task_module_request(command, agent_id, NULL);
+    cJSON *response = wm_agent_upgrade_parse_task_module_request(command, agent_id, NULL, NULL);
 
     *state = response;
 

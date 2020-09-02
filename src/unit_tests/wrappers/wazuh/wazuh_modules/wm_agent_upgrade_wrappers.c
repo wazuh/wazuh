@@ -16,8 +16,11 @@
 
 OSHash *hash_table;
 
-int setup_hash_table() {
+int setup_hash_table(void (free_data_function)(wm_agent_task* agent_task)) {
     hash_table = OSHash_Create();
+    if (free_data_function) {
+        OSHash_SetFreeDataPointer(hash_table, (void (*)(void *))free_data_function);
+    }
     return 0;
 }
 
@@ -44,16 +47,20 @@ int __wrap_wm_agent_upgrade_parse_message(const char* buffer, void** task, int**
     return mock();
 }
 
-char* __wrap_wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task) {
+char* __wrap_wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, __attribute__((unused)) const wm_manager_configs* manager_configs, int *upgrade_agents) {
     check_expected_ptr(agent_ids);
     check_expected_ptr(task);
+
+    *upgrade_agents = mock();
 
     return mock_type(char *);
 }
 
-char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task) {
+char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, __attribute__((unused)) const wm_manager_configs* manager_configs, int *upgrade_agents) {
     check_expected_ptr(agent_ids);
     check_expected_ptr(task);
+
+    *upgrade_agents = mock();
 
     return mock_type(char *);
 }
@@ -65,10 +72,11 @@ char* __wrap_wm_agent_upgrade_process_agent_result_command(const int* agent_ids,
     return mock_type(char *);
 }
 
-cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status) {
+cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status, const char* error) {
     check_expected(command);
     check_expected(agent_id);
     if (status) check_expected(status);
+    if (error) check_expected(error);
 
     return mock_type(cJSON *);
 }
@@ -170,43 +178,10 @@ int __wrap_wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* ag_ta
     return mock();
 }
 
-void __wrap_wm_agent_upgrade_remove_entry(int agent_id) {
+int __wrap_wm_agent_upgrade_remove_entry(int agent_id) {
     check_expected(agent_id);
 
-    if (mock()) {
-        char key[128];
-        sprintf(key, "%d", agent_id);
-        wm_agent_task *agent_task = (wm_agent_task *)OSHash_Delete_ex(hash_table, key);
-        if (agent_task) {
-            if (agent_task->agent_info) {
-                os_free(agent_task->agent_info->platform);
-                os_free(agent_task->agent_info->major_version);
-                os_free(agent_task->agent_info->minor_version);
-                os_free(agent_task->agent_info->architecture);
-                os_free(agent_task->agent_info->wazuh_version);
-                os_free(agent_task->agent_info);
-            }
-            if (agent_task->task_info) {
-                if (agent_task->task_info->task) {
-                    if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
-                        wm_upgrade_task* upgrade_task = agent_task->task_info->task;
-                        os_free(upgrade_task->custom_version);
-                        os_free(upgrade_task->wpk_repository);
-                        os_free(upgrade_task->wpk_file);
-                        os_free(upgrade_task->wpk_sha1);
-                        os_free(upgrade_task);
-                    } else if (WM_UPGRADE_UPGRADE_CUSTOM == agent_task->task_info->command) {
-                        wm_upgrade_custom_task* upgrade_custom_task = agent_task->task_info->task;
-                        os_free(upgrade_custom_task->custom_file_path);
-                        os_free(upgrade_custom_task->custom_installer);
-                        os_free(upgrade_custom_task);
-                    }
-                }
-                os_free(agent_task->task_info);
-            }
-            os_free(agent_task);
-        }
-    }
+    return mock();
 }
 
 cJSON* __wrap_wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
