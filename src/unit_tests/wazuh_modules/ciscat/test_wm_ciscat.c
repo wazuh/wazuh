@@ -20,6 +20,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_ciscat.h"
 #include "../scheduling/wmodules_scheduling_helpers.h"
+#include "../../wrappers/common.h"
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/file_op_wrappers.h"
