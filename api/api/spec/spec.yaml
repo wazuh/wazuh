@@ -5414,7 +5414,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: 'Specified agent removed from returned groups'
+                message: 'Specified agent was removed from returned groups'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6816,7 +6816,7 @@ paths:
                     data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: 'Restart command sent to all agents'
+                  message: 'Restart command was sent to all agents'
                   data:
                     affected_items:
                       - '002'
@@ -7633,7 +7633,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "Processes status successfully read"
+                message: "Processes status was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8311,7 +8311,7 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
-                message: Logs successfully read in specified node
+                message: "Logs were successfully read in specified node"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9594,7 +9594,7 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
-                message: "Log summarized successfully"
+                message: "Log was successfully summarized"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10592,7 +10592,7 @@ paths:
                   failed_items: []
                   total_affected_items: 4
                   total_failed_items: 0
-                message: "Restarting syscheck scan on returned agents'"
+                message: "Syscheck scan was restarted on returned agents"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12745,7 +12745,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "User wazuh successfully logged out"
+                message: "User wazuh was successfully logged out"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12908,7 +12908,7 @@ paths:
       operationId: api.controllers.security_controller.revoke_all_tokens
       responses:
         '200':
-          description: "Tokens succesfully revoked"
+          description: "Tokens were successfully revoked"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13022,7 +13022,7 @@ paths:
                         MATCH:
                           definition: limit_access
                   total_affected_items: 1
-                message: "Role successfully created"
+                message: "Role was successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13148,7 +13148,7 @@ paths:
                         MATCH:
                           definition: normalRule8
                   total_affected_items: 1
-                message: Role successfully updated
+                message: "Role was successfully updated"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13266,7 +13266,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "Security rule successfully created"
+                message: "Security rule was successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13377,7 +13377,7 @@ paths:
                     total_affected_items: 1
                     failed_items: []
                     total_failed_items: 0
-                  message: "Security rule successfully updated"
+                  message: "Security rule was successfully updated"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13502,7 +13502,7 @@ paths:
                       - "agent:id:001"
                     effect: "allow"
                   roles: []
-                message: "Policy successfully created"
+                message: "Policy was successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13634,7 +13634,7 @@ paths:
                           - agent:id:003
                       roles: []
                   total_affected_items: 1
-                message: "Policy successfully updated"
+                message: "Policy was successfully updated"
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -14169,7 +14169,7 @@ paths:
                     failed_items: []
                     total_affected_items: 1
                     total_failed_items: 0
-                  message: "User successfully created"
+                  message: "User was successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14208,7 +14208,7 @@ paths:
                 example:
                   data:
                     # TODO AffectedItemWazuhResult
-                    message: "Users successfully deleted"
+                    message: "Users were successfully deleted"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14268,7 +14268,7 @@ paths:
                     total_affected_items: 1
                     total_failed_items: 0
                     failed_items: []
-                  message: "User successfully updated"
+                  message: "User was successfully updated"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
