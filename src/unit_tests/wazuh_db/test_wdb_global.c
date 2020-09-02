@@ -162,7 +162,7 @@ void test_get_agent_labels_exec_fail(void **state)
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "sqlite3_step(): (null)");
 
@@ -177,7 +177,7 @@ void test_get_agent_labels_success(void **state)
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
 
     output = wdb_global_get_agent_labels(data->socket, atoi(data->socket->id));

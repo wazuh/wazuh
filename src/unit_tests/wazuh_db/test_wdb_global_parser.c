@@ -28,9 +28,9 @@ int __wrap__merror()
     return 0;
 }
 
-int __wrap_wdb_open_global()
+wdb_t * __wrap_wdb_open_global()
 {
-    return mock_type(int);
+    return mock_type(wdb_t * );
 }
 
 void __wrap_wdb_leave(){}
@@ -76,12 +76,12 @@ void test_wdb_global_parse_open_global_fail(void **state)
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
-    
+
     os_strdup("global ",query);
     will_return(__wrap_wdb_open_global, NULL);
 
     ret = wdb_parse(query, data->output);
-    
+
     assert_string_equal(data->output, "err Couldn't open DB global");
     assert_int_equal(ret, -1);
 
@@ -99,7 +99,7 @@ void test_wdb_global_parse_no_space(void **state)
     os_strdup ("err Invalid DB query syntax, near 'global'",expected_output);
 
     ret = wdb_parse(query, data->output);
-    
+
     assert_string_equal(data->output, expected_output);
     assert_int_equal(ret, -1);
 
@@ -117,9 +117,9 @@ void test_wdb_global_parse_substr_fail(void **state)
     will_return(__wrap_wdb_open_global, 1);
     os_strdup("global error",query);
     os_strdup("err Invalid DB query syntax, near 'error'",expected_output);
-    
+
     ret = wdb_parse(query, data->output);
-    
+
     assert_string_equal(data->output, expected_output);
     assert_int_equal(ret, -1);
 
@@ -133,13 +133,13 @@ void test_wdb_global_parse_sql_error(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL; 
     char * expected_output = NULL;
-    
+
     os_strdup("err Invalid DB query syntax, near 'sql'",expected_output);
     os_strdup("global sql",query);
     will_return(__wrap_wdb_open_global, 1);
 
     ret = wdb_parse(query, data->output);
-    
+
     assert_string_equal(data->output, expected_output);
     assert_int_equal(ret, -1);
 
@@ -152,14 +152,14 @@ void test_wdb_global_parse_sql_success(void **state)
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL; 
-    
+
     will_return(__wrap_wdb_open_global, data->socket);
     os_strdup("global sql EXAMPLE QUERY",query);
     cJSON *object = cJSON_CreateString("EXPECTED RESULT FROM EXAMPLE QUERY");
     will_return(__wrap_wdb_exec,object);
 
     ret = wdb_parse(query, data->output);
-    
+
     assert_string_equal(data->output, "ok \"EXPECTED RESULT FROM EXAMPLE QUERY\"");
     assert_int_equal(ret, 0);
 
@@ -171,7 +171,7 @@ void test_wdb_global_parse_sql_fail(void **state)
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL; 
-    
+
     will_return(__wrap_wdb_open_global, data->socket);
     will_return(__wrap_wdb_exec,NULL);
     will_return(__wrap_sqlite3_errmsg, "test_error");
@@ -180,7 +180,7 @@ void test_wdb_global_parse_sql_fail(void **state)
     os_strdup("global sql EXAMPLE QUERY",query);
 
     ret = wdb_parse(query, data->output);
-    
+
     assert_string_equal(data->output, "err Cannot execute Global database query; test_error");
     assert_int_equal(ret, -1);
 
@@ -197,6 +197,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_parse_sql_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_parse_sql_fail, test_setup, test_teardown)
     };
-    
+
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

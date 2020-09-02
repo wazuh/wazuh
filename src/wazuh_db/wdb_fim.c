@@ -194,7 +194,7 @@ int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, co
 int wdb_delete_fim(int id) {
     sqlite3 *db;
     sqlite3_stmt *stmt;
-    char *name = id ? wdb_agent_name(id) : strdup("localhost");
+    char *name = id ? wdb_get_agent_name(id) : strdup("localhost");
     int result;
 
     if (!name)
