@@ -180,9 +180,10 @@ void test_wm_agent_upgrade_parse_task_module_request_complete(void **state)
 {
     int command = 1;
     int agent_id = 10;
-    char *status = "Done";
+    char *status = "Failed";
+    char *error = "Error string";
 
-    cJSON *response = wm_agent_upgrade_parse_task_module_request(command, agent_id, status, NULL);
+    cJSON *response = wm_agent_upgrade_parse_task_module_request(command, agent_id, status, error);
 
     *state = response;
 
@@ -194,9 +195,11 @@ void test_wm_agent_upgrade_parse_task_module_request_complete(void **state)
     assert_int_equal(cJSON_GetObjectItem(response, "agent")->valueint, agent_id);
     assert_non_null(cJSON_GetObjectItem(response, "status"));
     assert_string_equal(cJSON_GetObjectItem(response, "status")->valuestring, status);
+    assert_non_null(cJSON_GetObjectItem(response, "error_msg"));
+    assert_string_equal(cJSON_GetObjectItem(response, "error_msg")->valuestring, error);
 }
 
-void test_wm_agent_upgrade_parse_task_module_request_without_status(void **state)
+void test_wm_agent_upgrade_parse_task_module_request_without_status_and_error(void **state)
 {
     int command = 1;
     int agent_id = 10;
@@ -212,6 +215,7 @@ void test_wm_agent_upgrade_parse_task_module_request_without_status(void **state
     assert_non_null(cJSON_GetObjectItem(response, "agent"));
     assert_int_equal(cJSON_GetObjectItem(response, "agent")->valueint, agent_id);
     assert_null(cJSON_GetObjectItem(response, "status"));
+    assert_null(cJSON_GetObjectItem(response, "error_msg"));
 }
 
 void test_wm_agent_upgrade_parse_agent_response_ok_with_data(void **state)
@@ -1197,7 +1201,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_response_message_without_agent_id, teardown_json),
         // wm_agent_upgrade_parse_task_module_request
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_complete, teardown_json),
-        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_without_status, teardown_json),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_without_status_and_error, teardown_json),
         // wm_agent_upgrade_parse_agent_response
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_ok_with_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_ok_without_data),

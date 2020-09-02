@@ -188,6 +188,7 @@ void test_wm_task_manager_parse_response_result(void **state)
     char *module = "api";
     char *command = "task";
     char *status = "In progress";
+    char *error = "Error message";
     int create_time = 123456789;
     char *create_time_timestamp = NULL;
     int last_update = 234567890;
@@ -203,7 +204,7 @@ void test_wm_task_manager_parse_response_result(void **state)
     expect_value(__wrap_w_get_timestamp, time, last_update);
     will_return(__wrap_w_get_timestamp, last_update_timestamp);
 
-    wm_task_manager_parse_response_result(response, module, command, status, NULL, create_time, last_update, req_command);
+    wm_task_manager_parse_response_result(response, module, command, status, error, create_time, last_update, req_command);
 
     *state = response;
 
@@ -214,6 +215,8 @@ void test_wm_task_manager_parse_response_result(void **state)
     assert_string_equal(cJSON_GetObjectItem(response, "command")->valuestring, command);
     assert_non_null(cJSON_GetObjectItem(response, "status"));
     assert_string_equal(cJSON_GetObjectItem(response, "status")->valuestring, status);
+    assert_non_null(cJSON_GetObjectItem(response, "error_msg"));
+    assert_string_equal(cJSON_GetObjectItem(response, "error_msg")->valuestring, error);
     assert_non_null(cJSON_GetObjectItem(response, "create_time"));
     assert_string_equal(cJSON_GetObjectItem(response, "create_time")->valuestring, "5/5/20 12:30:55.666");
     assert_non_null(cJSON_GetObjectItem(response, "update_time"));
@@ -248,6 +251,7 @@ void test_wm_task_manager_parse_response_result_last_update_0(void **state)
     assert_string_equal(cJSON_GetObjectItem(response, "command")->valuestring, command);
     assert_non_null(cJSON_GetObjectItem(response, "status"));
     assert_string_equal(cJSON_GetObjectItem(response, "status")->valuestring, status);
+    assert_null(cJSON_GetObjectItem(response, "error_msg"));
     assert_non_null(cJSON_GetObjectItem(response, "create_time"));
     assert_string_equal(cJSON_GetObjectItem(response, "create_time")->valuestring, "5/5/20 12:30:55.666");
     assert_non_null(cJSON_GetObjectItem(response, "update_time"));
@@ -282,6 +286,7 @@ void test_wm_task_manager_parse_response_result_no_last_update(void **state)
     assert_string_equal(cJSON_GetObjectItem(response, "command")->valuestring, command);
     assert_non_null(cJSON_GetObjectItem(response, "status"));
     assert_string_equal(cJSON_GetObjectItem(response, "status")->valuestring, status);
+    assert_null(cJSON_GetObjectItem(response, "error_msg"));
     assert_non_null(cJSON_GetObjectItem(response, "create_time"));
     assert_string_equal(cJSON_GetObjectItem(response, "create_time")->valuestring, "5/5/20 12:30:55.666");
     assert_null(cJSON_GetObjectItem(response, "update_time"));
@@ -315,6 +320,7 @@ void test_wm_task_manager_parse_response_result_no_create_time(void **state)
     assert_string_equal(cJSON_GetObjectItem(response, "command")->valuestring, command);
     assert_non_null(cJSON_GetObjectItem(response, "status"));
     assert_string_equal(cJSON_GetObjectItem(response, "status")->valuestring, status);
+    assert_null(cJSON_GetObjectItem(response, "error_msg"));
     assert_null(cJSON_GetObjectItem(response, "create_time"));
     assert_non_null(cJSON_GetObjectItem(response, "update_time"));
     assert_string_equal(cJSON_GetObjectItem(response, "update_time")->valuestring, "5/5/20 12:55:18.789");
@@ -353,6 +359,7 @@ void test_wm_task_manager_parse_response_result_status_upgrade_result(void **sta
     assert_string_equal(cJSON_GetObjectItem(response, "command")->valuestring, command);
     assert_non_null(cJSON_GetObjectItem(response, "status"));
     assert_string_equal(cJSON_GetObjectItem(response, "status")->valuestring, "Legacy upgrade: check the result manually since the agent cannot report the result of the task");
+    assert_null(cJSON_GetObjectItem(response, "error_msg"));
     assert_non_null(cJSON_GetObjectItem(response, "create_time"));
     assert_string_equal(cJSON_GetObjectItem(response, "create_time")->valuestring, "5/5/20 12:30:55.666");
     assert_non_null(cJSON_GetObjectItem(response, "update_time"));
@@ -391,6 +398,7 @@ void test_wm_task_manager_parse_response_result_no_status(void **state)
     assert_non_null(cJSON_GetObjectItem(response, "command"));
     assert_string_equal(cJSON_GetObjectItem(response, "command")->valuestring, command);
     assert_null(cJSON_GetObjectItem(response, "status"));
+    assert_null(cJSON_GetObjectItem(response, "error_msg"));
     assert_non_null(cJSON_GetObjectItem(response, "create_time"));
     assert_string_equal(cJSON_GetObjectItem(response, "create_time")->valuestring, "5/5/20 12:30:55.666");
     assert_non_null(cJSON_GetObjectItem(response, "update_time"));
@@ -429,6 +437,7 @@ void test_wm_task_manager_parse_response_result_no_command(void **state)
     assert_null(cJSON_GetObjectItem(response, "command"));
     assert_non_null(cJSON_GetObjectItem(response, "status"));
     assert_string_equal(cJSON_GetObjectItem(response, "status")->valuestring, status);
+    assert_null(cJSON_GetObjectItem(response, "error_msg"));
     assert_non_null(cJSON_GetObjectItem(response, "create_time"));
     assert_string_equal(cJSON_GetObjectItem(response, "create_time")->valuestring, "5/5/20 12:30:55.666");
     assert_non_null(cJSON_GetObjectItem(response, "update_time"));
@@ -467,6 +476,7 @@ void test_wm_task_manager_parse_response_result_no_module(void **state)
     assert_string_equal(cJSON_GetObjectItem(response, "command")->valuestring, command);
     assert_non_null(cJSON_GetObjectItem(response, "status"));
     assert_string_equal(cJSON_GetObjectItem(response, "status")->valuestring, status);
+    assert_null(cJSON_GetObjectItem(response, "error_msg"));
     assert_non_null(cJSON_GetObjectItem(response, "create_time"));
     assert_string_equal(cJSON_GetObjectItem(response, "create_time")->valuestring, "5/5/20 12:30:55.666");
     assert_non_null(cJSON_GetObjectItem(response, "update_time"));

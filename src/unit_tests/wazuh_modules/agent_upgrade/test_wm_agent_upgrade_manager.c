@@ -112,6 +112,9 @@ void test_wm_agent_upgrade_listen_messages_upgrade_command(void **state)
     expect_string(__wrap_OS_SendSecureTCP, msg, response);
     will_return(__wrap_OS_SendSecureTCP, 0);
 
+    expect_memory(__wrap_wm_agent_upgrade_start_upgrades, manager_configs, config, sizeof(config));
+    will_return(__wrap_wm_agent_upgrade_start_upgrades, 1);
+
     wm_agent_upgrade_listen_messages(config);
 }
 
@@ -180,6 +183,9 @@ void test_wm_agent_upgrade_listen_messages_upgrade_custom_command(void **state)
     expect_value(__wrap_OS_SendSecureTCP, size, strlen(response));
     expect_string(__wrap_OS_SendSecureTCP, msg, response);
     will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_memory(__wrap_wm_agent_upgrade_start_upgrades, manager_configs, config, sizeof(config));
+    will_return(__wrap_wm_agent_upgrade_start_upgrades, 1);
 
     wm_agent_upgrade_listen_messages(config);
 }

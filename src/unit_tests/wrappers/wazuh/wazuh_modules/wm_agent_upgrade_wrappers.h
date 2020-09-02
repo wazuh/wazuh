@@ -73,4 +73,6 @@ char* __wrap_wm_agent_upgrade_send_command_to_agent(const char *command, const s
 
 cJSON* __wrap_wm_agent_upgrade_send_tasks_information(const cJSON *message_object);
 
+int __wrap_wm_agent_upgrade_start_upgrades(const wm_manager_configs* manager_configs);
+
 #endif

@@ -51,7 +51,7 @@ static const char *task_statuses_map[] = {
  * @param queue_fd File descriptor of the upgrade queue
  * @param state upgrade result state
  * */
-STATIC void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state);
+STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state);
 
 /**
  * Checks in the upgrade_results file for a code that determines the result
@@ -61,7 +61,7 @@ STATIC void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_sta
  * @retval true information was found on the upgrade_result file
  * @retval either the upgrade_result file does not exist or contains invalid information
  * */
-STATIC bool wm_upgrade_agent_search_upgrade_result(int queue_fd);
+STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
 
 void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
     /**
@@ -84,7 +84,7 @@ void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
          * erasing the result file and exiting this loop 
          * */
         while (result_available) {
-            result_available = wm_upgrade_agent_search_upgrade_result(queue_fd);
+            result_available = wm_upgrade_agent_search_upgrade_result(&queue_fd);
 
             if(result_available) {
                 sleep(wait_time);
@@ -101,7 +101,7 @@ void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
     }
 }
 
-STATIC void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state) {
+STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state) {
     int msg_delay = 1000000 / wm_max_eps;
     cJSON* root = cJSON_CreateObject();
     cJSON* params = cJSON_CreateObject();
@@ -113,12 +113,13 @@ STATIC void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_sta
     cJSON_AddItemToObject(root, "params", params);
 
     char *msg_string = cJSON_PrintUnformatted(root);
-    if (wm_sendmsg(msg_delay, queue_fd, msg_string, task_manager_modules_list[WM_TASK_UPGRADE_MODULE], UPGRADE_MQ) < 0) {
+    if (wm_sendmsg(msg_delay, *queue_fd, msg_string, task_manager_modules_list[WM_TASK_UPGRADE_MODULE], UPGRADE_MQ) < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-        if(queue_fd >= 0){
-            close(queue_fd);
+        if(*queue_fd >= 0){
+            close(*queue_fd);
         }
-        if ((queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+        *queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+        if (*queue_fd < 0) {
             mterror_exit(WM_AGENT_UPGRADE_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
         }
     }
@@ -128,7 +129,7 @@ STATIC void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_sta
     cJSON_Delete(root);
 }
 
-STATIC bool wm_upgrade_agent_search_upgrade_result(int queue_fd) {
+STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd) {
     char buffer[20];
     const char * PATH = WM_AGENT_UPGRADE_RESULT_FILE;
 

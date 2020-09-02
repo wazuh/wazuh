@@ -1481,6 +1481,7 @@ void test_wm_task_manager_update_task_status_ok(void **state)
     char *module = "upgrade_module";
     char *status = "Done";
     char *status_old = "In progress";
+    char *error = "Error message";
     int task_id = 36;
     int now = 123456789;
 
@@ -1527,6 +1528,10 @@ void test_wm_task_manager_update_task_status_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, now);
     will_return(__wrap_sqlite3_bind_int, 0);
 
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, error);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
     expect_value(__wrap_sqlite3_bind_int, index, 4);
     expect_value(__wrap_sqlite3_bind_int, value, task_id);
     will_return(__wrap_sqlite3_bind_int, 0);
@@ -1535,7 +1540,7 @@ void test_wm_task_manager_update_task_status_ok(void **state)
 
     will_return(__wrap_sqlite3_close_v2,0);
 
-    int ret = wm_task_manager_update_task_status(agent_id, module, status, NULL);
+    int ret = wm_task_manager_update_task_status(agent_id, module, status, error);
 
     assert_int_equal(ret, WM_TASK_SUCCESS);
 }
@@ -1992,8 +1997,8 @@ void test_wm_task_manager_get_task_by_agent_id_and_module_ok(void **state)
     expect_value_count(__wrap_sqlite3_column_text, iCol, 6, 2);
     will_return_count(__wrap_sqlite3_column_text, "In progress", 2);
 
-    expect_value(__wrap_sqlite3_column_text, iCol, 7);
-    will_return(__wrap_sqlite3_column_text, NULL);
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 7, 2);
+    will_return_count(__wrap_sqlite3_column_text, "Error string", 2);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -2007,6 +2012,9 @@ void test_wm_task_manager_get_task_by_agent_id_and_module_ok(void **state)
     assert_int_equal(create_time, 12345);
     assert_int_equal(last_update, 67890);
     assert_string_equal(status, "In progress");
+    assert_string_equal(error, "Error string");
+
+    os_free(error);
 }
 
 void test_wm_task_manager_get_task_by_agent_id_and_module_task_id_err(void **state)
@@ -2212,8 +2220,8 @@ void test_wm_task_manager_get_task_by_task_id_ok(void **state)
     expect_value_count(__wrap_sqlite3_column_text, iCol, 6, 2);
     will_return_count(__wrap_sqlite3_column_text, "In progress", 2);
 
-    expect_value(__wrap_sqlite3_column_text, iCol, 7);
-    will_return(__wrap_sqlite3_column_text, NULL);
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 7, 2);
+    will_return_count(__wrap_sqlite3_column_text, "Error string", 2);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -2228,8 +2236,10 @@ void test_wm_task_manager_get_task_by_task_id_ok(void **state)
     assert_int_equal(create_time, 12345);
     assert_int_equal(last_update, 67890);
     assert_string_equal(status, "In progress");
+    assert_string_equal(error, "Error string");
 
     os_free(status);
+    os_free(error);
 }
 
 void test_wm_task_manager_get_task_by_task_id_task_id_err(void **state)

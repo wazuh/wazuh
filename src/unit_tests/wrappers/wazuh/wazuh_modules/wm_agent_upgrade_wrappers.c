@@ -85,10 +85,10 @@ int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJS
     cJSON* json = cJSON_GetArrayItem(task_module_request, 0);
     cJSON* json_next = cJSON_GetArrayItem(task_module_request, 1);
 
-    check_expected(json);
+    if (json) check_expected(json);
     if (json_next) check_expected(json_next);
 
-    cJSON_AddItemToArray(json_response, mock_type(cJSON *));
+    if (json) cJSON_AddItemToArray(json_response, mock_type(cJSON *));
     if (json_next) cJSON_AddItemToArray(json_response, mock_type(cJSON *));
 
     return mock();
@@ -244,4 +244,10 @@ cJSON* __wrap_wm_agent_upgrade_send_tasks_information(const cJSON *message_objec
     check_expected(message_object);
 
     return mock_type(cJSON *);
+}
+
+int __wrap_wm_agent_upgrade_start_upgrades(const wm_manager_configs* manager_configs) {
+    check_expected(manager_configs);
+
+    return mock();
 }

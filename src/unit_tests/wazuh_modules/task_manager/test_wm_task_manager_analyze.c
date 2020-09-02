@@ -686,18 +686,21 @@ void test_wm_task_manager_analyze_task_upgrade_module_ok(void **state)
     char *command = "upgrade_update_status";
     int agent_id = 45;
     char *status = "Failed";
+    char *error = "Error message";
 
     cJSON *task = cJSON_CreateObject();
     cJSON_AddStringToObject(task, "module", module);
     cJSON_AddStringToObject(task, "command", command);
     cJSON_AddNumberToObject(task, "agent", agent_id);
     cJSON_AddStringToObject(task, "status", status);
+    cJSON_AddStringToObject(task, "error_msg", error);
 
     cJSON* res = cJSON_CreateObject();
 
     expect_value(__wrap_wm_task_manager_update_task_status, agent_id, agent_id);
     expect_string(__wrap_wm_task_manager_update_task_status, module, "upgrade_module");
     expect_string(__wrap_wm_task_manager_update_task_status, status, status);
+    expect_string(__wrap_wm_task_manager_update_task_status, error, error);
     will_return(__wrap_wm_task_manager_update_task_status, WM_TASK_SUCCESS);
 
     expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_SUCCESS);
@@ -782,6 +785,7 @@ void test_wm_task_manager_analyze_task_module_err(void **state)
     cJSON_AddStringToObject(task, "agent", "1");
     cJSON_AddStringToObject(task, "task_id", "5");
     cJSON_AddNumberToObject(task, "status", 3);
+    cJSON_AddNumberToObject(task, "error_msg", 7);
 
     cJSON* res = cJSON_CreateObject();
 
