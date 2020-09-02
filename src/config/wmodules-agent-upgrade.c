@@ -50,7 +50,10 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
         if(!nodes[i]->element) {
             merror(XML_ELEMNULL);
             return OS_INVALID;
-        } else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
+        } 
+        #ifdef CLIENT
+        // Agent configurations
+        else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
             if (!strcmp(nodes[i]->content, "yes"))
                 data->enabled = 1;
             else if (!strcmp(nodes[i]->content, "no"))
@@ -59,10 +62,7 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_AGENT_UPGRADE_CONTEXT.name);
                 return OS_INVALID;
             }
-        }
-        #ifdef CLIENT
-        // Agent configurations
-        else if (!strcmp(nodes[i]->element, XML_WAIT_START)) {
+        } else if (!strcmp(nodes[i]->element, XML_WAIT_START)) {
             int wait_start = strtol(nodes[i]->content, NULL, 10);
             if (wait_start > 0) {
                 data->agent_config.upgrade_wait_start = wait_start;
