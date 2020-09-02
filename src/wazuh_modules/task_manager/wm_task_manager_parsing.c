@@ -111,7 +111,7 @@ void wm_task_manager_parse_response_result(cJSON *response, const char *module, 
     }
 
     if (error != NULL) {
-        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_DATA], error);
+        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_MSG], error);
     }
 
     if (create_time != OS_INVALID) {

@@ -9,18 +9,19 @@
  * Foundation.
  */
 
+#include "wazuh_modules/wmodules.h"
+#include "wm_agent_upgrade_agent.h"
+
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
 #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
 #endif
 // Remove static qualifier when unit testing
 #define STATIC
 #else
 #define STATIC static
 #endif
-
-#include "wazuh_modules/wmodules.h"
-#include "wm_agent_upgrade_agent.h"
 
 const char* upgrade_values[] = {
     [WM_UPGRADE_SUCCESSFUL] = "0",

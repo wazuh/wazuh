@@ -57,7 +57,7 @@ void test_wm_upgrade_agent_send_ack_message_successful(void **state)
     (void) state;
     int queue = 0;
     int result = 0;
-    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_SUCCESSFULL;
+    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_SUCCESSFUL;
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
@@ -129,6 +129,48 @@ void test_wm_upgrade_agent_send_ack_message_error(void **state)
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue '/queue/ossec/queue' not accessible: 'Success'");
 
+    expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, queue);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
+                                                   "'{\"command\":\"upgrade_update_status\","
+                                                     "\"params\":{\"error\":2,"
+                                                                 "\"data\":\"Upgrade failed\","
+                                                                 "\"status\":\"Failed\"}}'");
+
+    wm_upgrade_agent_send_ack_message(queue, upgrade_state);
+}
+
+void test_wm_upgrade_agent_send_ack_message_error_exit(void **state)
+{
+    (void) state;
+    int queue = 0;
+    int result = -1;
+    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_FAILED;
+
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, queue);
+    expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
+                                               "\"params\":{\"error\":2,"
+                                                           "\"data\":\"Upgrade failed\","
+                                                           "\"status\":\"Failed\"}}");
+    expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
+    expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
+
+    will_return(__wrap_wm_sendmsg, result);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(1210): Queue '/queue/ossec/queue' not accessible: 'Success'");
+
+    expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, -1);
+
+    expect_string(__wrap__mterror_exit, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1211): Unable to access queue: '/queue/ossec/queue'. Giving up.");
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
@@ -144,7 +186,7 @@ void test_wm_upgrade_agent_search_upgrade_result_successful(void **state)
     (void) state;
     int queue = 0;
     int result = 0;
-    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_SUCCESSFULL;
+    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_SUCCESSFUL;
 
     expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
@@ -276,7 +318,7 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
 {
     int queue = 0;
     int result = 0;
-    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_SUCCESSFULL;
+    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_SUCCESSFUL;
     wm_agent_configs *config = *state;
 
     config->upgrade_wait_start = 1;
@@ -287,9 +329,11 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, queue);
 
-    #ifndef TEST_WINAGENT
+#ifdef TEST_WINAGENT
+    expect_value(wrap_Sleep, dwMilliseconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME * 1000);
+#else
     expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
-    #endif
+#endif
 
     expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
@@ -324,9 +368,11 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
                                                                  "\"data\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
-    #ifndef TEST_WINAGENT
+#ifdef TEST_WINAGENT
+    expect_value(wrap_Sleep, dwMilliseconds, config->upgrade_wait_start * 1000);
+#else
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_start);
-    #endif
+#endif
 
     expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
@@ -339,7 +385,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
 {
     int queue = 0;
     int result = 0;
-    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_SUCCESSFULL;
+    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_SUCCESSFUL;
     wm_agent_configs *config = *state;
 
     config->upgrade_wait_start = 1;
@@ -350,9 +396,11 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, queue);
 
-    #ifndef TEST_WINAGENT
+#ifdef TEST_WINAGENT
+    expect_value(wrap_Sleep, dwMilliseconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME * 1000);
+#else
     expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
-    #endif
+#endif
 
     expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
@@ -387,9 +435,11 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
                                                                  "\"data\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
-    #ifndef TEST_WINAGENT
+#ifdef TEST_WINAGENT
+    expect_value(wrap_Sleep, dwMilliseconds, config->upgrade_wait_start  * 1000);
+#else
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_start);
-    #endif
+#endif
 
     expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
@@ -424,9 +474,11 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
                                                                  "\"data\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
-    #ifndef TEST_WINAGENT
+#ifdef TEST_WINAGENT
+    expect_value(wrap_Sleep, dwMilliseconds, config->upgrade_wait_start * config->upgrade_wait_factor_increase  * 1000);
+#else
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_start * config->upgrade_wait_factor_increase);
-    #endif
+#endif
 
     expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
@@ -461,9 +513,11 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
                                                                  "\"data\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
-    #ifndef TEST_WINAGENT
+#ifdef TEST_WINAGENT
+    expect_value(wrap_Sleep, dwMilliseconds, config->upgrade_wait_start * config->upgrade_wait_factor_increase * config->upgrade_wait_factor_increase  * 1000);
+#else
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_start * config->upgrade_wait_factor_increase * config->upgrade_wait_factor_increase);
-    #endif
+#endif
 
     expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
@@ -498,9 +552,11 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
                                                                  "\"data\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
-    #ifndef TEST_WINAGENT
+#ifdef TEST_WINAGENT
+    expect_value(wrap_Sleep, dwMilliseconds, config->upgrade_wait_max  * 1000);
+#else
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_max);
-    #endif
+#endif
 
     expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
@@ -513,7 +569,7 @@ void test_wm_agent_upgrade_check_status_queue_error(void **state)
 {
     int queue = -1;
     int result = 0;
-    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_SUCCESSFULL;
+    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_SUCCESSFUL;
     wm_agent_configs *config = *state;
 
     config->upgrade_wait_start = 1;
@@ -524,9 +580,11 @@ void test_wm_agent_upgrade_check_status_queue_error(void **state)
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, queue);
 
-    #ifndef TEST_WINAGENT
+#ifdef TEST_WINAGENT
+    expect_value(wrap_Sleep, dwMilliseconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME  * 1000);
+#else
     expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
-    #endif
+#endif
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8113): Could not open default queue to send upgrade notification.");
@@ -540,6 +598,7 @@ int main(void) {
         cmocka_unit_test_setup(test_wm_upgrade_agent_send_ack_message_successful, setup_test_executions),
         cmocka_unit_test_setup(test_wm_upgrade_agent_send_ack_message_failed, setup_test_executions),
         cmocka_unit_test_setup(test_wm_upgrade_agent_send_ack_message_error, setup_test_executions),
+        cmocka_unit_test_setup(test_wm_upgrade_agent_send_ack_message_error_exit, setup_test_executions),
         // wm_upgrade_agent_search_upgrade_result
         cmocka_unit_test_setup(test_wm_upgrade_agent_search_upgrade_result_successful, setup_test_executions),
         cmocka_unit_test_setup(test_wm_upgrade_agent_search_upgrade_result_failed, setup_test_executions),

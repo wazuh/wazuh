@@ -33,7 +33,7 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, char *module, char
     if (tmp = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_STATUS]), tmp && tmp->type == cJSON_String) {
         os_strdup(tmp->valuestring, status);
     }
-    if (tmp = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_ERROR_DATA]), tmp && tmp->type == cJSON_String) {
+    if (tmp = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_ERROR_MSG]), tmp && tmp->type == cJSON_String) {
         os_strdup(tmp->valuestring, error);
     }
 

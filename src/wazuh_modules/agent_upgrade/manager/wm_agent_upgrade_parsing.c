@@ -376,7 +376,7 @@ cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, in
         cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_STATUS], status);
     }
     if (error) {
-        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_DATA], error);
+        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_MSG], error);
     }
     return response;
 }
