@@ -1171,7 +1171,6 @@ agent_status_t get_agent_status(int agent_id){
         return (GA_STATUS_NACTIVE);
     }
 
-    // The pending status may not be related to the keepalive
     if (last_keepalive == 0) {
         return GA_STATUS_PENDING;
     }
