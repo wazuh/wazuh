@@ -3950,6 +3950,95 @@ void test_wdb_update_agent_multi_group_success(void **state) {
     assert_int_equal(OS_SUCCESS, ret);
 }
 
+/* Tests wdb_remove_group_from_belongs_db */
+
+void test_wdb_remove_group_from_belongs_db_error_socket(void **state)
+{
+    int ret = 0;
+    const char *name = "test_group";
+
+    const char *query_str = "global delete-group-belong test_group";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    // Hnadling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-group-belong test_group");
+
+    ret = wdb_remove_group_from_belongs_db(name);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_remove_group_from_belongs_db_error_sql_execution(void **state)
+{
+    int ret = 0;
+    const char *name = "test_group";
+
+    const char *query_str = "global delete-group-belong test_group";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, -100); // Returning any error
+
+    // Hnadling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-group-belong test_group");
+
+    ret = wdb_remove_group_from_belongs_db(name);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_remove_group_from_belongs_db_error_result(void **state)
+{
+    int ret = 0;
+    const char *name = "test_group";
+
+    const char *query_str = "global delete-group-belong test_group";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
+
+    ret = wdb_remove_group_from_belongs_db(name);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_remove_group_from_belongs_db_success(void **state)
+{
+    int ret = 0;
+    const char *name = "test_group";
+
+    const char *query_str = "global delete-group-belong test_group";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = wdb_remove_group_from_belongs_db(name);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -4084,7 +4173,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_multi_group_error_deleting_agent, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_multi_group_error_update_belongs_single, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_multi_group_error_update_belongs_multi, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_multi_group_success, setup_wdb_agent, teardown_wdb_agent)
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_multi_group_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_remove_group_from_belongs_db */
+        cmocka_unit_test_setup_teardown(test_wdb_remove_group_from_belongs_db_error_socket, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_group_from_belongs_db_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_group_from_belongs_db_error_result, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_group_from_belongs_db_success, setup_wdb_agent, teardown_wdb_agent)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
