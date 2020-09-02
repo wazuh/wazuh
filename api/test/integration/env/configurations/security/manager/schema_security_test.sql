@@ -173,7 +173,7 @@ INSERT INTO roles_policies VALUES(120,105,103,9,'1970-01-01 00:00:00');
 
 /* Default user-roles links */
 INSERT INTO user_roles VALUES(1,1,1,0,'1970-01-01 00:00:00');
-INSERT INTO user_roles VALUES(2,2,2,0,'1970-01-01 00:00:00');
+INSERT INTO user_roles VALUES(2,2,1,0,'1970-01-01 00:00:00');
 
 /* Testing */
 INSERT INTO user_roles VALUES(100,100,100,0,'1970-01-01 00:00:00');

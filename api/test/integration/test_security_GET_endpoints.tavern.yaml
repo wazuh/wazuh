@@ -782,7 +782,7 @@ stages:
               username: wazuh-wui
               allow_run_as: true
               roles:
-                - 2
+                - 1
             - id: 99
               username: testing
               allow_run_as: false
@@ -1083,7 +1083,7 @@ stages:
               username: wazuh-wui
               allow_run_as: true
               roles:
-                - 2
+                - 1
             - id: 1
               username: wazuh
               allow_run_as: false
@@ -1192,7 +1192,7 @@ stages:
               username: wazuh-wui
               allow_run_as: true
               roles:
-                - 2
+                - 1
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
