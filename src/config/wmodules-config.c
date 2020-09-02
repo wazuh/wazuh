@@ -132,7 +132,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 #ifndef WIN32
 #ifndef CLIENT
     else if (!strcmp(node->values[0], WM_VULNDETECTOR_CONTEXT.name)) {
-        mwarn("Found a Vulnerability Detector deprecated block. Ignoring it.");
+        mwarn("A deprecated Vulnerability Detector configuration block was found. It will be ignored.");
         OS_ClearNode(children);
         return 0;
     } else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
