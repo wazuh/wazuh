@@ -17,6 +17,7 @@ from api.models.base_model_ import Data, Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh.core import common
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.exception import WazuhError
 
 logger = logging.getLogger('wazuh')
 
@@ -376,8 +377,8 @@ async def put_api_config(request, pretty=False, wait_for_complete=False):
 
     try:
         f_kwargs = {"updated_config": await request.json()}
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
+    except JSONDecodeError:
+        raise_if_exc(WazuhError(code=1018))
 
     dapi = DistributedAPI(f=manager.update_api_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
