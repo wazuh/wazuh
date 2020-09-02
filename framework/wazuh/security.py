@@ -126,7 +126,7 @@ def create_user(username: str = None, password: str = None, allow_run_as: bool =
         raise WazuhError(5007)
 
     result = AffectedItemsWazuhResult(none_msg='User could not be created',
-                                      all_msg='User successfully created')
+                                      all_msg='User was successfully created')
     with AuthenticationManager() as auth:
         if auth.add_user(username, password, allow_run_as=allow_run_as):
             operation = auth.get_user(username)
@@ -162,7 +162,7 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
         raise WazuhError(4001)
     if password and not _user_password.match(password):
         raise WazuhError(5007)
-    result = AffectedItemsWazuhResult(all_msg='User successfully updated',
+    result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
     with AuthenticationManager() as auth:
         query = auth.update_user(user_id[0], password, allow_run_as)
@@ -192,7 +192,7 @@ def remove_users(user_ids):
     """
     result = AffectedItemsWazuhResult(none_msg='No user was deleted',
                                       some_msg='Some users were not deleted',
-                                      all_msg='Users successfully deleted')
+                                      all_msg='Users were successfully deleted')
     with AuthenticationManager() as auth:
         for user_id in user_ids:
             current_user = auth.get_user(common.current_user.get())
@@ -288,7 +288,7 @@ def add_role(name=None):
     :return Role information
     """
     result = AffectedItemsWazuhResult(none_msg='Role was not created',
-                                      all_msg='Role successfully created')
+                                      all_msg='Role was successfully created')
     with RolesManager() as rm:
         status = rm.add_role(name=name)
         if status == SecurityError.ALREADY_EXIST:
@@ -313,7 +313,7 @@ def update_role(role_id=None, name=None):
     if name is None:
         raise WazuhError(4001)
     result = AffectedItemsWazuhResult(none_msg='Role was not updated',
-                                      all_msg='Role successfully updated')
+                                      all_msg='Role was successfully updated')
     with RolesManager() as rm:
         status = rm.update_role(role_id=role_id[0], name=name)
         if status == SecurityError.ALREADY_EXIST:
@@ -410,7 +410,7 @@ def add_policy(name=None, policy=None):
     :return Policy information
     """
     result = AffectedItemsWazuhResult(none_msg='Policy was not created',
-                                      all_msg='Policy successfully created')
+                                      all_msg='Policy was successfully created')
     with PoliciesManager() as pm:
         status = pm.add_policy(name=name, policy=policy)
         if status == SecurityError.ALREADY_EXIST:
@@ -436,7 +436,7 @@ def update_policy(policy_id=None, name=None, policy=None):
     if name is None and policy is None:
         raise WazuhError(4001)
     result = AffectedItemsWazuhResult(none_msg='Policy was not updated',
-                                      all_msg='Policy successfully updated')
+                                      all_msg='Policy was successfully updated')
     with PoliciesManager() as pm:
         status = pm.update_policy(policy_id=policy_id[0], name=name, policy=policy)
         if status == SecurityError.ALREADY_EXIST:
@@ -504,7 +504,7 @@ def add_rule(name=None, rule=None):
     :return Rule information
     """
     result = AffectedItemsWazuhResult(none_msg='Security rule was not created',
-                                      all_msg='Security rule successfully created')
+                                      all_msg='Security rule was successfully created')
     with RulesManager() as rum:
         status = rum.add_rule(name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
@@ -559,7 +559,7 @@ def update_rule(rule_id=None, name=None, rule=None):
     if name is None and rule is None:
         raise WazuhError(4001)
     result = AffectedItemsWazuhResult(none_msg='Security rule was not updated',
-                                      all_msg='Security rule successfully updated')
+                                      all_msg='Security rule was successfully updated')
     with RulesManager() as rum:
         status = rum.update_rule(rule_id=rule_id[0], name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
@@ -865,7 +865,7 @@ def revoke_current_user_tokens():
         with AuthenticationManager() as am:
             tm.add_user_roles_rules(users={am.get_user(common.current_user.get())['id']})
 
-    return WazuhResult({'msg': f'User {common.current_user.get()} successfully logged out'})
+    return WazuhResult({'msg': f'User {common.current_user.get()} was successfully logged out'})
 
 
 @expose_resources(actions=['security:revoke'], resources=['*:*:*'],
@@ -875,7 +875,7 @@ def wrapper_revoke_tokens():
     """ Revoke all tokens """
     revoke_tokens()
 
-    return WazuhResult({'msg': 'Tokens successfully revoked'})
+    return WazuhResult({'msg': 'Tokens were successfully revoked'})
 
 
 @lru_cache(maxsize=None)

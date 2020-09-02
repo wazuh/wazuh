@@ -22,7 +22,7 @@ def run(agent_list=None):
     :param agent_list: Run syscheck in the agent.
     :return: AffectedItemsWazuhResult.
     """
-    result = AffectedItemsWazuhResult(all_msg='Restarting syscheck scan on returned agents',
+    result = AffectedItemsWazuhResult(all_msg='Syscheck scan was restarted on returned agents',
                                       some_msg='Syscheck scan was not restarted on some agents',
                                       none_msg='No syscheck scan was restarted')
     for agent_id in agent_list:
@@ -53,7 +53,7 @@ def clear(agent_list=None):
     :return: AffectedItemsWazuhResult.
     """
     result = AffectedItemsWazuhResult(all_msg='Syscheck database was cleared on returned agents',
-                                      some_msg='Syscheck database was not clared on some agents',
+                                      some_msg='Syscheck database was not cleared on some agents',
                                       none_msg="No syscheck database was cleared")
     wdb_conn = WazuhDBConnection()
     for agent in agent_list:

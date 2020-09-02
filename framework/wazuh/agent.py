@@ -105,7 +105,7 @@ def restart_agents(agent_list=None):
     :param agent_list: List of agents ID's.
     :return: AffectedItemsWazuhResult.
     """
-    result = AffectedItemsWazuhResult(all_msg='Restart command sent to all agents',
+    result = AffectedItemsWazuhResult(all_msg='Restart command was sent to all agents',
                                       some_msg='Restart command was not sent to some agents',
                                       none_msg='Restart command was not sent to any agent'
                                       )
@@ -581,7 +581,7 @@ def remove_agent_from_groups(agent_list=None, group_list=None):
     :return: AffectedItemsWazuhResult.
     """
     agent_id = agent_list[0]
-    result = AffectedItemsWazuhResult(all_msg='Specified agent removed from returned groups',
+    result = AffectedItemsWazuhResult(all_msg='Specified agent was removed from returned groups',
                                       some_msg='Specified agent was not removed from some groups',
                                       none_msg='Specified agent was not removed from any group'
                                       )

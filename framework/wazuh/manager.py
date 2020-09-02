@@ -30,7 +30,7 @@ def get_status():
 
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Processes status successfully read"
+    result = AffectedItemsWazuhResult(all_msg=f"Processes status was successfully read"
                                               f"{' in specified node' if node_id != 'manager' else ''}",
                                       some_msg='Could not read basic information in some nodes',
                                       none_msg=f"Could not read processes status"
@@ -61,7 +61,7 @@ def ossec_log(level=None, tag=None, offset=0, limit=common.database_limit, sort_
     :param q: Defines query to filter.
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Logs successfully read"
+    result = AffectedItemsWazuhResult(all_msg=f"Logs were successfully read"
                                               f"{' in specified node' if node_id != 'manager' else ''}",
                                       some_msg='Could not read logs in some nodes',
                                       none_msg=f"Could not read logs"
@@ -91,7 +91,7 @@ def ossec_log_summary():
 
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Log successfully summarized"
+    result = AffectedItemsWazuhResult(all_msg=f"Log was successfully summarized"
                                               f"{' in specified node' if node_id != 'manager' else ''}",
                                       some_msg='Could not summarize the log in some nodes',
                                       none_msg=f"Could not summarize the log"
