@@ -10,7 +10,7 @@ CREATE TABLE users (id INTEGER NOT NULL, username VARCHAR(32), password VARCHAR(
 
 CREATE TABLE roles (id INTEGER NOT NULL, name VARCHAR(20), created_at DATETIME,	PRIMARY KEY (id), CONSTRAINT name_role UNIQUE (name));
 
-CREATE TABLE rules (id INTEGER NOT NULL, name VARCHAR(20), rule TEXT, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT rule_name UNIQUE (name), CONSTRAINT rule_definition UNIQUE (rule));
+CREATE TABLE rules (id INTEGER NOT NULL, name VARCHAR(20), rule TEXT, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT rule_name UNIQUE (name));
 
 CREATE TABLE policies (id INTEGER NOT NULL, name VARCHAR(20), policy TEXT, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT name_policy UNIQUE (name),	CONSTRAINT policy_definition UNIQUE (policy));
 
