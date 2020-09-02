@@ -156,7 +156,7 @@ def upload_xml(xml_file, path):
         except Error:
             raise WazuhInternalError(1016)
 
-        return WazuhResult({'message': 'File updated successfully'})
+        return WazuhResult({'message': 'File was successfully updated'})
 
     except Exception as e:
         # remove created temporary file if an exception happens
@@ -198,7 +198,7 @@ def upload_list(list_file, path):
     except Error:
         raise WazuhInternalError(1016)
 
-    return WazuhResult({'message': 'File updated successfully'})
+    return WazuhResult({'message': 'File was successfully updated'})
 
 
 def validate_xml(path):
