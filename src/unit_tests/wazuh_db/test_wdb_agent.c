@@ -4197,6 +4197,26 @@ void test_wdb_remove_group_db_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
+/* Tests wdb_update_groups */
+
+void test_wdb_update_groups_error_json(void **state) {
+    int ret = 0;
+
+    const char *query_str = "global select-groups";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to update groups.");
+
+    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -4342,7 +4362,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_error_socket, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_success, setup_wdb_agent, teardown_wdb_agent)
+        cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_update_groups */
+        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_json, setup_wdb_agent, teardown_wdb_agent)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

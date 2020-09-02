@@ -1109,7 +1109,7 @@ int wdb_update_groups(const char *dirname) {
     while (item)
     {
         json_name = cJSON_GetObjectItem(item,"name");
-        
+
         if(cJSON_IsString(json_name) && json_name->valuestring != NULL ){
             os_strdup(json_name->valuestring, array[n]);
             n++;
