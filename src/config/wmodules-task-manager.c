@@ -35,7 +35,7 @@ int wm_task_manager_read(xml_node **nodes, wmodule *module) {
         return 0;
     }
 
-    for(i = 0; nodes[i]; i++)
+    for (i = 0; nodes[i]; i++)
     {
         if(!nodes[i]->element) {
             merror(XML_ELEMNULL);

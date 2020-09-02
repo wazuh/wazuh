@@ -13,6 +13,15 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../../wrappers/posix/pthread_wrappers.h"
+#include "../../wrappers/posix/select_wrappers.h"
+#include "../../wrappers/posix/unistd_wrappers.h"
+#include "../../wrappers/wazuh/shared/cluster_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/pthreads_op_wrappers.h"
+#include "../../wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_task_manager_wrappers.h"
+
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/task_manager/wm_task_manager.h"
 #include "../../headers/shared.h"
@@ -55,116 +64,8 @@ static int teardown_string(void **state) {
 
 // Wrappers
 
-void __wrap__mtinfo(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mtdebug1(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-int __wrap_pthread_exit() {
-    return mock();
-}
-
-int __wrap_wm_task_manager_check_db() {
-    return mock();
-}
-
-int __wrap_CreateThread(void * (*function_pointer)(void *), void *data) {
-    return mock();
-}
-
-int __wrap_OS_BindUnixDomain(const char *path, int type, int max_msg_size) {
-    return mock();
-}
-
-int __wrap_select() {
-    return mock();
-}
-
-int __wrap_close(int fd) {
-    check_expected(fd);
-    return 0;
-}
-
 int __wrap_accept() {
     return mock();
-}
-
-int __wrap_OS_RecvSecureTCP(int sock, char *ret, uint32_t size) {
-    check_expected(sock);
-    check_expected(size);
-
-    strncpy(ret, mock_type(char*), size);
-
-    return mock();
-}
-
-int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
-    check_expected(sock);
-    check_expected(size);
-    check_expected(msg);
-
-    return mock();
-}
-
-int __wrap_w_is_worker(void) {
-    return mock();
-}
-
-cJSON* __wrap_wm_task_manager_parse_message(const char *msg) {
-    check_expected(msg);
-
-    return mock_type(cJSON*);
-}
-
-cJSON* __wrap_wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
-    check_expected(task_object);
-
-    *error_code = mock();
-
-    return mock_type(cJSON*);
-}
-
-cJSON* __wrap_wm_task_manager_parse_response(int error_code, int agent_id, int task_id, char *status) {
-    check_expected(error_code);
-    check_expected(agent_id);
-    check_expected(task_id);
-    if (status) check_expected(status);
-
-    return mock_type(cJSON*);
 }
 
 // Tests
@@ -223,8 +124,9 @@ void test_wm_task_manager_init_ok(void **state)
 
     will_return(__wrap_wm_task_manager_check_db, 0);
 
-    will_return(__wrap_CreateThread, 1);
-
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
 
     int ret = wm_task_manager_init(config);
@@ -240,8 +142,9 @@ void test_wm_task_manager_init_bind_err(void **state)
 
     will_return(__wrap_wm_task_manager_check_db, 0);
 
-    will_return(__wrap_CreateThread, 1);
-
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, OS_INVALID);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
@@ -268,8 +171,9 @@ void test_wm_task_manager_init_db_err(void **state)
 
     will_return(__wrap_pthread_exit, OS_INVALID);
 
-    will_return(__wrap_CreateThread, 1);
-
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
 
     int ret = wm_task_manager_init(config);
@@ -291,8 +195,9 @@ void test_wm_task_manager_init_disabled(void **state)
 
     will_return(__wrap_wm_task_manager_check_db, 0);
 
-    will_return(__wrap_CreateThread, 1);
-
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
 
     int ret = wm_task_manager_init(config);
@@ -889,8 +794,9 @@ void test_wm_task_manager_main_ok(void **state)
 
     will_return(__wrap_wm_task_manager_check_db, 0);
 
-    will_return(__wrap_CreateThread, 1);
-
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
@@ -934,10 +840,6 @@ void test_wm_task_manager_main_ok(void **state)
     expect_string(__wrap_OS_SendSecureTCP, msg, response);
     will_return(__wrap_OS_SendSecureTCP, 0);
 
-    expect_value(__wrap_close, fd, peer);
-
-    expect_value(__wrap_close, fd, sock);
-
     wm_task_manager_main(config);
 }
 
@@ -962,8 +864,9 @@ void test_wm_task_manager_main_recv_max_err(void **state)
 
     will_return(__wrap_wm_task_manager_check_db, 0);
 
-    will_return(__wrap_CreateThread, 1);
-
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
@@ -980,10 +883,6 @@ void test_wm_task_manager_main_recv_max_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8256): Received message > '4194304'");
-
-    expect_value(__wrap_close, fd, peer);
-
-    expect_value(__wrap_close, fd, sock);
 
     wm_task_manager_main(config);
 }
@@ -1009,8 +908,9 @@ void test_wm_task_manager_main_recv_empty_err(void **state)
 
     will_return(__wrap_wm_task_manager_check_db, 0);
 
-    will_return(__wrap_CreateThread, 1);
-
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
@@ -1027,10 +927,6 @@ void test_wm_task_manager_main_recv_empty_err(void **state)
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8203): Empty message from local client.");
-
-    expect_value(__wrap_close, fd, peer);
-
-    expect_value(__wrap_close, fd, sock);
 
     wm_task_manager_main(config);
 }
@@ -1056,8 +952,9 @@ void test_wm_task_manager_main_recv_err(void **state)
 
     will_return(__wrap_wm_task_manager_check_db, 0);
 
-    will_return(__wrap_CreateThread, 1);
-
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
@@ -1074,8 +971,6 @@ void test_wm_task_manager_main_recv_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8254): Error in recv(): 'Success'");
-
-    expect_value(__wrap_close, fd, sock);
 
     wm_task_manager_main(config);
 }
@@ -1101,8 +996,9 @@ void test_wm_task_manager_main_sockterr_err(void **state)
 
     will_return(__wrap_wm_task_manager_check_db, 0);
 
-    will_return(__wrap_CreateThread, 1);
-
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
@@ -1119,8 +1015,6 @@ void test_wm_task_manager_main_sockterr_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8255): Response size is bigger than expected.");
-
-    expect_value(__wrap_close, fd, sock);
 
     wm_task_manager_main(config);
 }
@@ -1146,8 +1040,9 @@ void test_wm_task_manager_main_accept_err(void **state)
 
     will_return(__wrap_wm_task_manager_check_db, 0);
 
-    will_return(__wrap_CreateThread, 1);
-
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
@@ -1171,8 +1066,6 @@ void test_wm_task_manager_main_accept_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8255): Response size is bigger than expected.");
-
-    expect_value(__wrap_close, fd, sock);
 
     wm_task_manager_main(config);
 }
@@ -1198,8 +1091,9 @@ void test_wm_task_manager_main_select_empty_err(void **state)
 
     will_return(__wrap_wm_task_manager_check_db, 0);
 
-    will_return(__wrap_CreateThread, 1);
-
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
@@ -1218,8 +1112,6 @@ void test_wm_task_manager_main_select_empty_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8255): Response size is bigger than expected.");
-
-    expect_value(__wrap_close, fd, sock);
 
     wm_task_manager_main(config);
 }
@@ -1245,8 +1137,9 @@ void test_wm_task_manager_main_select_err(void **state)
 
     will_return(__wrap_wm_task_manager_check_db, 0);
 
-    will_return(__wrap_CreateThread, 1);
-
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
@@ -1270,8 +1163,6 @@ void test_wm_task_manager_main_select_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8255): Response size is bigger than expected.");
-
-    expect_value(__wrap_close, fd, sock);
 
     wm_task_manager_main(config);
 }

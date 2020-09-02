@@ -9,9 +9,13 @@
  * Foundation.
  */
 
+#include "wazuh_modules/wmodules.h"
+#include "wm_agent_upgrade_agent.h"
+
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
 #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
 #endif
 // Remove static qualifier when unit testing
 #define STATIC
@@ -19,21 +23,18 @@
 #define STATIC static
 #endif
 
-#include "wazuh_modules/wmodules.h"
-#include "wm_agent_upgrade_agent.h"
-
 const char* upgrade_values[] = {
-    [WM_UPGRADE_SUCCESSFULL] = "0",
+    [WM_UPGRADE_SUCCESSFUL] = "0",
     [WM_UPGRADE_FAILED] = "2"
 };
 
 const char* upgrade_messages[] = {
-    [WM_UPGRADE_SUCCESSFULL] = "Upgrade was successful",
+    [WM_UPGRADE_SUCCESSFUL] = "Upgrade was successful",
     [WM_UPGRADE_FAILED]      = "Upgrade failed"
 };
 
 static const char *task_statuses_map[] = {
-    [WM_UPGRADE_SUCCESSFULL] = WM_TASK_STATUS_DONE,
+    [WM_UPGRADE_SUCCESSFUL] = WM_TASK_STATUS_DONE,
     [WM_UPGRADE_FAILED] = WM_TASK_STATUS_FAILED
 };
 
@@ -114,6 +115,12 @@ STATIC void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_sta
     char *msg_string = cJSON_PrintUnformatted(root);
     if (wm_sendmsg(msg_delay, queue_fd, msg_string, task_manager_modules_list[WM_TASK_UPGRADE_MODULE], UPGRADE_MQ) < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+        if(queue_fd >= 0){
+            close(queue_fd);
+        }
+        if ((queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+            mterror_exit(WM_AGENT_UPGRADE_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
+        }
     }
 
     mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACK_MESSAGE, msg_string);
@@ -123,15 +130,15 @@ STATIC void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_sta
 
 STATIC bool wm_upgrade_agent_search_upgrade_result(int queue_fd) {
     char buffer[20];
-    FILE * result_file;
     const char * PATH = WM_AGENT_UPGRADE_RESULT_FILE;
 
-    if (result_file = fopen(PATH, "r"), result_file) {
+    FILE *result_file = fopen(PATH, "r");
+    if (result_file) {
         fgets(buffer, 20, result_file);
         fclose(result_file);
 
         wm_upgrade_agent_state state;
-        for(state = 0; state < WM_UPGRADE_MAX_STATE; state++) {
+        for (state = 0; state < WM_UPGRADE_MAX_STATE; state++) {
             // File can either be "0\n" or "2\n", so we are expecting a positive match
             if (strstr(buffer, upgrade_values[state]) != NULL) {
                 // Matched value, send message

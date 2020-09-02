@@ -20,7 +20,6 @@ typedef enum _upgrade_status {
     WM_TASK_UPGRADE_ERROR = 0,
     WM_TASK_UPGRADE_UPDATING,
     WM_TASK_UPGRADE_UPDATED,
-    WM_TASK_UPGRADE_OUTDATED,
     WM_TASK_UPGRADE_TIMEOUT,
     WM_TASK_UPGRADE_LEGACY
 } upgrade_status;
@@ -30,9 +29,11 @@ extern const char* task_statuses[];
 /**
  * Parse the incomming message and return a JSON with the message.
  * @param msg Incomming message from a connection.
+ * @param module String where the module will be stored.
+ * @param command String where the command will be stored.
  * @return JSON array when succeed, NULL otherwise.
  * */
-cJSON* wm_task_manager_parse_message(const char *msg) __attribute__((nonnull));
+cJSON* wm_task_manager_parse_message(const char *msg, char **module, char **command) __attribute__((nonnull));
 
 /**
  * Build a JSON object response.
@@ -113,11 +114,12 @@ cJSON* wm_task_manager_parse_response(int error_code, int agent_id, int task_id,
  * @param module Module of the task when receiving a request for a specific task.
  * @param command Command of the task when receiving a request for a specific task.
  * @param status Status of the task when receiving a request for a specific task.
+ * @param error Error message of the task when receiving a request for a specific task.
  * @param create_time Date of creation task.
  * @param last_update_time Date of update task.
  * @param request_command Command that requested the query.
  * */
-void wm_task_manager_parse_response_result(cJSON *response, const char *module, const char *command, char *status, int create_time, int last_update_time, char *request_command) __attribute__((nonnull(1)));
+void wm_task_manager_parse_response_result(cJSON *response, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command) __attribute__((nonnull(1)));
 
 #endif
 #endif

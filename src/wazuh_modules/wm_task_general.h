@@ -12,7 +12,6 @@
 #ifndef WM_TASK_GENERAL_H
 #define WM_TASK_GENERAL_H
 
-#define WM_TASK_STATUS_NEW "New"
 #define WM_TASK_STATUS_IN_PROGRESS "In progress"
 #define WM_TASK_STATUS_DONE "Done"
 #define WM_TASK_STATUS_FAILED "Failed"
@@ -28,6 +27,7 @@ typedef enum _task_manager_json_key {
     WM_TASK_AGENT_ID,
     WM_TASK_TASK_ID,
     WM_TASK_STATUS,
+    WM_TASK_ERROR_MSG,
     WM_TASK_ERROR,
     WM_TASK_ERROR_DATA,
     WM_TASK_CREATE_TIME,
@@ -58,8 +58,7 @@ typedef enum _module_list {
  * Enumeration of the possible task statuses
  * */
 typedef enum _task_status {
-    WM_TASK_NEW = 0,
-    WM_TASK_IN_PROGRESS,
+    WM_TASK_IN_PROGRESS = 0,
     WM_TASK_DONE,
     WM_TASK_FAILED,
     WM_TASK_TIMEOUT,

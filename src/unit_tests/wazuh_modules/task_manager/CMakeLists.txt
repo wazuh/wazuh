@@ -25,12 +25,12 @@ target_link_libraries(TASK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 list(APPEND task_names "test_wm_task_manager")
 list(APPEND task_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,pthread_exit -Wl,--wrap,wm_task_manager_check_db -Wl,--wrap,CreateThread -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close \
                         -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,w_is_worker -Wl,--wrap,wm_task_manager_parse_message -Wl,--wrap,wm_task_manager_analyze_task \
-                        -Wl,--wrap,wm_task_manager_parse_response")
+                        -Wl,--wrap,wm_task_manager_parse_response -Wl,--wrap,getpid")
 
 list(APPEND task_names "test_wm_task_manager_db")
 list(APPEND task_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,sqlite3_open_v2 -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_finalize -Wl,--wrap,sqlite3_close_v2 -Wl,--wrap,sqlite3_errmsg \
                         -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,chown -Wl,--wrap,chmod -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_column_text \
-                        -Wl,--wrap,time -Wl,--wrap,w_sleep_until")
+                        -Wl,--wrap,time -Wl,--wrap,w_sleep_until -Wl,--wrap,stat")
 
 list(APPEND task_names "test_wm_task_manager_parsing")
 list(APPEND task_flags "-Wl,--wrap,_mterror -Wl,--wrap,w_get_timestamp")

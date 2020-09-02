@@ -13,6 +13,12 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../../wrappers/externals/sqlite/sqlite3_wrappers.h"
+#include "../../wrappers/posix/stat_wrappers.h"
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/privsep_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/time_op_wrappers.h"
+
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/task_manager/wm_task_manager_db.h"
 #include "../../headers/shared.h"
@@ -45,122 +51,8 @@ static int teardown_strings(void **state) {
 
 // Wrappers
 
-void __wrap__mtinfo(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-int __wrap_sqlite3_open_v2(const char *filename, sqlite3 **ppDb, int flags, const char *zVfs) {
-    check_expected(filename);
-    check_expected(flags);
-    *ppDb = mock_type(sqlite3 *);
-    return mock();
-}
-
-int __wrap_sqlite3_prepare_v2(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **ppStmt, const char **pzTail) {
-    if(ppStmt) {
-        *ppStmt = (sqlite3_stmt *)1;
-    }
-    if(pzTail) {
-        *pzTail = 0;
-    }
-    return mock();
-}
-
-int __wrap_sqlite3_step(sqlite3_stmt* ptr) {
-    return mock();
-}
-
-int __wrap_sqlite3_finalize(sqlite3_stmt *pStmt) {
-    return mock();
-}
-
-int __wrap_sqlite3_close_v2(sqlite3* ptr){
-    return mock();
-}
-
-char *__wrap_sqlite3_errmsg(sqlite3* db){
-    return mock_type(char *);
-}
-
-uid_t __wrap_Privsep_GetUser(const char *name) {
-    check_expected(name);
-
-    return mock();
-}
-
-gid_t __wrap_Privsep_GetGroup(const char *name) {
-    check_expected(name);
-
-    return mock();
-}
-
-int __wrap_chown(const char *__file, __uid_t __owner, __gid_t __group) {
-    check_expected(__file);
-    check_expected(__owner);
-    check_expected(__group);
-
-    return mock();
-}
-
-int __wrap_chmod(const char *__file, __mode_t __mode) {
-    check_expected(__file);
-    check_expected(__mode);
-
-    return mock();
-}
-
-int __wrap_sqlite3_bind_int(sqlite3_stmt *stmt, int index, int value) {
-    check_expected(index);
-    check_expected(value);
-
-    return mock();
-}
-
-int __wrap_sqlite3_bind_text(sqlite3_stmt* pStmt, int a, const char* b, int c, void *d) {
-    check_expected(a);
-    if (b) check_expected(b);
-
-    return mock();
-}
-
-int __wrap_sqlite3_column_int(sqlite3_stmt *pStmt, int i) {
-    check_expected(i);
-    return mock();
-}
-
-char *__wrap_sqlite3_column_text(sqlite3_stmt *pStmt, int i) {
-    check_expected(i);
-    return mock_type(char*);
-}
-
 time_t __wrap_time(time_t *__timer) {
     return mock();
-}
-
-void __wrap_w_sleep_until(const time_t new_time){
-    check_expected(new_time);
 }
 
 // Tests
@@ -179,8 +71,6 @@ void test_wm_task_manager_check_db_ok(void **state)
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
-    will_return(__wrap_sqlite3_finalize, 0);
-
     will_return(__wrap_sqlite3_close_v2,0);
 
     expect_string(__wrap_Privsep_GetUser, name, ROOTUSER);
@@ -194,8 +84,7 @@ void test_wm_task_manager_check_db_ok(void **state)
     expect_value(__wrap_chown, __group, gid);
     will_return(__wrap_chown, 0);
 
-    expect_string(__wrap_chmod, __file, TASKS_DB);
-    expect_value(__wrap_chmod, __mode, 0660);
+    expect_string(__wrap_chmod, path, TASKS_DB);
     will_return(__wrap_chmod, 0);
 
     int ret = wm_task_manager_check_db();
@@ -217,8 +106,6 @@ void test_wm_task_manager_check_db_chmod_err(void **state)
 
     will_return(__wrap_sqlite3_step, SQLITE_MISUSE);
 
-    will_return(__wrap_sqlite3_finalize, 0);
-
     will_return(__wrap_sqlite3_close_v2,0);
 
     expect_string(__wrap_Privsep_GetUser, name, ROOTUSER);
@@ -232,8 +119,7 @@ void test_wm_task_manager_check_db_chmod_err(void **state)
     expect_value(__wrap_chown, __group, gid);
     will_return(__wrap_chown, 0);
 
-    expect_string(__wrap_chmod, __file, TASKS_DB);
-    expect_value(__wrap_chmod, __mode, 0660);
+    expect_string(__wrap_chmod, path, TASKS_DB);
     will_return(__wrap_chmod, OS_INVALID);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
@@ -257,8 +143,6 @@ void test_wm_task_manager_check_db_chown_err(void **state)
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -294,8 +178,6 @@ void test_wm_task_manager_check_db_id_err(void **state)
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
     will_return(__wrap_sqlite3_step, SQLITE_CONSTRAINT);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -335,8 +217,6 @@ void test_wm_task_manager_check_db_step_err(void **state)
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
 
-    will_return(__wrap_sqlite3_finalize, 0);
-
     will_return(__wrap_sqlite3_close_v2,0);
 
     int ret = wm_task_manager_check_db();
@@ -363,8 +243,6 @@ void test_wm_task_manager_check_db_prepare_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -418,8 +296,6 @@ void test_wm_task_manager_delete_old_entries_ok(void **state)
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
-    will_return(__wrap_sqlite3_finalize, 0);
-
     will_return(__wrap_sqlite3_close_v2,0);
 
     int ret = wm_task_manager_delete_old_entries(timestamp);
@@ -455,8 +331,6 @@ void test_wm_task_manager_delete_old_entries_step_err(void **state)
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
 
-    will_return(__wrap_sqlite3_finalize, 0);
-
     will_return(__wrap_sqlite3_close_v2,0);
 
     int ret = wm_task_manager_delete_old_entries(timestamp);
@@ -485,8 +359,6 @@ void test_wm_task_manager_delete_old_entries_prepare_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -536,24 +408,22 @@ void test_wm_task_manager_set_timeout_status_timeout_ok(void **state)
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "In progress");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "In progress");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
 
-    expect_value(__wrap_sqlite3_column_int, i, 5);
+    expect_value(__wrap_sqlite3_column_int, iCol, 5);
     will_return(__wrap_sqlite3_column_int, last_update_time);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "Timeout");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "Timeout");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_time, now);
@@ -569,8 +439,6 @@ void test_wm_task_manager_set_timeout_status_timeout_ok(void **state)
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -594,21 +462,19 @@ void test_wm_task_manager_set_timeout_status_no_timeout_ok(void **state)
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "In progress");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "In progress");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
 
-    expect_value(__wrap_sqlite3_column_int, i, 5);
+    expect_value(__wrap_sqlite3_column_int, iCol, 5);
     will_return(__wrap_sqlite3_column_int, last_update_time);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -632,24 +498,22 @@ void test_wm_task_manager_set_timeout_status_timeout_step_err(void **state)
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "In progress");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "In progress");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
 
-    expect_value(__wrap_sqlite3_column_int, i, 5);
+    expect_value(__wrap_sqlite3_column_int, iCol, 5);
     will_return(__wrap_sqlite3_column_int, last_update_time);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "Timeout");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "Timeout");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_time, now);
@@ -671,8 +535,6 @@ void test_wm_task_manager_set_timeout_status_timeout_step_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -696,19 +558,17 @@ void test_wm_task_manager_set_timeout_status_timeout_prepare_err(void **state)
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "In progress");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "In progress");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
 
-    expect_value(__wrap_sqlite3_column_int, i, 5);
+    expect_value(__wrap_sqlite3_column_int, iCol, 5);
     will_return(__wrap_sqlite3_column_int, last_update_time);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
 
@@ -719,8 +579,6 @@ void test_wm_task_manager_set_timeout_status_timeout_prepare_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -751,8 +609,6 @@ void test_wm_task_manager_set_timeout_status_prepare_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -818,24 +674,22 @@ void test_wm_task_manager_clean_db(void **state)
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "In progress");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "In progress");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
 
-    expect_value(__wrap_sqlite3_column_int, i, 5);
+    expect_value(__wrap_sqlite3_column_int, iCol, 5);
     will_return(__wrap_sqlite3_column_int, last_update_time);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "Timeout");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "Timeout");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_time, now);
@@ -851,8 +705,6 @@ void test_wm_task_manager_clean_db(void **state)
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -874,13 +726,11 @@ void test_wm_task_manager_clean_db(void **state)
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
-    will_return(__wrap_sqlite3_finalize, 0);
-
     will_return(__wrap_sqlite3_close_v2,0);
 
-    expect_value(__wrap_w_sleep_until, new_time, now + WM_TASK_MAX_IN_PROGRESS_TIME);
-
     wm_task_manager_clean_db(config);
+
+    assert_int_equal(current_time, now + WM_TASK_MAX_IN_PROGRESS_TIME);
 }
 
 void test_wm_task_manager_clean_db_timeout(void **state)
@@ -911,24 +761,22 @@ void test_wm_task_manager_clean_db_timeout(void **state)
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "In progress");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "In progress");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
 
-    expect_value(__wrap_sqlite3_column_int, i, 5);
+    expect_value(__wrap_sqlite3_column_int, iCol, 5);
     will_return(__wrap_sqlite3_column_int, last_update_time);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, "Timeout");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "Timeout");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_time, now);
@@ -945,13 +793,11 @@ void test_wm_task_manager_clean_db_timeout(void **state)
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
-    will_return(__wrap_sqlite3_finalize, 0);
-
     will_return(__wrap_sqlite3_close_v2,0);
 
-    expect_value(__wrap_w_sleep_until, new_time, now + 100);
-
     wm_task_manager_clean_db(config);
+
+    assert_int_equal(current_time, now + 100);
 }
 
 void test_wm_task_manager_clean_db_clean(void **state)
@@ -991,13 +837,11 @@ void test_wm_task_manager_clean_db_clean(void **state)
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
-    will_return(__wrap_sqlite3_finalize, 0);
-
     will_return(__wrap_sqlite3_close_v2,0);
 
-    expect_value(__wrap_w_sleep_until, new_time, now + 200);
-
     wm_task_manager_clean_db(config);
+
+    assert_int_equal(current_time, now + 200);
 }
 
 void test_wm_task_manager_insert_task_ok(void **state)
@@ -1019,12 +863,12 @@ void test_wm_task_manager_insert_task_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 3);
-    expect_string(__wrap_sqlite3_bind_text, b, command);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, command);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_time, now);
@@ -1033,13 +877,11 @@ void test_wm_task_manager_insert_task_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, now);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 6);
-    expect_string(__wrap_sqlite3_bind_text, b, "New");
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "New");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
@@ -1047,16 +889,14 @@ void test_wm_task_manager_insert_task_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1084,12 +924,12 @@ void test_wm_task_manager_insert_task_task_id_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 3);
-    expect_string(__wrap_sqlite3_bind_text, b, command);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, command);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_time, now);
@@ -1098,13 +938,11 @@ void test_wm_task_manager_insert_task_task_id_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, now);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 6);
-    expect_string(__wrap_sqlite3_bind_text, b, "New");
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "New");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
@@ -1112,16 +950,14 @@ void test_wm_task_manager_insert_task_task_id_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1149,12 +985,12 @@ void test_wm_task_manager_insert_task_step2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 3);
-    expect_string(__wrap_sqlite3_bind_text, b, command);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, command);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_time, now);
@@ -1163,13 +999,11 @@ void test_wm_task_manager_insert_task_step2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, now);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 6);
-    expect_string(__wrap_sqlite3_bind_text, b, "New");
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "New");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
@@ -1177,8 +1011,8 @@ void test_wm_task_manager_insert_task_step2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
@@ -1190,8 +1024,6 @@ void test_wm_task_manager_insert_task_step2_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1219,12 +1051,12 @@ void test_wm_task_manager_insert_task_prepare2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 3);
-    expect_string(__wrap_sqlite3_bind_text, b, command);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, command);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_time, now);
@@ -1233,13 +1065,11 @@ void test_wm_task_manager_insert_task_prepare2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, now);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 6);
-    expect_string(__wrap_sqlite3_bind_text, b, "New");
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "New");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
 
@@ -1250,8 +1080,6 @@ void test_wm_task_manager_insert_task_prepare2_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1279,12 +1107,12 @@ void test_wm_task_manager_insert_task_step_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 3);
-    expect_string(__wrap_sqlite3_bind_text, b, command);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, command);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_time, now);
@@ -1293,8 +1121,8 @@ void test_wm_task_manager_insert_task_step_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, now);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 6);
-    expect_string(__wrap_sqlite3_bind_text, b, "New");
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "New");
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
@@ -1306,8 +1134,6 @@ void test_wm_task_manager_insert_task_step_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1337,8 +1163,6 @@ void test_wm_task_manager_insert_task_prepare_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1392,16 +1216,14 @@ void test_wm_task_manager_get_task_status_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
@@ -1411,10 +1233,8 @@ void test_wm_task_manager_get_task_status_ok(void **state)
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value_count(__wrap_sqlite3_column_text, i, 0, 2);
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 0, 2);
     will_return_count(__wrap_sqlite3_column_text, "In progress", 2);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1444,16 +1264,14 @@ void test_wm_task_manager_get_task_status_no_task_id_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1481,16 +1299,14 @@ void test_wm_task_manager_get_task_status_step2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
@@ -1507,8 +1323,6 @@ void test_wm_task_manager_get_task_status_step2_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1536,16 +1350,14 @@ void test_wm_task_manager_get_task_status_prepare2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
 
@@ -1556,8 +1368,6 @@ void test_wm_task_manager_get_task_status_prepare2_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1585,8 +1395,8 @@ void test_wm_task_manager_get_task_status_step_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
@@ -1598,8 +1408,6 @@ void test_wm_task_manager_get_task_status_step_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1630,8 +1438,6 @@ void test_wm_task_manager_get_task_status_prepare_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1689,16 +1495,14 @@ void test_wm_task_manager_update_task_status_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
@@ -1708,15 +1512,13 @@ void test_wm_task_manager_update_task_status_ok(void **state)
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_text, i, 0);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, status_old);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, status);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_time, now);
@@ -1730,8 +1532,6 @@ void test_wm_task_manager_update_task_status_ok(void **state)
     will_return(__wrap_sqlite3_bind_int, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1759,16 +1559,14 @@ void test_wm_task_manager_update_task_status_old_status_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
@@ -1778,10 +1576,8 @@ void test_wm_task_manager_update_task_status_old_status_err(void **state)
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_text, i, 0);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, status_old);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1808,16 +1604,14 @@ void test_wm_task_manager_update_task_status_task_id_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1857,16 +1651,14 @@ void test_wm_task_manager_update_task_status_step3_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
@@ -1876,15 +1668,13 @@ void test_wm_task_manager_update_task_status_step3_err(void **state)
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_text, i, 0);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, status_old);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 1);
-    expect_string(__wrap_sqlite3_bind_text, b, status);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_time, now);
@@ -1906,8 +1696,6 @@ void test_wm_task_manager_update_task_status_step3_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1935,16 +1723,14 @@ void test_wm_task_manager_update_task_status_prepare3_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
@@ -1954,10 +1740,8 @@ void test_wm_task_manager_update_task_status_prepare3_err(void **state)
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_text, i, 0);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, status_old);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
 
@@ -1968,8 +1752,6 @@ void test_wm_task_manager_update_task_status_prepare3_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -1996,16 +1778,14 @@ void test_wm_task_manager_update_task_status_step2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
@@ -2022,8 +1802,6 @@ void test_wm_task_manager_update_task_status_step2_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -2050,16 +1828,14 @@ void test_wm_task_manager_update_task_status_prepare2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
 
@@ -2070,8 +1846,6 @@ void test_wm_task_manager_update_task_status_prepare2_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -2098,8 +1872,8 @@ void test_wm_task_manager_update_task_status_step_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
@@ -2111,8 +1885,6 @@ void test_wm_task_manager_update_task_status_step_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -2142,8 +1914,6 @@ void test_wm_task_manager_update_task_status_prepare_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -2200,28 +1970,26 @@ void test_wm_task_manager_get_task_by_agent_id_and_module_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
 
-    expect_value_count(__wrap_sqlite3_column_text, i, 3, 2);
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 3, 2);
     will_return_count(__wrap_sqlite3_column_text, "upgrade", 2);
 
-    expect_value(__wrap_sqlite3_column_int, i, 4);
+    expect_value(__wrap_sqlite3_column_int, iCol, 4);
     will_return(__wrap_sqlite3_column_int, 12345);
 
-    expect_value(__wrap_sqlite3_column_int, i, 5);
+    expect_value(__wrap_sqlite3_column_int, iCol, 5);
     will_return(__wrap_sqlite3_column_int, 67890);
 
-    expect_value_count(__wrap_sqlite3_column_text, i, 6, 2);
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 6, 2);
     will_return_count(__wrap_sqlite3_column_text, "In progress", 2);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -2258,16 +2026,14 @@ void test_wm_task_manager_get_task_by_agent_id_and_module_task_id_err(void **sta
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 0);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -2301,8 +2067,8 @@ void test_wm_task_manager_get_task_by_agent_id_and_module_step_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, a, 2);
-    expect_string(__wrap_sqlite3_bind_text, b, module);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, module);
     will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
@@ -2314,8 +2080,6 @@ void test_wm_task_manager_get_task_by_agent_id_and_module_step_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -2352,8 +2116,6 @@ void test_wm_task_manager_get_task_by_agent_id_and_module_prepare_err(void **sta
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -2423,25 +2185,23 @@ void test_wm_task_manager_get_task_by_task_id_ok(void **state)
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, i, 1);
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, agent_id);
 
-    expect_value_count(__wrap_sqlite3_column_text, i, 2, 2);
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 2, 2);
     will_return_count(__wrap_sqlite3_column_text, "upgrade_module", 2);
 
-    expect_value_count(__wrap_sqlite3_column_text, i, 3, 2);
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 3, 2);
     will_return_count(__wrap_sqlite3_column_text, "upgrade", 2);
 
-    expect_value(__wrap_sqlite3_column_int, i, 4);
+    expect_value(__wrap_sqlite3_column_int, iCol, 4);
     will_return(__wrap_sqlite3_column_int, 12345);
 
-    expect_value(__wrap_sqlite3_column_int, i, 5);
+    expect_value(__wrap_sqlite3_column_int, iCol, 5);
     will_return(__wrap_sqlite3_column_int, 67890);
 
-    expect_value_count(__wrap_sqlite3_column_text, i, 6, 2);
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 6, 2);
     will_return_count(__wrap_sqlite3_column_text, "In progress", 2);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -2481,8 +2241,6 @@ void test_wm_task_manager_get_task_by_task_id_task_id_err(void **state)
     will_return(__wrap_sqlite3_bind_int, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
@@ -2526,8 +2284,6 @@ void test_wm_task_manager_get_task_by_task_id_step_err(void **state)
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
 
-    will_return(__wrap_sqlite3_finalize, 0);
-
     will_return(__wrap_sqlite3_close_v2,0);
 
     int ret = wm_task_manager_get_task_by_task_id(task_id, &module, &command, &status, &create_time, &last_update);
@@ -2563,8 +2319,6 @@ void test_wm_task_manager_get_task_by_task_id_prepare_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8277): SQL error: 'ERROR MESSAGE'");
-
-    will_return(__wrap_sqlite3_finalize, 0);
 
     will_return(__wrap_sqlite3_close_v2,0);
 

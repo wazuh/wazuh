@@ -8,6 +8,5 @@
 
    More information can be found at:
           - http://www.wazuh.com
-          - http://www.ossec.net
 
     ---  Press ENTER to finish (maybe more information below). ---

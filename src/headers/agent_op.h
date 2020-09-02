@@ -99,10 +99,10 @@ int w_request_agent_add_clustered(char *err_response, const char *name, const ch
 // Send a clustered agent remove request.
 int w_request_agent_remove_clustered(char *err_response, const char* agent_id, int purge);
 
-//Sends message thru the cluster
+// Sends message thru the cluster
 int w_send_clustered_message(const char* command, const char* payload, char* response);
 
-//Alloc and create sendsync command payload
+// Alloc and create sendsync command payload
 cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 
 #endif

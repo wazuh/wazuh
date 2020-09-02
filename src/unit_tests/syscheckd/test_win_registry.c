@@ -18,6 +18,7 @@
 #include<libloaderapi.h>
 #include <openssl/evp.h>
 
+#include "../wrappers/common.h"
 #include "../wrappers/externals/openssl/digest_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"

@@ -367,13 +367,16 @@ cJSON* wm_agent_upgrade_parse_response_message(int error_id, const char* message
     return response;
 }
 
-cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status) {
+cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status, const char* error) {
     cJSON * response = cJSON_CreateObject();
     cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_MODULE], task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_COMMAND], task_manager_commands_list[command]);
     cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_AGENT_ID], agent_id);
     if (status) {
         cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_STATUS], status);
+    }
+    if (error) {
+        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_MSG], error);
     }
     return response;
 }
