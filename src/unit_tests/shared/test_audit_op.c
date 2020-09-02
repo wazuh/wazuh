@@ -15,7 +15,14 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-
+#ifndef TEST_WINAGENT
+#include "../wrappers/externals/audit/libaudit_wrappers.h"
+#endif
+#include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/posix/select_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/exec_op_wrappers.h"
+#include "../wrappers/common.h"
 #include "../headers/audit_op.h"
 #include "../headers/defs.h"
 #include "../headers/exec_op.h"
@@ -30,122 +37,16 @@ typedef struct __audit_replies {
     struct audit_reply *reply3;
 }audit_replies;
 
-/* redefinitons/wrapping */
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-int __wrap_audit_send(int fd, int type, const void *data, unsigned int size) {
-    check_expected(fd);
-    check_expected(type);
-
-    return mock();
-}
-
-int __wrap_audit_get_reply(int fd, struct audit_reply *rep, reply_t block, int peek) {
-    check_expected(fd);
-    check_expected(block);
-
-    struct audit_reply *reply = mock_type(struct audit_reply *);
-    if (reply) {
-        *rep = *reply;
-    }
-
-    return mock();
-}
-
-int __wrap_select() {
-    return mock();
-}
-
-int __wrap_fgets(char *s, int size, FILE *stream) {
-    strncpy(s, mock_type(char *), size);
-    return mock();
-}
-
-wfd_t *__wrap_wpopenv() {
-    return mock_type(wfd_t *);
-}
-
-int __wrap_wpclose() {
-    return mock();
-}
-
-int __wrap_audit_open() {
-    return mock();
-}
-
-int __wrap_audit_add_watch_dir(int type, struct audit_rule_data **rulep, const char *path) {
-    check_expected(type);
-    check_expected(path);
-
-    return mock();
-}
-
-int __wrap_audit_update_watch_perms(struct audit_rule_data *rule, int perms) {
-    check_expected(perms);
-
-    return mock();
-}
-
-char *__wrap_audit_errno_to_name() {
-    return mock_type(char *);
-}
-
-int __wrap_audit_rule_fieldpair_data(struct audit_rule_data **rulep, const char *pair, int flags) {
-    check_expected(pair);
-    check_expected(flags);
-
-    return mock();
-}
-
-int __wrap_audit_add_rule_data() {
-    return mock();
-}
-
-int __wrap_audit_delete_rule_data() {
-    return mock();
-}
-
-int __wrap_audit_close() {
-    return mock();
-}
-
 /* setups/teardowns */
 
-static int group_teardown(void **state) {
-    audit_free_list();
+static int group_setup(void **state) {
+    test_mode = 1;
+    return 0;
+}
 
+static int group_teardown(void **state) {
+    test_mode = 0;
+    audit_free_list();
     return 0;
 }
 
@@ -244,6 +145,7 @@ static void test_audit_get_rule_list_error(void **state) {
 
     expect_value(__wrap_audit_send, fd, 0);
     expect_value(__wrap_audit_send, type, 1013);
+    expect_any(__wrap_audit_send, data);
     will_return(__wrap_audit_send, -1);
 
     expect_string(__wrap__merror, formatted_msg, "Error sending rule list data request (Operation not permitted)");
@@ -258,6 +160,7 @@ static void test_audit_get_rule_list(void **state) {
 
     expect_value(__wrap_audit_send, fd, 0);
     expect_value(__wrap_audit_send, type, AUDIT_LIST_RULES);
+    expect_any(__wrap_audit_send, data);
     will_return(__wrap_audit_send, 0);
 
     will_return_always(__wrap_select, 0);
@@ -336,15 +239,17 @@ static void test_audit_clean_path(void **state) {
 
 static void test_audit_restart(void **state) {
     wfd_t * wfd = *state;
+    wfd->file = (FILE*) 1234;
 
     will_return(__wrap_wpopenv, wfd);
 
+    expect_value(__wrap_fgets, __stream, wfd->file);
     will_return(__wrap_fgets, "test");
-    will_return(__wrap_fgets, 1);
+
     expect_string(__wrap__mdebug1, formatted_msg, "auditd: test");
 
-    will_return(__wrap_fgets, "");
-    will_return(__wrap_fgets, 0);
+    expect_value(__wrap_fgets, __stream, wfd->file);
+    will_return(__wrap_fgets, NULL);
 
     will_return(__wrap_wpclose, 0);
 
@@ -365,15 +270,17 @@ static void test_audit_restart_open_error(void **state) {
 
 static void test_audit_restart_close_exec_error(void **state) {
     wfd_t * wfd = *state;
+    wfd->file = (FILE*) 1234;
 
     will_return(__wrap_wpopenv, wfd);
 
+    expect_value(__wrap_fgets, __stream, wfd->file);
     will_return(__wrap_fgets, "test");
-    will_return(__wrap_fgets, 1);
+
     expect_string(__wrap__mdebug1, formatted_msg, "auditd: test");
 
-    will_return(__wrap_fgets, "");
-    will_return(__wrap_fgets, 0);
+    expect_value(__wrap_fgets, __stream, wfd->file);
+    will_return(__wrap_fgets, NULL);
 
     will_return(__wrap_wpclose, 0x7f00);
 
@@ -386,15 +293,17 @@ static void test_audit_restart_close_exec_error(void **state) {
 
 static void test_audit_restart_close_error(void **state) {
     wfd_t * wfd = *state;
+    wfd->file = (FILE*) 1234;
 
     will_return(__wrap_wpopenv, wfd);
 
+    expect_value(__wrap_fgets, __stream, wfd->file);
     will_return(__wrap_fgets, "test");
-    will_return(__wrap_fgets, 1);
+
     expect_string(__wrap__mdebug1, formatted_msg, "auditd: test");
 
-    will_return(__wrap_fgets, "");
-    will_return(__wrap_fgets, 0);
+    expect_value(__wrap_fgets, __stream, wfd->file);
+    will_return(__wrap_fgets, NULL);
 
     will_return(__wrap_wpclose, 0xff00);
 
@@ -669,5 +578,5 @@ int main(void) {
         cmocka_unit_test(test_audit_manage_rules_fieldpair_error),
         cmocka_unit_test(test_audit_manage_rules_action_error),
     };
-    return cmocka_run_group_tests(tests, NULL, group_teardown);
+    return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }

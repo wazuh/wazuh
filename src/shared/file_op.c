@@ -16,6 +16,12 @@
 
 #include "../external/zlib/zlib.h"
 
+#ifdef WAZUH_UNIT_TESTING
+#ifdef WIN32
+#include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#endif
+#endif
+
 #ifndef WIN32
 #include <regex.h>
 #else

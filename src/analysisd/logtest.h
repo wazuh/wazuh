@@ -28,14 +28,15 @@
 
 
 /* JSON REQUEST / RESPONSE fields names */
-#define W_LOGTEST_JSON_TOKEN            "token"   ///< Token field name of json input/output
-#define W_LOGTEST_JSON_EVENT            "event"   ///< Event field name of json input
-#define W_LOGTEST_JSON_LOGFORMAT   "log_format"   ///< Log format field name of json input
-#define W_LOGTEST_JSON_LOCATION      "location"   ///< Location field name of json input
-#define W_LOGTEST_JSON_ALERT            "alert"   ///< Alert field name of json output (boolean)
-#define W_LOGTEST_JSON_MESSAGES      "messages"   ///< Message format field name of json output
-#define W_LOGTEST_JSON_CODE           "codemsg"   ///< Code of message field name of json output (number)
-#define W_LOGTEST_JSON_OUTPUT          "output"   ///< Output field name of json output
+#define W_LOGTEST_JSON_TOKEN                    "token"   ///< Token field name of json input/output
+#define W_LOGTEST_JSON_EVENT                    "event"   ///< Event field name of json input
+#define W_LOGTEST_JSON_LOGFORMAT           "log_format"   ///< Log format field name of json input
+#define W_LOGTEST_JSON_LOCATION              "location"   ///< Location field name of json input
+#define W_LOGTEST_JSON_REMOVE_SESSION  "remove_session"   ///< Remove session field name of json input
+#define W_LOGTEST_JSON_ALERT                    "alert"   ///< Alert field name of json output (boolean)
+#define W_LOGTEST_JSON_MESSAGES              "messages"   ///< Message format field name of json output
+#define W_LOGTEST_JSON_CODE                   "codemsg"   ///< Code of message field name of json output (number)
+#define W_LOGTEST_JSON_OUTPUT                  "output"   ///< Output field name of json output
 
 #define W_LOGTEST_TOKEN_LENGH                 8   ///< Lenght of token
 #define W_LOGTEST_ERROR_JSON_PARSE_NSTR      20   ///< Number of characters to show in parsing error
@@ -46,6 +47,11 @@
 #define W_LOGTEST_RCODE_SUCCESS               0   ///< Return code: Successful request
 #define W_LOGTEST_RCODE_WARNING               1   ///< Return code: Successful request with warning messages
 
+/* Type of request */
+#define W_LOGTEST_REQUEST_ERROR                  -1   ///< Request error: Missing fields or don't matches
+#define W_LOGTEST_REQUEST_TYPE_REMOVE_SESSION     0   ///< Request remove session
+#define W_LOGTEST_REQUEST_TYPE_LOG_PROCESSING     1   ///< Request log processing
+
 
 /**
  * @brief A w_logtest_session_t instance represents a client
@@ -55,7 +61,7 @@ typedef struct w_logtest_session_t {
     char *token;                            ///< Client ID
     time_t last_connection;                 ///< Timestamp of the last query
     bool expired;                           ///< Indicates that the session expired and will be deleted
-    pthread_mutex_t mutex;                  ///< Prevent race condition between get a session and remove it for inactivity 
+    pthread_mutex_t mutex;                  ///< Prevent race condition between get a session and remove it for inactivity
 
     RuleNode *rule_list;                    ///< Rule list
     OSDecoderNode *decoderlist_forpname;    ///< Decoder list to match logs which have a program name
@@ -194,9 +200,29 @@ int w_logtest_fts_init(OSList **fts_list, OSHash **fts_store);
  * @param req Client request information
  * @param input_json Raw JSON input of requeset
  * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
- * @return true on valid input, otherwise false
+ * @retval \ref W_LOGTEST_REQUEST_ERROR on invalid input
+ * @retval \ref W_LOGTEST_REQUEST_TYPE_LOG_PROCESSING on valid request input
+ * @retval \ref W_LOGTEST_REQUEST_TYPE_REMOVE_SESSION on valid remove session input
  */
-bool w_logtest_check_input(char* input_json, cJSON** req, OSList* list_msg);
+int w_logtest_check_input(char* input_json, cJSON** req, OSList* list_msg);
+
+/**
+ * @brief Check validity of the json for a log processing request
+ * @param root json to validate
+ * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
+ * @retval \ref W_LOGTEST_REQUEST_ERROR on invalid input
+ * @retval \ref W_LOGTEST_REQUEST_TYPE_LOG_PROCESSING on valid request input
+ */
+int w_logtest_check_input_request(cJSON * root, OSList * list_msg);
+
+/**
+ * @brief Check validity of the json for a remove session request
+ * @param root json to validate
+ * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
+ * @retval \ref W_LOGTEST_REQUEST_ERROR on invalid input
+ * @retval \ref W_LOGTEST_REQUEST_TYPE_REMOVE_SESSION on valid request input
+ */
+int w_logtest_check_input_remove_session(cJSON * root, OSList * list_msg);
 
 /**
  * @brief Add the messages to the json array and clear the list.
@@ -206,7 +232,7 @@ bool w_logtest_check_input(char* input_json, cJSON** req, OSList* list_msg);
  * \ref W_LOGTEST_RCODE_SUCCESS If the list is empty or there are only info messages.
  * \ref W_LOGTEST_RCODE_WARNING If there are warning messages.
  * \ref W_LOGTEST_RCODE_ERROR_PROCESS If there are error messages.
- * 
+ *
  * @param response json response for the client
  * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
  * @param error_code Actual level error
@@ -234,7 +260,7 @@ w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg, w_lo
 
 /**
  * @brief Register a session as active in connection
- * 
+ *
  * Register a session on the hash table
  *
  * @param connection Manager of connections
@@ -265,5 +291,37 @@ int w_logtest_get_rule_level(cJSON* json_log_processed);
  * @return string (json format) with the result of the request
  */
 char * w_logtest_process_request(char * raw_request, w_logtest_connection_t * connection);
+
+/**
+ * @brief Processes a client input log procecessing request
+ * @param json_request Client request
+ * @param json_response Client response
+ * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
+ * @param connection Manager of connections
+ * @retval \ref W_LOGTEST_RCODE_ERROR_PROCESS on failure
+ * @retval \ref W_LOGTEST_RCODE_SUCCESS on success
+ * @retval \ref W_LOGTEST_RCODE_WARNING on success with warnings
+ */
+int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_response, OSList * list_msg,
+                                             w_logtest_connection_t * connection);
+
+/**
+ * @brief Processes a client input remove request
+ * @param json_request Client request
+ * @param json_response Client response
+ * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
+ * @param connection Manager of connections
+ * @retval \ref W_LOGTEST_RCODE_ERROR_PROCESS on failure
+ * @retval \ref W_LOGTEST_RCODE_SUCCESS on success
+ * @retval \ref W_LOGTEST_RCODE_WARNING on success with warnings
+ */
+int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_response, OSList * list_msg,
+                                             w_logtest_connection_t * connection);
+/*
+ * @brief Generate failure response with \ref W_LOGTEST_JSON_CODE =  \ref W_LOGTEST_RCODE_ERROR_INPUT
+ * @param msg string error description at \ref W_LOGTEST_JSON_MESSAGES field
+ * @return string (json format) with the response
+ */
+char * w_logtest_generate_error_response(char * msg);
 
 #endif

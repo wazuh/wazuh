@@ -17,6 +17,10 @@
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/wm_gcp.h"
 #include "../../headers/defs.h"
+#include "../../wrappers/externals/cJSON/cJSON_wrappers.h"
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/schedule_scan_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 
 void wm_gcp_run(const wm_gcp *data);
 cJSON *wm_gcp_dump(const wm_gcp *data);
@@ -30,101 +34,6 @@ typedef struct __gcp_dump_s {
     cJSON *root;
     cJSON *wm_wd;
 }gcp_dump_t;
-
-/* wrappers */
-int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
-    check_expected(command);
-    check_expected(secs);
-    check_expected(add_path);
-
-    *output = mock_type(char*);
-    *exitcode = mock();
-
-    return mock();
-}
-
-void __wrap_sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object) {
-    check_expected_ptr(scan_config);
-    check_expected_ptr(cjson_object);
-}
-
-time_t __wrap_sched_scan_get_time_until_next_scan(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
-    check_expected_ptr(config);
-    check_expected(MODULE_TAG);
-    check_expected(run_on_start);
-
-    return mock_type(time_t);
-}
-
-extern CJSON_PUBLIC(cJSON *) __real_cJSON_CreateObject(void);
-CJSON_PUBLIC(cJSON *) __wrap_cJSON_CreateObject(void) {
-    return mock_type(cJSON*);
-}
-
-void __wrap__mtdebug2(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mtdebug1(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mtinfo(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mtwarn(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
 
 /* setup/teardown */
 static int setup_group(void **state) {
