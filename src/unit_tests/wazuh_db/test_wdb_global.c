@@ -122,7 +122,7 @@ void test_get_agent_labels_transaction_fail(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "cannot begin transaction");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
     output = wdb_global_get_agent_labels(data->socket, atoi(data->socket->id));
     assert_null(output);
@@ -135,7 +135,7 @@ void test_get_agent_labels_cache_fail(void **state)
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "cannot cache statement");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     output = wdb_global_get_agent_labels(data->socket, atoi(data->socket->id));
     assert_null(output);
@@ -190,7 +190,7 @@ void test_del_agent_labels_transaction_fail(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "cannot begin transaction");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
     result = wdb_global_del_agent_labels(data->socket, atoi(data->socket->id));
     assert_int_equal(result, OS_INVALID);
@@ -203,7 +203,7 @@ void test_del_agent_labels_cache_fail(void **state)
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "cannot cache statement");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     result = wdb_global_del_agent_labels(data->socket, atoi(data->socket->id));
     assert_int_equal(result, OS_INVALID);
@@ -260,7 +260,7 @@ void test_set_agent_label_transaction_fail(void **state)
     char value[] = "test_value";
 
     will_return(__wrap_wdb_begin2, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "cannot begin transaction");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
     result = wdb_global_set_agent_label(data->socket, atoi(data->socket->id), key, value);
     assert_int_equal(result, OS_INVALID);
@@ -275,7 +275,7 @@ void test_set_agent_label_cache_fail(void **state)
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "cannot cache statement");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     result = wdb_global_set_agent_label(data->socket, atoi(data->socket->id), key, value);
     assert_int_equal(result, OS_INVALID);
@@ -375,7 +375,7 @@ void test_wdb_global_set_sync_status_transaction_fail(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
  
     will_return(__wrap_wdb_begin2, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "cannot begin transaction");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
     result = wdb_global_set_sync_status(data->socket, atoi(data->socket->id), WDB_SYNCED);
     assert_int_equal(result, OS_INVALID);
@@ -388,7 +388,7 @@ void test_wdb_global_set_sync_status_cache_fail(void **state)
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "cannot cache statement");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     result = wdb_global_set_sync_status(data->socket, atoi(data->socket->id), WDB_SYNCED);
     assert_int_equal(result, OS_INVALID);
@@ -462,12 +462,12 @@ void test_wdb_sync_agent_info_get_transaction_fail(void **state)
     char *output = NULL;
    
     will_return(__wrap_wdb_begin2, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "cannot begin transaction");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
     os_free(output);
-    assert_int_equal(result, WDB_CHUNKS_ERROR);
+    assert_int_equal(result, WDBC_ERROR);
 }
 
 void test_wdb_sync_agent_info_get_cache_fail(void **state)
@@ -479,12 +479,12 @@ void test_wdb_sync_agent_info_get_cache_fail(void **state)
    
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "cannot cache statement");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
     os_free(output);
-    assert_int_equal(result, WDB_CHUNKS_ERROR);
+    assert_int_equal(result, WDBC_ERROR);
 }
 
 void test_wdb_sync_agent_info_get_bind_fail(void **state)
@@ -502,7 +502,7 @@ void test_wdb_sync_agent_info_get_bind_fail(void **state)
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
     os_free(output);
-    assert_int_equal(result, WDB_CHUNKS_ERROR);
+    assert_int_equal(result, WDBC_ERROR);
 }
 
 void test_wdb_sync_agent_info_get_no_agents(void **state)
@@ -520,7 +520,7 @@ void test_wdb_sync_agent_info_get_no_agents(void **state)
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
     os_free(output);
-    assert_int_equal(result, WDB_CHUNKS_COMPLETE);
+    assert_int_equal(result, WDBC_OK);
 }
 
 void test_wdb_sync_agent_info_get_success(void **state)
@@ -601,7 +601,7 @@ void test_wdb_sync_agent_info_get_success(void **state)
 
     os_free(output);
     cJSON_Delete(json_output);
-    assert_int_equal(result, WDB_CHUNKS_COMPLETE);
+    assert_int_equal(result, WDBC_OK);
 }
 
 void test_wdb_sync_agent_info_get_sync_fail(void **state)
@@ -632,12 +632,12 @@ void test_wdb_sync_agent_info_get_sync_fail(void **state)
     // Required for wdb_global_set_sync_status()
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: (null)");
+    expect_string(__wrap__merror, formatted_msg, "Cannot set sync_status for agent 1");
 
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
     os_free(output);
-    cJSON_Delete(root);
-    assert_int_equal(result, WDB_CHUNKS_ERROR);
+    assert_int_equal(result, WDBC_ERROR);
 }
 
 void test_wdb_sync_agent_info_get_full(void **state)
@@ -679,7 +679,7 @@ void test_wdb_sync_agent_info_get_full(void **state)
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
     os_free(output);
-    assert_int_equal(result, WDB_CHUNKS_BUFFER_FULL);
+    assert_int_equal(result, WDBC_DUE);
 }
 
 void test_wdb_global_sync_agent_info_set_transaction_fail(void **state)
@@ -689,7 +689,7 @@ void test_wdb_global_sync_agent_info_set_transaction_fail(void **state)
     cJSON *json_agent = NULL;
    
     will_return(__wrap_wdb_begin2, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "cannot begin transaction");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
     result = wdb_global_sync_agent_info_set(data->socket, json_agent);
 
@@ -704,7 +704,7 @@ void test_wdb_global_sync_agent_info_set_cache_fail(void **state)
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "cannot cache statement");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     result = wdb_global_sync_agent_info_set(data->socket, json_agent);
 
