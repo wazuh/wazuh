@@ -59,7 +59,7 @@ typedef enum _wm_upgrade_command {
 
 /**
  * Definition of upgrade task to be run
- * */
+ */
 typedef struct _wm_upgrade_task {
     char *wpk_repository;        ///> url to a wpk_repository
     char *custom_version;        ///> upgrade to a custom version
@@ -71,7 +71,7 @@ typedef struct _wm_upgrade_task {
 
 /**
  * Definition of upgrade custom task to be run
- * */
+ */
 typedef struct _wm_upgrade_custom_task {
     char *custom_file_path;      ///> sets a custom file path. Should be available in all worker nodes
     char *custom_installer;      ///> sets a custom installer script. Should be available in all worker nodes
@@ -79,7 +79,7 @@ typedef struct _wm_upgrade_custom_task {
 
 /**
  * Definition of an agent status update task
- * */
+ */
 typedef struct _wm_upgrade_agent_status_task {
     unsigned int error_code;
     char *message;
@@ -88,7 +88,7 @@ typedef struct _wm_upgrade_agent_status_task {
 
 /**
  * Definition of the structure that will represent a certain task
- * */
+ */
 typedef struct _wm_task_info {
     int task_id;                 ///> task_id associated with the task
     wm_upgrade_command command;  ///> command that has been requested
@@ -97,7 +97,7 @@ typedef struct _wm_task_info {
 
 /**
  * Definition of the structure with the information of a certain agent
- * */
+ */
 typedef struct _wm_agent_info {
     int agent_id;                ///> agent_id of the agent
     char *platform;              ///> platform of the agent
@@ -110,7 +110,7 @@ typedef struct _wm_agent_info {
 
 /**
  * Definition of the structure that will represent an agent executing a certain task
- * */
+ */
 typedef struct _wm_agent_task {
     wm_agent_info *agent_info;   ///> pointer to agent_info structure
     wm_task_info *task_info;     ///> pointer to task_info structure

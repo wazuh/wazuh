@@ -54,10 +54,12 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) __attribute__(
 /**
  * Analyze a task by module and call appropiate analyze function.
  * @param task_object JSON object with a task to be analyzed.
+ * @param module Module from where the message comes from.
+ * @param command Command to be executed.
  * @param error_code Variable to store an error code if something is wrong.
  * @return JSON object with the response for this task.
  * */
-cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) __attribute__((nonnull));
+cJSON* wm_task_manager_analyze_task(const cJSON *task_object, char *module, char *command, int *error_code) __attribute__((nonnull));
 
 /**
  * Analyze a api task command.

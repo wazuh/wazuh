@@ -36,7 +36,7 @@ typedef struct _OSHash {
 
 typedef enum _OSHash_results_codes {
     OSHASH_ERROR = 0,
-    OSHASH_DUPLICATED,
+    OSHASH_DUPLICATE,
     OSHASH_SUCCESS,
 } OSHash_results_codes;
 

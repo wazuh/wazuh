@@ -271,7 +271,7 @@ int wm_task_manager_insert_task(int agent_id, const char *module, const char *co
     sqlite3_bind_text(stmt, 2, module, -1, NULL);
     sqlite3_bind_text(stmt, 3, command, -1, NULL);
     sqlite3_bind_int(stmt, 4, time(0));
-    sqlite3_bind_text(stmt, 6, task_statuses[WM_TASK_NEW], -1, NULL);
+    sqlite3_bind_text(stmt, 6, task_statuses[WM_TASK_IN_PROGRESS], -1, NULL);
 
     if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
@@ -428,7 +428,8 @@ int wm_task_manager_update_task_status(int agent_id, const char *module, const c
     // Check old status
     old_status = (char *)sqlite3_column_text(stmt, 0);
     if(!strcmp(old_status, task_statuses[WM_TASK_DONE]) ||
-       !strcmp(old_status, task_statuses[WM_TASK_FAILED])) {
+       !strcmp(old_status, task_statuses[WM_TASK_FAILED]) ||
+       !strcmp(old_status, task_statuses[WM_TASK_LEGACY])) {
         wdb_finalize(stmt);
         sqlite3_close_v2(db);
         w_mutex_unlock(&db_mutex);

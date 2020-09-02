@@ -298,7 +298,7 @@ STATIC cJSON* wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_
 
             if (result == OSHASH_SUCCESS) {
                 task_request = wm_agent_upgrade_parse_task_module_request(agent_task->task_info->command, agent_id, NULL, NULL);
-            } else if (result == OSHASH_DUPLICATED) {
+            } else if (result == OSHASH_DUPLICATE) {
                 *error_code = WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS;
             } else {
                 *error_code = WM_UPGRADE_UNKNOWN_ERROR;
@@ -330,6 +330,13 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
         return validate_result;
     }
 
+    // Validate Wazuh version to upgrade
+    validate_result = wm_agent_upgrade_validate_version(agent_task->agent_info, agent_task->task_info->task, agent_task->task_info->command, manager_configs);
+
+    if (validate_result != WM_UPGRADE_SUCCESS) {
+        return validate_result;
+    }
+
     // Validate if there is a task in progress for this agent
     status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_GET_STATUS, agent_task->agent_info->agent_id, NULL, NULL);
     if (!wm_agent_upgrade_validate_task_status_message(status_json, &status, NULL)) {
@@ -340,13 +347,6 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
 
     cJSON_Delete(status_json);
     os_free(status);
-
-    if (validate_result != WM_UPGRADE_SUCCESS) {
-        return validate_result;
-    }
-
-    // Validate Wazuh version to upgrade
-    validate_result = wm_agent_upgrade_validate_version(agent_task->agent_info, agent_task->task_info->task, agent_task->task_info->command, manager_configs);
 
     return validate_result;
 }
@@ -371,20 +371,15 @@ void wm_agent_upgrade_start_upgrades(const wm_manager_configs* manager_configs) 
 
             if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
                 wm_upgrade_task *upgrade_task = agent_task->task_info->task;
+
                 if (upgrade_task->custom_version && (wm_agent_upgrade_compare_versions(upgrade_task->custom_version, WM_UPGRADE_NEW_UPGRADE_MECHANISM) < 0)) {
                     // Update task to "Legacy". The agent won't report the result of the upgrade task
                     status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_LEGACY], NULL);
-                } else {
-                    // Update task to "In progress"
-                    status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_IN_PROGRESS], NULL);
                 }
-            } else {
-                // Update task to "In progress". There is no way to know if this task should be legacy
-                status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_IN_PROGRESS], NULL);
             }
         } else {
             // Update task to "Failed"
-            status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_FAILED], upgrade_error_codes[WM_UPGRADE_UPGRADE_ERROR]);
+            status_json = wm_agent_upgrade_send_single_task(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_FAILED], upgrade_error_codes[error_code]);
         }
 
         wm_agent_upgrade_validate_task_status_message(status_json, NULL, &agent_id);
@@ -398,6 +393,7 @@ void wm_agent_upgrade_start_upgrades(const wm_manager_configs* manager_configs) 
 STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs) {
     int result = WM_UPGRADE_SUCCESS;
     char *file_path = NULL;
+    char *file_path_copy = NULL;
     char *file_sha1 = NULL;
     char *wpk_path = NULL;
     char *installer = NULL;
@@ -445,7 +441,9 @@ STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, c
         }
     }
 
-    wpk_path = basename_ex(file_path);
+    os_strdup(file_path, file_path_copy);
+
+    wpk_path = basename_ex(file_path_copy);
 
     // lock_restart
     if (wm_agent_upgrade_send_lock_restart(agent_task->agent_info->agent_id)) {
@@ -478,6 +476,7 @@ STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, c
     }
 
     os_free(file_path);
+    os_free(file_path_copy);
     os_free(file_sha1);
     os_free(installer);
 
@@ -531,7 +530,6 @@ STATIC int wm_agent_upgrade_send_write(int agent_id, const char *wpk_file, const
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
-    FILE *file = NULL;
     unsigned char buffer[chunk_size];
     size_t bytes = 0;
     size_t command_size = 0;
@@ -539,7 +537,8 @@ STATIC int wm_agent_upgrade_send_write(int agent_id, const char *wpk_file, const
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
-    if (file = fopen(file_path, "rb"), file) {
+    FILE *file = fopen(file_path, "rb");
+    if (file) {
         while (bytes = fread(buffer, 1, sizeof(buffer), file), bytes) {
             snprintf(command, OS_MAXSTR, "%.3d com write %ld %s ", agent_id, bytes, wpk_file);
             command_size = strlen(command);

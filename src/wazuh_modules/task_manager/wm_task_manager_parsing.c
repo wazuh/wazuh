@@ -27,7 +27,6 @@ static const char *upgrade_statuses[] = {
     [WM_TASK_UPGRADE_ERROR] = "Error",
     [WM_TASK_UPGRADE_UPDATING] = "Updating",
     [WM_TASK_UPGRADE_UPDATED] = "Updated",
-    [WM_TASK_UPGRADE_OUTDATED] = "The agent is outdated since the task could not start",
     [WM_TASK_UPGRADE_TIMEOUT] = "Timeout reached while waiting for the response from the agent",
     [WM_TASK_UPGRADE_LEGACY] = "Legacy upgrade: check the result manually since the agent cannot report the result of the task"
 };
@@ -45,7 +44,7 @@ static const char *error_codes[] = {
     [WM_TASK_UNKNOWN_ERROR] = "Unknown error"
 };
 
-cJSON* wm_task_manager_parse_message(const char *msg) {
+cJSON* wm_task_manager_parse_message(const char *msg, char **module, char **command) {
     cJSON *event_array = NULL;
     cJSON *task_object = NULL;
     cJSON *module_json = NULL;
@@ -76,6 +75,8 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
             mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_MODULE], task);
             cJSON_Delete(event_array);
             return NULL;
+        } else {
+            *module = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_MODULE])->valuestring;
         }
 
         // Detect command
@@ -83,6 +84,8 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
             mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_COMMAND], task);
             cJSON_Delete(event_array);
             return NULL;
+        } else {
+            *command = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_COMMAND])->valuestring;
         }
     }
 
@@ -157,8 +160,6 @@ STATIC const char* wm_task_manager_decode_status(char *status) {
         return upgrade_statuses[WM_TASK_UPGRADE_UPDATING];
     } else if (!strcmp(task_statuses[WM_TASK_FAILED], status)){
         return upgrade_statuses[WM_TASK_UPGRADE_ERROR];
-    } else if (!strcmp(task_statuses[WM_TASK_NEW], status)){
-        return upgrade_statuses[WM_TASK_UPGRADE_OUTDATED];
     } else if (!strcmp(task_statuses[WM_TASK_TIMEOUT], status)){
         return upgrade_statuses[WM_TASK_UPGRADE_TIMEOUT];
     } else if (!strcmp(task_statuses[WM_TASK_LEGACY], status)){

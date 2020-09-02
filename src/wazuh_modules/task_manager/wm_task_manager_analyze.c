@@ -15,12 +15,9 @@
 #include "wm_task_manager_db.h"
 #include "wm_task_manager_parsing.h"
 
-cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
+cJSON* wm_task_manager_analyze_task(const cJSON *task_object, char *module, char *command, int *error_code) {
     cJSON *response = NULL;
     cJSON *tmp = NULL;
-
-    char *module = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_MODULE])->valuestring;
-    char *command = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_COMMAND])->valuestring;
 
     int agent_id = OS_INVALID;
     int task_id = OS_INVALID;

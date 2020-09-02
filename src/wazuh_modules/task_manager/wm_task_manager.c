@@ -41,6 +41,8 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
     cJSON *response_array = NULL;
     cJSON *task_object = NULL;
     cJSON *task_response = NULL;
+    char *module = NULL;
+    char *command = NULL;
     int task = 0;
     int tasks = 0;
     int error_code = WM_TASK_SUCCESS;
@@ -48,7 +50,7 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
     mtdebug1(WM_TASK_MANAGER_LOGTAG, MOD_TASK_INCOMMING_MESSAGE, msg);
 
     // Parse message
-    if (event_array = wm_task_manager_parse_message(msg), !event_array) {
+    if (event_array = wm_task_manager_parse_message(msg, &module, &command), !event_array || !module || !command) {
         cJSON* db_error = wm_task_manager_parse_response(WM_TASK_INVALID_MESSAGE, OS_INVALID, OS_INVALID, NULL);
         *response = cJSON_PrintUnformatted(db_error);
         cJSON_Delete(db_error);
@@ -65,7 +67,7 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
         task_object = cJSON_GetArrayItem(event_array, task);
 
         // Analyze task, update tasks DB and generate JSON response
-        task_response = wm_task_manager_analyze_task(task_object, &error_code);
+        task_response = wm_task_manager_analyze_task(task_object, module, command, &error_code);
 
         switch (error_code) {
         case WM_TASK_INVALID_MODULE:
