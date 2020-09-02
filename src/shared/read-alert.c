@@ -345,7 +345,6 @@ alert_data *GetAlertData(int flag, FILE *fp) {
 
 l_error:
     /* Free the memory */
-    _r = 0;
     FreeAlertData(al_data);
     /* We need to clean end of file before returning */
     clearerr(fp);

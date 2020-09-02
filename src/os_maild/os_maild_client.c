@@ -16,17 +16,36 @@
 #endif
 
 /**
+ * @brief Function to add a field to the alert buffer.
+ * @param value String to be added into dest.
+ * @param dest Alert buffer.
+ * @param size Available size of the buffer on entry, remaining size of the buffer on exit.
+ * @param prefix Name that will be used for the field in the alert.
+ */
+void add_field(const char *value, char *dest, size_t *size, const char *prefix) {
+    size_t log_size = 0;
+
+    if (value != NULL && dest != NULL) {
+        log_size = strlen(value) + strlen(prefix) + 3;
+        if (*size > log_size) {
+            strcat(dest, prefix);
+            strncat(dest, value, *size);
+            strcat(dest, "\r\n");
+            *(size) -= log_size;
+        }
+    }
+}
+
+/**
  * @brief Function to add a json field to the alert buffer.
  * @param json_object JSON object that where the field will be looked for.
  * @param field Field to look for int he json_object.
  * @param dest Alert buffer.
- * @param size Remaining size of the buffer on the entry, remaining size of the buffer on exit.
+ * @param size Available size of the buffer on entry, remaining size of the buffer on exit.
  * @param prefix Name that will be used for the field in the alert.
  */
 void add_field_from_json(const cJSON *json_object, const char *field, char *dest, size_t *size, const char *prefix) {
     cJSON *json_field;
-    cJSON *item;
-    size_t log_size = 0;
     char *value = NULL;
 
     json_field = cJSON_GetObjectItem(json_object, field);
@@ -44,24 +63,10 @@ void add_field_from_json(const cJSON *json_object, const char *field, char *dest
         case cJSON_Number:
             value = w_long_str((long) json_field->valuedouble);
         break;
-
-        case cJSON_Array:
-            cJSON_ArrayForEach(item, json_field) {
-                wm_strcat(&value, item->valuestring, ',');
-            }
-        break;
     }
 
-    if (value != NULL) {
-        log_size = strlen(value) + strlen(prefix) + 3;
-        if (*size > log_size) {
-            strcat(dest, prefix);
-            strncat(dest, value, *size);
-            strcat(dest, "\r\n");
-            *(size) -= log_size;
-        }
-        os_free(value);
-    }
+    add_field(value, dest, size, prefix);
+    os_free(value);
 }
 
 /* Receive a Message on the Mail queue */
@@ -379,11 +384,22 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
 
     /* Add alert to logs */
 
-    if (json_object = cJSON_GetObjectItem(al_json,"syscheck"), json_object){
+    if (json_object = cJSON_GetObjectItem(al_json,"syscheck"), json_object) {
+        cJSON *changed_attributes, *it;
+        char *ca_str = NULL;
 
         add_field_from_json(json_object, "path", logs, &body_size, "File: ");
         add_field_from_json(json_object, "event", logs, &body_size, "Event: ");
         add_field_from_json(json_object, "mode", logs, &body_size, "Mode: ");
+
+        changed_attributes = cJSON_GetObjectItem(json_object, "changed_attributes");
+        cJSON_ArrayForEach(it, changed_attributes) {
+            wm_strcat(&ca_str, cJSON_GetStringValue(it), ',');
+        }
+
+        add_field(ca_str, logs, &body_size, "Changed attributes: ");
+        os_free(ca_str);
+
         add_field_from_json(json_object, "changed_attributes", logs, &body_size, "Changed attributes: ");
 
         add_field_from_json(json_object, "size_before", logs, &body_size, "Size before: ");
@@ -410,7 +426,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         add_field_from_json(json_object, "sha256_after", logs, &body_size, " - SHA256: ");
 
         // get audit information
-        if (json_audit = cJSON_GetObjectItem(json_object,"audit"), json_audit){
+        if (json_audit = cJSON_GetObjectItem(json_object,"audit"), json_audit) {
 
             json_field = cJSON_GetObjectItem(json_audit,"user");
             if (json_field) {
@@ -443,7 +459,19 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
             }
         }
 
-        add_field_from_json(json_object, "diff", logs, &body_size, "\n- Changed content:\n");
+        add_field_from_json(json_object, "diff", logs, &body_size, "\r\n- Changed content:\r\n");
+
+        json_field = cJSON_GetObjectItem(json_object, "tags");
+        if (json_field != NULL && body_size > 7) {
+            cJSON *tag;
+
+            strcat(logs, "Tags:\r\n");
+            body_size -= 7;
+
+            cJSON_ArrayForEach(tag, json_field) {
+                add_field(cJSON_GetStringValue(tag), logs, &body_size, " - ");
+            }
+        }
 
     } else if(json_field = cJSON_GetObjectItem(al_json,"full_log"), json_field){
 
