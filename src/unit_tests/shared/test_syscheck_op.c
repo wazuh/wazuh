@@ -12,12 +12,21 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-
 #include "../headers/syscheck_op.h"
 #include "../analysisd/eventinfo.h"
 
+#include "../wrappers/externals/cJSON/cJSON_wrappers.h"
+#include "../wrappers/posix/grp_wrappers.h"
+#include "../wrappers/posix/pwd_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/string_op_wrappers.h"
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+
 #ifdef TEST_WINAGENT
-#include "unit_tests/wrappers/shared/syscheck_op.h"
+#include "../wrappers/wazuh/syscheckd/syscom_wrappers.h"
+#else
+#include "../wrappers/posix/unistd_wrappers.h"
 #endif
 
 /* Auxiliar structs */
@@ -43,163 +52,6 @@ typedef struct __unescape_syscheck_field_data_s {
     char *input;
     char *output;
 }unescape_syscheck_field_data_t;
-
-/* wrappers */
-
-int __wrap_rmdir_ex(const char *name) {
-    int ret = mock();
-
-    if(ret == -1) {
-        errno = ENOTEMPTY;
-    } else {
-        errno = 0;
-    }
-
-    check_expected(name);
-    return ret;
-}
-
-char ** __wrap_wreaddir(const char * name) {
-    check_expected(name);
-    return mock_type(char**);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-struct group *__wrap_getgrgid(gid_t gid) {
-    return mock_ptr_type(struct group*);
-}
-
-#ifndef TEST_WINAGENT
-extern cJSON * __real_cJSON_CreateArray(void);
-CJSON_PUBLIC(cJSON *) __wrap_cJSON_CreateArray(void) {
-    return mock_type(CJSON_PUBLIC(cJSON *));
-}
-extern cJSON * __real_cJSON_CreateObject(void);
-CJSON_PUBLIC(cJSON *) __wrap_cJSON_CreateObject(void) {
-    return mock_type(CJSON_PUBLIC(cJSON *));
-}
-#else
-// CJSON calling convention is __stdcall instead of __cdecl
-cJSON * __stdcall __real_cJSON_CreateArray(void);
-cJSON * __stdcall __wrap_cJSON_CreateArray(void) {
-    return mock_type(cJSON *);
-}
-
-cJSON * __stdcall __real_cJSON_CreateObject(void);
-cJSON * __stdcall __wrap_cJSON_CreateObject(void) {
-    return mock_type(cJSON *);
-}
-#endif
-
-extern void __real_wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str);
-void __wrap_wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str) {
-    if(mock()) {
-        __real_wstr_split(str, delim, replace_delim, occurrences, splitted_str);
-    } else {
-        *splitted_str = NULL;
-    }
-}
-
-int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) {
-    check_expected(path);
-    check_expected(type);
-    check_expected(max_msg_size);
-
-    return mock();
-}
-
-int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
-    check_expected(sock);
-    check_expected(size);
-    check_expected(msg);
-
-    return mock();
-}
-
-// TODO: Test solaris version of this wrapper.
-#ifdef SOLARIS
-struct passwd **__wrap_getpwuid_r(uid_t uid, struct passwd *pwd,
-                                  char *buf, size_t buflen) {
-    #if defined(TEST_SERVER) || defined(TEST_AGENT)
-        pwd->pw_name = mock_type(char*);
-
-        return mock_type(struct passwd*);
-    #else // TEST_WINAGENT
-        // Leave empty wrapper since avoiding compile will bring problems with cmocka
-        return NULL;
-    #endif
-}
-#else
-int __wrap_getpwuid_r(uid_t uid, struct passwd *pwd,
-                      char *buf, size_t buflen, struct passwd **result) {
-
-    #if defined(TEST_SERVER) || defined(TEST_AGENT)
-        pwd->pw_name = mock_type(char*);
-        *result = mock_type(struct passwd*);
-
-        return mock();
-    #else // TEST_WINAGENT
-        // Leave empty wrapper since avoiding compile will bring problems with cmocka
-        return 0;
-    #endif
-}
-#endif
-
-#ifdef TEST_WINAGENT
-size_t __wrap_syscom_dispatch(char * command, char ** output) {
-    check_expected(command);
-
-    *output = mock_type(char*);
-    return mock();
-}
-#else
-int __wrap_sysconf() {
-    return mock();
-}
-#endif
 
 /* setup/teardown */
 static int teardown_string(void **state) {
@@ -477,13 +329,13 @@ static void test_normalize_path_null_input(void **state) {
 
 /* remove_empty_folders tests */
 static void test_remove_empty_folders_success(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     char *input = "/var/ossec/queue/diff/local/test-dir/";
     char *first_subdir = "/var/ossec/queue/diff/local/test-dir";
-    #else
+#else
     char *input = "queue/diff\\local\\test-dir\\";
     char *first_subdir = "queue/diff\\local\\test-dir";
-    #endif
+#endif
     int ret = -1;
     char message[OS_SIZE_1024];
 
@@ -502,19 +354,19 @@ static void test_remove_empty_folders_success(void **state) {
 }
 
 static void test_remove_empty_folders_recursive_success(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     char *input = "/var/ossec/queue/diff/local/dir1/dir2/";
     static const char *parent_dirs[] = {
         "/var/ossec/queue/diff/local/dir1/dir2",
         "/var/ossec/queue/diff/local/dir1"
     };
-    #else
+#else
     char *input = "queue/diff\\local\\dir1\\dir2\\";
     static const char *parent_dirs[] = {
         "queue/diff\\local\\dir1\\dir2",
         "queue/diff\\local\\dir1"
     };
-    #endif
+#endif
     char messages[2][OS_SIZE_1024];
     int ret = -1;
 
@@ -550,13 +402,13 @@ static void test_remove_empty_folders_null_input(void **state) {
 
 // TODO: Validate this condition is required to be tested
 static void test_remove_empty_folders_relative_path(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     char *input = "./local/test-dir/";
     const static char *parent_dirs[] = {"./local/test-dir", "./local", "."};
-    #else
+#else
     char *input = ".\\local\\test-dir\\";
     const static char *parent_dirs[] = {".\\local\\test-dir", ".\\local", "."};
-    #endif
+#endif
     char messages[3][OS_SIZE_1024];
     int ret = -1;
 
@@ -586,21 +438,21 @@ static void test_remove_empty_folders_relative_path(void **state) {
 // TODO: Validate this condition is required to be tested
 static void test_remove_empty_folders_absolute_path(void **state) {
     int ret = -1;
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     char *input = "/home/user1/";
     static const char *parent_dirs[] = {
         "/home/user1",
         "/home",
         ""
     };
-    #else
+#else
     char *input = "c:\\home\\user1\\";
     static const char *parent_dirs[] = {
         "c:\\home\\user1",
         "c:\\home",
         "c:"
     };
-    #endif
+#endif
     char messages[3][OS_SIZE_1024];
 
     snprintf(messages[0], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[0]);
@@ -627,13 +479,13 @@ static void test_remove_empty_folders_absolute_path(void **state) {
 }
 
 static void test_remove_empty_folders_non_empty_dir(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     char *input = "/var/ossec/queue/diff/local/test-dir/";
     static const char *parent_dir = "/var/ossec/queue/diff/local/test-dir";
-    #else
+#else
     char *input = "queue/diff\\local\\c\\test-dir\\";
     static const char *parent_dir = "queue/diff\\local\\c\\test-dir";
-    #endif
+#endif
     int ret = -1;
     char **subdir;
 
@@ -652,13 +504,13 @@ static void test_remove_empty_folders_non_empty_dir(void **state) {
 }
 
 static void test_remove_empty_folders_error_removing_dir(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     char *input = "/var/ossec/queue/diff/local/test-dir/";
     static const char *parent_dir = "/var/ossec/queue/diff/local/test-dir";
-    #else
+#else
     char *input = "queue/diff\\local\\test-dir\\";
     static const char *parent_dir = "queue/diff\\local\\test-dir";
-    #endif
+#endif
     int ret = -1;
     char remove_dir_message[OS_SIZE_1024];
     char dir_not_deleted_message[OS_SIZE_1024];
@@ -2143,9 +1995,9 @@ static void test_get_user_success(void **state) {
 
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, 1);
-    #ifndef SOLARIS
+#ifndef SOLARIS
     will_return(__wrap_getpwuid_r, 0);
-    #endif
+#endif
 
     user = get_user(1);
 
@@ -2161,9 +2013,9 @@ static void test_get_user_uid_not_found(void **state) {
 
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, NULL);
-    #ifndef SOLARIS
+#ifndef SOLARIS
     will_return(__wrap_getpwuid_r, 0);
-    #endif
+#endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "User with uid '1' not found.\n");
 
@@ -2181,9 +2033,9 @@ static void test_get_user_error(void **state) {
 
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, NULL);
-    #ifndef SOLARIS
+#ifndef SOLARIS
     will_return(__wrap_getpwuid_r, ENOENT);
-    #endif
+#endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "Failed getting user_name (2): 'No such file or directory'\n");
 
@@ -2979,12 +2831,12 @@ static void test_win_perm_to_json_error_splitting_permissions(void **state) {
 static void test_get_user_CreateFile_error_access_denied(void **state) {
     char **array = *state;
 
-    expect_string(wrap_syscheck_op_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_CreateFile, INVALID_HANDLE_VALUE);
+    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
 
-    will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
+    will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
-    will_return(wrap_syscheck_op_FormatMessage, "An error message");
+    will_return(wrap_FormatMessage, "An error message");
 
     expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (5)");
 
@@ -2996,12 +2848,12 @@ static void test_get_user_CreateFile_error_access_denied(void **state) {
 static void test_get_user_CreateFile_error_sharing_violation(void **state) {
     char **array = *state;
 
-    expect_string(wrap_syscheck_op_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_CreateFile, INVALID_HANDLE_VALUE);
+    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
 
-    will_return(wrap_syscheck_op_GetLastError, ERROR_SHARING_VIOLATION);
+    will_return(wrap_GetLastError, ERROR_SHARING_VIOLATION);
 
-    will_return(wrap_syscheck_op_FormatMessage, "An error message");
+    will_return(wrap_FormatMessage, "An error message");
 
     expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (32)");
 
@@ -3013,12 +2865,12 @@ static void test_get_user_CreateFile_error_sharing_violation(void **state) {
 static void test_get_user_CreateFile_error_generic(void **state) {
     char **array = *state;
 
-    expect_string(wrap_syscheck_op_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_CreateFile, INVALID_HANDLE_VALUE);
+    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
 
-    will_return(wrap_syscheck_op_GetLastError, 127);
+    will_return(wrap_GetLastError, 127);
 
-    will_return(wrap_syscheck_op_FormatMessage, "An error message");
+    will_return(wrap_FormatMessage, "An error message");
 
     expect_string(__wrap__mwarn, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (127)");
 
@@ -3030,20 +2882,20 @@ static void test_get_user_CreateFile_error_generic(void **state) {
 static void test_get_user_GetSecurityInfo_error(void **state) {
     char **array = *state;
 
-    expect_string(wrap_syscheck_op_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_CreateFile, (HANDLE)123456);
+    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_CreateFile, (HANDLE)123456);
 
-    will_return(wrap_syscheck_op_GetSecurityInfo, ERROR_PATH_NOT_FOUND);
+    will_return(wrap_GetSecurityInfo, ERROR_PATH_NOT_FOUND);
 
-    expect_value(wrap_syscheck_op_CloseHandle, hObject, (HANDLE)123456);
-    will_return(wrap_syscheck_op_CloseHandle, 0);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
+    will_return(wrap_CloseHandle, 0);
 
-    will_return(wrap_syscheck_op_ConvertSidToStringSid, NULL);
-    will_return(wrap_syscheck_op_ConvertSidToStringSid, 0);
+    will_return(wrap_ConvertSidToStringSid, NULL);
+    will_return(wrap_ConvertSidToStringSid, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "The user's SID could not be extracted.");
 
-    will_return(wrap_syscheck_op_GetLastError, ERROR_INVALID_SID);
+    will_return(wrap_GetLastError, ERROR_INVALID_SID);
 
     expect_string(__wrap__merror, formatted_msg, "GetSecurityInfo error = 1337");
 
@@ -3055,22 +2907,22 @@ static void test_get_user_GetSecurityInfo_error(void **state) {
 static void test_get_user_LookupAccountSid_error(void **state) {
     char **array = *state;
 
-    expect_string(wrap_syscheck_op_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_CreateFile, (HANDLE)123456);
+    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_CreateFile, (HANDLE)123456);
 
-    will_return(wrap_syscheck_op_GetSecurityInfo, ERROR_SUCCESS);
+    will_return(wrap_GetSecurityInfo, ERROR_SUCCESS);
 
-    expect_value(wrap_syscheck_op_CloseHandle, hObject, (HANDLE)123456);
-    will_return(wrap_syscheck_op_CloseHandle, 0);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
+    will_return(wrap_CloseHandle, 0);
 
-    will_return(wrap_syscheck_op_ConvertSidToStringSid, "sid");
-    will_return(wrap_syscheck_op_ConvertSidToStringSid, 1);
+    will_return(wrap_ConvertSidToStringSid, "sid");
+    will_return(wrap_ConvertSidToStringSid, 1);
 
-    will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
-    will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
-    will_return(wrap_syscheck_op_LookupAccountSid, 0);
+    will_return(wrap_LookupAccountSid, "accountName");
+    will_return(wrap_LookupAccountSid, "domainName");
+    will_return(wrap_LookupAccountSid, 0);
 
-    will_return(wrap_syscheck_op_GetLastError, ERROR_INVALID_SID);
+    will_return(wrap_GetLastError, ERROR_INVALID_SID);
 
     expect_string(__wrap__merror, formatted_msg, "Error in LookupAccountSid.");
 
@@ -3083,22 +2935,22 @@ static void test_get_user_LookupAccountSid_error(void **state) {
 static void test_get_user_LookupAccountSid_error_none_mapped(void **state) {
     char **array = *state;
 
-    expect_string(wrap_syscheck_op_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_CreateFile, (HANDLE)123456);
+    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_CreateFile, (HANDLE)123456);
 
-    will_return(wrap_syscheck_op_GetSecurityInfo, ERROR_SUCCESS);
+    will_return(wrap_GetSecurityInfo, ERROR_SUCCESS);
 
-    expect_value(wrap_syscheck_op_CloseHandle, hObject, (HANDLE)123456);
-    will_return(wrap_syscheck_op_CloseHandle, 0);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
+    will_return(wrap_CloseHandle, 0);
 
-    will_return(wrap_syscheck_op_ConvertSidToStringSid, "sid");
-    will_return(wrap_syscheck_op_ConvertSidToStringSid, 1);
+    will_return(wrap_ConvertSidToStringSid, "sid");
+    will_return(wrap_ConvertSidToStringSid, 1);
 
-    will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
-    will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
-    will_return(wrap_syscheck_op_LookupAccountSid, 0);
+    will_return(wrap_LookupAccountSid, "accountName");
+    will_return(wrap_LookupAccountSid, "domainName");
+    will_return(wrap_LookupAccountSid, 0);
 
-    will_return(wrap_syscheck_op_GetLastError, ERROR_NONE_MAPPED);
+    will_return(wrap_GetLastError, ERROR_NONE_MAPPED);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Account owner not found for file 'C:\\a\\path'");
 
@@ -3111,20 +2963,20 @@ static void test_get_user_LookupAccountSid_error_none_mapped(void **state) {
 static void test_get_user_success(void **state) {
     char **array = *state;
 
-    expect_string(wrap_syscheck_op_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_CreateFile, (HANDLE)123456);
+    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_CreateFile, (HANDLE)123456);
 
-    will_return(wrap_syscheck_op_GetSecurityInfo, ERROR_SUCCESS);
+    will_return(wrap_GetSecurityInfo, ERROR_SUCCESS);
 
-    expect_value(wrap_syscheck_op_CloseHandle, hObject, (HANDLE)123456);
-    will_return(wrap_syscheck_op_CloseHandle, 0);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
+    will_return(wrap_CloseHandle, 0);
 
-    will_return(wrap_syscheck_op_ConvertSidToStringSid, "sid");
-    will_return(wrap_syscheck_op_ConvertSidToStringSid, 1);
+    will_return(wrap_ConvertSidToStringSid, "sid");
+    will_return(wrap_ConvertSidToStringSid, 1);
 
-    will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
-    will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
-    will_return(wrap_syscheck_op_LookupAccountSid, 1);
+    will_return(wrap_LookupAccountSid, "accountName");
+    will_return(wrap_LookupAccountSid, "domainName");
+    will_return(wrap_LookupAccountSid, 1);
 
     array[0] = get_user("C:\\a\\path", &array[1]);
 
@@ -3137,12 +2989,12 @@ void test_w_get_account_info_LookupAccountSid_error_insufficient_buffer(void **s
     int ret;
     SID input;
 
-    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Name size
-    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Domain size
-    will_return(wrap_syscheck_op_LookupAccountSid, 0);
+    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
+    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
+    will_return(wrap_LookupAccountSid, 0);
 
-    will_return(wrap_syscheck_op_GetLastError, ERROR_INVALID_NAME);
-    will_return(wrap_syscheck_op_GetLastError, ERROR_INVALID_NAME);
+    will_return(wrap_GetLastError, ERROR_INVALID_NAME);
+    will_return(wrap_GetLastError, ERROR_INVALID_NAME);
 
     ret = w_get_account_info(&input, &array[0], &array[1]);
 
@@ -3154,17 +3006,17 @@ void test_w_get_account_info_LookupAccountSid_error_second_call(void **state) {
     int ret;
     SID input;
 
-    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Name size
-    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Domain size
-    will_return(wrap_syscheck_op_LookupAccountSid, 0);
+    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
+    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
+    will_return(wrap_LookupAccountSid, 0);
 
-    will_return(wrap_syscheck_op_GetLastError, ERROR_INSUFFICIENT_BUFFER);
+    will_return(wrap_GetLastError, ERROR_INSUFFICIENT_BUFFER);
 
-    will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
-    will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
-    will_return(wrap_syscheck_op_LookupAccountSid, 0);
+    will_return(wrap_LookupAccountSid, "accountName");
+    will_return(wrap_LookupAccountSid, "domainName");
+    will_return(wrap_LookupAccountSid, 0);
 
-    will_return(wrap_syscheck_op_GetLastError, ERROR_INSUFFICIENT_BUFFER);
+    will_return(wrap_GetLastError, ERROR_INSUFFICIENT_BUFFER);
 
     ret = w_get_account_info(&input, &array[0], &array[1]);
 
@@ -3176,13 +3028,13 @@ void test_w_get_account_info_success(void **state) {
     int ret;
     SID input;
 
-    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Name size
-    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Domain size
-    will_return(wrap_syscheck_op_LookupAccountSid, 1);
+    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
+    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
+    will_return(wrap_LookupAccountSid, 1);
 
-    will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
-    will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
-    will_return(wrap_syscheck_op_LookupAccountSid, 1);
+    will_return(wrap_LookupAccountSid, "accountName");
+    will_return(wrap_LookupAccountSid, "domainName");
+    will_return(wrap_LookupAccountSid, 1);
 
     ret = w_get_account_info(&input, &array[0], &array[1]);
 
@@ -3212,7 +3064,7 @@ void test_copy_ace_info_invalid_sid(void **state) {
         .Header.AceType = ACCESS_DENIED_ACE_TYPE,
     };
 
-    will_return(wrap_syscheck_op_IsValidSid, 0);
+    will_return(wrap_IsValidSid, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Invalid SID found in ACE.");
 
@@ -3228,20 +3080,20 @@ void test_copy_ace_info_no_information_from_account_or_sid(void **state) {
         .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
     };
 
-    will_return(wrap_syscheck_op_IsValidSid, 1);
+    will_return(wrap_IsValidSid, 1);
 
     // Inside w_get_account_info
-    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Name size
-    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Domain size
-    will_return(wrap_syscheck_op_LookupAccountSid, 0);
+    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
+    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
+    will_return(wrap_LookupAccountSid, 0);
 
-    will_return(wrap_syscheck_op_GetLastError, ERROR_INVALID_NAME);
-    will_return(wrap_syscheck_op_GetLastError, ERROR_INVALID_NAME);
+    will_return(wrap_GetLastError, ERROR_INVALID_NAME);
+    will_return(wrap_GetLastError, ERROR_INVALID_NAME);
 
     expect_string(__wrap__mdebug2, formatted_msg, "No information could be extracted from the account linked to the SID. Error: 123.");
 
-    will_return(wrap_syscheck_op_ConvertSidToStringSid, NULL);
-    will_return(wrap_syscheck_op_ConvertSidToStringSid, 0);
+    will_return(wrap_ConvertSidToStringSid, NULL);
+    will_return(wrap_ConvertSidToStringSid, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Could not extract the SID.");
 
@@ -3258,16 +3110,16 @@ void test_copy_ace_info_success(void **state) {
         .Mask = 123456,
     };
 
-    will_return(wrap_syscheck_op_IsValidSid, 1);
+    will_return(wrap_IsValidSid, 1);
 
     // Inside w_get_account_info
-    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Name size
-    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Domain size
-    will_return(wrap_syscheck_op_LookupAccountSid, 1);
+    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
+    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
+    will_return(wrap_LookupAccountSid, 1);
 
-    will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
-    will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
-    will_return(wrap_syscheck_op_LookupAccountSid, 1);
+    will_return(wrap_LookupAccountSid, "accountName");
+    will_return(wrap_LookupAccountSid, "domainName");
+    will_return(wrap_LookupAccountSid, 1);
 
     ret = copy_ace_info(&ace, perm, OS_SIZE_1024);
 
@@ -3279,12 +3131,12 @@ void test_w_get_file_permissions_GetFileSecurity_error_on_size(void **state) {
     char permissions[OS_SIZE_1024];
     int ret;
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, 0);
-    will_return(wrap_syscheck_op_GetFileSecurity, 0);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, 0);
+    will_return(wrap_GetFileSecurity, 0);
 
-    will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
-    will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
+    will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
+    will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
     ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
 
@@ -3295,15 +3147,15 @@ void test_w_get_file_permissions_GetFileSecurity_error(void **state) {
     char permissions[OS_SIZE_1024];
     int ret;
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_GetFileSecurity, 1);
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, NULL);
-    will_return(wrap_syscheck_op_GetFileSecurity, 0);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, NULL);
+    will_return(wrap_GetFileSecurity, 0);
 
-    will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
+    will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
     ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
 
@@ -3315,20 +3167,20 @@ void test_w_get_file_permissions_GetSecurityDescriptorDacl_error(void **state) {
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_GetFileSecurity, 1);
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, &sec_desc);
-    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, &sec_desc);
+    will_return(wrap_GetFileSecurity, 1);
 
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, FALSE);
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, 0);
+    will_return(wrap_GetSecurityDescriptorDacl, FALSE);
+    will_return(wrap_GetSecurityDescriptorDacl, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "The DACL of the file could not be obtained.");
 
-    will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
+    will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
     ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
 
@@ -3340,16 +3192,16 @@ void test_w_get_file_permissions_no_dacl(void **state) {
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_GetFileSecurity, 1);
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, &sec_desc);
-    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, &sec_desc);
+    will_return(wrap_GetFileSecurity, 1);
 
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, FALSE);
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, 1);
+    will_return(wrap_GetSecurityDescriptorDacl, FALSE);
+    will_return(wrap_GetSecurityDescriptorDacl, 1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "'C:\\a\\path' has no DACL, so no permits can be extracted.");
 
@@ -3363,24 +3215,24 @@ void test_w_get_file_permissions_GetAclInformation_error(void **state) {
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_GetFileSecurity, 1);
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, &sec_desc);
-    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, &sec_desc);
+    will_return(wrap_GetFileSecurity, 1);
 
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, TRUE);
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, (PACL)123456);
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, 1);
+    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+    will_return(wrap_GetSecurityDescriptorDacl, (PACL)123456);
+    will_return(wrap_GetSecurityDescriptorDacl, 1);
 
-    will_return(wrap_syscheck_op_GetAclInformation, NULL);
-    will_return(wrap_syscheck_op_GetAclInformation, 0);
+    will_return(wrap_GetAclInformation, NULL);
+    will_return(wrap_GetAclInformation, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "No information could be obtained from the ACL.");
 
-    will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
+    will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
     ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
 
@@ -3393,23 +3245,23 @@ void test_w_get_file_permissions_GetAce_error(void **state) {
     SECURITY_DESCRIPTOR sec_desc;
     ACL_SIZE_INFORMATION acl_size;
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_GetFileSecurity, 1);
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, &sec_desc);
-    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, &sec_desc);
+    will_return(wrap_GetFileSecurity, 1);
 
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, TRUE);
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, (PACL)123456);
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, 1);
+    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+    will_return(wrap_GetSecurityDescriptorDacl, (PACL)123456);
+    will_return(wrap_GetSecurityDescriptorDacl, 1);
 
-    will_return(wrap_syscheck_op_GetAclInformation, &acl_size);
-    will_return(wrap_syscheck_op_GetAclInformation, 1);
+    will_return(wrap_GetAclInformation, &acl_size);
+    will_return(wrap_GetAclInformation, 1);
 
-    will_return(wrap_syscheck_op_GetAce, NULL);
-    will_return(wrap_syscheck_op_GetAce, 0);
+    will_return(wrap_GetAce, NULL);
+    will_return(wrap_GetAce, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "ACE number 0 could not be obtained.");
 
@@ -3430,36 +3282,36 @@ void test_w_get_file_permissions_success(void **state) {
         .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
     };
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_GetFileSecurity, 1);
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, &sec_desc);
-    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, &sec_desc);
+    will_return(wrap_GetFileSecurity, 1);
 
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, TRUE);
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, (PACL)123456);
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, 1);
+    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+    will_return(wrap_GetSecurityDescriptorDacl, (PACL)123456);
+    will_return(wrap_GetSecurityDescriptorDacl, 1);
 
-    will_return(wrap_syscheck_op_GetAclInformation, &acl_size);
-    will_return(wrap_syscheck_op_GetAclInformation, 1);
+    will_return(wrap_GetAclInformation, &acl_size);
+    will_return(wrap_GetAclInformation, 1);
 
-    will_return(wrap_syscheck_op_GetAce, &ace);
-    will_return(wrap_syscheck_op_GetAce, 1);
+    will_return(wrap_GetAce, &ace);
+    will_return(wrap_GetAce, 1);
 
     // Inside copy_ace_info
     {
-        will_return(wrap_syscheck_op_IsValidSid, 1);
+        will_return(wrap_IsValidSid, 1);
 
         // Inside w_get_account_info
-        will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Name size
-        will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Domain size
-        will_return(wrap_syscheck_op_LookupAccountSid, 1);
+        will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
+        will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
+        will_return(wrap_LookupAccountSid, 1);
 
-        will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
-        will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
-        will_return(wrap_syscheck_op_LookupAccountSid, 1);
+        will_return(wrap_LookupAccountSid, "accountName");
+        will_return(wrap_LookupAccountSid, "domainName");
+        will_return(wrap_LookupAccountSid, 1);
     }
 
     ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
@@ -3479,23 +3331,23 @@ void test_w_get_file_permissions_copy_ace_info_error(void **state) {
         .Header.AceType = SYSTEM_AUDIT_ACE_TYPE,
     };
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_GetFileSecurity, 1);
 
-    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileSecurity, &sec_desc);
-    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, &sec_desc);
+    will_return(wrap_GetFileSecurity, 1);
 
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, TRUE);
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, (PACL)123456);
-    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, 1);
+    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+    will_return(wrap_GetSecurityDescriptorDacl, (PACL)123456);
+    will_return(wrap_GetSecurityDescriptorDacl, 1);
 
-    will_return(wrap_syscheck_op_GetAclInformation, &acl_size);
-    will_return(wrap_syscheck_op_GetAclInformation, 1);
+    will_return(wrap_GetAclInformation, &acl_size);
+    will_return(wrap_GetAclInformation, 1);
 
-    will_return(wrap_syscheck_op_GetAce, &ace);
-    will_return(wrap_syscheck_op_GetAce, 1);
+    will_return(wrap_GetAce, &ace);
+    will_return(wrap_GetAce, 1);
 
     // Inside copy_ace_info
     expect_string(__wrap__mdebug2, formatted_msg, "Invalid ACE type.");
@@ -3512,10 +3364,10 @@ void test_w_get_file_permissions_copy_ace_info_error(void **state) {
 void test_w_get_file_attrs_error(void **state) {
     int ret;
 
-    expect_string(wrap_syscheck_op_GetFileAttributesA, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileAttributesA, INVALID_FILE_ATTRIBUTES);
+    expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileAttributesA, INVALID_FILE_ATTRIBUTES);
 
-    will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
+    will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
     expect_string(__wrap__mdebug2, formatted_msg, "The attributes for 'C:\\a\\path' could not be obtained. Error '5'.");
 
@@ -3527,8 +3379,8 @@ void test_w_get_file_attrs_error(void **state) {
 void test_w_get_file_attrs_success(void **state) {
     int ret;
 
-    expect_string(wrap_syscheck_op_GetFileAttributesA, lpFileName, "C:\\a\\path");
-    will_return(wrap_syscheck_op_GetFileAttributesA, 123456);
+    expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileAttributesA, 123456);
 
     ret = w_get_file_attrs("C:\\a\\path");
 
@@ -3548,10 +3400,10 @@ void test_w_directory_exists_error_getting_attrs(void **state) {
 
     // Inside w_get_file_attrs
     {
-        expect_string(wrap_syscheck_op_GetFileAttributesA, lpFileName, "C:\\a\\path");
-        will_return(wrap_syscheck_op_GetFileAttributesA, INVALID_FILE_ATTRIBUTES);
+        expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
+        will_return(wrap_GetFileAttributesA, INVALID_FILE_ATTRIBUTES);
 
-        will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
+        will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
         expect_string(__wrap__mdebug2, formatted_msg,
             "The attributes for 'C:\\a\\path' could not be obtained. Error '5'.");
@@ -3567,8 +3419,8 @@ void test_w_directory_exists_path_is_not_dir(void **state) {
 
     // Inside w_get_file_attrs
     {
-        expect_string(wrap_syscheck_op_GetFileAttributesA, lpFileName, "C:\\a\\path");
-        will_return(wrap_syscheck_op_GetFileAttributesA, FILE_ATTRIBUTE_NORMAL);
+        expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
+        will_return(wrap_GetFileAttributesA, FILE_ATTRIBUTE_NORMAL);
     }
 
     ret = w_directory_exists("C:\\a\\path");
@@ -3581,8 +3433,8 @@ void test_w_directory_exists_path_is_dir(void **state) {
 
     // Inside w_get_file_attrs
     {
-        expect_string(wrap_syscheck_op_GetFileAttributesA, lpFileName, "C:\\a\\path");
-        will_return(wrap_syscheck_op_GetFileAttributesA, FILE_ATTRIBUTE_DIRECTORY);
+        expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
+        will_return(wrap_GetFileAttributesA, FILE_ATTRIBUTE_DIRECTORY);
     }
 
     ret = w_directory_exists("C:\\a\\path");
@@ -3597,9 +3449,9 @@ int main(int argc, char *argv[]) {
         /* delete_target_file tests */
         cmocka_unit_test(test_delete_target_file_success),
         cmocka_unit_test(test_delete_target_file_rmdir_ex_error),
-        #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
         cmocka_unit_test(test_delete_target_file_invalid_path),
-        #endif
+#endif
 
         /* escape_syscheck_field tests */
         cmocka_unit_test_teardown(test_escape_syscheck_field_escape_all, teardown_string),
@@ -3619,7 +3471,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_remove_empty_folders_non_empty_dir),
         cmocka_unit_test(test_remove_empty_folders_error_removing_dir),
 
-        #if defined(TEST_SERVER)
+#if defined(TEST_SERVER)
         /* sk_decode_sum tests */
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_decode, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_deleted_file, setup_sk_decode, teardown_sk_decode),
@@ -3690,8 +3542,8 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_sk_sum_clean_shortest_valid_message, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_sum_clean_invalid_message, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_sum_clean_null_sum, setup_sk_decode, teardown_sk_decode),
-        #endif
-        #ifndef TEST_WINAGENT
+#endif
+#ifndef TEST_WINAGENT
         /* unescape_syscheck_field tests */
         cmocka_unit_test_setup_teardown(test_unescape_syscheck_field_escaped_chars, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
         cmocka_unit_test_setup_teardown(test_unescape_syscheck_field_no_escaped_chars, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
@@ -3711,10 +3563,10 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_ag_send_syscheck_success),
         cmocka_unit_test(test_ag_send_syscheck_unable_to_connect),
         cmocka_unit_test(test_ag_send_syscheck_error_sending_message),
-        #else
+#else
         cmocka_unit_test(test_get_group),
         cmocka_unit_test(test_ag_send_syscheck),
-        #endif
+#endif
 
         /* decode_win_attributes tests */
         cmocka_unit_test(test_decode_win_attributes_all_attributes),
@@ -3751,7 +3603,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_teardown(test_win_perm_to_json_incorrect_permission_format_2, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_error_splitting_permissions, teardown_cjson),
 
-        #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_access_denied, setup_string_array, teardown_string_array),
         cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_sharing_violation, setup_string_array, teardown_string_array),
         cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_generic, setup_string_array, teardown_string_array),
@@ -3785,7 +3637,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_w_directory_exists_error_getting_attrs),
         cmocka_unit_test(test_w_directory_exists_path_is_not_dir),
         cmocka_unit_test(test_w_directory_exists_path_is_dir),
-        #endif
+#endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

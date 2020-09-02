@@ -22,8 +22,12 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
 int w_download_status(int status,const char *url,const char *dest);
 // Request download
 int wurl_request(const char * url, const char * dest, const char *header, const char *data, const long timeout);
-int wurl_request_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout);
+int wurl_request_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);
 char * wurl_http_get(const char * url);
+#ifndef CLIENT
+int wurl_request_bz2(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);
+int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);
+#endif
 
 /* Check download module availability */
 int wurl_check_connection();

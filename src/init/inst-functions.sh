@@ -937,6 +937,11 @@ InstallLocal()
 
     ### Install API
     ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
+
+    ### Restore old API
+    if [ "X${update_only}" = "Xyes" ]; then
+      ${MAKEBIN} --quiet -C ../api restore PREFIX=${PREFIX} REVISION=${REVISION}
+    fi
 }
 
 TransferShared()

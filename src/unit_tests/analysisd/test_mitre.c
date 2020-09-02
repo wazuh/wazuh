@@ -13,57 +13,10 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
+
 #include "../analysisd/mitre.h"
-
-/* redefinitons/wrapping */
-
-int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int len)
-{   
-    int option;
-
-    option = mock_type(int);
-    if (option == 0) {
-        snprintf(response, len, "%s", mock_ptr_type(char*));
-    } else {
-        response = NULL;
-    }
-
-    return mock();
-}
-
-cJSON* __wrap_wdbc_query_parse_json(int *sock, const char *query, char *response, const int len)
-{
-    int option;
-
-    option = mock_type(int);
-    switch (option) {
-    case -2:
-        merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
-        break;
-    case -1:
-        merror("No response from wazuh-db.");
-        break;
-    case 0:
-        break;
-    case 1:
-        snprintf(response, OS_SIZE_6144, "%s", mock_ptr_type(char*));
-        merror("Bad response from wazuh-db: %s", response+4);
-        break;
-    }
-
-    return mock_ptr_type(cJSON *);
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
 
 /* tests */
 
@@ -271,7 +224,7 @@ void test_querytactics_empty_array(void **state)
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
-    
+
     /* Mitre's tactics query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, tactic_array);
@@ -320,7 +273,10 @@ void test_queryname_error_socket(void **state) {
     will_return(__wrap_wdbc_query_parse_json, tactic_array);
 
     /* Mitre technique's name query */
-    will_return(__wrap_wdbc_query_ex, -2);
+    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, "");
     will_return(__wrap_wdbc_query_ex, -2);
 
     expect_string(__wrap__merror, formatted_msg, "Unable to connect to socket '/queue/db/wdb'");
@@ -346,7 +302,10 @@ void test_queryname_no_response(void **state) {
     will_return(__wrap_wdbc_query_parse_json, tactic_array);
 
     /* Mitre technique's name query */
-    will_return(__wrap_wdbc_query_ex, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, "");
     will_return(__wrap_wdbc_query_ex, -1);
 
     expect_string(__wrap__merror, formatted_msg, "No response from wazuh-db.");
@@ -371,7 +330,10 @@ void test_queryname_bad_response(void **state) {
     will_return(__wrap_wdbc_query_parse_json, tactic_array);
 
     /* Mitre technique's name query */
-    will_return(__wrap_wdbc_query_ex, 0);
+    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    // will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, "err not found");
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -399,7 +361,10 @@ void test_querytactics_repeated_id(void **state)
     will_return(__wrap_wdbc_query_parse_json, tactic_array);
 
     /* Mitre technique's name query */
-    will_return(__wrap_wdbc_query_ex, 0);
+    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    // will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, "ok Data Obfuscation");
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -408,7 +373,9 @@ void test_querytactics_repeated_id(void **state)
     will_return(__wrap_wdbc_query_parse_json, tactic_array_2);
 
     /* Mitre technique's name query */
-    will_return(__wrap_wdbc_query_ex, 0);
+    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, query);
+    expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, "ok Data Obfuscation");
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -433,7 +400,9 @@ void test_querytactics_success(void **state)
     will_return(__wrap_wdbc_query_parse_json, tactic_array);
 
     /* Mitre technique's name query */
-    will_return(__wrap_wdbc_query_ex, 0);
+    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, query);
+    expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, "ok Data Obfuscation");
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -441,7 +410,9 @@ void test_querytactics_success(void **state)
     will_return(__wrap_wdbc_query_parse_json, tactic_array_2);
 
     /* Mitre technique's name query */
-    will_return(__wrap_wdbc_query_ex, 0);
+    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, query);
+    expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, "ok Data Compressed");
     will_return(__wrap_wdbc_query_ex, 0);
 

@@ -1,5 +1,4 @@
 /* Copyright (C) 2015-2020, Wazuh Inc.
- * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -13,6 +12,9 @@
 #define COMMON_H
 
 #include <time.h>
+#include <stdio.h>
+
+extern int test_mode;
 
 int FOREVER();
 
@@ -26,5 +28,8 @@ extern time_t time_mock_value;
 #define time(x) wrap_time(x)
 #endif
 
-#endif /* COMMON_H */
+#ifndef expect_any_always
+#define expect_any_always(function, parameter) expect_any_count(function, parameter, -1)
+#endif
 
+#endif /* COMMON_H */

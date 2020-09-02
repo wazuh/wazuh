@@ -12,7 +12,7 @@
 #include "os_crypto/md5/md5_op.h"
 #include "syscheck.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier from tests
 #define static
 #endif

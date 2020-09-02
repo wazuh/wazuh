@@ -18,50 +18,7 @@
 #include "../../os_auth/auth.h"
 #include "../../addagent/manage_agents.h"
 
-/* redefinitons/wrapping */
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-int __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 //Expected log messages to be checked on mocked log functions
 typedef struct _mocked_log {
