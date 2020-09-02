@@ -43,9 +43,9 @@ def totals(date):
     except IOError:
         raise WazuhError(1308, extra_message=stat_filename)
 
-    result = AffectedItemsWazuhResult(all_msg=f"Statistical information for each node read successfully",
+    result = AffectedItemsWazuhResult(all_msg='Statistical information for each node was successfully read',
                                       some_msg='Could not read statistical information for some nodes',
-                                      none_msg=f"Could not read statistical information for any node"
+                                      none_msg='Could not read statistical information for any node'
                                       )
     alerts = []
 
@@ -111,9 +111,9 @@ def hourly():
             if i < 24:
                 averages.append(0)
 
-    result = AffectedItemsWazuhResult(all_msg=f"Statistical information per hour for each node read successfully",
+    result = AffectedItemsWazuhResult(all_msg='Statistical information per hour for each node was successfully read',
                                       some_msg='Could not read statistical information per hour for some nodes',
-                                      none_msg=f"Could not read statistical information per hour for any node"
+                                      none_msg='Could not read statistical information per hour for any node'
                                       )
     result.affected_items.append({'averages': averages, 'interactions': interactions})
     result.total_affected_items = len(result.affected_items)
@@ -127,9 +127,9 @@ def weekly():
     Returns the weekly averages.
     :return: A dictionary for each week day.
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Statistical information per week for each node read successfully",
+    result = AffectedItemsWazuhResult(all_msg='Statistical information per week for each node was successfully read',
                                       some_msg='Could not read statistical information per week for some nodes',
-                                      none_msg=f"Could not read statistical information per week for any node"
+                                      none_msg='Could not read statistical information per week for any node'
                                       )
     # 0..6 => Sunday..Saturday
     for i in range(7):
@@ -166,9 +166,9 @@ def get_daemons_stats(filename):
     :return: A dictionary with the stats of the input file.
     """
     result = AffectedItemsWazuhResult(
-        all_msg=f"Statistical information for each node read successfully",
+        all_msg='Statistical information for each node was successfully read',
         some_msg='Could not read statistical information for some nodes',
-        none_msg=f"Could not read statistical information for any node"
+        none_msg='Could not read statistical information for any node'
         )
     try:
 
