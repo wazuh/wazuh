@@ -8,6 +8,5 @@
 
     Maggiori informazioni sono disponibili all'indirizzo:
                - http://www.wazuh.com
-               - http://www.ossec.net
 
       --- Premere ENTER per finire (forse di più informazioni qui di seguito). ---

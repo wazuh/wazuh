@@ -28,7 +28,7 @@ typedef struct _sched_scan_config {
 
 /**
  * Receives pointer to sched_scan_config structure returns
- * absolute time for next event 
+ * absolute time for next event
  * */
 #define sched_get_next_scan_time(x) x.next_scheduled_scan_time
 
@@ -37,7 +37,7 @@ void sched_scan_free(sched_scan_config *scan_config);
 
 /**
  * @brief Reads an array of xml nodes and overrides scheduling configuration
- * 
+ *
  * Expected xml nodes:
  * ´´´
  * <day></day>
@@ -50,24 +50,24 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
 
 /**
  * @brief Calculates time until the next scheduled time according based on scheduling configuration
- * 
+ *
  * @param config Scheduling configuration
  * Available options are:
- * 1. Specific day of a month 
+ * 1. Specific day of a month
  * 2. Specific day of a week
  * 3. Every day at a certain time
  * 4. Set up a scan between intervals
  * @param MODULE_TAG String to identify module
  * @param run_on_start forces first time run
  * @return time until next scan in seconds
- *   stores in config->next_scheduled_scan_time the absolute time where next event 
+ *   stores in config->next_scheduled_scan_time the absolute time where next event
  *   should occur
  * */
 time_t sched_scan_get_time_until_next_scan(sched_scan_config *config, const char *MODULE_TAG, const int run_on_start);
 
 /**
  * @brief Function to check the change of daylight to add or subtract an hour
- * 
+ *
  * @param config schedule scan configuration struct
  * @param next_scan_time next scan time to check the daylight
  * @param test option to test the function and it has to be true
@@ -76,7 +76,7 @@ void check_daylight(sched_scan_config *config, time_t * next_scan_time, bool tes
 
 /**
  * @brief Get time in seconds to the specified hour in hh:mm
- * 
+ *
  * @param hourtime of the day hh:mm format
  * @param num_weeks number of days interval
  * @param first_time if it the next time we need to obtain or we respect the interval number of days
@@ -86,7 +86,7 @@ unsigned long int get_time_to_hour(const char * hour, const unsigned int num_day
 
 /**
  * @brief Get time to reach a particular day of the week and hour
- * 
+ *
  * @param wday day of the weak
  * @param hour time of the day hh:mm format
  * @param num_weeks number of weeks interval
@@ -97,7 +97,7 @@ unsigned long int get_time_to_day(int wday, const char * hour, const unsigned in
 
 /**
  * @brief Get time to reach a particular day of the month and hour
- * 
+ *
  * @param month_day day of the month
  * @param hour time of the day hh:mm format
  * @param num_of_months in case we want to check every certain number of months

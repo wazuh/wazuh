@@ -29,6 +29,9 @@ typedef struct _SYSTEM_PROCESS_IMAGE_NAME_INFORMATION
 
 typedef NTSTATUS(WINAPI *tNTQSI)(ULONG SystemInformationClass, PVOID SystemInformation, ULONG SystemInformationLength, PULONG ReturnLength);
 
+static bool found_hotfix_error(HKEY hKey);
+static bool valid_hotfix_status(HKEY hKey);
+static char * parse_Rollup_hotfix(HKEY hKey, char *value);
 hw_info *get_system_windows();
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 
@@ -822,8 +825,7 @@ void sys_hotfixes(const char* LOCATION){
     cJSON *end_evt;
     char *end_evt_str;
 
-    HOTFIXES_REG = isVista ? "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages" :
-                    "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix";
+    HOTFIXES_REG = isVista ? WIN_REG_HOTFIX : VISTA_REG_HOTFIX;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting installed hotfixes inventory.");
 
@@ -918,6 +920,7 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
 
 void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const char *LOCATION) {
     static OSRegex *hotfix_regex = NULL;
+    HKEY subKey;
     // This table is used to discard already reported hotfixes (same key and same timestamp)
     // It does not need to be released between iterations (static variable)
     static OSHash *hotfixes_table;
@@ -975,15 +978,37 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
         cbName = KEY_LENGTH;
         if (result = RegEnumKeyEx(hKey, i, achKey, &cbName, NULL, NULL, NULL, &ftLastWriteTime), result == ERROR_SUCCESS) {
             if (isVista) {
-                if (!OSRegex_Execute(achKey, hotfix_regex)) {
+                //  Open the hotfix key
+                result = RegOpenKeyEx(hKey, achKey, 0, KEY_READ, &subKey);
+                if (result != ERROR_SUCCESS) {
+                    mterror(WM_SYS_LOGTAG, "Error opening Windows registry.");
                     continue;
                 }
+
+                // Check basic stats
+                if (!OSRegex_Execute(achKey, hotfix_regex) ||
+                    found_hotfix_error(subKey) ||
+                    !valid_hotfix_status(subKey)) {
+                    RegCloseKey(subKey);
+                    continue;
+                }
+
                 char *hotfix = *hotfix_regex->d_sub_strings;
                 char *extension;
 
-                if (extension = strchr(hotfix, '_'), extension) {
+                // Parse hotfix
+                if (strstr(hotfix, "RollupFix")) {
+                    char value[MAXSTR + 1] = {0};
+                    if (hotfix = parse_Rollup_hotfix(subKey, value), hotfix == NULL) {
+                        RegCloseKey(subKey);
+                        continue;
+                    }
+                
+                } else if (extension = strchr(hotfix, '_'), extension) {
                     *extension = '\0';
                 }
+
+                RegCloseKey(subKey);
 
                 // Ignore the hotfix if it is the same as the previous one
                 if (!strcmp(hotfix, prev_hotfix)) {
@@ -1026,6 +1051,63 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
 
         }
     }
+}
+
+// Retrieve the respective KB for those hotfixes which come as Rollup.
+// ex -> Package_for_RollupFix~31bf3856ad364e35~amd64~~18362.959.1.9
+char * parse_Rollup_hotfix(HKEY hKey, char *value) {
+    DWORD dataSize = MAXSTR;
+    LONG result;
+    
+    result = RegQueryValueEx(hKey, "InstallLocation", NULL, NULL, (LPBYTE)value, &dataSize);  
+    if (result != ERROR_SUCCESS ) {
+        mterror(WM_SYS_LOGTAG, "Error reading 'InstallLocation' from Windows registry. (Error %u)",(unsigned int)result);
+        return NULL;
+    }
+
+    char *hotfix = NULL;
+    char *start = NULL;
+    char *end = NULL;
+
+    // Parse the 'InstallLocation' field -> "Windows10.0-KB4565483-x64.cab"
+    if ((start = strstr(value, "KB")) != NULL && (end = strstr(start, "-")) != NULL) {
+        *end = '\0';
+        hotfix = start;
+    }
+
+    return hotfix;
+}
+
+// Check if any error ocurred at installation time.
+bool found_hotfix_error(HKEY hKey) {
+    LONG result;
+    
+    // The Value only exists when an arror occurred.
+    result = RegQueryValueEx(hKey, "LastError", NULL, NULL, 0, 0);  
+
+    return (result != ERROR_SUCCESS)? false : true;
+}
+
+// Check that the hotfix is installed correctly.
+bool valid_hotfix_status(HKEY hKey) {
+    DWORD dataSize = sizeof(DWORD);
+    DWORD value;
+    LONG result;
+    
+    result = RegQueryValueEx(hKey, "CurrentState", NULL, NULL, (LPBYTE)&value, &dataSize);  
+    if (result != ERROR_SUCCESS ) {
+        mterror(WM_SYS_LOGTAG, "Error reading 'CurrentState' from Windows registry. (Error %u)",(unsigned int)result);
+        return false;
+    }
+
+    if (value != HOTFIX_INSTALLED && 
+        value != HOTFIX_SUPERSEDED && 
+        value != HOTFIX_STAGED) {
+        mtdebug2(WM_SYS_LOGTAG, "Invalid hotfix status: %ld", value);
+        return false;
+    }
+
+    return true;  
 }
 
 // List Windows users from the registry

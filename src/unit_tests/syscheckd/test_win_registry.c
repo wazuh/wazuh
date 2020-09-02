@@ -18,6 +18,10 @@
 #include<libloaderapi.h>
 #include <openssl/evp.h>
 
+#include "../wrappers/common.h"
+#include "../wrappers/externals/openssl/digest_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "syscheckd/syscheck.h"
 
 extern char *os_winreg_sethkey(char *reg_entry);
@@ -29,59 +33,12 @@ static int test_has_started = 0;
 /*************************WRAPS - GROUP SETUP******************************/
 int test_group_setup(void **state) {
     int ret;
+    expect_any_always(__wrap__mdebug1, formatted_msg);
     ret = Read_Syscheck_Config("test_syscheck.conf");
     test_has_started = 1;
     return ret;
 }
 
-
-void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    if (test_has_started) {
-        check_expected(formatted_msg);
-    }
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    if (test_has_started) {
-        check_expected(formatted_msg);
-    }
-}
-
-int __wrap_fim_registry_event(char *key, fim_entry_data *data, int pos) {
-    return mock();
-}
-
-int __wrap_EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t count)
-{
-   check_expected(data);
-   check_expected(count);
-   return mock();
-}
 /**************************************************************************/
 /*************************os_winreg_sethkey********************************/
 void test_os_winreg_sethkek_invalid_subtree(void **state) {
@@ -125,9 +82,11 @@ void test_os_winreg_querykey_invalid_query(void **state) {
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command");
     int pos = 0;
+    FILETIME ft;
 
-    will_return_count(wrap_RegQueryInfoKey, NULL, 5);
-    will_return(wrap_RegQueryInfoKey,-1);
+    will_return_count(wrap_RegQueryInfoKey, NULL, 4);
+    will_return(wrap_RegQueryInfoKey, &ft);
+    will_return(wrap_RegQueryInfoKey, -1);
     os_winreg_querykey(oshkey, subkey, fullname, pos);
 }
 
@@ -136,13 +95,14 @@ void test_os_winreg_querykey_success_no_subkey(void **state) {
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command");
     int pos = 0;
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 0); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
     os_winreg_querykey(oshkey, subkey, fullname, pos);
 }
 
@@ -151,20 +111,27 @@ void test_os_winreg_querykey_success_subkey_p_key(void **state) {
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command");
     int pos = 0;
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 1); // subkey_count
     will_return(wrap_RegQueryInfoKey, 0); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     will_return(wrap_RegEnumKeyEx, "SUBKEY_NAME");
     will_return(wrap_RegEnumKeyEx, strlen("SUBKEY_NAME"));
     will_return(wrap_RegEnumKeyEx, ERROR_SUCCESS);
 
     // Shutdown os_winreg_open_key
-    will_return(wrap_RegOpenKeyEx, -1);
+    // Inside RegOpenKeyEx
+    expect_value(wrap_RegOpenKeyEx, hKey, HKEY_USERS);
+    expect_string(wrap_RegOpenKeyEx, lpSubKey, "command\\SUBKEY_NAME");
+    expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ | (syscheck.registry[pos].arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY));
+    will_return(wrap_RegOpenKeyEx, NULL);
+    will_return(wrap_RegOpenKeyEx, ERROR_ACCESS_DENIED);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6920): Unable to open registry key: 'command\\SUBKEY_NAME' arch: '[x32]'.");
     os_winreg_querykey(oshkey, subkey, fullname, pos);
@@ -175,13 +142,14 @@ void test_os_winreg_querykey_ignored_registry(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = syscheck.registry_ignore[pos].entry;
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 0); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     char debug_msg[OS_MAXSTR];
     snprintf(debug_msg, OS_MAXSTR, "(6204): Ignoring 'registry' '%s' due to '%s'", fullname, fullname);
@@ -194,13 +162,14 @@ void test_os_winreg_querykey_ignored_regex(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Security\\Enum"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 0); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     char debug_msg[OS_MAXSTR];
     snprintf(debug_msg, OS_MAXSTR,"(6205): Ignoring 'registry' '%s' due to sregex '\\Enum$'", fullname);
@@ -213,13 +182,14 @@ void test_os_winreg_querykey_values_string(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
     will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
@@ -246,13 +216,14 @@ void test_os_winreg_querykey_values_multi_string(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
     will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
@@ -293,13 +264,14 @@ void test_os_winreg_querykey_values_number(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey,&ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
     will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
@@ -340,20 +312,20 @@ void test_os_winreg_querykey_values_binary(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
     will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
     will_return(wrap_RegEnumValue, REG_BINARY);
     will_return(wrap_RegEnumValue, 4); // 32 bits number -> 4 * sizeof(char)
     unsigned int value = 0x2AFE80DC;
-    printf("TEST VALUE: %08x\n\n\n", value);
     will_return(wrap_RegEnumValue, &value);
     will_return(wrap_RegEnumValue, ERROR_SUCCESS);
 
@@ -385,13 +357,14 @@ void test_os_winreg_querykey_values_none(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
     will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
@@ -414,13 +387,14 @@ void test_os_winreg_querykey_registry_event_fail(void **state) {
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+    FILETIME ft;
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
     will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time
-    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    will_return(wrap_RegQueryInfoKey, &ft); // file_time
+    will_return(wrap_RegQueryInfoKey, ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
     will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
@@ -500,9 +474,16 @@ void test_os_winreg_check_valid_subtree(void **state) {
     char debug_msg[OS_MAXSTR];
     snprintf(debug_msg, OS_MAXSTR, FIM_READING_REGISTRY, syscheck.registry[0].arch == ARCH_64BIT ? "[x64] " : "[x32] ", syscheck.registry[0].entry);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    int pos = 0;
 
     // If os_winreg check tries to call os_winreg_open_key then subtree is valid
-    will_return(wrap_RegOpenKeyEx, -1);
+    // Inside RegOpenKeyEx
+    expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_RegOpenKeyEx, lpSubKey, "Software\\Classes\\batfile");
+    expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ | (syscheck.registry[pos].arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY));
+    will_return(wrap_RegOpenKeyEx, NULL);
+    will_return(wrap_RegOpenKeyEx, ERROR_ACCESS_DENIED);
     char debug_msg2[OS_MAXSTR];
     snprintf(debug_msg2, OS_MAXSTR, "(6920): Unable to open registry key: 'Software\\Classes\\batfile' arch: '%s'.", syscheck.registry[0].arch == ARCH_64BIT ? "[x64]" : "[x32]");
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg2);
@@ -513,7 +494,15 @@ void test_os_winreg_check_valid_subtree(void **state) {
 /**************************************************************************/
 /*************************os_winreg_open()*******************************/
 void test_os_winreg_open_fail(void **state) {
-    will_return(wrap_RegOpenKeyEx, -1);
+    int pos = 0;
+
+    // Inside RegOpenKeyEx
+    expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_RegOpenKeyEx, lpSubKey, "Software\\Classes\\batfile");
+    expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ | (syscheck.registry[pos].arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY));
+    will_return(wrap_RegOpenKeyEx, NULL);
+    will_return(wrap_RegOpenKeyEx, ERROR_ACCESS_DENIED);
     char debug_msg2[OS_MAXSTR];
     snprintf(debug_msg2, OS_MAXSTR, "(6920): Unable to open registry key: 'Software\\Classes\\batfile' arch: '%s'.", syscheck.registry[0].arch == ARCH_64BIT ? "[x64]" : "[x32]");
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg2);
@@ -521,10 +510,21 @@ void test_os_winreg_open_fail(void **state) {
 }
 
 void test_os_winreg_open_success(void **state) {
-    will_return(wrap_RegOpenKeyEx, 0);
+    int pos = 0;
+    FILETIME ft;
+
+    // Inside RegOpenKeyEx
+    expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_RegOpenKeyEx, lpSubKey,
+        "Software\\Classes\\batfile");
+    expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ | (syscheck.registry[pos].arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY));
+    will_return(wrap_RegOpenKeyEx, NULL);
+    will_return(wrap_RegOpenKeyEx, ERROR_SUCCESS);
     // Promptly exit from os_winreg_querykey
-    will_return_count(wrap_RegQueryInfoKey, NULL, 5);
-    will_return(wrap_RegQueryInfoKey,-1);
+    will_return_count(wrap_RegQueryInfoKey, NULL, 4);
+    will_return(wrap_RegQueryInfoKey, &ft);
+    will_return(wrap_RegQueryInfoKey, -1);
 
     os_winreg_open_key("Software\\Classes\\batfile", "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 0);
 }
