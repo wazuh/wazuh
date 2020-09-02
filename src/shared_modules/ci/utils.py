@@ -26,6 +26,34 @@ headerDic = {\
 
 currentBuildDir = os.path.dirname(os.path.realpath(__file__)) + "/../"
 
+def currentDirPathBuild(moduleName):
+    """
+    Gets the current dir path build based on 'moduleName'
+
+    :param moduleName: Lib to get the path of.
+    :return Lib dir path build folder
+    """
+    currentDir = ""
+    if str(moduleName) == 'utils':
+        currentDir = currentBuildDir + str(moduleName) + "/tests/build/"
+    else:
+        currentDir = currentBuildDir + str(moduleName) + "/build/"
+    return currentDir
+
+def currentDirPath(moduleName):
+    """
+    Gets the current dir path based on 'moduleName'
+
+    :param moduleName: Lib to get the path of.
+    :return Lib dir path
+    """
+    currentDir = ""
+    if str(moduleName) == 'utils':
+        currentDir = currentBuildDir + str(moduleName) + "/tests/"
+    else:
+        currentDir = currentBuildDir + str(moduleName)
+    return currentDir
+
 def makeLib(moduleName):
     """
     Builds the 'moduleName' lib.
@@ -33,7 +61,7 @@ def makeLib(moduleName):
     :param moduleName: Lib to be built.    
     """
     printHeader("<"+moduleName+">"+headerDic['make']+"<"+moduleName+">")
-    currentDir = currentBuildDir + str(moduleName) + "/build/"
+    currentDir = currentDirPathBuild(moduleName)
     out = subprocess.run('make -C' + currentDir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     if out.returncode != 0:
         print(out.stdout)
@@ -51,7 +79,11 @@ def runTests(moduleName):
     printHeader("<"+moduleName+">"+headerDic['tests']+"<"+moduleName+">")
     tests = []
     reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test|.*integration_test.exe")
-    currentDir = currentBuildDir + str(moduleName) + "/build/bin/"
+    currentDir = ""
+    if moduleName == 'utils':
+        currentDir = currentDirPathBuild(moduleName)
+    else:
+        currentDir = currentDirPathBuild(moduleName) + "bin/"
     objects = os.scandir(currentDir)
     for entry in objects:
         if entry.is_file() and bool(re.match(reg, entry.name)):
@@ -105,7 +137,11 @@ def runValgrind(moduleName):
     printHeader("<"+moduleName+">"+headerDic['valgrind']+"<"+moduleName+">")
     tests = []
     reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test|.*integration_test.exe")
-    currentDir = currentBuildDir + str(moduleName) + "/build/bin/"
+    currentDir = ""
+    if str(moduleName) == 'utils':
+        currentDir = currentBuildDir + str(moduleName) + "/tests/build/"
+    else:
+        currentDir = currentBuildDir + str(moduleName) + "/build/bin/"
     objects = os.scandir(currentDir)
     for entry in objects:
         if entry.is_file() and bool(re.match(reg, entry.name)):
@@ -130,23 +166,32 @@ def runCoverage(moduleName):
     """
     currentDir = currentBuildDir + str(moduleName)
     reportFolder = currentDir + '/coverage_report'
-    folders = ''
+
+    moduleCMakeFiles = ""
+    excludeTests = ""
+    if moduleName == 'utils':
+        moduleCMakeFiles = currentDir + "/tests/*/CMakeFiles/*.dir"
+    else:
+        moduleCMakeFiles = currentDir + "/build/tests/*/CMakeFiles/*.dir"
+        excludeTests = '--exclude "*/tests/*"'
+
     printHeader("<"+moduleName+">"+headerDic['coverage']+"<"+moduleName+">")
+    folders = ''
     if not os.path.exists(reportFolder):
         os.mkdir(reportFolder)
-    for dir in glob.glob(currentDir + "/build/tests/*/CMakeFiles/*.dir"):
+
+    for dir in glob.glob(moduleCMakeFiles):
         folders += '--directory ' + dir + ' '
-    coverageCommand = 'lcov ' + folders + ' --capture --output-file ' + reportFolder + '/code_coverage.info -rc lcov_branch_coverage=0 --exclude "*/tests/*" --include "*/'+moduleName+'/*" -q'
+    coverageCommand = 'lcov ' + folders + ' --capture --output-file ' + reportFolder + '/code_coverage.info -rc lcov_branch_coverage=0 '+excludeTests+' --include "*/'+moduleName+'/*" -q'
     out = subprocess.run(coverageCommand, stdout=subprocess.PIPE, shell=True)
     if out.returncode == 0:
         printGreen('[lcov info: GENERATED]')
     else:
         print(out.stdout)
         printFail('[lcov: FAILED]')
-        errorString = 'Error Running cppcheck: ' + str(out.returncode)
+        errorString = 'Error Running lcov: ' + str(out.returncode)
         raise ValueError(errorString)
     genhtmlCommand = 'genhtml ' + reportFolder + '/code_coverage.info --branch-coverage --output-directory ' + reportFolder
-
     out = subprocess.run(genhtmlCommand, stdout=subprocess.PIPE, shell=True)
     if out.returncode == 0:
         printGreen('[genhtml info: GENERATED]')
@@ -165,7 +210,7 @@ def runCppCheck(moduleName):
     :param moduleName: Lib to be analyzed using cppcheck static analysis tool.
     """
     printHeader("<"+moduleName+">"+headerDic['cppcheck']+"<"+moduleName+">")
-    currentDir = currentBuildDir + str(moduleName)
+    currentDir = currentDirPath(moduleName)
     cppcheckCommand = "cppcheck --force --std=c++11 --quiet --suppressions-list=" + currentDir + "/cppcheckSuppress.txt " + currentDir
     out = subprocess.run(cppcheckCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     if out.returncode == 0 and not out.stderr:
@@ -182,7 +227,7 @@ def cleanLib(moduleName):
 
     :param moduleName: Lib to be clean.
     """
-    currentDir = currentBuildDir + str(moduleName) + "/build"
+    currentDir = currentDirPathBuild(moduleName)
     os.system('make clean -C' + currentDir)
 
 def runReadyToReview(moduleName):

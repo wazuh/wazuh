@@ -11,7 +11,7 @@ class CommandLineParser:
         :return True is 'arg' is a correct one, False otherwise.
         """
         ret = False
-        if arg == 'dbsync' or arg == 'rsync':
+        if arg == 'dbsync' or arg == 'rsync' or arg == 'utils':
             # Available modules so far
             ret = True
         return ret
@@ -22,13 +22,13 @@ class CommandLineParser:
         """
         action = False
         parser = argparse.ArgumentParser()
-        parser.add_argument("-r", "--readytoreview", help="Run all the quality checks needed to create a PR. Example: python3 build.py -r <dbsync|rsync>")
-        parser.add_argument("-m", "--make", help="Compile the lib. Example: python3 build.py -m <dbsync|rsync>")
-        parser.add_argument("-t", "--tests", help="Run tests (should be configured with TEST=on). Example: python3 build.py -t <dbsync|rsync>")
-        parser.add_argument("-c", "--coverage", help="Collect tests coverage and generates report. Example: python3 build.py -c <dbsync|rsync>")
-        parser.add_argument("-v", "--valgrind", help="Run valgrind on tests. Example: python3 build.py -v <dbsync|rsync>")
-        parser.add_argument("--clean", help="Clean the lib. Example: python3 build.py --clean <dbsync|rsync>")
-        parser.add_argument("--cppcheck", help="Run cppcheck on the code. Example: python3 build.py --cppcheck <dbsync|rsync>")
+        parser.add_argument("-r", "--readytoreview", help="Run all the quality checks needed to create a PR. Example: python3 build.py -r <dbsync|rsync|utils>")
+        parser.add_argument("-m", "--make", help="Compile the lib. Example: python3 build.py -m <dbsync|rsync|utils>")
+        parser.add_argument("-t", "--tests", help="Run tests (should be configured with TEST=on). Example: python3 build.py -t <dbsync|rsync|utils>")
+        parser.add_argument("-c", "--coverage", help="Collect tests coverage and generates report. Example: python3 build.py -c <dbsync|rsync|utils>")
+        parser.add_argument("-v", "--valgrind", help="Run valgrind on tests. Example: python3 build.py -v <dbsync|rsync|utils>")
+        parser.add_argument("--clean", help="Clean the lib. Example: python3 build.py --clean <dbsync|rsync|utils>")
+        parser.add_argument("--cppcheck", help="Run cppcheck on the code. Example: python3 build.py --cppcheck <dbsync|rsync|utils>")
         args = parser.parse_args()
 
         if self._argIsValid(args.readytoreview):

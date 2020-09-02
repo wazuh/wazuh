@@ -15,26 +15,28 @@ There are several modules needed in order to the tool to work correctly.
   - gcov
 
 ## How to use the tool
+´´´
 usage: build.py [-h] [-r READYTOREVIEW] [-m MAKE] [-t TESTS] [-c COVERAGE] [-v VALGRIND] [--clean CLEAN] [--cppcheck CPPCHECK]
 
 optional arguments:
   -h, --help            show this help message and exit
   -r READYTOREVIEW, --readytoreview READYTOREVIEW
-                        Run all the quality checks needed to create a PR. Example: python3 build.py -r <dbsync|rsync>
-  -m MAKE, --make MAKE  Compile the lib. Example: python3 build.py -m <dbsync|rsync>
+                        Run all the quality checks needed to create a PR. Example: python3 build.py -r <dbsync|rsync|utils>
+  -m MAKE, --make MAKE  Compile the lib. Example: python3 build.py -m <dbsync|rsync|utils>
   -t TESTS, --tests TESTS
-                        Run tests (should be configured with TEST=on). Example: python3 build.py -t <dbsync|rsync>
+                        Run tests (should be configured with TEST=on). Example: python3 build.py -t <dbsync|rsync|utils>
   -c COVERAGE, --coverage COVERAGE
-                        Collect tests coverage and generates report. Example: python3 build.py -c <dbsync|rsync>
+                        Collect tests coverage and generates report. Example: python3 build.py -c <dbsync|rsync|utils>
   -v VALGRIND, --valgrind VALGRIND
-                        Run valgrind on tests. Example: python3 build.py -v <dbsync|rsync>
-  --clean CLEAN         Clean the lib. Example: python3 build.py --clean <dbsync|rsync>
-  --cppcheck CPPCHECK   Run cppcheck on the code. Example: python3 build.py --cppcheck <dbsync|rsync>
+                        Run valgrind on tests. Example: python3 build.py -v <dbsync|rsync|utils>
+  --clean CLEAN         Clean the lib. Example: python3 build.py --clean <dbsync|rsync|utils>
+  --cppcheck CPPCHECK   Run cppcheck on the code. Example: python3 build.py --cppcheck <dbsync|rsync|utils>
+´´´
 
 Ready to review checks:
-  1. runs cppcheck on <dbsync|rsync> folder.
-  2. compiles <dbsync|rsync>.
-  3. runs <dbsync|rsync> UTs.
-  4. runs valgrind on <dbsync|rsync> UTs.
-  5. runs code coverage on <dbsync|rsync> tests and generates coverage reports.
+  1. runs cppcheck on <dbsync|rsync|utils> folder.
+  2. compiles <dbsync|rsync|utils>.
+  3. runs <dbsync|rsync|utils> UTs.
+  4. runs valgrind on <dbsync|rsync|utils> UTs.
+  5. runs code coverage on <dbsync|rsync|utils> tests and generates coverage reports.
 If all the checks passed it returns 0 and prints a "[RTR: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns and error code.
