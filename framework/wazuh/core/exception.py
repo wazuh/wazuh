@@ -86,7 +86,9 @@ class WazuhException(Exception):
             },
         1121: {'message': "Error connecting with socket"},
         1122: {'message': 'Experimental features are disabled',
-               'remediation': 'Experimental features can be enabled in WAZUH_PATH/configuration/api.yaml or using API endpoint PUT /manager/api/config or PUT /cluster/api/config'},
+               'remediation': 'Experimental features can be enabled in WAZUH_PATH/configuration/api.yaml or '
+                              'using API endpoint https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.manager_controller.put_api_config or '
+                              'https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.cluster_controller.put_api_config'},
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
