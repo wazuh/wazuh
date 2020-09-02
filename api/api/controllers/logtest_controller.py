@@ -5,7 +5,10 @@
 import logging
 
 from aiohttp import web
+
 from api.encoder import dumps, prettify
+from api.models.base_model_ import Body
+from api.models.logtest_model import RunLogtestModel
 from api.util import remove_nones_to_dict, raise_if_exc
 # from wazuh import logtest # Uncomment when merged with the logtest functions
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -13,8 +16,7 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 logger = logging.getLogger('wazuh')
 
 
-async def run_logtest_tool(request, pretty: bool = False, wait_for_complete: bool = False, token: str = None,
-                           log_format: str = None, location: str = None, log: str = None):
+async def run_logtest_tool(request, pretty: bool = False, wait_for_complete: bool = False):
     """Get the logtest output after sending a JSON to its socket.
     Parameters
     ----------
@@ -36,11 +38,8 @@ async def run_logtest_tool(request, pretty: bool = False, wait_for_complete: boo
     Data
         Logtest result after analyzing the event.
     """
-    f_kwargs = {'token': token,
-                'log_format': log_format,
-                'location': location,
-                'log': log
-                }
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await RunLogtestModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=logtest.get_logtest_output,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
