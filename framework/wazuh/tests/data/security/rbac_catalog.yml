@@ -384,7 +384,7 @@ get_rbac_actions:
       logtest:run:
         description: Use logtest tool
         resources:
-          - logtest:run
+          - "*:*"
         example:
           actions:
             - logtest:run
@@ -396,7 +396,7 @@ get_rbac_actions:
       logtest:end_session:
         description: End logtest session
         resources:
-          - logtest:end_session
+          - "*:*"
         example:
           actions:
             - logtest:end_session
