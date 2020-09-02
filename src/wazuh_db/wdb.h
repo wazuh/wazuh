@@ -225,14 +225,6 @@ typedef enum {
     WDB_SYNC_REQ
 } wdb_sync_status_t;
 
-/// Enumeration of sync-agent-info-get-status.
-typedef enum {
-    WDB_CHUNKS_ERROR = -1,  ///< An error occured
-    WDB_CHUNKS_PENDING,     ///< There are still elements to get
-    WDB_CHUNKS_BUFFER_FULL, ///< There are still elements to get but buffer is full
-    WDB_CHUNKS_COMPLETE     ///< There aren't any more elements to get    
-} wdb_chunks_status_t;
-
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
 extern char *schema_upgrade_v1_sql;
@@ -1596,9 +1588,9 @@ int wdb_global_set_sync_status(wdb_t *wdb, int id, wdb_sync_status_t status);
  * @param [in] wdb The Global struct database.
  * @param [in] last_agent_id ID where to start querying.
  * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
- * @return wdb_chunks_status_t to represent if all agents has being obtained.
+ * @return wdbc_result to represent if all agents has being obtained.
  */
-wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output);
+wdbc_result wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output);
 
 /**
  * @brief Function to update the information of an agent.
