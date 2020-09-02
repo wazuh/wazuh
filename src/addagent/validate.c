@@ -182,8 +182,11 @@ int OS_RemoveAgent(const char *u_id) {
     if (sock >= 0) {
         close(sock);
     }
-
     os_free(wdboutput);
+
+    if(wdb_remove_agent(atoi(u_id)) != OS_SUCCESS){
+        merror("Could not remove the information stored in Wazuh DB of the agent %s.", u_id);
+    }
 
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
@@ -583,7 +586,9 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
                     total++;
 
                     if (print_status) {
-                        agent_status_t agt_status = get_agent_status(name, ip);
+                        #ifndef CLIENT //print_status is only available on servers
+                        // Within this context, line_read corresponds to the agent ID
+                        agent_status_t agt_status = get_agent_status(atoi(line_read));
                         if (active_only && (agt_status != GA_STATUS_ACTIVE)) {
                             continue;
                         }
@@ -610,6 +615,10 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
                         } else {
                             printf(PRINT_AGENT_STATUS, line_read, name, ip, print_agent_status(agt_status));
                         }
+                        #else
+                        (void) inactive_only;
+                        printf(PRINT_AGENT, line_read, name, ip);
+                        #endif
                     } else {
                         printf(PRINT_AGENT, line_read, name, ip);
                     }

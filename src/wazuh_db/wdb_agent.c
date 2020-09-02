@@ -47,6 +47,7 @@ static const char *global_db_queries[] = {
     [SQL_DELETE_GROUP] = "global sql DELETE FROM `group` WHERE name = %Q;",
     [SQL_SELECT_GROUPS] = "global sql SELECT name FROM `group`;",
     [SQL_SELECT_KEEPALIVE] = "global sql SELECT last_keepalive FROM agent WHERE name = '%s' AND (register_ip = '%s' OR register_ip LIKE '%s' || '/_%');",
+    [SQL_GET_AGENT_INFO] = "global get-agent-info %d",
     [SQL_GET_AGENTS_BY_KEEPALIVE] = "global get-agents-by-keepalive condition %s %d start_id %d",
     [SQL_GET_ALL_AGENTS] = "global get-all-agents start_id %d"
 };
@@ -180,10 +181,8 @@ int wdb_update_agent_version (int id,
  */
 cJSON* wdb_get_agent_labels(int id) {
     cJSON *root = NULL;
-    // Making use of a big buffer for the output because
-    // it will contain all the keys and values.
-    char wdbquery[OS_BUFFER_SIZE] = "";
-    char wdboutput[OS_MAXSTR] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_GET_AGENT_LABELS], id);
     root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
@@ -1148,3 +1147,18 @@ time_t wdb_get_agent_keepalive (const char *name, const char *ip){
     return output;
 }
 
+cJSON* wdb_get_agent_info(int id) {
+    cJSON *root = NULL;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_queries[SQL_GET_AGENT_INFO], id);
+    root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!root) {
+        merror("Error querying Wazuh DB to get the agent's %d information.", id);
+        return NULL;
+    }
+
+    return root;
+}

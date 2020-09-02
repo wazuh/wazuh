@@ -131,6 +131,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
+    WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE,
@@ -165,6 +166,7 @@ typedef enum global_db_query {
     SQL_DELETE_GROUP,
     SQL_SELECT_GROUPS,
     SQL_SELECT_KEEPALIVE,
+    SQL_GET_AGENT_INFO,
     SQL_GET_AGENTS_BY_KEEPALIVE,
     SQL_GET_ALL_AGENTS
 } global_db_query;
@@ -381,6 +383,14 @@ int wdb_update_agent_version(int id,
                              const char *node_name,
                              const char *agent_ip,
                              wdb_sync_status_t sync_status);
+
+/**
+ * @brief Returns a JSON with all the agent's information.
+ * 
+ * @param[in] id Id of the agent for whom the information is requested.
+ * @return JSON* with the information on success or NULL on failure.
+ */
+cJSON* wdb_get_agent_info(int id);
 
 /**
  * @brief Returns a JSON with all the agent's labels.
@@ -724,6 +734,17 @@ int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
 
 /**
+ * @brief Function to get all the agent information in global.db.
+ * 
+ * @param wdb The global struct database.
+ * @param input String with 'agent_id'.
+ * @param output Response of the query in JSON format.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_get_agent_info(wdb_t * wdb, char * input, char * output);
+
+/**
  * @brief Function to parse string with agent's labels and set them in labels table in global database.
  * 
  * @param wdb the global struct database.
@@ -924,6 +945,16 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
 int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
 
 /**
+ * @brief Function to get the information of a particular agent stored in Wazuh DB.
+ * 
+ * @param wdb The Global struct database.
+ * @param id Agent id.
+ * @retval JSON with agent information on success.
+ * @retval NULL on error.
+ */
+cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
+
+/*
  * @brief Gets every agent ID based on the keepalive.
  *        Response is prepared in one chunk, 
  *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
@@ -950,8 +981,6 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
  * @return wdbc_result to represent if all agents has being obtained or any error occurred.
  */
 wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output);
-
-
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
