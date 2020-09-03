@@ -23,6 +23,7 @@
 typedef struct _wm_task_manager {
     int enabled:1;
     int cleanup_time;
+    int task_timeout;
 } wm_task_manager;
 
 typedef enum _error_code {
