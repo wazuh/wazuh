@@ -145,32 +145,6 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
     sub_key_name_b[MAX_KEY_LENGTH] = '\0';
     sub_key_name_b[MAX_KEY_LENGTH + 1] = '\0';
 
-
-    /* Registry ignore list */
-    if (full_key_name && syscheck.registry_ignore) {
-        int ign_it = 0;
-        while (syscheck.registry_ignore[ign_it].entry != NULL) {
-            if (syscheck.registry_ignore[ign_it].arch == syscheck.registry[pos].arch && strcasecmp(syscheck.registry_ignore[ign_it].entry, full_key_name) == 0) {
-                mdebug2(FIM_IGNORE_ENTRY, "registry", full_key_name, syscheck.registry_ignore[ign_it].entry);
-                return;
-            }
-            ign_it++;
-        }
-    }
-
-    if (full_key_name && syscheck.registry_ignore_regex) {
-        int ign_it = 0;
-        while (syscheck.registry_ignore_regex[ign_it].regex != NULL) {
-            if (syscheck.registry_ignore_regex[ign_it].arch == syscheck.registry[pos].arch &&
-                OSMatch_Execute(full_key_name, strlen(full_key_name),
-                                syscheck.registry_ignore_regex[ign_it].regex)) {
-                mdebug2(FIM_IGNORE_SREGEX, "registry", full_key_name, syscheck.registry_ignore_regex[ign_it].regex->raw);
-                return;
-            }
-            ign_it++;
-        }
-    }
-
     /* Get values (if available) */
     if (value_count) {
         char *mt_data;
@@ -267,6 +241,46 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
     }
 }
 
+int fim_check_key(registry_key_t *rkey) {
+    int ign_it;
+
+    if (rkey == NULL || rkey->full_key == NULL) {
+        return -1;
+    }
+
+    /* Registry ignore list */
+    if (syscheck.registry_ignore) {
+        for (ign_it = 0; syscheck.registry_ignore[ign_it].entry; ign_it++) {
+            if (syscheck.registry_ignore[ign_it].arch != rkey->configuration->arch) {
+                continue;
+            }
+
+            if (strcasecmp(syscheck.registry_ignore[ign_it].entry, rkey->full_key) == 0) {
+                mdebug2(FIM_IGNORE_ENTRY, "registry", rkey->full_key, syscheck.registry_ignore[ign_it].entry);
+                return -1;
+            }
+        }
+    }
+
+    if (syscheck.registry_ignore_regex) {
+        for (ign_it = 0; syscheck.registry_ignore_regex[ign_it].regex; ign_it++) {
+            if (syscheck.registry_ignore_regex[ign_it].arch != rkey->configuration->arch) {
+                continue;
+            }
+
+            if (OSMatch_Execute(rkey->full_key, strlen(rkey->full_key),
+                                syscheck.registry_ignore_regex[ign_it].regex)) {
+                mdebug2(FIM_IGNORE_SREGEX, "registry", rkey->full_key, syscheck.registry_ignore_regex[ign_it].regex->raw);
+                return -1;
+            }
+        }
+    }
+
+    // TODO: Add recursion_level checks.
+
+    return 0;
+}
+
 /* Open the registry key */
 void fim_open_key(registry_key_t *rkey) {
     HKEY sub_key_handle = NULL;
@@ -276,8 +290,13 @@ void fim_open_key(registry_key_t *rkey) {
     DWORD value_count;
     FILETIME file_time = { 0 };
 
-    if (rkey == NULL) {
+    if (rkey == NULL || rkey->root_key_handle == NULL || rkey->full_key == NULL) {
         return
+    }
+
+    // Check ignore and recursion level restrictions.
+    if (fim_check_key(rkey)) {
+        return;
     }
 
     access_rights |= (rkey->configuration->arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY);
