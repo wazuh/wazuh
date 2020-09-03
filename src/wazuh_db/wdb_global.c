@@ -39,12 +39,12 @@ int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* regi
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return OS_INVALID;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_INSERT_AGENT) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
 
@@ -94,12 +94,12 @@ int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return OS_INVALID;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_UPDATE_AGENT_NAME) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
 
@@ -148,12 +148,12 @@ int wdb_global_update_agent_version(wdb_t *wdb,
     int index = 1;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return OS_INVALID;
     }
 
     if (wdb_stmt_cache(wdb, agent_ip ? WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP : WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
 
@@ -269,7 +269,7 @@ cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int id) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -349,12 +349,12 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, wdb_sync_status_t stat
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return OS_INVALID;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
 
@@ -384,12 +384,12 @@ int wdb_global_delete_agent(wdb_t *wdb, int id) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return OS_INVALID;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_DELETE_AGENT) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
 
@@ -416,12 +416,12 @@ cJSON* wdb_global_select_agent_name(wdb_t *wdb, int id) {
     cJSON * result = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return NULL;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SELECT_AGENT_NAME) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return NULL;
     }
 
@@ -435,7 +435,7 @@ cJSON* wdb_global_select_agent_name(wdb_t *wdb, int id) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -446,12 +446,12 @@ cJSON* wdb_global_select_agent_group(wdb_t *wdb, int id) {
     cJSON * result = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return NULL;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SELECT_AGENT_GROUP) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return NULL;
     }
 
@@ -465,7 +465,7 @@ cJSON* wdb_global_select_agent_group(wdb_t *wdb, int id) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -476,12 +476,12 @@ cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip) {
     cJSON * result = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return NULL;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_FIND_AGENT) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return NULL;
     }
 
@@ -503,7 +503,7 @@ cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -514,12 +514,12 @@ cJSON* wdb_global_select_agent_fim_offset(wdb_t *wdb, int id) {
     cJSON * result = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return NULL;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SELECT_FIM_OFFSET) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return NULL;
     }
 
@@ -533,7 +533,7 @@ cJSON* wdb_global_select_agent_fim_offset(wdb_t *wdb, int id) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -544,12 +544,12 @@ cJSON* wdb_global_select_agent_reg_offset(wdb_t *wdb, int id) {
     cJSON * result = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return NULL;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SELECT_REG_OFFSET) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return NULL;
     }
 
@@ -563,7 +563,7 @@ cJSON* wdb_global_select_agent_reg_offset(wdb_t *wdb, int id) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -644,12 +644,12 @@ cJSON* wdb_global_select_agent_status(wdb_t *wdb, int id) {
     cJSON * result = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return NULL;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SELECT_AGENT_STATUS) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return NULL;
     }
 
@@ -663,7 +663,7 @@ cJSON* wdb_global_select_agent_status(wdb_t *wdb, int id) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -763,7 +763,7 @@ cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -902,12 +902,12 @@ cJSON* wdb_global_select_groups(wdb_t *wdb) {
     cJSON * result = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return NULL;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SELECT_GROUPS) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return NULL;
     }
 
@@ -916,7 +916,7 @@ cJSON* wdb_global_select_groups(wdb_t *wdb) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -927,12 +927,12 @@ cJSON* wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip) {
     cJSON * result = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return NULL;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return NULL;
     }
 
@@ -954,7 +954,7 @@ cJSON* wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -1198,7 +1198,7 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;

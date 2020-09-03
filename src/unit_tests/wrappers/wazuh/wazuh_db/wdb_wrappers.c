@@ -35,6 +35,10 @@ int __wrap_wdb_finalize() {
     return mock();
 }
 
+int  __wrap_wdb_step(__attribute__((unused)) sqlite3_stmt *stmt) {
+    return mock();
+}
+
 int __wrap_wdb_scan_info_fim_checks_control(__attribute__((unused)) wdb_t* socket,
                                             __attribute__((unused)) const char *last_check) {
     return mock();
@@ -77,6 +81,14 @@ int __wrap_wdb_syscheck_save(__attribute__((unused)) wdb_t *wdb,
 int __wrap_wdb_syscheck_save2(__attribute__((unused)) wdb_t *wdb,
                               __attribute__((unused)) const char *payload) {
     return mock();
+}
+
+cJSON * __wrap_wdb_exec_stmt(__attribute__((unused)) sqlite3_stmt *stmt) {
+    return mock_ptr_type(cJSON *);
+}
+
+cJSON * __wrap_wdb_exec(__attribute__((unused)) sqlite3_stmt *stmt) {
+    return mock_ptr_type(cJSON *);
 }
 
 int __wrap_wdbc_parse_result(char *result, char **payload) {
