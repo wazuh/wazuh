@@ -164,10 +164,12 @@ class SyncInfo:
                 'message': self.msg_format.format(payload=chunk)
             }).encode()
 
+            # data2 = '{"daemon_name": "' + self.daemon + '", f"message": "' + self.chunk + '"}'
+            # data2 = data.encode()
+
             try:
                 # Send chunk of data to self.daemon of the master
-                result = await self.lc.execute(command=b'sendasync', data=data,
-                                               wait_for_complete=False)
+                result = await self.lc.execute(command=b'sendasync', data=data, wait_for_complete=False)
                 self.logger.debug(f"Master's {self.daemon} response: {result}.")
 
                 # Retry self.n_retries if result was not ok
@@ -175,8 +177,7 @@ class SyncInfo:
                     for i in range(self.n_retries):
                         await asyncio.sleep(i * 2)
                         self.logger.error(f"Response does not start with 'ok'. Retrying... {i}.")
-                        result = await self.lc.execute(command=b'sendasync', data=data,
-                                                       wait_for_complete=False)
+                        result = await self.lc.execute(command=b'sendasync', data=data, wait_for_complete=False)
                         self.logger.debug(f"Master's {self.daemon} response: {result}.")
                         if result.startswith(self.expected_res):
                             break

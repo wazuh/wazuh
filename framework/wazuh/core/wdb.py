@@ -78,7 +78,7 @@ class WazuhDBConnection:
         data = self.__conn.recv(4)
         data_size = struct.unpack('<I', data[0:4])[0]
 
-        data = self.__conn.recv(data_size).decode(encoding='utf-8', errors='ignore').split(" ", 1)
+        data = self._recvall(data_size).decode(encoding='utf-8', errors='ignore').split(" ", 1)
 
         if data[0] == "err":
             raise WazuhError(2003, data[1])
@@ -86,6 +86,15 @@ class WazuhDBConnection:
             return data
         else:
             return json.loads(data[1], object_hook=WazuhDBConnection.json_decoder)
+
+    def _recvall(self, data_size, buffer_size=4096):
+        data = bytearray()
+        while len(data) < data_size:
+            packet = self.__conn.recv(buffer_size)
+            if not packet:
+                return data
+            data.extend(packet)
+        return data
 
     @staticmethod
     def json_decoder(dct):
