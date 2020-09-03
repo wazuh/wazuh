@@ -326,6 +326,34 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
+  # PUT /security/rules/{rule_id}
+  - name: Modify a rule in the system (using different name but same rule)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules/103"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "testModified2"
+        rule:
+          MATCH:
+            normal_rule: "modifiedR"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 103
+                name: "testModified2"
+                rule:
+                  MATCH:
+                    normal_rule: "modifiedR"
+                roles: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
   # PUT /security/rules/{non-existent rule_id}
   - name: Modify a non-existent rule in the system
     request:

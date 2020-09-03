@@ -9,15 +9,15 @@ from wazuh.core import common
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError
+from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.decorators import expose_resources
-from wazuh.core.results import WazuhResult
 
 try:
     import configparser
+
     unicode = str
 except ImportError:
     import ConfigParser as configparser
-
 
 DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
@@ -37,12 +37,16 @@ def totals(date):
     stat_filename = ""
     try:
         stat_filename = os.path.join(
-            common.stats_path, "totals", str(date.year), MONTHS[date.month - 1], f"ossec-totals-{date.strftime('%d')}.log")
+            common.stats_path, "totals", str(date.year), MONTHS[date.month - 1],
+            f"ossec-totals-{date.strftime('%d')}.log")
         stats = open(stat_filename, 'r')
     except IOError:
         raise WazuhError(1308, extra_message=stat_filename)
 
-    response = []
+    result = AffectedItemsWazuhResult(all_msg='Statistical information for each node was successfully read',
+                                      some_msg='Could not read statistical information for some nodes',
+                                      none_msg='Could not read statistical information for any node'
+                                      )
     alerts = []
 
     for line in stats:
@@ -62,7 +66,8 @@ def totals(date):
                 if len(data) in (0, 1):
                     continue
                 else:
-                    raise WazuhInternalError(1309)
+                    result.add_failed_item(id_=node_id, error=WazuhInternalError(1309))
+                    return result
 
             hour = int(data[0])
             total_alerts = int(data[1])
@@ -70,10 +75,13 @@ def totals(date):
             syscheck = int(data[3])
             firewall = int(data[4])
 
-            response.append({'hour': hour, 'alerts': alerts, 'totalAlerts': total_alerts, 'events': events, 'syscheck': syscheck, 'firewall': firewall})
+            result.affected_items.append(
+                {'hour': hour, 'alerts': alerts, 'totalAlerts': total_alerts, 'events': events, 'syscheck': syscheck,
+                 'firewall': firewall})
             alerts = []
 
-    return WazuhResult({'data': response})
+    result.total_affected_items = len(result.affected_items)
+    return result
 
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
@@ -103,7 +111,13 @@ def hourly():
             if i < 24:
                 averages.append(0)
 
-    return WazuhResult({'averages': averages, 'interactions': interactions})
+    result = AffectedItemsWazuhResult(all_msg='Statistical information per hour for each node was successfully read',
+                                      some_msg='Could not read statistical information per hour for some nodes',
+                                      none_msg='Could not read statistical information per hour for any node'
+                                      )
+    result.affected_items.append({'averages': averages, 'interactions': interactions})
+    result.total_affected_items = len(result.affected_items)
+    return result
 
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
@@ -113,9 +127,10 @@ def weekly():
     Returns the weekly averages.
     :return: A dictionary for each week day.
     """
-
-    response = {}
-
+    result = AffectedItemsWazuhResult(all_msg='Statistical information per week for each node was successfully read',
+                                      some_msg='Could not read statistical information per week for some nodes',
+                                      none_msg='Could not read statistical information per week for any node'
+                                      )
     # 0..6 => Sunday..Saturday
     for i in range(7):
         hours = []
@@ -136,9 +151,10 @@ def weekly():
                 if i < 24:
                     hours.append(0)
 
-        response[DAYS[i]] = {'hours': hours, 'interactions': interactions}
+        result.affected_items.append({DAYS[i]: {'hours': hours, 'interactions': interactions}})
 
-    return WazuhResult(response)
+    result.total_affected_items = len(result.affected_items)
+    return result
 
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
@@ -149,6 +165,11 @@ def get_daemons_stats(filename):
     :param filename: Full path of the file to get information.
     :return: A dictionary with the stats of the input file.
     """
+    result = AffectedItemsWazuhResult(
+        all_msg='Statistical information for each node was successfully read',
+        some_msg='Could not read statistical information for some nodes',
+        none_msg='Could not read statistical information for any node'
+        )
     try:
 
         with open(filename, 'r') as f:
@@ -162,10 +183,12 @@ def get_daemons_stats(filename):
         try:
             for key, value in items.items():
                 items[key] = float(value[1:-1])  # Delete extra quotation marks
+            result.affected_items.append(items)
         except Exception as e:
             return WazuhInternalError(1104, extra_message=str(e))
 
-        return items
+    except IOError:
+        raise WazuhError(1308, extra_message=filename)
 
-    except Exception as e:
-        raise WazuhInternalError(1308, extra_message=str(e))
+    result.total_affected_items = len(result.affected_items)
+    return result

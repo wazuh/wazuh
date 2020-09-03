@@ -87,6 +87,11 @@ class WazuhException(Exception):
             'remediation': "Please, make sure your proxy is setting 'X-Forwarded-For' HTTP header"
             },
         1121: {'message': "Error connecting with socket"},
+        1122: {'message': 'Experimental features are disabled',
+               'remediation': 'Experimental features can be enabled in WAZUH_PATH/configuration/api.yaml or '
+                              'using API endpoint https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.manager_controller.put_api_config or '
+                              'https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.cluster_controller.put_api_config'},
+
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html)'

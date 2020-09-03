@@ -44,9 +44,9 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     :param q: Defines query to filter.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    result = AffectedItemsWazuhResult(none_msg='No rule was shown',
-                                      some_msg='Some rules could not be shown',
-                                      all_msg='All selected rules were shown')
+    result = AffectedItemsWazuhResult(none_msg='No rule was returned',
+                                      some_msg='Some rules were not returned',
+                                      all_msg='All selected rules were returned')
     rules = list()
     if rule_ids is None:
         rule_ids = list()
@@ -111,9 +111,9 @@ def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0,
     :param search_in_fields: Fields to search in
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(none_msg='No rules files were shown',
-                                      some_msg='Some rules files were shown',
-                                      all_msg='All rules files were shown')
+    result = AffectedItemsWazuhResult(none_msg='No rule files were returned',
+                                      some_msg='Some rule files were not returned',
+                                      all_msg='All rule files were returned')
     status = check_status(status)
     # Rules configuration
     ruleset_conf = configuration.get_ossec_conf(section='ruleset')
@@ -154,9 +154,9 @@ def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascendi
     :param search_in_fields: Fields to search in
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    result = AffectedItemsWazuhResult(none_msg='No groups in rules are shown',
-                                      some_msg='Some groups in rules are shown',
-                                      all_msg='All groups in rules are shown')
+    result = AffectedItemsWazuhResult(none_msg='No groups in rules were returned',
+                                      some_msg='Some groups in rules were not returned',
+                                      all_msg='All groups in rules were returned')
 
     groups = {group for rule in get_rules(limit=None).affected_items for group in rule['groups']}
 
@@ -183,8 +183,8 @@ def get_requirement(requirement=None, offset=0, limit=common.database_limit, sor
     :param requirement: Requirement to get
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    result = AffectedItemsWazuhResult(none_msg='No rule was shown',
-                                      all_msg='Selected rules were shown')
+    result = AffectedItemsWazuhResult(none_msg='No rule was returned',
+                                      all_msg='All selected rules were returned')
 
     if requirement not in RULE_REQUIREMENTS:
         result.add_failed_item(id_=requirement, error=WazuhError(1205, extra_message=requirement,
