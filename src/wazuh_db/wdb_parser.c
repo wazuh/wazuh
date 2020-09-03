@@ -4937,12 +4937,12 @@ int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) 
         }
     }
 
-    wdb_chunks_status_t status = wdb_sync_agent_info_get(wdb, &start_id, &agent_info_sync);
-    if (status == WDB_CHUNKS_COMPLETE || status == WDB_CHUNKS_ERROR) {
+    wdbc_result status = wdb_sync_agent_info_get(wdb, &start_id, &agent_info_sync);
+    snprintf(output, WDB_MAX_RESPONSE_SIZE, "%s %s",  WDBC_RESULT[status], agent_info_sync);
+    os_free(agent_info_sync)
+    if (status != WDBC_DUE) {
         start_id = 0;
     }
-    snprintf(output, OS_MAXSTR + 1, "%1d %s", status, agent_info_sync);
-    os_free(agent_info_sync)
 
     return OS_SUCCESS;
 }
