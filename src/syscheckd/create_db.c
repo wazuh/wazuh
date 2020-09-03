@@ -88,7 +88,7 @@ void fim_scan() {
 
 
 #ifdef WIN32
-        os_winreg_check();
+    fim_registry_scan();
 #endif
 
     check_deleted_files();
@@ -121,7 +121,7 @@ void fim_scan() {
 
 #ifdef WIN32
             if (nodes_count < syscheck.file_limit) {
-                os_winreg_check();
+                fim_registry_scan();
 
                 w_mutex_lock(&syscheck.fim_entry_mutex);
                 fim_db_get_count_entry_path(syscheck.database);
@@ -664,23 +664,6 @@ int fim_configuration_directory(const char *path, const char *entry) {
             it++;
         }
     }
-#ifdef WIN32
-    else if (strcmp("registry", entry) == 0) {
-        while(syscheck.registry[it].entry) {
-            snprintf(full_entry, OS_SIZE_4096 + 1, "%s %s%c",
-                    syscheck.registry[it].arch == ARCH_64BIT ? "[x64]" : "[x32]",
-                    syscheck.registry[it].entry,
-                    PATH_SEP);
-            match = w_compare_str(full_entry, full_path);
-
-            if (top < match && full_path[match - 1] == PATH_SEP) {
-                position = it;
-                top = match;
-            }
-            it++;
-        }
-    }
-#endif
 
     if (position == -1) {
         mdebug2(FIM_CONFIGURATION_NOTFOUND, entry, path);

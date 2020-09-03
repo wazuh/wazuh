@@ -27,52 +27,88 @@
 #define MAX_VALUE_NAME 16383
 
 /* Global variables */
-HKEY sub_tree;
+
+
+typedef struct __registry_key_t {
+    HKEY root_key_handle;
+    registry *configuration;
+    char *full_key;
+    char *sub_key;
+} registry_key_t;
 
 /* Prototypes */
-void os_winreg_open_key(char *subkey, char *fullkey_name, int pos);
+void fim_open_key(char *subkey, char *fullkey_name, int pos);
 
 /* Check if the registry entry is valid */
-char *os_winreg_sethkey(char *reg_entry)
-{
+int fim_init_registry_key(registry_key_t *rkey, char *full_key, registry *configuration) {
     char *ret = NULL;
     char *tmp_str;
 
-    /* Get only the sub tree first */
-    tmp_str = strchr(reg_entry, '\\');
-    if (tmp_str) {
-        *tmp_str = '\0';
-        ret = tmp_str + 1;
+    if (rkey == NULL || full_key == NULL || configuration == NULL) {
+        return -1;
     }
 
-    /* Set sub tree */
-    if (strcmp(reg_entry, "HKEY_LOCAL_MACHINE") == 0) {
-        sub_tree = HKEY_LOCAL_MACHINE;
-    } else if (strcmp(reg_entry, "HKEY_CLASSES_ROOT") == 0) {
-        sub_tree = HKEY_CLASSES_ROOT;
-    } else if (strcmp(reg_entry, "HKEY_CURRENT_CONFIG") == 0) {
-        sub_tree = HKEY_CURRENT_CONFIG;
-    } else if (strcmp(reg_entry, "HKEY_USERS") == 0) {
-        sub_tree = HKEY_USERS;
+    /* Verify valid root tree */
+    if (strncmp(full_key, "HKEY_LOCAL_MACHINE", 18) == 0) {
+        rkey->root_key_handle = HKEY_LOCAL_MACHINE;
+    } else if (strncmp(full_key, "HKEY_CLASSES_ROOT", 17) == 0) {
+        rkey->root_key_handle = HKEY_CLASSES_ROOT;
+    } else if (strncmp(full_key, "HKEY_CURRENT_CONFIG", 19) == 0) {
+        rkey->root_key_handle = HKEY_CURRENT_CONFIG;
+    } else if (strncmp(full_key, "HKEY_USERS", 10) == 0) {
+        rkey->root_key_handle = HKEY_USERS;
     } else {
-        /* Return tmp_str to the previous value */
-        if (tmp_str && (*tmp_str == '\0')) {
-            *tmp_str = '\\';
+        return -1;
+    }
+
+    rkey->full_key = full_key;
+    rkey->configuration = configuration;
+    rkey->sub_key = strchr(rkey->full_key, '\\');
+    return 0;
+}
+
+registry *fim_registry_configuration(const char *key, registry *arch) {
+    int it = 0;
+    int top = 0;
+    registry *ret = NULL;
+
+    for (it = 0; syscheck.registry[it].entry; it++) {
+        if (arch != syscheck.registry[it].arch) {
+            continue;
         }
-        return (NULL);
+
+        match = w_compare_str(syscheck.registry[it].entry, key);
+
+        if (top < match) {
+            ret = syscheck.registry[it];
+            top = match;
+        }
     }
 
-    /* Check if ret has nothing else */
-    if (ret && (*ret == '\0')) {
-        ret = NULL;
+    if (ret == NULL) {
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, "registry", path);
     }
 
-    /* Fix tmp_str and the real name of the registry */
-    if (tmp_str && (*tmp_str == '\0')) {
-        *tmp_str = '\\';
+    return ret;
+}
+
+int fim_init_child_registry_key(const registry_key_t *parent, registry_key_t *child, const char *full_key) {
+    registry *child_configuration;
+
+    if (parent == NULL || child == NULL || full_key == NULL) {
+        return -1;
     }
 
-    return (ret);
+    child_configuration = fim_registry_configuration(full_key, parent->configuration->arch);
+
+    if (child_configuration == NULL) {
+        return -1;
+    }
+
+    child->root_key_handle = parent->root_key_handle;
+    child->full_key = full_key;
+    child->configuration = child_configuration;
+    child->sub_key = strchr(child->full_key, '\\');
 }
 
 /* Query the key and get all its values */
@@ -109,49 +145,6 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
     sub_key_name_b[MAX_KEY_LENGTH] = '\0';
     sub_key_name_b[MAX_KEY_LENGTH + 1] = '\0';
 
-    FILETIME file_time = { 0 };
-
-    /* We use the class_name, subkey_count and the value count */
-    rc = RegQueryInfoKey(hKey, class_name_b, &class_name_s, NULL,
-                         &subkey_count, NULL, NULL, &value_count,
-                         NULL, NULL, NULL, &file_time);
-
-    /* Check return code of QueryInfo */
-    if (rc != ERROR_SUCCESS) {
-        return;
-    }
-
-    /* Check if we have sub keys */
-    if (subkey_count) {
-        /* Open each subkey and call open_key */
-        for (i = 0; i < subkey_count; i++) {
-            sub_key_name_s = MAX_KEY_LENGTH;
-            rc = RegEnumKeyEx(hKey, i, sub_key_name_b, &sub_key_name_s,
-                              NULL, NULL, NULL, NULL);
-
-            /* Checking for the rc */
-            if (rc == ERROR_SUCCESS) {
-                char new_key[MAX_KEY + 2];
-                char new_key_full[MAX_KEY + 2];
-                new_key[MAX_KEY + 1] = '\0';
-                new_key_full[MAX_KEY + 1] = '\0';
-
-                if (p_key) {
-                    snprintf(new_key, MAX_KEY,
-                             "%s\\%s", p_key, sub_key_name_b);
-                    snprintf(new_key_full, MAX_KEY,
-                             "%s\\%s", full_key_name, sub_key_name_b);
-                } else {
-                    snprintf(new_key, MAX_KEY, "%s", sub_key_name_b);
-                    snprintf(new_key_full, MAX_KEY,
-                             "%s\\%s", full_key_name, sub_key_name_b);
-                }
-
-                /* Open subkey */
-                os_winreg_open_key(new_key, new_key_full, pos);
-            }
-        }
-    }
 
     /* Registry ignore list */
     if (full_key_name && syscheck.registry_ignore) {
@@ -275,22 +268,68 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
 }
 
 /* Open the registry key */
-void os_winreg_open_key(char *subkey, char *fullkey_name, int pos)
-{
-    HKEY oshkey;
+void fim_open_key(registry_key_t *rkey) {
+    HKEY sub_key_handle = NULL;
+    REGSAM access_rights = KEY_READ;
+    int rc;
+    DWORD subkey_count = 0;
+    DWORD value_count;
+    FILETIME file_time = { 0 };
 
-    if (RegOpenKeyEx(sub_tree, subkey, 0, KEY_READ | (syscheck.registry[pos].arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &oshkey) != ERROR_SUCCESS) {
-        mdebug1(FIM_REG_OPEN, subkey, syscheck.registry[pos].arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    if (rkey == NULL) {
+        return
+    }
+
+    access_rights |= (rkey->configuration->arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY);
+
+    if (RegOpenKeyEx(rkey->root_key_handle, rkey->sub_key, 0, access_rights, &sub_key_handle) != ERROR_SUCCESS) {
+        mdebug1(FIM_REG_OPEN, rkey->subkey, rkey->configuration->arch == ARCH_32BIT ? "[x32]" : "[x64]");
         return;
     }
 
-    os_winreg_querykey(oshkey, subkey, fullkey_name, pos);
-    RegCloseKey(oshkey);
+    /* We use the class_name, subkey_count and the value count */
+    if (RegQueryInfoKey(sub_key_handle, NULL, NULL, NULL,
+                         &subkey_count, NULL, NULL, &value_count,
+                         NULL, NULL, NULL, &file_time) != ERROR_SUCCESS) {
+        return;
+    }
+
+    /* Query each subkey and call open_key */
+    for (i = 0; i < subkey_count; i++) {
+        char new_key[MAX_KEY + 2];
+        char new_key_full[MAX_KEY + 2];
+        WCHAR sub_key_name_b[MAX_KEY_LENGTH + 1];
+        registry_key_t child_key;
+        sub_key_name_s = MAX_KEY_LENGTH;
+        rc = ;
+
+        /* Checking for the rc */
+        if (RegEnumKeyEx(sub_key_handle, i, sub_key_name_b, &sub_key_name_s,
+                            NULL, NULL, NULL, NULL) != ERROR_SUCCESS) {
+            continue;
+        }
+
+        new_key[MAX_KEY + 1] = '\0';
+        new_key_full[MAX_KEY + 1] = '\0';
+
+        snprintf(new_key, MAX_KEY, "%s\\%s", rkey->full_key, sub_key_name_b);
+
+        if (fim_init_child_registry_key(rkey, &child_key, new_key)) {
+            mwarn("Failed to create child registry '%s'", new_key);
+            continue;
+        }
+
+        /* Open subkey */
+        fim_open_key(&child_key);
+    }
+
+//    os_winreg_querykey(sub_key_handle, subkey, fullkey_name, pos);
+    RegCloseKey(sub_key_handle);
     return;
 }
 
-void os_winreg_check()
-{
+void fim_registry_scan() {
+    registry_key_t rkey;
     int i = 0;
     char *rk;
 
@@ -298,29 +337,24 @@ void os_winreg_check()
     mdebug1(FIM_WINREGISTRY_START);
 
     /* Get sub class and a valid registry entry */
-    while (syscheck.registry[i].entry != NULL) {
-        sub_tree = NULL;
-        rk = NULL;
+    for (i = 0; syscheck.registry[i].entry; i++) {
+        rkey.root_key_handle = NULL;
 
         /* Ignored entries are zeroed */
         if (*syscheck.registry[i].entry == '\0') {
-            i++;
             continue;
         }
 
         /* Read syscheck registry entry */
         mdebug2(FIM_READING_REGISTRY, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32] ", syscheck.registry[i].entry);
 
-        rk = os_winreg_sethkey(syscheck.registry[i].entry);
-        if (sub_tree == NULL) {
+        if (fim_init_registry_key(&rkey, syscheck.registry[i].entry, syscheck.registry[i]) != 0) {
             mdebug1(FIM_INV_REG, syscheck.registry[i].entry, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32]");
             *syscheck.registry[i].entry = '\0';
-            i++;
             continue;
         }
 
-        os_winreg_open_key(rk, syscheck.registry[i].entry, i);
-        i++;
+        fim_open_key(&rkey);
     }
 
     mdebug1(FIM_WINREGISTRY_ENDED);

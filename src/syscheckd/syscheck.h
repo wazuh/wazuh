@@ -319,7 +319,7 @@ void free_inode_data(fim_inode_data **data);
  * @brief Check the registries in the configuration for changes
  *
  */
-void os_winreg_check(void);
+void fim_registry_scan(void);
 
 /**
  * @brief Start real time monitoring
