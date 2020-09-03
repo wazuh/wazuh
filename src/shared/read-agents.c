@@ -1189,7 +1189,7 @@ char **get_agents(int flag){
     cJSON *json_name = NULL;
     cJSON *json_ip = NULL;
 
-    id_array = wdb_get_all_agents();
+    id_array = wdb_get_all_agents(FALSE);
 
     if(!id_array){
         mdebug1("Failed getting agent's ID array.");
@@ -1267,7 +1267,6 @@ char **get_agents(int flag){
     return (agents_array);
 }
 
-/* List available agents for monitord */
 char **get_agents_by_keepalive(int flag, int keepalive){
     size_t array_size = 0;
     char **agents_array = NULL;
@@ -1279,10 +1278,10 @@ char **get_agents_by_keepalive(int flag, int keepalive){
 
     switch(flag){
         case GA_NOTACTIVE:
-            id_array = wdb_get_agents_by_keepalive(">", keepalive);
+            id_array = wdb_get_agents_by_keepalive(">", keepalive, FALSE);
             break;
         case GA_ACTIVE:
-            id_array = wdb_get_agents_by_keepalive("<", keepalive);
+            id_array = wdb_get_agents_by_keepalive("<", keepalive, FALSE);
             break;
         default:
             mdebug1("Invalid flag '%d' trying to get agents.", flag);

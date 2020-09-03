@@ -497,10 +497,11 @@ int wdb_create_file(const char *path, const char *source);
  * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
  * The array is heap allocated memory that must be freed by the caller.
  * 
+ * @param include_manager flag to include the manager on agents list
  * @return Pointer to the array, on success.
  * @retval NULL on errors.
  */
-int* wdb_get_all_agents();
+int* wdb_get_all_agents(bool include_manager);
 
 /**
  * @brief Returns an array containing the ID of every agent (except 0), ended with -1 based on its keep_alive.
@@ -510,10 +511,11 @@ int* wdb_get_all_agents();
  * 
  * @param condition ">" or "<". The condition to match keep alive.
  * @param keepalive keep_alive to search the agents.
+ * @param include_manager flag to include the manager on agents list
  * @return Pointer to the array, on success.
  * @retval NULL on errors.
  */
-int* wdb_get_agents_by_keepalive(const char* condition, int keepalive);
+int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool include_manager);
 
 /* Fill belongs table on start */
 int wdb_agent_belongs_first_time();

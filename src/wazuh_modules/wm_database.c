@@ -403,7 +403,7 @@ void wm_sync_agents() {
 
     /* Delete old keys */
 
-    if ((agents = wdb_get_all_agents())) {
+    if ((agents = wdb_get_all_agents(FALSE))) {
         char id[9];
 
         for (i = 0; agents[i] != -1; i++) {
