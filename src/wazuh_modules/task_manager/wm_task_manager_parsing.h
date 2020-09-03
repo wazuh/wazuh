@@ -29,11 +29,9 @@ extern const char* task_statuses[];
 /**
  * Parse the incomming message and return a JSON with the message.
  * @param msg Incomming message from a connection.
- * @param module String where the module will be stored.
- * @param command String where the command will be stored.
  * @return JSON array when succeed, NULL otherwise.
  * */
-cJSON* wm_task_manager_parse_message(const char *msg, char **module, char **command) __attribute__((nonnull));
+cJSON* wm_task_manager_parse_message(const char *msg) __attribute__((nonnull));
 
 /**
  * Build a JSON object response.

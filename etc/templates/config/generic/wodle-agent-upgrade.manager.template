@@ -1,4 +1,0 @@
-  <wodle name="agent-upgrade">
-    <enabled>yes</enabled>
-    <wpk_repository>packages.wazuh.com/4.x/wpk/</wpk_repository>
-  </wodle>

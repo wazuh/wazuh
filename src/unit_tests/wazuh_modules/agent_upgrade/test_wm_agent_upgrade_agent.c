@@ -25,8 +25,8 @@
 #include "../../wazuh_modules/agent_upgrade/agent/wm_agent_upgrade_agent.h"
 #include "../../headers/shared.h"
 
-void wm_upgrade_agent_send_ack_message(int queue_fd, wm_upgrade_agent_state state);
-bool wm_upgrade_agent_search_upgrade_result(int queue_fd);
+void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state);
+bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
 
 // Setup / teardown
 
@@ -77,7 +77,9 @@ void test_wm_upgrade_agent_send_ack_message_successful(void **state)
                                                                  "\"data\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
-    wm_upgrade_agent_send_ack_message(queue, upgrade_state);
+    wm_upgrade_agent_send_ack_message(&queue, upgrade_state);
+
+    assert_int_equal(queue, 0);
 }
 
 void test_wm_upgrade_agent_send_ack_message_failed(void **state)
@@ -105,7 +107,9 @@ void test_wm_upgrade_agent_send_ack_message_failed(void **state)
                                                                  "\"data\":\"Upgrade failed\","
                                                                  "\"status\":\"Failed\"}}'");
 
-    wm_upgrade_agent_send_ack_message(queue, upgrade_state);
+    wm_upgrade_agent_send_ack_message(&queue, upgrade_state);
+
+    assert_int_equal(queue, 0);
 }
 
 void test_wm_upgrade_agent_send_ack_message_error(void **state)
@@ -131,7 +135,7 @@ void test_wm_upgrade_agent_send_ack_message_error(void **state)
 
     expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
     expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, queue);
+    will_return(__wrap_StartMQ, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
@@ -140,7 +144,9 @@ void test_wm_upgrade_agent_send_ack_message_error(void **state)
                                                                  "\"data\":\"Upgrade failed\","
                                                                  "\"status\":\"Failed\"}}'");
 
-    wm_upgrade_agent_send_ack_message(queue, upgrade_state);
+    wm_upgrade_agent_send_ack_message(&queue, upgrade_state);
+
+    assert_int_equal(queue, 1);
 }
 
 void test_wm_upgrade_agent_send_ack_message_error_exit(void **state)
@@ -178,7 +184,9 @@ void test_wm_upgrade_agent_send_ack_message_error_exit(void **state)
                                                                  "\"data\":\"Upgrade failed\","
                                                                  "\"status\":\"Failed\"}}'");
 
-    wm_upgrade_agent_send_ack_message(queue, upgrade_state);
+    wm_upgrade_agent_send_ack_message(&queue, upgrade_state);
+
+    assert_int_equal(queue, -1);
 }
 
 void test_wm_upgrade_agent_search_upgrade_result_successful(void **state)
@@ -221,9 +229,10 @@ void test_wm_upgrade_agent_search_upgrade_result_successful(void **state)
                                                                  "\"data\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
-    int ret = wm_upgrade_agent_search_upgrade_result(queue);
+    int ret = wm_upgrade_agent_search_upgrade_result(&queue);
 
     assert_int_equal(ret, 1);
+    assert_int_equal(queue, 0);
 }
 
 void test_wm_upgrade_agent_search_upgrade_result_failed(void **state)
@@ -266,9 +275,10 @@ void test_wm_upgrade_agent_search_upgrade_result_failed(void **state)
                                                                  "\"data\":\"Upgrade failed\","
                                                                  "\"status\":\"Failed\"}}'");
 
-    int ret = wm_upgrade_agent_search_upgrade_result(queue);
+    int ret = wm_upgrade_agent_search_upgrade_result(&queue);
 
     assert_int_equal(ret, 1);
+    assert_int_equal(queue, 0);
 }
 
 void test_wm_upgrade_agent_search_upgrade_result_error_open(void **state)
@@ -282,9 +292,10 @@ void test_wm_upgrade_agent_search_upgrade_result_error_open(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
-    int ret = wm_upgrade_agent_search_upgrade_result(queue);
+    int ret = wm_upgrade_agent_search_upgrade_result(&queue);
 
     assert_int_equal(ret, 0);
+    assert_int_equal(queue, 0);
 }
 
 void test_wm_upgrade_agent_search_upgrade_result_error_code(void **state)
@@ -309,9 +320,10 @@ void test_wm_upgrade_agent_search_upgrade_result_error_code(void **state)
     expect_value(__wrap_fclose, _File, (FILE*)1);
     will_return(__wrap_fclose, 1);
 
-    int ret = wm_upgrade_agent_search_upgrade_result(queue);
+    int ret = wm_upgrade_agent_search_upgrade_result(&queue);
 
     assert_int_equal(ret, 0);
+    assert_int_equal(queue, 0);
 }
 
 void test_wm_agent_upgrade_check_status_successful(void **state)

@@ -303,8 +303,10 @@ STATIC int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info
     // Set versions respository
     snprintf(versions_url, OS_SIZE_4096, "%sversions", path_url);
 
-    if (versions = wurl_http_get(versions_url), versions) {
-        char *version = versions;
+    versions = wurl_http_get(versions_url);
+    char *version = versions;
+
+    if (version) {
         char *sha1 = NULL;
         char *next_line = NULL;
 
@@ -366,7 +368,7 @@ int wm_agent_upgrade_compare_versions(const char *version1, const char *version2
     int result = 0;
 
     if (version1) {
-        strcpy(ver1, version1);
+        strncpy(ver1, version1, 10);
 
         if (tmp_v1 = strchr(ver1, 'v'), tmp_v1) {
             tmp_v1++;
@@ -388,7 +390,7 @@ int wm_agent_upgrade_compare_versions(const char *version1, const char *version2
     }
 
     if (version2) {
-        strcpy(ver2, version2);
+        strncpy(ver2, version2, 10);
 
         if (tmp_v2 = strchr(ver2, 'v'), tmp_v2) {
             tmp_v2++;

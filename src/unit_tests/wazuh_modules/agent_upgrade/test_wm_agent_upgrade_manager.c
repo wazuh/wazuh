@@ -98,6 +98,7 @@ void test_wm_agent_upgrade_listen_messages_upgrade_command(void **state)
 
     expect_value(__wrap_wm_agent_upgrade_process_upgrade_command, agent_ids, agents);
     expect_value(__wrap_wm_agent_upgrade_process_upgrade_command, task, upgrade_task);
+    will_return(__wrap_wm_agent_upgrade_process_upgrade_command, 1);
     will_return(__wrap_wm_agent_upgrade_process_upgrade_command, response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
@@ -110,6 +111,9 @@ void test_wm_agent_upgrade_listen_messages_upgrade_command(void **state)
     expect_value(__wrap_OS_SendSecureTCP, size, strlen(response));
     expect_string(__wrap_OS_SendSecureTCP, msg, response);
     will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_memory(__wrap_wm_agent_upgrade_start_upgrades, manager_configs, config, sizeof(config));
+    will_return(__wrap_wm_agent_upgrade_start_upgrades, 1);
 
     wm_agent_upgrade_listen_messages(config);
 }
@@ -166,6 +170,7 @@ void test_wm_agent_upgrade_listen_messages_upgrade_custom_command(void **state)
 
     expect_value(__wrap_wm_agent_upgrade_process_upgrade_custom_command, agent_ids, agents);
     expect_value(__wrap_wm_agent_upgrade_process_upgrade_custom_command, task, upgrade_custom_task);
+    will_return(__wrap_wm_agent_upgrade_process_upgrade_custom_command, 1);
     will_return(__wrap_wm_agent_upgrade_process_upgrade_custom_command, response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
@@ -178,6 +183,9 @@ void test_wm_agent_upgrade_listen_messages_upgrade_custom_command(void **state)
     expect_value(__wrap_OS_SendSecureTCP, size, strlen(response));
     expect_string(__wrap_OS_SendSecureTCP, msg, response);
     will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_memory(__wrap_wm_agent_upgrade_start_upgrades, manager_configs, config, sizeof(config));
+    will_return(__wrap_wm_agent_upgrade_start_upgrades, 1);
 
     wm_agent_upgrade_listen_messages(config);
 }
@@ -259,7 +267,7 @@ void test_wm_agent_upgrade_listen_messages_parse_error(void **state)
     int peer = 1111;
     char *input = "Bad JSON";
     size_t input_size = strlen(input) + 1;
-    char *response = "{\"error\":18,"
+    char *response = "{\"error\":25,"
                       "\"data\":\"Upgrade procedure could not start.\"}";
 
     expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
@@ -286,7 +294,7 @@ void test_wm_agent_upgrade_listen_messages_parse_error(void **state)
     will_return(__wrap_wm_agent_upgrade_parse_message, OS_INVALID);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8156): Response message: '{\"error\":18,"
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8156): Response message: '{\"error\":25,"
                                                                                "\"data\":\"Upgrade procedure could not start.\"}'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, peer);
