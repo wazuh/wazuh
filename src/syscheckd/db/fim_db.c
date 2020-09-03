@@ -17,6 +17,7 @@
 #endif
 
 static const char *SQL_STMT[] = {
+    // Files
 #ifdef WIN32
     [FIMDB_STMT_INSERT_DATA] = "INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
 #else
@@ -48,8 +49,33 @@ static const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_COUNT_PATH] = "SELECT count(*) FROM entry_path",
     [FIMDB_STMT_GET_COUNT_DATA] = "SELECT count(*) FROM entry_data",
     [FIMDB_STMT_GET_INODE] = "SELECT inode FROM entry_data where rowid=(SELECT inode_id FROM entry_path WHERE path = ?)",
+#ifdef WIN32
+    [FIMDB_STMT_REPLACE_REG_DATA] = "INSERT OR REPLACE INTO registry_data (key_id, name, type, scanned, checksum, last_event, options) VALUES (?, ?, ?, ?, ?, ?, ?);",
+    [FIMDB_STMT_REPLACE_REG_KEY] = "INSERT OR REPLACE INTO registry_key (path, data_id, perm, uid, gid, user_name, group_name, scanned, options, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [FIMDB_STMT_GET_REG_KEY] = "SELECT path, data_id, perm, uid, gid, user_name, group_name, scanned, options FROM registry_key WHERE path = ?;",
+    [FIMDB_STMT_GET_REG_DATA] = "SELECT key_id, name, type, scanned, checksum, last_event, options FROM registry_data WHERE name = ? AND key_id = ?;",
+    [FIMDB_STMT_UPDATE_REG_DATA] = "UPDATE registry_data SET key_id = ?, name = ?, type = ?, scanned = ?, checksum = ?, last_event = ?, options = ? WHERE key_id = ? AND name = ?;",
+    [FIMDB_STMT_UPDATE_REG_KEY] = "UPDATE registry_key SET path = ?, data_id = ?, perm = ?, uid = ?, gid = ?, user_name = ?, group_name = ?, scanned = ?, options = ?, checksum = ? WHERE path = ?;",
+    [FIMDB_STMT_GET_ALL_REG_ENTRIES] = "SELECT path, data_id, perm, uid, gid, user_name, group_name, registry_key.scanned, registry_key.options, key_id, name, type, registry_data.scanned, checksum, last_event, registry_data.options FROM registry_data INNER JOIN registry_key ON data_id = registry_data.key_id ORDER BY PATH ASC;",
+    [FIMDB_STMT_GET_REG_KEY_NOT_SCANNED] = "SELECT path, data_id, perm, uid, gid, user_name, group_name, scanned, options FROM registry_key WHERE scanned = 0;",
+    [FIMDB_STMT_GET_REG_DATA_NOT_SCANNED] = "SELECT key_id, name, type, scanned, checksum, last_event, options FROM registry_data WHERE scanned = 0;",
+    [FIMDB_STMT_SET_ALL_REG_KEY_UNSCANNED] = "UPDATE registry_key SET scanned = 0;",
+    [FIMDB_STMT_SET_REG_KEY_UNSCANNED] = "UPDATE registry_key SET scanned = 0 WHERE path = ?;",
+    [FIMDB_STMT_SET_ALL_REG_DATA_UNSCANNED] = "UPDATE registry_data SET scanned = 0;",
+    [FIMDB_STMT_SET_REG_DATA_UNSCANNED] = "UPDATE registry_data SET scanned = 0 WHERE name = ? AND key_id = ?;",
+    [FIMDB_STMT_GET_REG_DATA_ID] = "SELECT data_id FROM registry_key WHERE path = ?;",
+    [FIMDB_STMT_DELETE_REG_KEY_PATH] = "DELETE FROM registry_key WHERE path = ?;",
+    [FIMDB_STMT_DELETE_REG_DATA] = "DELETE FROM registry_data WHERE key_id = ? AND name = ?;",
+    [FIMDB_STMT_DELETE_REG_DATA_PATH] = "DELETE FROM registry_data WHERE key_id = (SELECT data_id FROM registry_key WHERE path = ?);",
+    [FIMDB_STMT_GET_COUNT_REG_KEY] = "SELECT count(*) FROM registry_key;",
+    [FIMDB_STMT_GET_COUNT_REG_DATA] = "SELECT count(*) FROM registry_data;",
+    [FIMDB_STMT_GET_COUNT_REG_KEY_AND_DATA] = "SELECT count(*) FROM registry_key INNER JOIN registry_data WHERE registry_data.key_id = registry_key.data_id;",
+    [FIMDB_STMT_GET_LAST_REG_KEY] = "SELECT path FROM registry_key ORDER BY path DESC LIMIT 1;",
+    [FIMDB_STMT_GET_FIRST_REG_KEY] = "SELECT path FROM registry_key ORDER BY path ASC LIMIT 1;",
+    [FIMDB_STMT_GET_REG_COUNT_RANGE] = "SELECT count(*) FROM registry_key INNER JOIN registry_data ON registry_data.key_id = registry_key.data_id WHERE path BETWEEN ? and ? ORDER BY path;",
+    [FIMDB_STMT_GET_REG_PATH_RANGE] = "SELECT path, data_id, perm, uid, gid, user_name, group_name, registry_key.scanned, registry_key.options, registry_key.checksum, key_id, name, type, registry_data.scanned, registry_data.checksum, last_event, registry_data.options FROM registry_key INNER JOIN registry_data ON registry_data.key_id = registry_key.data_id WHERE path BETWEEN ? and ? ORDER BY path;",
+#endif
 };
-
 
 /**
  * @brief Decodes a row from the database to be saved in a fim_entry structure.
