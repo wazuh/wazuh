@@ -65,7 +65,7 @@ static const char *SQL_STMT[] = {
     [FIMDB_STMT_SET_REG_DATA_UNSCANNED] = "UPDATE registry_data SET scanned = 0 WHERE name = ? AND key_id = ?;",
     [FIMDB_STMT_GET_REG_DATA_ID] = "SELECT data_id FROM registry_key WHERE path = ?;",
     [FIMDB_STMT_DELETE_REG_KEY_PATH] = "DELETE FROM registry_key WHERE path = ?;",
-    [FIMDB_STMT_DELETE_REG_DATA] = "DELETE FROM registry_data WHERE key_id = ? AND name = ?;",
+    [FIMDB_STMT_DELETE_REG_DATA] = "DELETE FROM registry_data WHERE name = ? AND key_id = ?;",
     [FIMDB_STMT_DELETE_REG_DATA_PATH] = "DELETE FROM registry_data WHERE key_id = (SELECT data_id FROM registry_key WHERE path = ?);",
     [FIMDB_STMT_GET_COUNT_REG_KEY] = "SELECT count(*) FROM registry_key;",
     [FIMDB_STMT_GET_COUNT_REG_DATA] = "SELECT count(*) FROM registry_data;",
@@ -252,6 +252,40 @@ void fim_db_bind_get_inode_id(fdb_t *fim_sql, const char *file_path);
  */
 void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path);
 
+#ifdef WIN32
+/**
+ * @brief Binds name and key_id to a statement
+ *
+ * @param fim_sql FIM database structure.
+ * @param index Index of the particular statement.
+ * @param registry_data_entry Registry data structure.
+ * @param key_id Key id of the registry.
+*/
+static void fim_db_bind_registry_data_name_key_id(fdb_t *fim_sql,
+                                           int index,
+                                           fim_registry_data *registry_data_entry,
+                                           int key_id);
+
+
+/**
+ * @brief Binds path into delete from registry_data statement
+ *
+ * @param fim_sql FIM database structure.
+ * @param path Path to registry.
+*/
+static void fim_db_bind_delete_registry_data_path(fdb_t *fim_sql, char *path);
+
+
+/**
+ * @brief Binds paths into select statements
+ *
+ * @param fim_sql FIM database structure.
+ * @param index Index of the particular statement.
+ * @param start First entry of the range.
+ * @param top Last entry of the range.
+*/
+static void fim_db_bind_path_range(fdb_t *fim_sql, int index, char *start, char *top);
+#endif
 
 fdb_t *fim_db_init(int storage) {
     fdb_t *fim;
@@ -780,6 +814,31 @@ void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char 
         sqlite3_bind_text(fim_sql->stmt[index], 2, top, -1, NULL);
     }
 }
+
+#ifdef WIN32
+static void fim_db_bind_registry_data_name_key_id(fdb_t *fim_sql,
+                                             int index,
+                                             fim_registry_data *registry_data_entry,
+                                             int key_id) {
+    if (index == FIMDB_STMT_SET_REG_DATA_UNSCANNED ||
+        index == FIMDB_STMT_DELETE_REG_DATA) {
+        sqlite3_bind_text(fim_sql->stmt[index], 1, registry_data_entry->name, -1, NULL);
+        sqlite3_bind_int(fim_sql->stmt[index], 2, key_id);
+    }
+}
+
+static void fim_db_bind_delete_registry_data_path(fdb_t *fim_sql, char *path) {
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_DELETE_REG_DATA_PATH], 1, path, -1, NULL);
+}
+
+static void fim_db_bind_path_range(fdb_t *fim_sql, int index, char *start, char *top) {
+    if (index == FIMDB_STMT_DELETE_REG_DATA_PATH ||
+        index == FIMDB_STMT_GET_REG_PATH_RANGE) {
+        sqlite3_bind_text(fim_sql->stmt[index], 1, start, -1, NULL);
+        sqlite3_bind_text(fim_sql->stmt[index], 2, top, -1, NULL);
+    }
+}
+#endif
 
 fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
     fim_entry *entry = NULL;
