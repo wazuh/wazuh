@@ -517,7 +517,7 @@
 #define WM_UPGRADE_AGENT_RESPONSE_SCRIPT_ERROR      "(8121): Script execution failed in the agent."
 
 #define MOD_TASK_CHECK_DB_ERROR                     "(8250): DB integrity is invalid. Exiting..."
-#define MOD_TASK_CREATE_SOCK_ERROR                  "(8251): Queue '%s' not accesible: '%s'. Exiting..."
+#define MOD_TASK_CREATE_SOCK_ERROR                  "(8251): Queue '%s' not accessible: '%s'. Exiting..."
 #define MOD_TASK_SELECT_ERROR                       "(8252): Error in select(): '%s'. Exiting..."
 #define MOD_TASK_ACCEPT_ERROR                       "(8253): Error in accept(): '%s'"
 #define MOD_TASK_RECV_ERROR                         "(8254): Error in recv(): '%s'"

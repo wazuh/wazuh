@@ -304,26 +304,30 @@ STATIC int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info
     snprintf(versions_url, OS_SIZE_4096, "%sversions", path_url);
 
     versions = wurl_http_get(versions_url);
-    char *version = versions;
 
-    if (version) {
+    if (versions) {
+        char *version = versions;
         char *sha1 = NULL;
         char *next_line = NULL;
 
-        while (next_line = strchr(version, '\n'), next_line) {
-            *next_line = '\0';
-            if (sha1 = strchr(version, ' '), sha1) {
-                *sha1 = '\0';
-                if (wm_agent_upgrade_compare_versions(wpk_version, version) == 0) {
-                    // Save WPK url, file name and sha1
-                    os_strdup(sha1 + 1, task->wpk_sha1);
-                    os_strdup(file_url, task->wpk_file);
-                    os_free(task->wpk_repository);
-                    os_strdup(path_url, task->wpk_repository);
-                    break;
+        while (version) {
+            if (next_line = strchr(version, '\n'), next_line) {
+                *next_line = '\0';
+                if (sha1 = strchr(version, ' '), sha1) {
+                    *sha1 = '\0';
+                    if (wm_agent_upgrade_compare_versions(wpk_version, version) == 0) {
+                        // Save WPK url, file name and sha1
+                        os_strdup(sha1 + 1, task->wpk_sha1);
+                        os_strdup(file_url, task->wpk_file);
+                        os_free(task->wpk_repository);
+                        os_strdup(path_url, task->wpk_repository);
+                        break;
+                    }
                 }
+                version = next_line + 1;
+            } else {
+                break;
             }
-            version = next_line + 1;
         }
         if (version) {
             if (sha1 = strchr(version, ' '), sha1) {
@@ -368,7 +372,7 @@ int wm_agent_upgrade_compare_versions(const char *version1, const char *version2
     int result = 0;
 
     if (version1) {
-        strncpy(ver1, version1, 10);
+        strncpy(ver1, version1, 9);
 
         if (tmp_v1 = strchr(ver1, 'v'), tmp_v1) {
             tmp_v1++;
@@ -390,7 +394,7 @@ int wm_agent_upgrade_compare_versions(const char *version1, const char *version2
     }
 
     if (version2) {
-        strncpy(ver2, version2, 10);
+        strncpy(ver2, version2, 9);
 
         if (tmp_v2 = strchr(ver2, 'v'), tmp_v2) {
             tmp_v2++;
