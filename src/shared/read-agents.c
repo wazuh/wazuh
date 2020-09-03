@@ -1267,7 +1267,7 @@ char **get_agents(int flag){
     return (agents_array);
 }
 
-char **get_agents_by_keepalive(int flag, int keepalive){
+char **get_agents_by_last_keepalive(int flag, int delta){
     size_t array_size = 0;
     char **agents_array = NULL;
     int *id_array = NULL;
@@ -1278,10 +1278,10 @@ char **get_agents_by_keepalive(int flag, int keepalive){
 
     switch(flag){
         case GA_NOTACTIVE:
-            id_array = wdb_get_agents_by_keepalive(">", keepalive, FALSE);
+            id_array = wdb_get_agents_by_keepalive(">", time(0)-delta, FALSE);
             break;
         case GA_ACTIVE:
-            id_array = wdb_get_agents_by_keepalive("<", keepalive, FALSE);
+            id_array = wdb_get_agents_by_keepalive("<", time(0)-delta, FALSE);
             break;
         default:
             mdebug1("Invalid flag '%d' trying to get agents.", flag);

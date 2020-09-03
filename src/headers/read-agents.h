@@ -61,7 +61,7 @@ void delete_diff(const char *name);
 char **get_agents(int flag);
 
 /* List agents for monitord */
-char **get_agents_by_keepalive(int flag, int mon_time);
+char **get_agents_by_last_keepalive(int flag, int delta);
 
 /* Free the agent list */
 void free_agents(char **agent_list);
