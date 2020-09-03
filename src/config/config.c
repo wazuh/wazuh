@@ -191,9 +191,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_AgentUpgrade(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        } 
-    
-        else if (chld_node && (strcmp(node[i]->element, task_manager) == 0)) {
+        } else if (chld_node && (strcmp(node[i]->element, task_manager) == 0)) {
             #if !defined(WIN32) && !defined(CLIENT)  
                 if ((modules & CWMODULE) && (Read_TaskManager(xml, node[i], d1) < 0)) {
                     goto fail;
@@ -201,9 +199,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
             #else
                 mwarn("%s configuration is only set in the manager.", node[i]->element);
             #endif
-        } 
-
-        else {
+        } else {
             merror(XML_INVELEM, node[i]->element);
             goto fail;
         }

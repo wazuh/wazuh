@@ -244,6 +244,8 @@ STATIC wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, output);
         wm_agent_upgrade_free_upgrade_task(task);
         os_strdup(output, *error_message);
+        os_free(output);
+        return NULL;
     }
 
     os_free(output);
@@ -291,6 +293,8 @@ STATIC wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(con
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, output);
         wm_agent_upgrade_free_upgrade_custom_task(task);
         os_strdup(output, *error_message);
+        os_free(output);
+        return NULL;
     }
 
     os_free(output);
@@ -343,7 +347,10 @@ STATIC wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_PARSE_ERROR, output);
         wm_agent_upgrade_free_agent_status_task(task);
         os_strdup(output, *error_message);
+        os_free(output);
+        return NULL;
     }
+
     os_free(output);
 
     return task;
