@@ -530,10 +530,10 @@ int wdb_set_agent_labels(int id, const char *labels) {
     return result;
 }
 
-int* wdb_get_all_agents(void) {
+int* wdb_get_all_agents(bool include_manager) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
-    int last_id = 0;
+    int last_id = include_manager ? -1 : 0;
     int *array = NULL;
     int len = 0;
     wdbc_result status = WDBC_DUE;
@@ -575,10 +575,10 @@ int* wdb_get_all_agents(void) {
     return array;
 }
 
-int* wdb_get_agents_by_keepalive(const char* condition, int keepalive) {
+int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool include_manager) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
-    int last_id = 0;
+    int last_id = include_manager ? -1 : 0;
     int *array = NULL;
     int len = 0;
     wdbc_result status = WDBC_DUE;
@@ -1219,7 +1219,7 @@ int wdb_agent_belongs_first_time(){
     char *group;
     int *agents;
 
-    if ((agents = wdb_get_all_agents())) {
+    if ((agents = wdb_get_all_agents(FALSE))) {
 
         for (i = 0; agents[i] != -1; i++) {
             group = wdb_get_agent_group(agents[i]);

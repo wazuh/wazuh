@@ -239,7 +239,7 @@ int wdb_delete_fim(int id) {
 
 /* Delete FIM events of all agents */
 void wdb_delete_fim_all() {
-    int *agents = wdb_get_all_agents();
+    int *agents = wdb_get_all_agents(FALSE);
     int i;
 
     if (agents) {

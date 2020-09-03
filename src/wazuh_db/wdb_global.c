@@ -1207,7 +1207,7 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id) {
 wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char comparator, int keep_alive, char **output) {
     wdbc_result status = WDBC_UNKNOWN;
     unsigned response_size = 0;
-        
+
     os_calloc(WDB_MAX_RESPONSE_SIZE, sizeof(char), *output);
     char *response_aux = *output;
     wdb_stmt stmt_index = -1;
@@ -1218,7 +1218,7 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
     else if (comparator == '<') {
         stmt_index = WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE;
     }
-    else 
+    else
     {
         merror("Invalid comparator");
         return WDBC_ERROR;
@@ -1236,19 +1236,20 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
             status = WDBC_ERROR;
             break;
         }
+
         sqlite3_stmt* stmt = wdb->stmt[stmt_index];
         if (sqlite3_bind_int(stmt, 1, *last_agent_id) != SQLITE_OK) {
             merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             status = WDBC_ERROR;
             break;
-        }        
-       
+        }
+
         if (sqlite3_bind_int(stmt, 2, keep_alive) != SQLITE_OK) {
             merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             status = WDBC_ERROR;
             break;
         }
-        
+
         //Get agent id
         cJSON* sql_agents_response = wdb_exec_stmt(stmt);
         if (sql_agents_response && sql_agents_response->child) {
@@ -1256,14 +1257,14 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
             cJSON* json_id = cJSON_GetObjectItemCaseSensitive(json_agent,"id");
             if (cJSON_IsNumber(json_id)) {
                 //Get ID
-                int agent_id = json_id->valueint;               
+                int agent_id = json_id->valueint;
 
                 //Print Agent info
                 char *id_str = cJSON_PrintUnformatted(json_id);
                 unsigned id_len = strlen(id_str);
                 
                 //Check if new agent fits in response
-                if (response_size+id_len+1 < WDB_MAX_RESPONSE_SIZE) {                    
+                if (response_size+id_len+1 < WDB_MAX_RESPONSE_SIZE) {
                     //Add new agent
                     memcpy(response_aux, id_str, id_len); 
                     response_aux+=id_len;
