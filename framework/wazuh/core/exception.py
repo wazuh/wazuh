@@ -244,28 +244,6 @@ class WazuhException(Exception):
         1714: {'message': 'Error downloading WPK file',
                'remediation': 'Please check your internet connection and try again'
                },
-        1715: {'message': 'Could not create task ID for upgrade task',
-               'remediation': 'TO BE DEFINED'
-               },
-        1716: {'message': 'Manager Error',
-               'remediation': 'TO BE DEFINED'
-               },
-        1717: {'message': 'Upgrading an agent to a version higher than the manager requires the force flag.',
-               'remediation': 'The agent cannot have a more recent version than the manager, please update the manager '
-                              'first or use force=1 to force the upgrade'
-               },
-        1718: {'message': 'Version not available',
-               'remediation': 'Please check the version again or check our repository at [official repository](https://github.com/wazuh/wazuh)'
-               },
-        1719: {'message': 'Remote upgrade is not available for this agent version',
-               'remediation': 'Please, follow this for agent upgrading: https://documentation.wazuh.com/3.x/user-manual/agents/remote-upgrading/upgrading-agent.html'
-               },
-        1720: {'message': 'Agent disconnected',
-               'remediation': 'Please make sure the agent is active'
-               },
-        1721: {'message': 'Remote upgrade is not available for this agent OS version',
-               'remediation': 'Sorry, the remote update is not available for this OS'
-               },
         1722: {'message': 'Incorrect format for group_id',
                'remediation': 'Characters supported  a-z, A-Z, 0-9, ., _ and -. Max length is 255'
                },
@@ -361,6 +339,9 @@ class WazuhException(Exception):
         1804: {'message': 'Error reading lists file',
                'remediation': 'Please, make sure you provide a correct filepath'
                },
+
+        # Agent upgrade module reserved IDs (1810-1899). The error message will be the output of upgrade module
+        1810: {'message': ''},
 
         # Manager:
         1900: 'Error restarting manager',

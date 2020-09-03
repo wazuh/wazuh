@@ -403,18 +403,18 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_agent(request, agent_id, pretty=False, wpk_repo=None, version=None, use_http=False, force=False):
+async def put_upgrade_agent(request, list_agents, pretty=False, wpk_repo=None, version=None, use_http=False, force=False):
     """Upgrade agent using a WPK file from online repository.
 
     :param pretty: Show results in human-readable format
-    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :param list_agents: Array of agent's IDs.
     :param wpk_repo: WPK repository.
     :param version: Wazuh version to upgrade to.
     :param use_http: Use protocol http. If it's false use https. By default the value is set to false.
     :param force: Force upgrade.
     :return: ApiResponse
     """
-    f_kwargs = {'agent_list': [agent_id],
+    f_kwargs = {'agent_list': list_agents,
                 'wpk_repo': wpk_repo,
                 'version': version,
                 'use_http': use_http,
@@ -433,19 +433,19 @@ async def put_upgrade_agent(request, agent_id, pretty=False, wpk_repo=None, vers
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_custom_agent(request, agent_id, pretty=False, wait_for_complete=False, file_path=None,
+async def put_upgrade_custom_agent(request, list_agents, pretty=False, wait_for_complete=False, file_path=None,
                                    installer=None):
     """Upgrade agent using a local WPK file.'.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :param list_agents: Array of agent's IDs.
     :param file_path: Path to the WPK file. The file must be on a folder on the Wazuh's installation directory
     (by default, <code>/var/ossec</code>).
     :type installer: str
     :return: ApiResponse
     """
-    f_kwargs = {'agent_list': [agent_id],
+    f_kwargs = {'agent_list': list_agents,
                 'file_path': file_path,
                 'installer': installer}
 
@@ -488,16 +488,16 @@ async def post_new_agent(request, agent_name, pretty=False, wait_for_complete=Fa
     return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_upgrade(request, agent_id, timeout=3, pretty=False, wait_for_complete=False):
+async def get_agent_upgrade(request, task_ids, timeout=3, pretty=False, wait_for_complete=False):
     """Get upgrade result from agent.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :param task_ids: Array of task's IDs.
     :param timeout: Seconds to wait for the agent to respond.
     :return: ApiResponse
     """
-    f_kwargs = {'agent_list': [agent_id],
+    f_kwargs = {'task_list': task_ids,
                 'timeout': timeout}
 
     dapi = DistributedAPI(f=agent.get_upgrade_result,

@@ -19,6 +19,7 @@ from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException,
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
 from wazuh.rbac.decorators import expose_resources
+from wazuh.core.agent import core_upgrade_agents
 
 logger = logging.getLogger('wazuh')
 
@@ -712,37 +713,18 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
     -------
     Confirmation message
     """
-    result = AffectedItemsWazuhResult(all_msg='All agents are being upgraded',
-                                      some_msg='Some agents have not been upgraded',
-                                      none_msg='No agent has been upgraded')
+    result = AffectedItemsWazuhResult(all_msg='All upgrade tasks have been created',
+                                      some_msg='Some upgrade tasks have been created',
+                                      none_msg='No upgrade task has been created')
 
-    # Exceptions need to be clarified (Ask core).
-    map_errors_exceptions = {
-        'need_explanation': {
-            1: 1716,  # Could not parse message JSON
-            2: 1716,  # Required parameters in JSON message where not found (This errors shouldn't happen with our dict)
-            3: 1716,  # Command not recognized (This errors shouldn't happen with our dict)
-            5: 1716,  # Error message from socket
-            7: 1757  # Upgrade procedure could not start (?)
-        },
-        'no_need_explanation': {
-            4: 1715,  # Could not create task id for upgrade task (?)
-            6: 1756,
-            8: {'windows': 1721, 'others': 1719},
-            10: 1749,
-            11: 1717,
-            12: 1701
-        }
-    }
-
-    wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url
+    wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url_4_x
     msg = {
         'command': 'upgrade',
-        'agents': agent_list,
+        'agents': list(map(int, agent_list)),
         'params': {
             'version': version,
             'force_upgrade': 0 if not force else 1,
-            'use_http': use_http,
+            'use_http': 1 if use_http else 0,
             'wpk_repo': f'{wpk_repo}/' if not wpk_repo.endswith('/') else wpk_repo,
             'file_path': file_path,
             'installer': installer
@@ -753,41 +735,41 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
 
     for agent_result in data:
         if agent_result['error'] == 0:
-            result.affected_items.append(agent_result['agent'])
+            task_agent = {
+                'agent_id': str(agent_result['agent']).zfill(3),
+                'task_id': agent_result['task_id']
+            }
+            result.affected_items.append(task_agent)
             result.total_affected_items += 1
         else:
-            if agent_result['error'] in map_errors_exceptions['need_explanation'].keys():
-                result.add_failed_item(id_=agent_result['agent'], error=WazuhError(
-                    code=map_errors_exceptions[agent_result['error']], extra_message=agent_result['data']))
-            elif agent_result['error'] != 8:
-                map_errors_exceptions = map_errors_exceptions['no_need_explanation']
-                result.add_failed_item(id_=agent_result['agent'],
-                                       error=WazuhError(code=map_errors_exceptions[agent_result['error']]))
-            else:
-                map_errors_exceptions = map_errors_exceptions['no_need_explanation']
-                agent = Agent(id=agent_result['agent']).load_info_from_db()
-                result.add_failed_item(
-                    id_=agent_result['agent'],
-                    error=WazuhError(
-                        code=map_errors_exceptions[
-                            agent_result['error']]['others' if agent.os['platform'] != 'windows' else 'windows']))
+            error = WazuhError(code=1810 + agent_result['error'], cmd_error=True, extra_message=agent_result['data'])
+            result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
 
     return result
 
 
-@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_upgrade_result(agent_list=None, timeout=3):
+# @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)
+def get_upgrade_result(task_list=None, timeout=3):
     """Read upgrade result output from agent.
 
-    :param agent_list: List of agents ID's.
+    :param task_list: List of tasks ID's.
     :param timeout: Maximum time for the call to be considered failed.
     :return: Upgrade result.
     """
-    # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
-    # agents
-    agent_id = agent_list[0]
+    result = AffectedItemsWazuhResult(all_msg='TBD',
+                                      some_msg='TBD',
+                                      none_msg='TBD')
 
-    return Agent(agent_id).upgrade_result(timeout=int(timeout))
+    for task in task_list:
+        task_result = core_upgrade_agents({'command': 'task_result', 'module': 'api', 'task_id': int(task)})
+        if task_result['error'] == 0:
+            result.affected_items.append()
+        else:
+            # Change this
+            error = WazuhError(code=1810 + task_result['error'], cmd_error=True, extra_message=task_result['data'])
+            result.add_failed_item(id_=task_result['error'], error=error)
+
+    return result
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)

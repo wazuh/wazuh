@@ -6,7 +6,6 @@ import copy
 import fcntl
 import hashlib
 import ipaddress
-import socket
 from base64 import b64encode
 from datetime import date, datetime, timedelta, timezone
 from glob import glob
@@ -14,18 +13,17 @@ from json import dumps, loads
 from os import chown, chmod, path, makedirs, urandom, stat, remove
 from platform import platform
 from shutil import copyfile, rmtree
-from time import time, sleep
+from time import time
 
-import requests
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.ossec_queue import OssecQueue
-from wazuh.core.wazuh_socket import OssecSocket, OssecSocketJSON
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, SQLiteBackend, WazuhDBBackend, safe_move
+from wazuh.core.wazuh_socket import OssecSocket, OssecSocketJSON
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
@@ -962,56 +960,6 @@ class Agent:
 
         return f"Agent '{agent_id}' removed from '{group_id}'." + (" Agent reassigned to group default."
                                                                    if set_default else "")
-
-    def upgrade_result(self, debug=False, timeout=common.upgrade_result_retries):
-        """
-        Read upgrade result output from agent.
-        """
-        sleep(1)
-        if self.id == "000":
-            raise WazuhError(1703)
-        self.load_info_from_db()
-        s = OssecSocket(common.REQUEST_SOCKET)
-        msg = "{0} com upgrade_result".format(str(self.id).zfill(3))
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        counter = 0
-        while data.startswith('err') and counter < timeout:
-            sleep(common.upgrade_result_sleep)
-            counter = counter + 1
-            s = OssecSocket(common.REQUEST_SOCKET)
-            msg = str(self.id).zfill(3) + " com upgrade_result"
-            s.send(msg.encode())
-            if debug:
-                print("MSG SENT: {0}".format(str(msg)))
-            data = s.receive().decode()
-            s.close()
-            if debug:
-                print("RESPONSE: {0}".format(data))
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        if data.startswith('ok 0'):
-            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): succeeded. "
-                      "New version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(),
-                     path.join(common.ossec_path, 'queue', 'ossec', 'queue'))
-            s.close()
-            return "Agent upgraded successfully"
-        elif data.startswith('ok 2'):
-            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): failed: "
-                      "restored to previous version".format(str(self.id).zfill(3), self.name)).encode(),
-                     path.join(common.ossec_path, 'queue', 'ossec', 'queue'))
-            s.close()
-            raise WazuhError(1716, extra_message="Agent restored to previous version")
-        else:
-            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): lost: {2}".format(
-                str(self.id).zfill(3), self.name, data.replace("err ", ""))).encode(),
-                     path.join(common.ossec_path, 'queue', 'ossec', 'queue'))
-            s.close()
-            raise WazuhError(1716, extra_message=data.replace("err ", ""))
 
     def getconfig(self, component, config):
         """Read agent loaded configuration.

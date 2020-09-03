@@ -1569,6 +1569,10 @@ components:
       type: string
       format: numbers_delete
       description: "Rule ID|all"
+    Task_id:
+      type: string
+      format: numbers
+      description: "Task ID"
     Policy_id:
       type: string
       format: numbers
@@ -4055,6 +4059,14 @@ components:
       schema:
         type: integer
         minimum: 0
+    task_ids:
+      in: query
+      name: 'task_ids'
+      description: "List of task IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Task_id'
     reason:
       in: query
       name: reason
@@ -5640,19 +5652,19 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/{agent_id}/upgrade:
+  /agents/upgrade:
     put:
       tags:
         - agents
-      summary: "Upgrade agent using online repository"
+      summary: "Upgrade a list of agents using online repository"
       description: "Upgrade the agent using a WPK file from online repository"
       operationId: api.controllers.agents_controller.put_upgrade_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/wpk_repo'
         - $ref: '#/components/parameters/upgrade_version'
         - $ref: '#/components/parameters/use_http'
@@ -5677,7 +5689,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/{agent_id}/upgrade_custom:
+  /agents/upgrade_custom:
     put:
       tags:
         - agents
@@ -5687,9 +5699,9 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/file_path'
         - $ref: '#/components/parameters/installer'
       responses:
@@ -5712,7 +5724,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/{agent_id}/upgrade_result:
+  /agents/upgrade_result:
     get:
       tags:
         - agents
@@ -5724,7 +5736,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/task_ids'
         - in: query
           name: timeout
           description: "Seconds to wait for the agent to respond"
