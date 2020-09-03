@@ -232,25 +232,18 @@ int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request) {
     cJSON * location = NULL;
     bool event_json = false;
 
-    if (event = cJSON_GetObjectItem(request, W_LOGTEST_JSON_EVENT), !event) {
-        return -1;
-    }
+    event = cJSON_GetObjectItemCaseSensitive(request, W_LOGTEST_JSON_EVENT);
 
     if (event->child) {
         event_json = true;
-        if (event_str = cJSON_PrintUnformatted(event), !event_str) return -1;
+        event_str = cJSON_PrintUnformatted(event);
     }
     else {
-        if (event_str = cJSON_GetStringValue(event), !event_str) return -1;
+        event_str = cJSON_GetStringValue(event);
     }
 
-    if (location = cJSON_GetObjectItem(request, W_LOGTEST_JSON_LOCATION), !location) {
-        return -1;
-    }
-
-    if (location_str = cJSON_GetStringValue(location), !location_str) {
-        return -1;
-    }
+    location = cJSON_GetObjectItemCaseSensitive(request, W_LOGTEST_JSON_LOCATION);
+    location_str = cJSON_GetStringValue(location);
 
     int logsize = strlen(location_str) + strlen(event_str) + 4;
 
