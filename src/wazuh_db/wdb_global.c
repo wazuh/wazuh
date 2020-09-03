@@ -247,12 +247,12 @@ cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int id) {
     int index = 0;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return NULL;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_LABELS_GET) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return NULL;
     }
 
@@ -279,12 +279,12 @@ int wdb_global_del_agent_labels(wdb_t *wdb, int id) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return OS_INVALID;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_LABELS_DEL) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
 
@@ -310,12 +310,12 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return OS_INVALID;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_LABELS_SET) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
 
@@ -995,12 +995,12 @@ int wdb_global_set_sync_status(wdb_t *wdb, int id, wdb_sync_status_t status) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return OS_INVALID;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SYNC_SET) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
 
@@ -1035,7 +1035,7 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
     char *response_aux = *output;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return WDB_CHUNKS_ERROR;
     }
 
@@ -1045,7 +1045,7 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
     while (status == WDB_CHUNKS_PENDING) {
         //Prepare SQL query
         if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SYNC_REQ_GET) < 0) {
-            mdebug1("cannot cache statement");
+            mdebug1("Cannot cache statement");
             status = WDB_CHUNKS_ERROR;
             break;
         }
@@ -1060,7 +1060,7 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
         cJSON* sql_agents_response = wdb_exec_stmt(agent_stmt);
         if (sql_agents_response && sql_agents_response->child) {
             cJSON* json_agent = sql_agents_response->child;
-            cJSON* json_id = cJSON_GetObjectItemCaseSensitive(json_agent,"id");
+            cJSON* json_id = cJSON_GetObjectItem(json_agent,"id");
             if (cJSON_IsNumber(json_id)) {
                 //Get ID
                 int agent_id = json_id->valueint;
@@ -1128,12 +1128,12 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb,cJSON * json_agent){
     cJSON *json_field = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return OS_INVALID;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_UPDATE_AGENT_INFO) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
 
@@ -1253,7 +1253,7 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
         cJSON* sql_agents_response = wdb_exec_stmt(stmt);
         if (sql_agents_response && sql_agents_response->child) {
             cJSON* json_agent = sql_agents_response->child;
-            cJSON* json_id = cJSON_GetObjectItemCaseSensitive(json_agent,"id");
+            cJSON* json_id = cJSON_GetObjectItem(json_agent,"id");
             if (cJSON_IsNumber(json_id)) {
                 //Get ID
                 int agent_id = json_id->valueint;               
@@ -1327,7 +1327,7 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
         cJSON* sql_agents_response = wdb_exec_stmt(stmt);
         if (sql_agents_response && sql_agents_response->child) {
             cJSON* json_agent = sql_agents_response->child;
-            cJSON* json_id = cJSON_GetObjectItemCaseSensitive(json_agent,"id");
+            cJSON* json_id = cJSON_GetObjectItem(json_agent,"id");
             if (cJSON_IsNumber(json_id)) {
                 //Get ID
                 int agent_id = json_id->valueint;               
