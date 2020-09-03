@@ -1278,14 +1278,14 @@ char **get_agents_by_last_keepalive(int flag, int delta){
 
     switch(flag){
         case GA_NOTACTIVE:
-            id_array = wdb_get_agents_by_keepalive(">", time(0)-delta, FALSE);
+            id_array = wdb_get_agents_by_keepalive("<", time(0)-delta, FALSE);
             break;
         case GA_ACTIVE:
-            id_array = wdb_get_agents_by_keepalive("<", time(0)-delta, FALSE);
+            id_array = wdb_get_agents_by_keepalive(">", time(0)-delta, FALSE);
             break;
         default:
             mdebug1("Invalid flag '%d' trying to get agents.", flag);
-            return NULL;    
+            return NULL;
     }
 
     if(!id_array){
