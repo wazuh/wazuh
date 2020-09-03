@@ -22,8 +22,8 @@
 #endif
 
 /* Default values */
-#define MAX_KEY_LENGTH   260
-#define MAX_KEY         2048
+#define MAX_KEY_LENGTH 260
+#define MAX_KEY 2048
 #define MAX_VALUE_NAME 16383
 
 /* Global variables */
@@ -268,8 +268,7 @@ int fim_check_key(registry_key_t *rkey) {
                 continue;
             }
 
-            if (OSMatch_Execute(rkey->full_key, strlen(rkey->full_key),
-                                syscheck.registry_ignore_regex[ign_it].regex)) {
+            if (OSMatch_Execute(rkey->full_key, strlen(rkey->full_key), syscheck.registry_ignore_regex[ign_it].regex)) {
                 mdebug2(FIM_IGNORE_SREGEX, "registry", rkey->full_key, syscheck.registry_ignore_regex[ign_it].regex->raw);
                 return -1;
             }
@@ -307,9 +306,8 @@ void fim_open_key(registry_key_t *rkey) {
     }
 
     /* We use the class_name, subkey_count and the value count */
-    if (RegQueryInfoKey(sub_key_handle, NULL, NULL, NULL,
-                         &subkey_count, NULL, NULL, &value_count,
-                         NULL, NULL, NULL, &file_time) != ERROR_SUCCESS) {
+    if (RegQueryInfoKey(sub_key_handle, NULL, NULL, NULL, &subkey_count, NULL, NULL, &value_count, NULL, NULL, NULL,
+                        &file_time) != ERROR_SUCCESS) {
         return;
     }
 
@@ -323,8 +321,7 @@ void fim_open_key(registry_key_t *rkey) {
         rc = ;
 
         /* Checking for the rc */
-        if (RegEnumKeyEx(sub_key_handle, i, sub_key_name_b, &sub_key_name_s,
-                            NULL, NULL, NULL, NULL) != ERROR_SUCCESS) {
+        if (RegEnumKeyEx(sub_key_handle, i, sub_key_name_b, &sub_key_name_s, NULL, NULL, NULL, NULL) != ERROR_SUCCESS) {
             continue;
         }
 
@@ -365,7 +362,8 @@ void fim_registry_scan() {
         }
 
         /* Read syscheck registry entry */
-        mdebug2(FIM_READING_REGISTRY, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32] ", syscheck.registry[i].entry);
+        mdebug2(FIM_READING_REGISTRY, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32] ",
+                syscheck.registry[i].entry);
 
         if (fim_init_registry_key(&rkey, syscheck.registry[i].entry, syscheck.registry[i]) != 0) {
             mdebug1(FIM_INV_REG, syscheck.registry[i].entry, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32]");
