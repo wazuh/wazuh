@@ -187,7 +187,7 @@ typedef struct registry_regex {
 
 #endif
 
-typedef struct fim_entry_data {
+typedef struct fim_file_data {
     // Checksum attributes
     unsigned int size;
     char * perm;
@@ -210,7 +210,7 @@ typedef struct fim_entry_data {
     unsigned int scanned;
     int options;
     os_sha1 checksum;
-} fim_entry_data;
+} fim_file_data;
 
 typedef struct fim_registry_value_data {
     char * name;
@@ -254,7 +254,7 @@ typedef struct fim_entry {
     union {
         struct {
             char *path;
-            fim_entry_data *data;
+            fim_file_data *data;
         } file_entry;
         struct {
             fim_registry_key *key;

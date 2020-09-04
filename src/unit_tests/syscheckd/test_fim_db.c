@@ -234,7 +234,7 @@ typedef struct _test_fim_db_insert_data {
     fdb_t *fim_sql;
     fim_entry *entry;
     fim_tmp_file *tmp_file;
-    fim_entry_data *saved;
+    fim_file_data *saved;
 } test_fim_db_insert_data;
 
 typedef struct __test_fim_db_ctx_s {
@@ -247,12 +247,12 @@ static int test_fim_db_setup(void **state) {
     test_data = calloc(1, sizeof(test_fim_db_insert_data));
     test_data->fim_sql = calloc(1, sizeof(fdb_t));
     test_data->entry = calloc(1, sizeof(fim_entry));
-    test_data->entry->data = calloc(1, sizeof(fim_entry_data));
+    test_data->entry->data = calloc(1, sizeof(fim_file_data));
     test_data->entry->data->inode = 200;
     test_data->entry->data->dev = 100;
     test_data->entry->path =  strdup("/test/path");
     test_data->fim_sql->transaction.last_commit = 1; //Set a time diferent than 0
-    test_data->saved = calloc(1, sizeof(fim_entry_data));
+    test_data->saved = calloc(1, sizeof(fim_file_data));
     test_data->saved->inode = 100;
     test_data->saved->dev = 100;
     *state = test_data;

@@ -91,7 +91,7 @@ static int fim_db_process_get_query(fdb_t *fim_sql, int index,
  * @param fim_sql FIM database structure.
  * @param entry FIM entry data structure.
  */
-static void fim_db_bind_insert_data(fdb_t *fim_sql, fim_entry_data *entry);
+static void fim_db_bind_insert_data(fdb_t *fim_sql, fim_file_data *entry);
 
 
 /**
@@ -113,7 +113,7 @@ void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char 
  * @param entry FIM entry data structure.
  */
 static void fim_db_bind_replace_path(fdb_t *fim_sql, const char *file_path,
-                                    int row_id, fim_entry_data *entry);
+                                    int row_id, fim_file_data *entry);
 
 
 /**
@@ -148,7 +148,7 @@ static void fim_db_bind_get_inode(fdb_t *fim_sql, int index,
  * @param row_id Row id in entry_data table.
  */
 static void fim_db_bind_update_data(fdb_t *fim_sql,
-                                    fim_entry_data *entry,
+                                    fim_file_data *entry,
                                     int *row_id);
 
 /**
@@ -625,7 +625,7 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
     os_calloc(1, sizeof(fim_entry), entry);
     os_strdup((char *)sqlite3_column_text(stmt, 0), entry->path);
 
-    os_calloc(1, sizeof(fim_entry_data), entry->data);
+    os_calloc(1, sizeof(fim_file_data), entry->data);
     entry->data->mode = (unsigned int)sqlite3_column_int(stmt, 2);
     entry->data->last_event = (time_t)sqlite3_column_int(stmt, 3);
     entry->data->entry_type = sqlite3_column_int(stmt, 4);
@@ -653,7 +653,7 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
    FIMDB_STMT_SET_ALL_UNSCANNED, FIMDB_STMT_DELETE_UNSCANNED */
 
 /* FIMDB_STMT_INSERT_DATA */
-void fim_db_bind_insert_data(fdb_t *fim_sql, fim_entry_data *entry) {
+void fim_db_bind_insert_data(fdb_t *fim_sql, fim_file_data *entry) {
 #ifndef WIN32
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 1, entry->dev);
     sqlite3_bind_int64(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 2, entry->inode);
@@ -684,7 +684,7 @@ void fim_db_bind_insert_data(fdb_t *fim_sql, fim_entry_data *entry) {
 }
 
 /* FIMDB_STMT_REPLACE_PATH */
-void fim_db_bind_replace_path(fdb_t *fim_sql, const char *file_path, int row_id, fim_entry_data *entry) {
+void fim_db_bind_replace_path(fdb_t *fim_sql, const char *file_path, int row_id, fim_file_data *entry) {
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_PATH], 1, file_path, -1, NULL);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_PATH], 2, row_id);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_PATH], 3, entry->mode);
@@ -713,7 +713,7 @@ void fim_db_bind_get_inode(fdb_t *fim_sql, int index, const unsigned long int in
 }
 
 /* FIMDB_STMT_UPDATE_ENTRY_DATA */
-void fim_db_bind_update_data(fdb_t *fim_sql, fim_entry_data *entry, int *row_id) {
+void fim_db_bind_update_data(fdb_t *fim_sql, fim_file_data *entry, int *row_id) {
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 1, entry->size);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 2, entry->perm, -1, NULL);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 3, entry->attributes, -1, NULL);
@@ -817,7 +817,7 @@ int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *count) {
     return FIMDB_OK;
 }
 
-int fim_db_insert_data(fdb_t *fim_sql, fim_entry_data *entry, int *row_id) {
+int fim_db_insert_data(fdb_t *fim_sql, fim_file_data *entry, int *row_id) {
     int res;
 
     if(*row_id == 0) {
@@ -845,7 +845,7 @@ int fim_db_insert_data(fdb_t *fim_sql, fim_entry_data *entry, int *row_id) {
     return FIMDB_OK;
 }
 
-int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, int inode_id) {
+int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_file_data *entry, int inode_id) {
     int res;
 
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_REPLACE_PATH);
@@ -859,7 +859,7 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
     return FIMDB_OK;
 }
 
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *new, fim_entry_data *saved) {
+int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim_file_data *saved) {
     int inode_id;
     int res, res_data, res_path;
     unsigned int nodes_count;

@@ -199,7 +199,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
  * @param pos Position of the specific registry in the registry configuration array
  * @return -1 on error, 0 if the registry hasn't changed, 1 if the registry is new, 2 if the registry has changed
  */
-int fim_registry_event(char *key, fim_entry_data *data, int pos);
+int fim_registry_event(char *key, fim_file_data *data, int pos);
 
 /**
  * @brief Search the position of the path in directories array
@@ -225,23 +225,23 @@ int fim_check_depth(char *path, int dir_position);
  * @param file_name Name of the file to get the data from
  * @param item FIM item asociated with the file
  *
- * @return A fim_entry_data structure with the data from the file
+ * @return A fim_file_data structure with the data from the file
  */
-fim_entry_data * fim_get_data(const char *file_name, fim_element *item);
+fim_file_data * fim_get_data(const char *file_name, fim_element *item);
 
 /**
- * @brief Initialize a fim_entry_data structure
+ * @brief Initialize a fim_file_data structure
  *
  * @param [out] data Data to initialize
  */
-void init_fim_data_entry(fim_entry_data *data);
+void init_fim_data_entry(fim_file_data *data);
 
 /**
  * @brief Calculate checksum of a FIM entry data
  *
  * @param data FIM entry data to calculate the checksum with
  */
-void fim_get_checksum(fim_entry_data *data);
+void fim_get_checksum(fim_file_data *data);
 
 /**
  * @brief Prints the scan information
@@ -292,14 +292,14 @@ void check_deleted_files();
  * @return File event JSON object.
  * @retval NULL No changes detected. Do not send an event.
  */
-cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt *w_evt, const char *diff);
+cJSON *fim_json_event(char *file_name, fim_file_data *old_data, fim_file_data *new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt *w_evt, const char *diff);
 
 /**
  * @brief Frees the memory of a FIM entry data structure
  *
  * @param [out] data The FIM entry data to be freed
  */
-void free_entry_data(fim_entry_data *data);
+void free_entry_data(fim_file_data *data);
 
 /**
  * @brief Deallocates fim_entry struct.
@@ -391,7 +391,7 @@ char *seechanges_get_diff_path(char *path);
 
 /**
  * @brief Estimate whether the compressed file will fit in the disk_quota limit
- * 
+ *
  * @param file_size Uncompressed file size
  * @return true for files which compressed version could fit, false otherwise
  */
@@ -399,7 +399,7 @@ int seechanges_estimate_compression(const float file_size);
 
 /**
  * @brief Changed the value of syscheck.comp_estimation_perc based on the actual compression rate
- * 
+ *
  * @param compressed_size Size of the compressed file
  * @param uncompressed_size Size of the file before the compression
  */
@@ -788,7 +788,7 @@ void fim_sync_push_msg(const char *msg);
  * @pre data is mutex-blocked.
  * @return Pointer to cJSON structure.
  */
-cJSON * fim_attributes_json(const fim_entry_data * data);
+cJSON * fim_attributes_json(const fim_file_data * data);
 
 /**
  * @brief Create file entry JSON from a FIM entry structure
@@ -821,7 +821,7 @@ cJSON * fim_attributes_json(const fim_entry_data * data);
  * @pre data is mutex-blocked.
  * @return Pointer to cJSON structure.
  */
-cJSON * fim_entry_json(const char * path, fim_entry_data * data);
+cJSON * fim_entry_json(const char * path, fim_file_data * data);
 
 /**
  * @brief Create file attribute comparison JSON object
@@ -843,7 +843,7 @@ cJSON * fim_entry_json(const char * path, fim_entry_data * data);
  * @param new_data
  * @return cJSON*
  */
-cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_data * new_data);
+cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_data * new_data);
 
 /**
  * @brief Create file audit data JSON object

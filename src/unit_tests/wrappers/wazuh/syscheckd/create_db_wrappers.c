@@ -30,7 +30,7 @@ int __wrap_fim_configuration_directory(const char *path,
 }
 
 cJSON *__wrap_fim_entry_json(const char * path,
-                             __attribute__((unused)) fim_entry_data * data) {
+                             __attribute__((unused)) fim_file_data * data) {
     check_expected(path);
     return mock_type(cJSON*);
 }
@@ -44,7 +44,7 @@ void __wrap_fim_realtime_event(char *file) {
 }
 
 int __wrap_fim_registry_event(__attribute__((unused)) char *key,
-                              __attribute__((unused)) fim_entry_data *data,
+                              __attribute__((unused)) fim_file_data *data,
                               __attribute__((unused)) int pos) {
     return mock();
 }

@@ -65,7 +65,7 @@ fdb_t *__wrap_fim_db_init(int memory);
 
 int __wrap_fim_db_insert(fdb_t *fim_sql,
                          const char *file_path,
-                         fim_entry_data *entry,
+                         fim_file_data *entry,
                          int alert_type);
 
 int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,

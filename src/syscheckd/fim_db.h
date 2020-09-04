@@ -150,7 +150,7 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long int inode
  * @param row_id
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_data(fdb_t *fim_sql, fim_entry_data *entry, int *row_id);
+int fim_db_insert_data(fdb_t *fim_sql, fim_file_data *entry, int *row_id);
 
 /**
  * @brief Insert or update entry path.
@@ -161,7 +161,7 @@ int fim_db_insert_data(fdb_t *fim_sql, fim_entry_data *entry, int *row_id);
  * @param inode_id
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, int inode_id);
+int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_file_data *entry, int inode_id);
 
 /**
  * @brief Insert an entry in the needed tables.
@@ -172,7 +172,7 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
  * @param saved Entry with existing data.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *new, fim_entry_data *saved);
+int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim_file_data *saved);
 
 /**
  * @brief Send sync message for all entries.

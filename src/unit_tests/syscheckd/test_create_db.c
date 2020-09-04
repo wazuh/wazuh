@@ -42,9 +42,9 @@ typedef struct __fim_data_s {
     whodata_evt *w_evt;
     fim_entry *fentry;
     fim_inode_data *inode_data;
-    fim_entry_data *new_data;
-    fim_entry_data *old_data;
-    fim_entry_data *local_data; // Used on certain tests, not affected by group setup/teardown
+    fim_file_data *new_data;
+    fim_file_data *old_data;
+    fim_file_data *local_data; // Used on certain tests, not affected by group setup/teardown
     struct dirent *entry;       // Used on fim_directory tests, not affected by group setup/teardown
     cJSON *json;
 }fim_data_t;
@@ -74,10 +74,10 @@ static int setup_fim_data(void **state) {
     if(fim_data->w_evt = calloc(1, sizeof(whodata_evt)), fim_data->w_evt == NULL)
         return -1;
 
-    if(fim_data->new_data = calloc(1, sizeof(fim_entry_data)), fim_data->new_data == NULL)
+    if(fim_data->new_data = calloc(1, sizeof(fim_file_data)), fim_data->new_data == NULL)
         return -1;
 
-    if(fim_data->old_data = calloc(1, sizeof(fim_entry_data)), fim_data->old_data == NULL)
+    if(fim_data->old_data = calloc(1, sizeof(fim_file_data)), fim_data->old_data == NULL)
         return -1;
 
     // Setup mock whodata event
@@ -238,7 +238,7 @@ static int setup_fim_entry(void **state) {
     if(fim_data->fentry = calloc(1, sizeof(fim_entry)), fim_data->fentry == NULL)
         return -1;
 
-    if(fim_data->local_data = calloc(1, sizeof(fim_entry_data)), fim_data->local_data == NULL)
+    if(fim_data->local_data = calloc(1, sizeof(fim_file_data)), fim_data->local_data == NULL)
         return -1;
 
     fim_data->fentry->data = fim_data->local_data;

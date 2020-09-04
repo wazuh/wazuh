@@ -133,7 +133,7 @@ fdb_t *__wrap_fim_db_init(int memory) {
 
 int __wrap_fim_db_insert(fdb_t *fim_sql,
                          const char *file_path,
-                         __attribute__((unused)) fim_entry_data *entry,
+                         __attribute__((unused)) fim_file_data *entry,
                          __attribute__((unused)) int alert_type) {
     check_expected_ptr(fim_sql);
     check_expected(file_path);

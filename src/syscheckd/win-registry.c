@@ -251,13 +251,13 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
             }
         }
 
-        fim_entry_data *data;
+        fim_file_data *data;
         char path[MAX_PATH + 7];
         unsigned char digest[EVP_MAX_MD_SIZE];
         int result;
         unsigned int digest_size;
 
-        os_calloc(1, sizeof(fim_entry_data), data);
+        os_calloc(1, sizeof(fim_file_data), data);
         init_fim_data_entry(data);
 
         // Set registry entry type

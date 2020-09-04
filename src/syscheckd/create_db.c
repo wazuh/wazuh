@@ -342,7 +342,7 @@ int fim_directory (char *dir, fim_element *item, whodata_evt *w_evt, int report)
 
 int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     fim_entry *saved = NULL;
-    fim_entry_data *new = NULL;
+    fim_file_data *new = NULL;
     cJSON *json_event = NULL;
     char *json_formated;
     int alert_type;
@@ -503,7 +503,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 }
 
 #ifdef WIN32
-int fim_registry_event(char *key, fim_entry_data *data, int pos) {
+int fim_registry_event(char *key, fim_file_data *data, int pos) {
 
     assert(data != NULL);
 
@@ -733,10 +733,10 @@ int fim_check_depth(char * path, int dir_position) {
 
 
 // Get data from file
-fim_entry_data * fim_get_data(const char *file, fim_element *item) {
-    fim_entry_data * data = NULL;
+fim_file_data * fim_get_data(const char *file, fim_element *item) {
+    fim_file_data * data = NULL;
 
-    os_calloc(1, sizeof(fim_entry_data), data);
+    os_calloc(1, sizeof(fim_file_data), data);
     init_fim_data_entry(data);
 
     if (item->configuration & CHECK_SIZE) {
@@ -846,7 +846,7 @@ fim_entry_data * fim_get_data(const char *file, fim_element *item) {
     return data;
 }
 
-void init_fim_data_entry(fim_entry_data *data) {
+void init_fim_data_entry(fim_file_data *data) {
     data->size = 0;
     data->perm = NULL;
     data->attributes = NULL;
@@ -861,7 +861,7 @@ void init_fim_data_entry(fim_entry_data *data) {
     data->hash_sha256[0] = '\0';
 }
 
-void fim_get_checksum (fim_entry_data * data) {
+void fim_get_checksum (fim_file_data * data) {
     char *checksum = NULL;
     int size;
 
@@ -923,7 +923,7 @@ void check_deleted_files() {
 }
 
 
-cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt * w_evt, const char *diff) {
+cJSON * fim_json_event(char * file_name, fim_file_data * old_data, fim_file_data * new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt * w_evt, const char *diff) {
     cJSON * changed_attributes = NULL;
 
     if (old_data != NULL) {
@@ -1003,7 +1003,7 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
 
 // Create file attribute set JSON from a FIM entry structure
 
-cJSON * fim_attributes_json(const fim_entry_data * data) {
+cJSON * fim_attributes_json(const fim_file_data * data) {
     cJSON * attributes = cJSON_CreateObject();
 
     // TODO: Read structure.
@@ -1069,7 +1069,7 @@ cJSON * fim_attributes_json(const fim_entry_data * data) {
 
 // Create file entry JSON from a FIM entry structure
 
-cJSON * fim_entry_json(const char * path, fim_entry_data * data) {
+cJSON * fim_entry_json(const char * path, fim_file_data * data) {
     assert(data != NULL);
     assert(path != NULL);
 
@@ -1086,7 +1086,7 @@ cJSON * fim_entry_json(const char * path, fim_entry_data * data) {
 
 // Create file attribute comparison JSON object
 
-cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_data * new_data) {
+cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_data * new_data) {
     cJSON * changed_attributes = cJSON_CreateArray();
 
     if ( (old_data->options & CHECK_SIZE) && (old_data->size != new_data->size) ) {
@@ -1234,7 +1234,7 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
 }
 
 
-void free_entry_data(fim_entry_data * data) {
+void free_entry_data(fim_file_data * data) {
     if (!data) {
         return;
     }
