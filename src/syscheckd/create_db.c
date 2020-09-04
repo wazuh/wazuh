@@ -45,10 +45,10 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-static const char *FIM_ENTRY_TYPE[] = {
-    "file",
-    "registry"
-};
+// static const char *FIM_ENTRY_TYPE[] = {
+//     "file",
+//     "registry"
+// };
 
 void fim_scan() {
     int it = 0;
@@ -370,12 +370,12 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
         diff = seechanges_addfile(file);
     }
 
-    json_event = fim_json_event(file, saved ? saved->data : NULL, new, item->index, alert_type, item->mode, w_evt, diff);
+    json_event = fim_json_event(file, saved ? saved->file_entry.data : NULL, new, item->index, alert_type, item->mode, w_evt, diff);
 
     os_free(diff);
 
     if (json_event) {
-        if (result = fim_db_insert(syscheck.database, file, new, saved ? saved->data : NULL), result < 0) {
+        if (result = fim_db_insert(syscheck.database, file, new, saved ? saved->file_entry.data : NULL), result < 0) {
             free_entry_data(new);
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -521,16 +521,16 @@ int fim_registry_event(char *key, fim_file_data *data, int pos) {
         alert_type = FIM_MODIFICATION;
     }
 
-    if ((saved && data && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
+    if ((saved && data && saved->file_entry.data && strcmp(saved->file_entry.data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
-        if (result = fim_db_insert(syscheck.database, key, data, saved ? saved->data : NULL), result < 0) {
+        if (result = fim_db_insert(syscheck.database, key, data, saved ? saved->file_entry.data : NULL), result < 0) {
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
 
             return (result == FIMDB_FULL) ? 0 : OS_INVALID;
         }
         w_mutex_unlock(&syscheck.fim_entry_mutex);
-        json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
+        json_event = fim_json_event(key, saved ? saved->file_entry.data : NULL, data, pos,
                                     alert_type, 0, NULL, NULL);
     } else {
         fim_db_set_scanned(syscheck.database, key);
@@ -974,7 +974,7 @@ cJSON * fim_json_event(char * file_name, fim_file_data * old_data, fim_file_data
     }
 
     char * tags = NULL;
-    if (new_data->entry_type == FIM_TYPE_FILE) {
+    // if (new_data->entry_type == FIM_TYPE_FILE) {
         if (w_evt) {
             cJSON_AddItemToObject(data, "audit", fim_audit_json(w_evt));
         }
@@ -984,12 +984,12 @@ cJSON * fim_json_event(char * file_name, fim_file_data * old_data, fim_file_data
         if (diff != NULL) {
             cJSON_AddStringToObject(data, "content_changes", diff);
         }
-    }
-#ifdef WIN32
-    else {
-        tags = syscheck.registry[pos].tag;
-    }
-#endif
+    // }
+// #ifdef WIN32
+    // else {
+    //     tags = syscheck.registry[pos].tag;
+    // }
+// #endif
 
     if (tags != NULL) {
         cJSON_AddStringToObject(data, "tags", tags);
@@ -1005,7 +1005,7 @@ cJSON * fim_attributes_json(const fim_file_data * data) {
 
     // TODO: Read structure.
     // SQLite Development
-    cJSON_AddStringToObject(attributes, "type", FIM_ENTRY_TYPE[data->entry_type]);
+    cJSON_AddStringToObject(attributes, "type", "file");
 
     if (data->options & CHECK_SIZE) {
         cJSON_AddNumberToObject(attributes, "size", data->size);
@@ -1261,8 +1261,8 @@ void free_entry_data(fim_file_data * data) {
 void free_entry(fim_entry * entry) {
     if (entry) {
         if (entry->type == FIM_TYPE_FILE) {
-            os_free(entry->path);
-            free_entry_data(entry->data);
+            os_free(entry->file_entry.path);
+            free_entry_data(entry->file_entry.data);
             free(entry);
         }
     }

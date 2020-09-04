@@ -931,7 +931,11 @@ void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, 
     __attribute__((unused))int storage, void *arg) {
 
     EVP_MD_CTX *ctx = (EVP_MD_CTX *)arg;
-    EVP_DigestUpdate(ctx, entry->data->checksum, strlen(entry->data->checksum));
+    if (entry->type == FIM_TYPE_FILE) {
+        EVP_DigestUpdate(ctx, entry->file_entry.data->checksum, strlen(entry->file_entry.data->checksum));
+    } else {
+        EVP_DigestUpdate(ctx, entry->registry_entry.value->checksum, strlen(entry->registry_entry.value->checksum));
+    }
 }
 
 int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
@@ -968,8 +972,8 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
             goto end;
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
-        if (i == (m - 1) && entry->path) {
-            os_strdup(entry->path, str_pathlh);
+        if (i == (m - 1) && entry->file_entry.path) {
+            os_strdup(entry->file_entry.path, str_pathlh);
         }
         //Type of storage not required
         fim_db_callback_calculate_checksum(fim_sql, entry, FIM_DB_DISK, (void *)ctx_left);
@@ -984,9 +988,9 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
             goto end;
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
-        if (i == m && entry->path) {
+        if (i == m && entry->file_entry.path) {
             os_free(str_pathuh);
-            os_strdup(entry->path, str_pathuh);
+            os_strdup(entry->file_entry.path, str_pathuh);
         }
         //Type of storage not required
         fim_db_callback_calculate_checksum(fim_sql, entry, FIM_DB_DISK, (void *)ctx_right);
@@ -1035,9 +1039,9 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
     int rows = 0;
     int conf;
 
-    if(entry->data->entry_type == FIM_TYPE_FILE) {
+    if(entry->type == FIM_TYPE_FILE) {
 
-        conf = fim_configuration_directory(entry->path, "file");
+        conf = fim_configuration_directory(entry->file_entry.path, "file");
 
         if(conf > -1) {
             switch (mode) {
@@ -1062,7 +1066,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
 
             }
         } else {
-            mdebug2(FIM_DELETE_EVENT_PATH_NOCONF, entry->path);
+            mdebug2(FIM_DELETE_EVENT_PATH_NOCONF, entry->file_entry.path);
             return;
         }
     }
@@ -1073,7 +1077,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_COUNT);
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_DELETE_DATA);
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_DELETE_PATH);
-    fim_db_bind_path(fim_sql, FIMDB_STMT_GET_PATH_COUNT, entry->path);
+    fim_db_bind_path(fim_sql, FIMDB_STMT_GET_PATH_COUNT, entry->file_entry.path);
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT]) == SQLITE_ROW) {
         rows = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT], 0);
@@ -1093,7 +1097,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
             //Fallthrough
         default:
             // The inode has more entries, delete only this path.
-            fim_db_bind_path(fim_sql, FIMDB_STMT_DELETE_PATH, entry->path);
+            fim_db_bind_path(fim_sql, FIMDB_STMT_DELETE_PATH, entry->file_entry.path);
             if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_PATH]) != SQLITE_DONE) {
                 w_mutex_unlock(mutex);
                 goto end;
@@ -1113,17 +1117,17 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
         const char *FIM_ENTRY_TYPE[] = {"file", "registry"};
 
         // Obtaining the position of the directory, in @syscheck.dir, where @entry belongs
-        if (pos = fim_configuration_directory(entry->path,
-            FIM_ENTRY_TYPE[entry->data->entry_type]), pos < 0) {
+        if (pos = fim_configuration_directory(entry->file_entry.path,
+            FIM_ENTRY_TYPE[entry->type]), pos < 0) {
             goto end;
         }
 
-        json_event = fim_json_event(entry->path, NULL, entry->data, pos, FIM_DELETE, mode, whodata_event, NULL);
+        json_event = fim_json_event(entry->file_entry.path, NULL, entry->file_entry.data, pos, FIM_DELETE, mode, whodata_event, NULL);
 
-        if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") && syscheck.opts[pos] & CHECK_SEECHANGES) {
+        if (!strcmp(FIM_ENTRY_TYPE[entry->type], "file") && syscheck.opts[pos] & CHECK_SEECHANGES) {
             if (syscheck.disk_quota_enabled) {
                 char *full_path;
-                full_path = seechanges_get_diff_path(entry->path);
+                full_path = seechanges_get_diff_path(entry->file_entry.path);
 
                 if (full_path != NULL && IsDir(full_path) == 0) {
                     syscheck.diff_folder_size -= (DirSize(full_path) / 1024);   // Update diff_folder_size
@@ -1136,11 +1140,11 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
                 os_free(full_path);
             }
 
-            delete_target_file(entry->path);
+            delete_target_file(entry->file_entry.path);
         }
 
         if (json_event) {
-            mdebug2(FIM_FILE_MSG_DELETE, entry->path);
+            mdebug2(FIM_FILE_MSG_DELETE, entry->file_entry.path);
             json_formatted = cJSON_PrintUnformatted(json_event);
             send_syscheck_msg(json_formatted);
 
@@ -1195,15 +1199,15 @@ int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
 }
 
 void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage, void *arg) {
-    char *base = wstr_escape_json(entry->path);
+    char *base = wstr_escape_json(entry->file_entry.path);
     if (base == NULL) {
-        merror("Error escaping '%s'", entry->path);
+        merror("Error escaping '%s'", entry->file_entry.path);
         return;
     }
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
         if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
-            merror("%s - %s", entry->path, strerror(errno));
+            merror("%s - %s", entry->file_entry.path, strerror(errno));
             goto end;
         }
 
@@ -1223,9 +1227,9 @@ void fim_db_callback_sync_path_range(__attribute__((unused))fdb_t *fim_sql, fim_
     __attribute__((unused))pthread_mutex_t *mutex, __attribute__((unused))void *alert,
     __attribute__((unused))void *mode, __attribute__((unused))void *w_event) {
 
-    cJSON * entry_data = fim_entry_json(entry->path, entry->data);
+    cJSON * entry_data = fim_entry_json(entry->file_entry.path, entry->file_entry.data);
     char * plain = dbsync_state_msg("syscheck", entry_data);
-    mdebug1("Sync Message for %s sent: %s", entry->path, plain);
+    mdebug1("Sync Message for %s sent: %s", entry->file_entry.path, plain);
     fim_send_sync_msg(plain);
     os_free(plain);
 }

@@ -101,9 +101,6 @@ typedef enum fdb_stmt {
 #define FIM_DB_MEMORY       1
 #define FIM_DB_DISK         0
 
-#define FIM_TYPE_FILE       0
-#define FIM_TYPE_REGISTRY   1
-
 //Max allowed value for recursion
 #define MAX_DEPTH_ALLOWED 320
 
@@ -123,7 +120,7 @@ typedef struct _rtfim {
 #endif
 } rtfim;
 
-typedef enum fim_type {FIM_TYPE_FILE, FIM_TYPE_REGISTRY} fim_type;
+typedef enum fim_type {FIM_TYPE_FILE = 0, FIM_TYPE_REGISTRY} fim_type;
 
 typedef struct whodata_evt {
     char *user_id;
