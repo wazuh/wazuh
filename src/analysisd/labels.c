@@ -70,12 +70,12 @@ wlabel_t* labels_find(const Eventinfo *lf) {
     w_mutex_lock(&label_mutex);
     if (data = (wlabel_data_t*)OSHash_Get(label_cache, lf->agent_id), !data) {
         // Data not cached
+        w_mutex_unlock(&label_mutex);
 
         json_labels = wdb_get_agent_labels(atoi(lf->agent_id));
 
         if (!json_labels) {
             mdebug1("No labels in Wazuh DB for agent %s.", lf->agent_id);
-            w_mutex_unlock(&label_mutex);
             return NULL;
         }
 
@@ -87,7 +87,6 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         if (!data->labels) {
             mdebug1("Couldn't parse labels for agent %s.", lf->agent_id);
             free(data);
-            w_mutex_unlock(&label_mutex);
             return NULL;
         }
 
@@ -97,10 +96,10 @@ wlabel_t* labels_find(const Eventinfo *lf) {
             merror("Getting last keepalive for agent %s. Cannot update labels.", lf->agent_id);
             labels_free(data->labels);
             free(data);
-            w_mutex_unlock(&label_mutex);
             return NULL;
         }
 
+        w_mutex_lock(&label_mutex);
         if (OSHash_Add(label_cache, lf->agent_id, data) != 2) {
             merror("Couldn't store labels for agent %s on cache.", lf->agent_id);
             labels_free(data->labels);
@@ -110,6 +109,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         }
     } else {
         // Data cached, check modification time
+        w_mutex_unlock(&label_mutex);
 
         wlabel_data_t *new_data;
         time_t mtime = time(NULL);
@@ -126,7 +126,6 @@ wlabel_t* labels_find(const Eventinfo *lf) {
 
             if (!json_labels) {
                 mdebug1("No labels in Wazuh DB for agent %s.", lf->agent_id);
-                w_mutex_unlock(&label_mutex);
                 return NULL;
             }
 
@@ -137,6 +136,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
 
             new_data->mtime = wdb_get_agent_keepalive(hostname, ip);
 
+            w_mutex_lock(&label_mutex);
             if (!OSHash_Update(label_cache, lf->agent_id, new_data)) {
                 merror("Couldn't update labels for agent %s on cache.", lf->agent_id);
                 labels_free(new_data->labels);

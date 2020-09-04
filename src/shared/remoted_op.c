@@ -79,22 +79,25 @@ void parse_uname_string (char *uname,
         // Get os_major
         if (w_regexec("^([0-9]+)\\.*", str_tmp, 2, match)) {
             match_size = match[1].rm_eo - match[1].rm_so;
-            *os_major = malloc(match_size +1 );
-            snprintf (*os_major, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
+
+            if (*os_major = malloc(match_size +1 ), *os_major)
+                snprintf (*os_major, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
         }
 
         // Get os_minor
         if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", str_tmp, 2, match)) {
             match_size = match[1].rm_eo - match[1].rm_so;
-            *os_minor = malloc(match_size +1);
-            snprintf(*os_minor, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
+
+            if (*os_minor = malloc(match_size +1), *os_minor)
+                snprintf(*os_minor, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
         }
 
         // Get os_build
         if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)\\.*", str_tmp, 2, match)) {
             match_size = match[1].rm_eo - match[1].rm_so;
-            *os_build = malloc(match_size +1);
-            snprintf(*os_build, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
+
+            if (*os_build = malloc(match_size +1), *os_build)
+                snprintf(*os_build, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
         }
 
         os_strdup(str_tmp, *os_version);
@@ -122,15 +125,17 @@ void parse_uname_string (char *uname,
                 // Get os_major
                 if (w_regexec("^([0-9]+)\\.*", *os_version, 2, match)) {
                     match_size = match[1].rm_eo - match[1].rm_so;
-                    *os_major = malloc(match_size +1);
-                    snprintf(*os_major, match_size + 1, "%.*s", match_size, *os_version + match[1].rm_so);
+
+                    if (*os_major = malloc(match_size +1), *os_major)
+                        snprintf(*os_major, match_size + 1, "%.*s", match_size, *os_version + match[1].rm_so);
                 }
 
                 // Get os_minor
                 if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", *os_version, 2, match)) {
                     match_size = match[1].rm_eo - match[1].rm_so;
-                    *os_minor = malloc(match_size +1);
-                    snprintf(*os_minor, match_size + 1, "%.*s", match_size, *os_version + match[1].rm_so);
+
+                    if (*os_minor = malloc(match_size +1), *os_minor)
+                        snprintf(*os_minor, match_size + 1, "%.*s", match_size, *os_version + match[1].rm_so);
                 }
 
             } else
