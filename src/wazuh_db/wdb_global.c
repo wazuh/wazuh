@@ -1305,14 +1305,14 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
     char *response_aux = *output;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("cannot begin transaction");
+        mdebug1("Cannot begin transaction");
         return WDBC_ERROR;
     }
 
     while (status == WDBC_UNKNOWN) {
         //Prepare SQL query
         if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS) < 0) {
-            mdebug1("cannot cache statement");
+            mdebug1("Cannot cache statement");
             status = WDBC_ERROR;
             break;
         }

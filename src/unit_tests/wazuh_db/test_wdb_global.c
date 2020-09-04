@@ -11,6 +11,8 @@
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
+extern void __real_cJSON_Delete(cJSON *item);
+
 typedef struct test_struct {
     wdb_t *socket;
     char *output;
@@ -510,6 +512,7 @@ void test_wdb_sync_agent_info_get_no_agents(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, NULL);
+    expect_function_call_any(__wrap_cJSON_Delete);
 
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
@@ -574,6 +577,7 @@ void test_wdb_sync_agent_info_get_success(void **state)
 
     // Mocking one valid agent
     will_return(__wrap_wdb_exec_stmt, root);
+    expect_function_call_any(__wrap_cJSON_Delete);
 
     // Required for wdb_get_agent_labels()
     json_labels = cJSON_CreateArray();
@@ -627,7 +631,8 @@ void test_wdb_sync_agent_info_get_success(void **state)
     }
 
     os_free(output);
-    cJSON_Delete(json_output);
+    __real_cJSON_Delete(json_output);
+    __real_cJSON_Delete(root);
     assert_int_equal(result, WDB_CHUNKS_COMPLETE);
 }
 
@@ -680,6 +685,7 @@ void test_wdb_sync_agent_info_get_sync_fail(void **state)
 
     // Mocking one valid agent
     will_return(__wrap_wdb_exec_stmt, root);
+    expect_function_call_any(__wrap_cJSON_Delete);
 
     // Required for wdb_get_agent_labels()
     json_labels = cJSON_CreateArray();
@@ -693,7 +699,8 @@ void test_wdb_sync_agent_info_get_sync_fail(void **state)
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
     os_free(output);
-    cJSON_Delete(root);
+    __real_cJSON_Delete(root);
+    __real_cJSON_Delete(json_labels);
     assert_int_equal(result, WDB_CHUNKS_ERROR);
 }
 
@@ -744,6 +751,7 @@ void test_wdb_sync_agent_info_get_full(void **state)
 
     // Mocking one valid agent
     will_return(__wrap_wdb_exec_stmt, root);
+    expect_function_call_any(__wrap_cJSON_Delete);
 
     // Required for wdb_get_agent_labels()
     json_labels = cJSON_CreateArray();
@@ -757,6 +765,7 @@ void test_wdb_sync_agent_info_get_full(void **state)
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
     os_free(output);
+    __real_cJSON_Delete(root);
     assert_int_equal(result, WDB_CHUNKS_BUFFER_FULL);
 }
 
@@ -813,7 +822,7 @@ void test_wdb_global_sync_agent_info_set_bind1_fail(void **state)
 
     result = wdb_global_sync_agent_info_set(data->socket, json_agent);
 
-    cJSON_Delete(json_agent);
+    __real_cJSON_Delete(json_agent);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -845,7 +854,7 @@ void test_wdb_global_sync_agent_info_set_bind2_fail(void **state)
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
     result = wdb_global_sync_agent_info_set(data->socket, json_agent);
-    cJSON_Delete(json_agent);
+    __real_cJSON_Delete(json_agent);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -880,7 +889,7 @@ void test_wdb_global_sync_agent_info_set_bind3_fail(void **state)
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
     result = wdb_global_sync_agent_info_set(data->socket, json_agent);
-    cJSON_Delete(json_agent);
+    __real_cJSON_Delete(json_agent);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -916,7 +925,7 @@ void test_wdb_global_sync_agent_info_set_step_fail(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
     result = wdb_global_sync_agent_info_set(data->socket, json_agent);
-    cJSON_Delete(json_agent);
+    __real_cJSON_Delete(json_agent);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -949,7 +958,7 @@ void test_wdb_global_sync_agent_info_set_success(void **state)
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
     result = wdb_global_sync_agent_info_set(data->socket, json_agent);
-    cJSON_Delete(json_agent);
+    __real_cJSON_Delete(json_agent);
     assert_int_equal(result, OS_SUCCESS);
 }
 
@@ -5074,6 +5083,7 @@ void test_wdb_global_get_agents_by_keepalive_no_agents(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, keep_alive);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, NULL);
+    expect_function_call_any(__wrap_cJSON_Delete);
 
     result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
 
@@ -5087,10 +5097,10 @@ void test_wdb_global_get_agents_by_keepalive_success(void **state)
     int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char *output = NULL;
-    cJSON *json_output = NULL;
     cJSON *root = NULL;
     cJSON *json_agent = NULL;
     int agent_id = 10;
+    char str_agt_id[] = "10";
     char comparator = '<';
     int keep_alive = 100;
 
@@ -5114,6 +5124,7 @@ void test_wdb_global_get_agents_by_keepalive_success(void **state)
 
     // No more agents
     will_return(__wrap_wdb_exec_stmt, NULL);
+    expect_function_call_any(__wrap_cJSON_Delete);
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
@@ -5124,19 +5135,10 @@ void test_wdb_global_get_agents_by_keepalive_success(void **state)
 
     result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
 
-    json_output = cJSON_Parse(output);
-    assert_non_null(json_output);
-
-    if(json_output){
-        json_agent = cJSON_GetObjectItem(json_output->child, "id");
-        assert_non_null(json_agent);
-        if(json_agent){
-            assert_int_equal(json_agent->valueint, agent_id);
-        }
-    }
-
+    assert_string_equal(output, str_agt_id);
+    
     os_free(output);
-    cJSON_Delete(json_output);
+    __real_cJSON_Delete(root);
     assert_int_equal(result, WDBC_OK);
 }
 
@@ -5148,37 +5150,180 @@ void test_wdb_global_get_agents_by_keepalive_full(void **state)
     char *output = NULL;
     cJSON *root = NULL;
     cJSON *json_agent = NULL;
-    cJSON *json_labels = NULL;
-    cJSON *json_label = NULL;
-    int agent_id = 10;
+    int agent_id = 1000;
     char comparator = '<';
     int keep_alive = 100;
+
+    // Mocking many agents to create an array bigger than WDB_MAX_RESPONSE_SIZE
+    root = cJSON_CreateArray();
+    json_agent = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json_agent, "id", agent_id);
+    cJSON_AddItemToArray(root, json_agent);
+    will_return_count(__wrap_wdb_exec_stmt, root, -1);
+    
+    expect_function_call_any(__wrap_cJSON_Delete);
+    will_return_count(__wrap_wdb_begin2, 1, -1);
+    will_return_count(__wrap_wdb_stmt_cache, 1, -1);
+    
+    expect_any_count(__wrap_sqlite3_bind_int, index, -1);
+    expect_any_count(__wrap_sqlite3_bind_int, value, -1);
+    will_return_count(__wrap_sqlite3_bind_int, SQLITE_OK, -1);
+
+    result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
+
+    os_free(output);
+    __real_cJSON_Delete(root);
+    assert_int_equal(result, WDBC_DUE);
+}
+
+void test_wdb_global_get_all_agents_transaction_fail(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+   
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+
+    result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
+
+    os_free(output);
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_global_get_all_agents_cache_fail(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+   
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
+
+    os_free(output);
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_global_get_all_agents_bind_fail(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+   
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
+
+    result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
+
+    os_free(output);
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_global_get_all_agents_no_agents(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+   
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    expect_function_call_any(__wrap_cJSON_Delete);
+
+    result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
+
+    os_free(output);
+    assert_int_equal(result, WDBC_OK);
+}
+
+void test_wdb_global_get_all_agents_success(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+    cJSON *root = NULL;
+    cJSON *json_agent = NULL;
+    int agent_id = 10;
+    char str_agt_id[] = "10";
 
     root = cJSON_CreateArray();
     json_agent = cJSON_CreateObject();
     cJSON_AddNumberToObject(json_agent, "id", agent_id);
-    // Creating a cJSON array bigger than WDB_MAX_RESPONSE_SIZE
-    for(int i = 0; i < 2500; i++){
-        cJSON_AddStringToObject(json_agent,"test_field", "test_value");
-    }
     cJSON_AddItemToArray(root, json_agent);
 
     will_return_count(__wrap_wdb_begin2, 1, -1);
     will_return_count(__wrap_wdb_stmt_cache, 1, -1);
-    
+
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, keep_alive);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     // Mocking one valid agent
     will_return(__wrap_wdb_exec_stmt, root);
 
-    result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
+    // No more agents
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    expect_function_call_any(__wrap_cJSON_Delete);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
+
+    assert_string_equal(output, str_agt_id);
+    
+    os_free(output);
+    __real_cJSON_Delete(root);
+    assert_int_equal(result, WDBC_OK);
+}
+
+void test_wdb_global_get_all_agents_full(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+    cJSON *root = NULL;
+    cJSON *json_agent = NULL;
+    int agent_id = 1000;
+
+    // Mocking many agents to create an array bigger than WDB_MAX_RESPONSE_SIZE
+    root = cJSON_CreateArray();
+    json_agent = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json_agent, "id", agent_id);
+    cJSON_AddItemToArray(root, json_agent);
+    will_return_count(__wrap_wdb_exec_stmt, root, -1);
+    
+    expect_function_call_any(__wrap_cJSON_Delete);
+    will_return_count(__wrap_wdb_begin2, 1, -1);
+    will_return_count(__wrap_wdb_stmt_cache, 1, -1);
+    
+    expect_any_count(__wrap_sqlite3_bind_int, index, -1);
+    expect_any_count(__wrap_sqlite3_bind_int, value, -1);
+    will_return_count(__wrap_sqlite3_bind_int, SQLITE_OK, -1);
+
+    result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
 
     os_free(output);
+    __real_cJSON_Delete(root);
     assert_int_equal(result, WDBC_DUE);
 }
 
@@ -5368,6 +5513,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_delete_agent_belong_cache_fail, test_setup, test_teardown),              
         cmocka_unit_test_setup_teardown(test_wdb_global_delete_agent_belong_bind_fail, test_setup, test_teardown),              
         cmocka_unit_test_setup_teardown(test_wdb_global_delete_agent_belong_step_fail, test_setup, test_teardown),              
+        cmocka_unit_test_setup_teardown(test_wdb_global_delete_agent_belong_success, test_setup, test_teardown),              
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_bind_fail, test_setup, test_teardown),      
@@ -5380,7 +5526,13 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_bind2_fail, test_setup, test_teardown),              
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_no_agents, test_setup, test_teardown),              
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_success, test_setup, test_teardown),              
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_full, test_setup, test_teardown)              
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_full, test_setup, test_teardown),              
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_transaction_fail, test_setup, test_teardown),              
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_cache_fail, test_setup, test_teardown),              
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_bind_fail, test_setup, test_teardown),              
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_no_agents, test_setup, test_teardown),              
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_success, test_setup, test_teardown),              
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_full, test_setup, test_teardown)              
         };
     
     return cmocka_run_group_tests(tests, NULL, NULL);
