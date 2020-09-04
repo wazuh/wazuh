@@ -116,7 +116,6 @@ static int setup_fim_data(void **state) {
     strcpy(fim_data->old_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
     fim_data->old_data->mode = FIM_REALTIME;
     fim_data->old_data->last_event = 1570184220;
-    fim_data->old_data->entry_type = FIM_TYPE_FILE;
     fim_data->old_data->dev = 12345678;
     fim_data->old_data->scanned = 123456;
     fim_data->old_data->options = 511;
@@ -137,7 +136,6 @@ static int setup_fim_data(void **state) {
     strcpy(fim_data->new_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e9959643c6262667b61fbe57694df224d40");
     fim_data->new_data->mode = FIM_REALTIME;
     fim_data->new_data->last_event = 1570184221;
-    fim_data->new_data->entry_type = FIM_TYPE_FILE;
     fim_data->new_data->dev = 12345678;
     fim_data->new_data->scanned = 123456;
     fim_data->new_data->options = 511;
@@ -231,18 +229,32 @@ static int teardown_delete_json(void **state) {
     cJSON_Delete(fim_data->json);
     return 0;
 }
+typedef struct __fim_data_s {
+    fim_element *item;
+    whodata_evt *w_evt;
+    fim_entry *fentry;
+    fim_inode_data *inode_data;
+    fim_file_data *new_data;
+    fim_file_data *old_data;
+    fim_file_data *local_data; // Used on certain tests, not affected by group setup/teardown
+    struct dirent *entry;       // Used on fim_directory tests, not affected by group setup/teardown
+    cJSON *json;
+}fim_data_t;
 
 static int setup_fim_entry(void **state) {
     fim_data_t *fim_data = *state;
+    fim_data->fentry = calloc(1, sizeof(fim_entry));
 
-    if(fim_data->fentry = calloc(1, sizeof(fim_entry)), fim_data->fentry == NULL)
+    if(fim_data->fentry == NULL)
         return -1;
+
+    fim_data->fentry->type = FIM_TYPE_FILE;
 
     if(fim_data->local_data = calloc(1, sizeof(fim_file_data)), fim_data->local_data == NULL)
         return -1;
 
-    fim_data->fentry->data = fim_data->local_data;
-    fim_data->fentry->path = NULL;
+    fim_data->fentry->file_entry.data = fim_data->local_data;
+    fim_data->fentry->file_entry.path = NULL;
 
     return 0;
 }
@@ -932,7 +944,6 @@ static void test_fim_get_checksum(void **state) {
     strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
     fim_data->local_data->mode = FIM_REALTIME;
     fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = FIM_TYPE_FILE;
     fim_data->local_data->dev = 12345678;
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
@@ -960,7 +971,6 @@ static void test_fim_get_checksum_wrong_size(void **state) {
     strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
     fim_data->local_data->mode = FIM_REALTIME;
     fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = FIM_TYPE_FILE;
     fim_data->local_data->dev = 12345678;
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
@@ -1232,7 +1242,6 @@ static void test_fim_file_modify(void **state) {
     strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
     fim_data->local_data->mode = FIM_REALTIME;
     fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = FIM_TYPE_FILE;
     fim_data->local_data->dev = 12345678;
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
@@ -1381,7 +1390,6 @@ static void test_fim_file_error_on_insert(void **state) {
     strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
     fim_data->local_data->mode = FIM_REALTIME;
     fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = FIM_TYPE_FILE;
     fim_data->local_data->dev = 12345678;
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
@@ -1557,7 +1565,6 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
     fim_data->local_data->mode = FIM_REALTIME;
     fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = FIM_TYPE_FILE;
     fim_data->local_data->dev = 12345678;
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
@@ -2413,7 +2420,6 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
     fim_data->local_data->mode = FIM_REALTIME;
     fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = FIM_TYPE_FILE;
     fim_data->local_data->dev = 12345678;
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
@@ -3958,7 +3964,6 @@ static void test_fim_realtime_event_file_exists(void **state) {
     strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
     fim_data->local_data->mode = FIM_REALTIME;
     fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = FIM_TYPE_FILE;
     fim_data->local_data->dev = 12345678;
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
@@ -4213,7 +4218,6 @@ static void test_fim_process_missing_entry_data_exists(void **state) {
     strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
     fim_data->local_data->mode = FIM_REALTIME;
     fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = FIM_TYPE_FILE;
     fim_data->local_data->dev = 12345678;
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;

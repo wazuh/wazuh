@@ -459,8 +459,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
 
 
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
-
-    fim_entry *saved_data;
+    fim_entry *saved_data = NULL;
 
     // Search path in DB.
     w_mutex_lock(&syscheck.fim_entry_mutex);
@@ -504,14 +503,13 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 
 #ifdef WIN32
 int fim_registry_event(char *key, fim_file_data *data, int pos) {
-
-    assert(data != NULL);
-
     cJSON *json_event = NULL;
-    fim_entry *saved;
+    fim_entry *saved = NULL;
     char *json_formated;
     int result = 1;
     int alert_type;
+
+    assert(data != NULL);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
@@ -838,9 +836,6 @@ fim_file_data * fim_get_data(const char *file, fim_element *item) {
     data->options = item->configuration;
     data->last_event = time(NULL);
     data->scanned = 1;
-    // Set file entry type, registry or file
-    // SQLite Development
-    data->entry_type = FIM_TYPE_FILE;
     fim_get_checksum(data);
 
     return data;
@@ -1263,9 +1258,11 @@ void free_entry_data(fim_file_data * data) {
 
 void free_entry(fim_entry * entry) {
     if (entry) {
-        os_free(entry->path);
-        free_entry_data(entry->data);
-        free(entry);
+        if (entry->type == FIM_TYPE_FILE) {
+            os_free(entry->path);
+            free_entry_data(entry->data);
+            free(entry);
+        }
     }
 }
 
