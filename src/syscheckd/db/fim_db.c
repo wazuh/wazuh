@@ -235,6 +235,7 @@ static fim_tmp_file *fim_db_create_temp_file(int storage);
  */
 static void fim_db_clean_file(fim_tmp_file **file, int storage);
 
+static void fim_db_get_count(fdb_t *fim_sql, int index);
 
 /**
  * @brief
@@ -261,6 +262,27 @@ void fim_db_bind_get_inode_id(fdb_t *fim_sql, const char *file_path);
 void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path);
 
 #ifdef WIN32
+/**
+ * @brief Decodes a row from the registry database to be saved in a registry key structure.
+ *
+ * @param stmt The statement to be decoded.
+ * @return fim_entry* The filled structure.
+ */
+static fim_registry_key *fim_db_decode_full_registry_row(sqlite3_stmt *stmt);
+
+/**
+ * @brief
+ *
+ * @param fim_sql FIM database structure.
+ * @param index
+ * @param callback
+ * @param arg
+ * @param pos
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+static int fim_db_process_get_registry_query(fdb_t *fim_sql, int index,void (*callback)(fdb_t *, fim_registry_key *, int, void *),
+                                    int memory, void * arg);
+
 /**
  * @brief Binds name and key_id to a statement
  *
@@ -1382,12 +1404,11 @@ int fim_db_get_count_entry_data(fdb_t * fim_sql) {
     }
 }
 
-int fim_db_get_count_entry_path(fdb_t * fim_sql) {
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_COUNT_PATH);
-    int res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_COUNT_PATH]);
+int fim_db_get_count_file_entry(fdb_t * fim_sql) {
+    int res = fim_db_get_count(fim_sql, FIMDB_STMT_GET_COUNT_PATH);
 
-    if(res == SQLITE_ROW) {
-        return sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_COUNT_PATH], 0);
+    if(res != FIMDB_ERR) {
+        return res;
     }
     else {
         merror("Step error getting count entry path: %s", sqlite3_errmsg(fim_sql->db));
@@ -1395,7 +1416,186 @@ int fim_db_get_count_entry_path(fdb_t * fim_sql) {
     }
 }
 
+int fim_db_get_count(fdb_t *fim_sql, int index) {
+
+    if (index == FIMDB_STMT_GET_COUNT_REG_KEY || index == FIMDB_STMT_GET_COUNT_REG_DATA ||
+        index == FIMDB_STMT_GET_COUNT_PATH    || index == FIMDB_STMT_GET_COUNT_DATA) {
+        fim_db_clean_stmt(fim_sql, index);
+
+        if (sqlite3_step(fim_sql->stmt[index]) == SQLITE_ROW) {
+            return sqlite3_column_int(fim_sql->stmt[index], 0);
+        } else {
+            return FIMDB_ERR;
+        }
+    }
+    return FIMDB_ERR;
+}
+
 #ifdef WIN32
+
+int fim_db_get_count_registry(fdb_t *fim_sql, int index) {
+
+}
+
+fim_registry_key *fim_db_decode_full_registry_row(sqlite3_stmt *stmt) {
+    fim_registry_key *registry_key = NULL;
+
+    os_calloc(1, sizeof(fim_registry_key), registry_key);
+
+    return registry_key;
+}
+
+int fim_db_process_get_registry_query(fdb_t *fim_sql, int index, void (*callback)(fdb_t *, fim_registry_key *, int, void *), int storage, void * arg) {
+    int result;
+    int i;
+    for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
+        fim_registry_key *key = fim_db_decode_full_registry_row(fim_sql->stmt[index]);
+        callback(fim_sql, key, storage, arg);
+        //free_key_entry(key);
+    }
+
+    fim_db_check_transaction(fim_sql);
+
+    return result != SQLITE_DONE ? FIMDB_ERR : FIMDB_OK;
+}
+
+// Registry callbacks
+
+void fim_db_callback_save_registry_path(fdb_t *fim_sql, fim_registry_key *key_entry, int storage, void *arg) {
+    char *base = wstr_escape_json(key_entry->path);
+    if (base == NULL) {
+        merror("Error escaping '%s'", key_entry->path);
+        return;
+    }
+
+    if (storage == FIM_DB_DISK) { // disk storage enabled
+        if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
+            merror("%s - %s", key_entry->path, strerror(errno));
+            goto end;
+        }
+
+        fflush(((fim_tmp_file *) arg)->fd);
+
+    } else { // memory storage enabled
+        W_Vector_insert(((fim_tmp_file *) arg)->list, base);
+    }
+
+    ((fim_tmp_file *) arg)->elements++;
+
+end:
+    os_free(base);
+}
+
+// Registry functions
+int fim_db_set_all_registry_data_unscanned(fdb_t *fim_sql) {
+
+    int retval = fim_db_exec_simple_wquery(fim_sql, SQL_STMT[FIMDB_STMT_SET_ALL_UNSCANNED]);
+    fim_db_check_transaction(fim_sql);
+    return retval;
+}
+
+int fim_db_get_registry_keys_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
+    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
+        return FIMDB_ERR;
+    }
+
+    int ret =  fim_db_process_get_registry_query(fim_sql, FIMDB_STMT_GET_REG_KEY_NOT_SCANNED, fim_db_callback_save_registry_path, storage, (void*) *file);
+
+    if (*file && (*file)->elements == 0) {
+        fim_db_clean_file(file, storage);
+    }
+
+    return ret;
+}
+
+int fim_db_set_registry_key_scanned(fdb_t *fim_sql, char *path) {
+    // Clean and bind statements
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_SET_REG_KEY_SCANNED);
+    fim_db_bind_registry_key_path(fim_sql, FIMDB_STMT_SET_REG_KEY_SCANNED, path);
+
+    if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_SET_REG_KEY_SCANNED]) != SQLITE_DONE) {
+        merror("Step error setting scanned key path '%s': %s", path, sqlite3_errmsg(fim_sql->db));
+        return FIMDB_ERR;
+    }
+
+    fim_db_check_transaction(fim_sql);
+
+    return FIMDB_OK;
+}
+
+int fim_db_set_registry_data_scanned(fdb_t *fim_sql, char *name, unsigned int key_id) {
+    // Clean and bind statements
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_SET_REG_DATA_SCANNED);
+    fim_db_bind_registry_data_name_key_id(fim_sql, FIMDB_STMT_SET_REG_DATA_SCANNED, name, key_id);
+
+    if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_SET_REG_DATA_SCANNED]) != SQLITE_DONE) {
+        merror("Step error setting scanned data name '%s': %s", name, sqlite3_errmsg(fim_sql->db));
+        return FIMDB_ERR;
+    }
+
+    fim_db_check_transaction(fim_sql);
+
+    return FIMDB_OK;
+}
+
+int fim_db_delete_registry_keys_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {}
+
+int fim_db_get_registry_data_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
+    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
+        return FIMDB_ERR;
+    }
+
+    int ret = fim_db_process_get_registry_query(fim_sql, FIMDB_STMT_GET_REG_DATA_NOT_SCANNED, fim_db_callback_save_registry_path, storage, (void*) *file);
+
+    if (*file && (*file)->elements == 0) {
+        fim_db_clean_file(file, storage);
+    }
+
+    return ret;
+}
+
+
+
+int fim_db_get_registry_keys_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
+    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
+        return FIMDB_ERR;
+    }
+
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
+    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
+
+    int ret = fim_db_process_get_registry_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_registry_path, storage, (void*) *file);
+
+    if (*file && (*file)->elements == 0) {
+        fim_db_clean_file(file, storage);
+    }
+
+    return ret;
+
+}
+
+i
+nt fim_db_get_registry_value_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
+    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
+        return FIMDB_ERR;
+    }
+
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
+    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
+
+    int ret = fim_db_process_get_registry_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_registry_path, storage, (void*) *file);
+
+    if (*file && (*file)->elements == 0) {
+        fim_db_clean_file(file, storage);
+    }
+
+    return ret;
+}
+
+int fim_db_get_count_registry_entry(fdb_t *fim_sql) {
+
+}
+
 // Registry sql queries bindings
 void fim_db_bind_insert_registry_data(fdb_t *fim_sql, fim_registry_data *data, unsigned int key_id) {
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_DATA], 1, key_id);
@@ -1407,17 +1607,17 @@ void fim_db_bind_insert_registry_data(fdb_t *fim_sql, fim_registry_data *data, u
     //sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_DATA], 7, data->options);
 }
 
-void fim_db_bind_insert_registry_key(fdb_t *fim_sql, fim_registry_key *key_path, unsigned int key_id) {
-    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 1, key_path->path, -1, NULL);
+void fim_db_bind_insert_registry_key(fdb_t *fim_sql, fim_registry_key *registry_key, unsigned int key_id) {
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 1, registry_key->path, -1, NULL);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 2, key_id);
-    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 3, key_path->perm, -1, NULL);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 4, key_path->uid);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 5, key_path->gid);
-    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 6, key_path->user_name, -1, NULL);
-    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 7, key_path->group_name, -1, NULL);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 8, key_path->scanned);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 9, key_path->options);
-    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 10, key_path->checksum, -1, NULL);
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 3, registry_key->perm, -1, NULL);
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 4, registry_key->uid, -1, NULL);
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 5, registry_key->gid, -1, NULL);
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 6, registry_key->user_name, -1, NULL);
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 7, registry_key->group_name, -1, NULL);
+    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 8, registry_key->scanned);
+    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 9, registry_key->options);
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 10, registry_key->checksum, -1, NULL);
 }
 
 void fim_db_bind_registry_key_path(fdb_t *fim_sql, int index, const char *key_path) {
@@ -1442,8 +1642,8 @@ void fim_db_bind_update_registry_data(fdb_t *fim_sql, fim_registry_data *data, u
 
 void fim_db_bind_update_registry_key(fdb_t *fim_sql, fim_registry_key *registry_key) {
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_REG_KEY], 1, registry_key->perm, -1, NULL);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_REG_KEY], 2, registry_key->uid);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_REG_KEY], 3, registry_key->gid);
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_REG_KEY], 2, registry_key->uid, -1, NULL);
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_REG_KEY], 3, registry_key->gid, -1, NULL);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_REG_KEY], 4, registry_key->user_name, -1, NULL);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_REG_KEY], 5, registry_key->group_name, -1, NULL);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_REG_KEY], 6, registry_key->scanned);

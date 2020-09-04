@@ -371,6 +371,22 @@ int fim_db_get_count_entry_data(fdb_t * fim_sql);
 int fim_db_get_count_entry_path(fdb_t * fim_sql);
 
 #ifdef WIN32
+
+// Registry callbacks
+
+/**
+ * @brief Write an entry path into the storage pointed by @args.
+ *
+ * @param fim_sql FIM database struct.
+ * @param storage 1 Store database in memory, disk otherwise.
+ * @param args    Storage which contains all the paths.
+ * @param pos     If memory is 1, pos indicates the position in the array.
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+void fim_db_callback_save_registry_path(fdb_t *fim_sql, fim_registry_key *key_entry, int storage, void *arg);
+
+// Registry functions.
+
 /**
  * @brief Get checksum of all registry key.
  * @param fim_sql FIM database struct.
@@ -556,7 +572,7 @@ int fim_db_set_registry_key_scanned(fdb_t *fim_sql, char *path);
  * @param file_path File path.
 * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_set_registry_value_scanned(fdb_t *fim_sql, char *name, unsigned int key_id);
+int fim_db_set_registry_data_scanned(fdb_t *fim_sql, char *name, unsigned int key_id);
 
 /**
  * @brief Get all the unscanned registries keys by saving them in a temporal storage.
@@ -588,6 +604,19 @@ int fim_db_get_registry_data_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, i
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_delete_registry_keys_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage);
+
+/**
+ * @brief Get registry keys between @start and @top. (stored in @file).
+ *
+ * @param fim_sql FIM database struct.
+ * @param file  Structure of the storage which contains all the paths.
+ * @param start First entry of the range.
+ * @param top Last entry of the range.
+ * @param storage 1 Store database in memory, disk otherwise.
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ *
+ */
+int fim_db_get_registry_keys_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) ;
 
 /**
  * @brief Get registry keys between @start and @top. (stored in @file).
