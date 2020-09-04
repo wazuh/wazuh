@@ -266,13 +266,10 @@ void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path);
  *
  * @param fim_sql FIM database structure.
  * @param index Index of the particular statement.
- * @param registry_data_entry Registry data structure.
+ * @param name Registry name.
  * @param key_id Key id of the registry.
 */
-static void fim_db_bind_registry_data_name_key_id(fdb_t *fim_sql,
-                                           int index,
-                                           fim_registry_data *registry_data_entry,
-                                           int key_id);
+static void fim_db_bind_registry_data_name_key_id(fdb_t *fim_sql, int index, char *name, int key_id);
 
 
 /**
@@ -870,15 +867,12 @@ void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char 
 }
 
 #ifdef WIN32
-static void fim_db_bind_registry_data_name_key_id(fdb_t *fim_sql,
-                                             int index,
-                                             fim_registry_data *registry_data_entry,
-                                             int key_id) {
+static void fim_db_bind_registry_data_name_key_id(fdb_t *fim_sql, int index, char *name, int key_id) {
     if (index == FIMDB_STMT_SET_REG_DATA_UNSCANNED ||
         index == FIMDB_STMT_DELETE_REG_DATA ||
         index == FIMDB_STMT_SET_REG_KEY_SCANNED ||
         index == FIMDB_STMT_GET_REG_DATA) {
-        sqlite3_bind_text(fim_sql->stmt[index], 1, registry_data_entry->name, -1, NULL);
+        sqlite3_bind_text(fim_sql->stmt[index], 1, name, -1, NULL);
         sqlite3_bind_int(fim_sql->stmt[index], 2, key_id);
     }
 }
