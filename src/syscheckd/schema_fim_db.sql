@@ -39,3 +39,34 @@ CREATE TABLE IF NOT EXISTS entry_data (
 );
 
 CREATE INDEX IF NOT EXISTS dev_inode_index ON entry_data (dev, inode);
+
+CREATE TABLE IF NOT EXISTS registry_key (
+    path TEXT NOT NULL,
+    data_id INTEGER,
+    perm TEXT,
+    uid INTEGER,
+    gid INTEGER,
+    user_name TEXT,
+    group_name TEXT,
+    scanned INTEGER,
+    options INTEGER,
+    checksum TEXT NOT NULL,
+    PRIMARY KEY(path)
+);
+
+CREATE INDEX IF NOT EXISTS path_index ON registry_key (path);
+CREATE INDEX IF NOT EXISTS inode_index ON registry_key (data_id);
+
+CREATE TABLE IF NOT EXISTS registry_data (
+    key_id INTEGER,
+    name TEXT,
+    type INTEGER,
+    /* data TEXT, */
+    scanned INTEGER,
+    checksum TEXT NOT NULL,
+    last_event INTEGER,
+    options INTEGER,
+    PRIMARY KEY(key_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (key_id, name);
