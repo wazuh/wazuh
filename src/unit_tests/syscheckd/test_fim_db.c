@@ -132,38 +132,36 @@ static void wraps_fim_db_decode_full_row() {
     expect_value(__wrap_sqlite3_column_int, iCol, 3);
     will_return(__wrap_sqlite3_column_int, 1000000); // last_event
     expect_value(__wrap_sqlite3_column_int, iCol, 4);
-    will_return(__wrap_sqlite3_column_int, 2); // entry_type
-    expect_value(__wrap_sqlite3_column_int, iCol, 5);
     will_return(__wrap_sqlite3_column_int, 1000001); // scanned
-    expect_value(__wrap_sqlite3_column_int, iCol, 6);
+    expect_value(__wrap_sqlite3_column_int, iCol, 5);
     will_return(__wrap_sqlite3_column_int, 1000002); // options
-    expect_value(__wrap_sqlite3_column_text, iCol, 7);
+    expect_value(__wrap_sqlite3_column_text, iCol, 6);
     will_return(__wrap_sqlite3_column_text, "checksum"); // checksum
-    expect_value(__wrap_sqlite3_column_int, iCol, 8);
+    expect_value(__wrap_sqlite3_column_int, iCol, 7);
     will_return(__wrap_sqlite3_column_int, 111); // dev
-    expect_value(__wrap_sqlite3_column_int64, iCol, 9);
+    expect_value(__wrap_sqlite3_column_int64, iCol, 8);
     will_return(__wrap_sqlite3_column_int64, 1024); // inode
-    expect_value(__wrap_sqlite3_column_int, iCol, 10);
+    expect_value(__wrap_sqlite3_column_int, iCol, 9);
     will_return(__wrap_sqlite3_column_int, 4096); // size
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 11, 2);
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 10, 2);
     will_return_count(__wrap_sqlite3_column_text, "perm",2); // perm
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 12, 2);
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 11, 2);
     will_return_count(__wrap_sqlite3_column_text, "attributes", 2); // attributes
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 13, 2);
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 12, 2);
     will_return_count(__wrap_sqlite3_column_text, "uid", 2); // uid
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 14, 2);
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 13, 2);
     will_return_count(__wrap_sqlite3_column_text, "gid", 2); // gid
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 15, 2);
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 14, 2);
     will_return_count(__wrap_sqlite3_column_text, "user_name", 2); // user_name
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 16, 2);
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 15, 2);
     will_return_count(__wrap_sqlite3_column_text, "group_name", 2); // group_name
-    expect_value(__wrap_sqlite3_column_text, iCol, 17);
+    expect_value(__wrap_sqlite3_column_text, iCol, 16);
     will_return(__wrap_sqlite3_column_text, "hash_md5"); // hash_md5
-    expect_value(__wrap_sqlite3_column_text, iCol, 18);
+    expect_value(__wrap_sqlite3_column_text, iCol, 17);
     will_return(__wrap_sqlite3_column_text, "hash_sha1"); // hash_sha1
-    expect_value(__wrap_sqlite3_column_text, iCol, 19);
+    expect_value(__wrap_sqlite3_column_text, iCol, 18);
     will_return(__wrap_sqlite3_column_text, "hash_sha256"); // hash_sha256
-    expect_value(__wrap_sqlite3_column_int, iCol, 20);
+    expect_value(__wrap_sqlite3_column_int, iCol, 19);
     will_return(__wrap_sqlite3_column_int, 12345678); // mtime
 }
 
@@ -449,7 +447,7 @@ void test_fim_db_init_failed_file_creation_prepare(void **state) {
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Error preparing statement '/* * SQL Schema for FIM database * Copyright (C) 2015-2020, Wazuh Inc. * * This program is a free software, you can redistribute it * and/or modify it under the terms of GPLv2. */CREATE TABLE IF NOT EXISTS entry_path (    path TEXT NOT NULL,    inode_id INTEGER,    mode INTEGER,    last_event INTEGER,    entry_type INTEGER,    scanned INTEGER,    options INTEGER,    checksum TEXT NOT NULL,    PRIMARY KEY(path));CREATE INDEX IF NOT EXISTS path_index ON entry_path (path);CREATE INDEX IF NOT EXISTS inode_index ON entry_path (inode_id);CREATE TABLE IF NOT EXISTS entry_data (    dev INTEGER,    inode INTEGER,    size INTEGER,    perm TEXT,    attributes TEXT,    uid INTEGER,    gid INTEGER,    user_name TEXT,    group_name TEXT,    hash_md5 TEXT,    hash_sha1 TEXT,    hash_sha256 TEXT,    mtime INTEGER,    PRIMARY KEY(dev, inode));CREATE INDEX IF NOT EXISTS dev_inode_index ON entry_data (dev, inode);': ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Error preparing statement '/* * SQL Schema for FIM database * Copyright (C) 2015-2020, Wazuh Inc. * * This program is a free software, you can redistribute it * and/or modify it under the terms of GPLv2. */CREATE TABLE IF NOT EXISTS entry_path (    path TEXT NOT NULL,    inode_id INTEGER,    mode INTEGER,    last_event INTEGER,    scanned INTEGER,    options INTEGER,    checksum TEXT NOT NULL,    PRIMARY KEY(path));CREATE INDEX IF NOT EXISTS path_index ON entry_path (path);CREATE INDEX IF NOT EXISTS inode_index ON entry_path (inode_id);CREATE TABLE IF NOT EXISTS entry_data (    dev INTEGER,    inode INTEGER,    size INTEGER,    perm TEXT,    attributes TEXT,    uid INTEGER,    gid INTEGER,    user_name TEXT,    group_name TEXT,    hash_md5 TEXT,    hash_sha1 TEXT,    hash_sha256 TEXT,    mtime INTEGER,    PRIMARY KEY(dev, inode));CREATE INDEX IF NOT EXISTS dev_inode_index ON entry_data (dev, inode);': ERROR MESSAGE");
     will_return(__wrap_sqlite3_close_v2, 0);
     fdb_t* fim_db;
     fim_db = fim_db_init(syscheck.database_store);
@@ -465,7 +463,7 @@ void test_fim_db_init_failed_file_creation_step(void **state) {
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Error stepping statement '/* * SQL Schema for FIM database * Copyright (C) 2015-2020, Wazuh Inc. * * This program is a free software, you can redistribute it * and/or modify it under the terms of GPLv2. */CREATE TABLE IF NOT EXISTS entry_path (    path TEXT NOT NULL,    inode_id INTEGER,    mode INTEGER,    last_event INTEGER,    entry_type INTEGER,    scanned INTEGER,    options INTEGER,    checksum TEXT NOT NULL,    PRIMARY KEY(path));CREATE INDEX IF NOT EXISTS path_index ON entry_path (path);CREATE INDEX IF NOT EXISTS inode_index ON entry_path (inode_id);CREATE TABLE IF NOT EXISTS entry_data (    dev INTEGER,    inode INTEGER,    size INTEGER,    perm TEXT,    attributes TEXT,    uid INTEGER,    gid INTEGER,    user_name TEXT,    group_name TEXT,    hash_md5 TEXT,    hash_sha1 TEXT,    hash_sha256 TEXT,    mtime INTEGER,    PRIMARY KEY(dev, inode));CREATE INDEX IF NOT EXISTS dev_inode_index ON entry_data (dev, inode);': ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Error stepping statement '/* * SQL Schema for FIM database * Copyright (C) 2015-2020, Wazuh Inc. * * This program is a free software, you can redistribute it * and/or modify it under the terms of GPLv2. */CREATE TABLE IF NOT EXISTS entry_path (    path TEXT NOT NULL,    inode_id INTEGER,    mode INTEGER,    last_event INTEGER,    scanned INTEGER,    options INTEGER,    checksum TEXT NOT NULL,    PRIMARY KEY(path));CREATE INDEX IF NOT EXISTS path_index ON entry_path (path);CREATE INDEX IF NOT EXISTS inode_index ON entry_path (inode_id);CREATE TABLE IF NOT EXISTS entry_data (    dev INTEGER,    inode INTEGER,    size INTEGER,    perm TEXT,    attributes TEXT,    uid INTEGER,    gid INTEGER,    user_name TEXT,    group_name TEXT,    hash_md5 TEXT,    hash_sha1 TEXT,    hash_sha256 TEXT,    mtime INTEGER,    PRIMARY KEY(dev, inode));CREATE INDEX IF NOT EXISTS dev_inode_index ON entry_data (dev, inode);': ERROR MESSAGE");
     will_return(__wrap_sqlite3_finalize, 0);
     will_return(__wrap_sqlite3_close_v2, 0);
     fdb_t* fim_db;

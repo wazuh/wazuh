@@ -838,9 +838,6 @@ fim_file_data * fim_get_data(const char *file, fim_element *item) {
     data->options = item->configuration;
     data->last_event = time(NULL);
     data->scanned = 1;
-    // Set file entry type, registry or file
-    // SQLite Development
-    data->entry_type = FIM_TYPE_FILE;
     fim_get_checksum(data);
 
     return data;
@@ -1263,9 +1260,11 @@ void free_entry_data(fim_file_data * data) {
 
 void free_entry(fim_entry * entry) {
     if (entry) {
-        os_free(entry->path);
-        free_entry_data(entry->data);
-        free(entry);
+        if (entry->type == FIM_TYPE_FILE) {
+            os_free(entry->path);
+            free_entry_data(entry->data);
+            free(entry);
+        }
     }
 }
 

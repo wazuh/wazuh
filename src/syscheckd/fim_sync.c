@@ -176,7 +176,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         }
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-        entry_data = fim_entry_json(start, entry->data);
+        entry_data = fim_entry_json(start, entry->file_entry.data);
         char * plain = dbsync_state_msg("syscheck", entry_data);
         fim_send_sync_msg(plain);
         os_free(plain);
