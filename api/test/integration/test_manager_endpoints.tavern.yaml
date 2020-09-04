@@ -142,7 +142,6 @@ stages:
               global: !anything
               integration: !anything
               localfile: !anything
-              open-scap: !anything
               osquery: !anything
               remote: !anything
               rootcheck: !anything
@@ -665,7 +664,6 @@ stages:
             - ossec-execd: !anything
             - ossec-integratord: !anything
             - ossec-logcollector: !anything
-            - ossec-maild: !anything
             - ossec-monitord: !anything
             - ossec-remoted: !anything
             - ossec-rootcheck: !anything
@@ -677,11 +675,10 @@ stages:
             - wazuh-modulesd:control: !anything
             - wazuh-modulesd:database: !anything
             - wazuh-modulesd:download: !anything
-            - wazuh-modulesd:oscap: !anything
             - wazuh-modulesd:osquery: !anything
             - wazuh-modulesd:syscollector: !anything
           failed_items: []
-          total_affected_items: 23
+          total_affected_items: 21
           total_failed_items: 0
 
 ---
