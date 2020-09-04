@@ -33,7 +33,7 @@ ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
-MAXAGENTS?=100000
+MAXAGENTS?=500000
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
 PG_CONFIG?=pg_config
