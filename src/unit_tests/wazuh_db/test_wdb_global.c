@@ -458,7 +458,7 @@ void test_wdb_sync_agent_info_get_transaction_fail(void **state)
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
     os_free(output);
-    assert_int_equal(result, WDB_CHUNKS_ERROR);
+    assert_int_equal(result, WDBC_ERROR);
 }
 
 void test_wdb_sync_agent_info_get_cache_fail(void **state)
@@ -475,7 +475,7 @@ void test_wdb_sync_agent_info_get_cache_fail(void **state)
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
     os_free(output);
-    assert_int_equal(result, WDB_CHUNKS_ERROR);
+    assert_int_equal(result, WDBC_ERROR);
 }
 
 void test_wdb_sync_agent_info_get_bind_fail(void **state)
@@ -496,7 +496,7 @@ void test_wdb_sync_agent_info_get_bind_fail(void **state)
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
     os_free(output);
-    assert_int_equal(result, WDB_CHUNKS_ERROR);
+    assert_int_equal(result, WDBC_ERROR);
 }
 
 void test_wdb_sync_agent_info_get_no_agents(void **state)
@@ -517,7 +517,7 @@ void test_wdb_sync_agent_info_get_no_agents(void **state)
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
     os_free(output);
-    assert_int_equal(result, WDB_CHUNKS_COMPLETE);
+    assert_int_equal(result, WDBC_OK);
 }
 
 void test_wdb_sync_agent_info_get_success(void **state)
@@ -633,7 +633,7 @@ void test_wdb_sync_agent_info_get_success(void **state)
     os_free(output);
     __real_cJSON_Delete(json_output);
     __real_cJSON_Delete(root);
-    assert_int_equal(result, WDB_CHUNKS_COMPLETE);
+    assert_int_equal(result, WDBC_OK);
 }
 
 void test_wdb_sync_agent_info_get_sync_fail(void **state)
@@ -695,13 +695,14 @@ void test_wdb_sync_agent_info_get_sync_fail(void **state)
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Cannot set sync_status for agent 10");
 
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
     os_free(output);
     __real_cJSON_Delete(root);
     __real_cJSON_Delete(json_labels);
-    assert_int_equal(result, WDB_CHUNKS_ERROR);
+    assert_int_equal(result, WDBC_ERROR);
 }
 
 void test_wdb_sync_agent_info_get_full(void **state)
@@ -766,7 +767,7 @@ void test_wdb_sync_agent_info_get_full(void **state)
 
     os_free(output);
     __real_cJSON_Delete(root);
-    assert_int_equal(result, WDB_CHUNKS_BUFFER_FULL);
+    assert_int_equal(result, WDBC_DUE);
 }
 
 void test_wdb_global_sync_agent_info_set_transaction_fail(void **state)

@@ -4937,12 +4937,12 @@ int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) 
         }
     }
 
-    wdb_chunks_status_t status = wdb_sync_agent_info_get(wdb, &start_id, &agent_info_sync);
-    if (status == WDB_CHUNKS_COMPLETE || status == WDB_CHUNKS_ERROR) {
+    wdbc_result status = wdb_sync_agent_info_get(wdb, &start_id, &agent_info_sync);
+    snprintf(output, WDB_MAX_RESPONSE_SIZE, "%s %s",  WDBC_RESULT[status], agent_info_sync);
+    os_free(agent_info_sync)
+    if (status != WDBC_DUE) {
         start_id = 0;
     }
-    snprintf(output, OS_MAXSTR + 1, "%1d %s", status, agent_info_sync);
-    os_free(agent_info_sync)
 
     return OS_SUCCESS;
 }
@@ -5064,35 +5064,35 @@ int wdb_parse_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output) {
     if (next == NULL || strcmp(input, "condition") != 0) {
         mdebug1("Invalid arguments 'condition' not found");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
-        return WDB_CHUNKS_ERROR;
+        return OS_INVALID;
     }
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
         mdebug1("Invalid arguments 'condition' not found");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
-        return WDB_CHUNKS_ERROR;
+        return OS_INVALID;
     }
     comparator = *next;
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
-       mdebug1("Invalid arguments 'condition' not found");
+        mdebug1("Invalid arguments 'condition' not found");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
-        return WDB_CHUNKS_ERROR;
+        return OS_INVALID;
     }
     keep_alive = atoi(next);
     
     /* Get start_id*/
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL || strcmp(next, "start_id") != 0) {
-        mdebug1("Invalid arguments 'condition' not found");
+        mdebug1("Invalid arguments 'start_id' not found");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
-        return WDB_CHUNKS_ERROR;
+        return OS_INVALID;
     }
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
-        mdebug1("Invalid arguments 'condition' not found");
+        mdebug1("Invalid arguments 'start_id' not found");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
-        return WDB_CHUNKS_ERROR;
+        return OS_INVALID;
     }
     start_id = atoi(next);
     
@@ -5116,13 +5116,13 @@ int wdb_parse_get_all_agents(wdb_t* wdb, char* input, char* output) {
     if (next == NULL || strcmp(input, "start_id") != 0) {
         mdebug1("Invalid arguments 'start_id' not found");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
-        return WDB_CHUNKS_ERROR;
+        return OS_INVALID;
     }
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
         mdebug1("Invalid arguments 'start_id' not found");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
-        return WDB_CHUNKS_ERROR;
+        return OS_INVALID;
     }
     start_id = atoi(next);
     

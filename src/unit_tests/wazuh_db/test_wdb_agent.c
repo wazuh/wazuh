@@ -2961,7 +2961,7 @@ void test_wdb_get_agents_by_keepalive_wdbc_query_error(void **state) {
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    int *array = wdb_get_agents_by_keepalive(condition, keepalive);
+    int *array = wdb_get_agents_by_keepalive(condition, keepalive, false);
 
     assert_null(array);
 }
@@ -2981,7 +2981,7 @@ void test_wdb_get_agents_by_keepalive_wdbc_parse_error(void **state) {
     // Parsing Wazuh DB result
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
-    int *array = wdb_get_agents_by_keepalive(condition, keepalive);
+    int *array = wdb_get_agents_by_keepalive(condition, keepalive, false);
 
     assert_null(array);
 }
@@ -3005,7 +3005,7 @@ void test_wdb_get_agents_by_keepalive_success(void **state) {
     // Parsing Wazuh DB result
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    int *array = wdb_get_agents_by_keepalive(condition, keepalive);
+    int *array = wdb_get_agents_by_keepalive(condition, keepalive, false);
 
     assert_int_equal(1, array[0]);
     assert_int_equal(2, array[1]);
@@ -3030,7 +3030,7 @@ void test_wdb_get_all_agents_wdbc_query_error(void **state) {
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    int *array = wdb_get_all_agents();
+    int *array = wdb_get_all_agents(false);
 
     assert_null(array);
 }
@@ -3047,7 +3047,7 @@ void test_wdb_get_all_agents_wdbc_parse_error(void **state) {
     // Parsing Wazuh DB result
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
-    int *array = wdb_get_all_agents();
+    int *array = wdb_get_all_agents(false);
 
     assert_null(array);
 }
@@ -3068,7 +3068,7 @@ void test_wdb_get_all_agents_success(void **state) {
     // Parsing Wazuh DB result
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    int *array = wdb_get_all_agents();
+    int *array = wdb_get_all_agents(false);
 
     assert_int_equal(1, array[0]);
     assert_int_equal(2, array[1]);

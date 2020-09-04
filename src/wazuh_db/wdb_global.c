@@ -1026,33 +1026,36 @@ int wdb_global_set_sync_status(wdb_t *wdb, int id, wdb_sync_status_t status) {
     }
 }
 
-wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output) {
+wdbc_result wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output) {
     sqlite3_stmt* agent_stmt = NULL;
     unsigned response_size = 2;     //Starts with "[]" size
-    wdb_chunks_status_t status = WDB_CHUNKS_PENDING;
+    wdbc_result status = WDBC_UNKNOWN;
     
     os_calloc(WDB_MAX_RESPONSE_SIZE, sizeof(char), *output);
     char *response_aux = *output;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
-        return WDB_CHUNKS_ERROR;
+        snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot begin transaction");
+        return WDBC_ERROR;
     }
 
     //Add array start
     *response_aux++ = '[';
 
-    while (status == WDB_CHUNKS_PENDING) {
+    while (status == WDBC_UNKNOWN) {
         //Prepare SQL query
         if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SYNC_REQ_GET) < 0) {
             mdebug1("Cannot cache statement");
-            status = WDB_CHUNKS_ERROR;
+            snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot cache statement");
+            status = WDBC_ERROR;
             break;
         }
         agent_stmt = wdb->stmt[WDB_STMT_GLOBAL_SYNC_REQ_GET];
         if (sqlite3_bind_int(agent_stmt, 1, *last_agent_id) != SQLITE_OK) {
             merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-            status = WDB_CHUNKS_ERROR;
+            snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot bind sql statement");
+            status = WDBC_ERROR;
             break;
         }
         
@@ -1082,12 +1085,6 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
                 
                 //Check if new agent fits in response
                 if (response_size+agent_len+1 < WDB_MAX_RESPONSE_SIZE) {
-                    //Set sync status as synced
-                    if (OS_SUCCESS != wdb_global_set_sync_status(wdb, agent_id, WDB_SYNCED)) {
-                        status = WDB_CHUNKS_ERROR;
-                        os_free(agent_str);
-                        break;
-                    }
                     //Add new agent
                     memcpy(response_aux, agent_str, agent_len); 
                     response_aux+=agent_len;
@@ -1096,28 +1093,35 @@ wdb_chunks_status_t wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char
                     //Save size and last ID
                     response_size += agent_len+1;
                     *last_agent_id = agent_id;
+                    //Set sync status as synced
+                    if (OS_SUCCESS != wdb_global_set_sync_status(wdb, agent_id, WDB_SYNCED)) {
+                        merror("Cannot set sync_status for agent %d", agent_id);
+                        snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s %d", "Cannot set sync_status for agent", agent_id);
+                        status = WDBC_ERROR;
+                    }                    
                 }
                 else {
                     //Pending agents but buffer is full
-                    status = WDB_CHUNKS_BUFFER_FULL;
+                    status = WDBC_DUE;
                 }
                 os_free(agent_str);
             }
         }
         else {
             //All agents have been obtained
-            status = WDB_CHUNKS_COMPLETE;
+            status = WDBC_OK;
         }
         cJSON_Delete(sql_agents_response);
     }
     
-    if (response_size > 2) {
-        //Remove last ','
-        response_aux--;
+    if (status != WDBC_ERROR) {
+        if (response_size > 2) {
+            //Remove last ','
+            response_aux--;
+        }
+        //Add array end
+        *response_aux = ']';
     }
-    //Add array end
-    *response_aux = ']';
-
     return status;
 }
 
@@ -1207,7 +1211,7 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id) {
 wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char comparator, int keep_alive, char **output) {
     wdbc_result status = WDBC_UNKNOWN;
     unsigned response_size = 0;
-        
+
     os_calloc(WDB_MAX_RESPONSE_SIZE, sizeof(char), *output);
     char *response_aux = *output;
     wdb_stmt stmt_index = -1;
@@ -1218,14 +1222,16 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
     else if (comparator == '<') {
         stmt_index = WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE;
     }
-    else 
+    else
     {
         merror("Invalid comparator");
+        snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Invalid comparator");
         return WDBC_ERROR;
     }
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
+        snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot begin transaction");
         return WDBC_ERROR;
     }
 
@@ -1233,22 +1239,26 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
         //Prepare SQL query
         if (wdb_stmt_cache(wdb, stmt_index) < 0) {
             mdebug1("Cannot cache statement");
+            snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot cache statement");
             status = WDBC_ERROR;
             break;
         }
+
         sqlite3_stmt* stmt = wdb->stmt[stmt_index];
         if (sqlite3_bind_int(stmt, 1, *last_agent_id) != SQLITE_OK) {
             merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-            status = WDBC_ERROR;
-            break;
-        }        
-       
-        if (sqlite3_bind_int(stmt, 2, keep_alive) != SQLITE_OK) {
-            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot bind sql statement");
             status = WDBC_ERROR;
             break;
         }
-        
+
+        if (sqlite3_bind_int(stmt, 2, keep_alive) != SQLITE_OK) {
+            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot bind sql statement");
+            status = WDBC_ERROR;
+            break;
+        }
+
         //Get agent id
         cJSON* sql_agents_response = wdb_exec_stmt(stmt);
         if (sql_agents_response && sql_agents_response->child) {
@@ -1256,14 +1266,14 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
             cJSON* json_id = cJSON_GetObjectItem(json_agent,"id");
             if (cJSON_IsNumber(json_id)) {
                 //Get ID
-                int agent_id = json_id->valueint;               
+                int agent_id = json_id->valueint;
 
                 //Print Agent info
                 char *id_str = cJSON_PrintUnformatted(json_id);
                 unsigned id_len = strlen(id_str);
                 
                 //Check if new agent fits in response
-                if (response_size+id_len+1 < WDB_MAX_RESPONSE_SIZE) {                    
+                if (response_size+id_len+1 < WDB_MAX_RESPONSE_SIZE) {
                     //Add new agent
                     memcpy(response_aux, id_str, id_len); 
                     response_aux+=id_len;
@@ -1286,13 +1296,15 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
         }
         cJSON_Delete(sql_agents_response);
     }
-    
-    if (response_size > 0) {
-        //Remove last ','
-        response_aux--;
+
+    if (status != WDBC_ERROR) {
+        if (response_size > 0) {
+            //Remove last ','
+            response_aux--;
+        }
+        //Add string end
+        *response_aux = '\0';
     }
-    //Add string end
-    *response_aux = '\0';
 
     return status;
 }
@@ -1306,6 +1318,7 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
+        snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot begin transaction");
         return WDBC_ERROR;
     }
 
@@ -1313,12 +1326,14 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
         //Prepare SQL query
         if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS) < 0) {
             mdebug1("Cannot cache statement");
+            snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot cache statement");
             status = WDBC_ERROR;
             break;
         }
         sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS];
         if (sqlite3_bind_int(stmt, 1, *last_agent_id) != SQLITE_OK) {
             merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot bind sql statement");
             status = WDBC_ERROR;
             break;
         }        
@@ -1361,12 +1376,14 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
         cJSON_Delete(sql_agents_response);
     }
     
-    if (response_size > 0) {
-        //Remove last ','
-        response_aux--;
+    if (status != WDBC_ERROR) {
+        if (response_size > 0) {
+            //Remove last ','
+            response_aux--;
+        }
+        //Add string end
+        *response_aux = '\0';
     }
-    //Add string end
-    *response_aux = '\0';
 
     return status;
 }
