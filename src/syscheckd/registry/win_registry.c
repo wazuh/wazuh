@@ -70,7 +70,7 @@ int fim_set_root_key(HKEY *root_key_handle, registry_key_t *rkey, char *full_key
 
     rkey->full_key = full_key;
     rkey->configuration = configuration;
-    rkey->sub_key = rkey->full_key[root_key_length + 1];
+    rkey->sub_key = &rkey->full_key[root_key_length + 1];
     return 0;
 }
 
@@ -117,7 +117,176 @@ int fim_init_registry_key(registry_key_t *rkey, const char *full_key, int arch) 
     rkey->configuration = configuration;
     rkey->sub_key = strchr(rkey->full_key, '\\');
 
+    if (rkey->sub_key) {
+        rkey->sub_key++;
+    }
+
     return 0;
+}
+
+fim_registry_key *fim_registry_get_key_data(HKEY *key_handle, registry_key_t *rkey) {
+    return NULL;
+}
+
+
+cJSON *fim_json_compare_attrs(const fim_file_data *old_data, const fim_file_data *new_data) {
+    cJSON *changed_attributes = cJSON_CreateArray();
+
+    if ((old_data->options & CHECK_SIZE) && (old_data->size != new_data->size)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
+    }
+
+    if ((old_data->options & CHECK_PERM) && strcmp(old_data->perm, new_data->perm) != 0) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
+    }
+
+#ifdef WIN32
+    if ((old_data->options & CHECK_ATTRS) && strcmp(old_data->attributes, new_data->attributes) != 0) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("attributes"));
+    }
+#endif
+
+    if (old_data->options & CHECK_OWNER) {
+        if (old_data->uid && new_data->uid && strcmp(old_data->uid, new_data->uid) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
+        }
+
+        if (old_data->user_name && new_data->user_name && strcmp(old_data->user_name, new_data->user_name) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
+        }
+    }
+
+    if (old_data->options & CHECK_GROUP) {
+        if (old_data->gid && new_data->gid && strcmp(old_data->gid, new_data->gid) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("gid"));
+        }
+
+        if (old_data->group_name && new_data->group_name && strcmp(old_data->group_name, new_data->group_name) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group_name"));
+        }
+    }
+
+    if ((old_data->options & CHECK_MTIME) && (old_data->mtime != new_data->mtime)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
+    }
+
+#ifndef WIN32
+    if ((old_data->options & CHECK_INODE) && (old_data->inode != new_data->inode)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
+    }
+#endif
+
+    if ((old_data->options & CHECK_MD5SUM) && (strcmp(old_data->hash_md5, new_data->hash_md5) != 0)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("md5"));
+    }
+
+    if ((old_data->options & CHECK_SHA1SUM) && (strcmp(old_data->hash_sha1, new_data->hash_sha1) != 0)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha1"));
+    }
+
+    if ((old_data->options & CHECK_SHA256SUM) && (strcmp(old_data->hash_sha256, new_data->hash_sha256) != 0)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha256"));
+    }
+
+    return changed_attributes;
+}
+
+cJSON *fim_registry_value_json_event(fim_registry_value_data *new_data,
+                                     fim_registry_value_data *old_data,
+                                     registry *configuration,
+                                     __attribute__((unused)) fim_event_mode mode,
+                                     __attribute__((unused)) whodata_evt *w_evt,
+                                     const char *diff) {
+    return NULL;
+}
+
+cJSON *fim_registry_key_json_event(fim_registry_key *new_data,
+                                   fim_registry_key *old_data,
+                                   registry *configuration,
+                                   __attribute__((unused)) fim_event_mode mode,
+                                   __attribute__((unused)) whodata_evt *w_evt) {
+    return NULL;
+}
+
+cJSON *fim_registry_json_event(fim_entry *new_data,
+                               fim_entry *old_data,
+                               registry *configuration,
+                               fim_event_mode mode,
+                               whodata_evt *w_evt,
+                               const char *diff) {
+    cJSON *changed_attributes = NULL;
+
+    if (new_data == NULL || new_data->registry_entry.key == NULL) {
+        return NULL;
+    }
+
+    if (new_data->registry_entry.value != NULL) {
+        return fim_registry_value_json_event(new_data->registry_entry.value, old_data ? old_data->registry_entry.value : NULL,
+                                             configuration, mode, w_evt, diff);
+    } else {
+        return fim_registry_key_json_event(new_data->registry_entry.key, old_data ? old_data->registry_entry.key : NULL,
+                                           configuration, mode, w_evt);
+    }
+}
+
+/**
+ * @brief Check and trigger a FIM event on a registry.
+ *
+ * @param new New key data aquired from the actual registry entry.
+ * @param saved Key registry information retrieved from the FIM DB.
+ * @param configuration Configuration associated with the given registry.
+ */
+void fim_registry_event(const fim_entry *new, const fim_entry *saved, const registry *configuration) {
+    cJSON *json_event = NULL;
+    char *json_formated;
+    char *diff = NULL;
+    int result = 1;
+    int alert_type;
+
+    if (new == NULL || saved == NULL) {
+        // This should never happen
+        merror("LOGIC ERROR - new '%p' - saved '%p'", new, saved);
+        return;
+    }
+
+    if (new->registry_entry.key == NULL) {
+        // This shouldn't happen either
+        merror("LOGIC ERROR - Registry event with no new key data");
+    }
+
+    // if (new->type != REGISTRY || saved->type != REGISTRY) {
+    //     // This is just silly now
+    // }
+
+    // if (new->registry_entry.value != NULL && configuration->options | CHECK_SEECHANGES) {
+    //     diff = seechanges_addregistry()
+    // }
+
+
+    // if ((saved && data && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0) || alert_type == FIM_ADD) {
+    //     if (result = fim_db_insert(syscheck.database, key, data, saved ? saved->data : NULL), result < 0) {
+    //         free_entry(saved);
+    //         w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    //         return (result == FIMDB_FULL) ? 0 : OS_INVALID;
+    //     }
+    //     w_mutex_unlock(&syscheck.fim_entry_mutex);
+    //     json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos, alert_type, 0, NULL, NULL);
+    // } else {
+    //     fim_db_set_scanned(syscheck.database, key);
+    //     result = 0;
+    //     w_mutex_unlock(&syscheck.fim_entry_mutex);
+    // }
+
+    // if (json_event && _base_line) {
+    //     json_formated = cJSON_PrintUnformatted(json_event);
+    //     send_syscheck_msg(json_formated);
+    //     os_free(json_formated);
+    // }
+    // cJSON_Delete(json_event);
+    // free_entry(saved);
+
+    return result;
 }
 
 /* Query the key and get all its values */
@@ -257,6 +426,8 @@ int fim_check_key(registry_key_t *rkey) {
         return -1;
     }
 
+    // TODO: Add recursion_level checks.
+
     /* Registry ignore list */
     if (syscheck.registry_ignore) {
         for (ign_it = 0; syscheck.registry_ignore[ign_it].entry; ign_it++) {
@@ -284,8 +455,6 @@ int fim_check_key(registry_key_t *rkey) {
         }
     }
 
-    // TODO: Add recursion_level checks.
-
     return 0;
 }
 
@@ -297,6 +466,7 @@ void fim_open_key(const HKEY root_key_handle, registry_key_t *rkey) {
     DWORD value_count;
     FILETIME file_time = { 0 };
     DWORD i;
+    fim_entry new, saved;
 
     if (rkey == NULL || root_key_handle == NULL || rkey->full_key == NULL) {
         return;
@@ -346,6 +516,15 @@ void fim_open_key(const HKEY root_key_handle, registry_key_t *rkey) {
     }
 
     // Done scanning sub_keys, trigger an alert on the current key if required.
+    new.type = FIM_TYPE_REGISTRY;
+    new.registry_entry.key = fim_registry_get_key_data(sub_key_handle, rkey);
+    new.registry_entry.value = NULL;
+
+    saved.type = FIM_TYPE_REGISTRY;
+    saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, rkey->full_key);
+    saved.registry_entry.value = NULL;
+
+    fim_registry_event(&new, &saved, rkey->configuration);
 
     //    os_winreg_querykey(sub_key_handle, subkey, fullkey_name, pos);
     RegCloseKey(sub_key_handle);

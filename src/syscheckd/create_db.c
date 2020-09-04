@@ -501,53 +501,6 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
     }
 }
 
-#ifdef WIN32
-int fim_registry_event(char *key, fim_file_data *data, int pos) {
-    cJSON *json_event = NULL;
-    fim_entry *saved = NULL;
-    char *json_formated;
-    int result = 1;
-    int alert_type;
-
-    assert(data != NULL);
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-
-    if (saved = fim_db_get_path(syscheck.database, key), !saved) {
-        alert_type = FIM_ADD;
-    } else {
-        alert_type = FIM_MODIFICATION;
-    }
-
-    if ((saved && data && saved->file_entry.data && strcmp(saved->file_entry.data->hash_sha1, data->hash_sha1) != 0)
-        || alert_type == FIM_ADD) {
-        if (result = fim_db_insert(syscheck.database, key, data, saved ? saved->file_entry.data : NULL), result < 0) {
-            free_entry(saved);
-            w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-            return (result == FIMDB_FULL) ? 0 : OS_INVALID;
-        }
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
-        json_event = fim_json_event(key, saved ? saved->file_entry.data : NULL, data, pos,
-                                    alert_type, 0, NULL, NULL);
-    } else {
-        fim_db_set_scanned(syscheck.database, key);
-        result = 0;
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
-    }
-
-    if (json_event && _base_line) {
-        json_formated = cJSON_PrintUnformatted(json_event);
-        send_syscheck_msg(json_formated);
-        os_free(json_formated);
-    }
-    cJSON_Delete(json_event);
-    free_entry(saved);
-
-    return result;
-}
-#endif
-
 // Checks the DB state, sends a message alert if necessary
 void fim_check_db_state() {
     unsigned int nodes_count = 0;
