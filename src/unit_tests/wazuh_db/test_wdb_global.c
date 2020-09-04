@@ -457,6 +457,7 @@ void test_wdb_sync_agent_info_get_transaction_fail(void **state)
 
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
+    assert_string_equal(output, "Cannot begin transaction");
     os_free(output);
     assert_int_equal(result, WDBC_ERROR);
 }
@@ -474,6 +475,7 @@ void test_wdb_sync_agent_info_get_cache_fail(void **state)
 
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
+    assert_string_equal(output, "Cannot cache statement");
     os_free(output);
     assert_int_equal(result, WDBC_ERROR);
 }
@@ -495,6 +497,7 @@ void test_wdb_sync_agent_info_get_bind_fail(void **state)
 
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
+    assert_string_equal(output, "Cannot bind sql statement");
     os_free(output);
     assert_int_equal(result, WDBC_ERROR);
 }
@@ -516,6 +519,7 @@ void test_wdb_sync_agent_info_get_no_agents(void **state)
 
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
+    assert_string_equal(output, "[]");
     os_free(output);
     assert_int_equal(result, WDBC_OK);
 }
@@ -596,40 +600,7 @@ void test_wdb_sync_agent_info_get_success(void **state)
 
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
-    json_output = cJSON_Parse(output);
-    assert_non_null(json_output);
-
-    if(json_output){
-        json_agent = cJSON_GetObjectItem(json_output->child, "id");
-        assert_non_null(json_agent);
-        if(json_agent){
-            assert_int_equal(json_agent->valueint, agent_id);
-        }
-        json_agent = cJSON_GetObjectItem(json_output->child, "test_field");
-        if(json_agent){
-            assert_string_equal(json_agent->valuestring, "test_value");
-        }
-        json_labels = cJSON_GetObjectItem(json_output->child, "labels");
-        assert_non_null(json_labels);
-        if(json_labels){
-            json_label = cJSON_GetObjectItem(json_labels->child, "id");
-            assert_non_null(json_label);
-            if(json_label){
-                assert_int_equal(json_label->valueint, agent_id);
-            }
-            json_label = cJSON_GetObjectItem(json_labels->child, "key");
-            assert_non_null(json_label);
-            if(json_label){
-                assert_string_equal(json_label->valuestring, "test_key");
-            }
-            json_label = cJSON_GetObjectItem(json_labels->child, "value");
-            assert_non_null(json_label);
-            if(json_label){
-                assert_string_equal(json_label->valuestring, "test_value");
-            }
-        }
-    }
-
+    assert_string_equal(output, "[{\"id\":10,\"test_field\":\"test_value\",\"labels\":[{\"id\":10,\"key\":\"test_key\",\"value\":\"test_value\"}]}]");
     os_free(output);
     __real_cJSON_Delete(json_output);
     __real_cJSON_Delete(root);
@@ -699,6 +670,7 @@ void test_wdb_sync_agent_info_get_sync_fail(void **state)
 
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
+    assert_string_equal(output, "Cannot set sync_status for agent 10");
     os_free(output);
     __real_cJSON_Delete(root);
     __real_cJSON_Delete(json_labels);
@@ -765,6 +737,7 @@ void test_wdb_sync_agent_info_get_full(void **state)
 
     result = wdb_sync_agent_info_get(data->socket, &last_agent_id, &output);
 
+    assert_string_equal(output, "[]");
     os_free(output);
     __real_cJSON_Delete(root);
     assert_int_equal(result, WDBC_DUE);
@@ -4974,6 +4947,7 @@ void test_wdb_global_get_agents_by_keepalive_comparator_fail(void **state)
 
     result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
 
+    assert_string_equal(output, "Invalid comparator");
     os_free(output);
     assert_int_equal(result, WDBC_ERROR);
 }
@@ -4992,6 +4966,7 @@ void test_wdb_global_get_agents_by_keepalive_transaction_fail(void **state)
 
     result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
 
+    assert_string_equal(output, "Cannot begin transaction");
     os_free(output);
     assert_int_equal(result, WDBC_ERROR);
 }
@@ -5010,7 +4985,8 @@ void test_wdb_global_get_agents_by_keepalive_cache_fail(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
-
+    
+    assert_string_equal(output, "Cannot cache statement");
     os_free(output);
     assert_int_equal(result, WDBC_ERROR);
 }
@@ -5034,6 +5010,7 @@ void test_wdb_global_get_agents_by_keepalive_bind1_fail(void **state)
 
     result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
 
+    assert_string_equal(output, "Cannot bind sql statement");
     os_free(output);
     assert_int_equal(result, WDBC_ERROR);
 }
@@ -5061,6 +5038,7 @@ void test_wdb_global_get_agents_by_keepalive_bind2_fail(void **state)
 
     result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
 
+    assert_string_equal(output, "Cannot bind sql statement");
     os_free(output);
     assert_int_equal(result, WDBC_ERROR);
 }
@@ -5088,6 +5066,7 @@ void test_wdb_global_get_agents_by_keepalive_no_agents(void **state)
 
     result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
 
+    assert_string_equal(output, "");
     os_free(output);
     assert_int_equal(result, WDBC_OK);
 }
@@ -5138,6 +5117,7 @@ void test_wdb_global_get_agents_by_keepalive_success(void **state)
 
     assert_string_equal(output, str_agt_id);
     
+    assert_string_equal(output, "10");
     os_free(output);
     __real_cJSON_Delete(root);
     assert_int_equal(result, WDBC_OK);
@@ -5172,6 +5152,7 @@ void test_wdb_global_get_agents_by_keepalive_full(void **state)
 
     result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
 
+    assert_non_null(output);
     os_free(output);
     __real_cJSON_Delete(root);
     assert_int_equal(result, WDBC_DUE);
@@ -5189,6 +5170,7 @@ void test_wdb_global_get_all_agents_transaction_fail(void **state)
 
     result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
 
+    assert_string_equal(output, "Cannot begin transaction");
     os_free(output);
     assert_int_equal(result, WDBC_ERROR);
 }
@@ -5206,6 +5188,7 @@ void test_wdb_global_get_all_agents_cache_fail(void **state)
 
     result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
 
+    assert_string_equal(output, "Cannot cache statement");
     os_free(output);
     assert_int_equal(result, WDBC_ERROR);
 }
@@ -5227,6 +5210,7 @@ void test_wdb_global_get_all_agents_bind_fail(void **state)
 
     result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
 
+    assert_string_equal(output, "Cannot bind sql statement");
     os_free(output);
     assert_int_equal(result, WDBC_ERROR);
 }
@@ -5249,6 +5233,7 @@ void test_wdb_global_get_all_agents_no_agents(void **state)
 
     result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
 
+    assert_string_equal(output, "");
     os_free(output);
     assert_int_equal(result, WDBC_OK);
 }
@@ -5291,6 +5276,7 @@ void test_wdb_global_get_all_agents_success(void **state)
 
     assert_string_equal(output, str_agt_id);
     
+    assert_string_equal(output, "10");
     os_free(output);
     __real_cJSON_Delete(root);
     assert_int_equal(result, WDBC_OK);
@@ -5323,6 +5309,7 @@ void test_wdb_global_get_all_agents_full(void **state)
 
     result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
 
+    assert_non_null(output);
     os_free(output);
     __real_cJSON_Delete(root);
     assert_int_equal(result, WDBC_DUE);
