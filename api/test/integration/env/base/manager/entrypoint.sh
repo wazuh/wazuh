@@ -38,6 +38,6 @@ for sql_file in /configuration_files/*.sql; do
   sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file
 done
 
-/var/ossec/bin/wazuh-apid restart
+/var/ossec/bin/ossec-control restart
 
 /usr/bin/supervisord
