@@ -187,8 +187,8 @@ cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, OSL
 
     /* Preprocessing */
     if (w_logtest_preprocessing_phase(lf, request) != 0) {
-        os_free(lf->fields);
-        os_free(lf);
+        Free_Eventinfo(lf);
+        smerror(list_msg, FORMAT_ERROR);
         return output;
     }
 
@@ -258,7 +258,6 @@ int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request) {
     snprintf(log, logsize, "1:%s:%s", location_str, event_str);
 
     if (OS_CleanMSG(log, lf) < 0) {
-        Free_Eventinfo(lf);
         os_free(log);
         if (event_json) os_free(event_str);
         return -1;
