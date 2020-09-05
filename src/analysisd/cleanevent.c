@@ -520,18 +520,32 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     if (lf->location[0] == '[') {
         /* Messages from an agent */
         char *orig = lf->location;
+        bool extra_info = false;
 
         lf->agent_id = lf->location + 1;
         lf->location = strchr(lf->agent_id, ']');
 
         if (!lf->location) {
+            lf->location = orig;
+            lf->agent_id = NULL;
+            lf->hostname = NULL;
             merror(FORMAT_ERROR);
             return (-1);
         }
 
+        if (strlen(lf->location) > 1) {
+            extra_info = true;
+        }
+
         *lf->location = '\0';
         os_strdup(lf->agent_id, lf->agent_id);
-        os_strdup(lf->location + 2, lf->location);
+
+        if (extra_info) {
+            os_strdup(lf->location + 2, lf->location);
+        } else {
+            os_strdup("", lf->location);
+        }
+
 
         if (lf->location[0] == '(') {
             char * end;
