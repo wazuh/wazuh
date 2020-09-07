@@ -908,6 +908,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
     int i, j;
     int elements;
     int8_t rhel_enabled = (strcasestr(name, vu_feed_tag[FEED_REDHAT])) ? 1 : 0;
+    int8_t msu_enabled = (strcasestr(name, vu_feed_tag[FEED_MSU])) ? 1 : 0;
 
     memset(options, '\0', sizeof(provider_options));
 
@@ -919,7 +920,12 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
             // Deprecated in RHEL
             if (rhel_enabled) {
                 minfo("'%s' option at module '%s' is deprecated. Use '%s' instead.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name, XML_OS);
+            // Even though MSU is a multi_provider, it does not use the update_from_year option.
+            } else if (msu_enabled) {
+                mwarn("'%s' option cannot be used for '%s' provider.", node[i]->element, name);
+                continue;
             }
+
             if (multi_provider || rhel_enabled) {
                 int min_year = rhel_enabled ? RED_HAT_REPO_MIN_YEAR : NVD_REPO_MIN_YEAR;
                 if (!wm_vuldet_is_valid_year(node[i]->content, &options->update_since, min_year)) {
