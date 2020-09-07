@@ -1381,6 +1381,44 @@ void test_wdb_update_agent_version_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
+/* Tests wdb_get_agent_info */
+
+void test_wdb_get_agent_info_error_no_json_response(void **state) {
+    cJSON *root = NULL;
+    int id = 1;
+
+    const char *query_str = "global get-agent-info 1";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent's 1 information.");
+
+    root = wdb_get_agent_info(id);
+
+    assert_null(root);
+}
+
+void test_wdb_get_agent_info_success(void **state) {
+    cJSON *root = NULL;
+    int id = 1;
+
+    const char *query_str = "global get-agent-info 1";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, (cJSON *)1);
+
+    root = wdb_get_agent_info(id);
+
+    assert_ptr_equal(1, root);
+}
+
 /* Tests wdb_get_agent_labels */
 
 void test_wdb_get_agent_labels_error_no_json_response(void **state) {
@@ -4249,6 +4287,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_error_result, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_get_agent_info */
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_info_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_info_success, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_get_agent_labels */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_labels_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_labels_success, setup_wdb_agent, teardown_wdb_agent),
