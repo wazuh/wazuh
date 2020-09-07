@@ -29,15 +29,16 @@
 /* Global variables */
 static int _base_line = 0;
 
+static const char *FIM_EVENT_TYPE[] = { "added", "deleted", "modified" };
+
+static const char *FIM_EVENT_MODE[] = { "scheduled", "realtime", "whodata" };
+
 
 typedef struct __registry_key_t {
     const registry *configuration;
     const char *full_key;
     const char *sub_key;
 } registry_key_t;
-
-/* Prototypes */
-void fim_open_key(const HKEY root_key_handle, registry_key_t *rkey);
 
 /* Check if the registry entry is valid */
 int fim_set_root_key(HKEY *root_key_handle, registry_key_t *rkey, char *full_key, registry *configuration) {
@@ -130,22 +131,53 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, registry_key_t *rke
 }
 
 
-cJSON *fim_registry_json_compare_attrs(const fim_file_data *old_data, const fim_file_data *new_data) {
-    cJSON *changed_attributes = cJSON_CreateArray();
+cJSON *fim_registry_value_json_event(const fim_registry_value_data *new_data,
+                                     const fim_registry_value_data *old_data,
+                                     const registry *configuration,
+                                     fim_event_mode mode,
+                                     unsigned int type,
+                                     __attribute__((unused)) whodata_evt *w_evt) {
+    return NULL;
+}
 
-    if ((old_data->options & CHECK_SIZE) && (old_data->size != new_data->size)) {
-        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
+cJSON *fim_registry_key_attributes_json(const fim_registry_key *data) {
+    cJSON *attributes = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(attributes, "type", "registry_key");
+
+    if (data->options & CHECK_PERM) {
+        cJSON_AddStringToObject(attributes, "perm", data->perm);
     }
+
+    if (data->options & CHECK_OWNER) {
+        cJSON_AddStringToObject(attributes, "uid", data->uid);
+    }
+
+    if (data->options & CHECK_GROUP) {
+        cJSON_AddStringToObject(attributes, "gid", data->gid);
+    }
+
+    if (data->user_name) {
+        cJSON_AddStringToObject(attributes, "user_name", data->user_name);
+    }
+
+    if (data->group_name) {
+        cJSON_AddStringToObject(attributes, "group_name", data->group_name);
+    }
+
+    if (*data->checksum) {
+        cJSON_AddStringToObject(attributes, "checksum", data->checksum);
+    }
+
+    return attributes;
+}
+
+cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data, const fim_registry_key *old_data) {
+    cJSON *changed_attributes = cJSON_CreateArray();
 
     if ((old_data->options & CHECK_PERM) && strcmp(old_data->perm, new_data->perm) != 0) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
     }
-
-#ifdef WIN32
-    if ((old_data->options & CHECK_ATTRS) && strcmp(old_data->attributes, new_data->attributes) != 0) {
-        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("attributes"));
-    }
-#endif
 
     if (old_data->options & CHECK_OWNER) {
         if (old_data->uid && new_data->uid && strcmp(old_data->uid, new_data->uid) != 0) {
@@ -167,45 +199,49 @@ cJSON *fim_registry_json_compare_attrs(const fim_file_data *old_data, const fim_
         }
     }
 
-    if ((old_data->options & CHECK_MTIME) && (old_data->mtime != new_data->mtime)) {
-        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
-    }
-
-#ifndef WIN32
-    if ((old_data->options & CHECK_INODE) && (old_data->inode != new_data->inode)) {
-        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
-    }
-#endif
-
-    if ((old_data->options & CHECK_MD5SUM) && (strcmp(old_data->hash_md5, new_data->hash_md5) != 0)) {
-        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("md5"));
-    }
-
-    if ((old_data->options & CHECK_SHA1SUM) && (strcmp(old_data->hash_sha1, new_data->hash_sha1) != 0)) {
-        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha1"));
-    }
-
-    if ((old_data->options & CHECK_SHA256SUM) && (strcmp(old_data->hash_sha256, new_data->hash_sha256) != 0)) {
-        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha256"));
-    }
-
     return changed_attributes;
-}
-
-cJSON *fim_registry_value_json_event(const fim_registry_value_data *new_data,
-                                     const fim_registry_value_data *old_data,
-                                     const registry *configuration,
-                                     __attribute__((unused)) fim_event_mode mode,
-                                     __attribute__((unused)) whodata_evt *w_evt) {
-    return NULL;
 }
 
 cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
                                    const fim_registry_key *old_data,
                                    const registry *configuration,
-                                   __attribute__((unused)) fim_event_mode mode,
+                                   fim_event_mode mode,
+                                   unsigned int type,
                                    __attribute__((unused)) whodata_evt *w_evt) {
-    return NULL;
+    cJSON *changed_attributes;
+
+    if (old_data != NULL) {
+        changed_attributes = fim_registry_compare_key_attrs(new_data, old_data);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            return NULL;
+        }
+    }
+
+    cJSON *json_event = cJSON_CreateObject();
+    cJSON_AddStringToObject(json_event, "type", "event");
+
+    cJSON *data = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_event, "data", data);
+
+    cJSON_AddStringToObject(data, "path", new_data->path);
+    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
+    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[type]);
+    // cJSON_AddNumberToObject(data, "timestamp", new_data->last_event);
+
+    cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(new_data));
+
+    if (old_data) {
+        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(data, "old_attributes", fim_registry_key_attributes_json(old_data));
+    }
+
+    if (configuration->tag != NULL) {
+        cJSON_AddStringToObject(data, "tags", configuration->tag);
+    }
+
+    return json_event;
 }
 
 /**
@@ -216,7 +252,7 @@ cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
  * @param configuration Configuration associated with the given registry.
  * @return 0 if no event was send, 1 if event was send, OS_INVALID on error.
  */
-int fim_registry_event(const fim_entry *new, const fim_entry *saved, const registry *configuration) {
+int fim_registry_event(const fim_entry *new, const fim_entry *saved, const registry *configuration, fim_event_mode mode, unsigned int event_type) {
     cJSON *json_event = NULL;
     char *json_formated;
 
@@ -238,10 +274,10 @@ int fim_registry_event(const fim_entry *new, const fim_entry *saved, const regis
 
     if (new->registry_entry.value != NULL) {
         json_event = fim_registry_value_json_event(new->registry_entry.value, saved->registry_entry.value,
-                                                   configuration, FIM_SCHEDULED, NULL);
+                                                   configuration, mode, event_type, NULL);
     } else {
         json_event =
-        fim_registry_key_json_event(new->registry_entry.key, saved->registry_entry.key, configuration, FIM_SCHEDULED, NULL);
+        fim_registry_key_json_event(new->registry_entry.key, saved->registry_entry.key, configuration, mode, event_type, NULL);
     }
 
     if (json_event == NULL) {
@@ -366,7 +402,8 @@ void fim_read_values(const HKEY key_handle, fim_entry *new, fim_entry *saved, re
         saved->registry_entry.value =
         fim_db_get_registry_data(syscheck.database, new->registry_entry.key->data_id, new->registry_entry.key->path);
 
-        fim_registry_event(new, saved, value_key.configuration);
+        fim_registry_event(new, saved, value_key.configuration, FIM_SCHEDULED,
+                           saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED);
 
         /* Write value name and data in the file (for checksum later) */
         // EVP_DigestUpdate(ctx, value_buffer, strlen(value_buffer));
@@ -467,7 +504,7 @@ void fim_open_key(const HKEY root_key_handle, registry_key_t *rkey) {
     saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, rkey->full_key);
     saved.registry_entry.value = NULL;
 
-    fim_registry_event(&new, &saved, rkey->configuration);
+    fim_registry_event(&new, &saved, rkey->configuration, FIM_SCHEDULED, saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFIED);
 
     if (value_count) {
         fim_read_values(sub_key_handle, &new, &saved, rkey, value_count);
