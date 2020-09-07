@@ -150,10 +150,9 @@ class WazuhDBConnection:
 
         The response of wdb socket contains 2 elements, a STATUS and a PAYLOAD.
         State value can be:
-            0 -> WDB_CHUNKS_PENDING          | There are still elements to get
-            1 -> WDB_CHUNKS_BUFFER_FULL      | There are still elements to get but buffer is full
-            2 -> WDB_CHUNKS_COMPLETE         | There aren't any more elements to get
-            3 -> WDB_CHUNKS_ERROR            | An error occurred
+            ok {payload}    -> Successful query with no pending data
+            due {payload}   -> Successful query with pending data
+            err {message}   -> Unsuccessful query
 
         Parameters
         ----------
@@ -171,13 +170,13 @@ class WazuhDBConnection:
             status, payload = self._send(command, full_response=True)
 
             # Append payload to response if it is not empty
-            if status == 3:
+            if status == 'err':
                 raise WazuhInternalError(2007, extra_message=payload)
-            elif payload != '[]':
-                response.append(payload)
+
+            response.append(payload)
 
             # Exit if there are no items left to return
-            if status != '0' and status != '1':
+            if status == 'ok':
                 break
 
         return response

@@ -164,9 +164,6 @@ class SyncInfo:
                 'message': self.msg_format.format(payload=chunk)
             }).encode()
 
-            # data2 = '{"daemon_name": "' + self.daemon + '", f"message": "' + self.chunk + '"}'
-            # data2 = data.encode()
-
             try:
                 # Send chunk of data to self.daemon of the master
                 result = await self.lc.execute(command=b'sendasync', data=data, wait_for_complete=False)
