@@ -19,6 +19,9 @@
 #include "wazuh_db/wdb.h"
 #include "wazuhdb_op.h"
 
+#include "../wrappers/posix/dirent_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+
 #define WDBQUERY_SIZE OS_BUFFER_SIZE
 #define WDBOUTPUT_SIZE OS_MAXSTR
 
@@ -4300,6 +4303,173 @@ void test_wdb_update_groups_error_json(void **state) {
     assert_int_equal(OS_INVALID, ret);
 }
 
+void test_wdb_update_groups_error_removing_group_db(void **state) {
+    int ret = 0;
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+    cJSON *str = NULL;
+
+    const char *query_str = "global select-groups";
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    str = __real_cJSON_CreateString("test_group");
+    __real_cJSON_AddItemToObject(row, "name", str);
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "name");
+    will_return(__wrap_cJSON_GetObjectItem, str);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Opening directory
+    will_return(__wrap_opendir, 0);
+
+    //// Call to wdb_remove_group_db
+    const char *name = "test_group";
+
+    query_str = "global delete-group-belong test_group";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    // Hnadling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-group-belong test_group");
+
+    // Hnadling result
+    expect_string(__wrap__merror, formatted_msg, "At wdb_remove_group_from_belongs_db(): couldn't delete 'test_group' from 'belongs' table.");
+
+    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR);
+
+    assert_int_equal(OS_INVALID, ret);
+
+    __real_cJSON_Delete(root);
+}
+
+void test_wdb_update_groups_error_adding_new_groups(void **state) {
+    int ret = 0;
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+    cJSON *str = NULL;
+
+    const char *query_str = "global select-groups";
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    str = __real_cJSON_CreateString("test_group");
+    __real_cJSON_AddItemToObject(row, "name", str);
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "name");
+    will_return(__wrap_cJSON_GetObjectItem, str);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Opening directory
+    will_return(__wrap_opendir, 1);
+
+    // Adding new groups
+    will_return(__wrap_opendir, 0);
+    will_return(__wrap_strerror, "error");
+    expect_string(__wrap__merror, formatted_msg, "Couldn't open directory '/var/ossec/etc/shared': error.");
+
+    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR);
+
+    assert_int_equal(OS_INVALID, ret);
+
+    __real_cJSON_Delete(root);
+}
+
+void test_wdb_update_groups_success(void **state) {
+    int ret = 0;
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+    cJSON *str = NULL;
+
+    const char *query_str = "global select-groups";
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    str = __real_cJSON_CreateString("test_group");
+    __real_cJSON_AddItemToObject(row, "name", str);
+    __real_cJSON_AddItemToArray(root, row);
+
+    struct dirent *dir_ent = NULL;
+    os_calloc(1, sizeof(struct dirent), dir_ent);
+    strncpy(dir_ent->d_name, "test_group", 10);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "name");
+    will_return(__wrap_cJSON_GetObjectItem, str);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Opening directory
+    will_return(__wrap_opendir, 1);
+
+    // Adding new groups
+    will_return(__wrap_opendir, 1);
+    will_return(__wrap_readdir, dir_ent);
+    expect_string(__wrap_IsDir, file, "/var/ossec/etc/shared/test_group");
+    will_return(__wrap_IsDir, 0);
+
+    //// Call to wdb_find_group
+    query_str = "global find-group test_group";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent group id.");
+
+    //// Call to wdb_insert_group
+    query_str = "global insert-agent-group test_group";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    will_return(__wrap_readdir, NULL);
+
+    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR);
+
+    assert_int_equal(OS_SUCCESS, ret);
+
+    __real_cJSON_Delete(root);
+    os_free(dir_ent);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -4452,7 +4622,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_error_result, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_success, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_update_groups */
-        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_json, setup_wdb_agent, teardown_wdb_agent)
+        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_json, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_removing_group_db, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_adding_new_groups, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_groups_success, setup_wdb_agent, teardown_wdb_agent)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
