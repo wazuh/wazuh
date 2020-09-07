@@ -27,6 +27,7 @@
 #define MAX_VALUE_NAME 16383
 
 /* Global variables */
+static int _base_line = 0;
 
 
 typedef struct __registry_key_t {
@@ -124,12 +125,12 @@ int fim_init_registry_key(registry_key_t *rkey, const char *full_key, int arch) 
     return 0;
 }
 
-fim_registry_key *fim_registry_get_key_data(HKEY *key_handle, registry_key_t *rkey) {
+fim_registry_key *fim_registry_get_key_data(HKEY key_handle, registry_key_t *rkey) {
     return NULL;
 }
 
 
-cJSON *fim_json_compare_attrs(const fim_file_data *old_data, const fim_file_data *new_data) {
+cJSON *fim_registry_json_compare_attrs(const fim_file_data *old_data, const fim_file_data *new_data) {
     cJSON *changed_attributes = cJSON_CreateArray();
 
     if ((old_data->options & CHECK_SIZE) && (old_data->size != new_data->size)) {
@@ -191,41 +192,20 @@ cJSON *fim_json_compare_attrs(const fim_file_data *old_data, const fim_file_data
     return changed_attributes;
 }
 
-cJSON *fim_registry_value_json_event(fim_registry_value_data *new_data,
-                                     fim_registry_value_data *old_data,
-                                     registry *configuration,
+cJSON *fim_registry_value_json_event(const fim_registry_value_data *new_data,
+                                     const fim_registry_value_data *old_data,
+                                     const registry *configuration,
                                      __attribute__((unused)) fim_event_mode mode,
                                      __attribute__((unused)) whodata_evt *w_evt) {
     return NULL;
 }
 
-cJSON *fim_registry_key_json_event(fim_registry_key *new_data,
-                                   fim_registry_key *old_data,
-                                   registry *configuration,
+cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
+                                   const fim_registry_key *old_data,
+                                   const registry *configuration,
                                    __attribute__((unused)) fim_event_mode mode,
                                    __attribute__((unused)) whodata_evt *w_evt) {
     return NULL;
-}
-
-cJSON *fim_registry_json_event(fim_entry *new_data,
-                               fim_entry *old_data,
-                               registry *configuration,
-                               fim_event_mode mode,
-                               whodata_evt *w_evt,
-                               const char *diff) {
-    cJSON *changed_attributes = NULL;
-
-    if (new_data == NULL || new_data->registry_entry.key == NULL) {
-        return NULL;
-    }
-
-    if (new_data->registry_entry.value != NULL) {
-        return fim_registry_value_json_event(new_data->registry_entry.value, old_data ? old_data->registry_entry.value : NULL,
-                                             configuration, mode, w_evt, diff);
-    } else {
-        return fim_registry_key_json_event(new_data->registry_entry.key, old_data ? old_data->registry_entry.key : NULL,
-                                           configuration, mode, w_evt);
-    }
 }
 
 /**
@@ -239,9 +219,6 @@ cJSON *fim_registry_json_event(fim_entry *new_data,
 int fim_registry_event(const fim_entry *new, const fim_entry *saved, const registry *configuration) {
     cJSON *json_event = NULL;
     char *json_formated;
-    char *diff = NULL;
-    int result = 1;
-    int alert_type;
 
     if (new == NULL || saved == NULL) {
         // This should never happen
@@ -272,7 +249,7 @@ int fim_registry_event(const fim_entry *new, const fim_entry *saved, const regis
         return 0;
     }
 
-    if (fim_db_insert_registry(syscheck.database, new, saved) != 0) {
+    if (fim_db_insert_registry(syscheck.database, new) != 0) {
         mwarn("Couldn't insert into DB");
     }
 
@@ -286,135 +263,6 @@ int fim_registry_event(const fim_entry *new, const fim_entry *saved, const regis
     return 1;
 }
 
-/* Query the key and get all its values */
-void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
-{
-    int rc;
-    DWORD i, j;
-
-    /* QueryInfo and EnumKey variables */
-    TCHAR sub_key_name_b[MAX_KEY_LENGTH + 2];
-    TCHAR class_name_b[MAX_PATH + 1];
-    DWORD sub_key_name_s;
-    DWORD class_name_s = MAX_PATH;
-
-    /* Number of sub keys */
-    DWORD subkey_count = 0;
-
-    /* Number of values */
-    DWORD value_count;
-
-    /* Variables for RegEnumValue */
-    TCHAR value_buffer[MAX_VALUE_NAME + 1];
-    TCHAR data_buffer[MAX_VALUE_NAME + 1];
-    DWORD value_size;
-    DWORD data_size;
-
-    /* Data type for RegEnumValue */
-    DWORD data_type = 0;
-
-    /* Initializing the memory for some variables */
-    class_name_b[0] = '\0';
-    class_name_b[MAX_PATH] = '\0';
-    sub_key_name_b[0] = '\0';
-    sub_key_name_b[MAX_KEY_LENGTH] = '\0';
-    sub_key_name_b[MAX_KEY_LENGTH + 1] = '\0';
-
-    /* Get values (if available) */
-    if (value_count) {
-        char *mt_data;
-        char buffer[OS_SIZE_2048];
-        EVP_MD_CTX *ctx = EVP_MD_CTX_create();
-        EVP_DigestInit(ctx, EVP_sha1());
-
-        /* Clear the values for value_size and data_size */
-        value_buffer[MAX_VALUE_NAME] = '\0';
-        data_buffer[MAX_VALUE_NAME] = '\0';
-
-        /* Get each value */
-        buffer[0] = '\0';
-        for (i = 0; i < value_count; i++) {
-            value_size = MAX_VALUE_NAME;
-            data_size = MAX_VALUE_NAME;
-
-            value_buffer[0] = '\0';
-            data_buffer[0] = '\0';
-
-            rc = RegEnumValue(hKey, i, value_buffer, &value_size,
-                              NULL, &data_type, (LPBYTE)data_buffer, &data_size);
-
-            /* No more values available */
-            if (rc != ERROR_SUCCESS) {
-                break;
-            }
-
-            /* Check if no value name is specified */
-            if (value_buffer[0] == '\0') {
-                value_buffer[0] = '@';
-                value_buffer[1] = '\0';
-            }
-
-            /* Write value name and data in the file (for checksum later) */
-            EVP_DigestUpdate(ctx, value_buffer, strlen(value_buffer));
-            switch (data_type) {
-                case REG_SZ:
-                case REG_EXPAND_SZ:
-                    EVP_DigestUpdate(ctx, data_buffer, strlen(data_buffer));
-                    break;
-                case REG_MULTI_SZ:
-                    /* Print multiple strings */
-                    mt_data = data_buffer;
-
-                    while (*mt_data) {
-                        EVP_DigestUpdate(ctx, mt_data, strlen(mt_data));
-                        mt_data += strlen(mt_data) + 1;
-                    }
-                    break;
-                case REG_DWORD:
-                    snprintf(buffer, OS_SIZE_2048, "%08x", *((unsigned int*)data_buffer));
-                    EVP_DigestUpdate(ctx, buffer, strlen(buffer));
-                    buffer[0] = '\0';
-                    break;
-                default:
-                    for (j = 0; j < data_size; j++) {
-                        snprintf(buffer, 3, "%02x", (unsigned int)data_buffer[j] & 0xFF);
-                        EVP_DigestUpdate(ctx, buffer, strlen(buffer));
-                        buffer[0] = '\0';
-                    }
-                    break;
-            }
-        }
-
-        fim_file_data *data;
-        char path[MAX_PATH + 7];
-        unsigned char digest[EVP_MAX_MD_SIZE];
-        int result;
-        unsigned int digest_size;
-
-        os_calloc(1, sizeof(fim_file_data), data);
-        init_fim_data_entry(data);
-
-        // Set registry entry type
-        data->mode = FIM_SCHEDULED;
-        snprintf(path, MAX_PATH + 7, "%s%s", syscheck.registry[pos].arch == ARCH_64BIT ? "[x64] " : "[x32] ", full_key_name);
-        data->last_event = time(NULL);
-        data->options |= CHECK_SHA1SUM | CHECK_MTIME;
-        data->mtime = get_windows_file_time_epoch(file_time);
-        data->scanned = 1;
-
-        EVP_DigestFinal_ex(ctx, digest, &digest_size);
-        OS_SHA1_Hexdigest(digest, data->hash_sha1);
-        EVP_MD_CTX_destroy(ctx);
-
-        fim_get_checksum(data);
-
-        if (result = fim_registry_event(path, data, pos), result == -1) {
-            mdebug1(FIM_REGISTRY_EVENT_FAIL, path);
-        }
-
-        free_entry_data(data);
-    }
-}
 
 int fim_check_key(registry_key_t *rkey) {
     int ign_it;
@@ -453,6 +301,105 @@ int fim_check_key(registry_key_t *rkey) {
     }
 
     return 0;
+}
+
+/* Query the key and get all its values */
+void fim_read_values(const HKEY key_handle, fim_entry *new, fim_entry *saved, registry_key_t *rkey, DWORD value_count) {
+    DWORD i;
+
+    /* Variables for RegEnumValue */
+    TCHAR value_buffer[MAX_VALUE_NAME + 1];
+    TCHAR data_buffer[MAX_VALUE_NAME + 1];
+    DWORD value_size;
+    DWORD data_size;
+
+    /* Data type for RegEnumValue */
+    DWORD data_type = 0;
+
+    // char *mt_data;
+
+    EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+    EVP_DigestInit(ctx, EVP_sha1());
+
+    /* Clear the values for value_size and data_size */
+    value_buffer[MAX_VALUE_NAME] = '\0';
+    data_buffer[MAX_VALUE_NAME] = '\0';
+
+    os_calloc(1, sizeof(fim_registry_value_data), new->registry_entry.value);
+
+    for (i = 0; i < value_count; i++) {
+        char value_path[MAX_KEY + 2];
+        registry_key_t value_key;
+
+        value_size = MAX_VALUE_NAME;
+        data_size = MAX_VALUE_NAME;
+
+        value_buffer[0] = '\0';
+        data_buffer[0] = '\0';
+
+        /* No more values available */
+        if (RegEnumValue(key_handle, i, value_buffer, &value_size, NULL, &data_type, (LPBYTE)data_buffer, &data_size) != ERROR_SUCCESS) {
+            break;
+        }
+
+        /* Check if no value name is specified */
+        if (value_buffer[0] == '\0') {
+            value_buffer[0] = '@';
+            value_buffer[1] = '\0';
+        }
+
+        snprintf(value_path, MAX_KEY, "%s\\%s", rkey->full_key, value_buffer);
+        if (fim_init_registry_key(&value_key, value_path, rkey->configuration->arch)) {
+            mwarn("Failed to create child registry '%s'", value_path);
+            continue;
+        }
+
+        if (fim_check_key(&value_key)) {
+            continue;
+        }
+
+        new->registry_entry.value->name = value_buffer;
+        new->registry_entry.value->type = data_type;
+        new->registry_entry.value->size = data_size;
+        new->registry_entry.value->mode = FIM_SCHEDULED;
+
+        saved->registry_entry.value =
+        fim_db_get_registry_data(syscheck.database, new->registry_entry.key->data_id, new->registry_entry.key->path);
+
+        fim_registry_event(new, saved, value_key.configuration);
+
+        /* Write value name and data in the file (for checksum later) */
+        // EVP_DigestUpdate(ctx, value_buffer, strlen(value_buffer));
+        // switch (data_type) {
+        // case REG_SZ:
+        // case REG_EXPAND_SZ:
+        //     EVP_DigestUpdate(ctx, data_buffer, strlen(data_buffer));
+        //     break;
+        // case REG_MULTI_SZ:
+        //     /* Print multiple strings */
+        //     mt_data = data_buffer;
+
+        //     while (*mt_data) {
+        //         EVP_DigestUpdate(ctx, mt_data, strlen(mt_data));
+        //         mt_data += strlen(mt_data) + 1;
+        //     }
+        //     break;
+        // case REG_DWORD:
+        //     snprintf(buffer, OS_SIZE_2048, "%08x", *((unsigned int *)data_buffer));
+        //     EVP_DigestUpdate(ctx, buffer, strlen(buffer));
+        //     buffer[0] = '\0';
+        //     break;
+        // default:
+        //     for (j = 0; j < data_size; j++) {
+        //         snprintf(buffer, 3, "%02x", (unsigned int)data_buffer[j] & 0xFF);
+        //         EVP_DigestUpdate(ctx, buffer, strlen(buffer));
+        //         buffer[0] = '\0';
+        //     }
+        //     break;
+        // }
+
+        // free_entry_data(data);
+    }
 }
 
 /* Open the registry key */
@@ -522,7 +469,10 @@ void fim_open_key(const HKEY root_key_handle, registry_key_t *rkey) {
 
     fim_registry_event(&new, &saved, rkey->configuration);
 
-    //    os_winreg_querykey(sub_key_handle, subkey, fullkey_name, pos);
+    if (value_count) {
+        fim_read_values(sub_key_handle, &new, &saved, rkey, value_count);
+    }
+
     RegCloseKey(sub_key_handle);
     return;
 }
@@ -556,6 +506,10 @@ void fim_registry_scan() {
     }
 
     mdebug1(FIM_WINREGISTRY_ENDED);
+
+    if (_base_line == 0) {
+        _base_line = 1;
+    }
 
     return;
 }
