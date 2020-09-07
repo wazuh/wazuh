@@ -4470,6 +4470,124 @@ void test_wdb_update_groups_success(void **state) {
     os_free(dir_ent);
 }
 
+/* Tests wdb_agent_belongs_first_time */
+
+void test_wdb_agent_belongs_first_time_success(void **state) {
+    int ret = OS_INVALID;
+
+    //// Call to wdb_get_all_agents
+    const char *query_str = "global get-all-agents start_id 0";
+
+    // Setting the payload
+    set_payload = 1;
+    strncpy(test_payload, "ok 1", 8);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    //// Call to wdb_get_agent_group
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+    cJSON *str = NULL;
+    int id = 1;
+    char *name = NULL;
+
+    query_str = "global select-agent-group 1";
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    str = __real_cJSON_CreateString("default");
+    __real_cJSON_AddItemToObject(row, "group", str);
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "group");
+    will_return(__wrap_cJSON_GetObjectItem, str);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    //// Call to wdb_update_agent_multi_group
+    //// wdb_delete_agent_belongs success
+    query_str = "global delete-agent-belong 1";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    //// wdb_find_group error
+    query_str = "global find-group default";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent group id.");
+
+    //// wdb_insert_group success
+    query_str = "global insert-agent-group default";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    //// wdb_find_group success
+    query_str = "global find-group default";
+
+    cJSON *root2 = __real_cJSON_CreateArray();
+    cJSON *row2 = __real_cJSON_CreateObject();
+    __real_cJSON_AddNumberToObject(row2, "id", 1);
+    __real_cJSON_AddItemToArray(root2, row2);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "id");
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "id"));
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    //// wdb_update_agent_belongs error
+    will_return(__wrap_cJSON_CreateObject, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
+
+    ret = wdb_agent_belongs_first_time();
+
+    assert_int_equal(OS_SUCCESS, ret);
+
+    __real_cJSON_Delete(root);
+    __real_cJSON_Delete(root2);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -4625,7 +4743,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_json, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_removing_group_db, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_adding_new_groups, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_groups_success, setup_wdb_agent, teardown_wdb_agent)
+        cmocka_unit_test_setup_teardown(test_wdb_update_groups_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_agent_belongs_first_time */
+        cmocka_unit_test_setup_teardown(test_wdb_agent_belongs_first_time_success, setup_wdb_agent, teardown_wdb_agent)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
