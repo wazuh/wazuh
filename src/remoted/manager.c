@@ -159,7 +159,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     w_mutex_lock(&lastmsg_mutex)
 
     /* Check if there is a keep alive already for this agent */
-    if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && strcmp(data->message, msg) == 0) {
+    if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && msg && strcmp(data->message, msg) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
 
         agent_id = atoi(key->id);

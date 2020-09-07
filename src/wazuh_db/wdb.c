@@ -110,15 +110,46 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYNC_UPDATE_ATTEMPT] = "UPDATE sync_info SET last_attempt = ?, n_attempts = n_attempts + 1 WHERE component = ?;",
     [WDB_STMT_SYNC_UPDATE_COMPLETION] = "UPDATE sync_info SET last_attempt = ?, last_completion = ?, n_attempts = n_attempts + 1, n_completions = n_completions + 1 WHERE component = ?;",
     [WDB_STMT_MITRE_NAME_GET] = "SELECT name FROM attack WHERE id = ?;",
-    [WDB_STMT_GLOBAL_LABELS_GET] = "SELECT * FROM labels WHERE id = ?;",
+    [WDB_STMT_GLOBAL_INSERT_AGENT] = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?,?,?,?,?,?,?);",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_NAME] = "UPDATE agent SET name = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = STRFTIME('%s', 'NOW'), sync_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = STRFTIME('%s', 'NOW'), ip = ?, sync_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_LABELS_GET] = "SELECT * FROM labels WHERE id = ? \
+                                    UNION \
+                                    SELECT id, '#\"_agent_ip\"' AS key, ip AS value FROM agent WHERE id = ? \
+                                    UNION \
+                                    SELECT id, '#\"_manager_hostname\"' AS key, manager_host AS value FROM agent WHERE id = ? \
+                                    UNION \
+                                    SELECT id, '#\"_node_name\"' AS key, node_name AS value FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_DEL] = "DELETE FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_SET] = "INSERT INTO labels (id, key, value) VALUES (?,?,?);",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE] = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), sync_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_DELETE_AGENT] = "DELETE FROM agent WHERE id = ?;",
+    [WDB_STMT_GLOBAL_SELECT_AGENT_NAME] = "SELECT name FROM agent WHERE id = ?;",
+    [WDB_STMT_GLOBAL_SELECT_AGENT_GROUP] = "SELECT `group` FROM agent WHERE id = ?;",
+    [WDB_STMT_GLOBAL_FIND_AGENT] = "SELECT id FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ? || '/_%');",
+    [WDB_STMT_GLOBAL_SELECT_FIM_OFFSET] = "SELECT fim_offset FROM agent WHERE id = ?;",
+    [WDB_STMT_GLOBAL_SELECT_REG_OFFSET] = "SELECT reg_offset FROM agent WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_FIM_OFFSET] = "UPDATE agent SET fim_offset = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_REG_OFFSET] = "UPDATE agent SET reg_offset = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_SELECT_AGENT_STATUS] = "SELECT status FROM agent WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS] = "UPDATE agent SET status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_FIND_GROUP] = "SELECT id FROM `group` WHERE name = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_GROUP] = "UPDATE agent SET `group` = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_INSERT_AGENT_GROUP] = "INSERT INTO `group` (name) VALUES(?);",
+    [WDB_STMT_GLOBAL_INSERT_AGENT_BELONG] = "INSERT INTO belongs (id_group, id_agent) VALUES(?,?);",
+    [WDB_STMT_GLOBAL_DELETE_AGENT_BELONG] = "DELETE FROM belongs WHERE id_agent = ?;",
+    [WDB_STMT_GLOBAL_DELETE_GROUP_BELONG] = "DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
+    [WDB_STMT_GLOBAL_DELETE_GROUP] = "DELETE FROM `group` WHERE name = ?;",
+    [WDB_STMT_GLOBAL_SELECT_GROUPS] = "SELECT name FROM `group`;",
+    [WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE] = "SELECT last_keepalive FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ? || '/_%');",
     [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version config_sum, merged_sum, manager_host, node_name, last_keepalive FROM agent WHERE id > ? AND sync_status = 1 LIMIT 1;", 
     [WDB_STMT_GLOBAL_SYNC_SET] = "UPDATE agent SET sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET config_sum = :config_sum, ip = :ip, manager_host = :manager_host, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_build = :os_build, os_codename = :os_codename, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_uname = :os_uname, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, sync_status = :sync_status WHERE id = :id;",
     [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ? LIMIT 1;", 
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE] = "SELECT id FROM agent WHERE id > ? AND last_keepalive > ? LIMIT 1;", 
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE] = "SELECT id FROM agent WHERE id > ? AND last_keepalive < ? LIMIT 1;", 
+    [WDB_STMT_GLOBAL_GET_AGENT_INFO] = "SELECT * FROM agent WHERE id = ?;",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
 };
 
