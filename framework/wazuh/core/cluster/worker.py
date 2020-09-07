@@ -337,15 +337,15 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         agent_info_logger = self.task_loggers["Agent info"]
         wdb_conn = WazuhDBConnection()
+        agent_info = SyncInfo(worker=self, daemon='wazuh-db', msg_format='global sync-agent-info-set {payload}',
+                              logger=agent_info_logger, data_retriever=wdb_conn.run_wdb_command
+                              )
 
         while True:
             if self.connected:
                 agent_info_logger.info("Starting agent-info sync process.")
                 before = time.time()
-                await SyncInfo(
-                    worker=self, daemon='wazuh-db', msg_format='global sync-agent-info-set {payload}',
-                    logger=agent_info_logger, data_retriever=wdb_conn.run_wdb_command
-                ).sync('global sync-agent-info-get ')
+                await agent_info.sync('global sync-agent-info-get ')
                 after = time.time()
                 agent_info_logger.debug2("Time synchronizing agent statuses: {} s".format(after - before))
 
