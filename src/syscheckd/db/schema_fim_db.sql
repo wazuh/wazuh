@@ -6,7 +6,7 @@
  * and/or modify it under the terms of GPLv2.
  */
 
-CREATE TABLE IF NOT EXISTS entry_path (
+CREATE TABLE IF NOT EXISTS file_entry (
     path TEXT NOT NULL,
     inode_id INTEGER,
     mode INTEGER,
@@ -17,10 +17,10 @@ CREATE TABLE IF NOT EXISTS entry_path (
     PRIMARY KEY(path)
 );
 
-CREATE INDEX IF NOT EXISTS path_index ON entry_path (path);
-CREATE INDEX IF NOT EXISTS inode_index ON entry_path (inode_id);
+CREATE INDEX IF NOT EXISTS path_index ON file_entry (path);
+CREATE INDEX IF NOT EXISTS inode_index ON file_entry (inode_id);
 
-CREATE TABLE IF NOT EXISTS entry_data (
+CREATE TABLE IF NOT EXISTS file_data (
     dev INTEGER,
     inode INTEGER,
     size INTEGER,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS entry_data (
     PRIMARY KEY(dev, inode)
 );
 
-CREATE INDEX IF NOT EXISTS dev_inode_index ON entry_data (dev, inode);
+CREATE INDEX IF NOT EXISTS dev_inode_index ON file_data (dev, inode);
 
 CREATE TABLE IF NOT EXISTS registry_key (
     path TEXT NOT NULL,

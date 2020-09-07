@@ -105,7 +105,7 @@ void fim_db_force_commit(fdb_t *fim_sql);
 int fim_db_clean_stmt(fdb_t *fim_sql, int index);
 
 /**
- * @brief Get checksum of all entry_data.
+ * @brief Get checksum of all file_data.
  * @param fim_sql FIM database struct.
  * @param arg CTX object.
  *
@@ -235,7 +235,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
                         __attribute__((unused))void *w_evt);
 
 /**
- * @brief Get the last/first row from entry_path.
+ * @brief Get the last/first row from file_entry.
  *
  * @param mode FIM_FIRST_ROW or FIM_LAST_ROW.
  * @param path pointer of pointer where the path will be stored.
@@ -353,22 +353,22 @@ int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file,
                                  whodata_evt * w_evt);
 
 /**
- * @brief Get count of all entries in entry_data table.
+ * @brief Get count of all entries in file_data table.
  *
  * @param fim_sql FIM database struct.
  *
- * @return Number of entries in entry_data table.
+ * @return Number of entries in file_data table.
  */
-int fim_db_get_count_entry_data(fdb_t * fim_sql);
+int fim_db_get_count_file_data(fdb_t * fim_sql);
 
 /**
- * @brief Get count of all entries in entry_path table.
+ * @brief Get count of all entries in file_entry table.
  *
  * @param fim_sql FIM database struct.
  *
- * @return Number of entries in entry_path table.
+ * @return Number of entries in file_entry table.
  */
-int fim_db_get_count_entry_path(fdb_t * fim_sql);
+int fim_db_get_count_file_entry(fdb_t * fim_sql);
 
 /**
  * @brief Get count of all entries in the database.

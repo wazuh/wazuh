@@ -19,36 +19,36 @@
 static const char *SQL_STMT[] = {
     // Files
 #ifdef WIN32
-    [FIMDB_STMT_INSERT_DATA] = "INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [FIMDB_STMT_INSERT_DATA] = "INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
 #else
-    [FIMDB_STMT_INSERT_DATA] = "INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [FIMDB_STMT_INSERT_DATA] = "INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
 #endif
-    [FIMDB_STMT_REPLACE_PATH] = "INSERT OR REPLACE INTO entry_path (path, inode_id, mode, last_event, scanned, options, checksum) VALUES (?, ?, ?, ?, ?, ?, ?);",
-    [FIMDB_STMT_GET_PATH] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM entry_path INNER JOIN entry_data ON path = ? AND entry_data.rowid = entry_path.inode_id;",
-    [FIMDB_STMT_UPDATE_DATA] = "UPDATE entry_data SET size = ?, perm = ?, attributes = ?, uid = ?, gid = ?, user_name = ?, group_name = ?, hash_md5 = ?, hash_sha1 = ?, hash_sha256 = ?, mtime = ? WHERE rowid = ?;",
-    [FIMDB_STMT_UPDATE_PATH] = "UPDATE entry_path SET inode_id = ?, mode = ?, last_event = ?, scanned = ?, options = ?, checksum = ? WHERE path = ?;",
-    [FIMDB_STMT_GET_LAST_PATH] = "SELECT path FROM entry_path ORDER BY path DESC LIMIT 1;",
-    [FIMDB_STMT_GET_FIRST_PATH] = "SELECT path FROM entry_path ORDER BY path ASC LIMIT 1;",
-    [FIMDB_STMT_GET_ALL_ENTRIES] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM entry_data INNER JOIN entry_path ON inode_id = entry_data.rowid ORDER BY PATH ASC;",
-    [FIMDB_STMT_GET_NOT_SCANNED] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM entry_data INNER JOIN entry_path ON inode_id = entry_data.rowid WHERE scanned = 0 ORDER BY PATH ASC;",
-    [FIMDB_STMT_SET_ALL_UNSCANNED] = "UPDATE entry_path SET scanned = 0;",
-    [FIMDB_STMT_GET_PATH_COUNT] = "SELECT count(inode_id), inode_id FROM entry_path WHERE inode_id = (select inode_id from entry_path where path = ?);",
+    [FIMDB_STMT_REPLACE_PATH] = "INSERT OR REPLACE INTO file_entry (path, inode_id, mode, last_event, scanned, options, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    [FIMDB_STMT_GET_PATH] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_entry INNER JOIN file_data ON path = ? AND file_data.rowid = file_entry.inode_id;",
+    [FIMDB_STMT_UPDATE_DATA] = "UPDATE file_data SET size = ?, perm = ?, attributes = ?, uid = ?, gid = ?, user_name = ?, group_name = ?, hash_md5 = ?, hash_sha1 = ?, hash_sha256 = ?, mtime = ? WHERE rowid = ?;",
+    [FIMDB_STMT_UPDATE_PATH] = "UPDATE file_entry SET inode_id = ?, mode = ?, last_event = ? = ?, scanned = ?, options = ?, checksum = ? WHERE path = ?;",
+    [FIMDB_STMT_GET_LAST_PATH] = "SELECT path FROM file_entry ORDER BY path DESC LIMIT 1;",
+    [FIMDB_STMT_GET_FIRST_PATH] = "SELECT path FROM file_entry ORDER BY path ASC LIMIT 1;",
+    [FIMDB_STMT_GET_ALL_ENTRIES] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_data INNER JOIN file_entry ON inode_id = file_data.rowid ORDER BY PATH ASC;",
+    [FIMDB_STMT_GET_NOT_SCANNED] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_data INNER JOIN file_entry ON inode_id = file_data.rowid WHERE scanned = 0 ORDER BY PATH ASC;",
+    [FIMDB_STMT_SET_ALL_UNSCANNED] = "UPDATE file_entry SET scanned = 0;",
+    [FIMDB_STMT_GET_PATH_COUNT] = "SELECT count(inode_id), inode_id FROM file_entry WHERE inode_id = (select inode_id from file_entry where path = ?);",
 #ifndef WIN32
-    [FIMDB_STMT_GET_DATA_ROW] = "SELECT rowid FROM entry_data WHERE inode = ? AND dev = ?;",
+    [FIMDB_STMT_GET_DATA_ROW] = "SELECT rowid FROM file_data WHERE inode = ? AND dev = ?;",
 #else
-    [FIMDB_STMT_GET_DATA_ROW] = "SELECT inode_id FROM entry_path WHERE path = ?",
+    [FIMDB_STMT_GET_DATA_ROW] = "SELECT inode_id FROM file_entry WHERE path = ?",
 #endif
-    [FIMDB_STMT_GET_COUNT_RANGE] = "SELECT count(*) FROM entry_path INNER JOIN entry_data ON entry_data.rowid = entry_path.inode_id WHERE path BETWEEN ? and ? ORDER BY path;",
-    [FIMDB_STMT_GET_PATH_RANGE] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM entry_path INNER JOIN entry_data ON entry_data.rowid = entry_path.inode_id WHERE path BETWEEN ? and ? ORDER BY path;",
-    [FIMDB_STMT_DELETE_PATH] = "DELETE FROM entry_path WHERE path = ?;",
-    [FIMDB_STMT_DELETE_DATA] = "DELETE FROM entry_data WHERE rowid = ?;",
-    [FIMDB_STMT_GET_PATHS_INODE] = "SELECT path FROM entry_path INNER JOIN entry_data ON entry_data.rowid=entry_path.inode_id WHERE entry_data.inode=? AND entry_data.dev=?;",
-    [FIMDB_STMT_GET_PATHS_INODE_COUNT] = "SELECT count(*) FROM entry_path INNER JOIN entry_data ON entry_data.rowid=entry_path.inode_id WHERE entry_data.inode=? AND entry_data.dev=?;",
-    [FIMDB_STMT_SET_SCANNED] = "UPDATE entry_path SET scanned = 1 WHERE path = ?;",
-    [FIMDB_STMT_GET_INODE_ID] = "SELECT inode_id FROM entry_path WHERE path = ?",
-    [FIMDB_STMT_GET_COUNT_PATH] = "SELECT count(*) FROM entry_path",
-    [FIMDB_STMT_GET_COUNT_DATA] = "SELECT count(*) FROM entry_data",
-    [FIMDB_STMT_GET_INODE] = "SELECT inode FROM entry_data where rowid=(SELECT inode_id FROM entry_path WHERE path = ?)",
+    [FIMDB_STMT_GET_COUNT_RANGE] = "SELECT count(*) FROM file_entry INNER JOIN file_data ON file_data.rowid = file_entry.inode_id WHERE path BETWEEN ? and ? ORDER BY path;",
+    [FIMDB_STMT_GET_PATH_RANGE] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_entry INNER JOIN file_data ON file_data.rowid = file_entry.inode_id WHERE path BETWEEN ? and ? ORDER BY path;",
+    [FIMDB_STMT_DELETE_PATH] = "DELETE FROM file_entry WHERE path = ?;",
+    [FIMDB_STMT_DELETE_DATA] = "DELETE FROM file_data WHERE rowid = ?;",
+    [FIMDB_STMT_GET_PATHS_INODE] = "SELECT path FROM file_entry INNER JOIN file_data ON file_data.rowid=file_entry.inode_id WHERE file_data.inode=? AND file_data.dev=?;",
+    [FIMDB_STMT_GET_PATHS_INODE_COUNT] = "SELECT count(*) FROM file_entry INNER JOIN file_data ON file_data.rowid=file_entry.inode_id WHERE file_data.inode=? AND file_data.dev=?;",
+    [FIMDB_STMT_SET_SCANNED] = "UPDATE file_entry SET scanned = 1 WHERE path = ?;",
+    [FIMDB_STMT_GET_INODE_ID] = "SELECT inode_id FROM file_entry WHERE path = ?",
+    [FIMDB_STMT_GET_COUNT_PATH] = "SELECT count(*) FROM file_entry",
+    [FIMDB_STMT_GET_COUNT_DATA] = "SELECT count(*) FROM file_data",
+    [FIMDB_STMT_GET_INODE] = "SELECT inode FROM file_data where rowid=(SELECT inode_id FROM file_entry WHERE path = ?)",
 #ifdef WIN32
     [FIMDB_STMT_REPLACE_REG_DATA] = "INSERT OR REPLACE INTO registry_data (key_id, name, type, scanned, checksum, last_event, options) VALUES (?, ?, ?, ?, ?, ?, ?);",
     [FIMDB_STMT_REPLACE_REG_KEY] = "INSERT OR REPLACE INTO registry_key (path, data_id, perm, uid, gid, user_name, group_name, scanned, options, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
@@ -173,7 +173,7 @@ static void fim_db_bind_get_inode(fdb_t *fim_sql, int index,
  *
  * @param fim_sql FIM database structure.
  * @param entry FIM entry data structure.
- * @param row_id Row id in entry_data table.
+ * @param row_id Row id in file_data table.
  */
 static void fim_db_bind_update_data(fdb_t *fim_sql,
                                     fim_file_data *entry,
@@ -842,7 +842,7 @@ void fim_db_bind_get_inode(fdb_t *fim_sql, int index, const unsigned long int in
     }
 }
 
-/* FIMDB_STMT_UPDATE_ENTRY_DATA */
+/* FIMDB_STMT_UPDATE_file_data */
 void fim_db_bind_update_data(fdb_t *fim_sql, fim_file_data *entry, int *row_id) {
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 1, entry->size);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 2, entry->perm, -1, NULL);
@@ -986,7 +986,7 @@ int fim_db_insert_data(fdb_t *fim_sql, fim_file_data *entry, int *row_id) {
 
         *row_id = sqlite3_last_insert_rowid(fim_sql->db);
     } else {
-        // Update entry_data
+        // Update file_data
         fim_db_clean_stmt(fim_sql, FIMDB_STMT_UPDATE_DATA);
         fim_db_bind_update_data(fim_sql, entry, row_id);
 
@@ -1021,7 +1021,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim
     // Add event
     if (!saved) {
         if (syscheck.file_limit_enabled) {
-            nodes_count = fim_db_get_count_entry_path(syscheck.database);
+            nodes_count = fim_db_get_count_file_entry(syscheck.database);
             if (nodes_count >= syscheck.file_limit) {
                 mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", file_path);
                 return FIMDB_FULL;
@@ -1382,14 +1382,14 @@ void fim_db_callback_sync_path_range(__attribute__((unused))fdb_t *fim_sql, fim_
     __attribute__((unused))pthread_mutex_t *mutex, __attribute__((unused))void *alert,
     __attribute__((unused))void *mode, __attribute__((unused))void *w_event) {
 
-    cJSON * entry_data = fim_entry_json(entry->file_entry.path, entry->file_entry.data);
-    char * plain = dbsync_state_msg("syscheck", entry_data);
+    cJSON * file_data = fim_entry_json(entry->file_entry.path, entry->file_entry.data);
+    char * plain = dbsync_state_msg("syscheck", file_data);
     mdebug1("Sync Message for %s sent: %s", entry->file_entry.path, plain);
     fim_send_sync_msg(plain);
     os_free(plain);
 }
 
-int fim_db_get_count_entry_data(fdb_t * fim_sql) {
+int fim_db_get_count_file_data(fdb_t * fim_sql) {
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_COUNT_DATA);
     int res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_COUNT_DATA]);
 
@@ -1402,7 +1402,7 @@ int fim_db_get_count_entry_data(fdb_t * fim_sql) {
     }
 }
 
-int fim_db_get_count_entry_path(fdb_t * fim_sql) {
+int fim_db_get_count_file_entry(fdb_t * fim_sql) {
     int res = fim_db_get_count(fim_sql, FIMDB_STMT_GET_COUNT_PATH);
 
     if(res != FIMDB_ERR) {
