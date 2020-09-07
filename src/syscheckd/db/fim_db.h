@@ -370,6 +370,18 @@ int fim_db_get_count_entry_data(fdb_t * fim_sql);
  */
 int fim_db_get_count_entry_path(fdb_t * fim_sql);
 
+/**
+ * @brief Get count of all entries in the database.
+ *
+ * The database to count is chosen with the index variable.
+ *
+ * @param fim_sql FIM database struct.
+ * @param index Index to SQL statement.
+ *
+ * @return Number of entries in selected database.
+*/
+int fim_db_get_count(fdb_t *fim_sql, int index);
+
 #ifdef WIN32
 
 // Registry callbacks
@@ -426,7 +438,7 @@ fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path);
  *
  * @return FIM registry data struct on success, NULL on error.
  */
-fim_registry_data *fim_db_get_registry_data(fdb_t *fim_sql, const int key_id, const char *name);
+fim_registry_value_data *fim_db_get_registry_data(fdb_t *fim_sql, const int key_id, const char *name);
 
 /**
  * @brief Get all the key paths
@@ -448,7 +460,7 @@ char **fim_db_get_all_registry_key(fdb_t *fim_sql, const unsigned long int key_i
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_registry_data(fdb_t *fim_sql, const char *key_path, fim_registry_data *data, int key_id);
+int fim_db_insert_registry_data(fdb_t *fim_sql, const char *key_path, fim_registry_value_data *data, int key_id);
 
 /**
  * @brief Insert or update registry key.
@@ -471,8 +483,8 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, const char *key_path, fim_registr
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_registry(fdb_t *fim_sql, fim_registry_key *new_key, fim_registry_data *new_data,
-                           fim_registry_data *saved_data);
+int fim_db_insert_registry(fdb_t *fim_sql, fim_registry_key *new_key, fim_registry_value_data *new_data,
+                           fim_registry_value_data *saved_data);
 
 /**
  * @brief Calculate checksum of registry keys between @start and @top.
@@ -544,7 +556,7 @@ void fim_db_remove_registry_key(fdb_t *fim_sql, fim_registry_key *key_entry, pth
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-void fim_db_remove_registry_data(fdb_t *fim_sql, char *key_path, fim_registry_data *key_data,
+void fim_db_remove_registry_data(fdb_t *fim_sql, char *key_path, fim_registry_value_data *key_data,
                                  pthread_mutex_t *mutex, void *alert, void *fim_ev_mode, void *w_evt);
 
 /**

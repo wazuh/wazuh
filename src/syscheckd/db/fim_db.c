@@ -235,8 +235,6 @@ static fim_tmp_file *fim_db_create_temp_file(int storage);
  */
 static void fim_db_clean_file(fim_tmp_file **file, int storage);
 
-static void fim_db_get_count(fdb_t *fim_sql, int index);
-
 /**
  * @brief
  *
@@ -317,10 +315,10 @@ static void fim_db_bind_registry_path_range(fdb_t *fim_sql, int index, char *sta
  * @brief Bind registry data into an insert registry data statement
  *
  * @param fim_sql FIM database structure.
- * @param data fim_registry_data structure that contains the the fields of the inserted data.
+ * @param data fim_registry_value_data structure that contains the the fields of the inserted data.
  * @param key_id Identifier of the key.
  */
-static void fim_db_bind_insert_registry_data(fdb_t *fim_sql, fim_registry_data *data, unsigned int key_id);
+static void fim_db_bind_insert_registry_data(fdb_t *fim_sql, fim_registry_value_data *data, unsigned int key_id);
 
 /**
  * @brief Bind registry data into an insert registry key statement
@@ -348,7 +346,7 @@ static void fim_db_bind_registry_key_path(fdb_t *fim_sql, int index, const char 
  * @param key_id Identifier of the registry key
  * @param name Name of the registry data
  */
-void fim_db_bind_update_registry_data(fdb_t *fim_sql, fim_registry_data *data, unsigned int key_id, char *name);
+void fim_db_bind_update_registry_data(fdb_t *fim_sql, fim_registry_value_data *data, unsigned int key_id, char *name);
 
 /**
  * @brief Bind registry key into a update registry data statement
@@ -1601,7 +1599,7 @@ int fim_db_get_count_registry_entry(fdb_t *fim_sql) {
 
 }
 
-int fim_db_insert_registry_data(fdb_t *fim_sql, const char *key_path, fim_registry_data *data, int key_id) {
+int fim_db_insert_registry_data(fdb_t *fim_sql, const char *key_path, fim_registry_value_data *data, int key_id) {
     int res = 0;
 
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_REPLACE_REG_DATA);
@@ -1619,7 +1617,7 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, const char *key_path, fim_registr
     int res = 0;
 
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_REPLACE_REG_KEY);
-    fim_db_bind_insert_registry_key(fim_sql, key_path, entry, data_id);
+    fim_db_bind_insert_registry_key(fim_sql, entry, data_id);
 
     if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY]), res != SQLITE_DONE) {
         merror("Step error replacing registry key '%s': %s", key_path, sqlite3_errmsg(fim_sql->db));
@@ -1629,15 +1627,15 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, const char *key_path, fim_registr
     return FIMDB_OK;
 }
 
-int fim_db_insert_registry(fdb_t *fim_sql, fim_registry_key *new_key, fim_registry_data *new_data,
-                           fim_registry_data *saved_data) {
+int fim_db_insert_registry(fdb_t *fim_sql, fim_registry_key *new_key, fim_registry_value_data *new_data,
+                           fim_registry_value_data *saved_data) {
     int res = 0;
 
 
 }
 
 // Registry sql queries bindings
-void fim_db_bind_insert_registry_data(fdb_t *fim_sql, fim_registry_data *data, unsigned int data_id) {
+void fim_db_bind_insert_registry_data(fdb_t *fim_sql, fim_registry_value_data *data, unsigned int data_id) {
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_DATA], 1, data_id);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_DATA], 2, data->name, -1, NULL);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_DATA], 3, data->type);
@@ -1670,7 +1668,7 @@ void fim_db_bind_registry_key_path(fdb_t *fim_sql, int index, const char *key_pa
     }
 }
 
-void fim_db_bind_update_registry_data(fdb_t *fim_sql, fim_registry_data *data, unsigned int key_id, char *name) {
+void fim_db_bind_update_registry_data(fdb_t *fim_sql, fim_registry_value_data *data, unsigned int key_id, char *name) {
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_REG_DATA], 1, data->type);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_REG_DATA], 2, data->scanned);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_REG_DATA], 3, data->checksum, -1, NULL);
