@@ -48,9 +48,28 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap
                              -Wl,--wrap,OSList_SetMaxSize -Wl,--wrap,OSHash_setSize -Wl,--wrap,OSHash_Delete_ex \
                              -Wl,--wrap,OSHash_Free -Wl,--wrap,os_remove_rules_list -Wl,--wrap,os_remove_decoders_list \
                              -Wl,--wrap,os_remove_cdblist -Wl,--wrap,os_remove_cdbrules -Wl,--wrap,os_remove_eventlist \
-                             -Wl,--wrap,sleep -Wl,--wrap,OSHash_Begin -Wl,--wrap,time -Wl,--wrap,difftime -Wl,--wrap,OSHash_Next \
-                             -Wl,--wrap,FOREVER -Wl,--wrap,OSStore_Free -Wl,--wrap,pthread_mutex_lock \
-                             -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,OSHash_Add_ex")
+                             -Wl,--wrap,sleep -Wl,--wrap,OSHash_Begin -Wl,--wrap,time -Wl,--wrap,difftime \
+                             -Wl,--wrap,OSHash_Next -Wl,--wrap,FOREVER -Wl,--wrap,OS_CreateEventList \
+                             -Wl,--wrap,ReadDecodeXML -Wl,--wrap,Lists_OP_LoadList -Wl,--wrap,Lists_OP_MakeAll \
+                             -Wl,--wrap,Rules_OP_ReadRules -Wl,--wrap,OS_ListLoadRules -Wl,--wrap,_setlevels \
+                             -Wl,--wrap,AddHash_Rule -Wl,--wrap,Accumulate_Init -Wl,--wrap,OSStore_Free \
+                             -Wl,--wrap,SetDecodeXML -Wl,--wrap,randombytes -Wl,--wrap,cJSON_IsNumber \
+                             -Wl,--wrap,cJSON_GetObjectItemCaseSensitive -Wl,--wrap,_mdebug1 \
+                             -Wl,--wrap,_os_analysisd_add_logmsg -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,pthread_mutex_lock \
+                             -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSList_GetFirstNode \
+                             -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,wm_strcat \
+                             -Wl,--wrap,cJSON_CreateString -Wl,--wrap,cJSON_AddItemToArray \
+                             -Wl,--wrap,os_analysisd_free_log_msg -Wl,--wrap,OSList_DeleteCurrentlyNode \
+                             -Wl,--wrap,os_analysisd_string_log_msg -Wl,--wrap,cJSON_ParseWithOpts \
+                             -Wl,--wrap,cJSON_IsString -Wl,--wrap,cJSON_DeleteItemFromObjectCaseSensitive \
+                             -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddNumberToObject  \
+                             -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,cJSON_Delete \
+                             -Wl,--wrap,pthread_mutex_destroy -Wl,--wrap,cJSON_IsObject -Wl,--wrap,DecodeEvent \
+                             -Wl,--wrap,cJSON_GetStringValue -Wl,--wrap,OS_CleanMSG -Wl,--wrap,cJSON_GetObjectItem \
+                             -Wl,--wrap,OS_CheckIfRuleMatch -Wl,--wrap,OS_AddEvent -Wl,--wrap,IGnore \
+                             -Wl,--wrap,OSList_AddData -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP \
+                             -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,CreateThreadJoinable -Wl,--wrap,_merror_exit \
+                             -Wl,--wrap,CreateThread -Wl,--wrap,pthread_join -Wl,--wrap,unlink")
 
 LIST(APPEND analysisd_names "test_logtest-config")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 -Wl,--wrap,get_nproc -Wl,--wrap,cJSON_CreateObject \
@@ -66,7 +85,8 @@ LIST(APPEND analysisd_names "test_lists_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern")
 
 LIST(APPEND analysisd_names "test_rule_list")
-LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,os_remove_cdbrules")
+LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,os_remove_cdbrules \
+                            -Wl,--wrap,_os_analysisd_add_logmsg")
 
 LIST(APPEND analysisd_names "test_eventinfo_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,Free_Eventinfo")
