@@ -22,6 +22,7 @@ void os_count_rules(RuleNode *node, int *num_rules);
 void os_remove_rulenode(RuleNode *node, RuleInfo **rules, int *pos, int *max_size);
 void os_remove_ruleinfo(RuleInfo *ruleinfo);
 void os_remove_rules_list(RuleNode *node);
+int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg);
 
 /* setup/teardown */
 
@@ -41,6 +42,21 @@ void __wrap_os_remove_cdbrules(ListRule **l_rule) {
     os_free(*l_rule);
     return;
 }
+
+void __wrap__os_analysisd_add_logmsg(OSList * list, int level, int line, const char * func,
+                                    const char * file, char * msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(level);
+    check_expected_ptr(list);
+    check_expected(formatted_msg);
+}
+
 
 /* tests */
 
@@ -168,7 +184,6 @@ void test_os_remove_ruleinfo_OK(void **state)
     os_strdup("test_ar_command_name", ruleinfo->ar[0]->ar_cmd->name);
     os_strdup("test_ar_command_executable", ruleinfo->ar[0]->ar_cmd->executable);
     os_strdup("test_ar_command_extra_args", ruleinfo->ar[0]->ar_cmd->extra_args);
-    
     os_calloc(1, sizeof(ListRule), ruleinfo->lists);
 
     os_calloc(2, sizeof(char*), ruleinfo->same_fields);
@@ -260,7 +275,6 @@ void test_os_remove_rules_list_OK(void **state)
     os_strdup("test_ar_command_name", node->ruleinfo->ar[0]->ar_cmd->name);
     os_strdup("test_ar_command_executable", node->ruleinfo->ar[0]->ar_cmd->executable);
     os_strdup("test_ar_command_extra_args", node->ruleinfo->ar[0]->ar_cmd->extra_args);
-    
     os_calloc(1, sizeof(ListRule), node->ruleinfo->lists);
 
     os_calloc(2, sizeof(char*), node->ruleinfo->same_fields);
@@ -312,6 +326,25 @@ void test_os_remove_rules_list_OK(void **state)
 
 }
 
+// Test OS_AddChild
+void test_OS_AddChild_inconsistent_rule(void ** state) {
+    RuleInfo * read_rule = NULL;
+    RuleNode * r_node = NULL;
+    OSList list_msg = {0};
+    const int expect_value = 1;
+    int retval;
+
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg,
+                  "rules_list: Passing a NULL rule. Inconsistent state");
+
+    retval = OS_AddChild(read_rule, &r_node, &list_msg);
+
+    assert_int_equal(retval, expect_value);
+}
+
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -325,7 +358,9 @@ int main(void)
         cmocka_unit_test(test_os_remove_ruleinfo_NULL),
         cmocka_unit_test(test_os_remove_ruleinfo_OK),
         // Tests os_remove_rules_list
-        cmocka_unit_test(test_os_remove_rules_list_OK)
+        cmocka_unit_test(test_os_remove_rules_list_OK),
+        // Tests OS_AddChild
+        cmocka_unit_test(test_OS_AddChild_inconsistent_rule),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
