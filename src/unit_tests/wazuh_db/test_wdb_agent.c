@@ -2098,6 +2098,18 @@ void test_wdb_remove_agent_success(void **state)
 
 /* Tests wdb_get_agent_keepalive */
 
+void test_wdb_get_agent_keepalive_error_no_name_nor_ip(void **state) {
+    time_t keepalive = 0;
+    char *name = NULL;
+    char *ip = NULL;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Empty agent name or ip when trying to get last keepalive. Agent: ((null)) IP: ((null))");
+
+    keepalive = wdb_get_agent_keepalive(name, ip);
+
+    assert_int_equal(OS_INVALID, keepalive);
+}
+
 void test_wdb_get_agent_keepalive_error_no_json_response(void **state) {
     time_t keepalive = 0;
     char name[]="agent1";
@@ -4356,6 +4368,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_delete_belongs_and_name, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_success, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_get_agent_keepalive */
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_no_name_nor_ip, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_empty_json_response, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_success, setup_wdb_agent, teardown_wdb_agent),
