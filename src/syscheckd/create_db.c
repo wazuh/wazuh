@@ -367,7 +367,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     }
 
     if (item->configuration & CHECK_SEECHANGES) {
-        diff = seechanges_addfile(file);
+        diff = seechanges_addfile(file, 0);
     }
 
     json_event = fim_json_event(file, saved ? saved->file_entry.data : NULL, new, item->index, alert_type, item->mode, w_evt, diff);

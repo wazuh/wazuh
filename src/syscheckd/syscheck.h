@@ -370,9 +370,10 @@ unsigned int count_watches();
  * @brief Check if a file has changed
  *
  * @param filename The name of the file to be checked
+ * @param is_registry 1 if we are checking for a registry, 0 if is a directory
  * @return The diff alert generated, NULL on error
  */
-char *seechanges_addfile(const char *filename) __attribute__((nonnull));
+char *seechanges_addfile(const char *filename, int is_registry) __attribute__((nonnull));
 
 /**
  * @brief Delete stored compressed file for "path"

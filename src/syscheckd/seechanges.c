@@ -27,10 +27,11 @@
  *
  * @param filename Path to file
  * @param alert_diff_time Time of diff alert
- * @param status Status of the output from the diff command
+ * @param diff_folder_name Name of the folder to work with the diff files
+ * @param tmp_diff_folder_name Name of the folder to work with the diff temporal files
  * @return Diff string
  */
-static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attribute__((unused)) int status)
+static char *gen_diff_alert(const char *filename, time_t alert_diff_time, char *diff_folder_name, char *tmp_diff_folder_name)
                             __attribute__((nonnull));
 
 /**
@@ -179,7 +180,7 @@ int is_nodiff(const char *filename){
 }
 
 /* Generate diffs alerts */
-static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attribute__((unused)) int status) {
+static char *gen_diff_alert(const char *filename, time_t alert_diff_time, char *diff_folder_name, char *tmp_diff_folder_name) {
     size_t n = 0;
     FILE *fp;
     char *diff_str;
@@ -217,8 +218,9 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
     snprintf(
         tmp_location,
         PATH_MAX,
-        "%s/localtmp/%s/%s",
+        "%s/%s/%s/%s",
         DIFF_DIR_PATH,
+        tmp_diff_folder_name,
         filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
@@ -226,8 +228,9 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
     snprintf(
         compressed_file,
         PATH_MAX,
-        "%s/local/%s/%s.gz",
+        "%s/%s/%s/%s.gz",
         DIFF_DIR_PATH,
+        diff_folder_name,
         filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
@@ -235,16 +238,18 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
     snprintf(
         containing_folder,
         PATH_MAX,
-        "%s/local/%s",
+        "%s/%s/%s",
         DIFF_DIR_PATH,
+        diff_folder_name,
         filename_abs + PATH_OFFSET
     );
 
     snprintf(
         compressed_tmp,
         PATH_MAX,
-        "%s/localtmp/%s/%s.gz",
+        "%s/%s/%s/%s.gz",
         DIFF_DIR_PATH,
+        tmp_diff_folder_name,
         filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
@@ -252,8 +257,9 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
     snprintf(
         localtmp_path,
         PATH_MAX,
-        "%s/localtmp",
-        DIFF_DIR_PATH
+        "%s/%s",
+        DIFF_DIR_PATH,
+        tmp_diff_folder_name
     );
 
 #ifdef WIN32
@@ -300,7 +306,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
             seechanges_modify_estimation_percentage(FileSize(compressed_tmp) / 1024, FileSize(filename) / 1024);
 #endif
 
-            seechanges_delete_compressed_file(filename_abs);
+            seechanges_delete_compressed_file(filename_abs, diff_folder_name);
 
             if (rmdir_ex(localtmp_path) < 0) {
                 mdebug2(RMDIR_ERROR, localtmp_path, errno, strerror(errno));
@@ -312,8 +318,8 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
         syscheck.diff_folder_size = tmp_diff_size;
     }
 
-    snprintf(path, PATH_MAX, "%s/local/%s/diff.%d",
-             DIFF_DIR_PATH, filename_abs + PATH_OFFSET, (int)alert_diff_time);
+    snprintf(path, PATH_MAX, "%s/%s/%s/diff.%d",
+             DIFF_DIR_PATH, diff_folder_name, filename_abs + PATH_OFFSET, (int)alert_diff_time);
 
     fp = wfopen(path, "rb");
     if (!fp) {
@@ -502,7 +508,7 @@ char *seechanges_get_diff_path(char *path) {
     return full_path;
 }
 
-void seechanges_delete_compressed_file(const char *path){
+void seechanges_delete_compressed_file(const char *path, char *diff_folder_name){
     char containing_folder[PATH_MAX + 1];
     char last_entry_file[PATH_MAX + 1];
     float file_size = 0.0;
@@ -510,8 +516,9 @@ void seechanges_delete_compressed_file(const char *path){
     snprintf(
         containing_folder,
         PATH_MAX,
-        "%s/local/%s",
+        "%s/%s/%s",
         DIFF_DIR_PATH,
+        diff_folder_name,
         path + PATH_OFFSET
     );
 
@@ -582,7 +589,7 @@ void seechanges_modify_estimation_percentage(const float compressed_size, const 
     }
 }
 
-char *seechanges_addfile(const char *filename) {
+char *seechanges_addfile(const char *filename, int is_registry) {
     time_t old_date_of_change;
     time_t new_date_of_change;
     char old_location[PATH_MAX + 1];
@@ -617,6 +624,16 @@ char *seechanges_addfile(const char *filename) {
     md5sum_old[0] = '\0';
 
     char filename_abs[PATH_MAX];
+    char diff_folder_name[PATH_MAX];
+    char tmp_diff_folder_name[PATH_MAX];
+
+    if (is_registry) {
+        strcpy(diff_folder_name, "registry");
+        strcpy(tmp_diff_folder_name, "registrytmp");
+    } else {
+        strcpy(diff_folder_name, "local");
+        strcpy(tmp_diff_folder_name, "localtmp");
+    }
 
     if (abspath(filename, filename_abs, sizeof(filename_abs)) == NULL) {
         merror("Cannot get absolute path of '%s': %s (%d)", filename, strerror(errno), errno);
@@ -649,7 +666,7 @@ char *seechanges_addfile(const char *filename) {
     if (syscheck.file_size_enabled) {
         if (file_size > syscheck.diff_size_limit[it]) {
             mdebug2(FIM_BIG_FILE_REPORT_CHANGES, filename_abs);
-            seechanges_delete_compressed_file(filename_abs);
+            seechanges_delete_compressed_file(filename_abs, diff_folder_name);
             return NULL;
         }
     }
@@ -657,8 +674,9 @@ char *seechanges_addfile(const char *filename) {
     snprintf(
         old_location,
         PATH_MAX,
-        "%s/local/%s/%s",
+        "%s/%s/%s/%s",
         DIFF_DIR_PATH,
+        diff_folder_name,
         filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
@@ -666,8 +684,9 @@ char *seechanges_addfile(const char *filename) {
     snprintf(
         localtmp_location,
         PATH_MAX,
-        "%s/localtmp/%s/%s",
+        "%s/%s/%s/%s",
         DIFF_DIR_PATH,
+        tmp_diff_folder_name,
         filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
@@ -675,24 +694,27 @@ char *seechanges_addfile(const char *filename) {
     snprintf(
         containing_folder,
         PATH_MAX,
-        "%s/local/%s",
+        "%s/%s/%s",
         DIFF_DIR_PATH,
+        diff_folder_name,
         filename_abs + PATH_OFFSET
     );
 
     snprintf(
         containing_tmp_folder,
         PATH_MAX,
-        "%s/localtmp/%s",
+        "%s/%s/%s",
         DIFF_DIR_PATH,
+        tmp_diff_folder_name,
         filename_abs + PATH_OFFSET
     );
 
     snprintf(
         compressed_file,
         PATH_MAX,
-        "%s/local/%s/%s.gz",
+        "%s/%s/%s/%s.gz",
         DIFF_DIR_PATH,
+        diff_folder_name,
         filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
@@ -700,8 +722,9 @@ char *seechanges_addfile(const char *filename) {
     snprintf(
         compressed_tmp,
         PATH_MAX,
-        "%s/localtmp/%s/%s.gz",
+        "%s/%s/%s/%s.gz",
         DIFF_DIR_PATH,
+        tmp_diff_folder_name,
         filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
@@ -709,8 +732,9 @@ char *seechanges_addfile(const char *filename) {
     snprintf(
         localtmp_path,
         PATH_MAX,
-        "%s/localtmp",
-        DIFF_DIR_PATH
+        "%s/%s",
+        DIFF_DIR_PATH,
+        tmp_diff_folder_name
     );
 
     // Estimate if the file could fit in the disk_quota limit. If it estimates it won't fit, delete compressed file.
@@ -821,8 +845,9 @@ char *seechanges_addfile(const char *filename) {
     snprintf(
         tmp_location,
         PATH_MAX,
-        "%s/local/%s/state.%d",
+        "%s/%s/%s/state.%d",
         DIFF_DIR_PATH,
+        diff_folder_name,
         filename_abs + PATH_OFFSET,
         (int)old_date_of_change
     );
@@ -843,8 +868,9 @@ char *seechanges_addfile(const char *filename) {
     snprintf(
         diff_location,
         PATH_MAX,
-        "%s/local/%s/diff.%d",
+        "%s/%s/%s/diff.%d",
         DIFF_DIR_PATH,
+        diff_folder_name,
         filename_abs + PATH_OFFSET,
         (int)new_date_of_change
     );
@@ -926,7 +952,7 @@ cleanup:
     }
 
     /* Generate alert */
-    return (gen_diff_alert(filename, new_date_of_change, status));
+    return (gen_diff_alert(filename, new_date_of_change, diff_folder_name, tmp_diff_folder_name));
 }
 
 
@@ -1045,7 +1071,7 @@ char * fim_registry_value_diff(char *key_name, char *value_name, LPBYTE value_da
     fclose(fp);
 
     // We send the file with the value data to "seechanges" as if it were a monitored file
-    if (diff = seechanges_addfile(reg_value_file), !diff) {
+    if (diff = seechanges_addfile(reg_value_file, 1), !diff) {
         return NULL;
     }
 
