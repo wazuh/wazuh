@@ -2697,6 +2697,39 @@ void test_wdb_get_agent_status_error_no_json_response(void **state) {
     assert_int_equal(OS_INVALID, status);
 }
 
+void test_wdb_get_agent_status_error_json_data(void **state) {
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+    cJSON *str = NULL;
+    int id = 1;
+    int status = 0;
+
+    const char *query_str = "global select-agent-status 1";
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "status");
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    status = wdb_get_agent_status(id);
+
+    assert_int_equal(OS_INVALID, status);
+
+    __real_cJSON_Delete(root);
+}
+
 void test_wdb_get_agent_status_success(void **state) {
     cJSON *root = NULL;
     cJSON *row = NULL;
@@ -4349,6 +4382,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_offset_success_reg, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_get_agent_status */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_status_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_status_error_json_data, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_status_success, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_set_agent_status */
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_error_invalid_status, setup_wdb_agent, teardown_wdb_agent),
