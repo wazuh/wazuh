@@ -195,8 +195,7 @@ cJSON *fim_registry_value_json_event(fim_registry_value_data *new_data,
                                      fim_registry_value_data *old_data,
                                      registry *configuration,
                                      __attribute__((unused)) fim_event_mode mode,
-                                     __attribute__((unused)) whodata_evt *w_evt,
-                                     const char *diff) {
+                                     __attribute__((unused)) whodata_evt *w_evt) {
     return NULL;
 }
 
@@ -235,8 +234,9 @@ cJSON *fim_registry_json_event(fim_entry *new_data,
  * @param new New key data aquired from the actual registry entry.
  * @param saved Key registry information retrieved from the FIM DB.
  * @param configuration Configuration associated with the given registry.
+ * @return 0 if no event was send, 1 if event was send, OS_INVALID on error.
  */
-void fim_registry_event(const fim_entry *new, const fim_entry *saved, const registry *configuration) {
+int fim_registry_event(const fim_entry *new, const fim_entry *saved, const registry *configuration) {
     cJSON *json_event = NULL;
     char *json_formated;
     char *diff = NULL;
@@ -246,47 +246,44 @@ void fim_registry_event(const fim_entry *new, const fim_entry *saved, const regi
     if (new == NULL || saved == NULL) {
         // This should never happen
         merror("LOGIC ERROR - new '%p' - saved '%p'", new, saved);
-        return;
+        return OS_INVALID;
     }
 
     if (new->registry_entry.key == NULL) {
         // This shouldn't happen either
         merror("LOGIC ERROR - Registry event with no new key data");
+        return OS_INVALID;
     }
 
     // if (new->type != REGISTRY || saved->type != REGISTRY) {
     //     // This is just silly now
     // }
 
-    // if (new->registry_entry.value != NULL && configuration->options | CHECK_SEECHANGES) {
-    //     diff = seechanges_addregistry()
-    // }
+    if (new->registry_entry.value != NULL) {
+        json_event = fim_registry_value_json_event(new->registry_entry.value, saved->registry_entry.value,
+                                                   configuration, FIM_SCHEDULED, NULL);
+    } else {
+        json_event =
+        fim_registry_key_json_event(new->registry_entry.key, saved->registry_entry.key, configuration, FIM_SCHEDULED, NULL);
+    }
 
+    if (json_event == NULL) {
+        // Nothing left to do.
+        return 0;
+    }
 
-    // if ((saved && data && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0) || alert_type == FIM_ADD) {
-    //     if (result = fim_db_insert(syscheck.database, key, data, saved ? saved->data : NULL), result < 0) {
-    //         free_entry(saved);
-    //         w_mutex_unlock(&syscheck.fim_entry_mutex);
+    if (fim_db_insert_registry(syscheck.database, new, saved) != 0) {
+        mwarn("Couldn't insert into DB");
+    }
 
-    //         return (result == FIMDB_FULL) ? 0 : OS_INVALID;
-    //     }
-    //     w_mutex_unlock(&syscheck.fim_entry_mutex);
-    //     json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos, alert_type, 0, NULL, NULL);
-    // } else {
-    //     fim_db_set_scanned(syscheck.database, key);
-    //     result = 0;
-    //     w_mutex_unlock(&syscheck.fim_entry_mutex);
-    // }
+    if (_base_line) {
+        json_formated = cJSON_PrintUnformatted(json_event);
+        send_syscheck_msg(json_formated);
+        os_free(json_formated);
+    }
 
-    // if (json_event && _base_line) {
-    //     json_formated = cJSON_PrintUnformatted(json_event);
-    //     send_syscheck_msg(json_formated);
-    //     os_free(json_formated);
-    // }
-    // cJSON_Delete(json_event);
-    // free_entry(saved);
-
-    return result;
+    cJSON_Delete(json_event);
+    return 1;
 }
 
 /* Query the key and get all its values */
@@ -497,7 +494,6 @@ void fim_open_key(const HKEY root_key_handle, registry_key_t *rkey) {
         registry_key_t child_key;
         DWORD sub_key_name_s = MAX_KEY_LENGTH;
 
-        /* Checking for the rc */
         if (RegEnumKeyEx(sub_key_handle, i, sub_key_name_b, &sub_key_name_s, NULL, NULL, NULL, NULL) != ERROR_SUCCESS) {
             continue;
         }
