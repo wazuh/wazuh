@@ -130,14 +130,118 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, registry_key_t *rke
     return NULL;
 }
 
+cJSON *fim_registry_value_attributes_json(const fim_entry *data) {
+    fim_registry_key *key_data = data->registry_entry.key;
+    fim_registry_value_data *value_data = data->registry_entry.value;
+    cJSON *attributes = cJSON_CreateObject();
 
-cJSON *fim_registry_value_json_event(const fim_registry_value_data *new_data,
-                                     const fim_registry_value_data *old_data,
+    cJSON_AddStringToObject(attributes, "type", "registry_value");
+
+    if (key_data->options & CHECK_TYPE) {
+        cJSON_AddNumberToObject(attributes, "registry_type", value_data->type);
+    }
+
+    if (key_data->options & CHECK_SIZE) {
+        cJSON_AddNumberToObject(attributes, "size", value_data->size);
+    }
+
+    if (key_data->options & CHECK_MTIME) {
+        cJSON_AddNumberToObject(attributes, "mtime", value_data->mtime);
+    }
+
+    if (key_data->options & CHECK_MD5SUM) {
+        cJSON_AddStringToObject(attributes, "hash_md5", value_data->hash_md5);
+    }
+
+    if (key_data->options & CHECK_SHA1SUM) {
+        cJSON_AddStringToObject(attributes, "hash_sha1", value_data->hash_sha1);
+    }
+
+    if (key_data->options & CHECK_SHA256SUM) {
+        cJSON_AddStringToObject(attributes, "hash_sha256", value_data->hash_sha256);
+    }
+
+    if (*value_data->checksum) {
+        cJSON_AddStringToObject(attributes, "checksum", value_data->checksum);
+    }
+
+    return attributes;
+}
+
+cJSON *fim_registry_compare_value_attrs(const fim_entry *new_data, const fim_entry *old_data) {
+    fim_registry_value_data *new_value = new_data->registry_entry.value;
+    fim_registry_value_data *old_value = old_data->registry_entry.value;
+    cJSON *changed_attributes = cJSON_CreateArray();
+
+    if ((old_data->registry_entry.key->options & CHECK_SIZE) && old_value->size != new_value->size) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
+    }
+
+    if ((old_data->registry_entry.key->options & CHECK_TYPE) && old_value->type != new_value->type) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("type"));
+    }
+
+    if ((old_data->registry_entry.key->options & CHECK_MTIME) && old_value->mtime != new_value->mtime) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
+    }
+
+    if ((old_data->registry_entry.key->options & CHECK_MD5SUM) && (strcmp(old_value->hash_md5, new_value->hash_md5) != 0)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("md5"));
+    }
+
+    if ((old_data->registry_entry.key->options & CHECK_SHA1SUM) && (strcmp(old_value->hash_sha1, new_value->hash_sha1) != 0)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha1"));
+    }
+
+    if ((old_data->registry_entry.key->options & CHECK_SHA256SUM) && (strcmp(old_value->hash_sha256, new_value->hash_sha256) != 0)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha256"));
+    }
+
+    return changed_attributes;
+}
+
+cJSON *fim_registry_value_json_event(const fim_entry *new_data,
+                                     const fim_entry *old_data,
                                      const registry *configuration,
                                      fim_event_mode mode,
                                      unsigned int type,
                                      __attribute__((unused)) whodata_evt *w_evt) {
-    return NULL;
+    cJSON *changed_attributes;
+
+    if (old_data != NULL) {
+        changed_attributes = fim_registry_compare_value_attrs(new_data, old_data);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            return NULL;
+        }
+    }
+
+    cJSON *json_event = cJSON_CreateObject();
+    cJSON_AddStringToObject(json_event, "type", "event");
+
+    cJSON *data = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_event, "data", data);
+
+    char path[OS_SIZE_512];
+    snprintf(path, OS_SIZE_512, "%s\\%s", new_data->registry_entry.key->path, new_data->registry_entry.value->name);
+    cJSON_AddStringToObject(data, "path", path);
+    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
+    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[type]);
+    cJSON_AddNumberToObject(data, "timestamp", new_data->registry_entry.value->last_event);
+
+    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(new_data));
+
+    if (old_data) {
+        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(data, "old_attributes", fim_registry_value_attributes_json(old_data));
+    }
+
+    if (configuration->tag != NULL) {
+        cJSON_AddStringToObject(data, "tags", configuration->tag);
+    }
+
+    return json_event;
 }
 
 cJSON *fim_registry_key_attributes_json(const fim_registry_key *data) {
@@ -273,8 +377,7 @@ int fim_registry_event(const fim_entry *new, const fim_entry *saved, const regis
     // }
 
     if (new->registry_entry.value != NULL) {
-        json_event = fim_registry_value_json_event(new->registry_entry.value, saved->registry_entry.value,
-                                                   configuration, mode, event_type, NULL);
+        json_event = fim_registry_value_json_event(new, saved, configuration, mode, event_type, NULL);
     } else {
         json_event =
         fim_registry_key_json_event(new->registry_entry.key, saved->registry_entry.key, configuration, mode, event_type, NULL);
