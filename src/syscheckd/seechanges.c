@@ -757,7 +757,7 @@ char *seechanges_addfile(const char *filename) {
                 if (rename_ex(compressed_tmp, compressed_file) != 0) {
                     mdebug2(RENAME_ERROR, compressed_tmp, compressed_file, errno, strerror(errno));
                 }
-                
+
                 return NULL;
             }
             else {
@@ -782,7 +782,7 @@ char *seechanges_addfile(const char *filename) {
             if (rename_ex(compressed_tmp, compressed_file) != 0) {
                 mdebug2(RENAME_ERROR, compressed_tmp, compressed_file, errno, strerror(errno));
             }
-            
+
             return NULL;
         }
 
