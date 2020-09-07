@@ -757,7 +757,7 @@ char *seechanges_addfile(const char *filename) {
                 if (rename_ex(compressed_tmp, compressed_file) != 0) {
                     mdebug2(RENAME_ERROR, compressed_tmp, compressed_file, errno, strerror(errno));
                 }
-                
+
                 return NULL;
             }
             else {
@@ -782,7 +782,7 @@ char *seechanges_addfile(const char *filename) {
             if (rename_ex(compressed_tmp, compressed_file) != 0) {
                 mdebug2(RENAME_ERROR, compressed_tmp, compressed_file, errno, strerror(errno));
             }
-            
+
             return NULL;
         }
 
@@ -989,6 +989,74 @@ next_it:
     }
 
     return adapted_output;
+}
+
+char * fim_registry_value_diff(char *key_name, char *value_name, LPBYTE value_data, DWORD data_type) {
+    char * reg_value_file;
+    char * diff;
+    char * aux_data;
+    char * reg_value_dir;
+    char * reg_value_file;
+    os_sha1 encoded_key;
+    os_sha1 encoded_value;
+    FILE *fp;
+
+    OS_SHA1_Str(key_name, strlen(key_name), encoded_key)
+    OS_SHA1_Str(value_name, strlen(value_name), encoded_value)
+
+    snprintf(reg_value_dir, MAX_PATH, "%s\\%s", DIFF_DIR_PATH, encoded_key);
+    if (mkdir(reg_value_dir) == -1) {
+        mdebug2(MKDIR_EXIST, reg_value_dir);
+    }
+    snprintf(reg_value_file, MAX_PATH, "%s\\%s", reg_value_dir, encoded_value);
+
+    if (fp = fopen (reg_value_file, "w"), fp) {
+        switch (data_type) {
+            case REG_SZ:
+
+            case REG_EXPAND_SZ:
+                fwrite(value_data, 1, strlen(value_data), fp);
+                break;
+
+            case REG_MULTI_SZ:
+                aux_data = value_data;
+
+                while (*aux_data) {
+                    fprintf(fp, "%s\n", aux_data);
+                    aux_data += strlen(aux_data) + 1;
+                }
+                break;
+
+            case REG_DWORD:
+                fprintf(fp, "%08x", *((unsigned int*)value_data));
+                break;
+
+            default:
+                for (int i = 0; i < data_size; i++) {
+                    fprintf(fp, "%02x", (unsigned int)value_data[i] & 0xFF);
+                }
+                break;
+        }
+    } else {
+        merror(FOPEN_ERROR, reg_value_dir, errno, strerror(errno));
+        return NULL;
+    }
+
+    fclose(fp);
+
+    // We send the file with the value data to "seechanges" as if it were a monitored file
+    if (diff = seechanges_addfile(reg_value_file), !diff) {
+        return NULL;
+    }
+
+    // Remove file with value data, no longer needed
+    _unlink(reg_value_file);
+    // Remove dir if empty
+    if (rmdir(reg_value_dir) == -1) {
+        mdebug2(RMDIR_NOT_EMPTY, reg_value_dir);
+    }
+
+    return diff;
 }
 
 #endif
