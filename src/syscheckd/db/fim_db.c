@@ -102,13 +102,15 @@ static int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
  * @brief
  *
  * @param fim_sql FIM database structure.
+ * @param registry Variable to indicate if the query is for registries or for files. 0 (FIM_TYPE_FILE) for files
+ *  1 (FIM_TYPE_REGISTRY) for registries.
  * @param index
  * @param callback
  * @param arg
  * @param pos
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-static int fim_db_process_get_query(fdb_t *fim_sql, int index,
+static int fim_db_process_get_query(fdb_t *fim_sql, int registry, int index,
                                     void (*callback)(fdb_t *, fim_entry *, int, void *),
                                     int memory, void * arg);
 
@@ -266,7 +268,7 @@ void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path);
  * @param stmt The statement to be decoded.
  * @return fim_entry* The filled structure.
  */
-static fim_registry_key *fim_db_decode_full_registry_row(sqlite3_stmt *stmt);
+static fim_entry*fim_db_decode_full_reg_row(sqlite3_stmt *stmt);
 
 /**
  * @brief
@@ -621,8 +623,7 @@ int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file *
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
     fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
 
-    int ret = fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_path, storage,
-                                       (void*) *file);
+    int ret = fim_db_process_get_query(fim_sql, FIM_TYPE_FILE, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_path, storage, (void*) *file);
 
     if (*file && (*file)->elements == 0) {
         fim_db_clean_file(file, storage);
@@ -636,8 +637,7 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
         return FIMDB_ERR;
     }
 
-    int ret = fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_NOT_SCANNED, fim_db_callback_save_path, storage,
-                                       (void*) *file);
+    int ret = fim_db_process_get_query(fim_sql, FIM_TYPE_FILE, FIMDB_STMT_GET_NOT_SCANNED, fim_db_callback_save_path, storage, (void*) *file);
 
     if (*file && (*file)->elements == 0) {
         fim_db_clean_file(file, storage);
@@ -649,15 +649,15 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
 
 int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_ALL_ENTRIES);
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_ALL_ENTRIES, fim_db_callback_calculate_checksum, 0, arg);
+    return fim_db_process_get_query(fim_sql, FIM_TYPE_FILE, FIMDB_STMT_GET_ALL_ENTRIES, fim_db_callback_calculate_checksum, 0, arg);
 }
 
-int fim_db_process_get_query(fdb_t *fim_sql, int index, void (*callback)(fdb_t *, fim_entry *, int , void *),
+int fim_db_process_get_query(fdb_t *fim_sql, int registry, int index, void (*callback)(fdb_t *, fim_entry *, int , void *),
                              int storage, void * arg) {
     int result;
     int i;
     for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
-        fim_entry *entry = fim_db_decode_full_row(fim_sql->stmt[index]);
+        fim_entry *entry = registry == FIM_TYPE_REGISTRY ? fim_db_decode_full_reg_row(fim_sql->stmt[index]) : fim_db_decode_full_row(fim_sql->stmt[index]);
         callback(fim_sql, entry, storage, arg);
         free_entry(entry);
     }
@@ -755,6 +755,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
 }
 
 fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
+
     fim_entry *entry = NULL;
 
     os_calloc(1, sizeof(fim_entry), entry);
@@ -1362,15 +1363,17 @@ int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
 }
 
 void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage, void *arg) {
-    char *base = wstr_escape_json(entry->file_entry.path);
+    char *path = entry->type == FIM_TYPE_FILE ? entry->file_entry.path : entry->registry_entry.key->path;
+
+    char *base = wstr_escape_json(path);
     if (base == NULL) {
-        merror("Error escaping '%s'", entry->file_entry.path);
+        merror("Error escaping '%s'", path);
         return;
     }
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
         if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
-            merror("%s - %s", entry->file_entry.path, strerror(errno));
+            merror("%s - %s", path, strerror(errno));
             goto end;
         }
 
@@ -1439,82 +1442,31 @@ int fim_db_get_count(fdb_t *fim_sql, int index) {
 
 #ifdef WIN32
 
-int fim_db_get_count_registry(fdb_t *fim_sql, int index) {
+fim_entry *fim_db_decode_full_reg_row(sqlite3_stmt *stmt) {
+    fim_entry *registry_entry = NULL;
 
-}
+    os_calloc(1, sizeof(registry_entry), registry_entry);
 
-fim_registry_key *fim_db_decode_full_registry_row(sqlite3_stmt *stmt) {
-    fim_registry_key *registry_key = NULL;
-
-    os_calloc(1, sizeof(fim_registry_key), registry_key);
-
-    return registry_key;
-}
-
-int fim_db_process_get_registry_query(fdb_t *fim_sql, int index,
-                                      void (*callback)(fdb_t *, fim_registry_key *, int, void *),
-                                      int storage, void * arg) {
-    int result;
-    int i;
-    for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
-        fim_registry_key *key = fim_db_decode_full_registry_row(fim_sql->stmt[index]);
-        callback(fim_sql, key, storage, arg);
-        //free_key_entry(key);
-    }
-
-    fim_db_check_transaction(fim_sql);
-
-    return result != SQLITE_DONE ? FIMDB_ERR : FIMDB_OK;
+    return registry_entry;
 }
 
 // Registry callbacks
 
-void fim_db_callback_save_registry_path(fdb_t *fim_sql, fim_registry_key *key_entry, int storage, void *arg) {
-    char *base = wstr_escape_json(key_entry->path);
-    if (base == NULL) {
-        merror("Error escaping '%s'", key_entry->path);
-        return;
-    }
-
-    if (storage == FIM_DB_DISK) { // disk storage enabled
-        if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
-            merror("%s - %s", key_entry->path, strerror(errno));
-            goto end;
-        }
-
-        fflush(((fim_tmp_file *) arg)->fd);
-
-    } else { // memory storage enabled
-        W_Vector_insert(((fim_tmp_file *) arg)->list, base);
-    }
-
-    ((fim_tmp_file *) arg)->elements++;
-
-end:
-    os_free(base);
-}
+void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage, void *arg) {}
 
 // Registry functions
 int fim_db_set_all_registry_data_unscanned(fdb_t *fim_sql) {
 
-    int retval = fim_db_exec_simple_wquery(fim_sql, SQL_STMT[FIMDB_STMT_SET_ALL_UNSCANNED]);
+    int retval = fim_db_exec_simple_wquery(fim_sql, SQL_STMT[FIMDB_STMT_SET_ALL_REG_DATA_UNSCANNED]);
     fim_db_check_transaction(fim_sql);
     return retval;
 }
 
-int fim_db_get_registry_keys_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
-    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
-        return FIMDB_ERR;
-    }
+int fim_db_set_all_registry_key_unscanned(fdb_t *fim_sql) {
 
-    int ret =  fim_db_process_get_registry_query(fim_sql, FIMDB_STMT_GET_REG_KEY_NOT_SCANNED,
-                                                 fim_db_callback_save_registry_path, storage, (void*) *file);
-
-    if (*file && (*file)->elements == 0) {
-        fim_db_clean_file(file, storage);
-    }
-
-    return ret;
+    int retval = fim_db_exec_simple_wquery(fim_sql, SQL_STMT[FIMDB_STMT_SET_ALL_REG_KEY_UNSCANNED]);
+    fim_db_check_transaction(fim_sql);
+    return retval;
 }
 
 int fim_db_set_registry_key_scanned(fdb_t *fim_sql, char *path) {
@@ -1547,15 +1499,28 @@ int fim_db_set_registry_data_scanned(fdb_t *fim_sql, char *name, unsigned int ke
     return FIMDB_OK;
 }
 
-int fim_db_delete_registry_keys_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {}
+int fim_db_get_registry_keys_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage){
+    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
+        return FIMDB_ERR;
+    }
+
+    int ret = fim_db_process_get_query(fim_sql, FIM_TYPE_REGISTRY, FIMDB_STMT_GET_REG_KEY_NOT_SCANNED,
+                                       fim_db_callback_save_path, storage, (void*) *file);
+
+    if (*file && (*file)->elements == 0) {
+        fim_db_clean_file(file, storage);
+    }
+
+    return ret;
+}
 
 int fim_db_get_registry_data_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
     }
 
-    int ret = fim_db_process_get_registry_query(fim_sql, FIMDB_STMT_GET_REG_DATA_NOT_SCANNED,
-                                                fim_db_callback_save_registry_path, storage, (void*) *file);
+    int ret = fim_db_process_get_query(fim_sql, FIM_TYPE_REGISTRY, FIMDB_STMT_GET_REG_DATA_NOT_SCANNED,
+                                       fim_db_callback_save_reg_data_name, storage, (void*) *file);
 
     if (*file && (*file)->elements == 0) {
         fim_db_clean_file(file, storage);
@@ -1564,37 +1529,20 @@ int fim_db_get_registry_data_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, i
     return ret;
 }
 
+int fim_db_delete_registry_keys_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {}
 
+int fim_db_delete_registry_data_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {}
 
 int fim_db_get_registry_keys_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
     }
 
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
-    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_REG_PATH_RANGE);
+    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_REG_PATH_RANGE, start, top);
 
-    int ret = fim_db_process_get_registry_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_registry_path,
-                                                storage, (void*) *file);
-
-    if (*file && (*file)->elements == 0) {
-        fim_db_clean_file(file, storage);
-    }
-
-    return ret;
-
-}
-
-int fim_db_get_registry_value_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
-    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
-        return FIMDB_ERR;
-    }
-
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
-    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
-
-    int ret = fim_db_process_get_registry_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_registry_path,
-                                                storage, (void*) *file);
+    int ret = fim_db_process_get_query(fim_sql, FIM_TYPE_REGISTRY, FIMDB_STMT_GET_REG_PATH_RANGE,
+                                       fim_db_callback_save_reg_data_name, storage, (void*) *file);
 
     if (*file && (*file)->elements == 0) {
         fim_db_clean_file(file, storage);
@@ -1603,9 +1551,7 @@ int fim_db_get_registry_value_range(fdb_t *fim_sql, char *start, char *top, fim_
     return ret;
 }
 
-int fim_db_get_count_registry_entry(fdb_t *fim_sql) {
-
-}
+int fim_db_get_count_registry_entry(fdb_t *fim_sql) {}
 
 int fim_db_insert_registry_data(fdb_t *fim_sql, const char *key_path, fim_entry *data, int key_id) {
     int res = 0;
