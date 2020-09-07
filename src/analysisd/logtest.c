@@ -364,6 +364,7 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
 w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* list_msg) {
 
     w_logtest_session_t * session;
+    bool retval = true;
 
     char **files;
 
@@ -388,7 +389,7 @@ w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* list_msg)
     while (files && *files) {
         if (!ReadDecodeXML(*files, &session->decoderlist_forpname,
             &session->decoderlist_nopname, &session->decoder_store, list_msg)) {
-            return NULL;
+            goto cleanup;
         }
         files++;
     }
@@ -403,7 +404,7 @@ w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* list_msg)
 
     while (files && *files) {
         if (Lists_OP_LoadList(*files, &session->cdblistnode) < 0) {
-            return NULL;
+            goto cleanup;
         }
         files++;
     }
@@ -418,7 +419,7 @@ w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* list_msg)
     while (files && *files) {
         if (Rules_OP_ReadRules(*files, &session->rule_list, &session->cdblistnode,
                             &session->eventlist, &session->decoder_store, list_msg) < 0) {
-            return NULL;
+            goto cleanup;
         }
         files++;
     }
@@ -431,28 +432,73 @@ w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* list_msg)
 
     /* Creating rule hash */
     if (session->g_rules_hash = OSHash_Create(), !session->g_rules_hash) {
-        return NULL;
+        goto cleanup;
     }
 
     AddHash_Rule(session->rule_list);
 
     /* Initiate the FTS list */
     if (!w_logtest_fts_init(&session->fts_list, &session->fts_store)) {
-        return NULL;
+        goto cleanup;
     }
 
     /* Initialize the Accumulator */
     if (!Accumulate_Init(&session->acm_store, &session->acm_lookups, &session->acm_purge_ts)) {
-        return NULL;
+        goto cleanup;
     }
 
     /* Set rule_match and decoder_match to zero */
     memset(&session->decoder_match, 0, sizeof(regex_matching));
     memset(&session->rule_match, 0, sizeof(regex_matching));
 
+    retval = false;
+
+cleanup:
+
+    if (retval) {
+
+        /* Remove list of previous events */
+        os_remove_eventlist(session->eventlist);
+
+        /* Remove rule list and rule hash */
+        os_remove_rules_list(session->rule_list);
+        if (session->g_rules_hash) {
+            OSHash_Free(session->g_rules_hash);
+        }
+
+        /* Remove decoder lists */
+        os_remove_decoders_list(session->decoderlist_forpname, session->decoderlist_nopname);
+        OSStore_Free(session->decoder_store);
+
+        /* Remove cdblistnode and cdblistrule */
+        os_remove_cdblist(&session->cdblistnode);
+        os_remove_cdbrules(&session->cdblistrule);
+
+        /* Remove fts list and hash */
+        if (session->fts_store) {
+            OSHash_Free(session->fts_store);
+        }
+        os_free(session->fts_list);
+
+        /* Remove accumulator hash */
+        if (session->acm_store) {
+            OSHash_Free(session->acm_store);
+        }
+
+        /* Remove session */
+        w_mutex_destroy(&session->mutex);
+
+        /* Free memory allocated in OSRegex execution */
+        OSRegex_free_regex_matching(&session->decoder_match);
+        OSRegex_free_regex_matching(&session->rule_match);
+
+        /* Remove session */
+        os_free(session);
+    }
+
+
     return session;
 }
-
 
 void w_logtest_remove_session(char *token) {
 
@@ -743,6 +789,7 @@ w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg, w_lo
     } else {
         smerror(list_msg, LOGTEST_ERROR_INITIALIZE_SESSION, s_token);
         mdebug1(LOGTEST_ERROR_INITIALIZE_SESSION, s_token);
+        os_free(s_token);
     }
 
     return session;
