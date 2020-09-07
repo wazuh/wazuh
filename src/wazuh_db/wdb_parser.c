@@ -18,8 +18,8 @@ int wdb_parse(char * input, char * output) {
     char * query;
     char * sql;
     char * next;
-    int agent_id;
-    char sagent_id[64];
+    int agent_id = 0;
+    char sagent_id[64] = "000";
     wdb_t * wdb;
     cJSON * data;
     char * out;
@@ -419,7 +419,7 @@ int wdb_parse(char * input, char * output) {
                     os_free(out);
                     cJSON_Delete(data);
                 } else {
-                    mdebug1("GLobal DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                    mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
                     mdebug2("Global DB SQL query: %s", next);
                     snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                     result = OS_INVALID;
@@ -4131,7 +4131,7 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
 
         // These are the only constraints defined in the database for this
         // set of parameters. All the other parameters could be NULL.
-        if (cJSON_IsNumber(j_id) &&
+        if (cJSON_IsNumber(j_id) && j_id->valueint &&
             cJSON_IsString(j_name) && j_name->valuestring &&
             cJSON_IsNumber(j_date_add) && j_date_add->valueint) {
 
@@ -4180,7 +4180,7 @@ int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output)
         j_id = cJSON_GetObjectItem(agent_data, "id");
         j_name = cJSON_GetObjectItem(agent_data, "name");
 
-        if (cJSON_IsNumber(j_id) &&
+        if (cJSON_IsNumber(j_id) && j_id->valueint &&
             cJSON_IsString(j_name) && j_name->valuestring) {
 
             // Getting each field

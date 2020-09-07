@@ -156,4 +156,4 @@ cJSON* __wrap_wdb_exec(__attribute__((unused)) sqlite3 *db,
     return mock_ptr_type(cJSON*);
 }
 
-void __wrap_wdb_leave(__attribute__((unused)) wdb_t * wdb){;}
+void __wrap_wdb_leave(__attribute__((unused)) wdb_t *wdb){;}
