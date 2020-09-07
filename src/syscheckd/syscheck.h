@@ -637,6 +637,19 @@ void audit_restore();
  */
 
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
+
+/**
+ * @brief Function that generates the diff file of a Windows registry when the option report_changes is activated
+ * It creates a file with the content of the value, to compute differences
+ *
+ * @param key_name Path of the registry key monitored
+ * @param value_name Name of the value that has generated the alert
+ * @param value_data Content of the value to be checked
+ * @param data_type The type of value we are checking
+ * @return String with the diff to add to the alert
+ */
+
+char * fim_registry_value_diff(char *key_name, char *value_name, LPBYTE value_data, DWORD data_type);
 #endif
 
 /**
