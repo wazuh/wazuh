@@ -1404,7 +1404,7 @@ int fim_db_get_count_entry_data(fdb_t * fim_sql) {
     }
 }
 
-int fim_db_get_count_file_entry(fdb_t * fim_sql) {
+int fim_db_get_count_entry_path(fdb_t * fim_sql) {
     int res = fim_db_get_count(fim_sql, FIMDB_STMT_GET_COUNT_PATH);
 
     if(res != FIMDB_ERR) {
