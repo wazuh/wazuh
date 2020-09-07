@@ -471,7 +471,8 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, const char *key_path, fim_registr
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_registry(fdb_t *fim_sql, fim_registry_key *new_key, fim_registry_data *new_data, fim_registry_data *saved_data);
+int fim_db_insert_registry(fdb_t *fim_sql, fim_registry_key *new_key, fim_registry_data *new_data,
+                           fim_registry_data *saved_data);
 
 /**
  * @brief Calculate checksum of registry keys between @start and @top.
