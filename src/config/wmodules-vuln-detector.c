@@ -730,6 +730,11 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char *pr_nam
         }
     }
 
+    if (feeds_it == NULL) {
+        merror("'%s' tag required for '%s' provider", XML_OS, pr_name);
+        return OS_INVALID;
+    }
+
     if (debian_provider && feeds_it) {
         // A second iteration to check for a custom location for the JSON Security Tracker
         // If found, we assign the new location to all Debian nodes read above
