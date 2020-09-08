@@ -120,7 +120,7 @@ typedef struct _rtfim {
 #endif
 } rtfim;
 
-typedef enum fim_type {FIM_TYPE_FILE = 0, FIM_TYPE_REGISTRY} fim_type;
+typedef enum fim_type {FIM_TYPE_FILE, FIM_TYPE_REGISTRY} fim_type;
 
 typedef struct whodata_evt {
     char *user_id;
@@ -225,23 +225,20 @@ typedef struct fim_registry_value_data {
     time_t last_event;
     unsigned int scanned;
 
-    // Options
-    // int options;
     //type:size:hash_sh1:mtime
     os_sha1 checksum;
     fim_event_mode mode;
 } fim_registry_value_data;
 
-typedef struct fim_registry_value_key {
+typedef struct fim_registry_key {
     char * path;
+    unsigned int id;
     char * perm;
     char * uid;
     char * gid;
     char * user_name;
     char * group_name;
 
-    // Options
-    int options;
     unsigned int scanned;
     // path:perm:uid:user_name:gid:group_name
     os_sha1 checksum;

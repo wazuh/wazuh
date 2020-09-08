@@ -41,7 +41,6 @@ CREATE INDEX IF NOT EXISTS dev_inode_index ON entry_data (dev, inode);
 
 CREATE TABLE IF NOT EXISTS registry_key (
     path TEXT NOT NULL,
-    data_id INTEGER,
     perm TEXT,
     uid INTEGER,
     gid INTEGER,
@@ -54,18 +53,20 @@ CREATE TABLE IF NOT EXISTS registry_key (
 );
 
 CREATE INDEX IF NOT EXISTS path_index ON registry_key (path);
-CREATE INDEX IF NOT EXISTS inode_index ON registry_key (data_id);
 
 CREATE TABLE IF NOT EXISTS registry_data (
     key_id INTEGER,
     name TEXT,
     type INTEGER,
-    /* data TEXT, */
+    hash_md5 TEXT,
+    hash_sha1 TEXT,
+    hash_sha256 TEXT,
     scanned INTEGER,
     checksum TEXT NOT NULL,
     last_event INTEGER,
     options INTEGER,
     PRIMARY KEY(key_id, name)
+    FOREING KEY (key_id) REFERENCES registry_key(rowid)
 );
 
 CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (key_id, name);
