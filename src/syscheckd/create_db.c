@@ -908,22 +908,15 @@ cJSON * fim_json_event(char * file_name, fim_file_data * old_data, fim_file_data
     }
 
     char * tags = NULL;
-    // if (new_data->entry_type == FIM_TYPE_FILE) {
-        if (w_evt) {
-            cJSON_AddItemToObject(data, "audit", fim_audit_json(w_evt));
-        }
+    if (w_evt) {
+        cJSON_AddItemToObject(data, "audit", fim_audit_json(w_evt));
+    }
 
-        tags = syscheck.tag[pos];
+    tags = syscheck.tag[pos];
 
-        if (diff != NULL) {
-            cJSON_AddStringToObject(data, "content_changes", diff);
-        }
-    // }
-// #ifdef WIN32
-    // else {
-    //     tags = syscheck.registry[pos].tag;
-    // }
-// #endif
+    if (diff != NULL) {
+        cJSON_AddStringToObject(data, "content_changes", diff);
+    }
 
     if (tags != NULL) {
         cJSON_AddStringToObject(data, "tags", tags);

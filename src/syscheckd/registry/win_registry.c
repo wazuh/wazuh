@@ -126,12 +126,12 @@ int fim_init_registry_key(registry_key_t *rkey, const char *full_key, int arch) 
     return 0;
 }
 
-fim_registry_key *fim_registry_get_key_data(HKEY key_handle, registry_key_t *rkey) {
+fim_registry_value_key *fim_registry_get_key_data(HKEY key_handle, registry_key_t *rkey) {
     return NULL;
 }
 
 cJSON *fim_registry_value_attributes_json(const fim_entry *data) {
-    fim_registry_key *key_data = data->registry_entry.key;
+    fim_registry_value_key *key_data = data->registry_entry.key;
     fim_registry_value_data *value_data = data->registry_entry.value;
     cJSON *attributes = cJSON_CreateObject();
 
@@ -205,7 +205,8 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
                                      const registry *configuration,
                                      fim_event_mode mode,
                                      unsigned int type,
-                                     __attribute__((unused)) whodata_evt *w_evt) {
+                                     __attribute__((unused)) whodata_evt *w_evt,
+                                     const char *diff) {
     cJSON *changed_attributes;
 
     if (old_data != NULL) {
@@ -237,6 +238,10 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
         cJSON_AddItemToObject(data, "old_attributes", fim_registry_value_attributes_json(old_data));
     }
 
+    if (diff != NULL) {
+        cJSON_AddStringToObject(data, "content_changes", diff);
+    }
+
     if (configuration->tag != NULL) {
         cJSON_AddStringToObject(data, "tags", configuration->tag);
     }
@@ -244,7 +249,7 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
     return json_event;
 }
 
-cJSON *fim_registry_key_attributes_json(const fim_registry_key *data) {
+cJSON *fim_registry_key_attributes_json(const fim_registry_value_key *data) {
     cJSON *attributes = cJSON_CreateObject();
 
     cJSON_AddStringToObject(attributes, "type", "registry_key");
@@ -276,7 +281,7 @@ cJSON *fim_registry_key_attributes_json(const fim_registry_key *data) {
     return attributes;
 }
 
-cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data, const fim_registry_key *old_data) {
+cJSON *fim_registry_compare_key_attrs(const fim_registry_value_key *new_data, const fim_registry_value_key *old_data) {
     cJSON *changed_attributes = cJSON_CreateArray();
 
     if ((old_data->options & CHECK_PERM) && strcmp(old_data->perm, new_data->perm) != 0) {
@@ -306,8 +311,8 @@ cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data, const fi
     return changed_attributes;
 }
 
-cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
-                                   const fim_registry_key *old_data,
+cJSON *fim_registry_key_json_event(const fim_registry_value_key *new_data,
+                                   const fim_registry_value_key *old_data,
                                    const registry *configuration,
                                    fim_event_mode mode,
                                    unsigned int type,
@@ -356,11 +361,16 @@ cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
  * @param configuration Configuration associated with the given registry.
  * @return 0 if no event was send, 1 if event was send, OS_INVALID on error.
  */
-int fim_registry_event(const fim_entry *new, const fim_entry *saved, const registry *configuration, fim_event_mode mode, unsigned int event_type) {
+int fim_registry_event(const fim_entry *new,
+                       const fim_entry *saved,
+                       const registry *configuration,
+                       fim_event_mode mode,
+                       unsigned int event_type,
+                       const char *diff) {
     cJSON *json_event = NULL;
     char *json_formated;
 
-    if (new == NULL || saved == NULL) {
+    if (new == NULL) {
         // This should never happen
         merror("LOGIC ERROR - new '%p' - saved '%p'", new, saved);
         return OS_INVALID;
@@ -372,12 +382,14 @@ int fim_registry_event(const fim_entry *new, const fim_entry *saved, const regis
         return OS_INVALID;
     }
 
-    // if (new->type != REGISTRY || saved->type != REGISTRY) {
-    //     // This is just silly now
-    // }
+    if (new->type != FIM_TYPE_REGISTRY || saved ? saved->type != FIM_TYPE_REGISTRY : 0) {
+        // This is just silly now
+        merror("LOGIC ERROR - Entry type is not Registry - new '%d' - saved '%d'", new->type, saved->type);
+        return OS_INVALID;
+    }
 
     if (new->registry_entry.value != NULL) {
-        json_event = fim_registry_value_json_event(new, saved, configuration, mode, event_type, NULL);
+        json_event = fim_registry_value_json_event(new, saved, configuration, mode, event_type, NULL, diff);
     } else {
         json_event =
         fim_registry_key_json_event(new->registry_entry.key, saved->registry_entry.key, configuration, mode, event_type, NULL);
@@ -457,8 +469,8 @@ void fim_read_values(const HKEY key_handle, fim_entry *new, fim_entry *saved, re
 
     // char *mt_data;
 
-    EVP_MD_CTX *ctx = EVP_MD_CTX_create();
-    EVP_DigestInit(ctx, EVP_sha1());
+    // EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+    // EVP_DigestInit(ctx, EVP_sha1());
 
     /* Clear the values for value_size and data_size */
     value_buffer[MAX_VALUE_NAME] = '\0';
@@ -467,6 +479,7 @@ void fim_read_values(const HKEY key_handle, fim_entry *new, fim_entry *saved, re
     os_calloc(1, sizeof(fim_registry_value_data), new->registry_entry.value);
 
     for (i = 0; i < value_count; i++) {
+        char *diff = NULL;
         char value_path[MAX_KEY + 2];
         registry_key_t value_key;
 
@@ -503,10 +516,18 @@ void fim_read_values(const HKEY key_handle, fim_entry *new, fim_entry *saved, re
         new->registry_entry.value->mode = FIM_SCHEDULED;
 
         saved->registry_entry.value =
-        fim_db_get_registry_data(syscheck.database, new->registry_entry.key->data_id, new->registry_entry.key->path);
+        fim_db_get_registry_data(syscheck.database, new->registry_entry.key->id, new->registry_entry.value->name);
+
+        if (value_key.configuration->opts | CHECK_SEECHANGES) {
+            diff = fim_registry_value_diff(new->registry_entry.key->path, new->registry_entry.value->name, data_buffer, data_type);
+        }
 
         fim_registry_event(new, saved, value_key.configuration, FIM_SCHEDULED,
-                           saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED);
+                           saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED, diff);
+
+        fim_db_set_registry_data_scanned(syscheck.database, new->registry_entry.value->name, new->registry_entry.key->id);
+
+        os_free(diff);
 
         /* Write value name and data in the file (for checksum later) */
         // EVP_DigestUpdate(ctx, value_buffer, strlen(value_buffer));
@@ -607,7 +628,10 @@ void fim_open_key(const HKEY root_key_handle, registry_key_t *rkey) {
     saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, rkey->full_key);
     saved.registry_entry.value = NULL;
 
-    fim_registry_event(&new, &saved, rkey->configuration, FIM_SCHEDULED, saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFIED);
+    fim_registry_event(&new, &saved, rkey->configuration, FIM_SCHEDULED,
+                       saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFIED, NULL);
+
+    fim_db_set_registry_key_scanned(syscheck.database, new.registry_entry.key->path);
 
     if (value_count) {
         fim_read_values(sub_key_handle, &new, &saved, rkey, value_count);
