@@ -110,12 +110,12 @@ void test_wdb_parse_global_sql_success(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global sql TEST QUERY";
     cJSON *root = NULL;
-    cJSON *object = NULL;
+    cJSON *j_object = NULL;
 
     root = cJSON_CreateArray();
-    object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "test_field", "test_value");
-    cJSON_AddItemToArray(root, object);
+    j_object = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_object, "test_field", "test_value");
+    cJSON_AddItemToArray(root, j_object);
 
     will_return(__wrap_wdb_open_global, data->socket);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: sql TEST QUERY");
@@ -544,14 +544,14 @@ void test_wdb_parse_global_get_agent_labels_success(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global get-labels 1";
     cJSON *root = NULL;
-    cJSON *object = NULL;
+    cJSON *j_object = NULL;
 
     root = cJSON_CreateArray();
-    object = cJSON_CreateObject();
-    cJSON_AddNumberToObject(object, "id", 1);
-    cJSON_AddStringToObject(object, "key", "test_key");
-    cJSON_AddStringToObject(object, "value", "test_value");
-    cJSON_AddItemToArray(root, object);
+    j_object = cJSON_CreateObject();
+    cJSON_AddNumberToObject(j_object, "id", 1);
+    cJSON_AddStringToObject(j_object, "key", "test_key");
+    cJSON_AddStringToObject(j_object, "value", "test_value");
+    cJSON_AddItemToArray(root, j_object);
 
     will_return(__wrap_wdb_open_global, data->socket);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-labels 1");
@@ -673,6 +673,924 @@ void test_wdb_parse_global_set_agent_labels_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+void test_wdb_parse_global_update_agent_keepalive_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-keepalive";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for update-keepalive.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: update-keepalive");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'update-keepalive'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_agent_keepalive_invalid_json(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-keepalive {INVALID_JSON}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {INVALID_JSON}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when updating agent keepalive.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_agent_keepalive_invalid_data(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"sync_status\":null}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"sync_status\":null}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent keepalive.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"sync_status\":null}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_agent_keepalive_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"sync_status\":1}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_value(__wrap_wdb_global_update_agent_keepalive, id, 1);
+    expect_value(__wrap_wdb_global_update_agent_keepalive, status, WDB_SYNC_REQ);
+    will_return(__wrap_wdb_global_update_agent_keepalive, OS_INVALID);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"sync_status\":1}");
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_agent_keepalive_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"sync_status\":1}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_value(__wrap_wdb_global_update_agent_keepalive, id, 1);
+    expect_value(__wrap_wdb_global_update_agent_keepalive, status, WDB_SYNC_REQ);
+    will_return(__wrap_wdb_global_update_agent_keepalive, OS_SUCCESS);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"sync_status\":1}");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_delete_agent_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global delete-agent";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: delete-agent");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for delete-agent.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: delete-agent");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'delete-agent'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_delete_agent_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global delete-agent 1";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: delete-agent 1");
+    expect_value(__wrap_wdb_global_delete_agent, id, 1);
+    will_return(__wrap_wdb_global_delete_agent, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error deleting agent from agent table in global.db.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Error deleting agent from agent table in global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_delete_agent_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global delete-agent 1";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: delete-agent 1");
+    expect_value(__wrap_wdb_global_delete_agent, id, 1);
+    will_return(__wrap_wdb_global_delete_agent, OS_SUCCESS);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_select_agent_name_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-agent-name";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-name");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for select-agent-name.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: select-agent-name");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'select-agent-name'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_select_agent_name_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-agent-name 1";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-name 1");
+    expect_value(__wrap_wdb_global_select_agent_name, id, 1);
+    will_return(__wrap_wdb_global_select_agent_name, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent name from global.db.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Error getting agent name from global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_select_agent_name_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-agent-name 1";
+    cJSON *j_object = NULL;
+
+    j_object = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_object, "name", "test_name");
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-name 1");
+    expect_value(__wrap_wdb_global_select_agent_name, id, 1);
+    will_return(__wrap_wdb_global_select_agent_name, j_object);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok {\"name\":\"test_name\"}");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_select_agent_group_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-agent-group";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-group");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for select-agent-group.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: select-agent-group");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'select-agent-group'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_select_agent_group_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-agent-group 1";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-group 1");
+    expect_value(__wrap_wdb_global_select_agent_group, id, 1);
+    will_return(__wrap_wdb_global_select_agent_group, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent group from global.db.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Error getting agent group from global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_select_agent_group_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-agent-group 1";
+    cJSON *j_object = NULL;
+
+    j_object = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_object, "name", "test_name");
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-group 1");
+    expect_value(__wrap_wdb_global_select_agent_group, id, 1);
+    will_return(__wrap_wdb_global_select_agent_group, j_object);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok {\"name\":\"test_name\"}");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_delete_agent_belong_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global delete-agent-belong";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: delete-agent-belong");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for delete-agent-belong.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: delete-agent-belong");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'delete-agent-belong'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_delete_agent_belong_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global delete-agent-belong 1";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: delete-agent-belong 1");
+    expect_value(__wrap_wdb_global_delete_agent_belong, id, 1);
+    will_return(__wrap_wdb_global_delete_agent_belong, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error deleting agent from belongs table in global.db.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Error deleting agent from belongs table in global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_delete_agent_belong_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global delete-agent-belong 1";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: delete-agent-belong 1");
+    expect_value(__wrap_wdb_global_delete_agent_belong, id, 1);
+    will_return(__wrap_wdb_global_delete_agent_belong, OS_SUCCESS);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_find_agent_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global find-agent";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: find-agent");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for find-agent.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: find-agent");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'find-agent'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_find_agent_invalid_json(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global find-agent {INVALID_JSON}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: find-agent {INVALID_JSON}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when finding agent id.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_find_agent_invalid_data(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global find-agent {\"ip\":null,\"name\":\"test_name\"}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: find-agent {\"ip\":null,\"name\":\"test_name\"}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when finding agent id.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON data, near '{\"ip\":null,\"name\":\"test_name\"}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_find_agent_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global find-agent {\"ip\":\"0.0.0.0\",\"name\":\"test_name\"}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: find-agent {\"ip\":\"0.0.0.0\",\"name\":\"test_name\"}");
+    expect_string(__wrap_wdb_global_find_agent, ip, "0.0.0.0");
+    expect_string(__wrap_wdb_global_find_agent, name, "test_name");
+    will_return(__wrap_wdb_global_find_agent, NULL);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_find_agent_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global find-agent {\"ip\":\"0.0.0.0\",\"name\":\"test_name\"}";
+    cJSON *j_object = NULL;
+
+    j_object = cJSON_CreateObject();
+    cJSON_AddNumberToObject(j_object, "id", 1);
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: find-agent {\"ip\":\"0.0.0.0\",\"name\":\"test_name\"}");
+    expect_string(__wrap_wdb_global_find_agent, ip, "0.0.0.0");
+    expect_string(__wrap_wdb_global_find_agent, name, "test_name");
+    will_return(__wrap_wdb_global_find_agent, j_object);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok {\"id\":1}");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_select_fim_offset_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-fim-offset";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-fim-offset");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for select-fim-offset.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: select-fim-offset");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'select-fim-offset'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_select_fim_offset_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-fim-offset 1";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-fim-offset 1");
+    expect_value(__wrap_wdb_global_select_agent_fim_offset, id, 1);
+    will_return(__wrap_wdb_global_select_agent_fim_offset, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent fim offset from global.db.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Error getting agent fim offset from global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_select_fim_offset_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-fim-offset 1";
+    cJSON *j_object = NULL;
+
+    j_object = cJSON_CreateObject();
+    cJSON_AddNumberToObject(j_object, "fim_offset", 123);
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-fim-offset 1");
+    expect_value(__wrap_wdb_global_select_agent_fim_offset, id, 1);
+    will_return(__wrap_wdb_global_select_agent_fim_offset, j_object);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok {\"fim_offset\":123}");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_select_reg_offset_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-reg-offset";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-reg-offset");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for select-reg-offset.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: select-reg-offset");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'select-reg-offset'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_select_reg_offset_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-reg-offset 1";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-reg-offset 1");
+    expect_value(__wrap_wdb_global_select_agent_reg_offset, id, 1);
+    will_return(__wrap_wdb_global_select_agent_reg_offset, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent reg offset from global.db.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Error getting agent reg offset from global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_select_reg_offset_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-reg-offset 1";
+    cJSON *j_object = NULL;
+
+    j_object = cJSON_CreateObject();
+    cJSON_AddNumberToObject(j_object, "reg_offset", 123);
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-reg-offset 1");
+    expect_value(__wrap_wdb_global_select_agent_reg_offset, id, 1);
+    will_return(__wrap_wdb_global_select_agent_reg_offset, j_object);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok {\"reg_offset\":123}");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_update_fim_offset_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-fim-offset";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-fim-offset");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for update-fim-offset.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: update-fim-offset");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'update-fim-offset'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_fim_offset_invalid_json(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-fim-offset {INVALID_JSON}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-fim-offset {INVALID_JSON}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when updating agent fim offset.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_fim_offset_invalid_data(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-fim-offset {\"id\":1,\"offset\":null}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-fim-offset {\"id\":1,\"offset\":null}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent fim offset.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"offset\":null}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_fim_offset_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-fim-offset {\"id\":1,\"offset\":1234567}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-fim-offset {\"id\":1,\"offset\":1234567}");
+    expect_value(__wrap_wdb_global_update_agent_fim_offset, id, 1);
+    expect_value(__wrap_wdb_global_update_agent_fim_offset, offset, 1234567);
+    will_return(__wrap_wdb_global_update_agent_fim_offset, OS_INVALID);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
+    
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_fim_offset_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-fim-offset {\"id\":1,\"offset\":1234567}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-fim-offset {\"id\":1,\"offset\":1234567}");
+    expect_value(__wrap_wdb_global_update_agent_fim_offset, id, 1);
+    expect_value(__wrap_wdb_global_update_agent_fim_offset, offset, 1234567);
+    will_return(__wrap_wdb_global_update_agent_fim_offset, OS_SUCCESS);
+    
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_update_reg_offset_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-reg-offset";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-reg-offset");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for update-reg-offset.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: update-reg-offset");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'update-reg-offset'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_reg_offset_invalid_json(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-reg-offset {INVALID_JSON}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-reg-offset {INVALID_JSON}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when updating agent reg offset.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_reg_offset_invalid_data(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-reg-offset {\"id\":1,\"offset\":null}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-reg-offset {\"id\":1,\"offset\":null}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent reg offset.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"offset\":null}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_reg_offset_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-reg-offset {\"id\":1,\"offset\":1234567}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-reg-offset {\"id\":1,\"offset\":1234567}");
+    expect_value(__wrap_wdb_global_update_agent_reg_offset, id, 1);
+    expect_value(__wrap_wdb_global_update_agent_reg_offset, offset, 1234567);
+    will_return(__wrap_wdb_global_update_agent_reg_offset, OS_INVALID);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
+    
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_reg_offset_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-reg-offset {\"id\":1,\"offset\":1234567}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-reg-offset {\"id\":1,\"offset\":1234567}");
+    expect_value(__wrap_wdb_global_update_agent_reg_offset, id, 1);
+    expect_value(__wrap_wdb_global_update_agent_reg_offset, offset, 1234567);
+    will_return(__wrap_wdb_global_update_agent_reg_offset, OS_SUCCESS);
+    
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_select_agent_status_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-agent-status";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-status");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for select-agent-status.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: select-agent-status");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'select-agent-status'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_select_agent_status_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-agent-status 1";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-status 1");
+    expect_value(__wrap_wdb_global_select_agent_status, id, 1);
+    will_return(__wrap_wdb_global_select_agent_status, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent update status from global.db.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Error getting agent update status from global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_select_agent_status_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-agent-status 1";
+    cJSON *j_object = NULL;
+
+    j_object = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_object, "status", "test_status");
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-status 1");
+    expect_value(__wrap_wdb_global_select_agent_status, id, 1);
+    will_return(__wrap_wdb_global_select_agent_status, j_object);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok {\"status\":\"test_status\"}");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_update_agent_status_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-agent-status";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-status");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for update-agent-status.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: update-agent-status");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'update-agent-status'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_agent_status_invalid_json(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-agent-status {INVALID_JSON}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-status {INVALID_JSON}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when updating agent update status.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_agent_status_invalid_data(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-agent-status {\"id\":1,\"status\":null}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-status {\"id\":1,\"status\":null}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent update status.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"status\":null}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_agent_status_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-agent-status {\"id\":1,\"status\":\"updated\"}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-status {\"id\":1,\"status\":\"updated\"}");
+    expect_value(__wrap_wdb_global_update_agent_status, id, 1);
+    expect_string(__wrap_wdb_global_update_agent_status, status, "updated");
+    will_return(__wrap_wdb_global_update_agent_status, OS_INVALID);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_agent_status_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-agent-status {\"id\":1,\"status\":\"updated\"}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-status {\"id\":1,\"status\":\"updated\"}");
+    expect_value(__wrap_wdb_global_update_agent_status, id, 1);
+    expect_string(__wrap_wdb_global_update_agent_status, status, "updated");
+    will_return(__wrap_wdb_global_update_agent_status, OS_SUCCESS);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_update_agent_group_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-agent-group";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-group");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for update-agent-group.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: update-agent-group");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'update-agent-group'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_agent_group_invalid_json(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-agent-group {INVALID_JSON}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-group {INVALID_JSON}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when updating agent group.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_agent_group_invalid_data(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-agent-group {\"id\":1,\"group\":null}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-group {\"id\":1,\"group\":null}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent group.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"group\":null}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_agent_group_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-agent-group {\"id\":1,\"group\":\"test_group\"}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-group {\"id\":1,\"group\":\"test_group\"}");
+    expect_value(__wrap_wdb_global_update_agent_group, id, 1);
+    expect_string(__wrap_wdb_global_update_agent_group, group, "test_group");
+    will_return(__wrap_wdb_global_update_agent_group, OS_INVALID);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_agent_group_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-agent-group {\"id\":1,\"group\":\"test_group\"}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-group {\"id\":1,\"group\":\"test_group\"}");
+    expect_value(__wrap_wdb_global_update_agent_group, id, 1);
+    expect_string(__wrap_wdb_global_update_agent_group, group, "test_group");
+    will_return(__wrap_wdb_global_update_agent_group, OS_SUCCESS);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -705,8 +1623,59 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_labels_id_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_labels_remove_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_labels_set_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_labels_success, test_setup, test_teardown)
-    };
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_labels_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_keepalive_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_keepalive_invalid_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_keepalive_invalid_data, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_keepalive_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_keepalive_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_name_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_name_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_name_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_group_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_group_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_group_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_belong_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_belong_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_belong_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_agent_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_agent_invalid_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_agent_invalid_data, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_agent_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_agent_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_fim_offset_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_fim_offset_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_fim_offset_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_reg_offset_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_reg_offset_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_reg_offset_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_fim_offset_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_fim_offset_invalid_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_fim_offset_invalid_data, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_fim_offset_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_fim_offset_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_reg_offset_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_reg_offset_invalid_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_reg_offset_invalid_data, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_reg_offset_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_reg_offset_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_status_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_status_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_status_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_status_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_status_invalid_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_status_invalid_data, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_status_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_status_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_group_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_group_invalid_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_group_invalid_data, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_group_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_group_success, test_setup, test_teardown)
+       };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

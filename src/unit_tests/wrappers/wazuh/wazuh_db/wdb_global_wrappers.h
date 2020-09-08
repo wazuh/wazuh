@@ -42,4 +42,30 @@ int __wrap_wdb_global_del_agent_labels(wdb_t *wdb, int id);
 
 int __wrap_wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
 
+int __wrap_wdb_global_update_agent_keepalive(wdb_t *wdb, int id, wdb_sync_status_t status);
+
+int __wrap_wdb_global_delete_agent(wdb_t *wdb, int id);
+
+cJSON* __wrap_wdb_global_select_agent_name(wdb_t *wdb, int id);
+
+cJSON* __wrap_wdb_global_select_agent_group(wdb_t *wdb, int id);
+
+int __wrap_wdb_global_delete_agent_belong(wdb_t *wdb, int id);
+
+cJSON* __wrap_wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
+
+cJSON* __wrap_wdb_global_select_agent_fim_offset(wdb_t *wdb, int id);
+
+cJSON* __wrap_wdb_global_select_agent_reg_offset(wdb_t *wdb, int id);
+
+int __wrap_wdb_global_update_agent_fim_offset(wdb_t *wdb, int id, long offset);
+
+int __wrap_wdb_global_update_agent_reg_offset(wdb_t *wdb, int id, long offset);
+
+cJSON* __wrap_wdb_global_select_agent_status(wdb_t *wdb, int id);
+
+int __wrap_wdb_global_update_agent_status(wdb_t *wdb, int id, char *status);
+
+int __wrap_wdb_global_update_agent_group(wdb_t *wdb, int id, char *group);
+
 #endif
