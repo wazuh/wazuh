@@ -395,7 +395,7 @@ int fim_db_get_count(fdb_t *fim_sql, int index);
  * @param pos     If memory is 1, pos indicates the position in the array.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-void fim_db_callback_save_registry_path(fdb_t *fim_sql, fim_registry_key *key_entry, int storage, void *arg);
+void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage, void *arg);
 
 // Registry functions.
 
@@ -644,6 +644,33 @@ int fim_db_get_registry_data_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, i
 int fim_db_delete_registry_keys_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage);
 
 /**
+ * @brief Delete not scanned registry data from database.
+ *
+ * @param fim_sql FIM database struct.
+ * @param file    Structure of the file which contains all the paths.
+ * @param mutex
+ * @param storage 1 Store database in memory, disk otherwise.
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_delete_registry_data_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage);
+
+/**
+ * @brief Get count of all entries in registry data table.
+ *
+ * @param fim_sql FIM database struct.
+ * @return Number of entries in registry data table.
+ */
+int fim_db_get_count_registry_data(fdb_t *fim_sql);
+
+/**
+ * @brief Get count of all entries in registry key table.
+ *
+ * @param fim_sql FIM database struct.
+ * @return Number of entries in registry data table.
+ */
+int fim_db_get_count_registry_key(fdb_t *fim_sql);
+
+/**
  * @brief Get registry keys between @start and @top. (stored in @file).
  *
  * @param fim_sql FIM database struct.
@@ -734,19 +761,11 @@ int fim_db_process_missing_registry_data_entry(fdb_t *fim_sql, fim_tmp_file *fil
 
 
 /**
- * @brief Get count of all entries in registry key table.
+ * @brief Get count of all entries in registry key and registry data table.
  *
  * @param fim_sql FIM database struct.
  * @return Number of entries in registry key table.
  */
-int fim_db_get_count_registry_entry(fdb_t *fim_sql);
-
-/**
- * @brief Get count of all entries in registry data table.
- *
- * @param fim_sql FIM database struct.
- * @return Number of entries in registry data table.
- */
-int fim_db_get_count_registry_data(fdb_t * fim_sql);
+int fim_db_get_count_registry_key_data(fdb_t *fim_sql);
 
 #endif
