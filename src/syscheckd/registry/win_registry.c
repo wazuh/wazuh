@@ -34,17 +34,11 @@ static const char *FIM_EVENT_TYPE[] = { "added", "deleted", "modified" };
 static const char *FIM_EVENT_MODE[] = { "scheduled", "realtime", "whodata" };
 
 
-typedef struct __registry_key_t {
-    const registry *configuration;
-    const char *full_key;
-    const char *sub_key;
-} registry_key_t;
-
 /* Check if the registry entry is valid */
-int fim_set_root_key(HKEY *root_key_handle, registry_key_t *rkey, char *full_key, registry *configuration) {
+int fim_set_root_key(HKEY *root_key_handle, const char *full_key, char **sub_key) {
     int root_key_length;
 
-    if (root_key_handle == NULL || rkey == NULL || full_key == NULL || configuration == NULL) {
+    if (root_key_handle == NULL || full_key == NULL || sub_key == NULL) {
         return -1;
     }
 
@@ -70,9 +64,7 @@ int fim_set_root_key(HKEY *root_key_handle, registry_key_t *rkey, char *full_key
         return -1;
     }
 
-    rkey->full_key = full_key;
-    rkey->configuration = configuration;
-    rkey->sub_key = &rkey->full_key[root_key_length + 1];
+    *sub_key = &full_key[root_key_length + 1];
     return 0;
 }
 
@@ -102,36 +94,12 @@ registry *fim_registry_configuration(const char *key, int arch) {
     return ret;
 }
 
-int fim_init_registry_key(registry_key_t *rkey, const char *full_key, int arch) {
-    registry *configuration;
-
-    if (rkey == NULL || full_key == NULL) {
-        return -1;
-    }
-
-    configuration = fim_registry_configuration(full_key, arch);
-
-    if (configuration == NULL) {
-        return -1;
-    }
-
-    rkey->full_key = full_key;
-    rkey->configuration = configuration;
-    rkey->sub_key = strchr(rkey->full_key, '\\');
-
-    if (rkey->sub_key) {
-        rkey->sub_key++;
-    }
-
-    return 0;
-}
-
-fim_registry_value_key *fim_registry_get_key_data(HKEY key_handle, registry_key_t *rkey) {
+fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const registry *configuration) {
     return NULL;
 }
 
 cJSON *fim_registry_value_attributes_json(const fim_entry *data) {
-    fim_registry_value_key *key_data = data->registry_entry.key;
+    fim_registry_key *key_data = data->registry_entry.key;
     fim_registry_value_data *value_data = data->registry_entry.value;
     cJSON *attributes = cJSON_CreateObject();
 
@@ -249,7 +217,7 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
     return json_event;
 }
 
-cJSON *fim_registry_key_attributes_json(const fim_registry_value_key *data) {
+cJSON *fim_registry_key_attributes_json(const fim_registry_key *data) {
     cJSON *attributes = cJSON_CreateObject();
 
     cJSON_AddStringToObject(attributes, "type", "registry_key");
@@ -281,7 +249,7 @@ cJSON *fim_registry_key_attributes_json(const fim_registry_value_key *data) {
     return attributes;
 }
 
-cJSON *fim_registry_compare_key_attrs(const fim_registry_value_key *new_data, const fim_registry_value_key *old_data) {
+cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data, const fim_registry_key *old_data) {
     cJSON *changed_attributes = cJSON_CreateArray();
 
     if ((old_data->options & CHECK_PERM) && strcmp(old_data->perm, new_data->perm) != 0) {
@@ -311,8 +279,8 @@ cJSON *fim_registry_compare_key_attrs(const fim_registry_value_key *new_data, co
     return changed_attributes;
 }
 
-cJSON *fim_registry_key_json_event(const fim_registry_value_key *new_data,
-                                   const fim_registry_value_key *old_data,
+cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
+                                   const fim_registry_key *old_data,
                                    const registry *configuration,
                                    fim_event_mode mode,
                                    unsigned int type,
@@ -415,10 +383,10 @@ int fim_registry_event(const fim_entry *new,
 }
 
 
-int fim_check_key(registry_key_t *rkey) {
+int fim_check_key(const char *entry_path, const registry *configuration) {
     int ign_it;
 
-    if (rkey == NULL || rkey->full_key == NULL) {
+    if (entry_path == NULL || configuration == NULL) {
         return -1;
     }
 
@@ -427,12 +395,12 @@ int fim_check_key(registry_key_t *rkey) {
     /* Registry ignore list */
     if (syscheck.registry_ignore) {
         for (ign_it = 0; syscheck.registry_ignore[ign_it].entry; ign_it++) {
-            if (syscheck.registry_ignore[ign_it].arch != rkey->configuration->arch) {
+            if (syscheck.registry_ignore[ign_it].arch != configuration->arch) {
                 continue;
             }
 
-            if (strcasecmp(syscheck.registry_ignore[ign_it].entry, rkey->full_key) == 0) {
-                mdebug2(FIM_IGNORE_ENTRY, "registry", rkey->full_key, syscheck.registry_ignore[ign_it].entry);
+            if (strcasecmp(syscheck.registry_ignore[ign_it].entry, entry_path) == 0) {
+                mdebug2(FIM_IGNORE_ENTRY, "registry", entry_path, syscheck.registry_ignore[ign_it].entry);
                 return -1;
             }
         }
@@ -440,12 +408,12 @@ int fim_check_key(registry_key_t *rkey) {
 
     if (syscheck.registry_ignore_regex) {
         for (ign_it = 0; syscheck.registry_ignore_regex[ign_it].regex; ign_it++) {
-            if (syscheck.registry_ignore_regex[ign_it].arch != rkey->configuration->arch) {
+            if (syscheck.registry_ignore_regex[ign_it].arch != configuration->arch) {
                 continue;
             }
 
-            if (OSMatch_Execute(rkey->full_key, strlen(rkey->full_key), syscheck.registry_ignore_regex[ign_it].regex)) {
-                mdebug2(FIM_IGNORE_SREGEX, "registry", rkey->full_key, syscheck.registry_ignore_regex[ign_it].regex->raw);
+            if (OSMatch_Execute(entry_path, strlen(entry_path), syscheck.registry_ignore_regex[ign_it].regex)) {
+                mdebug2(FIM_IGNORE_SREGEX, "registry", entry_path, syscheck.registry_ignore_regex[ign_it].regex->raw);
                 return -1;
             }
         }
@@ -455,17 +423,19 @@ int fim_check_key(registry_key_t *rkey) {
 }
 
 /* Query the key and get all its values */
-void fim_read_values(const HKEY key_handle, fim_entry *new, fim_entry *saved, registry_key_t *rkey, DWORD value_count) {
+void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, const registry *configuration, DWORD value_count) {
     DWORD i;
 
     /* Variables for RegEnumValue */
     TCHAR value_buffer[MAX_VALUE_NAME + 1];
-    TCHAR data_buffer[MAX_VALUE_NAME + 1];
+    BYTE data_buffer[MAX_VALUE_NAME + 1];
     DWORD value_size;
     DWORD data_size;
 
     /* Data type for RegEnumValue */
     DWORD data_type = 0;
+
+    fim_registry_value_data value_data;
 
     // char *mt_data;
 
@@ -476,12 +446,12 @@ void fim_read_values(const HKEY key_handle, fim_entry *new, fim_entry *saved, re
     value_buffer[MAX_VALUE_NAME] = '\0';
     data_buffer[MAX_VALUE_NAME] = '\0';
 
-    os_calloc(1, sizeof(fim_registry_value_data), new->registry_entry.value);
+    new->registry_entry.value = &value_data;
 
     for (i = 0; i < value_count; i++) {
         char *diff = NULL;
         char value_path[MAX_KEY + 2];
-        registry_key_t value_key;
+        registry *value_configuration;
 
         value_size = MAX_VALUE_NAME;
         data_size = MAX_VALUE_NAME;
@@ -490,7 +460,7 @@ void fim_read_values(const HKEY key_handle, fim_entry *new, fim_entry *saved, re
         data_buffer[0] = '\0';
 
         /* No more values available */
-        if (RegEnumValue(key_handle, i, value_buffer, &value_size, NULL, &data_type, (LPBYTE)data_buffer, &data_size) != ERROR_SUCCESS) {
+        if (RegEnumValue(key_handle, i, value_buffer, &value_size, NULL, &data_type, data_buffer, &data_size) != ERROR_SUCCESS) {
             break;
         }
 
@@ -500,13 +470,15 @@ void fim_read_values(const HKEY key_handle, fim_entry *new, fim_entry *saved, re
             value_buffer[1] = '\0';
         }
 
-        snprintf(value_path, MAX_KEY, "%s\\%s", rkey->full_key, value_buffer);
-        if (fim_init_registry_key(&value_key, value_path, rkey->configuration->arch)) {
-            mwarn("Failed to create child registry '%s'", value_path);
+        snprintf(value_path, MAX_KEY, "%s\\%s", new->registry_entry.key->path, value_buffer);
+
+        value_configuration = fim_registry_configuration(value_path, configuration->arch);
+        if (value_configuration == NULL) {
+            mwarn("No configuration found for '%s'", value_path);
             continue;
         }
 
-        if (fim_check_key(&value_key)) {
+        if (fim_check_key(value_path, configuration)) {
             continue;
         }
 
@@ -518,11 +490,11 @@ void fim_read_values(const HKEY key_handle, fim_entry *new, fim_entry *saved, re
         saved->registry_entry.value =
         fim_db_get_registry_data(syscheck.database, new->registry_entry.key->id, new->registry_entry.value->name);
 
-        if (value_key.configuration->opts | CHECK_SEECHANGES) {
+        if (value_configuration->opts | CHECK_SEECHANGES) {
             diff = fim_registry_value_diff(new->registry_entry.key->path, new->registry_entry.value->name, data_buffer, data_type);
         }
 
-        fim_registry_event(new, saved, value_key.configuration, FIM_SCHEDULED,
+        fim_registry_event(new, saved, value_configuration, FIM_SCHEDULED,
                            saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED, diff);
 
         fim_db_set_registry_data_scanned(syscheck.database, new->registry_entry.value->name, new->registry_entry.key->id);
@@ -564,86 +536,89 @@ void fim_read_values(const HKEY key_handle, fim_entry *new, fim_entry *saved, re
 }
 
 /* Open the registry key */
-void fim_open_key(const HKEY root_key_handle, registry_key_t *rkey) {
-    HKEY sub_key_handle = NULL;
+void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_key, const registry *configuration) {
+    HKEY current_key_handle = NULL;
     REGSAM access_rights;
-    DWORD subkey_count = 0;
+    DWORD sub_key_count = 0;
     DWORD value_count;
     FILETIME file_time = { 0 };
     DWORD i;
     fim_entry new, saved;
 
-    if (rkey == NULL || root_key_handle == NULL || rkey->full_key == NULL) {
+    if (root_key_handle == NULL || full_key == NULL || sub_key == NULL || configuration == NULL) {
         return;
     }
 
     // Check ignore and recursion level restrictions.
-    if (fim_check_key(rkey)) {
+    if (fim_check_key(full_key, configuration)) {
         return;
     }
 
-    access_rights = KEY_READ | (rkey->configuration->arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY);
+    access_rights = KEY_READ | (configuration->arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY);
 
-    if (RegOpenKeyEx(root_key_handle, rkey->sub_key, 0, access_rights, &sub_key_handle) != ERROR_SUCCESS) {
-        mdebug1(FIM_REG_OPEN, rkey->sub_key, rkey->configuration->arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    if (RegOpenKeyEx(root_key_handle, sub_key, 0, access_rights, &current_key_handle) != ERROR_SUCCESS) {
+        mdebug1(FIM_REG_OPEN, sub_key, configuration->arch == ARCH_32BIT ? "[x32]" : "[x64]");
         return;
     }
 
-    /* We use the class_name, subkey_count and the value count */
-    if (RegQueryInfoKey(sub_key_handle, NULL, NULL, NULL, &subkey_count, NULL, NULL, &value_count, NULL, NULL, NULL,
-                        &file_time) != ERROR_SUCCESS) {
+    /* We use the class_name, sub_key_count and the value count */
+    if (RegQueryInfoKey(current_key_handle, NULL, NULL, NULL, &sub_key_count, NULL, NULL, &value_count, NULL, NULL,
+                        NULL, &file_time) != ERROR_SUCCESS) {
         return;
     }
 
-    /* Query each subkey and call open_key */
-    for (i = 0; i < subkey_count; i++) {
-        char new_key[MAX_KEY + 2];
+    /* Query each sub_key and call open_key */
+    for (i = 0; i < sub_key_count; i++) {
+        char new_full_key[MAX_KEY + 2];
+        char *new_sub_key;
+        registry *new_configuration;
         TCHAR sub_key_name_b[MAX_KEY_LENGTH + 1];
-        registry_key_t child_key;
         DWORD sub_key_name_s = MAX_KEY_LENGTH;
 
-        if (RegEnumKeyEx(sub_key_handle, i, sub_key_name_b, &sub_key_name_s, NULL, NULL, NULL, NULL) != ERROR_SUCCESS) {
+        if (RegEnumKeyEx(current_key_handle, i, sub_key_name_b, &sub_key_name_s, NULL, NULL, NULL, NULL) != ERROR_SUCCESS) {
             continue;
         }
 
-        new_key[MAX_KEY + 1] = '\0';
+        snprintf(new_full_key, MAX_KEY, "%s\\%s", full_key, sub_key_name_b);
 
-        snprintf(new_key, MAX_KEY, "%s\\%s", rkey->full_key, sub_key_name_b);
-
-        if (fim_init_registry_key(&child_key, new_key, rkey->configuration->arch)) {
-            mwarn("Failed to create child registry '%s'", new_key);
+        new_configuration = fim_registry_configuration(new_full_key, configuration->arch);
+        if (new_configuration == NULL) {
+            mwarn("No configuration found for '%s'", new_full_key);
             continue;
         }
 
-        /* Open subkey */
-        fim_open_key(root_key_handle, &child_key);
+        if (new_sub_key = strchr(new_full_key, '\\'), new_sub_key) {
+            new_sub_key++;
+        }
+
+        /* Open sub_key */
+        fim_open_key(root_key_handle, new_full_key, new_sub_key, new_configuration);
     }
 
     // Done scanning sub_keys, trigger an alert on the current key if required.
     new.type = FIM_TYPE_REGISTRY;
-    new.registry_entry.key = fim_registry_get_key_data(sub_key_handle, rkey);
+    new.registry_entry.key = fim_registry_get_key_data(current_key_handle, configuration);
     new.registry_entry.value = NULL;
 
     saved.type = FIM_TYPE_REGISTRY;
-    saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, rkey->full_key);
+    saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, full_key);
     saved.registry_entry.value = NULL;
 
-    fim_registry_event(&new, &saved, rkey->configuration, FIM_SCHEDULED,
-                       saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFIED, NULL);
+    fim_registry_event(&new, &saved, configuration, FIM_SCHEDULED, saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFIED, NULL);
 
     fim_db_set_registry_key_scanned(syscheck.database, new.registry_entry.key->path);
 
     if (value_count) {
-        fim_read_values(sub_key_handle, &new, &saved, rkey, value_count);
+        fim_read_values(current_key_handle, &new, &saved, configuration, value_count);
     }
 
-    RegCloseKey(sub_key_handle);
+    RegCloseKey(current_key_handle);
     return;
 }
 
 void fim_registry_scan() {
     HKEY root_key_handle = NULL;
-    registry_key_t rkey;
+    char *sub_key = NULL;
     int i = 0;
 
     /* Debug entries */
@@ -660,13 +635,13 @@ void fim_registry_scan() {
         mdebug2(FIM_READING_REGISTRY, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32] ",
                 syscheck.registry[i].entry);
 
-        if (fim_set_root_key(&root_key_handle, &rkey, syscheck.registry[i].entry, &syscheck.registry[i]) != 0) {
+        if (fim_set_root_key(&root_key_handle, syscheck.registry[i].entry, &sub_key) != 0) {
             mdebug1(FIM_INV_REG, syscheck.registry[i].entry, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32]");
             *syscheck.registry[i].entry = '\0';
             continue;
         }
 
-        fim_open_key(root_key_handle, &rkey);
+        fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, &syscheck.registry[i]);
     }
 
     mdebug1(FIM_WINREGISTRY_ENDED);
