@@ -25,6 +25,8 @@ int __wrap_wdb_fim_update_date_entry(wdb_t* socket, const char *path);
 
 int __wrap_wdb_finalize();
 
+int  __wrap_wdb_step(__attribute__((unused)) sqlite3_stmt *stmt);
+
 int __wrap_wdb_scan_info_fim_checks_control(wdb_t* socket, const char *last_check);
 
 int __wrap_wdb_scan_info_get(wdb_t *socket, const char *module, char *field, long *output);
@@ -38,6 +40,10 @@ int __wrap_wdb_syscheck_load(wdb_t *wdb, const char *file, char *output, size_t 
 int __wrap_wdb_syscheck_save(wdb_t *wdb, int ftype, char *checksum, const char *file);
 
 int __wrap_wdb_syscheck_save2(wdb_t *wdb, const char *payload);
+
+cJSON * __wrap_wdb_exec_stmt(__attribute__((unused)) sqlite3_stmt *stmt);
+
+cJSON * __wrap_wdb_exec(__attribute__((unused)) sqlite3_stmt *stmt);
 
 int __wrap_wdbc_parse_result(char *result, char **payload);
 

@@ -269,7 +269,7 @@ cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int id) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -435,7 +435,7 @@ cJSON* wdb_global_select_agent_name(wdb_t *wdb, int id) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -465,7 +465,7 @@ cJSON* wdb_global_select_agent_group(wdb_t *wdb, int id) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -503,7 +503,7 @@ cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -533,7 +533,7 @@ cJSON* wdb_global_select_agent_fim_offset(wdb_t *wdb, int id) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -563,7 +563,7 @@ cJSON* wdb_global_select_agent_reg_offset(wdb_t *wdb, int id) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -663,7 +663,7 @@ cJSON* wdb_global_select_agent_status(wdb_t *wdb, int id) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -763,7 +763,7 @@ cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -916,7 +916,7 @@ cJSON* wdb_global_select_groups(wdb_t *wdb) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -954,7 +954,7 @@ cJSON* wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -1063,7 +1063,7 @@ wdbc_result wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **outpu
         cJSON* sql_agents_response = wdb_exec_stmt(agent_stmt);
         if (sql_agents_response && sql_agents_response->child) {
             cJSON* json_agent = sql_agents_response->child;
-            cJSON* json_id = cJSON_GetObjectItemCaseSensitive(json_agent,"id");
+            cJSON* json_id = cJSON_GetObjectItem(json_agent,"id");
             if (cJSON_IsNumber(json_id)) {
                 //Get ID
                 int agent_id = json_id->valueint;
@@ -1202,7 +1202,7 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -1263,7 +1263,7 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
         cJSON* sql_agents_response = wdb_exec_stmt(stmt);
         if (sql_agents_response && sql_agents_response->child) {
             cJSON* json_agent = sql_agents_response->child;
-            cJSON* json_id = cJSON_GetObjectItemCaseSensitive(json_agent,"id");
+            cJSON* json_id = cJSON_GetObjectItem(json_agent,"id");
             if (cJSON_IsNumber(json_id)) {
                 //Get ID
                 int agent_id = json_id->valueint;
@@ -1342,7 +1342,7 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
         cJSON* sql_agents_response = wdb_exec_stmt(stmt);
         if (sql_agents_response && sql_agents_response->child) {
             cJSON* json_agent = sql_agents_response->child;
-            cJSON* json_id = cJSON_GetObjectItemCaseSensitive(json_agent,"id");
+            cJSON* json_id = cJSON_GetObjectItem(json_agent,"id");
             if (cJSON_IsNumber(json_id)) {
                 //Get ID
                 int agent_id = json_id->valueint;               
