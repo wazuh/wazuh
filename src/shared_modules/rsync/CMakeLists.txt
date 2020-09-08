@@ -22,6 +22,10 @@ include_directories(${CMAKE_SOURCE_DIR}/include/)
 include_directories(${CMAKE_SOURCE_DIR}/src/)
 include_directories(${SHARED_MODULES}/utils/)
 include_directories(${SHARED_MODULES}/common/)
+include_directories(${SHARED_MODULES}/dbsync/include)
+
+link_directories(${SHARED_MODULES}/dbsync/build/lib/)
+
 
 file(GLOB RSYNC_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp")
@@ -42,7 +46,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  target_link_libraries(rsync gcov)
+  target_link_libraries(rsync dbsync gcov)
   if(UNIT_TEST)
     include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
     include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
@@ -53,5 +57,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_subdirectory(integrationTests)
   endif(UNIT_TEST)
 else()
-    target_link_libraries(rsync)
+    target_link_libraries(rsync dbsync)
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+
+add_subdirectory(testtool)
