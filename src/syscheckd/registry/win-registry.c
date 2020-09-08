@@ -11,7 +11,7 @@
 #ifdef WIN32
 
 #include "shared.h"
-#include "syscheck.h"
+#include "../syscheck.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
