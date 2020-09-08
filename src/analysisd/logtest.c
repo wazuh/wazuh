@@ -679,10 +679,21 @@ int w_logtest_check_input_request(cJSON * root, OSList * list_msg) {
     }
 
     token = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
-    if (cJSON_IsString(token) && token->valuestring != NULL && strlen(token->valuestring) != W_LOGTEST_TOKEN_LENGH) {
+    if (token && (!cJSON_IsString(token)
+        || (cJSON_IsString(token) && token->valuestring && strlen(token->valuestring) != W_LOGTEST_TOKEN_LENGH))) {
+        
+        char * str_token = NULL;
+        
+        if (cJSON_IsString(token)) {
+            os_strdup(token->valuestring, str_token);
+        } else {
+            str_token = cJSON_PrintUnformatted(token);
+        }
 
-        mdebug1(LOGTEST_ERROR_TOKEN_INVALID, token->valuestring);
-        smwarn(list_msg, LOGTEST_ERROR_TOKEN_INVALID, token->valuestring);
+        mdebug1(LOGTEST_ERROR_TOKEN_INVALID, str_token);
+        smwarn(list_msg, LOGTEST_ERROR_TOKEN_INVALID, str_token);
+        os_free(str_token);
+
         cJSON_DeleteItemFromObjectCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
     }
 
