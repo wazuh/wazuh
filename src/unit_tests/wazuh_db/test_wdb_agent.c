@@ -25,6 +25,8 @@
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/libc/string_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
+#include "../wrappers/posix/stat_wrappers.h"
 
 #define WDBQUERY_SIZE OS_BUFFER_SIZE
 #define WDBOUTPUT_SIZE OS_MAXSTR
@@ -39,34 +41,6 @@ char test_payload[OS_MAXSTR] = { 0 };
 time_t __wrap_time(time_t *__timer) {
     *__timer = 1;
     return 1;
-}
-
-int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
-    check_expected(*sock);
-    check_expected(query);
-    check_expected(len);
-
-    if (1 == set_payload) {
-        strncpy(response, test_payload, strlen(test_payload));
-    }
-
-    return mock_type(int);
-}
-
-int __wrap_wdbc_parse_result(char *result, char **payload) {
-    if (1 == set_payload) {
-        *payload = result+3; // It takes into account OK and the space
-    }
-
-    return mock_type(int);
-}
-
-cJSON *__wrap_wdbc_query_parse_json(int *sock, const char *query, char *response, const int len) {
-    check_expected(*sock);
-    check_expected(query);
-    check_expected(len);
-
-    return mock_type(cJSON *);
 }
 
 int __wrap_wdb_create_profile(const char *path) {
@@ -91,13 +65,6 @@ int __wrap_chown(const char *__file, __uid_t __owner, __gid_t __group) {
     check_expected(__file);
     check_expected(__owner);
     check_expected(__group);
-
-    return mock_type(int);
-}
-
-int __wrap_chmod(const char *__file, __mode_t __mode) {
-    check_expected(__file);
-    check_expected(__mode);
 
     return mock_type(int);
 }
@@ -345,8 +312,7 @@ void test_wdb_create_agent_db_error_changing_mode(void **state)
     expect_value(__wrap_chown, __group, 0);
     will_return(__wrap_chown, OS_SUCCESS);
     // Changing mode
-    expect_string(__wrap_chmod, __file, "var/db/agents/001-agent1.db");
-    expect_value(__wrap_chmod, __mode, 0660);
+    expect_string(__wrap_chmod, path, "var/db/agents/001-agent1.db");
     will_return(__wrap_chmod, OS_INVALID);
     will_return(__wrap_strerror, "error");
     expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object 'var/db/agents/001-agent1.db' due to [(0)-(error)].");
@@ -392,8 +358,7 @@ void test_wdb_create_agent_db_success(void **state)
     expect_value(__wrap_chown, __group, 0);
     will_return(__wrap_chown, OS_SUCCESS);
     // Changing mode
-    expect_string(__wrap_chmod, __file, "var/db/agents/001-agent1.db");
-    expect_value(__wrap_chmod, __mode, 0660);
+    expect_string(__wrap_chmod, path, "var/db/agents/001-agent1.db");
     will_return(__wrap_chmod, OS_SUCCESS);
 
     ret = wdb_create_agent_db(agent_id, agent_name);
@@ -438,6 +403,7 @@ void test_wdb_insert_agent_error_socket(void **state)
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -464,9 +430,10 @@ void test_wdb_insert_agent_error_socket(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -495,6 +462,7 @@ void test_wdb_insert_agent_error_sql_execution(void **state)
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -521,9 +489,10 @@ void test_wdb_insert_agent_error_sql_execution(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
     // Hnadling result
@@ -552,6 +521,7 @@ void test_wdb_insert_agent_error_result(void **state)
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -578,12 +548,14 @@ void test_wdb_insert_agent_error_result(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
@@ -607,6 +579,7 @@ void test_wdb_insert_agent_success(void **state)
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
+    const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -633,12 +606,14 @@ void test_wdb_insert_agent_success(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     // Hnadling result and creating agent database
@@ -672,8 +647,7 @@ void test_wdb_insert_agent_success(void **state)
     expect_value(__wrap_chown, __group, 0);
     will_return(__wrap_chown, OS_SUCCESS);
     // Changing mode
-    expect_string(__wrap_chmod, __file, "var/db/agents/001-agent1.db");
-    expect_value(__wrap_chmod, __mode, 0660);
+    expect_string(__wrap_chmod, path, "var/db/agents/001-agent1.db");
     will_return(__wrap_chmod, OS_SUCCESS);
 
     ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date);
@@ -696,6 +670,7 @@ void test_wdb_insert_agent_success_keep_date(void **state)
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1577851261}";
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1577851261}";
+    const char *response = "ok";
 
     will_return(__wrap_isChroot, 0);
 
@@ -736,12 +711,14 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     // Hnadling result and creating agent database
@@ -775,8 +752,7 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     expect_value(__wrap_chown, __group, 0);
     will_return(__wrap_chown, OS_SUCCESS);
     // Changing mode
-    expect_string(__wrap_chmod, __file, "var/db/agents/001-agent1.db");
-    expect_value(__wrap_chmod, __mode, 0660);
+    expect_string(__wrap_chmod, path, "var/db/agents/001-agent1.db");
     will_return(__wrap_chmod, OS_SUCCESS);
 
     ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date);
@@ -809,6 +785,7 @@ void test_wdb_update_agent_name_error_socket(void **state)
 
     const char *json_str = "{\"id\":1,\"name\":\"agent1\"}";
     const char *query_str = "global update-agent-name {\"id\":1,\"name\":\"agent1\"}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -825,9 +802,10 @@ void test_wdb_update_agent_name_error_socket(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -847,6 +825,7 @@ void test_wdb_update_agent_name_error_sql_execution(void **state)
 
     const char *json_str = "{\"id\":1,\"name\":\"agent1\"}";
     const char *query_str = "global update-agent-name {\"id\":1,\"name\":\"agent1\"}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -863,9 +842,10 @@ void test_wdb_update_agent_name_error_sql_execution(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
     // Hnadling result
@@ -885,6 +865,7 @@ void test_wdb_update_agent_name_error_result(void **state)
 
     const char *json_str = "{\"id\":1,\"name\":\"agent1\"}";
     const char *query_str = "global update-agent-name {\"id\":1,\"name\":\"agent1\"}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -901,12 +882,14 @@ void test_wdb_update_agent_name_error_result(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
@@ -923,6 +906,7 @@ void test_wdb_update_agent_name_success(void **state)
 
     const char *json_str = "{\"id\":1,\"name\":\"agent1\"}";
     const char *query_str = "global update-agent-name {\"id\":1,\"name\":\"agent1\"}";
+    const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -939,12 +923,14 @@ void test_wdb_update_agent_name_success(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_update_agent_name(id, name);
@@ -1017,6 +1003,7 @@ void test_wdb_update_agent_version_error_socket(void **state)
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":1}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -1063,9 +1050,10 @@ void test_wdb_update_agent_version_error_socket(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -1115,6 +1103,7 @@ void test_wdb_update_agent_version_error_sql_execution(void **state)
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":1}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -1161,9 +1150,10 @@ void test_wdb_update_agent_version_error_sql_execution(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
     // Hnadling result
@@ -1213,6 +1203,7 @@ void test_wdb_update_agent_version_error_result(void **state)
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":1}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -1259,12 +1250,14 @@ void test_wdb_update_agent_version_error_result(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
@@ -1306,6 +1299,7 @@ void test_wdb_update_agent_version_success(void **state)
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":1}";
+    const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -1352,12 +1346,14 @@ void test_wdb_update_agent_version_success(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_update_agent_version(id, os_name, os_version, os_major, os_minor, os_codename,
@@ -1373,12 +1369,8 @@ void test_wdb_get_agent_info_error_no_json_response(void **state) {
     cJSON *root = NULL;
     int id = 1;
 
-    const char *query_str = "global get-agent-info 1";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent's 1 information.");
@@ -1392,12 +1384,8 @@ void test_wdb_get_agent_info_success(void **state) {
     cJSON *root = NULL;
     int id = 1;
 
-    const char *query_str = "global get-agent-info 1";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, (cJSON *)1);
 
     root = wdb_get_agent_info(id);
@@ -1411,12 +1399,8 @@ void test_wdb_get_agent_labels_error_no_json_response(void **state) {
     cJSON *root = NULL;
     int id = 1;
 
-    const char *query_str = "global get-labels 1";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent's 1 labels.");
@@ -1430,12 +1414,8 @@ void test_wdb_get_agent_labels_success(void **state) {
     cJSON *root = NULL;
     int id = 1;
 
-    const char *query_str = "global get-labels 1";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, (cJSON *)1);
 
     root = wdb_get_agent_labels(id);
@@ -1452,11 +1432,13 @@ void test_wdb_set_agent_labels_error_socket(void **state)
     char *labels = "key1:value1\nkey2:value2";
 
     char *query_str = "global set-labels 1 key1:value1\nkey2:value2";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, OS_BUFFER_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -1475,11 +1457,13 @@ void test_wdb_set_agent_labels_error_sql_execution(void **state)
     char *labels = "key1:value1\nkey2:value2";
 
     char *query_str = "global set-labels 1 key1:value1\nkey2:value2";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, OS_BUFFER_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
     // Hnadling result
@@ -1498,14 +1482,17 @@ void test_wdb_set_agent_labels_error_result(void **state)
     char *labels = "key1:value1\nkey2:value2";
 
     char *query_str = "global set-labels 1 key1:value1\nkey2:value2";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, OS_BUFFER_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
@@ -1521,14 +1508,17 @@ void test_wdb_set_agent_labels_success(void **state)
     char *labels = "key1:value1\nkey2:value2";
 
     char *query_str = "global set-labels 1 key1:value1\nkey2:value2";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, OS_BUFFER_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_set_agent_labels(id, labels);
@@ -1561,6 +1551,7 @@ void test_wdb_update_agent_keepalive_error_socket(void **state)
 
     const char *json_str = "{\"id\":1,\"sync_status\":0}";
     const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":0}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -1576,9 +1567,10 @@ void test_wdb_update_agent_keepalive_error_socket(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -1598,6 +1590,7 @@ void test_wdb_update_agent_keepalive_error_sql_execution(void **state)
 
     const char *json_str = "{\"id\":1,\"sync_status\":0}";
     const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":0}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -1613,9 +1606,10 @@ void test_wdb_update_agent_keepalive_error_sql_execution(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
     // Hnadling result
@@ -1635,6 +1629,7 @@ void test_wdb_update_agent_keepalive_error_result(void **state)
 
     const char *json_str = "{\"id\":1,\"sync_status\":0}";
     const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":0}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -1650,12 +1645,14 @@ void test_wdb_update_agent_keepalive_error_result(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
@@ -1672,6 +1669,7 @@ void test_wdb_update_agent_keepalive_success(void **state)
 
     const char *json_str = "{\"id\":1,\"sync_status\":0}";
     const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":0}";
+    const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -1687,12 +1685,14 @@ void test_wdb_update_agent_keepalive_success(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_update_agent_keepalive(id, sync_status);
@@ -1708,11 +1708,13 @@ void test_wdb_delete_agent_belongs_error_socket(void **state)
     int id = 1;
 
     char *query_str = "global delete-agent-belong 1";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -1730,11 +1732,13 @@ void test_wdb_delete_agent_belongs_error_sql_execution(void **state)
     int id = 1;
 
     char *query_str = "global delete-agent-belong 1";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
     // Hnadling result
@@ -1752,14 +1756,17 @@ void test_wdb_delete_agent_belongs_error_result(void **state)
     int id = 1;
 
     char *query_str = "global delete-agent-belong 1";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
@@ -1774,14 +1781,17 @@ void test_wdb_delete_agent_belongs_success(void **state)
     int id = 1;
 
     char *query_str = "global delete-agent-belong 1";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_delete_agent_belongs(id);
@@ -1795,12 +1805,8 @@ void test_wdb_get_agent_name_error_no_json_response(void **state) {
     int id = 1;
     char *name = NULL;
 
-    const char *query_str = "global select-agent-name 1";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent's 1 name.");
@@ -1817,8 +1823,6 @@ void test_wdb_get_agent_name_success(void **state) {
     int id = 1;
     char *name = NULL;
 
-    const char *query_str = "global select-agent-name 1";
-
     root = __real_cJSON_CreateArray();
     row = __real_cJSON_CreateObject();
     str = __real_cJSON_CreateString("agent1");
@@ -1826,10 +1830,7 @@ void test_wdb_get_agent_name_success(void **state) {
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
-
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -1914,11 +1915,13 @@ void test_wdb_remove_agent_error_socket(void **state)
     int id = 1;
 
     char *query_str = "global delete-agent 1";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -1936,11 +1939,13 @@ void test_wdb_remove_agent_error_sql_execution(void **state)
     int id = 1;
 
     char *query_str = "global delete-agent 1";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
     // Hnadling result
@@ -1958,14 +1963,17 @@ void test_wdb_remove_agent_error_result(void **state)
     int id = 1;
 
     char *query_str = "global delete-agent 1";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
@@ -1980,22 +1988,27 @@ void test_wdb_remove_agent_error_delete_belongs_and_name(void **state)
     int id = 1;
 
     char *query_str = "global delete-agent 1";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     char *query_belong_str = "global delete-agent-belong 1";
+    response = "err";
 
     // Calling Wazuh DB in delete-agent-belong
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_belong_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -2005,9 +2018,7 @@ void test_wdb_remove_agent_error_delete_belongs_and_name(void **state)
     const char *query_name_str = "global select-agent-name 1";
 
     // Calling Wazuh DB in select-agent-name
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_name_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent's 1 name.");
@@ -2028,28 +2039,32 @@ void test_wdb_remove_agent_success(void **state)
     int id = 1;
 
     char *query_str = "global delete-agent 1";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     char *query_belongs_str = "global delete-agent-belong 1";
+    response = "ok";
 
     // Calling Wazuh DB in delete-agent-belong
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_belongs_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    const char *query_name_str = "global select-agent-name 1";
 
     root = __real_cJSON_CreateArray();
     row = __real_cJSON_CreateObject();
@@ -2058,9 +2073,7 @@ void test_wdb_remove_agent_success(void **state)
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB in select-agent-name
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_name_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -2102,13 +2115,10 @@ void test_wdb_get_agent_keepalive_error_no_json_response(void **state) {
     time_t keepalive = 0;
     char name[]="agent1";
     char ip[]="0.0.0.1";
-    const char *query_str = "global select-keepalive agent1 0.0.0.1";
     cJSON* response = NULL;
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, response);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the last agent keepalive.");
@@ -2122,13 +2132,10 @@ void test_wdb_get_agent_keepalive_error_empty_json_response(void **state) {
     time_t keepalive = 0;
     char name[]="agent1";
     char ip[]="0.0.0.1";
-    const char *query_str = "global select-keepalive agent1 0.0.0.1";
     cJSON* response = cJSON_Parse("[{}]");
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, response);
     expect_function_call(__wrap_cJSON_Delete);
 
@@ -2146,13 +2153,10 @@ void test_wdb_get_agent_keepalive_success(void **state) {
     time_t keepalive = 0;
     char name[]="agent1";
     char ip[]="0.0.0.1";
-    const char *query_str = "global select-keepalive agent1 0.0.0.1";
     cJSON* response = cJSON_Parse("[{\"last_keepalive\":100}]");
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, response);
     expect_function_call(__wrap_cJSON_Delete);
 
@@ -2172,12 +2176,8 @@ void test_wdb_get_agent_group_error_no_json_response(void **state) {
     int id = 1;
     char *name = NULL;
 
-    const char *query_str = "global select-agent-group 1";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent's 1 group.");
@@ -2194,8 +2194,6 @@ void test_wdb_get_agent_group_success(void **state) {
     int id = 1;
     char *name = NULL;
 
-    const char *query_str = "global select-agent-group 1";
-
     root = __real_cJSON_CreateArray();
     row = __real_cJSON_CreateObject();
     str = __real_cJSON_CreateString("default");
@@ -2203,10 +2201,7 @@ void test_wdb_get_agent_group_success(void **state) {
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
-
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -2259,7 +2254,6 @@ void test_wdb_find_agent_error_json_output(void **state)
     const char *ip_str = "any";
 
     const char *json_str = "{\"name\":\"agent1\",\"ip\":\"any\"}";
-    const char *query_str = "global find-agent {\"name\":\"agent1\",\"ip\":\"any\"}";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddStringToObject, 1);
@@ -2275,10 +2269,7 @@ void test_wdb_find_agent_error_json_output(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, WDBOUTPUT_SIZE);
-
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     // Hnadling result
@@ -2298,7 +2289,6 @@ void test_wdb_find_agent_success(void **state)
     cJSON *row = NULL;
 
     const char *json_str = "{\"name\":\"agent1\",\"ip\":\"any\"}";
-    const char *query_str = "global find-agent {\"name\":\"agent1\",\"ip\":\"any\"}";
 
     root = __real_cJSON_CreateArray();
     row = __real_cJSON_CreateObject();
@@ -2319,10 +2309,7 @@ void test_wdb_find_agent_success(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, WDBOUTPUT_SIZE);
-
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -2356,13 +2343,8 @@ void test_wdb_get_agent_offset_error_json_output(void **state)
     int id = 1;
     int type = WDB_SYSCHECK;
 
-    const char *query_str = "global select-fim-offset 1";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, WDBOUTPUT_SIZE);
-
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     // Hnadling result
@@ -2381,18 +2363,13 @@ void test_wdb_get_agent_offset_success_fim(void **state)
     cJSON *root = NULL;
     cJSON *row = NULL;
 
-    const char *query_str = "global select-fim-offset 1";
-
     root = __real_cJSON_CreateArray();
     row = __real_cJSON_CreateObject();
     __real_cJSON_AddNumberToObject(row, "fim_offset", 100);
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, WDBOUTPUT_SIZE);
-
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -2415,18 +2392,13 @@ void test_wdb_get_agent_offset_success_reg(void **state)
     cJSON *root = NULL;
     cJSON *row = NULL;
 
-    const char *query_str = "global select-reg-offset 1";
-
     root = __real_cJSON_CreateArray();
     row = __real_cJSON_CreateObject();
     __real_cJSON_AddNumberToObject(row, "reg_offset", 100);
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, WDBOUTPUT_SIZE);
-
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -2491,6 +2463,7 @@ void test_wdb_set_agent_offset_error_socket(void **state)
 
     const char *json_str = "{\"id\":1,\"offset\":100}";
     const char *query_str = "global update-fim-offset {\"id\":1,\"offset\":100}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -2506,9 +2479,10 @@ void test_wdb_set_agent_offset_error_socket(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -2529,6 +2503,7 @@ void test_wdb_set_agent_offset_error_sql_execution(void **state)
 
     const char *json_str = "{\"id\":1,\"offset\":100}";
     const char *query_str = "global update-fim-offset {\"id\":1,\"offset\":100}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -2544,9 +2519,10 @@ void test_wdb_set_agent_offset_error_sql_execution(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
     // Hnadling result
@@ -2567,6 +2543,7 @@ void test_wdb_set_agent_offset_error_result(void **state)
 
     const char *json_str = "{\"id\":1,\"offset\":100}";
     const char *query_str = "global update-fim-offset {\"id\":1,\"offset\":100}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -2582,12 +2559,14 @@ void test_wdb_set_agent_offset_error_result(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
@@ -2605,6 +2584,7 @@ void test_wdb_set_agent_offset_success_fim(void **state)
 
     const char *json_str = "{\"id\":1,\"offset\":100}";
     const char *query_str = "global update-fim-offset {\"id\":1,\"offset\":100}";
+    const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -2620,12 +2600,14 @@ void test_wdb_set_agent_offset_success_fim(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_set_agent_offset(id, type, offset);
@@ -2642,6 +2624,7 @@ void test_wdb_set_agent_offset_success_reg(void **state)
 
     const char *json_str = "{\"id\":1,\"offset\":100}";
     const char *query_str = "global update-reg-offset {\"id\":1,\"offset\":100}";
+    const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -2657,12 +2640,14 @@ void test_wdb_set_agent_offset_success_reg(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_set_agent_offset(id, type, offset);
@@ -2676,12 +2661,8 @@ void test_wdb_get_agent_status_error_no_json_response(void **state) {
     int id = 1;
     int status = 0;
 
-    const char *query_str = "global select-agent-status 1";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent status.");
@@ -2698,17 +2679,12 @@ void test_wdb_get_agent_status_error_json_data(void **state) {
     int id = 1;
     int status = 0;
 
-    const char *query_str = "global select-agent-status 1";
-
     root = __real_cJSON_CreateArray();
     row = __real_cJSON_CreateObject();
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
-
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -2730,8 +2706,6 @@ void test_wdb_get_agent_status_success(void **state) {
     int id = 1;
     int status = 0;
 
-    const char *query_str = "global select-agent-status 1";
-
     root = __real_cJSON_CreateArray();
     row = __real_cJSON_CreateObject();
     str = __real_cJSON_CreateString("empty");
@@ -2739,10 +2713,7 @@ void test_wdb_get_agent_status_success(void **state) {
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
-
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -2793,6 +2764,7 @@ void test_wdb_set_agent_status_error_socket(void **state)
 
     const char *json_str = "{\"id\":1,\"status\":\"empty\"}";
     const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"empty\"}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -2809,9 +2781,10 @@ void test_wdb_set_agent_status_error_socket(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -2831,6 +2804,7 @@ void test_wdb_set_agent_status_error_sql_execution(void **state)
 
     const char *json_str = "{\"id\":1,\"status\":\"empty\"}";
     const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"empty\"}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -2847,9 +2821,10 @@ void test_wdb_set_agent_status_error_sql_execution(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
     // Hnadling result
@@ -2869,6 +2844,7 @@ void test_wdb_set_agent_status_error_result(void **state)
 
     const char *json_str = "{\"id\":1,\"status\":\"empty\"}";
     const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"empty\"}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -2885,12 +2861,14 @@ void test_wdb_set_agent_status_error_result(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
@@ -2907,6 +2885,7 @@ void test_wdb_set_agent_status_success_empty(void **state)
 
     const char *json_str = "{\"id\":1,\"status\":\"empty\"}";
     const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"empty\"}";
+    const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -2923,12 +2902,14 @@ void test_wdb_set_agent_status_success_empty(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_set_agent_status(id, status);
@@ -2944,6 +2925,7 @@ void test_wdb_set_agent_status_success_pending(void **state)
 
     const char *json_str = "{\"id\":1,\"status\":\"pending\"}";
     const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"pending\"}";
+    const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -2960,12 +2942,14 @@ void test_wdb_set_agent_status_success_pending(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_set_agent_status(id, status);
@@ -2981,6 +2965,7 @@ void test_wdb_set_agent_status_success_updated(void **state)
 
     const char *json_str = "{\"id\":1,\"status\":\"updated\"}";
     const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"updated\"}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -2997,12 +2982,14 @@ void test_wdb_set_agent_status_success_updated(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_set_agent_status(id, status);
@@ -3017,11 +3004,13 @@ void test_wdb_get_agents_by_keepalive_wdbc_query_error(void **state) {
     int keepalive = 10;
 
     const char *query_str = "global get-agents-by-keepalive condition > 10 start_id 0";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     int *array = wdb_get_agents_by_keepalive(condition, keepalive, false);
@@ -3034,14 +3023,17 @@ void test_wdb_get_agents_by_keepalive_wdbc_parse_error(void **state) {
     int keepalive = 10;
 
     const char *query_str = "global get-agents-by-keepalive condition > 10 start_id 0";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
     int *array = wdb_get_agents_by_keepalive(condition, keepalive, false);
@@ -3060,12 +3052,14 @@ void test_wdb_get_agents_by_keepalive_success(void **state) {
     strncpy(test_payload, "ok 1,2,3", 8);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, test_payload);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     int *array = wdb_get_agents_by_keepalive(condition, keepalive, false);
@@ -3086,11 +3080,13 @@ void test_wdb_get_agents_by_keepalive_success(void **state) {
 
 void test_wdb_get_all_agents_wdbc_query_error(void **state) {
     const char *query_str = "global get-all-agents start_id 0";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     int *array = wdb_get_all_agents(false);
@@ -3100,14 +3096,17 @@ void test_wdb_get_all_agents_wdbc_query_error(void **state) {
 
 void test_wdb_get_all_agents_wdbc_parse_error(void **state) {
     const char *query_str = "global get-all-agents start_id 0";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
     int *array = wdb_get_all_agents(false);
@@ -3123,12 +3122,14 @@ void test_wdb_get_all_agents_success(void **state) {
     strncpy(test_payload, "ok 1,2,3", 8);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, test_payload);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     int *array = wdb_get_all_agents(false);
@@ -3170,6 +3171,7 @@ void test_wdb_update_agent_group_error_socket(void **state)
 
     const char *json_str = "{\"id\":1,\"group\":\"test_group\"}";
     const char *query_str = "global update-agent-group {\"id\":1,\"group\":\"test_group\"}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -3186,9 +3188,10 @@ void test_wdb_update_agent_group_error_socket(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -3208,6 +3211,7 @@ void test_wdb_update_agent_group_error_sql_execution(void **state)
 
     const char *json_str = "{\"id\":1,\"group\":\"test_group\"}";
     const char *query_str = "global update-agent-group {\"id\":1,\"group\":\"test_group\"}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -3224,9 +3228,10 @@ void test_wdb_update_agent_group_error_sql_execution(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
     // Hnadling result
@@ -3246,6 +3251,7 @@ void test_wdb_update_agent_group_error_result(void **state)
 
     const char *json_str = "{\"id\":1,\"group\":\"test_group\"}";
     const char *query_str = "global update-agent-group {\"id\":1,\"group\":\"test_group\"}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -3262,12 +3268,14 @@ void test_wdb_update_agent_group_error_result(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
@@ -3284,6 +3292,7 @@ void test_wdb_update_agent_group_error_multi_group(void **state)
 
     const char *json_str = "{\"id\":1,\"group\":\"test_group\"}";
     const char *query_str = "global update-agent-group {\"id\":1,\"group\":\"test_group\"}";
+    const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -3300,21 +3309,25 @@ void test_wdb_update_agent_group_error_multi_group(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     //// wdb_update_agent_multi_group error
     query_str = "global delete-agent-belong 1";
+    response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -3334,6 +3347,7 @@ void test_wdb_update_agent_group_success(void **state)
 
     const char *json_str = "{\"id\":1,\"group\":\"test_group\"}";
     const char *query_str = "global update-agent-group {\"id\":1,\"group\":\"test_group\"}";
+    const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -3350,12 +3364,14 @@ void test_wdb_update_agent_group_success(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     //// wdb_update_agent_multi_group success
@@ -3363,49 +3379,46 @@ void test_wdb_update_agent_group_success(void **state)
     query_str = "global delete-agent-belong 1";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     //// wdb_find_group error
-    query_str = "global find-group test_group";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent group id.");
 
     //// wdb_insert_group success
     query_str = "global insert-agent-group test_group";
+    response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     //// wdb_find_group success
-    query_str = "global find-group test_group";
-
     cJSON *root = __real_cJSON_CreateArray();
     cJSON *row = __real_cJSON_CreateObject();
     __real_cJSON_AddNumberToObject(row, "id", 1);
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -3416,6 +3429,7 @@ void test_wdb_update_agent_group_success(void **state)
     //// wdb_update_agent_belongs error
     json_str = "{\"id_group\":1,\"id_agent\":1}";
     query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":1}";
+    response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, 1);
 
@@ -3430,12 +3444,14 @@ void test_wdb_update_agent_group_success(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_update_agent_group(id, test_group);
@@ -3451,12 +3467,8 @@ void test_wdb_find_group_error_no_json_response(void **state) {
     int id = 0;
     char *name = "test_group";
 
-    const char *query_str = "global find-group test_group";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent group id.");
@@ -3470,17 +3482,13 @@ void test_wdb_find_group_success(void **state) {
     int id = 0;
     char *name = "test_group";
 
-    const char *query_str = "global find-group test_group";
-
     cJSON *root = __real_cJSON_CreateArray();
     cJSON *row = __real_cJSON_CreateObject();
     __real_cJSON_AddNumberToObject(row, "id", 1);
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -3503,11 +3511,13 @@ void test_wdb_insert_group_error_socket(void **state)
     const char *name = "test_group";
 
     const char *query_str = "global insert-agent-group test_group";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -3525,11 +3535,13 @@ void test_wdb_insert_group_error_sql_execution(void **state)
     const char *name = "test_group";
 
     const char *query_str = "global insert-agent-group test_group";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
     // Hnadling result
@@ -3547,14 +3559,17 @@ void test_wdb_insert_group_error_result(void **state)
     const char *name = "test_group";
 
     const char *query_str = "global insert-agent-group test_group";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
@@ -3569,14 +3584,17 @@ void test_wdb_insert_group_success(void **state)
     const char *name = "test_group";
 
     const char *query_str = "global insert-agent-group test_group";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_insert_group(name);
@@ -3609,6 +3627,7 @@ void test_wdb_update_agent_belongs_error_socket(void **state)
 
     const char *json_str = "{\"id_group\":1,\"id_agent\":2}";
     const char *query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -3624,9 +3643,10 @@ void test_wdb_update_agent_belongs_error_socket(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -3646,6 +3666,7 @@ void test_wdb_update_agent_belongs_error_sql_execution(void **state)
 
     const char *json_str = "{\"id_group\":1,\"id_agent\":2}";
     const char *query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -3661,9 +3682,10 @@ void test_wdb_update_agent_belongs_error_sql_execution(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
     // Hnadling result
@@ -3683,6 +3705,7 @@ void test_wdb_update_agent_belongs_error_result(void **state)
 
     const char *json_str = "{\"id_group\":1,\"id_agent\":2}";
     const char *query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
+    const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -3698,12 +3721,14 @@ void test_wdb_update_agent_belongs_error_result(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
@@ -3720,6 +3745,7 @@ void test_wdb_update_agent_belongs_success(void **state)
 
     const char *json_str = "{\"id_group\":1,\"id_agent\":2}";
     const char *query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
+    const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -3735,12 +3761,14 @@ void test_wdb_update_agent_belongs_success(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_update_agent_belongs(id_group, id_agent);
@@ -3756,11 +3784,13 @@ void test_wdb_update_agent_multi_group_error_deleting_agent(void **state) {
     char *name = "test_group";
 
     char *query_str = "global delete-agent-belong 1";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -3779,23 +3809,23 @@ void test_wdb_update_agent_multi_group_error_update_belongs_single(void **state)
 
     //// wdb_delete_agent_belongs success
     char *query_str = "global delete-agent-belong 1";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     //// wdb_find_group error
-    query_str = "global find-group test_group";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent group id.");
@@ -3804,16 +3834,17 @@ void test_wdb_update_agent_multi_group_error_update_belongs_single(void **state)
     query_str = "global insert-agent-group test_group";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     //// wdb_find_group success
-    query_str = "global find-group test_group";
 
     cJSON *root = __real_cJSON_CreateArray();
     cJSON *row = __real_cJSON_CreateObject();
@@ -3821,9 +3852,7 @@ void test_wdb_update_agent_multi_group_error_update_belongs_single(void **state)
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -3852,23 +3881,22 @@ void test_wdb_update_agent_multi_group_error_update_belongs_multi(void **state) 
 
     //// wdb_delete_agent_belongs success
     char *query_str = "global delete-agent-belong 1";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     //// wdb_find_group error
-    query_str = "global find-group test_group1";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent group id.");
@@ -3877,26 +3905,24 @@ void test_wdb_update_agent_multi_group_error_update_belongs_multi(void **state) 
     query_str = "global insert-agent-group test_group1";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     //// wdb_find_group success
-    query_str = "global find-group test_group1";
-
     cJSON *root = __real_cJSON_CreateArray();
     cJSON *row = __real_cJSON_CreateObject();
     __real_cJSON_AddNumberToObject(row, "id", 1);
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -3922,21 +3948,19 @@ void test_wdb_update_agent_multi_group_error_update_belongs_multi(void **state) 
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     //// wdb_find_group error
-    query_str = "global find-group test_group2";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent group id.");
@@ -3945,26 +3969,24 @@ void test_wdb_update_agent_multi_group_error_update_belongs_multi(void **state) 
     query_str = "global insert-agent-group test_group2";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     //// wdb_find_group success
-    query_str = "global find-group test_group2";
-
     cJSON *root2 = __real_cJSON_CreateArray();
     cJSON *row2 = __real_cJSON_CreateObject();
     __real_cJSON_AddNumberToObject(row2, "id", 2);
     __real_cJSON_AddItemToArray(root2, row2);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root2);
 
     // Getting JSON data
@@ -3993,14 +4015,17 @@ void test_wdb_update_agent_multi_group_success(void **state) {
 
     //// wdb_delete_agent_belongs success
     char *query_str = "global delete-agent-belong 1";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_update_agent_multi_group(id, name);
@@ -4016,11 +4041,13 @@ void test_wdb_remove_group_from_belongs_db_error_socket(void **state)
     const char *name = "test_group";
 
     const char *query_str = "global delete-group-belong test_group";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -4038,11 +4065,13 @@ void test_wdb_remove_group_from_belongs_db_error_sql_execution(void **state)
     const char *name = "test_group";
 
     const char *query_str = "global delete-group-belong test_group";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
     // Hnadling result
@@ -4060,14 +4089,17 @@ void test_wdb_remove_group_from_belongs_db_error_result(void **state)
     const char *name = "test_group";
 
     const char *query_str = "global delete-group-belong test_group";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
@@ -4082,14 +4114,17 @@ void test_wdb_remove_group_from_belongs_db_success(void **state)
     const char *name = "test_group";
 
     const char *query_str = "global delete-group-belong test_group";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_remove_group_from_belongs_db(name);
@@ -4105,11 +4140,13 @@ void test_wdb_remove_group_db_error_removing_belongs(void **state)
     const char *name = "test_group";
 
     const char *query_str = "global delete-group-belong test_group";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -4130,22 +4167,27 @@ void test_wdb_remove_group_db_error_socket(void **state)
     const char *name = "test_group";
 
     const char *query_str = "global delete-group-belong test_group";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     query_str = "global delete-group test_group";
+    response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -4163,22 +4205,27 @@ void test_wdb_remove_group_db_error_sql_execution(void **state)
     const char *name = "test_group";
 
     const char *query_str = "global delete-group-belong test_group";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     query_str = "global delete-group test_group";
+    response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
     // Hnadling result
@@ -4196,25 +4243,31 @@ void test_wdb_remove_group_db_error_result(void **state)
     const char *name = "test_group";
 
     const char *query_str = "global delete-group-belong test_group";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     query_str = "global delete-group test_group";
+    response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
@@ -4229,25 +4282,30 @@ void test_wdb_remove_group_db_success(void **state)
     const char *name = "test_group";
 
     const char *query_str = "global delete-group-belong test_group";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     query_str = "global delete-group test_group";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     ret = wdb_remove_group_db(name);
@@ -4260,12 +4318,8 @@ void test_wdb_remove_group_db_success(void **state)
 void test_wdb_update_groups_error_json(void **state) {
     int ret = 0;
 
-    const char *query_str = "global select-groups";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to update groups.");
@@ -4284,8 +4338,6 @@ void test_wdb_update_groups_error_max_path(void **state) {
     cJSON *str2 = NULL;
     char *very_long_name = NULL;
 
-    const char *query_str = "global select-groups";
-
     // Generating a very log group name
     os_calloc(PATH_MAX+1, sizeof(char), very_long_name);
     int i = 0;
@@ -4302,9 +4354,7 @@ void test_wdb_update_groups_error_max_path(void **state) {
     __real_cJSON_AddItemToArray(root, row2);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -4321,12 +4371,14 @@ void test_wdb_update_groups_error_max_path(void **state) {
     //// Call to wdb_remove_group_db
     const char *name = "test_group";
 
-    query_str = "global delete-group-belong test_group";
+    const char *query_str = "global delete-group-belong test_group";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -4350,8 +4402,6 @@ void test_wdb_update_groups_error_removing_group_db(void **state) {
     cJSON *row = NULL;
     cJSON *str = NULL;
 
-    const char *query_str = "global select-groups";
-
     root = __real_cJSON_CreateArray();
     row = __real_cJSON_CreateObject();
     str = __real_cJSON_CreateString("test_group");
@@ -4359,9 +4409,7 @@ void test_wdb_update_groups_error_removing_group_db(void **state) {
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -4375,12 +4423,14 @@ void test_wdb_update_groups_error_removing_group_db(void **state) {
     //// Call to wdb_remove_group_db
     const char *name = "test_group";
 
-    query_str = "global delete-group-belong test_group";
+    const char *query_str = "global delete-group-belong test_group";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Hnadling result
@@ -4403,8 +4453,6 @@ void test_wdb_update_groups_error_adding_new_groups(void **state) {
     cJSON *row = NULL;
     cJSON *str = NULL;
 
-    const char *query_str = "global select-groups";
-
     root = __real_cJSON_CreateArray();
     row = __real_cJSON_CreateObject();
     str = __real_cJSON_CreateString("test_group");
@@ -4412,9 +4460,7 @@ void test_wdb_update_groups_error_adding_new_groups(void **state) {
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -4443,8 +4489,6 @@ void test_wdb_update_groups_success(void **state) {
     cJSON *row = NULL;
     cJSON *str = NULL;
 
-    const char *query_str = "global select-groups";
-
     root = __real_cJSON_CreateArray();
     row = __real_cJSON_CreateObject();
     str = __real_cJSON_CreateString("test_group");
@@ -4456,9 +4500,7 @@ void test_wdb_update_groups_success(void **state) {
     strncpy(dir_ent->d_name, "test_group", 10);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -4476,26 +4518,25 @@ void test_wdb_update_groups_success(void **state) {
     will_return(__wrap_IsDir, 0);
 
     //// Call to wdb_find_group
-    query_str = "global find-group test_group";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent group id.");
 
     //// Call to wdb_insert_group
-    query_str = "global insert-agent-group test_group";
+    const char *query_str = "global insert-agent-group test_group";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     will_return(__wrap_readdir, NULL);
@@ -4521,12 +4562,14 @@ void test_wdb_agent_belongs_first_time_success(void **state) {
     strncpy(test_payload, "ok 1", 8);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, test_payload);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     //// Call to wdb_get_agent_group
@@ -4536,8 +4579,6 @@ void test_wdb_agent_belongs_first_time_success(void **state) {
     int id = 1;
     char *name = NULL;
 
-    query_str = "global select-agent-group 1";
-
     root = __real_cJSON_CreateArray();
     row = __real_cJSON_CreateObject();
     str = __real_cJSON_CreateString("default");
@@ -4545,10 +4586,7 @@ void test_wdb_agent_belongs_first_time_success(void **state) {
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
-
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
@@ -4559,23 +4597,22 @@ void test_wdb_agent_belongs_first_time_success(void **state) {
     //// Call to wdb_update_agent_multi_group
     //// wdb_delete_agent_belongs success
     query_str = "global delete-agent-belong 1";
+    const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     //// wdb_find_group error
-    query_str = "global find-group default";
-
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent group id.");
@@ -4584,26 +4621,24 @@ void test_wdb_agent_belongs_first_time_success(void **state) {
     query_str = "global insert-agent-group default";
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     //// wdb_find_group success
-    query_str = "global find-group default";
-
     cJSON *root2 = __real_cJSON_CreateArray();
     cJSON *row2 = __real_cJSON_CreateObject();
     __real_cJSON_AddNumberToObject(row2, "id", 1);
     __real_cJSON_AddItemToArray(root2, row2);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
-    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
-    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
