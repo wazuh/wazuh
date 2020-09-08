@@ -69,7 +69,9 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap
                              -Wl,--wrap,OS_CheckIfRuleMatch -Wl,--wrap,OS_AddEvent -Wl,--wrap,IGnore \
                              -Wl,--wrap,OSList_AddData -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP \
                              -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,CreateThreadJoinable -Wl,--wrap,_merror_exit \
-                             -Wl,--wrap,CreateThread -Wl,--wrap,pthread_join -Wl,--wrap,unlink")
+                             -Wl,--wrap,CreateThread -Wl,--wrap,pthread_join -Wl,--wrap,unlink \
+                             -Wl,--wrap,Eventinfo_to_jsonstr -Wl,--wrap,cJSON_Parse -Wl,--wrap,ParseRuleComment \
+                             -Wl,--wrap,Accumulate -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddBoolToObject")
 
 LIST(APPEND analysisd_names "test_logtest-config")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 -Wl,--wrap,get_nproc -Wl,--wrap,cJSON_CreateObject \
