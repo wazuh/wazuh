@@ -243,30 +243,37 @@ typedef struct __test_fim_db_ctx_s {
 static int test_fim_db_setup(void **state) {
     test_fim_db_insert_data *test_data;
     test_data = calloc(1, sizeof(test_fim_db_insert_data));
+
     test_data->fim_sql = calloc(1, sizeof(fdb_t));
-    test_data->entry = calloc(1, sizeof(fim_entry));
-    test_data->entry->data = calloc(1, sizeof(fim_file_data));
-    test_data->entry->data->inode = 200;
-    test_data->entry->data->dev = 100;
-    test_data->entry->path =  strdup("/test/path");
     test_data->fim_sql->transaction.last_commit = 1; //Set a time diferent than 0
+
+    test_data->entry = calloc(1, sizeof(fim_entry));
+    test_data->entry->type = FIM_TYPE_FILE;
+
+    test_data->entry->file_entry.data = calloc(1, sizeof(fim_file_data));
+    test_data->entry->file_entry.data->inode = 200;
+    test_data->entry->file_entry.data->dev = 100;
+    test_data->entry->file_entry.path =  strdup("/test/path");
+
+
     test_data->saved = calloc(1, sizeof(fim_file_data));
     test_data->saved->inode = 100;
     test_data->saved->dev = 100;
+
     *state = test_data;
     return 0;
 }
 
 static int test_fim_db_teardown(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    free(test_data->entry->path);
-    free(test_data->entry->data->perm);
-    free(test_data->entry->data->attributes);
-    free(test_data->entry->data->uid);
-    free(test_data->entry->data->gid);
-    free(test_data->entry->data->user_name);
-    free(test_data->entry->data->group_name);
-    free(test_data->entry->data);
+    free(test_data->entry->file_entry.path);
+    free(test_data->entry->file_entry.data->perm);
+    free(test_data->entry->file_entry.data->attributes);
+    free(test_data->entry->file_entry.data->uid);
+    free(test_data->entry->file_entry.data->gid);
+    free(test_data->entry->file_entry.data->user_name);
+    free(test_data->entry->file_entry.data->group_name);
+    free(test_data->entry->file_entry.data);
     free(test_data->entry);
     free(test_data->fim_sql);
     free(test_data->saved);
@@ -690,7 +697,7 @@ void test_fim_db_insert_data_no_rowid_error(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Step error inserting data row_id '0': ERROR MESSAGE");
 
     int row_id = 0;
-    int ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->data, &row_id);
+    int ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->file_entry.data, &row_id);
 
     assert_int_equal(row_id, 0);
     assert_int_equal(ret, FIMDB_ERR);
@@ -724,7 +731,7 @@ void test_fim_db_insert_data_no_rowid_success(void **state) {
     will_return(__wrap_sqlite3_last_insert_rowid, 1);
 
     int row_id = 0;
-    int ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->data, &row_id);
+    int ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->file_entry.data, &row_id);
 
     assert_int_equal(row_id, 1);
     assert_int_equal(ret, FIMDB_OK);
@@ -745,7 +752,7 @@ void test_fim_db_insert_data_rowid_error(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Step error updating data row_id '1': ERROR MESSAGE");
     int ret;
     int row_id = 1;
-    ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->data, &row_id);
+    ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->file_entry.data, &row_id);
     assert_int_equal(row_id, 1);
     assert_int_equal(ret, FIMDB_ERR);
 }
@@ -763,7 +770,7 @@ void test_fim_db_insert_data_rowid_success(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     int ret;
     int row_id = 1;
-    ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->data, &row_id);
+    ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->file_entry.data, &row_id);
     assert_int_equal(row_id, 1);
     assert_int_equal(ret, FIMDB_OK);
 }
@@ -783,7 +790,7 @@ void test_fim_db_insert_path_error(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "Step error replacing path '/test/path': ERROR MESSAGE");
     int ret;
-    ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->path, test_data->entry->data, 1);
+    ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, 1);
     assert_int_equal(ret, FIMDB_ERR);
 }
 
@@ -800,7 +807,7 @@ void test_fim_db_insert_path_success(void **state) {
     will_return_count(__wrap_sqlite3_bind_text, 0, 2);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     int ret;
-    ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->path, test_data->entry->data, 1);
+    ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, 1);
     assert_int_equal(ret, FIMDB_OK);
 }
 
@@ -827,7 +834,7 @@ void test_fim_db_insert_db_full(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Couldn't insert '/test/path' entry into DB. The DB is full, please check your configuration.");
 
     syscheck.database = test_data->fim_sql;
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, NULL);
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, NULL);
     syscheck.database = NULL;
     assert_int_equal(ret, FIMDB_FULL);
 }
@@ -905,7 +912,7 @@ void test_fim_db_insert_inode_id_nonull(void **state) {
 
     wraps_fim_db_check_transaction();
 
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, test_data->saved);
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, test_data->saved);
     assert_int_equal(ret, FIMDB_OK);   // Success
 }
 
@@ -978,14 +985,14 @@ void test_fim_db_insert_inode_id_null(void **state) {
 
     wraps_fim_db_check_transaction();
 
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, test_data->saved);
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, test_data->saved);
     assert_int_equal(ret, FIMDB_OK);   // Success
 }
 
 void test_fim_db_insert_inode_id_null_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret;
-    test_data->entry->data->inode = 100;
+    test_data->entry->file_entry.data->inode = 100;
 
     // Inside fim_db_clean_stmt
     {
@@ -1009,7 +1016,7 @@ void test_fim_db_insert_inode_id_null_error(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "Step error getting data row: ERROR MESSAGE");
 
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, test_data->saved);
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, test_data->saved);
     assert_int_equal(ret, FIMDB_ERR);
 }
 
@@ -1220,7 +1227,7 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
     will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
 
 #ifndef TEST_WINAGENT
-    expect_string(__wrap_delete_target_file, path, test_data->entry->path);
+    expect_string(__wrap_delete_target_file, path, test_data->entry->file_entry.path);
     will_return(__wrap_delete_target_file, 0);
     expect_string(__wrap_fim_configuration_directory, path, "/test/path");
     expect_string(__wrap_fim_configuration_directory, entry, "file");
@@ -1245,10 +1252,10 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
     char *diff_path;
 
     diff_path = (char *)malloc(sizeof(char) * (strlen("/var/ossec/queue/diff/local") +
-                                                strlen(test_data->entry->path) + 1));
+                                                strlen(test_data->entry->file_entry.path) + 1));
 
-    snprintf(diff_path, (strlen("/var/ossec/queue/diff/local") + strlen(test_data->entry->path) + 1), "%s%s",
-                "/var/ossec/queue/diff/local", test_data->entry->path);
+    snprintf(diff_path, (strlen("/var/ossec/queue/diff/local") + strlen(test_data->entry->file_entry.path) + 1), "%s%s",
+                "/var/ossec/queue/diff/local", test_data->entry->file_entry.path);
 
     expect_string(__wrap_IsDir, file, diff_path);
     will_return(__wrap_IsDir, 0);
@@ -1432,7 +1439,7 @@ void test_fim_db_get_path_inexistent(void **state) {
     expect_any_always(__wrap_sqlite3_bind_text, buffer);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
-    fim_entry *ret = fim_db_get_path(test_data->fim_sql, test_data->entry->path);
+    fim_entry *ret = fim_db_get_path(test_data->fim_sql, test_data->entry->file_entry.path);
     state[1] = ret;
     assert_null(ret);
 }
@@ -1446,29 +1453,28 @@ void test_fim_db_get_path_existent(void **state) {
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
-    fim_entry *ret = fim_db_get_path(test_data->fim_sql, test_data->entry->path);
+    fim_entry *ret = fim_db_get_path(test_data->fim_sql, test_data->entry->file_entry.path);
     state[1] = ret;
     assert_non_null(ret);
-    assert_string_equal("/some/random/path", ret->path);
-    assert_int_equal(1, ret->data->mode);
-    assert_int_equal(1000000, ret->data->last_event);
-    assert_int_equal(2, ret->data->entry_type);
-    assert_int_equal(1000001, ret->data->scanned);
-    assert_int_equal(1000002, ret->data->options);
-    assert_string_equal("checksum", ret->data->checksum);
-    assert_int_equal(111, ret->data->dev);
-    assert_int_equal(1024, ret->data->inode);
-    assert_int_equal(4096, ret->data->size);
-    assert_string_equal("perm", ret->data->perm);
-    assert_string_equal("attributes", ret->data->attributes);
-    assert_string_equal("uid", ret->data->uid);
-    assert_string_equal("gid", ret->data->gid);
-    assert_string_equal("user_name", ret->data->user_name);
-    assert_string_equal("group_name", ret->data->group_name);
-    assert_string_equal("hash_md5", ret->data->hash_md5);
-    assert_string_equal("hash_sha1", ret->data->hash_sha1);
-    assert_string_equal("hash_sha256", ret->data->hash_sha256);
-    assert_int_equal(12345678, ret->data->mtime);
+    assert_string_equal("/some/random/path", ret->file_entry.path);
+    assert_int_equal(1, ret->file_entry.data->mode);
+    assert_int_equal(1000000, ret->file_entry.data->last_event);
+    assert_int_equal(1000001, ret->file_entry.data->scanned);
+    assert_int_equal(1000002, ret->file_entry.data->options);
+    assert_string_equal("checksum", ret->file_entry.data->checksum);
+    assert_int_equal(111, ret->file_entry.data->dev);
+    assert_int_equal(1024, ret->file_entry.data->inode);
+    assert_int_equal(4096, ret->file_entry.data->size);
+    assert_string_equal("perm", ret->file_entry.data->perm);
+    assert_string_equal("attributes", ret->file_entry.data->attributes);
+    assert_string_equal("uid", ret->file_entry.data->uid);
+    assert_string_equal("gid", ret->file_entry.data->gid);
+    assert_string_equal("user_name", ret->file_entry.data->user_name);
+    assert_string_equal("group_name", ret->file_entry.data->group_name);
+    assert_string_equal("hash_md5", ret->file_entry.data->hash_md5);
+    assert_string_equal("hash_sha1", ret->file_entry.data->hash_sha1);
+    assert_string_equal("hash_sha256", ret->file_entry.data->hash_sha256);
+    assert_int_equal(12345678, ret->file_entry.data->mtime);
 }
 /*----------------------------------------------*/
 /*----------fim_db_set_all_unscanned()------------------*/
@@ -2514,25 +2520,24 @@ void test_fim_db_callback_calculate_checksum(void **state) {
     test_fim_db_ctx_t *data = *state;
 
     // Fill up a mock fim_entry
-    data->test_data->entry->data->mode = 1;
-    data->test_data->entry->data->last_event = 1234;
-    data->test_data->entry->data->entry_type = 2;
-    data->test_data->entry->data->scanned = 2345;
-    data->test_data->entry->data->options = 3456;
-    strcpy(data->test_data->entry->data->checksum, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    data->test_data->entry->data->dev = 4567;
-    data->test_data->entry->data->inode = 5678;
-    data->test_data->entry->data->size = 4096;
-    data->test_data->entry->data->perm = strdup("perm");
-    data->test_data->entry->data->attributes = strdup("attributes");
-    data->test_data->entry->data->uid = strdup("uid");
-    data->test_data->entry->data->gid = strdup("gid");
-    data->test_data->entry->data->user_name = strdup("user_name");
-    data->test_data->entry->data->group_name = strdup("group_name");
-    strcpy(data->test_data->entry->data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(data->test_data->entry->data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(data->test_data->entry->data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    data->test_data->entry->data->mtime = 6789;
+    data->test_data->entry->file_entry.data->mode = 1;
+    data->test_data->entry->file_entry.data->last_event = 1234;
+    data->test_data->entry->file_entry.data->scanned = 2345;
+    data->test_data->entry->file_entry.data->options = 3456;
+    strcpy(data->test_data->entry->file_entry.data->checksum, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->test_data->entry->file_entry.data->dev = 4567;
+    data->test_data->entry->file_entry.data->inode = 5678;
+    data->test_data->entry->file_entry.data->size = 4096;
+    data->test_data->entry->file_entry.data->perm = strdup("perm");
+    data->test_data->entry->file_entry.data->attributes = strdup("attributes");
+    data->test_data->entry->file_entry.data->uid = strdup("uid");
+    data->test_data->entry->file_entry.data->gid = strdup("gid");
+    data->test_data->entry->file_entry.data->user_name = strdup("user_name");
+    data->test_data->entry->file_entry.data->group_name = strdup("group_name");
+    strcpy(data->test_data->entry->file_entry.data->hash_md5, "3691689a513ace7e508297b583d7050d");
+    strcpy(data->test_data->entry->file_entry.data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    strcpy(data->test_data->entry->file_entry.data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    data->test_data->entry->file_entry.data->mtime = 6789;
 
     // Mock EVP_DigestUpdate()
     expect_string(__wrap_EVP_DigestUpdate, data, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
@@ -2541,7 +2546,7 @@ void test_fim_db_callback_calculate_checksum(void **state) {
 
     fim_db_callback_calculate_checksum(data->test_data->fim_sql, data->test_data->entry, syscheck.database_store, data->ctx);
 
-    assert_string_equal(data->test_data->entry->data->checksum, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->test_data->entry->file_entry.data->checksum, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
 }
 
 /*----------------------------------------------*/
@@ -2618,26 +2623,25 @@ void test_fim_db_decode_full_row(void **state) {
     test_data->entry = fim_db_decode_full_row(test_data->fim_sql->stmt[FIMDB_STMT_GET_PATH]);
     *state = test_data;
     assert_non_null(test_data->entry);
-    assert_string_equal(test_data->entry->path, "/some/random/path");
-    assert_int_equal(test_data->entry->data->mode, 1);
-    assert_int_equal(test_data->entry->data->last_event, 1000000);
-    assert_int_equal(test_data->entry->data->entry_type, 2);
-    assert_int_equal(test_data->entry->data->scanned, 1000001);
-    assert_int_equal(test_data->entry->data->options, 1000002);
-    assert_string_equal(test_data->entry->data->checksum, "checksum");
-    assert_int_equal(test_data->entry->data->dev, 111);
-    assert_int_equal(test_data->entry->data->inode, 1024);
-    assert_int_equal(test_data->entry->data->size, 4096);
-    assert_string_equal(test_data->entry->data->perm, "perm");
-    assert_string_equal(test_data->entry->data->attributes, "attributes");
-    assert_string_equal(test_data->entry->data->uid, "uid");
-    assert_string_equal(test_data->entry->data->gid, "gid");
-    assert_string_equal(test_data->entry->data->user_name, "user_name");
-    assert_string_equal(test_data->entry->data->group_name, "group_name");
-    assert_string_equal(test_data->entry->data->hash_md5, "hash_md5");
-    assert_string_equal(test_data->entry->data->hash_sha1, "hash_sha1");
-    assert_string_equal(test_data->entry->data->hash_sha256, "hash_sha256");
-    assert_int_equal(test_data->entry->data->mtime, 12345678);
+    assert_string_equal(test_data->entry->file_entry.path, "/some/random/path");
+    assert_int_equal(test_data->entry->file_entry.data->mode, 1);
+    assert_int_equal(test_data->entry->file_entry.data->last_event, 1000000);
+    assert_int_equal(test_data->entry->file_entry.data->scanned, 1000001);
+    assert_int_equal(test_data->entry->file_entry.data->options, 1000002);
+    assert_string_equal(test_data->entry->file_entry.data->checksum, "checksum");
+    assert_int_equal(test_data->entry->file_entry.data->dev, 111);
+    assert_int_equal(test_data->entry->file_entry.data->inode, 1024);
+    assert_int_equal(test_data->entry->file_entry.data->size, 4096);
+    assert_string_equal(test_data->entry->file_entry.data->perm, "perm");
+    assert_string_equal(test_data->entry->file_entry.data->attributes, "attributes");
+    assert_string_equal(test_data->entry->file_entry.data->uid, "uid");
+    assert_string_equal(test_data->entry->file_entry.data->gid, "gid");
+    assert_string_equal(test_data->entry->file_entry.data->user_name, "user_name");
+    assert_string_equal(test_data->entry->file_entry.data->group_name, "group_name");
+    assert_string_equal(test_data->entry->file_entry.data->hash_md5, "hash_md5");
+    assert_string_equal(test_data->entry->file_entry.data->hash_sha1, "hash_sha1");
+    assert_string_equal(test_data->entry->file_entry.data->hash_sha256, "hash_sha256");
+    assert_int_equal(test_data->entry->file_entry.data->mtime, 12345678);
 }
 
 /*----------------------------------------------*/
@@ -2654,7 +2658,7 @@ void test_fim_db_set_scanned_error(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "Step error setting scanned path '/test/path': ERROR MESSAGE");
 
-    int ret = fim_db_set_scanned(test_data->fim_sql, test_data->entry->path);
+    int ret = fim_db_set_scanned(test_data->fim_sql, test_data->entry->file_entry.path);
     assert_int_equal(ret, FIMDB_ERR);
 }
 
@@ -2670,7 +2674,7 @@ void test_fim_db_set_scanned_success(void **state) {
 
     wraps_fim_db_check_transaction();
 
-    int ret = fim_db_set_scanned(test_data->fim_sql, test_data->entry->path);
+    int ret = fim_db_set_scanned(test_data->fim_sql, test_data->entry->file_entry.path);
     assert_int_equal(ret, FIMDB_OK);
 }
 
