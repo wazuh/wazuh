@@ -20,7 +20,7 @@
 #include "os_net/os_net.h"
 #include "wazuhdb_op.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when testing */
 #define static
 
@@ -69,13 +69,13 @@ static int fim_process_alert(_sdb *sdb, Eventinfo *lf, cJSON *event);
 
 /**
  * @brief Generate fim alert
- * 
+ *
  * @param lf Event information
  * @param event_type Type of event (added, modified, deleted)
  * @param attributes New file attributes
  * @param old_attributes File attributes before the alert
  * @param audit Audit information
- * 
+ *
  * @returns 0 on success, -1 on failure
 */
 static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes, cJSON *old_attributes, cJSON *audit);
@@ -108,6 +108,7 @@ static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int decode_event_add;
 static int decode_event_delete;
 static int decode_event_modify;
+OSHash *fim_agentinfo;
 
 // Initialize the necessary information to process the syscheck information
 // LCOV_EXCL_START

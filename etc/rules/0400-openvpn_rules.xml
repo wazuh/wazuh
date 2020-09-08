@@ -30,7 +30,6 @@
     <rule id="81802" level="3" frequency="3" timeframe="60">
         <if_matched_sid>81801</if_matched_sid>
         <user />
-        <options>alert_by_email</options>
         <description>OpenVPN: Concurrent connections</description>
     </rule>
 
@@ -51,7 +50,6 @@
 
     <rule id="81804" level="4" frequency="3" timeframe="60">
         <if_matched_sid>81803</if_matched_sid>
-        <options>alert_by_email</options>
         <description>OpenVPN: Certificate failed - Possible revoked user</description>
         <mitre>
             <id>T1133</id>

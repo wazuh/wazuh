@@ -51,7 +51,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
     wm_azure_setup(azure_config);
     mtinfo(WM_AZURE_LOGTAG, "Module started.");
 
-    
+
 
     // Main loop
 
@@ -333,7 +333,6 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
 
 void wm_azure_setup(wm_azure_t *_azure_config) {
 
-    int i;
     azure_config = _azure_config;
     wm_azure_check();
 
@@ -344,10 +343,9 @@ void wm_azure_setup(wm_azure_t *_azure_config) {
 
     // Connect to socket
 
-    for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        w_time_delay(1000 * WM_MAX_WAIT);
+    queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-    if (i == WM_MAX_ATTEMPTS) {
+    if (queue_fd < 0) {
         mterror(WM_AZURE_LOGTAG, "Can't connect to queue.");
         pthread_exit(NULL);
     }

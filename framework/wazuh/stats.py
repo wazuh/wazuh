@@ -1,72 +1,58 @@
-
-
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.exception import WazuhException
-from wazuh import common
+import os
 from io import StringIO
+
+from wazuh.core import common
+from wazuh.core.cluster.cluster import get_node
+from wazuh.core.cluster.utils import read_cluster_config
+from wazuh.core.exception import WazuhError, WazuhInternalError
+from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.rbac.decorators import expose_resources
+
 try:
     import configparser
+
     unicode = str
 except ImportError:
     import ConfigParser as configparser
 
-
 DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+cluster_enabled = not read_cluster_config()['disabled']
+node_id = get_node().get('node') if cluster_enabled else None
 
 
-def totals(year, month, day):
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def totals(date):
     """
     Returns the totals file.
-
-    :param year: Year in YYYY format, e.g. 2016
-    :param month: Month in number or 3 first letters, e.g. Feb or 2
-    :param day: Day, e.g. 9
+    :param date: date object with the date value of the stats
     :return: Array of dictionaries. Each dictionary represents an hour.
     """
 
+    stat_filename = ""
     try:
-        year = int(year)
-        day = int(day)
-
-        if year < 0 or day < 0 or day > 31:
-            raise WazuhException(1307)
-
-        day = "%02d" % day
-    except ValueError:
-        raise WazuhException(1307)
-
-    if month not in MONTHS:
-        try:
-            index = int(month)
-        except ValueError:
-            raise WazuhException(1307)
-
-        if index < 1 or index > 12:
-            raise WazuhException(1307)
-
-        try:
-            month = MONTHS[index - 1]
-        except IndexError:
-            raise WazuhException(1307)
-
-    try:
-        stat_filename = common.stats_path + "/totals/" + str(year) + '/' + month + "/ossec-totals-" + day + ".log"
+        stat_filename = os.path.join(
+            common.stats_path, "totals", str(date.year), MONTHS[date.month - 1],
+            f"ossec-totals-{date.strftime('%d')}.log")
         stats = open(stat_filename, 'r')
     except IOError:
-        raise WazuhException(1308, stat_filename)
+        raise WazuhError(1308, extra_message=stat_filename)
 
-    response = []
+    result = AffectedItemsWazuhResult(all_msg='Statistical information for each node was successfully read',
+                                      some_msg='Could not read statistical information for some nodes',
+                                      none_msg='Could not read statistical information for any node'
+                                      )
     alerts = []
 
     for line in stats:
         data = line.split('-')
 
         if len(data) == 4:
-            hour = int(data[0])
             sigid = int(data[1])
             level = int(data[2])
             times = int(data[3])
@@ -80,7 +66,8 @@ def totals(year, month, day):
                 if len(data) in (0, 1):
                     continue
                 else:
-                    raise WazuhException(1309)
+                    result.add_failed_item(id_=node_id, error=WazuhInternalError(1309))
+                    return result
 
             hour = int(data[0])
             total_alerts = int(data[1])
@@ -88,16 +75,20 @@ def totals(year, month, day):
             syscheck = int(data[3])
             firewall = int(data[4])
 
-            response.append({'hour': hour, 'alerts': alerts, 'totalAlerts': total_alerts, 'events': events, 'syscheck': syscheck, 'firewall': firewall})
+            result.affected_items.append(
+                {'hour': hour, 'alerts': alerts, 'totalAlerts': total_alerts, 'events': events, 'syscheck': syscheck,
+                 'firewall': firewall})
             alerts = []
 
-    return response
+    result.total_affected_items = len(result.affected_items)
+    return result
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def hourly():
     """
     Returns the hourly averages.
-
     :return: Dictionary: averages and interactions.
     """
 
@@ -120,18 +111,26 @@ def hourly():
             if i < 24:
                 averages.append(0)
 
-    return {'averages': averages, 'interactions': interactions}
+    result = AffectedItemsWazuhResult(all_msg='Statistical information per hour for each node was successfully read',
+                                      some_msg='Could not read statistical information per hour for some nodes',
+                                      none_msg='Could not read statistical information per hour for any node'
+                                      )
+    result.affected_items.append({'averages': averages, 'interactions': interactions})
+    result.total_affected_items = len(result.affected_items)
+    return result
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def weekly():
     """
     Returns the weekly averages.
-
     :return: A dictionary for each week day.
     """
-
-    response = {}
-
+    result = AffectedItemsWazuhResult(all_msg='Statistical information per week for each node was successfully read',
+                                      some_msg='Could not read statistical information per week for some nodes',
+                                      none_msg='Could not read statistical information per week for any node'
+                                      )
     # 0..6 => Sunday..Saturday
     for i in range(7):
         hours = []
@@ -152,19 +151,25 @@ def weekly():
                 if i < 24:
                     hours.append(0)
 
-        response[DAYS[i]] = {'hours': hours, 'interactions': interactions}
+        result.affected_items.append({DAYS[i]: {'hours': hours, 'interactions': interactions}})
 
-    return response
+    result.total_affected_items = len(result.affected_items)
+    return result
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_daemons_stats(filename):
-    """
-    Returns the stats of an input file.
+    """Returns the stats of an input file.
 
     :param filename: Full path of the file to get information.
-
     :return: A dictionary with the stats of the input file.
     """
+    result = AffectedItemsWazuhResult(
+        all_msg='Statistical information for each node was successfully read',
+        some_msg='Could not read statistical information for some nodes',
+        none_msg='Could not read statistical information for any node'
+        )
     try:
 
         with open(filename, 'r') as f:
@@ -172,35 +177,18 @@ def get_daemons_stats(filename):
 
         fp = StringIO(input_file)
         config = configparser.RawConfigParser()
-        config.readfp(fp)
+        config.read_file(fp)
         items = dict(config.items("root"))
 
         try:
             for key, value in items.items():
-                items[key] = float(value[1:-1])  # delete extra quotation marks
+                items[key] = float(value[1:-1])  # Delete extra quotation marks
+            result.affected_items.append(items)
         except Exception as e:
-            return WazuhException(1104, str(e))
+            return WazuhInternalError(1104, extra_message=str(e))
 
-        return items
+    except IOError:
+        raise WazuhError(1308, extra_message=filename)
 
-    except Exception as e:
-
-        raise WazuhException(1308, str(e))
-
-
-def analysisd():
-    """
-    Returns the stats of analysisd.
-
-    :return: A dictionary with the stats of analysisd.
-    """
-    return get_daemons_stats(common.analysisd_stats)
-
-
-def remoted():
-    """
-    Returns the stats of remoted.
-
-    :return: A dictionary with the stats of remoted.
-        """
-    return get_daemons_stats(common.remoted_stats)
+    result.total_affected_items = len(result.affected_items)
+    return result

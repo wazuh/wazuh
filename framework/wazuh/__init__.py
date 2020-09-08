@@ -6,11 +6,12 @@
 
 import os
 import re
+from datetime import datetime
 from time import strftime
 
-from wazuh import common
-from wazuh.database import Connection
-from wazuh.exception import WazuhException
+from wazuh.core import common
+from wazuh.core.database import Connection
+from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 
 """
 Wazuh HIDS Python package
@@ -19,7 +20,7 @@ Wazuh is a python package to manage OSSEC.
 
 """
 
-__version__ = '3.13.1'
+__version__ = '4.0.0'
 
 
 msg = "\n\nPython 2.7 or newer not found."
@@ -30,9 +31,9 @@ msg += "\n  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rh/python27/root/usr/li
 try:
     from sys import version_info as python_version
     if python_version.major < 2 or (python_version.major == 2 and python_version.minor < 7):
-        raise WazuhException(999, msg)
+        raise WazuhInternalError(999, msg)
 except Exception as e:
-    raise WazuhException(999, msg)
+    raise WazuhInternalError(999, msg)
 
 
 class Wazuh:
@@ -61,10 +62,20 @@ class Wazuh:
     def __str__(self):
         return str(self.to_dict())
 
+    def __eq__(self, other):
+        if isinstance(other, Wazuh):
+            return self.to_dict() == other.to_dict()
+        return False
+
     def to_dict(self):
+        date_format = '%a %b %d %H:%M:%S %Z %Y'
+        try:
+            compilation_date = datetime.strptime(self.installation_date, date_format)
+        except ValueError:
+            compilation_date = datetime.now()
         return {'path': self.path,
                 'version': self.version,
-                'compilation_date': self.installation_date,
+                'compilation_date': compilation_date,
                 'type': self.type,
                 'max_agents': self.max_agents,
                 'openssl_support': self.openssl_support,
@@ -77,7 +88,6 @@ class Wazuh:
         """
         Calculates all Wazuh installation metadata
         """
-
         # info DB if possible
         try:
             conn = Connection(common.database_path_global)
@@ -86,10 +96,8 @@ class Wazuh:
             conn.execute(query)
 
             for tuple_ in conn:
-                if tuple_[0] == 'max_agents':
-                    self.max_agents = tuple_[1]
-                elif tuple_[0] == 'openssl_support':
-                    self.openssl_support = tuple_[1]
+                if hasattr(self, tuple_['key']):
+                    setattr(self, tuple_['key'], tuple_['value'])
         except Exception:
             self.max_agents = "N/A"
             self.openssl_support = "N/A"
@@ -103,8 +111,8 @@ class Wazuh:
                     match = line_regex.match(line)
                     if match and len(match.groups()) == 2:
                         self.ruleset_version = match.group(2)
-        except Exception:
-            raise WazuhException(1005, ruleset_version_file)
+        except:
+            raise WazuhInternalError(1005, extra_message=ruleset_version_file)
 
         # Timezone info
         try:

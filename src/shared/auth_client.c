@@ -66,7 +66,7 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
                 printf("%s", buffer);
             } else {
                 message = cJSON_GetObjectItem(response, "message");
-                merror("ERROR %d: %s", error->valueint, message ? message->valuestring : "(undefined)");
+                merror("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
             }
         } else {
             int wdb_sock = -1;

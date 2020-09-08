@@ -18,33 +18,20 @@
 #include <sys/inotify.h>
 #endif
 
-#ifdef UNIT_TESTING
-// Remove static qualifier when unit testing
-#define STATIC
-#else
-#define STATIC static
-#endif
-
 #include "shared.h"
 #include "syscheck.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "rootcheck/rootcheck.h"
 #include "fim_db.h"
 
-#ifdef UNIT_TESTING
-#include "unit_tests/wrappers/syscheckd/run_check.h"
+#ifdef WAZUH_UNIT_TESTING
+#ifdef WIN32
+#include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
+#include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
+#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
+#endif
 // Remove static qualifier when unit testing
 #define STATIC
-
-#ifdef WIN32
-// Replace windows system calls with wrappers
-#define SetThreadPriority   wrap_SetThreadPriority
-#define GetCurrentThread    wrap_GetCurrentThread
-#define GetLastError        wrap_GetLastError
-#undef  sleep
-#define sleep               wrap_Sleep
-#define CreateThread        wrap_run_check_CreateThread
-#endif
 #else
 #define STATIC static
 #endif
@@ -72,15 +59,12 @@ STATIC void fim_link_reload_broken_link(char *path, int index);
 STATIC void fim_delete_realtime_watches(int pos);
 #endif
 
-// Global variables
-static int _base_line = 0;
-
 // Send a message
 STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
         merror(QUEUE_SEND);
 
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             merror_exit(QUEUE_FATAL, DEFAULTQPATH);
         }
 
@@ -333,6 +317,8 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 #endif
 
 #if defined INOTIFY_ENABLED || defined WIN32
+
+static int _base_line = 0;
 
 #ifdef WIN32
     set_priority_windows_thread();

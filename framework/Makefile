@@ -16,10 +16,6 @@ INSTALL_DIR  = install -o root -g ${OSSEC_GROUP} -m 0750  -d
 INSTALL_EXEC = install -o root -g ${OSSEC_GROUP} -m 0750
 INSTALL_FILE = install -o root -g ${OSSEC_GROUP} -m 0640
 
-SQLITE_DIR       = ../src/external/sqlite
-
-BUILD_TARGET     = libsqlite3.so.0
-
 ifdef DEBUG
 	CFLAGS+=-g -I ../src
 	LFLAGS+=-g
@@ -36,20 +32,14 @@ install:
 	$(INSTALL_DIR) $(PREFIX)/framework
 	$(INSTALL_DIR) $(PREFIX)/framework/scripts
 	$(INSTALL_DIR) $(PREFIX)/framework/wazuh
-ifneq (,$(filter ${USE_FRAMEWORK_LIB},yes y Y 1))
-	$(INSTALL_DIR) $(PREFIX)/framework/lib
-endif
-	$(INSTALL_DIR) $(PREFIX)/framework/wazuh/cluster
-	$(INSTALL_DIR) $(PREFIX)/framework/wazuh/cluster/dapi
+	$(INSTALL_DIR) $(PREFIX)/framework/wazuh/core/cluster
+	$(INSTALL_DIR) $(PREFIX)/framework/wazuh/core/cluster/dapi
 
 	$(INSTALL_FILE) scripts/*.py ${PREFIX}/framework/scripts
 	$(INSTALL_FILE) wazuh/*.py ${PREFIX}/framework/wazuh
-	$(INSTALL_FILE) wazuh/cluster/*.json ${PREFIX}/framework/wazuh/cluster
-	$(INSTALL_FILE) wazuh/cluster/*.py ${PREFIX}/framework/wazuh/cluster
-	$(INSTALL_FILE) wazuh/cluster/dapi/*.py ${PREFIX}/framework/wazuh/cluster/dapi
-ifneq (,$(filter ${USE_FRAMEWORK_LIB},yes y Y 1))
-	$(INSTALL_FILE) libsqlite3.so.0 ${PREFIX}/framework/lib/
-endif
+	$(INSTALL_FILE) wazuh/core/cluster/*.json ${PREFIX}/framework/wazuh/core/cluster
+	$(INSTALL_FILE) wazuh/core/cluster/*.py ${PREFIX}/framework/wazuh/core/cluster
+	$(INSTALL_FILE) wazuh/core/cluster/dapi/*.py ${PREFIX}/framework/wazuh/core/cluster/dapi
 
 #	Install scripts/%.py on $(PREFIX)/bin/%
 	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
@@ -57,13 +47,6 @@ endif
 examples: install
 	$(INSTALL_DIR) $(PREFIX)/framework/examples
 	$(INSTALL_EXEC) examples/*.py ${PREFIX}/framework/examples
-
-ifneq (,$(filter ${USE_FRAMEWORK_LIB},yes y Y 1))
-build: $(BUILD_TARGET)
-
-libsqlite3.so.0: $(SQLITE_DIR)/sqlite3.o
-	$(CC) $(LFLAGS) -shared -o $@ $^
-endif
 
 clean:
 	$(RM_FILE) $(BUILD_TARGET) *.o *.so.0

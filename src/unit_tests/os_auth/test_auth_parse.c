@@ -18,50 +18,7 @@
 #include "../../os_auth/auth.h"
 #include "../../addagent/manage_agents.h"
 
-/* redefinitons/wrapping */
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-int __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 //Expected log messages to be checked on mocked log functions
 typedef struct _mocked_log {
@@ -119,11 +76,11 @@ parse_evaluator parse_values_default_cfg []={
     { "OSSEC PASS: pass123 OSSEC A:'agent5'", "192.0.0.1", "pass123",   {"192.0.0.1", "agent5", NULL},              {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent6' IP:'192.0.0.2'", "192.0.0.1", NULL,             {"192.0.0.2", "agent6", NULL},              {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent6) from: 192.0.0.1", NULL} },
 
-    { "OSSEC A:'agent0'", "192.0.0.1", "pass123",                       {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password\n\n"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
-    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", "pass123",   {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password\n\n"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
-    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", NULL,        {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid request for new agent\n\n"}, {"Invalid request for new agent from: 192.0.0.1", NULL, NULL, NULL} },
-    { "OSSEC A:''", "192.0.0.1", NULL,                                  {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: \n\n"},          {"Invalid agent name:  from 192.0.0.1", NULL, "Received request for a new agent () from: 192.0.0.1", NULL} },
-    { "OSSEC A:'inv;agent'", "192.0.0.1", NULL,                         {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: inv;agent\n\n"}, {"Invalid agent name: inv;agent from 192.0.0.1", NULL, "Received request for a new agent (inv;agent) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent0'", "192.0.0.1", "pass123",                       {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
+    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", "pass123",   {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
+    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", NULL,        {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid request for new agent"}, {"Invalid request for new agent from: 192.0.0.1", NULL, NULL, NULL} },
+    { "OSSEC A:''", "192.0.0.1", NULL,                                  {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: "},          {"Invalid agent name:  from 192.0.0.1", NULL, "Received request for a new agent () from: 192.0.0.1", NULL} },
+    { "OSSEC A:'inv;agent'", "192.0.0.1", NULL,                         {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: inv;agent"}, {"Invalid agent name: inv;agent from 192.0.0.1", NULL, "Received request for a new agent (inv;agent) from: 192.0.0.1", NULL} },
     
     {0}
 };
