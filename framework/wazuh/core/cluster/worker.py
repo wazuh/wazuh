@@ -104,7 +104,8 @@ class SyncInfo:
     Defines methods to send information to self.daemon in the master through sendsync command.
     """
 
-    def __init__(self, worker, daemon, msg_format, logger, data_retriever: callable, n_retries=3, expected_res='ok'):
+    def __init__(self, worker, daemon, logger, data_retriever: callable, msg_format='{payload}', n_retries=3,
+                 expected_res='ok'):
         """Class constructor
 
         Parameters
@@ -113,14 +114,14 @@ class SyncInfo:
             Instance of worker object
         daemon : str
             Daemon name on the master node to which send information.
-        msg_format : str
-            Format of the message to be executed in the master's daemon. It must
-            contain the label '{payload}', which will be replaced with every chunk of data.
-            I. e: 'global sync-agent-info-set {payload}'
         logger : Logging object
              Logger to use during synchronization process.
         data_retriever : Callable
             Function to be called to obtain chunks of data. It must return a list of chunks.
+        msg_format : str
+            Format of the message to be executed in the master's daemon. It must
+            contain the label '{payload}', which will be replaced with every chunk of data.
+            I. e: 'global sync-agent-info-set {payload}'
         n_retries : int
             Number of times a chunk has to be resent when it fails.
         expected_res : str
@@ -338,16 +339,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         agent_info_logger = self.task_loggers["Agent info"]
         wdb_conn = WazuhDBConnection()
         agent_info = SyncInfo(worker=self, daemon='wazuh-db', msg_format='global sync-agent-info-set {payload}',
-                              logger=agent_info_logger, data_retriever=wdb_conn.run_wdb_command
-                              )
+                              logger=agent_info_logger, data_retriever=wdb_conn.run_wdb_command)
 
         while True:
             if self.connected:
                 agent_info_logger.info("Starting agent-info sync process.")
                 before = time.time()
                 await agent_info.sync('global sync-agent-info-get ')
-                after = time.time()
-                agent_info_logger.debug2("Time synchronizing agent statuses: {} s".format(after - before))
+                agent_info_logger.debug2("Time synchronizing agent statuses: {} s".format(time.time() - before))
 
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_files'])
 

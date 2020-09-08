@@ -169,7 +169,6 @@ class WazuhDBConnection:
         while True:
             status, payload = self._send(command, full_response=True)
 
-            # Append payload to response if it is not empty
             if status == 'err':
                 raise WazuhInternalError(2007, extra_message=payload)
 
