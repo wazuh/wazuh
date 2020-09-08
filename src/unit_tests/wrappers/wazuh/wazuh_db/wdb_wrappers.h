@@ -43,8 +43,6 @@ int __wrap_wdb_syscheck_save2(wdb_t *wdb, const char *payload);
 
 cJSON * __wrap_wdb_exec_stmt(__attribute__((unused)) sqlite3_stmt *stmt);
 
-cJSON * __wrap_wdb_exec(__attribute__((unused)) sqlite3_stmt *stmt);
-
 int __wrap_wdbc_parse_result(char *result, char **payload);
 
 int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int len);
