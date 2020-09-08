@@ -218,8 +218,20 @@ int __wrap_wdb_global_delete_group_belong(   __attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
-int __wrap_wdb_global_delete_group(         __attribute__((unused)) wdb_t *wdb,
-                                            char *group_name) {
+int __wrap_wdb_global_delete_group( __attribute__((unused)) wdb_t *wdb,
+                                    char *group_name) {
     check_expected(group_name);
     return mock();
+}
+
+cJSON* __wrap_wdb_global_select_groups(__attribute__((unused)) wdb_t *wdb) {
+    return mock_ptr_type(cJSON*);
+}
+
+cJSON* __wrap_wdb_global_select_agent_keepalive(   __attribute__((unused)) wdb_t *wdb,
+                                            char* name,
+                                            char* ip) {
+    check_expected(name);
+    check_expected(ip);
+    return mock_ptr_type(cJSON*);
 }
