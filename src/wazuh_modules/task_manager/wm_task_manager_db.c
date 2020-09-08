@@ -31,10 +31,11 @@ STATIC int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt);
 /**
  * Update old tasks with status in progress to status timeout
  * @param now Actual time
+ * @param timeout Task timeout
  * @param next_timeout Next task in progress timeout
  * @return OS_SUCCESS on success, OS_INVALID on errors
  * */
-STATIC int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout) __attribute__((nonnull));
+STATIC int wm_task_manager_set_timeout_status(time_t now, int timeout, time_t *next_timeout) __attribute__((nonnull));
 
 /**
  * Delete old tasks from the tasks DB
@@ -136,8 +137,8 @@ void* wm_task_manager_clean_db(void *arg) {
 
         if (now >= next_timeout) {
             // Set the status of old tasks IN PROGRESS to TIMEOUT
-            next_timeout = now + WM_TASK_MAX_IN_PROGRESS_TIME;
-            wm_task_manager_set_timeout_status(now, &next_timeout);
+            next_timeout = now + config->task_timeout;
+            wm_task_manager_set_timeout_status(now, config->task_timeout, &next_timeout);
         }
 
         if (now >= next_clean) {
@@ -162,7 +163,7 @@ void* wm_task_manager_clean_db(void *arg) {
     return NULL;
 }
 
-STATIC int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout) {
+STATIC int wm_task_manager_set_timeout_status(time_t now, int timeout, time_t *next_timeout) {
     sqlite3 *db = NULL;
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;
@@ -185,10 +186,10 @@ STATIC int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout) 
 
     while (result = wdb_step(stmt), result == SQLITE_ROW) {
         int task_id = sqlite3_column_int(stmt, 0);
-        int last_update_time = sqlite3_column_int(stmt, 5);
+        int create_time = sqlite3_column_int(stmt, 4);
 
         // Check if the last update time is longer than the timeout
-        if (now >= (last_update_time + WM_TASK_MAX_IN_PROGRESS_TIME)) {
+        if (now >= (create_time + timeout)) {
             wdb_finalize(stmt);
 
             if (wdb_prepare(db, task_queries[WM_TASK_UPDATE_TASK_STATUS], -1, &stmt, NULL) != SQLITE_OK) {
@@ -206,8 +207,8 @@ STATIC int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout) 
                 w_mutex_unlock(&db_mutex);
                 return wm_task_manager_sql_error(db, stmt);
             }
-        } else if (now > last_update_time) {
-            *next_timeout = last_update_time + WM_TASK_MAX_IN_PROGRESS_TIME;
+        } else if (now > create_time) {
+            *next_timeout = create_time + timeout;
         }
     }
 

@@ -23,7 +23,7 @@
 #include "../../wazuh_modules/task_manager/wm_task_manager_db.h"
 #include "../../headers/shared.h"
 
-int wm_task_manager_set_timeout_status(time_t now, time_t *next_timeout);
+int wm_task_manager_set_timeout_status(time_t now, int timeout, time_t *next_timeout);
 int wm_task_manager_delete_old_entries(int timestamp);
 
 // Setup / teardown
@@ -399,7 +399,8 @@ void test_wm_task_manager_set_timeout_status_timeout_ok(void **state)
     time_t now = 123456789;
     time_t next_timeout = 0;
     int task_id = 10;
-    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+    int timeout = 700;
+    int create_time = now - timeout;
 
     expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
@@ -417,8 +418,8 @@ void test_wm_task_manager_set_timeout_status_timeout_ok(void **state)
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
 
-    expect_value(__wrap_sqlite3_column_int, iCol, 5);
-    will_return(__wrap_sqlite3_column_int, last_update_time);
+    expect_value(__wrap_sqlite3_column_int, iCol, 4);
+    will_return(__wrap_sqlite3_column_int, create_time);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
@@ -442,7 +443,7 @@ void test_wm_task_manager_set_timeout_status_timeout_ok(void **state)
 
     will_return(__wrap_sqlite3_close_v2,0);
 
-    int ret = wm_task_manager_set_timeout_status(now, &next_timeout);
+    int ret = wm_task_manager_set_timeout_status(now, timeout, &next_timeout);
 
     assert_int_equal(ret, 0);
     assert_int_equal(next_timeout, 0);
@@ -453,7 +454,8 @@ void test_wm_task_manager_set_timeout_status_no_timeout_ok(void **state)
     time_t now = 123456789;
     time_t next_timeout = 0;
     int task_id = 10;
-    int last_update_time = (now - WM_TASK_MAX_IN_PROGRESS_TIME) + 100;
+    int timeout = 700;
+    int create_time = (now - timeout) + 100;
 
     expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
@@ -471,14 +473,14 @@ void test_wm_task_manager_set_timeout_status_no_timeout_ok(void **state)
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
 
-    expect_value(__wrap_sqlite3_column_int, iCol, 5);
-    will_return(__wrap_sqlite3_column_int, last_update_time);
+    expect_value(__wrap_sqlite3_column_int, iCol, 4);
+    will_return(__wrap_sqlite3_column_int, create_time);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
     will_return(__wrap_sqlite3_close_v2,0);
 
-    int ret = wm_task_manager_set_timeout_status(now, &next_timeout);
+    int ret = wm_task_manager_set_timeout_status(now, timeout, &next_timeout);
 
     assert_int_equal(ret, 0);
     assert_int_equal(next_timeout, now + 100);
@@ -489,7 +491,8 @@ void test_wm_task_manager_set_timeout_status_timeout_step_err(void **state)
     time_t now = 123456789;
     time_t next_timeout = 0;
     int task_id = 10;
-    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+    int timeout = 700;
+    int create_time = now - timeout;
 
     expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
@@ -507,8 +510,8 @@ void test_wm_task_manager_set_timeout_status_timeout_step_err(void **state)
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
 
-    expect_value(__wrap_sqlite3_column_int, iCol, 5);
-    will_return(__wrap_sqlite3_column_int, last_update_time);
+    expect_value(__wrap_sqlite3_column_int, iCol, 4);
+    will_return(__wrap_sqlite3_column_int, create_time);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
@@ -538,7 +541,7 @@ void test_wm_task_manager_set_timeout_status_timeout_step_err(void **state)
 
     will_return(__wrap_sqlite3_close_v2,0);
 
-    int ret = wm_task_manager_set_timeout_status(now, &next_timeout);
+    int ret = wm_task_manager_set_timeout_status(now, timeout, &next_timeout);
 
     assert_int_equal(ret, OS_INVALID);
     assert_int_equal(next_timeout, 0);
@@ -549,7 +552,8 @@ void test_wm_task_manager_set_timeout_status_timeout_prepare_err(void **state)
     time_t now = 123456789;
     time_t next_timeout = 0;
     int task_id = 10;
-    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+    int timeout = 700;
+    int create_time = now - timeout;
 
     expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
@@ -567,8 +571,8 @@ void test_wm_task_manager_set_timeout_status_timeout_prepare_err(void **state)
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
 
-    expect_value(__wrap_sqlite3_column_int, iCol, 5);
-    will_return(__wrap_sqlite3_column_int, last_update_time);
+    expect_value(__wrap_sqlite3_column_int, iCol, 4);
+    will_return(__wrap_sqlite3_column_int, create_time);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
 
@@ -582,7 +586,7 @@ void test_wm_task_manager_set_timeout_status_timeout_prepare_err(void **state)
 
     will_return(__wrap_sqlite3_close_v2,0);
 
-    int ret = wm_task_manager_set_timeout_status(now, &next_timeout);
+    int ret = wm_task_manager_set_timeout_status(now, timeout, &next_timeout);
 
     assert_int_equal(ret, OS_INVALID);
     assert_int_equal(next_timeout, 0);
@@ -593,7 +597,7 @@ void test_wm_task_manager_set_timeout_status_prepare_err(void **state)
     time_t now = 123456789;
     time_t next_timeout = 0;
     int task_id = 10;
-    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+    int timeout = 700;
 
     expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
@@ -612,7 +616,7 @@ void test_wm_task_manager_set_timeout_status_prepare_err(void **state)
 
     will_return(__wrap_sqlite3_close_v2,0);
 
-    int ret = wm_task_manager_set_timeout_status(now, &next_timeout);
+    int ret = wm_task_manager_set_timeout_status(now, timeout, &next_timeout);
 
     assert_int_equal(ret, OS_INVALID);
     assert_int_equal(next_timeout, 0);
@@ -623,7 +627,7 @@ void test_wm_task_manager_set_timeout_status_open_err(void **state)
     time_t now = 123456789;
     time_t next_timeout = 0;
     int task_id = 10;
-    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+    int timeout = 700;
 
     expect_string(__wrap_sqlite3_open_v2, filename, TASKS_DB);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
@@ -640,7 +644,7 @@ void test_wm_task_manager_set_timeout_status_open_err(void **state)
 
     will_return(__wrap_sqlite3_close_v2,0);
 
-    int ret = wm_task_manager_set_timeout_status(now, &next_timeout);
+    int ret = wm_task_manager_set_timeout_status(now, timeout, &next_timeout);
 
     assert_int_equal(ret, OS_INVALID);
     assert_int_equal(next_timeout, 0);
@@ -652,12 +656,13 @@ void test_wm_task_manager_clean_db(void **state)
     wm_task_manager *config = *state;
 
     config->cleanup_time = 1000;
+    config->task_timeout = 850;
 
     int now = 123456789;
     int timestamp = now - config->cleanup_time;
 
     int task_id = 10;
-    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+    int create_time = now - config->task_timeout;
 
     will_return(__wrap_time, now);
 
@@ -683,8 +688,8 @@ void test_wm_task_manager_clean_db(void **state)
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
 
-    expect_value(__wrap_sqlite3_column_int, iCol, 5);
-    will_return(__wrap_sqlite3_column_int, last_update_time);
+    expect_value(__wrap_sqlite3_column_int, iCol, 4);
+    will_return(__wrap_sqlite3_column_int, create_time);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
@@ -730,7 +735,7 @@ void test_wm_task_manager_clean_db(void **state)
 
     wm_task_manager_clean_db(config);
 
-    assert_int_equal(current_time, now + WM_TASK_MAX_IN_PROGRESS_TIME);
+    assert_int_equal(current_time, now + config->task_timeout);
 }
 
 void test_wm_task_manager_clean_db_timeout(void **state)
@@ -739,12 +744,13 @@ void test_wm_task_manager_clean_db_timeout(void **state)
     wm_task_manager *config = *state;
 
     config->cleanup_time = 1000;
+    config->task_timeout = 850;
 
     int now = 123456789;
     int timestamp = now - config->cleanup_time;
 
     int task_id = 10;
-    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
+    int create_time = now - config->task_timeout;
 
     will_return(__wrap_time, now + 100);
 
@@ -770,8 +776,8 @@ void test_wm_task_manager_clean_db_timeout(void **state)
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
 
-    expect_value(__wrap_sqlite3_column_int, iCol, 5);
-    will_return(__wrap_sqlite3_column_int, last_update_time);
+    expect_value(__wrap_sqlite3_column_int, iCol, 4);
+    will_return(__wrap_sqlite3_column_int, create_time);
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
 
@@ -806,12 +812,12 @@ void test_wm_task_manager_clean_db_clean(void **state)
     wm_task_manager *config = *state;
 
     config->cleanup_time = 1000;
+    config->task_timeout = 850;
 
     int now = 123456789;
     int timestamp = now - config->cleanup_time;
 
     int task_id = 10;
-    int last_update_time = now - WM_TASK_MAX_IN_PROGRESS_TIME;
 
     will_return(__wrap_time, now);
 
