@@ -23,6 +23,8 @@
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/libc/string_wrappers.h"
+#include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 
 #define WDBQUERY_SIZE OS_BUFFER_SIZE
 #define WDBOUTPUT_SIZE OS_MAXSTR
@@ -33,68 +35,6 @@ int set_payload = 0;
 char test_payload[OS_MAXSTR] = { 0 };
 
 /* redefinitons/wrapping */
-
-char *__wrap_strerror (int __errnum) {
-    return mock_type(char*);
-}
-
-extern cJSON * __real_cJSON_CreateObject(void);
-cJSON * __wrap_cJSON_CreateObject(void) {
-    return mock_type(cJSON *);
-}
-
-extern cJSON * __real_cJSON_CreateArray(void);
-cJSON * __wrap_cJSON_CreateArray(void) {
-    return mock_type(cJSON *);
-}
-
-extern cJSON * __real_cJSON_CreateString(const char *string);
-cJSON * __wrap_cJSON_CreateString(const char *string) {
-    check_expected(string);
-    return mock_type(cJSON *);
-}
-
-extern void __real_cJSON_AddItemToObject(cJSON *object, const char *string, cJSON *item);
-void __wrap_cJSON_AddItemToObject(cJSON *object, const char *string, cJSON *item) {
-    check_expected(string);
-    return;
-}
-
-extern void __real_cJSON_AddItemToArray(cJSON *array, cJSON *item);
-void __wrap_cJSON_AddItemToArray(cJSON *array, cJSON *item) {
-    return;
-}
-
-extern cJSON * __real_cJSON_AddNumberToObject(cJSON * const object, const char * const name, const double number);
-cJSON * __wrap_cJSON_AddNumberToObject(cJSON * const object, const char * const name, const double number) {
-    check_expected(name);
-    check_expected(number);
-    return mock_type(cJSON *);
-}
-
-extern cJSON* __real_cJSON_AddStringToObject(cJSON * const object, const char * const name, const char * const string);
-cJSON* __wrap_cJSON_AddStringToObject(cJSON * const object, const char * const name, const char * const string) {
-    check_expected(name);
-    check_expected(string);
-    return mock_type(cJSON *);
-}
-
-extern char* __real_cJSON_PrintUnformatted(const cJSON *item);
-char* __wrap_cJSON_PrintUnformatted(const cJSON *item) {
-    return mock_type(char *);
-}
-
-extern cJSON* __real_cJSON_GetObjectItem(const cJSON * const object, const char * const string);
-cJSON* __wrap_cJSON_GetObjectItem(const cJSON * const object, const char * const string) {
-    check_expected(string);
-    return mock_type(cJSON *);
-}
-
-extern void __real_cJSON_Delete(cJSON *item);
-void __wrap_cJSON_Delete(cJSON *item) {
-    function_called();
-    return;
-}
 
 time_t __wrap_time(time_t *__timer) {
     *__timer = 1;
@@ -1893,7 +1833,6 @@ void test_wdb_get_agent_name_success(void **state) {
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "name");
     will_return(__wrap_cJSON_GetObjectItem, str);
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -2125,7 +2064,6 @@ void test_wdb_remove_agent_success(void **state)
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "name");
     will_return(__wrap_cJSON_GetObjectItem, str);
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -2195,7 +2133,6 @@ void test_wdb_get_agent_keepalive_error_empty_json_response(void **state) {
     expect_function_call(__wrap_cJSON_Delete);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "last_keepalive");
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     keepalive = wdb_get_agent_keepalive(name, ip);
@@ -2220,7 +2157,6 @@ void test_wdb_get_agent_keepalive_success(void **state) {
     expect_function_call(__wrap_cJSON_Delete);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "last_keepalive");
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(response->child, "last_keepalive"));
 
     keepalive = wdb_get_agent_keepalive(name, ip);
@@ -2274,7 +2210,6 @@ void test_wdb_get_agent_group_success(void **state) {
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "group");
     will_return(__wrap_cJSON_GetObjectItem, str);
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -2391,7 +2326,6 @@ void test_wdb_find_agent_success(void **state)
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "id");
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "id"));
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -2462,7 +2396,6 @@ void test_wdb_get_agent_offset_success_fim(void **state)
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "fim_offset");
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "fim_offset"));
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -2497,7 +2430,6 @@ void test_wdb_get_agent_offset_success_reg(void **state)
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "reg_offset");
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "reg_offset"));
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -2780,7 +2712,6 @@ void test_wdb_get_agent_status_error_json_data(void **state) {
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "status");
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -2815,7 +2746,6 @@ void test_wdb_get_agent_status_success(void **state) {
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "status");
     will_return(__wrap_cJSON_GetObjectItem, str);
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -3479,7 +3409,6 @@ void test_wdb_update_agent_group_success(void **state)
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "id");
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "id"));
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -3555,7 +3484,6 @@ void test_wdb_find_group_success(void **state) {
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "id");
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "id"));
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -3899,7 +3827,6 @@ void test_wdb_update_agent_multi_group_error_update_belongs_single(void **state)
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "id");
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "id"));
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -3973,7 +3900,6 @@ void test_wdb_update_agent_multi_group_error_update_belongs_multi(void **state) 
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "id");
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "id"));
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -4042,7 +3968,6 @@ void test_wdb_update_agent_multi_group_error_update_belongs_multi(void **state) 
     will_return(__wrap_wdbc_query_parse_json, root2);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "id");
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root2->child, "id"));
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -4383,9 +4308,7 @@ void test_wdb_update_groups_error_max_path(void **state) {
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "name");
     will_return(__wrap_cJSON_GetObjectItem, str1);
-    expect_string(__wrap_cJSON_GetObjectItem, string, "name");
     will_return(__wrap_cJSON_GetObjectItem, str2);
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -4442,7 +4365,6 @@ void test_wdb_update_groups_error_removing_group_db(void **state) {
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "name");
     will_return(__wrap_cJSON_GetObjectItem, str);
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -4496,7 +4418,6 @@ void test_wdb_update_groups_error_adding_new_groups(void **state) {
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "name");
     will_return(__wrap_cJSON_GetObjectItem, str);
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -4541,7 +4462,6 @@ void test_wdb_update_groups_success(void **state) {
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "name");
     will_return(__wrap_cJSON_GetObjectItem, str);
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -4632,7 +4552,6 @@ void test_wdb_agent_belongs_first_time_success(void **state) {
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "group");
     will_return(__wrap_cJSON_GetObjectItem, str);
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -4688,7 +4607,6 @@ void test_wdb_agent_belongs_first_time_success(void **state) {
     will_return(__wrap_wdbc_query_parse_json, root);
 
     // Getting JSON data
-    expect_string(__wrap_cJSON_GetObjectItem, string, "id");
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "id"));
 
     expect_function_call(__wrap_cJSON_Delete);
