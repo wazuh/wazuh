@@ -42,6 +42,7 @@ int main(int argc, const char* argv[])
     catch(const std::exception& ex)
     {
         std::cout << ex.what() << std::endl;
+        CmdLineArgs::showHelp();
     }
     rsync_teardown();
     return 0;
