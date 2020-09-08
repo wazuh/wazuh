@@ -13,7 +13,7 @@
 #include "shared.h"
 #include "audit_op.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 #define static
 #endif
 
@@ -270,7 +270,7 @@ int audit_manage_rules(int action, const char *path, const char *key) {
     }
 
     if (retval <= 0) {
-        mdebug2("audit_manage_rules(): Cann't adding/deleting rule (%d) = %s", retval, audit_errno_to_name(abs(retval)));
+        mdebug2("Can't add or delete a rule (%d) = %s", retval, audit_errno_to_name(abs(retval)));
     }
 
 end:

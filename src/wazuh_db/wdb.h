@@ -162,7 +162,7 @@ extern char *schema_upgrade_v3_sql;
 extern char *schema_upgrade_v4_sql;
 extern char *schema_upgrade_v5_sql;
 
-extern wdb_config config;
+extern wdb_config wconfig;
 extern pthread_mutex_t pool_mutex;
 extern wdb_t * db_pool;
 extern int db_pool_size;

@@ -25,7 +25,7 @@ void *SCFGA_Forward(__attribute__((unused)) void *arg)
     char msg[OS_SIZE_4096 + 1];
 
     /* Create the unix queue */
-    if ((cfgarq = StartMQ(path, READ)) < 0) {
+    if ((cfgarq = StartMQ(path, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, path, strerror(errno));
     }
 

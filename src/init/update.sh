@@ -98,8 +98,13 @@ UpdateStopOSSEC()
     then
         . ${OSSEC_INIT}
 
+        MAJOR_VERSION=`echo ${VERSION} | cut -f1 -d'.' | cut -f2 -d'v'`
+
         if [ "X$TYPE" != "Xagent" ]; then
             TYPE="manager"
+            if [ $MAJOR_VERSION -ge 4 ]; then
+              EMBEDDED_API_INSTALLED=1
+            fi
         fi
 
         if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then

@@ -101,7 +101,6 @@ tostart="Per avviare Wazuh"
 tostop="Per arrestare Wazuh"
 configat="La configurazione può essere vista o modificata in"
 addserveragent="E' necessario aggiungere gli agent(s) prima che siano autorizzati ad accedere al server."
-runma="Utilizza 'manage_agents' per aggiungerli o rimuoverli"
 presskey="Premi ENTER per continuare."
 
 # update

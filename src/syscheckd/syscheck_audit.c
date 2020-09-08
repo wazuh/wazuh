@@ -34,6 +34,13 @@
 #define AUDIT_HEALTHCHECK_KEY "wazuh_hc"
 #define AUDIT_HEALTHCHECK_FILE AUDIT_HEALTHCHECK_DIR "/audit_hc"
 
+#ifndef WAZUH_UNIT_TESTING
+#define audit_thread_status() ((mode == READING_MODE && audit_thread_active) || \
+                                (mode == HEALTHCHECK_MODE && hc_thread_active))
+#else
+#define audit_thread_status() FOREVER()
+#endif
+
 // Global variables
 W_Vector *audit_added_rules;
 W_Vector *audit_added_dirs;
@@ -45,7 +52,6 @@ int auid_err_reported;
 volatile int hc_thread_active;
 
 volatile int audit_health_check_creation;
-volatile int audit_health_check_deletion;
 
 static unsigned int count_reload_retries;
 
@@ -420,7 +426,6 @@ int init_regex(void) {
 // LCOV_EXCL_START
 int audit_init(void) {
     audit_health_check_creation = 0;
-    audit_health_check_deletion = 0;
 
     w_mutex_init(&audit_mutex, NULL);
     w_mutex_init(&audit_hc_mutex, NULL);
@@ -704,7 +709,7 @@ void audit_parse(char *buffer) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, w_evt->user_id);
                 snprintf (w_evt->user_id, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->user_name = get_user("", atoi(w_evt->user_id), NULL);
+                w_evt->user_name = get_user(atoi(w_evt->user_id));
             }
             // audit_name & audit_uid
             if(regexec(&regexCompiled_auid, buffer, 2, match, 0) == 0) {
@@ -720,7 +725,7 @@ void audit_parse(char *buffer) {
                     w_evt->audit_name = NULL;
                     w_evt->audit_uid = NULL;
                 } else {
-                    w_evt->audit_name = get_user("",atoi(auid), NULL);
+                    w_evt->audit_name = get_user(atoi(auid));
                     w_evt->audit_uid = strdup(auid);
                 }
                 os_free(auid);
@@ -730,7 +735,7 @@ void audit_parse(char *buffer) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, w_evt->effective_uid);
                 snprintf (w_evt->effective_uid, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->effective_name = get_user("",atoi(w_evt->effective_uid), NULL);
+                w_evt->effective_name = get_user(atoi(w_evt->effective_uid));
             }
             // group_name & group_id
             if(regexec(&regexCompiled_gid, buffer, 2, match, 0) == 0) {
@@ -1108,7 +1113,6 @@ void audit_parse(char *buffer) {
                 // i686: 10 unlink
                 // i686: 301 unlinkat
                 mdebug2(FIM_HEALTHCHECK_DELETE, syscall);
-                audit_health_check_deletion = 1;
             } else {
                 mdebug2(FIM_HEALTHCHECK_UNRECOGNIZED_EVENT, syscall);
             }
@@ -1150,11 +1154,11 @@ void *audit_healthcheck_thread(int *audit_sock) {
     w_cond_signal(&audit_hc_started);
     w_mutex_unlock(&audit_hc_mutex);
 
-    mdebug2(FIM_HEALTHCHECK_THREAD_ATIVE);
+    mdebug2(FIM_HEALTHCHECK_THREAD_ACTIVE);
 
     audit_read_events(audit_sock, HEALTHCHECK_MODE);
 
-    mdebug2(FIM_HEALTHCHECK_THREAD_FINISED);
+    mdebug2(FIM_HEALTHCHECK_THREAD_FINISHED);
 
     return NULL;
 }
@@ -1253,13 +1257,13 @@ void audit_read_events(int *audit_sock, int mode) {
     struct timeval timeout;
     count_reload_retries = 0;
     int conn_retries;
+    char * eoe_found = false;
 
     char *buffer;
     os_malloc(BUF_SIZE * sizeof(char), buffer);
     os_malloc(BUF_SIZE, cache);
 
-    while ((mode == READING_MODE && audit_thread_active)
-       || (mode == HEALTHCHECK_MODE && hc_thread_active)) {
+    while (audit_thread_status()) {
         FD_ZERO(&fdset);
         FD_SET(*audit_sock, &fdset);
 
@@ -1329,6 +1333,7 @@ void audit_read_events(int *audit_sock, int mode) {
         line = buffer;
 
         char * id;
+        char *event_too_long_id = NULL;
 
         do {
             *endline = '\0';
@@ -1337,7 +1342,9 @@ void audit_read_events(int *audit_sock, int mode) {
                 // If there was cached data and the ID is different, parse cache first
 
                 if (cache_id && strcmp(cache_id, id) && cache_i) {
-                    audit_parse(cache);
+                    if (!event_too_long_id) {
+                        audit_parse(cache);
+                    }
                     cache_i = 0;
                 }
 
@@ -1348,21 +1355,28 @@ void audit_read_events(int *audit_sock, int mode) {
                     cache_i += len;
                     cache[cache_i++] = '\n';
                     cache[cache_i] = '\0';
-                } else {
-                    merror(FIM_ERROR_WHODATA_EVENT_TOOLONG);
+                } else if (!event_too_long_id){
+                    mwarn(FIM_WARN_WHODATA_EVENT_TOOLONG, id);
+                    os_strdup(id, event_too_long_id);
                 }
+                eoe_found = strstr(line, "type=EOE");
 
                 free(cache_id);
                 cache_id = id;
             } else {
-                merror(FIM_ERROR_WHODATA_GETID, line);
+                mwarn(FIM_WARN_WHODATA_GETID, line);
             }
 
             line = endline + 1;
         } while (*line && (endline = strchr(line, '\n'), endline));
 
-        // If some data remains in the buffer, move it to the beginning
+        // If some audit log remains in the cache and it is complet (line "end of event" is found), flush cache
+        if (eoe_found && !event_too_long_id){
+            audit_parse(cache);
+            cache_i = 0;
+        }
 
+        // If some data remains in the buffer, move it to the beginning
         if (*line) {
             buffer_i = strlen(line);
             memmove(buffer, line, buffer_i);
@@ -1370,6 +1384,7 @@ void audit_read_events(int *audit_sock, int mode) {
             buffer_i = 0;
         }
 
+        if (event_too_long_id) os_free(event_too_long_id);
     }
 
     free(cache_id);
@@ -1425,18 +1440,16 @@ int filterkey_audit_events(char *buffer) {
 }
 
 
-// LCOV_EXCL_START
 // Audit healthcheck before starting the main thread
 int audit_health_check(int audit_socket) {
     int retval;
     FILE *fp;
     audit_health_check_creation = 0;
-    audit_health_check_deletion = 0;
     unsigned int timer = 10;
 
     if(retval = audit_add_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0 && retval != -17) { // -17 Means audit rule exist EEXIST
         mdebug1(FIM_AUDIT_HEALTHCHECK_RULE);
-        goto exit_err;
+        return -1;
     }
 
     mdebug1(FIM_AUDIT_HEALTHCHECK_START);
@@ -1451,81 +1464,37 @@ int audit_health_check(int audit_socket) {
         w_cond_wait(&audit_hc_started, &audit_hc_mutex);
     w_mutex_unlock(&audit_hc_mutex);
 
-    // Create a file
-    fp = fopen(AUDIT_HEALTHCHECK_FILE, "w");
+    // Generate open events until they get picked up
+    do {
+        fp = fopen(AUDIT_HEALTHCHECK_FILE, "w");
 
-    if(!fp) {
-        mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
-        goto exit_err;
-    }
-    fclose(fp);
+        if(!fp) {
+            mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
+        } else {
+            fclose(fp);
+        }
 
-    /*
-     * This is a workaround to fix the whodata mode init when is restarted unexpectedly
-     * *********************************************************************************
-     */
-
-    sleep(1);
-
-    fp = fopen(AUDIT_HEALTHCHECK_FILE, "w");
-
-    if(!fp) {
-        mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
-        goto exit_err;
-    }
-    fclose(fp);
-
-    mdebug2(FIM_HEALTHCHECK_WAIT_CREATE);
-    sleep(1);
-
-    /*
-     * *********************************************************************************
-     */
-
-    while (!audit_health_check_creation && timer > 0) {
         sleep(1);
-        timer--;
-    }
-    if (!audit_health_check_creation) {
-        mdebug1("error: audit_health_check_creation");
-        goto exit_err;
-    }
+    } while (!audit_health_check_creation && --timer > 0);
 
-    mdebug2(FIM_HEALTHCHECK_CREATE_RECEIVE);
-    mdebug2(FIM_HEALTHCHECK_WAIT_DELETE);
+    if (!audit_health_check_creation) {
+        mdebug1(FIM_HEALTHCHECK_CREATE_ERROR);
+        retval = -1;
+    } else {
+        mdebug1(FIM_HEALTHCHECK_SUCCESS);
+        retval = 0;
+    }
 
     // Delete that file
     unlink(AUDIT_HEALTHCHECK_FILE);
 
-    timer = 10;
-    while (!audit_health_check_deletion && timer > 0) {
-        sleep(1);
-        timer--;
-    }
-    if (!audit_health_check_deletion) {
-        goto exit_err;
-    }
-
-    mdebug2(FIM_HEALTHCHECK_DELETE_RECEIVE);
-
-    if(retval = audit_delete_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0){
-        mdebug1(FIM_HEALTHCHECK_CHECK_RULE);
+    if(audit_delete_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY) <= 0){
+        mdebug1(FIM_HEALTHCHECK_CHECK_RULE);    // LCOV_EXCL_LINE
     }
     hc_thread_active = 0;
 
-    mdebug2(FIM_HEALTHCHECK_SUCCESS);
-
-    return 0;
-
-exit_err:
-    if(retval = audit_delete_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0){
-        mdebug1(FIM_HEALTHCHECK_CHECK_RULE);
-    }
-    hc_thread_active = 0;
-    return -1;
-
+    return retval;
 }
-// LCOV_EXCL_STOP
 
 #endif
 #endif

@@ -207,7 +207,7 @@ extern const char *__local_name;
 #define isAgent 0
 #endif
 
-#ifndef UNIT_TESTING
+#ifndef WAZUH_UNIT_TESTING
 #define FOREVER() 1
 #else
 #include "unit_tests/wrappers/common.h"

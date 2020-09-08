@@ -12,7 +12,6 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
-int rotate_log;
 
 /* Start the agent daemon */
 void AgentdStart(int uid, int gid, const char *user, const char *group)
@@ -81,7 +80,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     os_setwait();
 
     /* Create the queue and read from it. Exit if fails. */
-    if ((agt->m_queue = StartMQ(DEFAULTQPATH, READ)) < 0) {
+    if ((agt->m_queue = StartMQ(DEFAULTQPATH, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
     }
 
@@ -142,7 +141,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
     /* Connect to the execd queue */
     if (agt->execdq == 0) {
-        if ((agt->execdq = StartMQ(EXECQUEUEPATH, WRITE)) < 0) {
+        if ((agt->execdq = StartMQ(EXECQUEUEPATH, WRITE, 1)) < 0) {
             minfo("Unable to connect to the active response "
                    "queue (disabled).");
             agt->execdq = -1;

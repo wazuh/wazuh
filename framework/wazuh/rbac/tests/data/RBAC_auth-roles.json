@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Initial_auth",
+    "roles": ["Initial", "Second", "Fifth"]
+  },
+  {
+    "name": "First_auth",
+    "roles": ["Initial", "Second", "Fifth"]
+  },
+  {
+    "name": "Second_auth",
+    "roles": ["Initial", "Second", "Fifth"]
+  },
+  {
+    "name": "Third_auth",
+    "roles": ["Initial", "Second", "Fifth"]
+  },
+  {
+    "name": "Fourth_auth",
+    "roles": ["Initial", "Second", "Fifth"]
+  },
+  {
+    "name": "Fifth_auth",
+    "roles": ["Initial", "First", "Second", "Third", "Fifth"]
+  },
+  {
+    "name": "Sixth_auth",
+    "roles": ["Initial", "First", "Second", "Third", "Fourth", "Fifth"]
+  },
+  {
+    "name": "Seventh_auth",
+    "roles": ["Initial", "First", "Second", "Third", "Fourth", "Fifth"]
+  },
+  {
+    "name": "Eighth_auth",
+    "roles": ["Initial", "Second", "Fifth", "Sixth", "Seventh"]
+  },
+  {
+    "name": "Nineth_auth",
+    "roles": ["Initial", "First", "Second", "Third", "Fourth", "Fifth", "Seventh"]
+  },
+  {
+    "name": "Tenth_auth",
+    "roles": ["Fifth", "Second", "Eighth", "Nineth", "Tenth", "Thirteenth"]
+  },
+  {
+    "name": "Eleventh_auth",
+    "roles": ["Sixteenth"]
+  }
+]

@@ -19,44 +19,7 @@
 #include "../../addagent/manage_agents.h"
 #include "../../headers/sec.h"
 
-
-/* redefinitons/wrapping */
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-int __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    return 1;
-}
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 void keys_init(keystore *keys, int rehash_keys, int save_removed) {
     /* Initialize hashes */
@@ -95,10 +58,8 @@ typedef struct _enrollment_response {
 
 
 extern struct keynode *queue_insert;
-extern struct keynode *queue_backup;
 extern struct keynode *queue_remove;
 extern struct keynode * volatile *insert_tail;
-extern struct keynode * volatile *backup_tail;
 extern struct keynode * volatile *remove_tail;
 
 char* new_id = NULL;
@@ -110,7 +71,6 @@ static int setup_group(void **state) {
     
     /* Initialize queues */    
     insert_tail = &queue_insert;
-    backup_tail = &queue_backup;
     remove_tail = &queue_remove;
 
     return 0;

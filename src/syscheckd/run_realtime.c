@@ -21,20 +21,13 @@ volatile int audit_db_consistency_flag;
 #include "syscheck.h"
 #include "syscheck_op.h"
 
-#ifdef UNIT_TESTING
-#include "unit_tests/wrappers/syscheckd/run_realtime.h"
-
-#undef CreateEvent
-#define CreateEvent wrap_run_realtime_CreateEvent
-
-#undef CreateFile
-#define CreateFile wrap_run_realtime_CreateFile
-
-#undef sleep
-#define sleep wrap_run_realtime_Sleep
-
-#define ReadDirectoryChangesW wrap_run_realtime_ReadDirectoryChangesW
-#define CloseHandle wrap_run_realtime_CloseHandle
+#ifdef WAZUH_UNIT_TESTING
+#ifdef WIN32
+#include "unit_tests/wrappers/windows/fileapi_wrappers.h"
+#include "unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
+#include "unit_tests/wrappers/windows/winbase_wrappers.h"
+#endif
 #endif
 
 #ifdef INOTIFY_ENABLED
@@ -233,26 +226,22 @@ void delete_subdirectories_watches(char *dir) {
     char *dir_slash = NULL;
     int dir_len = strlen(dir) + 1;
 
-    /*
-        If the directory already ends with an slash, there is no need for adding
-        an extra one
-     */
+
+    // If the directory already ends with an slash, there is no need for adding an extra one
     if (dir[dir_len - 1] != '/') {
         os_calloc(dir_len + 2, sizeof(char), dir_slash);  // Length of dir plus an extra slash
 
-        /*
-            Copy the content of dir into dir_slash and add an extra slash
-        */
-        strncpy(dir_slash, dir, dir_len);
-        strncat(dir_slash, "/", strlen(dir_slash) + 1);
+    
+        // Copy the content of dir into dir_slash and add an extra slash
+        snprintf(dir_slash, dir_len + 2, "%s/", dir);
     }
     else {
         os_calloc(dir_len, sizeof(char), dir_slash);
-        strncpy(dir_slash, dir, dir_len);
+        snprintf(dir_slash, dir_len, "%s", dir);
     }
 
     if(syscheck.realtime->fd) {
-        w_mutex_lock(&syscheck.fim_entry_mutex);
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
         hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
 
         while(hash_node) {
@@ -274,7 +263,7 @@ void delete_subdirectories_watches(char *dir) {
             hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
         }
 
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
     }
 
     os_free(dir_slash);
