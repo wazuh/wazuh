@@ -37,7 +37,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                              -Wl,--wrap,fclose -Wl,--wrap,remove -Wl,--wrap,opendir -Wl,--wrap,readdir -Wl,--wrap,closedir \
                              -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,wdbc_query_parse_json \
                              -Wl,--wrap,wdb_create_profile -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,chown \
-                             -Wl,--wrap,chmod -Wl,--wrap,IsDir")
+                             -Wl,--wrap,chmod -Wl,--wrap,IsDir -Wl,--wrap,isChroot -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek")
 
 
 

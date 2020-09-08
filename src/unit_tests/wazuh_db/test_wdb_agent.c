@@ -21,6 +21,8 @@
 
 #include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/libc/stdio_wrappers.h"
 
 #define WDBQUERY_SIZE OS_BUFFER_SIZE
 #define WDBOUTPUT_SIZE OS_MAXSTR
@@ -31,54 +33,6 @@ int set_payload = 0;
 char test_payload[OS_MAXSTR] = { 0 };
 
 /* redefinitons/wrapping */
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
 
 char *__wrap_strerror (int __errnum) {
     return mock_type(char*);
@@ -145,47 +99,6 @@ void __wrap_cJSON_Delete(cJSON *item) {
 time_t __wrap_time(time_t *__timer) {
     *__timer = 1;
     return 1;
-}
-
-extern FILE *__real_fopen(const char * __filename, const char * __modes);
-FILE *__wrap_fopen(const char * __filename, const char * __modes) {
-    check_expected(__filename);
-    check_expected(__modes);
-    if (test_mode) {
-        return mock_type(FILE *);
-    }
-    return __real_fopen(__filename, __modes);
-}
-
-extern size_t __real_fread(void *__restrict __ptr, size_t __size, size_t __n, FILE *__restrict __stream);
-size_t __wrap_fread(void *__restrict __ptr, size_t __size, size_t __n, FILE *__restrict __stream) {
-    if (test_mode) {
-        return mock_type(size_t);
-    }
-    return __real_fread(__ptr, __size, __n, __stream);
-}
-
-extern size_t __real_fwrite(const void *__restrict __ptr, size_t __size, size_t __n, FILE *__restrict __s);
-size_t __wrap_fwrite(const void *__restrict __ptr, size_t __size, size_t __n, FILE *__restrict __s) {
-    if (test_mode) {
-        return mock_type(size_t);
-    }
-    return __real_fwrite(__ptr, __size, __n, __s);
-}
-
-extern int __real_fclose(FILE *__stream);
-int __wrap_fclose(FILE *stream) {
-    if (test_mode) {
-        return mock_type(int);
-    }
-    return __real_fclose(stream);
-}
-
-extern int __real_remove (const char *__filename);
-int __wrap_remove (const char *__filename) {
-    check_expected(__filename);
-
-    return mock_type(int);
 }
 
 int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
@@ -283,8 +196,8 @@ void test_wdb_create_agent_db_error_creating_source_profile(void **state)
     const char* agent_name = "agent1";
 
     // Opening source database file
-    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
-    expect_string(__wrap_fopen, __modes, "r");
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
     // Creating profile
     expect_string(__wrap__mdebug1, formatted_msg, "Profile database not found, creating.");
@@ -303,16 +216,16 @@ void test_wdb_create_agent_db_error_reopening_source_profile(void **state)
     const char* agent_name = "agent1";
 
     // Opening source database file
-    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
-    expect_string(__wrap_fopen, __modes, "r");
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
     // Creating profile
     expect_string(__wrap__mdebug1, formatted_msg, "Profile database not found, creating.");
     expect_string(__wrap_wdb_create_profile, path, "var/db/.template.db");
     will_return(__wrap_wdb_create_profile, OS_SUCCESS);
     // Opening source database file
-    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
-    expect_string(__wrap_fopen, __modes, "r");
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
     expect_string(__wrap__merror, formatted_msg, "Couldn't open profile 'var/db/.template.db'.");
 
@@ -328,13 +241,15 @@ void test_wdb_create_agent_db_error_opening_dest_profile(void **state)
     const char* agent_name = "agent1";
 
     // Opening source database file
-    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
-    expect_string(__wrap_fopen, __modes, "r");
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    expect_string(__wrap_fopen, __filename, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, __modes, "w");
+    will_return(__wrap_isChroot, 0);
+    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 0);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, OS_SUCCESS);
     expect_string(__wrap__merror, formatted_msg, "Couldn't create database 'var/db/agents/001-agent1.db'.");
 
@@ -350,17 +265,21 @@ void test_wdb_create_agent_db_error_writing_profile(void **state)
     const char* agent_name = "agent1";
 
     // Opening source database file
-    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
-    expect_string(__wrap_fopen, __modes, "r");
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    expect_string(__wrap_fopen, __filename, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, __modes, "w");
+    will_return(__wrap_isChroot, 0);
+    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
     // Writing destination profile
-    will_return(__wrap_fread, 100);
+    will_return(__wrap_fread, "teststring");
+    will_return(__wrap_fread, 10);
     will_return(__wrap_fwrite, 0);
     // Closing files
+    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, _File, 1);
     will_return_always(__wrap_fclose, OS_SUCCESS);
     expect_string(__wrap__merror, formatted_msg, "Couldn't write/close file 'var/db/agents/001-agent1.db' completely.");
 
@@ -376,18 +295,23 @@ void test_wdb_create_agent_db_error_getting_ids(void **state)
     const char* agent_name = "agent1";
 
     // Opening source database file
-    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
-    expect_string(__wrap_fopen, __modes, "r");
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    expect_string(__wrap_fopen, __filename, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, __modes, "w");
+    will_return(__wrap_isChroot, 0);
+    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
     // Writing destination profile
-    will_return(__wrap_fread, 100);
-    will_return(__wrap_fwrite, 100);
+    will_return(__wrap_fread, "teststring");
+    will_return(__wrap_fread, 10);
+    will_return(__wrap_fwrite, 10);
+    will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
     // Closing files
+    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, _File, 1);
     will_return_always(__wrap_fclose, OS_SUCCESS);
     // Getting IDs
     expect_string(__wrap_Privsep_GetUser, name, "root");
@@ -409,18 +333,23 @@ void test_wdb_create_agent_db_error_changing_owner(void **state)
     const char* agent_name = "agent1";
 
     // Opening source database file
-    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
-    expect_string(__wrap_fopen, __modes, "r");
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    expect_string(__wrap_fopen, __filename, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, __modes, "w");
+    will_return(__wrap_isChroot, 0);
+    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
     // Writing destination profile
-    will_return(__wrap_fread, 100);
-    will_return(__wrap_fwrite, 100);
+    will_return(__wrap_fread, "teststring");
+    will_return(__wrap_fread, 10);
+    will_return(__wrap_fwrite, 10);
+    will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
     // Closing files
+    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, _File, 1);
     will_return_always(__wrap_fclose, OS_SUCCESS);
     // Getting IDs
     expect_string(__wrap_Privsep_GetUser, name, "root");
@@ -447,18 +376,23 @@ void test_wdb_create_agent_db_error_changing_mode(void **state)
     const char* agent_name = "agent1";
 
     // Opening source database file
-    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
-    expect_string(__wrap_fopen, __modes, "r");
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    expect_string(__wrap_fopen, __filename, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, __modes, "w");
+    will_return(__wrap_isChroot, 0);
+    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
     // Writing destination profile
-    will_return(__wrap_fread, 100);
-    will_return(__wrap_fwrite, 100);
+    will_return(__wrap_fread, "teststring");
+    will_return(__wrap_fread, 10);
+    will_return(__wrap_fwrite, 10);
+    will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
     // Closing files
+    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, _File, 1);
     will_return_always(__wrap_fclose, OS_SUCCESS);
     // Getting IDs
     expect_string(__wrap_Privsep_GetUser, name, "root");
@@ -489,18 +423,23 @@ void test_wdb_create_agent_db_success(void **state)
     const char* agent_name = "agent1";
 
     // Opening source database file
-    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
-    expect_string(__wrap_fopen, __modes, "r");
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    expect_string(__wrap_fopen, __filename, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, __modes, "w");
+    will_return(__wrap_isChroot, 0);
+    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
     // Writing destination profile
-    will_return(__wrap_fread, 100);
-    will_return(__wrap_fwrite, 100);
+    will_return(__wrap_fread, "teststring");
+    will_return(__wrap_fread, 10);
+    will_return(__wrap_fwrite, 10);
+    will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
     // Closing files
+    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, _File, 1);
     will_return_always(__wrap_fclose, OS_SUCCESS);
     // Getting IDs
     expect_string(__wrap_Privsep_GetUser, name, "root");
@@ -674,8 +613,6 @@ void test_wdb_insert_agent_error_result(void **state)
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
 
-    FILE* db_file = (FILE*)1;
-
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
     will_return_always(__wrap_cJSON_AddStringToObject, 1);
@@ -731,8 +668,6 @@ void test_wdb_insert_agent_success(void **state)
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
 
-    FILE* db_file = (FILE*)1;
-
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
     will_return_always(__wrap_cJSON_AddStringToObject, 1);
@@ -768,18 +703,126 @@ void test_wdb_insert_agent_success(void **state)
 
     // Hnadling result and creating agent database
     // Opening source database file
-    expect_string(__wrap_fopen, __filename, "var/db/.template.db");
-    expect_string(__wrap_fopen, __modes, "r");
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    expect_string(__wrap_fopen, __filename, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, __modes, "w");
+    will_return(__wrap_isChroot, 0);
+    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
     // Writing destination profile
-    will_return(__wrap_fread, 100);
-    will_return(__wrap_fwrite, 100);
+    will_return(__wrap_fread, "teststring");
+    will_return(__wrap_fread, 10);
+    will_return(__wrap_fwrite, 10);
+    will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
     // Closing files
+    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, _File, 1);
+    will_return_always(__wrap_fclose, OS_SUCCESS);
+    // Getting IDs
+    expect_string(__wrap_Privsep_GetUser, name, "root");
+    will_return(__wrap_Privsep_GetUser, 0);
+    expect_string(__wrap_Privsep_GetGroup, name, "ossec");
+    will_return(__wrap_Privsep_GetGroup, 0);
+    // Changing owner
+    expect_string(__wrap_chown, __file, "var/db/agents/001-agent1.db");
+    expect_value(__wrap_chown, __owner, 0);
+    expect_value(__wrap_chown, __group, 0);
+    will_return(__wrap_chown, OS_SUCCESS);
+    // Changing mode
+    expect_string(__wrap_chmod, __file, "var/db/agents/001-agent1.db");
+    expect_value(__wrap_chmod, __mode, 0660);
+    will_return(__wrap_chmod, OS_SUCCESS);
+
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
+void test_wdb_insert_agent_success_keep_date(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    const char *name = "agent1";
+    const char *ip = "192.168.0.101";
+    const char *register_ip = "any";
+    const char *internal_key = "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301";
+    const char *group = "default";
+    int keep_date = 1;
+
+    const char *json_str = "{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1577851261}";
+    const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1577851261}";
+
+    will_return(__wrap_isChroot, 0);
+
+    // Opening destination database file
+    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    // Getting data
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "001 agent1 any 2020-01-01 01:01:01");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, OS_SUCCESS);
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "name");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "agent1");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "192.168.0.101");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "register_ip");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "any");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "internal_key");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "group");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "default");
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "date_add");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1577851261);
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    // Hnadling result and creating agent database
+    // Opening source database file
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+    // Opening destination database file
+    will_return(__wrap_isChroot, 0);
+    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, 1);
+    // Writing destination profile
+    will_return(__wrap_fread, "teststring");
+    will_return(__wrap_fread, 10);
+    will_return(__wrap_fwrite, 10);
+    will_return(__wrap_fread, "");
+    will_return(__wrap_fread, 0);
+    // Closing files
+    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, _File, 1);
     will_return_always(__wrap_fclose, OS_SUCCESS);
     // Getting IDs
     expect_string(__wrap_Privsep_GetUser, name, "root");
@@ -1871,7 +1914,8 @@ void test_wdb_remove_agent_db_error_removing_db(void **state) {
     char *name = "agent1";
 
     // Removing DB files
-    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db");
+    will_return(__wrap_isChroot, 0);
+    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
     will_return(__wrap_remove, OS_INVALID);
 
     ret = wdb_remove_agent_db(id, name);
@@ -1885,15 +1929,16 @@ void test_wdb_remove_agent_db_error_removing_db_shm_wal(void **state) {
     char *name = "agent1";
 
     // Removing DB files
-    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db");
+    will_return_always(__wrap_isChroot, 0);
+    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
     will_return(__wrap_remove, OS_SUCCESS);
 
-    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db-shm");
+    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-shm");
     will_return(__wrap_remove, OS_INVALID);
     will_return(__wrap_strerror, "error");
     expect_string(__wrap__mdebug2, formatted_msg, "(1129): Could not unlink file 'var/db/agents/001-agent1.db-shm' due to [(0)-(error)].");
 
-    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db-wal");
+    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-wal");
     will_return(__wrap_remove, OS_INVALID);
     will_return(__wrap_strerror, "error");
     expect_string(__wrap__mdebug2, formatted_msg, "(1129): Could not unlink file 'var/db/agents/001-agent1.db-wal' due to [(0)-(error)].");
@@ -1909,11 +1954,12 @@ void test_wdb_remove_agent_db_success(void **state) {
     char *name = "agent1";
 
     // Removing DB files
-    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db");
+    will_return_always(__wrap_isChroot, 0);
+    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
     will_return(__wrap_remove, OS_SUCCESS);
-    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db-shm");
+    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-shm");
     will_return(__wrap_remove, OS_SUCCESS);
-    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db-wal");
+    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-wal");
     will_return(__wrap_remove, OS_SUCCESS);
 
     ret = wdb_remove_agent_db(id, name);
@@ -2085,11 +2131,12 @@ void test_wdb_remove_agent_success(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Removing DB files
-    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db");
+    will_return_always(__wrap_isChroot, 0);
+    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
     will_return(__wrap_remove, OS_SUCCESS);
-    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db-shm");
+    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-shm");
     will_return(__wrap_remove, OS_SUCCESS);
-    expect_string(__wrap_remove, __filename, "var/db/agents/001-agent1.db-wal");
+    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-wal");
     will_return(__wrap_remove, OS_SUCCESS);
 
     ret = wdb_remove_agent(id);
@@ -4303,6 +4350,77 @@ void test_wdb_update_groups_error_json(void **state) {
     assert_int_equal(OS_INVALID, ret);
 }
 
+void test_wdb_update_groups_error_max_path(void **state) {
+    int ret = 0;
+    cJSON *root = NULL;
+    cJSON *row1 = NULL;
+    cJSON *row2 = NULL;
+    cJSON *str1 = NULL;
+    cJSON *str2 = NULL;
+    char *very_long_name = NULL;
+
+    const char *query_str = "global select-groups";
+
+    // Generating a very log group name
+    os_calloc(PATH_MAX+1, sizeof(char), very_long_name);
+    int i = 0;
+    for (i; i < PATH_MAX; ++i) {*(very_long_name + i) = 'A';};
+
+    root = __real_cJSON_CreateArray();
+    row1 = __real_cJSON_CreateObject();
+    str1 = __real_cJSON_CreateString(very_long_name);
+    __real_cJSON_AddItemToObject(row1, "name", str1);
+    __real_cJSON_AddItemToArray(root, row1);
+    row2 = __real_cJSON_CreateObject();
+    str2 = __real_cJSON_CreateString("test_group");
+    __real_cJSON_AddItemToObject(row2, "name", str2);
+    __real_cJSON_AddItemToArray(root, row2);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_parse_json, *sock, -1);
+    expect_string(__wrap_wdbc_query_parse_json, query, query_str);
+    expect_value(__wrap_wdbc_query_parse_json, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    expect_string(__wrap_cJSON_GetObjectItem, string, "name");
+    will_return(__wrap_cJSON_GetObjectItem, str1);
+    expect_string(__wrap_cJSON_GetObjectItem, string, "name");
+    will_return(__wrap_cJSON_GetObjectItem, str2);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    expect_string(__wrap__merror, formatted_msg, "At wdb_update_groups(): path too long.");
+
+    // Opening directory
+    will_return(__wrap_opendir, 0);
+
+    //// Call to wdb_remove_group_db
+    const char *name = "test_group";
+
+    query_str = "global delete-group-belong test_group";
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    // Hnadling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-group-belong test_group");
+
+    // Hnadling result
+    expect_string(__wrap__merror, formatted_msg, "At wdb_remove_group_from_belongs_db(): couldn't delete 'test_group' from 'belongs' table.");
+
+    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR);
+
+    assert_int_equal(OS_INVALID, ret);
+
+    __real_cJSON_Delete(root);
+    os_free(very_long_name);
+}
+
 void test_wdb_update_groups_error_removing_group_db(void **state) {
     int ret = 0;
     cJSON *root = NULL;
@@ -4584,8 +4702,123 @@ void test_wdb_agent_belongs_first_time_success(void **state) {
 
     assert_int_equal(OS_SUCCESS, ret);
 
+    set_payload = 0;
+
     __real_cJSON_Delete(root);
     __real_cJSON_Delete(root2);
+}
+
+/* Tests get_agent_date_added */
+
+void test_get_agent_date_added_error_open_file(void **state) {
+    time_t date_add = 0;
+    int agent_id = 1;
+
+    will_return(__wrap_isChroot, 0);
+
+    // Opening destination database file
+    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    date_add = get_agent_date_added(agent_id);
+
+    assert_int_equal(0, date_add);
+}
+
+void test_get_agent_date_added_error_no_data(void **state) {
+    time_t date_add = 0;
+    int agent_id = 1;
+
+    will_return(__wrap_isChroot, 0);
+
+    // Opening destination database file
+    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    // Getting data
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "001 agent1");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, OS_SUCCESS);
+
+    date_add = get_agent_date_added(agent_id);
+
+    assert_int_equal(0, date_add);
+}
+
+void test_get_agent_date_added_error_no_date(void **state) {
+    time_t date_add = 0;
+    int agent_id = 1;
+
+    will_return(__wrap_isChroot, 0);
+
+    // Opening destination database file
+    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    // Getting data
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "001 agent1 any");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, OS_SUCCESS);
+
+    date_add = get_agent_date_added(agent_id);
+
+    assert_int_equal(0, date_add);
+}
+
+void test_get_agent_date_added_error_invalid_date(void **state) {
+    time_t date_add = 0;
+    int agent_id = 1;
+
+    will_return(__wrap_isChroot, 0);
+
+    // Opening destination database file
+    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    // Getting data
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "001 agent1 any 2020:01:01 01-01-01");
+
+    expect_string(__wrap__merror, formatted_msg, "Invalid date format in file '/queue/agents-timestamp' for agent '1'");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, OS_SUCCESS);
+
+    date_add = get_agent_date_added(agent_id);
+
+    assert_int_equal(0, date_add);
+}
+
+void test_get_agent_date_added_success(void **state) {
+    time_t date_add = 0;
+    int agent_id = 1;
+
+    will_return(__wrap_isChroot, 0);
+
+    // Opening destination database file
+    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    // Getting data
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "001 agent1 any 2020-01-01 01:01:01");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, OS_SUCCESS);
+
+    date_add = get_agent_date_added(agent_id);
+
+    // The number 1577851261 is the date 2020-01-01 01:01:01 transformed to INT
+    assert_int_equal(1577851261, date_add);
 }
 
 int main()
@@ -4608,6 +4841,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_result, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_success_keep_date, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_update_agent_name */
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_json, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_socket, setup_wdb_agent, teardown_wdb_agent),
@@ -4741,11 +4975,18 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_success, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_update_groups */
         cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_json, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_max_path, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_removing_group_db, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_adding_new_groups, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_groups_success, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_agent_belongs_first_time */
-        cmocka_unit_test_setup_teardown(test_wdb_agent_belongs_first_time_success, setup_wdb_agent, teardown_wdb_agent)
+        cmocka_unit_test_setup_teardown(test_wdb_agent_belongs_first_time_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests get_agent_date_added */
+        cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_open_file, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_no_data, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_no_date, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_invalid_date, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_get_agent_date_added_success, setup_wdb_agent, teardown_wdb_agent)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
