@@ -382,15 +382,32 @@ int fim_registry_event(const fim_entry *new,
     return 1;
 }
 
-
-int fim_check_key(const char *entry_path, const registry *configuration) {
+int fim_registry_validate_path(const char *entry_path, const registry *configuration) {
     int ign_it;
+    const char *pos;
+    int depth = -1;
+    unsigned int parent_path_size;
 
     if (entry_path == NULL || configuration == NULL) {
         return -1;
     }
 
-    // TODO: Add recursion_level checks.
+    /* Verify recursion level */
+    parent_path_size = strlen(configuration->entry);
+
+    if (parent_path_size > strlen(entry_path)) {
+        return -1;
+    }
+
+    pos = entry_path + parent_path_size;
+    while (pos = strchr(pos, PATH_SEP), pos) {
+        depth++;
+        pos++;
+    }
+
+    if (depth > configuration->recursion_level) {
+        return -1;
+    }
 
     /* Registry ignore list */
     if (syscheck.registry_ignore) {
@@ -478,7 +495,7 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, const re
             continue;
         }
 
-        if (fim_check_key(value_path, configuration)) {
+        if (fim_registry_validate_path(value_path, configuration)) {
             continue;
         }
 
@@ -550,7 +567,7 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     }
 
     // Check ignore and recursion level restrictions.
-    if (fim_check_key(full_key, configuration)) {
+    if (fim_registry_validate_path(full_key, configuration)) {
         return;
     }
 
