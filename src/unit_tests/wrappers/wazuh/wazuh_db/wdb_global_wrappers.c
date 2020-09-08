@@ -85,3 +85,20 @@ cJSON* __wrap_wdb_global_get_agent_labels(  __attribute__((unused)) wdb_t *wdb,
     check_expected(id);
     return mock_ptr_type(cJSON*);
 }
+
+int __wrap_wdb_global_del_agent_labels( __attribute__((unused)) wdb_t *wdb,
+                                        int id) {
+    check_expected(id);
+    return mock();
+}
+
+int __wrap_wdb_global_set_agent_label(  __attribute__((unused)) wdb_t *wdb,
+                                        int id,
+                                        char* key,
+                                        char* value){
+    check_expected(id);
+    check_expected(key);
+    check_expected(value);
+    return mock();
+}
+

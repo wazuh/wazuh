@@ -14,7 +14,9 @@
 #include "wazuh_db/wdb.h"
 
 int __wrap_wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key,char* group, int date_add);
+
 int __wrap_wdb_global_update_agent_name(wdb_t *wdb, int id, char* name);
+
 int __wrap_wdb_global_update_agent_version(wdb_t *wdb,
                                     int id,
                                     const char *os_name,
@@ -35,5 +37,9 @@ int __wrap_wdb_global_update_agent_version(wdb_t *wdb,
                                     wdb_sync_status_t sync_status);
 
 cJSON* __wrap_wdb_global_get_agent_labels(wdb_t *wdb, int id);
+
+int __wrap_wdb_global_del_agent_labels(wdb_t *wdb, int id);
+
+int __wrap_wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
 
 #endif

@@ -565,6 +565,114 @@ void test_wdb_parse_global_get_agent_labels_success(void **state)
 
 }
 
+void test_wdb_parse_global_set_agent_labels_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-labels";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-labels");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for set-labels.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: set-labels");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'set-labels'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_set_agent_labels_id_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-labels ";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-labels ");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid DB query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "DB query error near: ");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_set_agent_labels_remove_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-labels 1 key1:test_key1\nkey2:test_key2";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-labels 1 key1:test_key1\nkey2:test_key2");
+    expect_value(__wrap_wdb_global_del_agent_labels, id, 1);
+    will_return(__wrap_wdb_global_del_agent_labels, OS_INVALID);
+
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_set_agent_labels_set_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-labels 1 key1:test_key1\nkey2:test_key2";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-labels 1 key1:test_key1\nkey2:test_key2");
+    expect_value(__wrap_wdb_global_del_agent_labels, id, 1);
+    will_return(__wrap_wdb_global_del_agent_labels, OS_SUCCESS);
+    expect_value(__wrap_wdb_global_set_agent_label, id, 1);
+    expect_string(__wrap_wdb_global_set_agent_label, key, "key1");
+    expect_string(__wrap_wdb_global_set_agent_label, value, "test_key1");
+    will_return(__wrap_wdb_global_set_agent_label, OS_INVALID);
+
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_set_agent_labels_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-labels 1 key1:test_key1\nkey2:test_key2\nkey3test_key3\nkey4:test_key4";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-labels 1 key1:test_key1\nkey2:test_key2\nkey3test_key3\nkey4:test_key4");
+    expect_value(__wrap_wdb_global_del_agent_labels, id, 1);
+    will_return(__wrap_wdb_global_del_agent_labels, OS_SUCCESS);
+
+    expect_value(__wrap_wdb_global_set_agent_label, id, 1);
+    expect_string(__wrap_wdb_global_set_agent_label, key, "key1");
+    expect_string(__wrap_wdb_global_set_agent_label, value, "test_key1");
+    will_return(__wrap_wdb_global_set_agent_label, OS_SUCCESS);
+    expect_value(__wrap_wdb_global_set_agent_label, id, 1);
+    expect_string(__wrap_wdb_global_set_agent_label, key, "key2");
+    expect_string(__wrap_wdb_global_set_agent_label, value, "test_key2");
+    will_return(__wrap_wdb_global_set_agent_label, OS_SUCCESS);
+    expect_value(__wrap_wdb_global_set_agent_label, id, 1);
+    expect_string(__wrap_wdb_global_set_agent_label, key, "key4");
+    expect_string(__wrap_wdb_global_set_agent_label, value, "test_key4");
+    will_return(__wrap_wdb_global_set_agent_label, OS_SUCCESS);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -592,7 +700,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_version_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_labels_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_labels_query_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_labels_success, test_setup, test_teardown)
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_labels_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_labels_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_labels_id_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_labels_remove_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_labels_set_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_labels_success, test_setup, test_teardown)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
