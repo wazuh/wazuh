@@ -513,22 +513,6 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         goto end;
     }
 
-    if (strcasestr(pr_name, "redhat") && !os_list) {
-        minfo(VU_NO_ENABLED_FEEDS, pr_name);
-        char vsr [2] = {0};
-        vu_os_feed *list, *tmp_list = NULL;
-        // New linked list for RedHat (5, 6, 7 and 8)
-        for (int i = 5; i <= 8; i++) {
-            os_calloc(1, sizeof(vu_os_feed), list);
-            if (tmp_list) tmp_list->next = list;
-            if (!os_list) os_list = list; // Save tail
-            sprintf(vsr, "%d", i);
-            os_strdup(vsr, list->version);
-            tmp_list = list;
-        }
-    }
-
-
     /**
      *  single_provider = Ubuntu, Debian and RedHat.
      *  Those which use the <os> tag.
@@ -689,6 +673,7 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char *pr_nam
     int j;
     vu_os_feed *feeds_it = *feeds;
     int8_t debian_provider = (strcasestr(pr_name, vu_feed_tag[FEED_DEBIAN])) ? 1 : 0;
+    int8_t redhat_provider = (strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) ? 1 : 0;
 
     for (i = 0; node[i]; i++) {
         if (!strcmp(node[i]->element, XML_OS)) {
@@ -731,8 +716,24 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char *pr_nam
     }
 
     if (feeds_it == NULL) {
-        merror("'%s' tag required for '%s' provider", XML_OS, pr_name);
-        return OS_INVALID;
+        // The OS tag is optional for redhat
+        if (redhat_provider) {
+            minfo(VU_NO_ENABLED_FEEDS, pr_name);
+            char vsr [2] = {0};
+            vu_os_feed *tmp_list = NULL;
+            // New linked list for RedHat (5, 6, 7 and 8)
+            for (int i = 5; i <= 8; i++) {
+                os_calloc(1, sizeof(vu_os_feed), feeds_it);
+                if (tmp_list) tmp_list->next = feeds_it;
+                if (!*feeds)  *feeds = feeds_it; // Save tail
+                sprintf(vsr, "%d", i);
+                os_strdup(vsr, feeds_it->version);
+                tmp_list = feeds_it;
+            }
+        } else {
+            merror("'%s' tag required for '%s' provider", XML_OS, pr_name);
+            return OS_INVALID;
+        }
     }
 
     if (debian_provider && feeds_it) {
