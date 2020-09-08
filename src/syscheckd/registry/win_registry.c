@@ -499,6 +499,10 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, const re
             continue;
         }
 
+        if (fim_check_restrict(value_path, configuration->filerestrict)) {
+            continue;
+        }
+
         new->registry_entry.value->name = value_buffer;
         new->registry_entry.value->type = data_type;
         new->registry_entry.value->size = data_size;
@@ -621,9 +625,12 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, full_key);
     saved.registry_entry.value = NULL;
 
-    fim_registry_event(&new, &saved, configuration, FIM_SCHEDULED, saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFIED, NULL);
+    if (!fim_check_restrict(full_key, configuration->filerestrict)) {
+        fim_registry_event(&new, &saved, configuration, FIM_SCHEDULED,
+                           saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFIED, NULL);
 
-    fim_db_set_registry_key_scanned(syscheck.database, new.registry_entry.key->path);
+        fim_db_set_registry_key_scanned(syscheck.database, new.registry_entry.key->path);
+    }
 
     if (value_count) {
         fim_read_values(current_key_handle, &new, &saved, configuration, value_count);
