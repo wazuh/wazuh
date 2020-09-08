@@ -68,4 +68,14 @@ int __wrap_wdb_global_update_agent_status(wdb_t *wdb, int id, char *status);
 
 int __wrap_wdb_global_update_agent_group(wdb_t *wdb, int id, char *group);
 
+cJSON* __wrap_wdb_global_find_group(wdb_t *wdb, char* group_name);
+
+int __wrap_wdb_global_insert_agent_group(wdb_t *wdb, char* group_name);
+
+int __wrap_wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent);
+
+int __wrap_wdb_global_delete_group_belong(wdb_t *wdb, char* group_name);
+
+int __wrap_wdb_global_delete_group(wdb_t *wdb, char* group_name);
+
 #endif
