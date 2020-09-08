@@ -4253,7 +4253,7 @@ int wdb_parse_global_update_agent_version(wdb_t * wdb, char * input, char * outp
         j_agent_ip = cJSON_GetObjectItem(agent_data, "agent_ip");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
 
-        if (cJSON_IsNumber(j_id)) {
+        if (cJSON_IsNumber(j_id) && j_id->valueint) {
             // Getting each field
             int id = j_id->valueint;
             char *os_name = cJSON_IsString(j_os_name) ? j_os_name->valuestring : NULL;
