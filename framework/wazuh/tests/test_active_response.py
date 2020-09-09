@@ -72,6 +72,6 @@ def test_run_command(mock_close,  mock_send, mock_conn, message_exception, send_
             else:
                 ret = run_command(agent_list=agent_id, command=command, arguments=arguments, custom=custom)
                 if send_exception:
-                    assert ret.render()['message'] == 'Could not send command to any agent'
+                    assert ret.render()['message'] == 'AR command was not sent to any agent'
                 else:
-                    assert ret.render()['message'] == 'Command sent to all agents'
+                    assert ret.render()['message'] == 'AR command was sent to all agents'

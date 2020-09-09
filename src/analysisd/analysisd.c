@@ -274,7 +274,7 @@ static void help_analysisd(void)
 }
 
 #ifndef TESTRULE
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 __attribute((weak))
 #endif
 int main(int argc, char **argv)
@@ -658,7 +658,7 @@ int main_analysisd(int argc, char **argv)
     }
 
     /* Set the queue */
-    if ((m_queue = StartMQ(DEFAULTQUEUE, READ, MAX_OPENQ_ATTEMPS)) < 0) {
+    if ((m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 

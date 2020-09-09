@@ -31,9 +31,9 @@ msg += "\n  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rh/python27/root/usr/li
 try:
     from sys import version_info as python_version
     if python_version.major < 2 or (python_version.major == 2 and python_version.minor < 7):
-        raise WazuhException(999, msg)
+        raise WazuhInternalError(999, msg)
 except Exception as e:
-    raise WazuhException(999, msg)
+    raise WazuhInternalError(999, msg)
 
 
 class Wazuh:
@@ -96,10 +96,8 @@ class Wazuh:
             conn.execute(query)
 
             for tuple_ in conn:
-                if tuple_[0] == 'max_agents':
-                    self.max_agents = tuple_[1]
-                elif tuple_[0] == 'openssl_support':
-                    self.openssl_support = tuple_[1]
+                if hasattr(self, tuple_['key']):
+                    setattr(self, tuple_['key'], tuple_['value'])
         except Exception:
             self.max_agents = "N/A"
             self.openssl_support = "N/A"

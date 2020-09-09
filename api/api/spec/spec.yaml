@@ -15,7 +15,7 @@ info:
     url: 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
 
 servers:
-  - url: '{protocol}://{host}:{port}/v4'
+  - url: '{protocol}://{host}:{port}'
     variables:
       protocol:
         default: https
@@ -52,6 +52,8 @@ x-rbac-catalog:
       description: "Reference security roles via its id (i.e. role:id:1)"
     'user:id':
       description: "Reference security users via its id (i.e. user:id:1)"
+    'rule:id':
+      description: "Reference security rules via its id (i.e. rule:id:1)"
   actions:
     'active-response:command':
       description: "Allow to execute active response commands in the agents"
@@ -341,9 +343,10 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/policy:id'
         - $ref: '#/x-rbac-catalog/resources/role:id'
         - $ref: '#/x-rbac-catalog/resources/user:id'
+        - $ref: '#/x-rbac-catalog/resources/rule:id'
       example:
         actions: ['security:read']
-        resources: ['policy:id:*', 'role:id:2', 'user:id:5',]
+        resources: ['policy:id:*', 'role:id:2', 'user:id:5', 'rule:id:3']
         effect: "allow"
     'security:update':
       description: "Allow update the information of system's security resources"
@@ -351,9 +354,10 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/policy:id'
         - $ref: '#/x-rbac-catalog/resources/role:id'
         - $ref: '#/x-rbac-catalog/resources/user:id'
+        - $ref: '#/x-rbac-catalog/resources/rule:id'
       example:
         actions: ['security:update']
-        resources: ['policy:id:*', 'role:id:4', 'user:id:3',]
+        resources: ['policy:id:*', 'role:id:4', 'user:id:3', 'rule:id:4']
         effect: "deny"
     'security:delete':
       description: "Delete system's security resources"
@@ -361,9 +365,10 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/policy:id'
         - $ref: '#/x-rbac-catalog/resources/role:id'
         - $ref: '#/x-rbac-catalog/resources/user:id'
+        - $ref: '#/x-rbac-catalog/resources/rule:id'
       example:
         actions: ['security:update']
-        resources: ['policy:id:*', 'role:id:3', 'user:id:4',]
+        resources: ['policy:id:*', 'role:id:3', 'user:id:4', 'rule:id:2']
         effect: "deny"
     'security:read_config':
       description: "Read current security configuration"
@@ -423,14 +428,22 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
           example:
-            type: "about:blank"
-            title: "Wazuh Error"
+            title: "Bad Request"
+            detail: "'{invalid_param}' is not a '{expected_type}'. Failed validating 'format' in schema['items']: {'description': '{parameter_name}', 'format': '{expected_format}', 'minLength': {expected_length}, 'type': '{expected_type}', 'x-scope': ['', '#/components/parameters/{parameter_name}']}."
+
+    PermissionDeniedResponse:
+      description: "Response to report a permission denied request"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            title: "Permission Denied"
             detail: "Permission denied: Resource type: *:*"
-            status: 400
             remediation: "Please, make sure you have permissions to execute the current request. For more information on how to set up permissions, please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html"
             code: 4000
             dapi_errors:
-              master-node:
+              unknown-node:
                 error: "Permission denied: Resource type: *:*"
 
     UnauthorizedResponse:
@@ -440,10 +453,8 @@ components:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
-            type: "about:blank"
             title: "Unauthorized"
             detail: "No authorization token provided"
-            status: 401
 
     InvalidHTTPMethodResponse:
       description: "Response to an invalid HTTP method"
@@ -452,10 +463,8 @@ components:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
-            type: "about:blank"
             title: "Method Not Allowed"
             detail: "Specified method is invalid for this resource"
-            status: 405
 
     WrongContentTypeResponse:
       description: "The content-type does not match the body type"
@@ -464,10 +473,8 @@ components:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
-            type: "about:blank"
             title: "Wazuh Error"
             detail: "The body type is not the one specified in the content-type"
-            status: 406
             code: 6002
 
     RequestTooLargeResponse:
@@ -477,10 +484,8 @@ components:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
-            type: "about:blank"
             title: "Request Entity Too Large"
             detail: "Maximum request body size 1048576 exceeded, actual body size 1225245"
-            status: 413
 
     TooManyRequestsResponse:
       description: "Maximum number of request per minute reached"
@@ -489,12 +494,25 @@ components:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
-            type: "about:blank"
             title: "Wazuh Error"
             detail: "Maximum number of request per minute reached"
             remediation: "This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html"
             code: 6001
-            status: 429
+
+    ResourceNotFoundResponse:
+      description: "Resource not found"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            title: "Resource Not Found"
+            detail: "The group does not exist"
+            remediation: "Please, use `GET /agents/groups` to find all available groups://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html"
+            code: 1710
+            dapi_errors:
+              unknown-node:
+                error: "The group does not exist"
 
   schemas:
     ## Common models
@@ -1097,6 +1115,24 @@ components:
               items:
                   $ref: '#/components/schemas/ValidationStatus'
 
+    AllItemsResponseWazuhStats:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                anyOf:
+                  - $ref: '#/components/schemas/WazuhStats'
+                  - $ref: '#/components/schemas/WazuhHourlyStats'
+                  - $ref: '#/components/schemas/WazuhWeeklyStats'
+                  - $ref: '#/components/schemas/WazuhAnalysisdStats'
+                  - $ref: '#/components/schemas/WazuhRemotedStats'
+        - $ref: '#/components/schemas/AllItemsResponse'
+
     BasicInfo:
       type: object
       properties:
@@ -1337,6 +1373,12 @@ components:
       description: "Agent ID"
       format: numbers
 
+    AgentID_DELETE:
+      type: string
+      minLength: 3
+      description: "Agent ID|all"
+      format: numbers_delete
+
     NodeID:
       type: string
       description: "Node ID"
@@ -1347,6 +1389,12 @@ components:
       minLength: 1
       description: "Group name"
       format: group_names
+
+    GroupID_DELETE:
+      type: string
+      minLength: 1
+      description: "Group name|all"
+      format: group_names_delete
 
     AgentConfiguration:
       type: object
@@ -1527,14 +1575,34 @@ components:
       type: string
       format: numbers
       description: "Role ID"
+    Role_id_DELETE:
+      type: string
+      description: "Role ID|all"
+      format: numbers_delete
+    Security_rule_id:
+      type: string
+      format: numbers
+      description: "Rule ID"
+    Security_rule_id_DELETE:
+      type: string
+      format: numbers_delete
+      description: "Rule ID|all"
     Policy_id:
       type: string
       format: numbers
       description: "Policy ID"
+    Policy_id_DELETE:
+      type: string
+      description: "Policy ID|all"
+      format: numbers_delete
     User_id:
       type: string
       format: numbers
       description: "User ID"
+    User_id_DELETE:
+      type: string
+      format: numbers_delete
+      description: "User ID|all"
     Username:
       type: string
       description: "Username of the user"
@@ -1638,29 +1706,51 @@ components:
       type: object
       required:
         - name
-        - rule
       properties:
         name:
           type: string
           description: "Role name"
-        rule:
-          type: object
-          description: "Role rule"
     RolesRequest_no_required:
       type: object
       properties:
         name:
           type: string
           description: "Role name"
+    SecurityRulesRequest:
+      type: object
+      required:
+        - name
+        - rule
+      properties:
+        name:
+          type: string
+          description: "Rule name"
         rule:
           type: object
-          description: "Role rule"
+          description: "Rule body"
+    SecurityRulesRequest_no_required:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Rule name"
+        rule:
+          type: object
+          description: "Rule body"
     UsersResponse:
       type: object
       properties:
+        id:
+          type: integer
+          description: "User's id"
         username:
           type: string
-          description: "Policy name"
+        allow_run_as:
+          type: boolean
+          description: "Flag to enable the user to log in using authorization context"
+        roles:
+          type: array
+          description: "User's roles"
 
     # Cluster and manager models
     WazuhDaemonsStatus:
@@ -1819,7 +1909,7 @@ components:
           type: object
 
     WazuhStats:
-      type: array
+      type: object
       items:
         type: object
         properties:
@@ -2297,6 +2387,29 @@ components:
       type: object
       minProperties: 1
       properties:
+        access:
+          description: API Security Options
+          type: object
+          additionalProperties: false
+          properties:
+            max_login_attempts:
+              description: "Maximum number of login attempts in {block_time} seconds"
+              type: integer
+              format: int32
+              minimum: 1
+              example: 5
+            block_time:
+              description: "Blocking time for IPs that have exceeded {max_login_attempts}. Time counts from the first attempt"
+              type: integer
+              format: int32
+              minimum: 0
+              example: 300
+            max_request_per_minute:
+              description: "Maximum number of requests allowed per minute"
+              type: integer
+              format: int32
+              minimum: 1
+              example: 300
         behind_proxy_server:
           description: Set this option to "yes" in case the API is running behind a proxy server.
           type: boolean
@@ -2443,30 +2556,12 @@ components:
           type: integer
           format: int32
           minimum: 30
-          example: 36000
+          example: 3600
         rbac_mode:
           description: "RBAC mode (white/black)"
           type: string
           enum: [white, black]
           example: white
-        max_login_attempts:
-          description: "Maximum number of login attempts in {block_time} seconds"
-          type: integer
-          format: int32
-          minimum: 1
-          example: 5
-        block_time:
-          description: "Blocking time for IPs that have exceeded {max_login_attempts}. Time counts from the first attempt"
-          type: integer
-          format: int32
-          minimum: 0
-          example: 300
-        max_request_per_minute:
-          description: "Maximum number of requests allowed per minute"
-          type: integer
-          format: int32
-          minimum: 1
-          example: 300
 
     # SCA models
     SCAChecks:
@@ -3610,7 +3705,7 @@ components:
     file_format:
       in: query
       name: format
-      description: "Select output format to return the file. JSON will format the file in JSON format and XML will return the XML raw file in a string"
+      description: "Filter by file format. For example 'deb' will output deb files."
       schema:
         type: string
         format: alphanumeric
@@ -3668,6 +3763,7 @@ components:
         format: int32
         default: 500
         minimum: 1
+        maximum: 500
     list_agents:
       in: query
       name: list_agents
@@ -3676,6 +3772,15 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/AgentID'
+    list_agents_delete:
+      in: query
+      name: list_agents
+      description: "List of agent IDs (separated by comma), use the keyword 'all' to select all agents"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/AgentID_DELETE'
     list_groups:
       in: query
       name: list_groups
@@ -3684,6 +3789,15 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupID'
+    list_groups_delete:
+      in: query
+      name: list_groups
+      description: "List of group IDs (separated by comma), use the keyword 'all' to select all groups"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/GroupID_DELETE'
     list_nodes:
       in: query
       name: list_nodes
@@ -3803,6 +3917,15 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Policy_id'
+    policy_ids_rbac_delete:
+      in: query
+      name: 'policy_ids'
+      description: "List of policy IDs (separated by comma), use the keyword 'all' to select all policies"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Policy_id_DELETE'
     policy_ids_rbac_required:
       in: query
       name: 'policy_ids'
@@ -3838,6 +3961,13 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
+    raw:
+      in: query
+      name: raw
+      description: "Format response in plain text"
+      required: False
+      schema:
+        type: boolean
     registry:
       in: query
       name: registry
@@ -3888,20 +4018,53 @@ components:
     role_ids:
       in: query
       name: 'role_ids'
-      description: "List of role IDs"
+      description: "List of role IDs (separated by comma)"
       schema:
         type: array
         items:
           $ref: '#/components/schemas/Role_id'
+    role_ids_delete:
+      in: query
+      name: 'role_ids'
+      description: "List of role IDs (separated by comma), use the keyword 'all' to select all roles"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Role_id_DELETE'
     role_ids_required:
       in: query
       name: 'role_ids'
-      description: "List of role IDs"
+      description: "List of role IDs (separated by comma)"
       required: True
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/Role_id'
+          $ref: '#/components/schemas/Role_id_DELETE'
+    security_rule_id:
+      in: path
+      name: 'rule_id'
+      description: "Specify a rule ID"
+      required: true
+      schema:
+        $ref: '#/components/schemas/Security_rule_id'
+    security_rule_ids:
+      in: query
+      name: 'rule_ids'
+      description: "List of rule IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Security_rule_id'
+    security_rule_ids_delete:
+      in: query
+      name: 'rule_ids'
+      description: "List of rule IDs (separated by comma), use the keyword 'all' to select all rules"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Security_rule_id_DELETE'
     security_position:
       in: query
       name: 'position'
@@ -4033,20 +4196,27 @@ components:
     user_ids:
       in: query
       name: 'user_ids'
-      description: "List of user IDs"
+      description: "List of user IDs (separated by comma)"
       schema:
         type: array
         items:
           $ref: '#/components/schemas/User_id'
+    user_ids_delete:
+      in: query
+      name: 'user_ids'
+      description: "List of user IDs (separated by comma), use the keyword 'all' to select all users"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/User_id_DELETE'
     user_id_required:
       in: path
       name: 'user_id'
       description: "User ID"
       required: True
       schema:
-        type: array
-        items:
-          $ref: '#/components/schemas/User_id'
+        $ref: '#/components/schemas/User_id'
     unknown:
       in: query
       name: unknown
@@ -4855,6 +5025,8 @@ paths:
       summary: 'Root-endpoint info'
       description: "Return basic information about the API"
       operationId: api.controllers.default_controller.default_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
       responses:
         '200':
           description: "API default info"
@@ -4907,11 +5079,13 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: "Command sent to all agents"
+                message: 'AR command was sent to all agents'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
@@ -4933,7 +5107,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/list_agents_delete'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/older_than'
@@ -4969,6 +5143,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5094,11 +5270,13 @@ paths:
                       status: active
                       version: Wazuh v3.10.0
                   total_affected_items: 3
-                message: 'All selected agents information is shown'
+                message: 'All selected agents information was returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5157,6 +5335,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
@@ -5210,6 +5390,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5250,11 +5432,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: Specified agent removed from shown groups
+                message: 'Specified agent was removed from returned groups'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5293,11 +5477,13 @@ paths:
                   failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
-                message: Sync info shown for all selected agents
+                message: 'Sync info was returned for all selected agents'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5331,6 +5517,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5370,6 +5560,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5413,6 +5607,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5455,6 +5651,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5490,6 +5688,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5523,6 +5723,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5555,11 +5757,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Agent upgraded successfully
+                message: Agent was successfully upgraded
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5683,7 +5887,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/list_agents_delete'
         - $ref: '#/components/parameters/group_id_query'
       responses:
         '200':
@@ -5713,6 +5917,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5771,6 +5979,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5802,11 +6014,15 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: "Restart command sent to all selected agents"
+                  message: "Restart command sent to all agents"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5826,7 +6042,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_groups'
+        - $ref: '#/components/parameters/list_groups_delete'
       responses:
         '200':
           description: "Remove multiple group of multiple agents"
@@ -5857,6 +6073,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5909,11 +6127,13 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
-                message: "Obtained information about all selected groups"
+                message: "All selected groups information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5944,6 +6164,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -6068,6 +6290,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -6134,6 +6360,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -6167,11 +6397,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Agent configuration was updated successfully
+                message: Agent configuration was successfully updated
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
@@ -6237,11 +6471,15 @@ paths:
                   total_affected_items: 10
                   failed_items: []
                   total_failed_items: 0
-                message: All selected groups files are shown
+                message: 'All selected groups files were returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -6292,6 +6530,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -6323,6 +6565,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -6393,6 +6639,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
@@ -6435,6 +6683,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -6556,6 +6806,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -6601,6 +6853,8 @@ paths:
             $ref: '#/components/responses/ResponseError'
           '401':
             $ref: '#/components/responses/UnauthorizedResponse'
+          '403':
+            $ref: '#/components/responses/PermissionDeniedResponse'
           '405':
             $ref: '#/components/responses/InvalidHTTPMethodResponse'
           '429':
@@ -6647,10 +6901,13 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
+                message: 'All selected agents information was returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -6682,7 +6939,7 @@ paths:
                     data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: Restart command sent to all selected agents
+                  message: 'Restart command was sent to all agents'
                   data:
                     affected_items:
                       - '002'
@@ -6694,6 +6951,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -6784,11 +7043,13 @@ paths:
                   total_affected_items: 13
                   total_failed_items: 0
                   failed_items: []
-                message: All selected agents information is shown
+                message: 'All selected agents information was returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -6827,6 +7088,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -6867,6 +7130,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -6928,11 +7193,13 @@ paths:
                   failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
-                message: All CISCAT results loaded
+                message: 'All CISCAT results were returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -6980,11 +7247,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All selected information is shown"
+                message: "All selected information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -7040,11 +7309,13 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
-                message: "All selected nodes information is shown"
+                message: "All selected information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -7109,10 +7380,13 @@ paths:
                         last_keep_alive: "2019-01-11T18:52:16.66Z"
                         sync_agentinfo_free: true
                         sync_extravalid_free: true
+                message: "All selected nodes healthcheck information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -7162,6 +7436,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -7239,11 +7515,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All selected information is shown"
+                message: "All selected information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -7284,6 +7562,10 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        access:
+                          max_login_attempts: 5
+                          block_time: 300
+                          max_request_per_minute: 300
                         logs:
                           path: /var/ossec/logs/api.log
                           level: info
@@ -7326,11 +7608,13 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
-                message: "API configuration read successfully in all specified nodes"
+                message: "API configuration was successfully read in all specified nodes"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -7368,11 +7652,13 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: "API configuration successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
+                message: "API configuration was successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
@@ -7409,12 +7695,14 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: "API configuration successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
+                message: "API configuration was successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
 
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -7468,10 +7756,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Processes status was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -7517,10 +7808,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Basic information was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -7592,10 +7886,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Configuration was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -7626,39 +7923,45 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  - hour: 15
-                    alerts:
-                      - sigid: 5303
-                        level: 3
-                        times: 1
-                      - sigid: 5501
-                        level: 3
-                        times: 4
-                      - sigid: 221
-                        level: 0
-                        times: 653
-                    totalAlerts: 658
-                    events: 4387
-                    firewall: 0
-                  - hour: 16
-                    alerts:
-                      - sigid: 5521
-                        level: 0
-                        times: 1
-                      - sigid: 530
-                        level: 0
-                        times: 120
-                    totalAlerts: 121
-                    events: 4379
-                    syscheck: 0
-                    firewall: 0
+                  affected_items:
+                    - hour: 15
+                      alerts:
+                        - sigid: 5303
+                          level: 3
+                          times: 1
+                        - sigid: 5501
+                          level: 3
+                          times: 4
+                        - sigid: 221
+                          level: 0
+                          times: 653
+                      totalAlerts: 658
+                      events: 4387
+                      firewall: 0
+                    - hour: 16
+                      alerts:
+                        - sigid: 5521
+                          level: 0
+                          times: 1
+                        - sigid: 530
+                          level: 0
+                          times: 120
+                      totalAlerts: 121
+                      events: 4379
+                      syscheck: 0
+                      firewall: 0
+                  total_affected_items: 2
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -7668,7 +7971,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's stats by hour"
+      summary: "Get a specified node's stats per hour"
       description: "Return Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the average of alerts per hour"
       operationId: api.controllers.cluster_controller.get_stats_hourly_node
       x-rbac-actions:
@@ -7688,39 +7991,45 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhHourlyStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                  interactions: 0
+                  affected_items:
+                    - averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                      interactions: 0
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -7730,7 +8039,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's stats by week"
+      summary: "Get a specified node's stats per week"
       description: "Return Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the average of alerts per hour for that specific day"
       operationId: api.controllers.cluster_controller.get_stats_weekly_node
       x-rbac-actions:
@@ -7750,202 +8059,208 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhWeeklyStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  Sun:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Mon:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Tue:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Wed:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Thu:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Fri:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Sat:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
+                  affected_items:
+                    - Sun:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Mon:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Tue:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Wed:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Thu:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Fri:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Sat:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                  total_affected_items: 7
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -7975,59 +8290,65 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhAnalysisdStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  total_events_decoded: 5
-                  syscheck_events_decoded: 0
-                  syscheck_edps: 0
-                  syscollector_events_decoded: 0
-                  syscollector_edps: 0
-                  rootcheck_events_decoded: 0
-                  rootcheck_edps: 0
-                  sca_events_decoded: 0
-                  sca_edps: 0
-                  hostinfo_events_decoded: 0
-                  hostinfo_edps: 0
-                  winevt_events_decoded: 0
-                  winevt_edps: 0
-                  other_events_decoded: 5
-                  other_events_edps: 1
-                  events_processed: 5
-                  events_edps: 1
-                  events_received: 5
-                  events_dropped: 0
-                  alerts_written: 0
-                  firewall_written: 0
-                  fts_written: 0
-                  syscheck_queue_usage: 0
-                  syscheck_queue_size: 16384
-                  syscollector_queue_usage: 0
-                  syscollector_queue_size: 16384
-                  rootcheck_queue_usage: 0
-                  rootcheck_queue_size: 16384
-                  sca_queue_usage: 0
-                  sca_queue_size: 16384
-                  hostinfo_queue_usage: 0
-                  hostinfo_queue_size: 16384
-                  winevt_queue_usage: 0
-                  winevt_queue_size: 16384
-                  event_queue_usage: 0
-                  event_queue_size: 16384
-                  rule_matching_queue_usage: 0
-                  rule_matching_queue_size: 16384
-                  alerts_queue_usage: 0
-                  alerts_queue_size: 16384
-                  firewall_queue_usage: 0
-                  firewall_queue_size: 16384
-                  statistical_queue_usage: 0
-                  statistical_queue_size: 16384
-                  archives_queue_usage: 0
-                  archives_queue_size: 16384
+                  affected_items:
+                    - total_events_decoded: 5
+                      syscheck_events_decoded: 0
+                      syscheck_edps: 0
+                      syscollector_events_decoded: 0
+                      syscollector_edps: 0
+                      rootcheck_events_decoded: 0
+                      rootcheck_edps: 0
+                      sca_events_decoded: 0
+                      sca_edps: 0
+                      hostinfo_events_decoded: 0
+                      hostinfo_edps: 0
+                      winevt_events_decoded: 0
+                      winevt_edps: 0
+                      other_events_decoded: 5
+                      other_events_edps: 1
+                      events_processed: 5
+                      events_edps: 1
+                      events_received: 5
+                      events_dropped: 0
+                      alerts_written: 0
+                      firewall_written: 0
+                      fts_written: 0
+                      syscheck_queue_usage: 0
+                      syscheck_queue_size: 16384
+                      syscollector_queue_usage: 0
+                      syscollector_queue_size: 16384
+                      rootcheck_queue_usage: 0
+                      rootcheck_queue_size: 16384
+                      sca_queue_usage: 0
+                      sca_queue_size: 16384
+                      hostinfo_queue_usage: 0
+                      hostinfo_queue_size: 16384
+                      winevt_queue_usage: 0
+                      winevt_queue_size: 16384
+                      event_queue_usage: 0
+                      event_queue_size: 16384
+                      rule_matching_queue_usage: 0
+                      rule_matching_queue_size: 16384
+                      alerts_queue_usage: 0
+                      alerts_queue_size: 16384
+                      firewall_queue_usage: 0
+                      firewall_queue_size: 16384
+                      statistical_queue_usage: 0
+                      statistical_queue_size: 16384
+                      archives_queue_usage: 0
+                      archives_queue_size: 16384
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8057,21 +8378,27 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhRemotedStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  queue_size: 0
-                  total_queue_size: 131072
-                  tcp_sessions: 0
-                  evt_count: 0
-                  ctrl_msg_count: 0
-                  discarded_count: 0
-                  msg_sent: 0
-                  recv_bytes: 0
+                  affected_items:
+                    - queue_size: 0
+                      total_queue_size: 131072
+                      tcp_sessions: 0
+                      evt_count: 0
+                      ctrl_msg_count: 0
+                      discarded_count: 0
+                      msg_sent: 0
+                      recv_bytes: 0
+                  total_affected_items: 0
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8127,11 +8454,13 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
-                message: Logs read successfully in specified node
+                message: "Logs were successfully read in specified node"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8193,6 +8522,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8236,6 +8567,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8279,11 +8612,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: File updated successfully
+                message: "File was successfully updated"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
@@ -8319,11 +8654,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: File was deleted successfully
+                message: File was successfully deleted
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8356,7 +8693,7 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseNodeIDs'
                 example:
-                  message: Restart command sent to all shown nodes
+                  message: "Restart request sent to all specified nodes"
                   data:
                     affected_items:
                       - 'master-node'
@@ -8368,6 +8705,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8410,11 +8749,13 @@ paths:
                     total_affected_items: 3
                     failed_items: []
                     total_failed_items: 0
-                  message: Validation checked successfully in all nodes
+                  message: Validation was successfully checked in all nodes
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8466,6 +8807,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8546,11 +8889,13 @@ paths:
                   total_affected_items: 4
                   failed_items: []
                   total_failed_items: 0
-                message: All specified lists were shown
+                message: 'All specified lists were returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8600,11 +8945,13 @@ paths:
                   total_affected_items: 4
                   failed_items: []
                   total_failed_items: 0
-                message: All specified paths were shown
+                message: 'All specified paths were returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8657,10 +9004,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Processes status successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8705,10 +9055,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Basic information was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8779,10 +9132,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Configuration was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8812,39 +9168,45 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  - hour: 15
-                    alerts:
-                      - sigid: 5303
-                        level: 3
-                        times: 1
-                      - sigid: 5501
-                        level: 3
-                        times: 4
-                      - sigid: 221
-                        level: 0
-                        times: 653
-                    totalAlerts: 658
-                    events: 4387
-                    firewall: 0
-                  - hour: 16
-                    alerts:
-                      - sigid: 5521
-                        level: 0
-                        times: 1
-                      - sigid: 530
-                        level: 0
-                        times: 120
-                    totalAlerts: 121
-                    events: 4379
-                    syscheck: 0
-                    firewall: 0
+                  affected_items:
+                    - hour: 15
+                      alerts:
+                        - sigid: 5303
+                          level: 3
+                          times: 1
+                        - sigid: 5501
+                          level: 3
+                          times: 4
+                        - sigid: 221
+                          level: 0
+                          times: 653
+                      totalAlerts: 658
+                      events: 4387
+                      firewall: 0
+                    - hour: 16
+                      alerts:
+                        - sigid: 5521
+                          level: 0
+                          times: 1
+                        - sigid: 530
+                          level: 0
+                          times: 120
+                      totalAlerts: 121
+                      events: 4379
+                      syscheck: 0
+                      firewall: 0
+                  total_affected_items: 2
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8873,39 +9235,45 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhHourlyStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                  interactions: 0
+                  affected_items:
+                    - averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                      interactions: 0
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8934,202 +9302,208 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhWeeklyStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  Sun:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Mon:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Tue:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Wed:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Thu:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Fri:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Sat:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
+                  affected_items:
+                    - Sun:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Mon:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Tue:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Wed:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Thu:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Fri:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Sat:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                  total_affected_items: 7
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -9154,63 +9528,69 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/WazuhAnalysisdStats'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  total_events_decoded: 5
-                  syscheck_events_decoded: 0
-                  syscheck_edps: 0
-                  syscollector_events_decoded: 0
-                  syscollector_edps: 0
-                  rootcheck_events_decoded: 0
-                  rootcheck_edps: 0
-                  sca_events_decoded: 0
-                  sca_edps: 0
-                  hostinfo_events_decoded: 0
-                  hostinfo_edps: 0
-                  winevt_events_decoded: 0
-                  winevt_edps: 0
-                  other_events_decoded: 5
-                  other_events_edps: 1
-                  events_processed: 5
-                  events_edps: 1
-                  events_received: 5
-                  events_dropped: 0
-                  alerts_written: 0
-                  firewall_written: 0
-                  fts_written: 0
-                  syscheck_queue_usage: 0
-                  syscheck_queue_size: 16384
-                  syscollector_queue_usage: 0
-                  syscollector_queue_size: 16384
-                  rootcheck_queue_usage: 0
-                  rootcheck_queue_size: 16384
-                  sca_queue_usage: 0
-                  sca_queue_size: 16384
-                  hostinfo_queue_usage: 0
-                  hostinfo_queue_size: 16384
-                  winevt_queue_usage: 0
-                  winevt_queue_size: 16384
-                  event_queue_usage: 0
-                  event_queue_size: 16384
-                  rule_matching_queue_usage: 0
-                  rule_matching_queue_size: 16384
-                  alerts_queue_usage: 0
-                  alerts_queue_size: 16384
-                  firewall_queue_usage: 0
-                  firewall_queue_size: 16384
-                  statistical_queue_usage: 0
-                  statistical_queue_size: 16384
-                  archives_queue_usage: 0
-                  archives_queue_size: 16384
+                  affected_items:
+                    - total_events_decoded: 5
+                      syscheck_events_decoded: 0
+                      syscheck_edps: 0
+                      syscollector_events_decoded: 0
+                      syscollector_edps: 0
+                      rootcheck_events_decoded: 0
+                      rootcheck_edps: 0
+                      sca_events_decoded: 0
+                      sca_edps: 0
+                      hostinfo_events_decoded: 0
+                      hostinfo_edps: 0
+                      winevt_events_decoded: 0
+                      winevt_edps: 0
+                      other_events_decoded: 5
+                      other_events_edps: 1
+                      events_processed: 5
+                      events_edps: 1
+                      events_received: 5
+                      events_dropped: 0
+                      alerts_written: 0
+                      firewall_written: 0
+                      fts_written: 0
+                      syscheck_queue_usage: 0
+                      syscheck_queue_size: 16384
+                      syscollector_queue_usage: 0
+                      syscollector_queue_size: 16384
+                      rootcheck_queue_usage: 0
+                      rootcheck_queue_size: 16384
+                      sca_queue_usage: 0
+                      sca_queue_size: 16384
+                      hostinfo_queue_usage: 0
+                      hostinfo_queue_size: 16384
+                      winevt_queue_usage: 0
+                      winevt_queue_size: 16384
+                      event_queue_usage: 0
+                      event_queue_size: 16384
+                      rule_matching_queue_usage: 0
+                      rule_matching_queue_size: 16384
+                      alerts_queue_usage: 0
+                      alerts_queue_size: 16384
+                      firewall_queue_usage: 0
+                      firewall_queue_size: 16384
+                      statistical_queue_usage: 0
+                      statistical_queue_size: 16384
+                      archives_queue_usage: 0
+                      archives_queue_size: 16384
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -9239,21 +9619,27 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhRemotedStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  queue_size: 0
-                  total_queue_size: 131072
-                  tcp_sessions: 0
-                  evt_count: 0
-                  ctrl_msg_count: 0
-                  discarded_count: 0
-                  msg_sent: 0
-                  recv_bytes: 0
+                  affected_items:
+                    - queue_size: 0
+                      total_queue_size: 131072
+                      tcp_sessions: 0
+                      evt_count: 0
+                      ctrl_msg_count: 0
+                      discarded_count: 0
+                      msg_sent: 0
+                      recv_bytes: 0
+                  total_affected_items: 0
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -9313,6 +9699,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -9369,10 +9757,13 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
+                message: "Log was successfully summarized"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -9415,6 +9806,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -9453,11 +9846,13 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - $ref: '#/components/schemas/ConfirmationMessage'
               example:
-                message: File updated successfully
+                message: "File was uploaded successfully"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
@@ -9494,11 +9889,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: File was deleted
+                message: File was deleted successfully
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -9537,6 +9934,10 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        access:
+                          max_login_attempts: 5
+                          block_time: 300
+                          max_request_per_minute: 300
                         logs:
                           path: /var/ossec/logs/api.log
                           level: info
@@ -9554,11 +9955,13 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "API configuration read successfully"
+                message: "API configuration was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -9594,11 +9997,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "API configuration successfully updated. Some settings may require restarting the API to be applied"
+                message: "API configuration was successfully updated. Some settings may require restarting the API to be applied"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
@@ -9634,11 +10039,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "API configuration successfully updated. Some settings may require restarting the API to be applied"
+                message: "API configuration was successfully updated. Some settings may require restarting the API to be applied"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -9676,6 +10083,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -9708,11 +10117,13 @@ paths:
                     total_affected_items: 1
                     failed_items: []
                     total_failed_items: 0
-                  message: "Validation checked succesfully in all nodes"
+                  message: "Validation was successfully checked in all nodes"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -9752,11 +10163,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "Active configuration read successfully on specified node"
+                message: "Active configuration was successfully read in specified node"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -9833,11 +10246,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All selected MITRE information is shown"
+                message: "All selected MITRE information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -9926,11 +10341,13 @@ paths:
                   total_affected_items: 54
                   failed_items: []
                   total_failed_items: 0
-                message: All selected rules were shown
+                message: "All selected rules were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -9976,11 +10393,13 @@ paths:
                   total_affected_items: 6
                   failed_items: []
                   total_failed_items: 0
-                message: All groups in rules are shown
+                message: "All groups in rules were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10028,11 +10447,13 @@ paths:
                   total_affected_items: 7
                   failed_items: []
                   total_failed_items: 0
-                message: Selected rules were shown
+                message: "All selected rules were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10087,11 +10508,13 @@ paths:
                   total_affected_items: 4
                   failed_items: []
                   total_failed_items: 0
-                message: All rules files were shown
+                message: "All rules files were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10121,6 +10544,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10189,11 +10614,13 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: All selected sca information is shown
+                message: "All selected sca information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10281,11 +10708,13 @@ paths:
                   failed_items: []
                   total_affected_items: 2
                   total_failed_items: 0
-                message: All selected sca/policy information is shown
+                message: "All selected sca/policy information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10326,11 +10755,13 @@ paths:
                   failed_items: []
                   total_affected_items: 4
                   total_failed_items: 0
-                message: "Restarting syscheck scan on shown agents"
+                message: "Syscheck scan was restarted on returned agents"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10411,11 +10842,13 @@ paths:
                   total_affected_items: 1433
                   failed_items: []
                   total_failed_items: 0
-                message: FIM findings of the agent
+                message: "FIM findings of the agent were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10452,11 +10885,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "Cleared syscheck database on shown agents"
+                message: "Syscheck database was cleared on returned agents"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10495,11 +10930,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: Last scan of the agent
+                message: "Last syscheck scan of the agent was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10563,11 +11000,13 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: All selected decoders were shown
+                message: "All selected decoders were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10619,11 +11058,13 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
-                message: All decoder files were shown
+                message: "All decoder files were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10653,6 +11094,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10708,11 +11151,13 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: All selected decoders were shown
+                message: "All selected decoders were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10730,7 +11175,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/list_agents_delete'
       responses:
         '200':
           description: "Delete syscheck database"
@@ -10767,6 +11212,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10852,11 +11299,13 @@ paths:
                   failed_items: []
                   total_affected_items: 3
                   total_failed_items: 0
-                message: All CISCAT results loaded
+                message: 'All CISCAT results were returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -10943,11 +11392,13 @@ paths:
                   failed_items: []
                   total_affected_items: 3
                   total_failed_items: 0
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -11017,11 +11468,13 @@ paths:
                   failed_items: []
                   total_affected_items: 3
                   total_failed_items: 0
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -11133,11 +11586,13 @@ paths:
                   failed_items: []
                   total_affected_items: 3
                   total_failed_items: 0
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -11204,11 +11659,13 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -11303,11 +11760,13 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -11399,11 +11858,13 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -11498,11 +11959,13 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -11622,11 +12085,13 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -11677,11 +12142,13 @@ paths:
                   failed_items: []
                   total_affected_items: 2
                   total_failed_items: 0
-                message: All specified items were shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -11733,11 +12200,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified syscollector information is shown"
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -11785,11 +12254,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified syscollector information is shown"
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -11844,11 +12315,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified syscollector information is shown"
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -11923,11 +12396,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified syscollector information is shown"
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -11981,11 +12456,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified syscollector information is shown"
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -12039,11 +12516,13 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified syscollector information is shown"
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -12136,11 +12615,13 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
-                  message: "All specified syscollector information is shown"
+                  message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -12236,11 +12717,13 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified syscollector information is shown"
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -12361,11 +12844,13 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                  message: "All specified syscollector information is shown"
+                  message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -12374,12 +12859,12 @@ paths:
   /security/user/authenticate:
     get:
       tags:
-      - security
+        - security
       summary: "User/password authentication to get an access token"
-      description: "This method should be called to get an API token. This token will expire at some time"
+      description: "This method should be called to get an API token. This token will expire after auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
       parameters:
-        - $ref: '#/components/parameters/auth_context'
+        - $ref: '#/components/parameters/raw'
       security:
         - basicAuth: []
       responses:
@@ -12394,8 +12879,20 @@ paths:
                     type: string
               example:
                 token: "<generated_token>"
+            text/plain:
+              schema:
+                type: string
+              example: "<generated_token>"
         '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
       tags:
@@ -12411,7 +12908,46 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "User wazuh logout correctly."
+                message: "User wazuh was successfully logged out"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /security/user/authenticate/run_as:
+    post:
+      tags:
+      - security
+      summary: "Auth_context based authentication to get an access token"
+      description: "This method should be called to get an API token using an authorization context body. This token will expire after auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT /security/config"
+      operationId: api.controllers.security_controller.login_user
+      parameters:
+        - $ref: '#/components/parameters/raw'
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Login successful"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+              example:
+                token: "<generated_token>"
         '400':
           $ref: '#/components/responses/ResponseError'
 
@@ -12423,8 +12959,8 @@ paths:
       description: 'Get all RBAC actions, including the potential related resources and endpoints.'
       operationId: api.controllers.security_controller.get_rbac_actions
       parameters:
-        - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/endpoint'
+        - $ref: '#/components/parameters/pretty'
       responses:
         '200':
           description: "Return a list of RBAC actions"
@@ -12465,6 +13001,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -12478,8 +13016,8 @@ paths:
       description: 'This method should be called to get all current defined RBAC resources.'
       operationId: api.controllers.security_controller.get_rbac_resources
       parameters:
-        - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/resource_list'
+        - $ref: '#/components/parameters/pretty'
       responses:
         '200':
           description: "Return all RBAC resources"
@@ -12517,6 +13055,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -12531,11 +13071,13 @@ paths:
       operationId: api.controllers.security_controller.revoke_all_tokens
       responses:
         '200':
-          description: "Tokens revoked succesfully"
+          description: "Tokens were successfully revoked"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -12576,30 +13118,28 @@ paths:
                     - id: 1
                       name: 'administrator'
                       policies:
-                        id: 1
-                        name: wazuhPolicy
-                        policy:
-                          actions:
-                            - "agent:read"
-                            - "agent:delete"
-                          effect: allow
-                          resources:
-                            - "agent:id:*"
+                        - 1
+                      users:
+                        - 1
                       rule:
-                        FIND:
-                          r'^auth[a-zA-Z]+$':
-                            - "administrator"
+                        - 1
                     - id: 2
                       name: 'normal_user'
+                      policies:
+                        - 4
+                        - 5
+                      users:
+                        - 3
                       rule:
-                        MATCH:
-                          privileges: 'limit_access'
+                        - 3
                   total_affected_items: 2
-                message: "All available roles were shown"
+                message: "All specified roles were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -12623,9 +13163,6 @@ paths:
               $ref: '#/components/schemas/RolesRequest'
             example:
               name: "normal"
-              rule:
-                MATCH:
-                  definition: "normalRule"
       responses:
         '200':
           description: "Return the information of the new role"
@@ -12648,11 +13185,13 @@ paths:
                         MATCH:
                           definition: limit_access
                   total_affected_items: 1
-                message: Role created correctly
+                message: "Role was successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
@@ -12671,7 +13210,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
-        - $ref: '#/components/parameters/role_ids'
+        - $ref: '#/components/parameters/role_ids_delete'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -12723,6 +13262,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -12738,9 +13279,9 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
+        - $ref: '#/components/parameters/role_id'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/role_id'
       requestBody:
         content:
           application/json:
@@ -12748,9 +13289,6 @@ paths:
               $ref: '#/components/schemas/RolesRequest_no_required'
             example:
               name: "normal"
-              rule:
-                MATCH:
-                  definition: "normalRule"
       responses:
         '200':
           description: "Information of role modified"
@@ -12773,7 +13311,236 @@ paths:
                         MATCH:
                           definition: normalRule8
                   total_affected_items: 1
-                message: Role updated correctly
+                message: "Role was successfully updated"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /security/rules:
+    get:
+      tags:
+        - security
+      summary: "Get all security rules"
+      description: "Get a list of security rules from the system or all of them. These rules must be mapped with roles to obtain certain access privileges. For a specific list, indicate the ids separated by commas. Example: ?rule_ids=1,2,3"
+      operationId: api.controllers.security_controller.get_rules
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:read'
+      parameters:
+        - $ref: '#/components/parameters/security_rule_ids'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Return a list of security rules"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRoles'
+              example:
+                data:
+                  affected_items:
+                    - id: 1
+                      name: "admin_rule"
+                      rule:
+                        FIND:
+                          r'^auth[a-zA-Z]+$':
+                            - "administrator"
+                    - id: 2
+                      name: "limit_access_rule"
+                      rule:
+                        MATCH:
+                          privileges: 'limit_access'
+                  total_affected_items: 2
+                message: "All specified security rules were returned"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    post:
+      tags:
+        - security
+      summary: "Add a new security rule to the system"
+      description: "Add a new security rule"
+      operationId: api.controllers.security_controller.add_rule
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:create'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecurityRulesRequest'
+            example:
+              name:
+                "New_Rule"
+              rule:
+                MATCH:
+                  definition: "normalRule"
+      responses:
+        '200':
+          description: "Return the information of the new security rule"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRoles'
+              example:
+                data:
+                  affected_items:
+                    - id: 3
+                      name: "new_rule"
+                      rule:
+                        MATCH:
+                          definition: "normalRule"
+                      roles: []
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
+                message: "Security rule was successfully created"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    delete:
+      tags:
+        - security
+      summary: "Delete a list of security rules or all security rules in the system"
+      description: "Roles linked to rules are not going to be removed"
+      operationId: api.controllers.security_controller.remove_rules
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
+      parameters:
+        - $ref: '#/components/parameters/security_rule_ids_delete'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Remove result"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRoles'
+              example:
+                data:
+                  affected_items:
+                    - id: 3
+                      name: "new_rule"
+                      rule:
+                        MATCH:
+                          definition: "normalRule"
+                      roles: []
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
+                message: "All specified security rules were deleted"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /security/rules/{rule_id}:
+    put:
+      tags:
+        - security
+      summary: "Modify a security rule"
+      description: "Modify a security rule by specifying its ID"
+      operationId: api.controllers.security_controller.update_rule
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:update'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/security_rule_id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecurityRulesRequest_no_required'
+            example:
+              name: "new_name"
+              rule:
+                MATCH:
+                  definition: "normalRule"
+      responses:
+        '200':
+          description: "Security rule updated successfully"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseUsers'
+                example:
+                  data:
+                    affected_items:
+                      - id: 3
+                        name: "new_name"
+                        rule:
+                          MATCH:
+                            definition: "updated_rule"
+                        roles: []
+                    total_affected_items: 1
+                    failed_items: []
+                    total_failed_items: 0
+                  message: "Security rule was successfully updated"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12782,8 +13549,6 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -12838,11 +13603,13 @@ paths:
                           - agent:id:005
                           - agent:id:006
                   total_affected_items: 2
-                message: All available policies were shown
+                message: "All specified policies were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -12887,6 +13654,7 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponsePolicies'
               example:
+                #TODO AffectedItemWazuhResult
                 data:
                   id: 2
                   name: 'normal_policy'
@@ -12897,10 +13665,13 @@ paths:
                       - "agent:id:001"
                     effect: "allow"
                   roles: []
+                message: "Policy was successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
@@ -12919,7 +13690,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
-        - $ref: '#/components/parameters/policy_ids_rbac'
+        - $ref: '#/components/parameters/policy_ids_rbac_delete'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -12959,11 +13730,13 @@ paths:
                   failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
-                message: All specified policies were deleted
+                message: "All specified policies were deleted"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -13024,12 +13797,14 @@ paths:
                           - agent:id:003
                       roles: []
                   total_affected_items: 1
-                message: Policy updated correctly
+                message: "Policy was successfully updated"
 
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
@@ -13044,7 +13819,7 @@ paths:
       tags:
         - security
       summary: "Create a relation between one role and one or more policies"
-      description: "Create a specify relation role-policy, one role may have multiples policies"
+      description: "Create a specified relation role-policy, one role may have multiples policies"
       operationId: api.controllers.security_controller.set_role_policy
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
@@ -13101,6 +13876,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -13109,14 +13886,14 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a specify relation role-policy"
-      description: "Delete a specify relation role-policy"
+      summary: "Delete a specified relation role-policy"
+      description: "Delete a specified relation role-policy"
       operationId: api.controllers.security_controller.remove_role_policy
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/role_id'
-        - $ref: '#/components/parameters/policy_ids_rbac_required'
+        - $ref: '#/components/parameters/policy_ids_rbac_delete'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -13145,6 +13922,101 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /security/roles/{role_id}/rules:
+    post:
+      tags:
+        - security
+      summary: "Create a relation between one role and one or more security rules"
+      description: "Create a specific role-rule relation. One role may have multiple security rules"
+      operationId: api.controllers.security_controller.set_role_rule
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:update'
+      parameters:
+        - $ref: '#/components/parameters/role_id'
+        - $ref: '#/components/parameters/security_rule_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Role information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - id: 5
+                      name: normal
+                      policies:
+                        - 2
+                        - 3
+                      rules:
+                        - 3
+                      users: []
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: "All security rules were linked to role 5"
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    delete:
+      tags:
+        - security
+      summary: "Delete a specific role-rule relation"
+      description: "Delete a specific role-rule relation"
+      operationId: api.controllers.security_controller.remove_role_rule
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
+      parameters:
+        - $ref: '#/components/parameters/role_id'
+        - $ref: '#/components/parameters/security_rule_ids_delete'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Role information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - id: 3
+                      name: normal
+                      policies: []
+                      rules: []
+                      users: []
+                  failed_items: []
+                  total_affected_items: 2
+                  total_failed_items: 0
+                message: "All security rules were unlinked from role 3"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -13154,8 +14026,8 @@ paths:
     post:
       tags:
         - security
-      summary: "Create a specify relation between one user and one role"
-      description: "Create a specify relation role-policy, one user may have multiples roles"
+      summary: "Create a specified relation between one user and one role"
+      description: "Create a specified relation role-policy, one user may have multiples roles"
       operationId: api.controllers.security_controller.set_user_role
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
@@ -13193,6 +14065,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -13201,14 +14075,14 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a specify relation user-roles"
-      description: "Delete a specify relation user-roles"
+      summary: "Delete a specified relation user-roles"
+      description: "Delete a specified relation user-roles"
       operationId: api.controllers.security_controller.remove_user_role
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/user_id_required'
-        - $ref: '#/components/parameters/role_ids_required'
+        - $ref: '#/components/parameters/role_ids_delete'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -13237,6 +14111,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -13269,6 +14145,7 @@ paths:
                     affected_items:
                       - id: 1
                         username: wazuh
+                        allow_run_as: true
                         roles:
                           - id: 1
                             name: administrator
@@ -13302,9 +14179,17 @@ paths:
                     total_affected_items: 1
                     total_failed_items: 0
                     failed_items: []
-                  message: Current user information was shown
+                  message: "Current user information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/users:
     get:
@@ -13338,40 +14223,57 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - roles:
-                          - 2
+                      - id: 3
                         username: administrator
-                      - roles: []
+                        allow_run_as: true
+                        roles:
+                          - 2
+                      - id: 4
                         username: guest
-                      - roles:
+                        allow_run_as: false
+                        roles: []
+                      - id: 5
+                        username: normal
+                        allow_run_as: false
+                        roles:
                           - 4
                           - 5
                           - 6
-                        username: normal
-                      - roles:
+                      - id: 6
+                        username: ossec
+                        allow_run_as: true
+                        roles:
                           - 2
                           - 5
-                        username: ossec
-                      - roles: []
-                        username: python
-                      - roles:
+                      - username: python
+                        allow_run_as: true
+                        roles: []
+                      - id: 7
+                        username: rbac
+                        allow_run_as: false
+                        roles:
                           - 3
                           - 4
                           - 5
-                        username: rbac
-                      - roles:
-                          - 1
+                      - id: 1
                         username: wazuh
-                      - roles: []
+                        allow_run_as: true
+                        roles:
+                          - 1
+                      - id: 2
                         username: wazuh-wui
+                        allow_run_as: true
+                        roles: []
                     failed_items: []
                     total_affected_items: 8
                     total_failed_items: 0
-                  message: All specified users were shown
+                  message: "All specified users were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -13385,6 +14287,9 @@ paths:
       operationId: api.controllers.security_controller.create_user
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:create_user'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
         content:
           application/json:
@@ -13401,12 +14306,15 @@ paths:
                   maxLength: 64
                   minLength: 8
                   format: password
+                allow_run_as:
+                  type: boolean
+                  default: False
               required:
                 - username
                 - password
       responses:
         '200':
-          description: "User created successful"
+          description: "User created successfully"
           content:
             application/json:
               schema:
@@ -13424,7 +14332,7 @@ paths:
                     failed_items: []
                     total_affected_items: 1
                     total_failed_items: 0
-                  message: User created correctly
+                  message: "User was successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13439,13 +14347,15 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a user"
-      description: "Delete a user by specifying their ID"
+      summary: "Delete a list of users"
+      description: "Delete a list of users by specifying their IDs"
       operationId: api.controllers.security_controller.delete_users
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
-        - $ref: '#/components/parameters/user_ids'
+        - $ref: '#/components/parameters/user_ids_delete'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
           description: "User deleted successful"
@@ -13460,7 +14370,8 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseUsers'
                 example:
                   data:
-                    message: 'User deleted correctly'
+                    # TODO AffectedItemWazuhResult
+                    message: "Users were successfully deleted"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13483,6 +14394,8 @@ paths:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/user_id_required'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
         content:
           application/json:
@@ -13494,8 +14407,9 @@ paths:
                   maxLength: 64
                   minLength: 8
                   format: password
-              required:
-                - password
+                allow_run_as:
+                  type: boolean
+                  default: False
       responses:
         '200':
           description: "User updated successful"
@@ -13517,7 +14431,7 @@ paths:
                     total_affected_items: 1
                     total_failed_items: 0
                     failed_items: []
-                  message: User modified correctly
+                  message: "User was successfully updated"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13619,6 +14533,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -13637,22 +14553,21 @@ paths:
         - $ref: "#/components/parameters/pretty"
         - $ref: "#/components/parameters/wait_for_complete"
       responses:
-        "200":
+        '200':
           description: "Current security configuration"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponse"
               example:
-                auth_token_exp_timeout: 36000
+                auth_token_exp_timeout: 3600
                 rbac_mode: white
-                max_login_attempts: 5
-                block_time: 300
-                max_request_per_minute: 300
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -13714,4 +14629,3 @@ paths:
 externalDocs:
   description: "Find more about Wazuh API usage"
   url: 'https://documentation.wazuh.com/current/user-manual/api/index.html'
-

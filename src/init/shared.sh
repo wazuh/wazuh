@@ -14,7 +14,7 @@ UNAME=`uname -snr`
 NUNAME=`uname`
 
 # If whoami does not exist, try id
-ls "`which whoami`" > /dev/null 2>&1
+ls "`command -v whoami`" > /dev/null 2>&1
 if [ ! $? = 0 ]; then
     ME=`id | cut -d " " -f 1`
     if [ "X${ME}" = "Xuid=0(root)" ]; then
@@ -28,7 +28,7 @@ OSSEC_INIT="/etc/ossec-init.conf"
 HOST=`hostname`
 NAMESERVERS=`cat /etc/resolv.conf | grep "^nameserver" | cut -d " " -sf 2`
 NAMESERVERS2=`cat /etc/resolv.conf | grep "^nameserver" | cut -sf 2`
-HOST_CMD=`which host 2>/dev/null`
+HOST_CMD=`command -v host 2>/dev/null`
 NAME="Wazuh"
 INSTYPE="server"
 DEFAULT_DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`

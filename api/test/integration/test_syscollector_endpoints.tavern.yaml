@@ -10,7 +10,7 @@ stages:
     request: &os_request_000
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/os"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/os"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -50,18 +50,9 @@ stages:
       params:
         select: wrongParam
     response: &error_response_1724
-      status_code: 200
+      status_code: 400
       json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1724
-              id:
-                - '000'
-          total_affected_items: 0
-          total_failed_items: 1
-        message: !anystr
+        code: 1724
 
 ---
 test_name: GET /syscollector/{agent_id}/os?{select}
@@ -108,7 +99,7 @@ stages:
   - name: Hardware of an agent
     request: &hardware_request_000
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/hardware"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/hardware"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -189,7 +180,7 @@ stages:
   - name: Packages of and agent
     request: &packages_request_000
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/packages"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -215,7 +206,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
       save:
         json:
           expected_scan_id: data.affected_items[0].scan.id
@@ -242,7 +232,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Not allowed selector
     request:
@@ -340,11 +329,6 @@ stages:
         limit: 1a
     response:
       status_code: 400
-      json: &bad_request
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
 
   - name: Invalid limit
     request:
@@ -355,8 +339,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *bad_request
 
   - name: Filter sort
     request:
@@ -393,20 +375,11 @@ stages:
       verify: False
       <<: *packages_request_000
       params:
-        sort: wronParam
+        sort: wrongParam
     response: &error_response_1403
-      status_code: 200
+      status_code: 400
       json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1403
-              id:
-                - '000'
-          total_affected_items: 0
-          total_failed_items: 1
-        message: !anystr
+        code: 1403
 
   - name: Search an expected name
     request:
@@ -586,7 +559,7 @@ stages:
   - name: Processes of an agent with limit = 1
     request: &processes_request_000
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/processes"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/processes"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -630,7 +603,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
       save:
         json:
           expected_tty: data.affected_items[0].tty
@@ -987,11 +959,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json: &error_spec
-        detail: !anystr
-        status: !anyint
-        title: !anything
-        type: !anystr
 
 ---
 test_name: GET /syscollector/{agent_id}/processes?{sort,select}
@@ -1068,7 +1035,7 @@ stages:
     request: &port_request_000
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/ports"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/ports"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1236,8 +1203,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Wrong filter
     request:
@@ -1318,7 +1283,7 @@ stages:
     request: &netaddr_request_000
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/netaddr"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netaddr"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -1585,8 +1550,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Wrong param
     request:
@@ -1690,7 +1653,7 @@ stages:
     request: &netproto_request_000
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/netproto"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netproto"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -1915,8 +1878,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Wrong param
     request:
@@ -2006,7 +1967,7 @@ stages:
     request: &netiface_request_000
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/netiface"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netiface"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -2147,8 +2108,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Wrong param
     request:
@@ -2411,8 +2370,6 @@ stages:
         tx.packets: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.packets
     request:
@@ -2435,8 +2392,6 @@ stages:
         rx.packets: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid rx.packets
     request:
@@ -2459,8 +2414,6 @@ stages:
         tx.dropped: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.dropped
     request:
@@ -2483,8 +2436,6 @@ stages:
         rx.dropped: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid rx.dropped
     request:
@@ -2507,8 +2458,6 @@ stages:
         tx.bytes: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.bytes
     request:
@@ -2531,8 +2480,6 @@ stages:
         rx.bytes: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid rx.bytes
     request:
@@ -2555,8 +2502,6 @@ stages:
         tx.errors: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.errors
     request:
@@ -2579,8 +2524,6 @@ stages:
         rx.errors: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid rx.errors
     request:
@@ -2660,7 +2603,7 @@ stages:
     request: &os_request
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/os"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/os"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -2695,19 +2638,8 @@ stages:
       <<: *os_request
       params:
         select: wrongParam
-    response: &error_response_1724_002
-      status_code: 200
-      json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1724
-              id:
-                - '002'
-          total_affected_items: 0
-          total_failed_items: 1
-        message: !anystr
+    response:
+       <<: *error_response_1724
 
 ---
 test_name: GET /syscollector/{agent_id}/os?{select}
@@ -2756,7 +2688,7 @@ stages:
   - name: Hardware of an agent
     request: &hardware_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/hardware"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/hardware"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -2790,7 +2722,7 @@ stages:
       params:
         select: wrongParam
     response:
-      <<: *error_response_1724_002
+      <<: *error_response_1724
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware?{select}
@@ -2834,7 +2766,7 @@ stages:
     request: &netaddr_request
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/netaddr"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netaddr"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -3071,7 +3003,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      <<: *error_response_1724_002
+      <<: *error_response_1724
 
   - name: Pagination
     request:
@@ -3095,8 +3027,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Wrong param
     request:
@@ -3127,19 +3057,8 @@ stages:
       <<: *netaddr_request
       params:
         sort: -wrong
-    response: &error_response_1403_002
-      status_code: 200
-      json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1403
-              id:
-                - '002'
-          total_affected_items: 0
-          total_failed_items: 1
-        message: !anystr
+    response:
+      <<: *error_response_1403
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
@@ -3197,7 +3116,7 @@ stages:
     request: &netproto_request
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/netproto"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netproto"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -3426,7 +3345,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      <<: *error_response_1724_002
+      <<: *error_response_1724
 
   - name: Wrong limit
     request:
@@ -3436,8 +3355,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Wrong param
     request:
@@ -3469,7 +3386,7 @@ stages:
       params:
         sort: -wrong
     response:
-      <<: *error_response_1403_002
+      <<: *error_response_1403
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
@@ -3526,7 +3443,7 @@ stages:
     request: &netiface_request
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/netiface"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netiface"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -3656,7 +3573,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      <<: *error_response_1724_002
+      <<: *error_response_1724
 
   - name: Wrong limit
     request:
@@ -3666,8 +3583,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Wrong param
     request:
@@ -3699,7 +3614,7 @@ stages:
       params:
         sort: -wrong
     response:
-      <<: *error_response_1403_002
+      <<: *error_response_1403
 
   - name: Offset and limit
     request:
@@ -3916,8 +3831,6 @@ stages:
         tx.packets: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.packets
     request:
@@ -3940,8 +3853,6 @@ stages:
         rx.packets: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid rx.packets
     request:
@@ -3964,8 +3875,6 @@ stages:
         tx.dropped: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.dropped
     request:
@@ -3988,8 +3897,6 @@ stages:
         rx.dropped: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid rx.dropped
     request:
@@ -4012,8 +3919,6 @@ stages:
         tx.bytes: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.bytes
     request:
@@ -4036,8 +3941,6 @@ stages:
         rx.bytes: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid rx.bytes
     request:
@@ -4060,8 +3963,6 @@ stages:
         tx.errors: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.errors
     request:
@@ -4076,29 +3977,27 @@ stages:
           affected_items: []
           total_affected_items: 0
 
-#  - name: Filter invalid rx.errors
-#    request:
-#      verify: False
-#      <<: *netiface_request
-#      params:
-#        rx.errors: -1
-#    response:
-#      status_code: 400
-#      json:
-#        <<: *error_spec
-#
-#  - name: Filter invalid rx.errors
-#    request:
-#      verify: False
-#      <<: *netiface_request
-#      params:
-#        rx.errors: 999999
-#    response:
-#      status_code: 200
-#      json:
-#        data:
-#          affected_affected_items: []
-#          total_affected_items: 0
+  - name: Filter invalid rx.errors
+    request:
+      verify: False
+      <<: *netiface_request
+      params:
+        rx.errors: -1
+    response:
+      status_code: 400
+
+  - name: Filter invalid rx.errors
+    request:
+      verify: False
+      <<: *netiface_request
+      params:
+        rx.errors: 999999
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
@@ -4164,7 +4063,7 @@ stages:
     request: &hotfix_request_000
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/hotfixes"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/hotfixes"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

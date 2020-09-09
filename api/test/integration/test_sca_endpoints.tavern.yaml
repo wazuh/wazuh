@@ -8,7 +8,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -20,7 +20,7 @@ stages:
   - name: Parameters -> limit=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -52,7 +52,7 @@ stages:
   - name: Parameters -> offset=1,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -72,7 +72,7 @@ stages:
   - name: Parameters -> sort=-score,limit=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -93,7 +93,7 @@ stages:
   - name: Parameters -> sort=+score,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -113,7 +113,7 @@ stages:
   - name: Parameters -> search=cis,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -133,7 +133,7 @@ stages:
   - name: Parameters -> q=score>50,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -153,7 +153,7 @@ stages:
   - name: Parameters -> limit=2500
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -161,18 +161,11 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      json:
-        code: 1405
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -193,7 +186,7 @@ stages:
   - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -214,7 +207,7 @@ stages:
   - name: Parameters -> description=This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -240,7 +233,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -252,7 +245,7 @@ stages:
   - name: Parameters -> limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -282,7 +275,7 @@ stages:
   - name: Parameters -> limit=4
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -302,7 +295,7 @@ stages:
   - name: Parameters -> sort=-id,limit=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -322,7 +315,7 @@ stages:
   - name: Parameters -> search=passwd,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -342,7 +335,7 @@ stages:
   - name: Parameters -> q=id=3098
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -362,7 +355,7 @@ stages:
   - name: Parameters -> result=failed,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -383,7 +376,7 @@ stages:
   - name: Parameters -> file=/etc/shadow,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -404,7 +397,7 @@ stages:
   - name: Parameters -> limit=2500
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -412,18 +405,11 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      json:
-        code: 1405
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -444,7 +430,7 @@ stages:
   - name: Parameters -> title="Ensure address space layout randomization (ASLR) is enabled"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -464,7 +450,7 @@ stages:
   - name: Parameters -> title="non-existent"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -483,7 +469,7 @@ stages:
   - name: Parameters -> description="The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -504,7 +490,7 @@ stages:
   - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -525,7 +511,7 @@ stages:
   - name: Parameters -> rationale with apostrophe and parenthesis"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -551,7 +537,7 @@ stages:
   - name: Parameters -> rationale with word "count"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -579,7 +565,7 @@ stages:
   - name: Parameters -> rationale with word "offset"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -598,7 +584,7 @@ stages:
   - name: Parameters -> command="dpkg -s libpam-pwquality"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -618,7 +604,7 @@ stages:
   - name: Parameters -> status="Not applicable"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -638,7 +624,7 @@ stages:
   - name: Parameters -> reason="Invalid path or wrong permissions to run command 'ip6tables -L'"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -663,7 +649,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -675,7 +661,7 @@ stages:
   - name: Parameters -> limit=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -707,7 +693,7 @@ stages:
   - name: Parameters -> offset=1,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -727,7 +713,7 @@ stages:
   - name: Parameters -> sort=-score,limit=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -748,7 +734,7 @@ stages:
   - name: Parameters -> sort=+score,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -768,7 +754,7 @@ stages:
   - name: Parameters -> search=cis,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -788,7 +774,7 @@ stages:
   - name: Parameters -> q=score>50,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -808,7 +794,7 @@ stages:
   - name: Parameters -> limit=2500
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -816,18 +802,11 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      json:
-        code: 1405
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -848,7 +827,7 @@ stages:
   - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -869,7 +848,7 @@ stages:
   - name: Parameters -> description=This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -895,7 +874,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -907,7 +886,7 @@ stages:
   - name: Parameters -> limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -937,7 +916,7 @@ stages:
   - name: Parameters -> limit=4
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -957,7 +936,7 @@ stages:
   - name: Parameters -> sort=-id,limit=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -977,7 +956,7 @@ stages:
   - name: Parameters -> search=passwd,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -997,7 +976,7 @@ stages:
   - name: Parameters -> q=id=3098
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1017,7 +996,7 @@ stages:
   - name: Parameters -> result=failed,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1038,7 +1017,7 @@ stages:
   - name: Parameters -> file=/etc/shadow,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1059,7 +1038,7 @@ stages:
   - name: Parameters -> limit=2500
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1067,18 +1046,11 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      json:
-        code: 1405
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1099,7 +1071,7 @@ stages:
   - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1120,7 +1092,7 @@ stages:
   - name: Parameters -> rationale with apostrophe"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1140,7 +1112,7 @@ stages:
   - name: Parameters -> command="systemctl is-enabled autofs"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1160,7 +1132,7 @@ stages:
   - name: Parameters -> status="Not applicable"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1180,7 +1152,7 @@ stages:
   - name: Parameters -> reason="Invalid path or wrong permissions to run command '/sbin/modprobe -n -v freevxfs'"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1205,7 +1177,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1217,7 +1189,7 @@ stages:
   - name: Parameters -> limit=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1249,7 +1221,7 @@ stages:
   - name: Parameters -> offset=1,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1269,7 +1241,7 @@ stages:
   - name: Parameters -> sort=-score,limit=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1290,7 +1262,7 @@ stages:
   - name: Parameters -> sort=+score,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1310,7 +1282,7 @@ stages:
   - name: Parameters -> search=cis,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1330,7 +1302,7 @@ stages:
   - name: Parameters -> q=score>50,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1350,7 +1322,7 @@ stages:
   - name: Parameters -> q=policy_id~cis_;total_checks>20;total_checks<50
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1369,7 +1341,7 @@ stages:
   - name: Parameters -> limit=2500
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1377,18 +1349,11 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      json:
-        code: 1405
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1409,7 +1374,7 @@ stages:
   - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1430,7 +1395,7 @@ stages:
   - name: Parameters -> description=This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1456,7 +1421,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1468,7 +1433,7 @@ stages:
   - name: Parameters -> limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1498,7 +1463,7 @@ stages:
   - name: Parameters -> limit=4
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1518,7 +1483,7 @@ stages:
   - name: Parameters -> sort=-id,limit=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1538,7 +1503,7 @@ stages:
   - name: Parameters -> search=passwd,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1558,7 +1523,7 @@ stages:
   - name: Parameters -> q=id=3098
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1578,7 +1543,7 @@ stages:
   - name: Parameters -> q=result=passed;file~/etc/pass;compliance.value=5.4.3;id<5000
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1598,7 +1563,7 @@ stages:
   - name: Parameters -> result=failed,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1619,7 +1584,7 @@ stages:
   - name: Parameters -> file=/etc/shadow,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1640,7 +1605,7 @@ stages:
   - name: Parameters -> limit=2500
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1648,18 +1613,11 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      json:
-        code: 1405
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1680,7 +1638,7 @@ stages:
   - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1701,7 +1659,7 @@ stages:
   - name: Parameters -> rationale with apostrophe and parenthesis"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1727,7 +1685,7 @@ stages:
   - name: Parameters -> command="dpkg -s libpam-pwquality"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1747,7 +1705,7 @@ stages:
   - name: Parameters -> status="Not applicable"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1767,7 +1725,7 @@ stages:
   - name: Parameters -> reason="Invalid path or wrong permissions to run command 'ip6tables -L'"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

@@ -225,31 +225,6 @@ UseRootcheck()
     esac
 }
 
-##########
-# UseOpenSCAP()
-##########
-UseOpenSCAP()
-{
-    # OpenSCAP config
-    echo ""
-    $ECHO "  3.4- ${runopenscap} ($yes/$no) [$yes]: "
-    if [ "X${USER_ENABLE_OPENSCAP}" = "X" ]; then
-        read AS
-    else
-        AS=${USER_ENABLE_OPENSCAP}
-    fi
-    echo ""
-    case $AS in
-        $nomatch)
-            echo "   - ${norunopenscap}."
-            ;;
-        *)
-            OPENSCAP="yes"
-            echo "   - ${yesrunopenscap}."
-            ;;
-    esac
-}
-
 UseSyscollector()
 {
     # Syscollector config predefined (is overwritten by the preload-vars file)
@@ -397,9 +372,6 @@ ConfigureClient()
     # Rootcheck?
     UseRootcheck
 
-    # OpenSCAP?
-    UseOpenSCAP
-
     UseSyscollector
 
     UseSecurityConfigurationAssessment
@@ -531,9 +503,6 @@ ConfigureServer()
 
     # Checking if rootcheck should run
     UseRootcheck
-
-    # Checking if OpenSCAP should run
-    UseOpenSCAP
 
     UseSyscollector
 
@@ -1090,19 +1059,14 @@ main()
     if [ "X$INSTYPE" = "Xserver" ]; then
         echo ""
         echo " - ${addserveragent}"
-        echo "   ${runma}:"
-        echo ""
-        echo "   $INSTALLDIR/bin/manage_agents"
         echo ""
         echo "   ${moreinfo}"
         echo "   https://documentation.wazuh.com/"
         echo ""
 
-    elif [ "X$INSTYPE" = "Xagent" ]; then
-        catMsg "0x104-client"
-        echo "   $INSTALLDIR/bin/manage_agents"
-        echo ""
-        echo "   ${moreinfo}"
+    elif [ "X$INSTYPE" = "Xagent" ]; then  
+        echo ""      
+        echo " - ${moreinfo}"
         echo "   https://documentation.wazuh.com/"
         echo ""
     fi
@@ -1139,8 +1103,6 @@ if [ "x$HYBID" = "xgo" ]; then
     echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf

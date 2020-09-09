@@ -8,8 +8,6 @@ from unittest.mock import patch, MagicMock, ANY, call
 
 from werkzeug.exceptions import Unauthorized
 
-from api.api_exception import APIException
-
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         from wazuh.core.results import WazuhResult
@@ -20,23 +18,24 @@ with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         from api import authentication
+
         del sys.modules['wazuh.rbac.orm']
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
 
-
-security_conf = {
+security_conf = WazuhResult({
     'auth_token_exp_timeout': 3600,
     'rbac_mode': 'black'
-}
+})
 payload = {
     "iss": 'wazuh',
     "aud": 'Wazuh API REST',
     "nbf": 0,
     "exp": security_conf['auth_token_exp_timeout'],
     "sub": '001',
-    "rbac_policies": {'test': 'value', 'rbac_mode': security_conf['rbac_mode']}
+    "rbac_policies": {'value': 'test', 'rbac_mode': security_conf['rbac_mode']},
+    "rbac_roles": [1]
 }
 
 
@@ -46,9 +45,10 @@ def test_check_user_master():
 
 
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
-@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function')
-@patch('api.authentication.raise_if_exc')
-def test_check_user(mock_raise_if_exc, mock_distribute_function, mock_dapi):
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
+@patch('concurrent.futures.ThreadPoolExecutor.submit', side_effect=None)
+@patch('api.authentication.raise_if_exc', side_effect=None)
+def test_check_user(mock_raise_if_exc, mock_submit, mock_distribute_function, mock_dapi):
     """Verify if result is as expected"""
     result = authentication.check_user('test_user', 'test_pass')
 
@@ -84,9 +84,9 @@ def test_generate_secret(mock_open, mock_chown, mock_chmod, mock_token):
 def test_generate_secret_ko():
     """Verify expected exception is raised when IOError"""
     with patch('builtins.open'):
-        with patch('api.authentication.chown', side_effect=PermissionError):
-            with pytest.raises(APIException, match=".* 2002 .*"):
-                authentication.generate_secret()
+        with patch('os.chmod'):
+            with patch('api.authentication.chown', side_effect=PermissionError):
+                assert authentication.generate_secret()
 
 
 @patch('api.authentication.token_urlsafe', return_value='test_token')
@@ -109,13 +109,15 @@ def test_get_security_conf():
 @patch('api.authentication.jwt.encode', return_value='test_token')
 @patch('api.authentication.generate_secret', return_value='test_secret_token')
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
-@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function')
-@patch('api.authentication.raise_if_exc')
-def test_generate_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, mock_generate_secret, mock_encode,
-                        mock_time):
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
+@patch('concurrent.futures.ThreadPoolExecutor.submit', side_effect=None)
+@patch('api.authentication.raise_if_exc', side_effect=None)
+def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function, mock_dapi, mock_generate_secret,
+                        mock_encode, mock_time):
     """Verify if result is as expected"""
     mock_raise_if_exc.return_value = security_conf
-    result = authentication.generate_token('001', {'test': 'value'})
+    result = authentication.generate_token('001', {'policies': {'value': 'test',
+                                                                'rbac_mode': security_conf['rbac_mode']}, 'roles': [1]})
     assert result == 'test_token', 'Result is not as expected'
 
     # Check all functions are called with expected params
@@ -129,19 +131,18 @@ def test_generate_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, 
 
 @patch('api.authentication.TokenManager')
 def test_check_token(mock_tokenmanager):
-    result = authentication.check_token('wazuh_user', 3600)
+    result = authentication.check_token('wazuh_user', [1], 3600)
     assert result == {'valid': ANY}
-
-    mock_tokenmanager.return_value.__enter__().is_token_valid.assert_called_once_with(username='wazuh_user',
-                                                                                      token_nbf_time=3600)
 
 
 @patch('api.authentication.jwt.decode')
 @patch('api.authentication.generate_secret', return_value='test_secret_token')
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
-@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function')
-@patch('api.authentication.raise_if_exc')
-def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, mock_generate_secret, mock_decode):
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
+@patch('concurrent.futures.ThreadPoolExecutor.submit', side_effect=None)
+@patch('api.authentication.raise_if_exc', side_effect=None)
+def test_decode_token(mock_raise_if_exc, mock_submit, mock_distribute_function, mock_dapi, mock_generate_secret,
+                      mock_decode):
     mock_decode.return_value = payload
     mock_raise_if_exc.side_effect = [WazuhResult({'valid': True}), WazuhResult(security_conf)]
 
@@ -149,18 +150,23 @@ def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, mo
     assert result == payload
 
     # Check all functions are called with expected params
-    calls = [call(f=ANY, f_kwargs={'username': payload['sub'], 'token_nbf_time': payload['nbf']},
+    calls = [call(f=ANY, f_kwargs={'username': payload['sub'], 'token_nbf_time': payload['nbf'],
+                                   'roles': payload['rbac_roles']},
                   request_type='local_master', is_async=False, wait_for_complete=True, logger=ANY),
              call(f=ANY, request_type='local_master', is_async=False, wait_for_complete=True, logger=ANY)]
     mock_dapi.assert_has_calls(calls)
     mock_generate_secret.assert_called_once()
-    mock_decode.assert_called_once_with('test_token', 'test_secret_token', algorithms=['HS256'])
+    mock_decode.assert_called_once_with('test_token', 'test_secret_token', algorithms=['HS256'],
+                                        audience='Wazuh API REST')
     assert mock_distribute_function.call_count == 2
     assert mock_raise_if_exc.call_count == 2
 
 
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
+@patch('concurrent.futures.ThreadPoolExecutor.submit', side_effect=None)
+@patch('api.authentication.raise_if_exc', side_effect=None)
 @patch('api.authentication.generate_secret', return_value='test_secret_token')
-def test_decode_token_ko(mock_generate_secret):
+def test_decode_token_ko(mock_generate_secret, mock_raise_if_exc, mock_submit, mock_distribute_function):
     """Assert exceptions are handled as expected inside decode_token()"""
     with pytest.raises(Unauthorized):
         authentication.decode_token(token='test_token')
@@ -181,4 +187,3 @@ def test_decode_token_ko(mock_generate_secret):
                                                              WazuhResult({'auth_token_exp_timeout': 3600,
                                                                           'rbac_mode': 'white'})]
                             authentication.decode_token(token='test_token')
-

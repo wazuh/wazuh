@@ -54,6 +54,9 @@ int delete_agentinfo(const char *id, const char *name) __attribute__((nonnull));
 /* Delete agent SQLite db */
 void delete_sqlite(const char *id, const char *name);
 
+/* Delete diff folders */
+void delete_diff(const char *name);
+
 /* Get all available agents */
 char **get_agents(int flag, int mon_time);
 

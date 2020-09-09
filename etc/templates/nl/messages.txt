@@ -102,7 +102,6 @@ tostart="Om Wazuh te starten"
 tostop="Om Wazuh te stoppen"
 configat="De configuratie kan worden bekeken en gewijzigd in"
 addserveragent="Om verbinding te maken tussen agent en server, moet je alle agenten aan de server toevoegen."
-runma="Voer 'manage_agents' uit om ze toe te voegen of te verwijderen"
 presskey="Druk op ENTER om door te gaan"
 
 # Update

@@ -34,6 +34,8 @@ async def delete_agents(request, pretty=False, wait_for_complete=False, list_age
     ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, uses the register date.
     :return: AllItemsResponseAgentIDs
     """
+    if 'all' in list_agents:
+        list_agents = None
     f_kwargs = {'agent_list': list_agents,
                 'purge': purge,
                 'status': status,
@@ -195,7 +197,7 @@ async def restart_agents_by_node(request, node_id, pretty=False, wait_for_comple
     -------
     Response
     """
-    nodes = await get_system_nodes()
+    nodes = raise_if_exc(await get_system_nodes())
 
     f_kwargs = {'node_id': node_id, 'agent_list': '*'}
 
@@ -206,7 +208,6 @@ async def restart_agents_by_node(request, node_id, pretty=False, wait_for_comple
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          cluster_required=True,
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -613,6 +614,8 @@ async def delete_multiple_agent_single_group(request, group_id, list_agents=None
     :param wait_for_complete: Disable timeout response
     :return: AllItemsResponseAgentIDs
     """
+    if 'all' in list_agents:
+        list_agents = None
     f_kwargs = {'agent_list': list_agents,
                 'group_list': [group_id]}
 
@@ -665,6 +668,8 @@ async def delete_groups(request, list_groups=None, pretty=False, wait_for_comple
     :param list_groups: Array of group's IDs.
     :return: AllItemsResponseGroupIDs + AgentGroupDeleted
     """
+    if 'all' in list_groups:
+        list_groups = None
     f_kwargs = {'group_list': list_groups}
 
     dapi = DistributedAPI(f=agent.delete_groups,

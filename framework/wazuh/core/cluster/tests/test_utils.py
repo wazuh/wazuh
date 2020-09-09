@@ -42,6 +42,7 @@ def test_read_cluster_config():
             utils.read_cluster_config()
 
     with patch('wazuh.core.cluster.utils.get_ossec_conf', return_value={'cluster': default_cluster_config}):
+        utils.read_config.cache_clear()
         default_cluster_config.pop('hidden')
         default_cluster_config['disabled'] = 'no'
         config = utils.read_cluster_config()
@@ -108,6 +109,8 @@ def test_manager_restart():
 
 def test_get_cluster_items():
     """Verify the cluster files information."""
+    utils.get_cluster_items.cache_clear()
+
     with patch('os.path.abspath', side_effect=FileNotFoundError):
         with pytest.raises(WazuhException, match='.* 3005 .*'):
             utils.get_cluster_items()

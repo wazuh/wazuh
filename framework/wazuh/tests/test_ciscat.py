@@ -56,4 +56,4 @@ def test_get_ciscat_results(agents_info_mock, socket_mock, agent_id, exception):
         else:
             assert not result.affected_items
             assert result.total_failed_items == 1
-            assert result. total_affected_items == 0
+            assert result.total_affected_items == 0

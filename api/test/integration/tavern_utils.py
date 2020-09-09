@@ -1,5 +1,7 @@
 import json
 import time
+from base64 import b64decode
+from json import loads
 
 from box import Box
 
@@ -9,7 +11,15 @@ def test_distinct_key(response):
     :param response: Request response
     :return: True if all request response items are unique
     """
-    assert not any(response.json()["data"]["affected_items"].count(item) > 1 for item in response.json()["data"]["affected_items"])
+    assert not any(
+        response.json()["data"]["affected_items"].count(item) > 1 for item in response.json()["data"]["affected_items"])
+
+
+def test_token_raw_format(response):
+    """
+    :param response: Request response
+    """
+    assert type(response.text) is str
 
 
 def test_select_key_affected_items(response, select_key):
@@ -53,7 +63,8 @@ def test_select_key_affected_items_with_agent_id(response, select_key):
         expected_keys_level0 = {'agent_id', select_key.split('.')[0]}
         expected_keys_level1 = {select_key.split('.')[1]}
         assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys_level0
-        assert set(response.json()["data"]["affected_items"][0][select_key.split('.')[0]].keys()) == expected_keys_level1
+        assert set(
+            response.json()["data"]["affected_items"][0][select_key.split('.')[0]].keys()) == expected_keys_level1
     else:
         expected_keys = {'agent_id', select_key}
         assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys
@@ -91,14 +102,15 @@ def test_validate_upgrade(response):
            or response.json().get('code', None) == 1718
     if response.json().get('message', None) == "Upgrade procedure started":
         time.sleep(45)
-        return Box({"upgraded": True})
+        return Box({"upgraded": 1})
     else:
-        return Box({"upgraded": False})
+        return Box({"upgraded": 0})
 
 
 def test_validate_upgrade_result(response, upgraded):
+    upgraded = int(upgraded, 10)
     if upgraded == 1:
-        assert response.json().get('message', None) == "Agent upgraded successfully"
+        assert response.json().get('message', None) == "Agent was successfully upgraded"
     else:
         # If upgrade didnt work because no version was available, we expect an empty upgrade_result with error 1716
         assert response.json().get('code', None) == 1716
@@ -164,6 +176,20 @@ def test_validate_restart_by_node_rbac(response, permitted_agents):
         else:
             assert data['total_affected_items'] == 0
     else:
-        assert response.json()['status'] == 400
+        assert response.status_code == 403
         assert response.json()['code'] == 4000
         assert 'agent:id' in response.json()['detail']
+
+
+def test_validate_auth_context(response, expected_roles=None):
+    """Check that the authorization context has been matched with the correct rules
+
+    Parameters
+    ----------
+    response : Request response
+    expected_roles : list
+        List of expected roles after checking the authorization context
+    """
+    token = response.json()['token'].split('.')[1]
+    payload = loads(b64decode(token + '===').decode())
+    assert payload['rbac_roles'] == expected_roles

@@ -13,14 +13,14 @@ from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
     WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup, get_agents_info, get_groups
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
-from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhPermissionError, \
+    WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
-
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
@@ -39,9 +39,9 @@ def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, 
     :return: WazuhResult
     """
 
-    result = AffectedItemsWazuhResult(all_msg='All selected agents information is shown',
-                                      some_msg='Some agents information is not shown',
-                                      none_msg='No agent information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected agents information was returned',
+                                      some_msg='Some agents information was not returned',
+                                      none_msg='No agent information was returned'
                                       )
 
     if len(agent_list) != 0:
@@ -86,7 +86,6 @@ def get_agents_summary_os(agent_list=None):
                                       all_msg='Showing the operative system of all specified agents',
                                       some_msg='Could not get the operative system of some agents')
     if len(agent_list) != 0:
-
         db_query = WazuhDBQueryAgents(select=['os.platform'], filters={'id': agent_list},
                                       default_sort_field='os_platform', min_select_fields=set(),
                                       distinct=True)
@@ -106,15 +105,16 @@ def restart_agents(agent_list=None):
     :param agent_list: List of agents ID's.
     :return: AffectedItemsWazuhResult.
     """
-    result = AffectedItemsWazuhResult(none_msg='Could not send command to any agent',
-                                      all_msg='Restart command sent to all agents',
-                                      some_msg='Could not send command to some agents')
+    result = AffectedItemsWazuhResult(all_msg='Restart command was sent to all agents',
+                                      some_msg='Restart command was not sent to some agents',
+                                      none_msg='Restart command was not sent to any agent'
+                                      )
 
     system_agents = get_agents_info()
     for agent_id in agent_list:
         try:
             if agent_id not in system_agents:
-                raise WazuhError(1701)
+                raise WazuhResourceNotFound(1701)
             if agent_id == "000":
                 raise WazuhError(1703)
             Agent(agent_id).restart()
@@ -164,9 +164,9 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
     :param q: Defines query to filter in DB.
     :return: AffectedItemsWazuhResult.
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected agents information is shown',
-                                      some_msg='Some agents information is not shown',
-                                      none_msg='No agent information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected agents information was returned',
+                                      some_msg='Some agents information was not returned',
+                                      none_msg='No agent information was returned'
                                       )
     if len(agent_list) != 0:
         if filters is None:
@@ -176,7 +176,7 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
         system_agents = get_agents_info()
         for agent_id in agent_list:
             if agent_id not in system_agents:
-                result.add_failed_item(id_=agent_id, error=WazuhError(1701))
+                result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
 
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
                                       filters=filters, query=q)
@@ -200,10 +200,10 @@ def get_agent_by_name(name=None, select=None):
         agent = data['items'][0]['id']
         return get_agents(agent_list=[agent], select=select)
     except IndexError:
-        raise WazuhError(1754)
-    except WazuhError as e:
+        raise WazuhResourceNotFound(1754)
+    except Exception as e:
         if e.code == 4000:
-            raise WazuhError(1754)
+            raise WazuhPermissionError(4000)
         raise e
 
 
@@ -223,7 +223,7 @@ def get_agents_in_group(group_list, offset=0, limit=common.database_limit, sort=
     :return: AffectedItemsWazuhResult.
     """
     if group_list[0] not in get_groups():
-        raise WazuhError(1710)
+        raise WazuhResourceNotFound(1710)
 
     q = 'group=' + group_list[0] + (';' + q if q else '')
 
@@ -246,7 +246,7 @@ def get_agents_keys(agent_list=None):
     for agent_id in agent_list:
         try:
             if agent_id not in system_agents:
-                raise WazuhError(1701)
+                raise WazuhResourceNotFound(1701)
             result.affected_items.append({'id': agent_id, 'key': Agent(agent_id).get_key()})
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
@@ -285,7 +285,7 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
                 if agent_id == "000":
                     raise WazuhError(1703)
                 elif agent_id not in system_agents:
-                    raise WazuhError(1701)
+                    raise WazuhResourceNotFound(1701)
                 else:
                     my_agent = Agent(agent_id)
                     my_agent.load_info_from_db()
@@ -342,14 +342,14 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
     """
 
     affected_groups = list()
-    result = AffectedItemsWazuhResult(all_msg='Obtained information about all selected groups',
-                                      some_msg='Some groups information was not obtained',
-                                      none_msg='No group information was obtained'
+    result = AffectedItemsWazuhResult(all_msg='All selected groups information was returned',
+                                      some_msg='Some groups information was not returned',
+                                      none_msg='No group information was returned'
                                       )
 
     # Add failed items
     for invalid_group in set(group_list) - get_groups():
-        result.add_failed_item(id_=invalid_group, error=WazuhError(1710))
+        result.add_failed_item(id_=invalid_group, error=WazuhResourceNotFound(1710))
 
     group_query = WazuhDBQueryGroup(filters={'name': group_list}, offset=offset, limit=limit, sort=sort, search=search)
     query_data = group_query.run()
@@ -394,13 +394,13 @@ def get_group_files(group_list=None, offset=0, limit=None, search_text=None, sea
     # a list of groups
     group_id = group_list[0]
     group_path = common.shared_path
-    result = AffectedItemsWazuhResult(all_msg='All selected groups files are shown',
-                                      some_msg='Some groups files are not shown',
-                                      none_msg='No groups files are shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected groups files were returned',
+                                      some_msg='Some groups files were not returned',
+                                      none_msg='No groups files were returned'
                                       )
     if group_id:
         if not Agent.group_exists(group_id):
-            result.add_failed_item(id_=group_id, error=WazuhError(1710))
+            result.add_failed_item(id_=group_id, error=WazuhResourceNotFound(1710))
             return result
         group_path = path.join(common.shared_path, group_id)
 
@@ -457,7 +457,7 @@ def create_group(group_id):
         chown_r(group_path, common.ossec_uid(), common.ossec_gid())
         chmod_r(group_path, 0o660)
         chmod(group_path, 0o770)
-        msg = "Group '{0}' created.".format(group_id)
+        msg = f"Group '{group_id}' created."
     except Exception as e:
         raise WazuhInternalError(1005, extra_message=str(e))
 
@@ -482,7 +482,7 @@ def delete_groups(group_list=None):
         try:
             # Check if group exists
             if group_id not in system_groups:
-                raise WazuhError(1710)
+                raise WazuhResourceNotFound(1710)
             if group_id == 'default':
                 raise WazuhError(1712)
             agent_list = list(map(operator.itemgetter('id'),
@@ -528,12 +528,12 @@ def assign_agents_to_group(group_list=None, agent_list=None, replace=False, repl
                                       )
     # Check if the group exists
     if not Agent.group_exists(group_id):
-        raise WazuhError(1710)
+        raise WazuhResourceNotFound(1710)
     system_agents = get_agents_info()
     for agent_id in agent_list:
         try:
             if agent_id not in system_agents:
-                raise WazuhError(1701)
+                raise WazuhResourceNotFound(1701)
             if agent_id == "000":
                 raise WazuhError(1703)
             Agent.add_group_to_agent(group_id, agent_id, force=True, replace=replace, replace_list=replace_list)
@@ -561,11 +561,11 @@ def remove_agent_from_group(group_list=None, agent_list=None):
 
     # Check if agent and group exist and it is not 000
     if agent_id not in get_agents_info():
-        raise WazuhError(1701)
+        raise WazuhResourceNotFound(1701)
     if agent_id == '000':
         raise WazuhError(1703)
     if group_id not in get_groups():
-        raise WazuhError(1710)
+        raise WazuhResourceNotFound(1710)
 
     return WazuhResult({'message': Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)})
 
@@ -581,16 +581,16 @@ def remove_agent_from_groups(agent_list=None, group_list=None):
     :return: AffectedItemsWazuhResult.
     """
     agent_id = agent_list[0]
-    result = AffectedItemsWazuhResult(all_msg='Specified agent removed from shown groups',
-                                      some_msg='Specified agent could not be removed from some groups',
-                                      none_msg='Specified agent could not be removed from any group'
+    result = AffectedItemsWazuhResult(all_msg='Specified agent was removed from returned groups',
+                                      some_msg='Specified agent was not removed from some groups',
+                                      none_msg='Specified agent was not removed from any group'
                                       )
 
     # Check if agent exists and it is not 000
     if agent_id == '000':
         raise WazuhError(1703)
     if agent_id not in get_agents_info():
-        raise WazuhError(1701)
+        raise WazuhResourceNotFound(1701)
 
     # We move default group to last position in case it is contained in group_list. When an agent is removed from all
     # groups it is reverted to 'default'. We try default last to avoid removing it and then adding again.
@@ -603,7 +603,7 @@ def remove_agent_from_groups(agent_list=None, group_list=None):
     for group_id in group_list:
         try:
             if group_id not in system_groups:
-                raise WazuhError(1710)
+                raise WazuhResourceNotFound(1710)
             Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
             result.affected_items.append(group_id)
         except WazuhException as e:
@@ -631,14 +631,14 @@ def remove_agents_from_group(agent_list=None, group_list=None):
                                       )
     # Check if group exists
     if group_id not in get_groups():
-        raise WazuhError(1710)
+        raise WazuhResourceNotFound(1710)
 
     for agent_id in agent_list:
         try:
             if agent_id == '000':
                 raise WazuhError(1703)
             if agent_id not in get_agents_info():
-                raise WazuhError(1701)
+                raise WazuhResourceNotFound(1701)
             Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
             result.affected_items.append(agent_id)
         except WazuhException as e:
@@ -664,9 +664,9 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, 
     :return: AffectedItemsWazuhResult.
     """
 
-    result = AffectedItemsWazuhResult(all_msg='All selected agents information is shown',
-                                      some_msg='Some agents information is not shown',
-                                      none_msg='No agent information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected agents information was returned',
+                                      some_msg='Some agents information was not returned',
+                                      none_msg='No agent information was returned'
                                       )
     if len(agent_list) != 0:
         # Get manager version
@@ -764,9 +764,10 @@ def get_agents_sync_group(agent_list=None):
     :param agent_list: List of agents ID's.
     :return AffectedItemsWazuhResult.
     """
-    result = AffectedItemsWazuhResult(none_msg='No sync info shown.',
-                                      all_msg='Sync info shown for all selected agents.',
-                                      some_msg='Could not show sync info for some selected agents.')
+    result = AffectedItemsWazuhResult(all_msg='Sync info was returned for all selected agents',
+                                      some_msg='Sync info was not returned for some selected agents',
+                                      none_msg='No sync info was returned',
+                                      )
 
     system_agents = get_agents_info()
     for agent_id in agent_list:
@@ -774,7 +775,7 @@ def get_agents_sync_group(agent_list=None):
             if agent_id == "000":
                 raise WazuhError(1703)
             if agent_id not in system_agents:
-                raise WazuhError(1701)
+                raise WazuhResourceNotFound(1701)
             else:
                 # Check if agent exists and it is active
                 agent_info = Agent(agent_id).get_basic_information()

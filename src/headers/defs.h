@@ -215,9 +215,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Rootcheck directory */
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
-/* Backup directory for agents */
-#define AGNBACKUP_DIR    "/backup/agents"
-
 /* Wazuh Database */
 #define WDB_DIR         "var/db"
 #define WDB2_DIR        "queue/db"
@@ -230,7 +227,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DIFF_DIR        "/queue/diff"
 #define DIFF_DIR_PATH   DEFAULTDIR DIFF_DIR
 #else
-#define DIFF_DIR_PATH "queue/diff"
+#define DIFF_DIR        "queue/diff"
+#define DIFF_DIR_PATH   DIFF_DIR
 #endif
 #define DIFF_NEW_FILE  "new-entry"
 #define DIFF_LAST_FILE "last-entry"

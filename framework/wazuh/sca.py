@@ -9,11 +9,11 @@ from operator import itemgetter
 
 from wazuh.core import common
 from wazuh.core.agent import get_agents_info
+from wazuh.core.exception import WazuhInternalError, WazuhResourceNotFound
+from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.sca import WazuhDBQuerySCA, fields_translation_sca, fields_translation_sca_check, \
     fields_translation_sca_check_compliance, fields_translation_sca_check_rule, default_query_sca_check
-from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.rbac.decorators import expose_resources
-from wazuh.core.results import AffectedItemsWazuhResult
 
 
 @expose_resources(actions=["sca:read"], resources=['agent:id:{agent_list}'])
@@ -31,9 +31,9 @@ def get_sca_list(agent_list=None, q="", offset=0, limit=common.database_limit, s
     :param filters: Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected sca information is shown',
-                                      some_msg='Some sca information is not shown',
-                                      none_msg='No sca information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected sca information was returned',
+                                      some_msg='Some sca information was not returned',
+                                      none_msg='No sca information was returned'
                                       )
 
     if len(agent_list) != 0:
@@ -46,7 +46,7 @@ def get_sca_list(agent_list=None, q="", offset=0, limit=common.database_limit, s
             result.affected_items.extend(data['items'])
             result.total_affected_items = data['totalItems']
         else:
-            result.add_failed_item(id_=agent_list[0], error=WazuhError(1701))
+            result.add_failed_item(id_=agent_list[0], error=WazuhResourceNotFound(1701))
 
     return result
 
@@ -67,9 +67,9 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
     :param filters: Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected sca/policy information is shown',
-                                      some_msg='Some sca/policy information is not shown',
-                                      none_msg='No sca/policy information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected sca/policy information was returned',
+                                      some_msg='Some sca/policy information was not returned',
+                                      none_msg='No sca/policy information was returned'
                                       )
     if len(agent_list) != 0:
         if agent_list[0] in get_agents_info():
@@ -117,7 +117,7 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
                 result.affected_items.append(check_dict)
             result.total_affected_items = result_dict['totalItems']
         else:
-            result.add_failed_item(id_=agent_list[0], error=WazuhError(1701))
+            result.add_failed_item(id_=agent_list[0], error=WazuhResourceNotFound(1701))
             result.total_affected_items = 0
 
     return result

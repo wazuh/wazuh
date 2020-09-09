@@ -10,11 +10,9 @@ import logging
 import os
 import ssl
 import sys
-from collections import deque
 
 import aiohttp_cors
 import connexion
-import psutil
 import uvloop
 from aiohttp_cache import setup_cache
 from aiohttp_swagger import setup_swagger
@@ -23,17 +21,14 @@ import wazuh.security
 from api import alogging, configuration, __path__ as api_path
 # noinspection PyUnresolvedReferences
 from api import validator
-from api.api_exception import APIException
+from api.api_exception import APIError
 from api.configuration import generate_self_signed_certificate, generate_private_key
 from api.constants import CONFIG_FILE_PATH, API_LOG_FILE_PATH
-from api.middlewares import set_user_name, prevent_bruteforce_attack, prevent_denial_of_service
+from api.middlewares import set_user_name, security_middleware, response_postprocessing
 from api.uri_parser import APIUriParser
 from api.util import to_relative_path
 from wazuh.core import pyDaemonModule, common
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
-
-# We load the SPEC file into memory to use as a reference for future calls
-wazuh.security.load_spec()
 
 
 def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
@@ -64,12 +59,6 @@ def start(foreground, root, config_file):
     config_file : str
         Path to the API config file
     """
-
-    pids = get_wazuh_apid_pids()
-    if pids:
-        print(f"Cannot start API while other processes are running. Kill these before {pids}")
-        sys.exit(2)
-
     configuration.api_conf.update(configuration.read_yaml_config(config_file=args.config_file))
     api_conf = configuration.api_conf
     cors = api_conf['cors']
@@ -86,21 +75,22 @@ def start(foreground, root, config_file):
             ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
                                         keyfile=api_conf['https']['key'])
         except ssl.SSLError as e:
-            raise APIException(2003, details='Private key does not match with the certificate')
+            raise APIError(2003, details='Private key does not match with the certificate')
         except OSError as e:
             if e.errno == 22:
-                raise APIException(2003, details='PEM phrase is not correct')
-
-    # Foreground/Daemon
-    if not foreground:
-        print(f"Starting API in background")
-        pyDaemonModule.pyDaemon()
+                raise APIError(2003, details='PEM phrase is not correct')
 
     # Drop privileges to ossec
     if not root:
         if api_conf['drop_privileges']:
             os.setgid(common.ossec_gid())
             os.setuid(common.ossec_uid())
+
+    # Foreground/Daemon
+    if not foreground:
+        print(f"Starting API in background")
+        pyDaemonModule.pyDaemon()
+        pyDaemonModule.create_pid('wazuh-apid', os.getpid())
 
     set_logging(log_path=log_path, debug_mode=api_conf['logs']['level'], foreground_mode=args.foreground)
 
@@ -109,11 +99,15 @@ def start(foreground, root, config_file):
         os.chown(os.path.join(common.ossec_path, log_path), common.ossec_uid(), common.ossec_gid())
         os.chmod(os.path.join(common.ossec_path, log_path), 0o660)
 
+    # Load the SPEC file into memory to use as a reference for future calls
+    wazuh.security.load_spec()
+
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     app = connexion.AioHttpApp(__name__, host=api_conf['host'],
                                port=api_conf['port'],
                                specification_dir=os.path.join(api_path[0], 'spec'),
-                               options={"swagger_ui": False, 'uri_parser_class': APIUriParser}
+                               options={"swagger_ui": False, 'uri_parser_class': APIUriParser},
+                               only_one_api=True
                                )
     app.add_api('spec.yaml',
                 arguments={'title': 'Wazuh API',
@@ -124,7 +118,7 @@ def start(foreground, root, config_file):
                 strict_validation=True,
                 validate_responses=True,
                 pass_context_arg_name='request',
-                options={"middlewares": [set_user_name, prevent_bruteforce_attack, prevent_denial_of_service]})
+                options={"middlewares": [response_postprocessing, set_user_name, security_middleware]})
 
     # Enable CORS
     if cors['enabled']:
@@ -171,11 +165,11 @@ def start(foreground, root, config_file):
                 ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
                                             keyfile=api_conf['https']['key'])
             except ssl.SSLError:
-                raise APIException(2003, details='Private key does not match with the certificate')
+                raise APIError(2003, details='Private key does not match with the certificate')
             except IOError:
-                raise APIException(2003,
-                                   details='Please, ensure if path to certificates is correct in the configuration '
-                                           f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
+                raise APIError(2003,
+                               details='Please, ensure if path to certificates is correct in the configuration '
+                                       f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
 
     app.run(port=api_conf['port'],
             host=api_conf['host'],
@@ -183,81 +177,6 @@ def start(foreground, root, config_file):
             access_log_class=alogging.AccessLogger,
             use_default_access_log=True
             )
-
-
-def stop():
-    """
-    Stop the Wazuh API
-
-    This function applies when the API is running in daemon mode.
-    """
-
-    def on_terminate(p):
-        print(f"Wazuh API process {p.pid} terminated.")
-
-    pids = get_wazuh_apid_pids()
-    if pids:
-        procs = [psutil.Process(pid=pid) for pid in pids]
-        for proc in procs:
-            proc.terminate()
-        gone, alive = psutil.wait_procs(procs=procs, timeout=5, callback=on_terminate)
-        for proc in alive:
-            proc.kill()
-
-
-def restart(foreground, root, config_file):
-    """
-    Restart the API by calling the `stop` and `start` functions respectively.
-
-    Arguments
-    ---------
-    foreground : bool
-        If the API must be daemonized or not
-    root : bool
-        If true, the daemon is run as root. Normally not recommended for security reasons
-    config_file : str
-        Path to the API config file
-    """
-    print("Restarting Wazuh API")
-    stop()
-    start(foreground, root, config_file)
-    print("Wazuh API restarted")
-
-
-def status():
-    """
-    Print the current status of the API daemon.
-    """
-    if get_wazuh_apid_pids():
-        print("Wazuh API is running")
-    else:
-        print("Wazuh API is stopped")
-        try:
-            with open(API_LOG_FILE_PATH, 'r') as log:
-                for line in deque(log, 20):
-                    print(line)
-            print(f"Full log in {API_LOG_FILE_PATH}")
-        except FileNotFoundError:
-            print(f"Could not find API log in '{os.path.dirname(API_LOG_FILE_PATH)}'")
-
-
-def get_wazuh_apid_pids():
-    """
-    Get the API service pid.
-
-    This function applies when the API is running as a daemon.
-
-    Returns
-    -------
-    list
-        List with all the pids of API processes. None if no one is found.
-    """
-    result = []
-    for process in psutil.process_iter(attrs=['pid', 'name']):
-        if process.pid != os.getpid() and process.info['name'] == 'python3':
-            if 'wazuh-apid.py' in ' '.join(process.cmdline()):
-                result.append(process.pid)
-    return result if len(result) > 0 else None
 
 
 def test_config(config_file):
@@ -291,29 +210,19 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     ####################################################################################################################
-    parser.add_argument('action', help="Action to be performed", choices=('start', 'stop', 'restart',
-                                                                          'status', 'test_config', 'version'),
-                        default='start', nargs='?')
     parser.add_argument('-f', help="Run in foreground", action='store_true', dest='foreground')
     parser.add_argument('-V', help="Print version", action='store_true', dest="version")
     parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
     parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
                         default=common.api_config_path)
+    parser.add_argument('-d', help="Enable debug messages. Use twice to increase verbosity.", action='count',
+                        dest='debug_level')
     args = parser.parse_args()
 
-    if args.action == 'start':
-        start(args.foreground, args.root, args.config_file)
-    elif args.action == 'stop':
-        stop()
-    elif args.action == 'restart':
-        restart(args.foreground, args.root, args.config_file)
-    elif args.action == 'status':
-        status()
-    elif args.action == 'test_config':
-        test_config(args.config_file)
-    elif args.action == 'version':
+    if args.version:
         version()
+    elif args.test_config:
+        test_config(args.config_file)
     else:
-        print("Invalid action")
-        sys.exit(1)
+        start(args.foreground, args.root, args.config_file)

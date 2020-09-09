@@ -18,7 +18,7 @@ static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when testing */
 #define static
 #endif
@@ -335,11 +335,11 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
 
             sca->skip_nfs = skip_nfs;
-        } 
+        }
         else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing
         } else {
-            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_SCA_CONTEXT.name);	
+            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_SCA_CONTEXT.name);
             return OS_INVALID;
         }
     }
