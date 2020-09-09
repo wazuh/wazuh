@@ -23,7 +23,6 @@ fi
 
 sleep 1
 
-
 # Manager configuration
 for py_file in /configuration_files/*.py; do
   /usr/bin/python3 $py_file
@@ -39,7 +38,5 @@ done
 for sql_file in /configuration_files/*.sql; do
   sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file
 done
-
-
 
 /usr/bin/supervisord
