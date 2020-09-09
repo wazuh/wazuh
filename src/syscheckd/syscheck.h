@@ -70,6 +70,15 @@ typedef struct fim_tmp_file {
     int elements;
 } fim_tmp_file;
 
+typedef struct registry {
+    char *entry;
+    int arch;
+    int opts;
+    int recursion_level;
+    int diff_size_limit;
+    OSMatch *filerestrict;
+    char *tag;
+} registry;
 
 #ifdef WIN32
 /* Flags to know if a directory/file's watcher has been removed */
@@ -373,14 +382,7 @@ unsigned int count_watches();
  * @param is_registry 1 if we are checking for a registry, 0 if is a directory
  * @return The diff alert generated, NULL on error
  */
-char *seechanges_addfile(const char *filename, int is_registry) __attribute__((nonnull));
-
-/**
- * @brief Delete stored compressed file for "path"
- *
- * @param path Path to the file which compressed version needs to be deleted
- */
-void seechanges_delete_compressed_file(const char *path);
+char *seechanges_addfile(const char *filename, registry *registry) __attribute__((nonnull));
 
 /**
  * @brief Get queue/diff/local path from file path
@@ -650,7 +652,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
  * @return String with the diff to add to the alert
  */
 
-char * fim_registry_value_diff(char *key_name, char *value_name, LPBYTE value_data, DWORD data_type);
+char * fim_registry_value_diff(char *key_name, char *value_name, char *value_data, DWORD data_type);
 #endif
 
 /**

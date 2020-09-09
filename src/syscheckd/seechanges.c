@@ -27,11 +27,12 @@
  *
  * @param filename Path to file
  * @param alert_diff_time Time of diff alert
+ * @param status Status of the output from the diff command
  * @param diff_folder_name Name of the folder to work with the diff files
  * @param tmp_diff_folder_name Name of the folder to work with the diff temporal files
  * @return Diff string
  */
-static char *gen_diff_alert(const char *filename, time_t alert_diff_time, char *diff_folder_name, char *tmp_diff_folder_name)
+static char *gen_diff_alert(const char *filename, time_t alert_diff_time,  __attribute__((unused)) int status, diff_paths *paths)
                             __attribute__((nonnull));
 
 /**
@@ -68,6 +69,110 @@ static const char *STR_MORE_CHANGES = "More changes...";
 #else
 #define PATH_OFFSET 0
 #endif
+
+typedef struct diff_paths {
+    char *filename_abs;
+    char *containing_folder;
+    char *old_location;
+    char *compressed_file;
+    char *tmp_path;
+    char *containing_tmp_folder;
+    char *tmp_location;
+    char *compressed_tmp;
+} diff_paths;
+
+diff_paths *initialize_diff_paths(char *folder, char *filename){
+    diff_paths *ret;
+    char buffer[PATH_MAX + 1];
+
+    if (abspath(filename, buffer, sizeof(buffer)) == NULL) {
+        merror("Cannot get absolute path of '%s': %s (%d)", filename, strerror(errno), errno);
+        return NULL;
+    }
+    ret->filename_abs = strdup(buffer);
+
+    //    queue/diff/<registry or local>/<filename>
+    snprintf(
+        buffer,
+        PATH_MAX,
+        "%s/%s/%s",
+        DIFF_DIR_PATH,
+        folder,
+        filename + PATH_OFFSET
+    );
+    ret->containing_folder = strdup(buffer);
+
+    //    queue/diff/<registry or local>/<filename>/last-entry
+    snprintf(
+        buffer,
+        PATH_MAX,
+        "%s/%s/%s/%s",
+        DIFF_DIR_PATH,
+        folder,
+        filename + PATH_OFFSET,
+        DIFF_LAST_FILE
+    );
+    ret->old_location = strdup(buffer);
+
+    //    queue/diff/<registry or local>/<filename>/last-entry.gz
+    snprintf(
+        buffer,
+        PATH_MAX,
+        "%s/%s/%s/%s.gz",
+        DIFF_DIR_PATH,
+        folder,
+        filename + PATH_OFFSET,
+        DIFF_LAST_FILE
+    );
+    ret->compressed_file = strdup(buffer);
+
+    //    queue/diff/tmp
+    snprintf(
+        buffer,
+        PATH_MAX,
+        "%s/%s",
+        DIFF_DIR_PATH,
+        DIFF_TMP_FILE
+    );
+    ret->tmp_path = strdup(buffer);
+
+    //    queue/diff/tmp/<filename>
+    snprintf(
+        buffer,
+        PATH_MAX,
+        "%s/%s/%s",
+        DIFF_DIR_PATH,
+        DIFF_TMP_FILE,
+        filename + PATH_OFFSET
+    );
+    ret->containing_tmp_folder = strdup(buffer);
+
+    //    queue/diff/tmp/<filename>/last-entry
+    snprintf(
+        buffer,
+        PATH_MAX,
+        "%s/%s/%s/%s",
+        DIFF_DIR_PATH,
+        DIFF_TMP_FILE,
+        filename + PATH_OFFSET,
+        DIFF_LAST_FILE
+    );
+    ret->tmp_location = strdup(buffer);
+
+    //    queue/diff/tmp/<filename>/last-entry.gz
+    snprintf(
+        buffer,
+        PATH_MAX,
+        "%s/%s/%s/%s.gz",
+        DIFF_DIR_PATH,
+        DIFF_TMP_FILE,
+        filename + PATH_OFFSET,
+        DIFF_LAST_FILE
+    );
+    ret->compressed_tmp = strdup(buffer);
+
+    return ret;
+}
 
 static char* filter(const char *string) {
 #ifndef WIN32
@@ -180,21 +285,16 @@ int is_nodiff(const char *filename){
 }
 
 /* Generate diffs alerts */
-static char *gen_diff_alert(const char *filename, time_t alert_diff_time, char *diff_folder_name, char *tmp_diff_folder_name) {
+static char *gen_diff_alert(const char *filename, time_t alert_diff_time,  __attribute__((unused)) int status, diff_paths *paths) {
     size_t n = 0;
     FILE *fp;
     char *diff_str;
-    char path[PATH_MAX + 1];
+    char diff_location[PATH_MAX + 1];
     char buf[OS_MAXSTR + 1];
-    char tmp_location[PATH_MAX + 1];
-    char compressed_file[PATH_MAX + 1];
-    char containing_folder[PATH_MAX + 1];
-    char compressed_tmp[PATH_MAX + 1];
-    char localtmp_path[PATH_MAX + 1];
     char filename_abs[PATH_MAX];
     float tmp_diff_size = syscheck.diff_folder_size;
 
-    path[PATH_MAX] = '\0';
+    diff_location[PATH_MAX] = '\0';
     if (abspath(filename, filename_abs, sizeof(filename_abs)) == NULL) {
         merror("Cannot get absolute path of '%s': %s (%d)", filename, strerror(errno), errno);
         return NULL;
@@ -213,65 +313,16 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, char *
         filename_abs[sizeof(filename_abs) - 1] = '\0';
         free(filename_strip);
     }
-#endif
 
-    snprintf(
-        tmp_location,
-        PATH_MAX,
-        "%s/%s/%s/%s",
-        DIFF_DIR_PATH,
-        tmp_diff_folder_name,
-        filename_abs + PATH_OFFSET,
-        DIFF_LAST_FILE
-    );
-
-    snprintf(
-        compressed_file,
-        PATH_MAX,
-        "%s/%s/%s/%s.gz",
-        DIFF_DIR_PATH,
-        diff_folder_name,
-        filename_abs + PATH_OFFSET,
-        DIFF_LAST_FILE
-    );
-
-    snprintf(
-        containing_folder,
-        PATH_MAX,
-        "%s/%s/%s",
-        DIFF_DIR_PATH,
-        diff_folder_name,
-        filename_abs + PATH_OFFSET
-    );
-
-    snprintf(
-        compressed_tmp,
-        PATH_MAX,
-        "%s/%s/%s/%s.gz",
-        DIFF_DIR_PATH,
-        tmp_diff_folder_name,
-        filename_abs + PATH_OFFSET,
-        DIFF_LAST_FILE
-    );
-
-    snprintf(
-        localtmp_path,
-        PATH_MAX,
-        "%s/%s",
-        DIFF_DIR_PATH,
-        tmp_diff_folder_name
-    );
-
-#ifdef WIN32
-    tmp_diff_size -= (FileSizeWin(compressed_file) / 1024);
+    tmp_diff_size -= (FileSizeWin(paths->compressed_file) / 1024);
     if (syscheck.disk_quota_enabled && !seechanges_estimate_compression(FileSizeWin(filename_abs) / 1024)) {
 #else
-    tmp_diff_size -= (FileSize(compressed_file) / 1024);
+    tmp_diff_size -= (FileSize(paths->compressed_file) / 1024);
     if (syscheck.disk_quota_enabled && !seechanges_estimate_compression(FileSize(filename_abs) / 1024)) {
 #endif
-        if (rmdir_ex(containing_folder) < 0) {
+        if (rmdir_ex(paths->containing_folder) < 0) {
             if (errno != ENOENT) {
-                mdebug2(RMDIR_ERROR, containing_folder, errno, strerror(errno));
+                mdebug2(RMDIR_ERROR, paths->containing_folder, errno, strerror(errno));
             }
         }
 
@@ -281,18 +332,18 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, char *
     }
 
 
-    if (!seechanges_createpath(tmp_location)) {
-        mdebug2("Could not create '%s' folder", tmp_location);
+    if (!seechanges_createpath(paths->tmp_location)) {
+        mdebug2("Could not create '%s' folder", paths->tmp_location);
     }
 
-    if (w_compress_gzfile(filename, compressed_tmp) != 0) {
+    if (w_compress_gzfile(filename, paths->compressed_tmp) != 0) {
         mwarn(FIM_WARN_GENDIFF_SNAPSHOT, filename);
     }
     else if (syscheck.disk_quota_enabled) {
 #ifdef WIN32
-        tmp_diff_size += (FileSizeWin(compressed_tmp) / 1024);
+        tmp_diff_size += (FileSizeWin(paths->compressed_tmp) / 1024);
 #else
-        tmp_diff_size += (FileSize(compressed_tmp) / 1024);
+        tmp_diff_size += (FileSize(paths->compressed_tmp) / 1024);
 #endif
 
         if (tmp_diff_size > syscheck.disk_quota_limit) {
@@ -301,15 +352,15 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, char *
                 mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
             }
 #ifdef WIN32
-            seechanges_modify_estimation_percentage(FileSizeWin(compressed_tmp) / 1024, FileSizeWin(filename) / 1024);
+            seechanges_modify_estimation_percentage(FileSizeWin(paths->compressed_tmp) / 1024, FileSizeWin(filename) / 1024);
 #else
-            seechanges_modify_estimation_percentage(FileSize(compressed_tmp) / 1024, FileSize(filename) / 1024);
+            seechanges_modify_estimation_percentage(FileSize(paths->compressed_tmp) / 1024, FileSize(filename) / 1024);
 #endif
 
-            seechanges_delete_compressed_file(filename_abs, diff_folder_name);
+            seechanges_delete_compressed_file(filename_abs, paths);
 
-            if (rmdir_ex(localtmp_path) < 0) {
-                mdebug2(RMDIR_ERROR, localtmp_path, errno, strerror(errno));
+            if (rmdir_ex(paths->tmp_path) < 0) {
+                mdebug2(RMDIR_ERROR, paths->tmp_path, errno, strerror(errno));
             }
 
             return NULL;
@@ -318,18 +369,24 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, char *
         syscheck.diff_folder_size = tmp_diff_size;
     }
 
-    snprintf(path, PATH_MAX, "%s/%s/%s/diff.%d",
-             DIFF_DIR_PATH, diff_folder_name, filename_abs + PATH_OFFSET, (int)alert_diff_time);
+    /* Create diff location */
+    snprintf(
+        diff_location,
+        PATH_MAX,
+        "%s/diff.%d",
+        paths->containing_folder,
+        (int)alert_diff_time
+    );
 
-    fp = wfopen(path, "rb");
+    fp = wfopen(diff_location, "rb");
     if (!fp) {
-        merror(FIM_ERROR_GENDIFF_OPEN, path);
+        merror(FIM_ERROR_GENDIFF_OPEN, diff_location);
         return (NULL);
     }
 
     n = fread(buf, 1, OS_MAXSTR - OS_SK_HEADER - 1, fp);
     fclose(fp);
-    unlink(path);
+    unlink(diff_location);
 
     switch (n) {
     case 0:
@@ -378,14 +435,14 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, char *
     os_strdup(buf, diff_str);
 #endif
 
-    if (rename_ex(compressed_tmp, compressed_file) != 0) {
-        mdebug2(RENAME_ERROR, compressed_tmp, compressed_file, errno, strerror(errno));
+    if (rename_ex(paths->compressed_tmp, paths->compressed_file) != 0) {
+        mdebug2(RENAME_ERROR, paths->compressed_tmp, paths->compressed_file, errno, strerror(errno));
         os_free(diff_str);
         return NULL;
     }
 
-    if (rmdir_ex(localtmp_path) < 0) {
-        mdebug2(RMDIR_ERROR, localtmp_path, errno, strerror(errno));
+    if (rmdir_ex(paths->tmp_path) < 0) {
+        mdebug2(RMDIR_ERROR, paths->tmp_path, errno, strerror(errno));
     }
 
     return diff_str;
@@ -508,50 +565,30 @@ char *seechanges_get_diff_path(char *path) {
     return full_path;
 }
 
-void seechanges_delete_compressed_file(const char *path, char *diff_folder_name){
-    char containing_folder[PATH_MAX + 1];
-    char last_entry_file[PATH_MAX + 1];
+void seechanges_delete_compressed_file(const char *path, diff_paths *paths){
+    char containing_folder_abs[PATH_MAX + 1];
+    char compressed_file_abs[PATH_MAX + 1];
     float file_size = 0.0;
 
-    snprintf(
-        containing_folder,
-        PATH_MAX,
-        "%s/%s/%s",
-        DIFF_DIR_PATH,
-        diff_folder_name,
-        path + PATH_OFFSET
-    );
-
-    snprintf(
-        last_entry_file,
-        strlen(containing_folder) + strlen(DIFF_LAST_FILE) + 5,
-        "%s/%s.gz",
-        containing_folder,
-        DIFF_LAST_FILE
-    );
-
 #ifdef WIN32
-    char abs_path[PATH_MAX + 1];
 
-    abspath(containing_folder, abs_path, sizeof(abs_path));
-    snprintf(containing_folder, PATH_MAX, "%s", abs_path);
+    abspath(paths->containing_folder, containing_folder_abs, sizeof(abs_path));
 
-    abspath(last_entry_file, abs_path, sizeof(abs_path));
-    snprintf(last_entry_file, PATH_MAX, "%s", abs_path);
+    abspath(paths->compressed_file, compressed_file_abs, sizeof(abs_path));
 #endif
 
-    if (IsDir(containing_folder) == -1) {
+    if (IsDir(containing_folder_abs) == -1) {
         return;     // The folder does not exist
     }
 
 #ifdef WIN32
-     file_size = (float)FileSizeWin(last_entry_file) / 1024;
+     file_size = (float)FileSizeWin(compressed_file_abs) / 1024;
 #else
-     file_size = (float)FileSize(last_entry_file) / 1024;
+     file_size = (float)FileSize(compressed_file_abs) / 1024;
 #endif
 
-    if (rmdir_ex(containing_folder) < 0) {
-        mdebug2(RMDIR_ERROR, containing_folder, errno, strerror(errno));
+    if (rmdir_ex(containing_folder_abs) < 0) {
+        mdebug2(RMDIR_ERROR, containing_folder_abs, errno, strerror(errno));
     }
     else {
         if (file_size != -1) {
@@ -589,166 +626,90 @@ void seechanges_modify_estimation_percentage(const float compressed_size, const 
     }
 }
 
-char *seechanges_addfile(const char *filename, int is_registry) {
+char *seechanges_addfile(const char *filename, registry *registry) {
     time_t old_date_of_change;
     time_t new_date_of_change;
-    char old_location[PATH_MAX + 1];
-    char tmp_location[PATH_MAX + 1];
     char diff_location[PATH_MAX + 1];
     char diff_cmd[PATH_MAX + OS_SIZE_1024];
-    char compressed_file[PATH_MAX + 1];
-    char containing_folder[PATH_MAX + 1];
-    char containing_tmp_folder[PATH_MAX + 1];
-    char compressed_tmp[PATH_MAX + 1];
-    char localtmp_path[PATH_MAX + 1];
-    char localtmp_location[PATH_MAX + 1];
+    char state_location[PATH_MAX + 1];
+    diff_paths *paths;
+
 #ifdef WIN32
     char abs_path[PATH_MAX + 1];
+#else
+    int it = 0;
 #endif
     os_md5 md5sum_old;
     os_md5 md5sum_new;
     int status = -1;
     float file_size = 0.0;
     float compressed_new_size = 0.0;
-    int it = 0;
+    int config_file_size = 0;
 
-    old_location[PATH_MAX] = '\0';
-    tmp_location[PATH_MAX] = '\0';
     diff_location[PATH_MAX] = '\0';
     diff_cmd[PATH_MAX] = '\0';
-    compressed_file[PATH_MAX] = '\0';
-    char *tmp_location_filtered = NULL;
+    char *state_location_filtered = NULL;
     char *old_location_filtered = NULL;
     char *diff_location_filtered = NULL;
+    char *ret;
     md5sum_new[0] = '\0';
     md5sum_old[0] = '\0';
 
-    char filename_abs[PATH_MAX];
-    char diff_folder_name[PATH_MAX];
-    char tmp_diff_folder_name[PATH_MAX];
-
-    if (is_registry) {
-        strcpy(diff_folder_name, "registry");
-        strcpy(tmp_diff_folder_name, "registrytmp");
-    } else {
-        strcpy(diff_folder_name, "local");
-        strcpy(tmp_diff_folder_name, "localtmp");
-    }
-
-    if (abspath(filename, filename_abs, sizeof(filename_abs)) == NULL) {
-        merror("Cannot get absolute path of '%s': %s (%d)", filename, strerror(errno), errno);
-        return NULL;
-    }
 
 #ifdef WIN32
-    file_size = (float)FileSizeWin(filename_abs) / 1024;
+    file_size = (float)FileSizeWin(paths->filename_abs) / 1024;
 #else
-    file_size = (float)FileSize(filename_abs) / 1024;
+    file_size = (float)FileSize(paths->filename_abs) / 1024;
 #endif
 
-    it = fim_configuration_directory(filename_abs, "file");
+    if (registry){
+        config_file_size = registry->diff_size_limit;
+    } else {
+        it = fim_configuration_directory(paths->filename_abs, "file");
+        config_file_size = syscheck.diff_size_limit[it];
+    }
 
 #ifdef WIN32
     {
-        char * filename_strip = os_strip_char(filename_abs, ':');
+        char * filename_strip = os_strip_char(paths->filename_abs, ':');
 
         if (filename_strip == NULL) {
-            merror("Cannot remove heading colon from full path '%s'", filename_abs);
+            merror("Cannot remove heading colon from full path '%s'", paths->filename_abs);
             return NULL;
         }
 
-        strncpy(filename_abs, filename_strip, sizeof(filename_abs));
-        filename_abs[sizeof(filename_abs) - 1] = '\0';
+        strncpy(paths->filename_abs, filename_strip, sizeof(paths->filename_abs));
+        paths->filename_abs[sizeof(paths->filename_abs) - 1] = '\0';
         free(filename_strip);
     }
 #endif
 
+    if (registry) {
+        paths = initialize_diff_paths("registry", paths->filename_abs);
+    } else {
+        paths = initialize_diff_paths("local", paths->filename_abs);
+    }
+
     if (syscheck.file_size_enabled) {
-        if (file_size > syscheck.diff_size_limit[it]) {
-            mdebug2(FIM_BIG_FILE_REPORT_CHANGES, filename_abs);
-            seechanges_delete_compressed_file(filename_abs, diff_folder_name);
+        if (file_size > config_file_size) {
+            mdebug2(FIM_BIG_FILE_REPORT_CHANGES, paths->filename_abs);
+            seechanges_delete_compressed_file(paths->filename_abs, paths);
             return NULL;
         }
     }
 
-    snprintf(
-        old_location,
-        PATH_MAX,
-        "%s/%s/%s/%s",
-        DIFF_DIR_PATH,
-        diff_folder_name,
-        filename_abs + PATH_OFFSET,
-        DIFF_LAST_FILE
-    );
-
-    snprintf(
-        localtmp_location,
-        PATH_MAX,
-        "%s/%s/%s/%s",
-        DIFF_DIR_PATH,
-        tmp_diff_folder_name,
-        filename_abs + PATH_OFFSET,
-        DIFF_LAST_FILE
-    );
-
-    snprintf(
-        containing_folder,
-        PATH_MAX,
-        "%s/%s/%s",
-        DIFF_DIR_PATH,
-        diff_folder_name,
-        filename_abs + PATH_OFFSET
-    );
-
-    snprintf(
-        containing_tmp_folder,
-        PATH_MAX,
-        "%s/%s/%s",
-        DIFF_DIR_PATH,
-        tmp_diff_folder_name,
-        filename_abs + PATH_OFFSET
-    );
-
-    snprintf(
-        compressed_file,
-        PATH_MAX,
-        "%s/%s/%s/%s.gz",
-        DIFF_DIR_PATH,
-        diff_folder_name,
-        filename_abs + PATH_OFFSET,
-        DIFF_LAST_FILE
-    );
-
-    snprintf(
-        compressed_tmp,
-        PATH_MAX,
-        "%s/%s/%s/%s.gz",
-        DIFF_DIR_PATH,
-        tmp_diff_folder_name,
-        filename_abs + PATH_OFFSET,
-        DIFF_LAST_FILE
-    );
-
-    snprintf(
-        localtmp_path,
-        PATH_MAX,
-        "%s/%s",
-        DIFF_DIR_PATH,
-        tmp_diff_folder_name
-    );
-
     // Estimate if the file could fit in the disk_quota limit. If it estimates it won't fit, delete compressed file.
     if (syscheck.disk_quota_enabled && !seechanges_estimate_compression(file_size)) {
-        if (rmdir_ex(compressed_file) < 0) {
+        if (rmdir_ex(paths->compressed_file) < 0) {
             if (errno != ENOENT) {
-                mdebug2(RMDIR_ERROR, compressed_file, errno, strerror(errno));
+                mdebug2(RMDIR_ERROR, paths->compressed_file, errno, strerror(errno));
             }
         }
         else {
 #ifndef WIN32
-            syscheck.diff_folder_size -= FileSize(compressed_file) / 1024;
+            syscheck.diff_folder_size -= FileSize(paths->compressed_file) / 1024;
 #else
-            syscheck.diff_folder_size -= FileSizeWin(compressed_file) / 1024;
+            syscheck.diff_folder_size -= FileSizeWin(paths->compressed_file) / 1024;
 #endif
         }
 
@@ -756,19 +717,19 @@ char *seechanges_addfile(const char *filename, int is_registry) {
     }
 
     // If the file is not there, create compressed file
-    if (w_uncompress_gzfile(compressed_file, old_location) != 0) {
-        seechanges_createpath(old_location);
-        seechanges_createpath(localtmp_location);
+    if (w_uncompress_gzfile(paths->compressed_file, paths->old_location) != 0) {
+        seechanges_createpath(paths->old_location);
+        seechanges_createpath(paths->tmp_location);
 
-        if (w_compress_gzfile(filename, compressed_tmp) != 0) {
+        if (w_compress_gzfile(filename, paths->compressed_tmp) != 0) {
             mwarn(FIM_WARN_GENDIFF_SNAPSHOT, filename);
         }
         else if (syscheck.disk_quota_enabled) {
 #ifdef WIN32
-            abspath(containing_tmp_folder, abs_path, sizeof(abs_path));
-            snprintf(containing_tmp_folder, PATH_MAX, "%s", abs_path);
+            abspath(paths->containing_tmp_folder, abs_path, sizeof(abs_path));
+            snprintf(paths->containing_tmp_folder, PATH_MAX, "%s", abs_path);
 #endif
-            compressed_new_size = DirSize(containing_tmp_folder) / 1024;
+            compressed_new_size = DirSize(paths->containing_tmp_folder) / 1024;
             /**
              * Check if adding the new file doesn't exceed the disk quota limit. Update the diff_folder_size
              * value if it's not exceeded and move the temporary file to the correct location.
@@ -778,8 +739,8 @@ char *seechanges_addfile(const char *filename, int is_registry) {
             if (syscheck.diff_folder_size + compressed_new_size <= syscheck.disk_quota_limit) {
                 syscheck.diff_folder_size += compressed_new_size;
 
-                if (rename_ex(compressed_tmp, compressed_file) != 0) {
-                    mdebug2(RENAME_ERROR, compressed_tmp, compressed_file, errno, strerror(errno));
+                if (rename_ex(paths->compressed_tmp, paths->compressed_file) != 0) {
+                    mdebug2(RENAME_ERROR, paths->compressed_tmp, paths->compressed_file, errno, strerror(errno));
                 }
 
                 return NULL;
@@ -793,85 +754,81 @@ char *seechanges_addfile(const char *filename, int is_registry) {
                 seechanges_modify_estimation_percentage(compressed_new_size, file_size);
 
 #ifdef WIN32
-                abspath(containing_folder, abs_path, sizeof(abs_path));
-                snprintf(containing_folder, PATH_MAX, "%s", abs_path);
+                abspath(paths->containing_folder, abs_path, sizeof(abs_path));
+                snprintf(paths->containing_folder, PATH_MAX, "%s", abs_path);
 #endif
 
-                if (rmdir_ex(containing_folder) < 0) {
-                    mdebug2(RMDIR_ERROR, containing_folder, errno, strerror(errno));
+                if (rmdir_ex(paths->containing_folder) < 0) {
+                    mdebug2(RMDIR_ERROR, paths->containing_folder, errno, strerror(errno));
                 }
             }
         }
         else {
-            if (rename_ex(compressed_tmp, compressed_file) != 0) {
-                mdebug2(RENAME_ERROR, compressed_tmp, compressed_file, errno, strerror(errno));
+            if (rename_ex(paths->compressed_tmp, paths->compressed_file) != 0) {
+                mdebug2(RENAME_ERROR, paths->compressed_tmp, paths->compressed_file, errno, strerror(errno));
             }
 
             return NULL;
         }
 
 #ifdef WIN32
-        abspath(localtmp_path, abs_path, sizeof(abs_path));
-        snprintf(localtmp_path, PATH_MAX, "%s", abs_path);
+        abspath(paths->tmp_path, abs_path, sizeof(abs_path));
+        snprintf(paths->tmp_path, PATH_MAX, "%s", abs_path);
 #endif
 
-        if (rmdir_ex(localtmp_path) < 0) {
-            mdebug2(RMDIR_ERROR, localtmp_path, errno, strerror(errno));
+        if (rmdir_ex(paths->tmp_path) < 0) {
+            mdebug2(RMDIR_ERROR, paths->tmp_path, errno, strerror(errno));
         }
 
         return (NULL);
     }
 
-    if (OS_MD5_File(old_location, md5sum_old, OS_BINARY) != 0) {
-        unlink(old_location);
+    if (OS_MD5_File(paths->old_location, md5sum_old, OS_BINARY) != 0) {
+        unlink(paths->old_location);
         return (NULL);
     }
 
     /* Get md5sum of the new file */
     if (OS_MD5_File(filename, md5sum_new, OS_BINARY) != 0) {
-        unlink(old_location);
+        unlink(paths->old_location);
         return (NULL);
     }
 
     /* If they match, keep the old file and remove the new */
     if (strcmp(md5sum_new, md5sum_old) == 0) {
-        unlink(old_location);
+        unlink(paths->old_location);
         return (NULL);
     }
 
     /* Save the old file at timestamp and rename new to last */
-    old_date_of_change = File_DateofChange(old_location);
+    old_date_of_change = File_DateofChange(paths->old_location);
 
     snprintf(
-        tmp_location,
+        state_location,
         PATH_MAX,
-        "%s/%s/%s/state.%d",
-        DIFF_DIR_PATH,
-        diff_folder_name,
-        filename_abs + PATH_OFFSET,
+        "%s/state.%d",
+        paths->containing_folder,
         (int)old_date_of_change
     );
 
-    if (rename(old_location, tmp_location) == -1) {
-        merror(RENAME_ERROR, old_location, tmp_location, errno, strerror(errno));
+    if (rename(paths->old_location, state_location) == -1) {
+        merror(RENAME_ERROR, paths->old_location, state_location, errno, strerror(errno));
         return (NULL);
     }
 
-    if (seechanges_dupfile(filename, old_location) != 1) {
+    if (seechanges_dupfile(filename, paths->old_location) != 1) {
         merror(FIM_ERROR_GENDIFF_CREATE_SNAPSHOT, filename);
         return (NULL);
     }
 
-    new_date_of_change = File_DateofChange(old_location);
+    new_date_of_change = File_DateofChange(paths->old_location);
 
     /* Create diff location */
     snprintf(
         diff_location,
         PATH_MAX,
-        "%s/%s/%s/diff.%d",
-        DIFF_DIR_PATH,
-        diff_folder_name,
-        filename_abs + PATH_OFFSET,
+        "%s/diff.%d",
+        paths->containing_folder,
         (int)new_date_of_change
     );
 
@@ -898,11 +855,11 @@ char *seechanges_addfile(const char *filename, int is_registry) {
     } else {
         /* OK, run diff */
 
-        tmp_location_filtered = filter(tmp_location);
-        old_location_filtered = filter(old_location);
+        old_location_filtered = filter(paths->old_location);
+        state_location_filtered = filter(state_location);
         diff_location_filtered = filter(diff_location);
 
-        if (!(tmp_location_filtered && old_location_filtered && diff_location_filtered)) {
+        if (!(state_location_filtered && old_location_filtered && diff_location_filtered)) {
             mdebug1(FIM_DIFF_SKIPPED); //LCOV_EXCL_LINE
             goto cleanup; //LCOV_EXCL_LINE
         }
@@ -915,7 +872,7 @@ char *seechanges_addfile(const char *filename, int is_registry) {
 #else
             "fc /n \"%s\" \"%s\" > \"%s\" 2> nul",
 #endif
-            tmp_location_filtered,
+            state_location_filtered,
             old_location_filtered,
             diff_location_filtered
         );
@@ -939,10 +896,12 @@ char *seechanges_addfile(const char *filename, int is_registry) {
     }
 
 cleanup:
+    /* Generate alert */
+    ret = gen_diff_alert(filename, new_date_of_change, status, paths);
 
-    unlink(tmp_location);
-    unlink(old_location);
-    free(tmp_location_filtered);
+    unlink(state_location);
+    unlink(paths->old_location);
+    free(state_location_filtered);
     free(old_location_filtered);
     free(diff_location_filtered);
 
@@ -951,8 +910,7 @@ cleanup:
         return (NULL);
     }
 
-    /* Generate alert */
-    return (gen_diff_alert(filename, new_date_of_change, diff_folder_name, tmp_diff_folder_name));
+    return ret;
 }
 
 
@@ -1017,31 +975,35 @@ next_it:
     return adapted_output;
 }
 
-char * fim_registry_value_diff(char *key_name, char *value_name, LPBYTE value_data, DWORD data_type) {
-    char * reg_value_file;
-    char * diff;
-    char * aux_data;
-    char * reg_value_dir;
-    char * reg_value_file;
+char * fim_registry_value_diff(char *key_name, char *value_name, char * value_data, DWORD data_type, registry registry) {
+    char * diff = NULL;
+    char * aux_data = NULL;
+    char * reg_value_dir = NULL;
+    char * reg_value_dir_abs = NULL;
+    char * reg_value_file = NULL;
     os_sha1 encoded_key;
     os_sha1 encoded_value;
     FILE *fp;
 
-    OS_SHA1_Str(key_name, strlen(key_name), encoded_key)
-    OS_SHA1_Str(value_name, strlen(value_name), encoded_value)
+    // Invalid types for report_changes
+    if (data_type == REG_NONE || data_type == REG_BINARY || data_type == REG_LINK || data_type == REG_RESOURCE_LIST
+        || data_type == REG_FULL_RESOURCE_DESCRIPTOR || data_type == REG_RESOURCE_REQUIREMENTS_LIST){
+            return NULL;
+    }
+
+    OS_SHA1_Str(key_name, strlen(key_name), encoded_key);
+    OS_SHA1_Str(value_name, strlen(value_name), encoded_value);
 
     snprintf(reg_value_dir, MAX_PATH, "%s\\%s", DIFF_DIR_PATH, encoded_key);
-    if (mkdir(reg_value_dir) == -1) {
-        mdebug2(MKDIR_EXIST, reg_value_dir);
-    }
-    snprintf(reg_value_file, MAX_PATH, "%s\\%s", reg_value_dir, encoded_value);
+    abspath(reg_value_dir, reg_value_dir_abs, strlen(reg_value_dir_abs));
+    mkdir(reg_value_dir_abs);
+    snprintf(reg_value_file, MAX_PATH, "%s\\%s", reg_value_dir_abs, encoded_value);
 
     if (fp = fopen (reg_value_file, "w"), fp) {
         switch (data_type) {
             case REG_SZ:
-
             case REG_EXPAND_SZ:
-                fwrite(value_data, 1, strlen(value_data), fp);
+                fprintf(fp, "%s", value_data);
                 break;
 
             case REG_MULTI_SZ:
@@ -1052,35 +1014,43 @@ char * fim_registry_value_diff(char *key_name, char *value_name, LPBYTE value_da
                     aux_data += strlen(aux_data) + 1;
                 }
                 break;
-
+	//REG_DWORD_BIG_ENDIAN
             case REG_DWORD:
-                fprintf(fp, "%08x", *((unsigned int*)value_data));
+                fprintf(fp, "%04x", *((unsigned int*)value_data));
+                break;
+
+            case REG_DWORD_BIG_ENDIAN:
+                aux_data = value_data;
+
+                fprintf(fp, "%04x", *((unsigned int*)value_data));
+                break;
+
+            case REG_QWORD:
+                fprintf(fp, "%05x", *((unsigned int*)value_data));
                 break;
 
             default:
-                for (int i = 0; i < data_size; i++) {
-                    fprintf(fp, "%02x", (unsigned int)value_data[i] & 0xFF);
-                }
+                // Wrong type
+                mwarn(FIM_REG_VAL_WRONG_TYPE, data_type);
                 break;
         }
     } else {
-        merror(FOPEN_ERROR, reg_value_dir, errno, strerror(errno));
+        merror(FOPEN_ERROR, reg_value_file, errno, strerror(errno));
         return NULL;
     }
 
     fclose(fp);
 
     // We send the file with the value data to "seechanges" as if it were a monitored file
-    if (diff = seechanges_addfile(reg_value_file, 1), !diff) {
+    if (diff = seechanges_addfile(reg_value_file, registry), !diff) {
+        // error, comprobar
         return NULL;
     }
 
     // Remove file with value data, no longer needed
     _unlink(reg_value_file);
     // Remove dir if empty
-    if (rmdir(reg_value_dir) == -1) {
-        mdebug2(RMDIR_NOT_EMPTY, reg_value_dir);
-    }
+    rmdir(reg_value_dir_abs);
 
     return diff;
 }

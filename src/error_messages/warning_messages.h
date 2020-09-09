@@ -47,6 +47,7 @@
 #define FIM_WHODATA_PARAMETER                   "(6932): Invalid parameter type (%ld) for '%s'."
 #define FIM_WHODATA_RENDER_EVENT                "(6933): Error rendering the event. Error %lu."
 #define FIM_WHODATA_RENDER_PARAM                "(6934): Invalid number of rendered parameters."
+#define FIM_REG_VAL_WRONG_TYPE                  "(6935): Wrong registry value type processed '%s'."
 
 
 /* Monitord warning messages */
