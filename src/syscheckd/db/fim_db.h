@@ -1,9 +1,9 @@
 /**
- * @file fim_sync.c
- * @brief Definition of FIM data synchronization library
+ * @file fim_db.h
+ * @brief Definition of FIM database library.
  * @date 2019-08-28
  *
- * @copyright Copyright (c) 2019 Wazuh, Inc.
+ * @copyright Copyright (c) 2020 Wazuh, Inc.
  */
 
 #ifndef FIMDB_COMMON
