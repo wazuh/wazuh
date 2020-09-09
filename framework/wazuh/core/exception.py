@@ -347,8 +347,8 @@ class WazuhException(Exception):
                'remediation': 'Please, make sure you provide a correct filepath'
                },
 
-        # Agent upgrade module reserved IDs (1810-1899). The error message will be the output of upgrade module
-        1810: {'message': ''},
+        1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
+                          'The error message will be the output of upgrade module'},
 
         # Manager:
         1900: 'Error restarting manager',

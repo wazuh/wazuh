@@ -406,8 +406,7 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
 
 
 async def put_upgrade_agents(request, list_agents, pretty=False, wait_for_complete=False, wpk_repo=None,
-                             version=None,
-                             use_http=False, force=False):
+                             version=None, use_http=False, force=False):
     """Upgrade agents using a WPK file from online repository.
     Parameters
     ----------
@@ -430,7 +429,7 @@ async def put_upgrade_agents(request, list_agents, pretty=False, wait_for_comple
     ApiResponse
         Upgrade message after trying to upgrade the agents.
     """
-    f_kwargs = {'agents_list': list_agents,
+    f_kwargs = {'agent_list': list_agents,
                 'wpk_repo': wpk_repo,
                 'version': version,
                 'use_http': use_http,
@@ -450,8 +449,7 @@ async def put_upgrade_agents(request, list_agents, pretty=False, wait_for_comple
 
 
 async def put_upgrade_custom_agents(request, list_agents, pretty=False, wait_for_complete=False,
-                                    file_path=None,
-                                    installer=None):
+                                    file_path=None, installer=None):
     """Upgrade agents using a local WPK file.
     Parameters
     ----------
@@ -470,7 +468,7 @@ async def put_upgrade_custom_agents(request, list_agents, pretty=False, wait_for
     ApiResponse
         Upgrade message after trying to upgrade the agents.
     """
-    f_kwargs = {'agents_list': list_agents,
+    f_kwargs = {'agent_list': list_agents,
                 'file_path': file_path,
                 'installer': installer}
 
@@ -502,7 +500,7 @@ async def get_agent_upgrade(request, list_agents, pretty=False, wait_for_complet
     ApiResponse
         Upgrade message after having upgraded the agents.
     """
-    f_kwargs = {'agents_list': list_agents}
+    f_kwargs = {'agent_list': list_agents}
 
     dapi = DistributedAPI(f=agent.get_upgrade_result,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
