@@ -935,7 +935,7 @@ stages:
     response: &upgrade_result
       status_code: 200
       json:
-        message: Agent upgraded successfully
+        message: !anystr
 
   - name: Get agent 008 upgrade result
     request:

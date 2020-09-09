@@ -10,11 +10,9 @@ import logging
 import os
 import ssl
 import sys
-from collections import deque
 
 import aiohttp_cors
 import connexion
-import psutil
 import uvloop
 from aiohttp_cache import setup_cache
 from aiohttp_swagger import setup_swagger
@@ -31,9 +29,6 @@ from api.uri_parser import APIUriParser
 from api.util import to_relative_path
 from wazuh.core import pyDaemonModule, common
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
-
-# We load the SPEC file into memory to use as a reference for future calls
-wazuh.security.load_spec()
 
 
 def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
@@ -103,6 +98,9 @@ def start(foreground, root, config_file):
     if os.path.exists(os.path.join(common.ossec_path, log_path)):
         os.chown(os.path.join(common.ossec_path, log_path), common.ossec_uid(), common.ossec_gid())
         os.chmod(os.path.join(common.ossec_path, log_path), 0o660)
+
+    # Load the SPEC file into memory to use as a reference for future calls
+    wazuh.security.load_spec()
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     app = connexion.AioHttpApp(__name__, host=api_conf['host'],

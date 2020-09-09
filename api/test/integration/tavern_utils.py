@@ -110,7 +110,7 @@ def test_validate_upgrade(response):
 def test_validate_upgrade_result(response, upgraded):
     upgraded = int(upgraded, 10)
     if upgraded == 1:
-        assert response.json().get('message', None) == "Agent upgraded successfully"
+        assert response.json().get('message', None) == "Agent was successfully upgraded"
     else:
         # If upgrade didnt work because no version was available, we expect an empty upgrade_result with error 1716
         assert response.json().get('code', None) == 1716
