@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 2.6.4)
 
 project(dbsyncPipelineFactory_unit_test)
 
@@ -20,8 +20,8 @@ file(GLOB PIPELINE_FACTORY_SRC
     "${CMAKE_SOURCE_DIR}/src/sqlite/*.cpp")
 
 add_executable(dbsyncPipelineFactory_unit_test 
-    "${PIPELINE_FACTORY_UNITTEST_SRC}"
-    "${PIPELINE_FACTORY_SRC}")
+    ${PIPELINE_FACTORY_UNITTEST_SRC}
+    ${PIPELINE_FACTORY_SRC})
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(dbsyncPipelineFactory_unit_test
         debug gtestd

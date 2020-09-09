@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 2.6.4)
 
 project(sqlite_unit_test)
 
@@ -13,8 +13,8 @@ file(GLOB SQLITE_SRC
     "${CMAKE_SOURCE_DIR}/src/sqlite/sqlite_wrapper.cpp")
 
 add_executable(sqlite_unit_test 
-    "${SQLITE_UNIT_TEST_SRC}"
-    "${SQLITE_SRC}")
+    ${SQLITE_UNIT_TEST_SRC}
+    ${SQLITE_SRC})
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(sqlite_unit_test
         debug gtestd

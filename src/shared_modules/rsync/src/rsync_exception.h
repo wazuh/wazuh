@@ -14,7 +14,15 @@
 #include <stdexcept>
 #include <string>
 
-constexpr auto INVALID_HANDLE       { std::make_pair(1, "Invalid handle value.") };
+constexpr auto INVALID_HANDLE           { std::make_pair(1, "Invalid handle value.") };
+constexpr auto FACTORY_INSTANTATION     { std::make_pair(2, "Unspecified type during factory instantiation") };
+constexpr auto INVALID_HEADER           { std::make_pair(3, "Invalid message header.") };
+constexpr auto INVALID_DECODER          { std::make_pair(4, "Invalid message decoder.") };
+constexpr auto PACKAGE_INCOMPLETE       { std::make_pair(5, "Incomplete package.") };
+constexpr auto INVALID_OPERATION        { std::make_pair(6, "Invalid message operation.") };
+constexpr auto UNEXPECTED_SIZE          { std::make_pair(7, "Unexpected size value during sync process.") };
+constexpr auto UNEXPECTED_RANGE_COUNT   { std::make_pair(8, "Unexpected range count during sync process.") };
+constexpr auto UNEXPECTED_CHECKSUM      { std::make_pair(9, "Unexpected checksum during sync process." )};
 
 namespace RSync
 {

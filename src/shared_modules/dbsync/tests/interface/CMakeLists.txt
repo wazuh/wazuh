@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 2.6.4)
 
 project(dbsync_unit_test)
 
@@ -14,7 +14,7 @@ file(GLOB INTERFACE_UNITTEST_SRC
     "${CMAKE_SOURCE_DIR}/src/sqlite/*.cpp")
 
 add_executable(dbsync_unit_test 
-    "${INTERFACE_UNITTEST_SRC}" )
+    ${INTERFACE_UNITTEST_SRC} )
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(dbsync_unit_test
         debug gtestd

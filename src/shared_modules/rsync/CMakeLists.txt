@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 2.6.4)
 
 project(rsync)
 
@@ -18,8 +18,10 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include_directories(${SRC_FOLDER}/external/cJSON/)
+include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${CMAKE_SOURCE_DIR}/include/)
 include_directories(${CMAKE_SOURCE_DIR}/src/)
+include_directories(${SHARED_MODULES}/dbsync/include/)
 include_directories(${SHARED_MODULES}/utils/)
 include_directories(${SHARED_MODULES}/common/)
 include_directories(${SHARED_MODULES}/dbsync/include)
@@ -27,11 +29,14 @@ include_directories(${SHARED_MODULES}/dbsync/include)
 link_directories(${SHARED_MODULES}/dbsync/build/lib/)
 
 
+link_directories(${SRC_FOLDER}/external/cJSON/)
+link_directories(${SHARED_MODULES}/dbsync/build/lib/)
+
 file(GLOB RSYNC_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
 add_library(rsync SHARED
-    "${RSYNC_SRC}" )
+    ${RSYNC_SRC} )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN_EXPORT)
@@ -42,11 +47,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
         # MinGW generates position-independent-code for DLL by default
   )
+  target_link_libraries(rsync ssl ws2_32 crypt32)
+
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  target_link_libraries(rsync dbsync gcov)
+  target_link_libraries(rsync cjson dbsync crypto gcov)
   if(UNIT_TEST)
     include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
     include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
@@ -57,7 +64,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_subdirectory(integrationTests)
   endif(UNIT_TEST)
 else()
-    target_link_libraries(rsync dbsync)
+    target_link_libraries(rsync dbsync cjson crypto)
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 add_subdirectory(testtool)
