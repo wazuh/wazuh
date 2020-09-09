@@ -18,15 +18,6 @@
 int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg);
 
 /**
- * @brief Get entry data using path.
- *
- * @param fim_sql FIM database struct.
- * @param file_path File path.
- * @return FIM entry struct on success, NULL on error.
- */
-fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path);
-
-/**
  * @brief Get list of all paths by storing them in a temporal file.
  *
  * @param fim_sql FIM database struct.

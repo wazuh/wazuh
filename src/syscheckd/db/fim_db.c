@@ -17,8 +17,7 @@
 #endif
 
 const char *SQL_STMT[] = {
-//
-    // Files
+// Files
 #ifdef WIN32
     [FIMDB_STMT_INSERT_DATA] = "INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
 #else
@@ -80,73 +79,6 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_REG_KEY_ROWID] = "SELECT path, perm, uid, gid, user_name, group_name, scanned, checksum FROM registry_key WHERE rowid = ?;",
 #endif
 };
-
-/**
- * @brief Executes a simple query in a given database.
- *
- * @param fim_sql The FIM database structure where the database is.
- * @param query The query to be executed.
- * @return int 0 on success, -1 on error.
- */
-int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
-
-
-/**
- * @brief
- *
- * @param fim_sql FIM database structure.
- * @param registry Variable to indicate if the query is for registries or for files. 0 (FIM_TYPE_FILE) for files
- *  1 (FIM_TYPE_REGISTRY) for registries.
- * @param index
- * @param callback
- * @param arg
- * @param pos
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_process_get_query(fdb_t *fim_sql, int registry, int index,
-                                    void (*callback)(fdb_t *, fim_entry *, int, void *),
-                                    int memory, void * arg);
-
-/**
- * @brief Create a new database.
- * @param path New database path.
- * @param source SQlite3 schema file.
- * @param storage 1 Store database in memory, disk otherwise.
- * @param fim_db Database pointer.
- *
- */
-static int fim_db_create_file(const char *path, const char *source, const int storage, sqlite3 **fim_db);
-
-/**
- * @brief Create a new temporal storage to save all the files' paths.
- * @param size Number of paths(Only if memory is 1)
- * @return New file structure.
- */
-fim_tmp_file *fim_db_create_temp_file(int storage);
-
-
-/**
- * @brief Clean and free resources
- * @param file Storage structure
- * @param storage Type of storage (memory or disk)
- */
-void fim_db_clean_file(fim_tmp_file **file, int storage);
-
-/**
- * @brief Decodes a row from the registry database to be saved in a registry key structure.
- *
- * @param stmt The statement to be decoded.
- * @return fim_entry* The filled structure.
- */
-fim_entry *fim_db_decode_full_reg_row(sqlite3_stmt *stmt);
-
-/**
- * @brief Decodes a row from the database to be saved in a fim_entry structure.
- *
- * @param stmt The statement to be decoded.
- * @return fim_entry* The filled structure.
- */
-fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
 
 fdb_t *fim_db_init(int storage) {
     fdb_t *fim;
@@ -473,4 +405,56 @@ int fim_db_get_count(fdb_t *fim_sql, int index) {
         }
     }
     return FIMDB_ERR;
+}
+
+int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, int type, pthread_mutex_t *mutex,
+    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
+    int storage, void * alert, void * mode, void * w_evt) {
+
+    char line[PATH_MAX + 1];
+    char *path = NULL;
+    int i = 0;
+
+    if (storage == FIM_DB_DISK) {
+        fseek(file->fd, SEEK_SET, 0);
+    }
+
+    do {
+
+        if (storage == FIM_DB_DISK) {
+            /* fgets() adds \n(newline) to the end of the string,
+             So it must be removed. */
+            if (fgets(line, sizeof(line), file->fd)) {
+                size_t len = strlen(line);
+
+                if (len > 2 && line[len - 1] == '\n') {
+                    line[len - 1] = '\0';
+                } else {
+                    merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
+                    continue;
+                }
+
+                path = wstr_unescape_json(line);
+            }
+        } else {
+            path = wstr_unescape_json((char *) W_Vector_get(file->list, i));
+        }
+
+        if (path) {
+            w_mutex_lock(mutex);
+            fim_entry *entry = type == FIM_TYPE_FILE ? fim_db_get_path(fim_sql, path) : fim_db_get_registry(fim_sql, path);
+            w_mutex_unlock(mutex);
+            if (entry != NULL) {
+                callback(fim_sql, entry, mutex, alert, mode, w_evt);
+                free_entry(entry);
+            }
+            os_free(path);
+        }
+
+        i++;
+    } while (i < file->elements);
+
+    fim_db_clean_file(&file, storage);
+
+    return FIMDB_OK;
 }

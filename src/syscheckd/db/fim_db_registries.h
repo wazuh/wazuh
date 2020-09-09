@@ -150,36 +150,6 @@ int fim_db_get_registry_key_count_range(fdb_t *fim_sql, char *start, char *top, 
 int fim_db_get_registry_data_count_range(fdb_t *fim_sql, char *start, char *top, int *counter);
 
 /**
- * @brief Delete registry key using key path.
- *
- * @param fim_sql FIM database struct.
- * @param key_path Key path.
- * @param mutex
- * @param alert False don't send alert, True send delete alert.
- * @param fim_ev_mode FIM Mode (scheduled/whodata)
- * @param w_evt Whodata information
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-void fim_db_remove_registry_key(fdb_t *fim_sql, fim_registry_key *key_entry, pthread_mutex_t *mutex, void *alert,
-                                void *fim_ev_mode, void *w_evt);
-
-/**
- * @brief Delete registry data using key path.
- *
- * @param fim_sql FIM database struct.
- * @param key_path Key path.
- * @param mutex
- * @param alert False don't send alert, True send delete alert.
- * @param fim_ev_mode FIM Mode (scheduled/whodata)
- * @param w_evt Whodata information
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-void fim_db_remove_registry_data(fdb_t *fim_sql, char *key_path, fim_registry_value_data *key_data,
-                                 pthread_mutex_t *mutex, void *alert, void *fim_ev_mode, void *w_evt);
-
-/**
  * @brief Get the last/first row from registry_key table.
  *
  * @param fim_sql FIM database struct
@@ -391,3 +361,37 @@ int fim_db_process_missing_registry_data_entry(fdb_t *fim_sql, fim_tmp_file *fil
  * @return Number of entries in registry key table.
  */
 int fim_db_get_count_registry_key_data(fdb_t *fim_sql);
+
+/**
+ * @brief Delete registry using registry entry.
+ *
+ * @param fim_sql FIM database struct.
+ * @param entry Registry entry.
+ * @param mutex
+ * @param alert False don't send alert, True send delete alert.
+ * @param fim_ev_mode FIM Mode (scheduled/whodata)
+ * @param w_evt Whodata information
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+void fim_db_remove_registry_key(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
+                                __attribute__((unused))void *alert,
+                                __attribute__((unused))void *fim_ev_mode,
+                                __attribute__((unused))void *w_evt);
+
+/**
+ * @brief Delete registry using registry entry.
+ *
+ * @param fim_sql FIM database struct.
+ * @param entry Registry entry.
+ * @param mutex
+ * @param alert False don't send alert, True send delete alert.
+ * @param fim_ev_mode FIM Mode (scheduled/whodata)
+ * @param w_evt Whodata information
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+void fim_db_remove_registry_value_data(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
+                                        __attribute__((unused))void *alert,
+                                        __attribute__((unused))void *fim_ev_mode,
+                                        __attribute__((unused))void *w_evt);

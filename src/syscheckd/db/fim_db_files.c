@@ -109,27 +109,6 @@ void fim_db_bind_get_inode_id(fdb_t *fim_sql, const char *file_path);
  */
 void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path);
 
-/**
- * @brief Read paths which are stored in a temporal storage.
- *
- * @param fim_sql FIM database structure.
- * @param mutex
- * @param storage 1 Store database in memory, disk otherwise.
- * @param callback Function to call within a step.
- * @param mode FIM mode for callback function.
- * @param w_evt Whodata information for callback function.
- *
- */
- static int fim_db_process_read_file(fdb_t *fim_sql,
-                                     fim_tmp_file *file,
-                                     pthread_mutex_t *mutex,
-                                     void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
-                                     int storage,
-                                     void * alert,
-                                     void * mode,
-                                     void * w_evt);
-
-
 int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
@@ -164,58 +143,6 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
 
 }
 
-int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
-    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
-    int storage, void * alert, void * mode, void * w_evt) { //mover
-
-    char line[PATH_MAX + 1];
-    char *path = NULL;
-    int i = 0;
-
-    if (storage == FIM_DB_DISK) {
-        fseek(file->fd, SEEK_SET, 0);
-    }
-
-    do {
-
-        if (storage == FIM_DB_DISK) {
-            /* fgets() adds \n(newline) to the end of the string,
-             So it must be removed. */
-            if (fgets(line, sizeof(line), file->fd)) {
-                size_t len = strlen(line);
-
-                if (len > 2 && line[len - 1] == '\n') {
-                    line[len - 1] = '\0';
-                } else {
-                    merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
-                    continue;
-                }
-
-                path = wstr_unescape_json(line);
-            }
-        } else {
-            path = wstr_unescape_json((char *) W_Vector_get(file->list, i));
-        }
-
-        if (path) {
-            w_mutex_lock(mutex);
-            fim_entry *entry = fim_db_get_path(fim_sql, path);
-            w_mutex_unlock(mutex);
-            if (entry != NULL) {
-                callback(fim_sql, entry, mutex, alert, mode, w_evt);
-                free_entry(entry);
-            }
-            os_free(path);
-        }
-
-        i++;
-    } while (i < file->elements);
-
-    fim_db_clean_file(&file, storage);
-
-    return FIMDB_OK;
-}
-
 int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_ALL_ENTRIES);
     return fim_db_process_get_query(fim_sql, FIM_TYPE_FILE, FIMDB_STMT_GET_ALL_ENTRIES,
@@ -223,23 +150,23 @@ int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
 }
 
 int fim_db_sync_path_range(fdb_t * fim_sql, pthread_mutex_t *mutex, fim_tmp_file *file, int storage) {
-    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_callback_sync_path_range, storage,
+    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_callback_sync_path_range, storage,
                                     NULL, NULL, NULL);
 }
 
 int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
-    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path, storage,
+    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_path, storage,
                                     (void *) true, (void *) FIM_SCHEDULED, NULL);
 }
 
 int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
-    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path, storage,
+    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_path, storage,
                                     (void *) false, (void *) FIM_SCHEDULED, NULL);
 }
 
 int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage,
                                  fim_event_mode mode, whodata_evt * w_evt) {
-    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path, storage,
+    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_path, storage,
                                     (void *) true, (void *) (fim_event_mode) mode, (void *) w_evt);
 }
 
