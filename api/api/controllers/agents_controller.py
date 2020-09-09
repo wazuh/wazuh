@@ -450,8 +450,8 @@ async def put_upgrade_agents(request, list_agents, pretty=False, wait_for_comple
 
 
 async def put_upgrade_custom_agents(request, list_agents, pretty=False, wait_for_complete=False,
-                                             file_path=None,
-                                             installer=None):
+                                    file_path=None,
+                                    installer=None):
     """Upgrade agents using a local WPK file.
     Parameters
     ----------
