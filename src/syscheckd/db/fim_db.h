@@ -466,11 +466,10 @@ int fim_db_insert_registry_data(fdb_t *fim_sql, fim_registry_value_data *data, i
  *
  * @param fim_sql FIM database struct.
  * @param entry Registry key to be inserted.
- * @param data_id key_id of the registry data table.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, int data_id);
+int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry);
 
 /**
  * @brief Insert a registry entry in the needed tables.
@@ -480,7 +479,7 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, int data
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_registry(fdb_t *fim_sql, int key_id, fim_entry *new);
+int fim_db_insert_registry(fdb_t *fim_sql, fim_entry *new);
 
 /**
  * @brief Calculate checksum of registry keys between @start and @top.
