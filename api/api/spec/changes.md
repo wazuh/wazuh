@@ -131,9 +131,6 @@ This agent will use **any** as IP.
 ### POST    /agents/restart
 * Endpoint removed. Use `PUT /agents/restart` instead.
 
-### PUT     /agents/{agent_id}/upgrade
-* Changed parameter type **force** in request body from integer to boolean.
-
 ### PUT     /agents/upgrade
 * New endpoint. Upgrade all agents or a list of them to a different Wazuh version.
 

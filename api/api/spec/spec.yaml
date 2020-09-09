@@ -5658,124 +5658,14 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/{agent_id}/upgrade:
-    put:
-      tags:
-        - agents
-      summary: "Upgrade agent using online repository"
-      description: "Upgrade the agent using a WPK file from online repository"
-      operationId: api.controllers.agents_controller.put_upgrade_agent
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/wpk_repo'
-        - $ref: '#/components/parameters/upgrade_version'
-        - $ref: '#/components/parameters/use_http'
-        - $ref: '#/components/parameters/force'
-      responses:
-        '200':
-          description: "Agent upgraded"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Upgrade procedure started"
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /agents/{agent_id}/upgrade_custom:
-    put:
-      tags:
-        - agents
-      summary: "Upgrade agent using a custom file"
-      description: "Upgrade the agent using a local WPK file"
-      operationId: api.controllers.agents_controller.put_upgrade_custom_agent
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/file_path'
-        - $ref: '#/components/parameters/installer'
-      responses:
-        '200':
-          description: "Agent upgraded"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Installation started"
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /agents/{agent_id}/upgrade_result:
-    get:
-      tags:
-        - agents
-      summary: "Get upgrade result from agent"
-      description: "Return the upgrade result after updating an agent"
-      operationId: api.controllers.agents_controller.get_agent_upgrade
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - in: query
-          name: timeout
-          description: "Seconds to wait for the agent to respond"
-          schema:
-            type: integer
-            format: int32
-      responses:
-        '200':
-          description: "Get agent upgrade result"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: Agent was successfully upgraded
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/upgrade:
     put:
       tags:
         - agents
-      summary: "Upgrade multiple agents using online repository"
-      description: "Upgrade multiple agents using a WPK file from online repository"
-      operationId: api.controllers.agents_controller.put_upgrade_multiple_agents
+      summary: "Upgrade agents using online repository"
+      description: "Upgrade agents using a WPK file from online repository"
+      operationId: api.controllers.agents_controller.put_upgrade_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
@@ -5810,7 +5700,7 @@ paths:
         - agents
       summary: "Upgrade agents using a custom file"
       description: "Upgrade the agents using a local WPK file"
-      operationId: api.controllers.agents_controller.put_upgrade_multiple_custom_agents
+      operationId: api.controllers.agents_controller.put_upgrade_custom_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
@@ -5843,7 +5733,7 @@ paths:
         - agents
       summary: "Get upgrade results from agents"
       description: "Return the upgrade results after updating agents"
-      operationId: api.controllers.agents_controller.get_agent_upgrade_multiple
+      operationId: api.controllers.agents_controller.get_agent_upgrade
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
