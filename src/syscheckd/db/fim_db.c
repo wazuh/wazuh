@@ -1,9 +1,9 @@
 /**
- * @file fim_sync.c
- * @brief Definition of FIM data synchronization library
+ * @file fim_db.h
+ * @brief Definition of FIM database library.
  * @date 2019-08-28
  *
- * @copyright Copyright (c) 2019 Wazuh, Inc.
+ * @copyright Copyright (c) 2020 Wazuh, Inc.
  */
 
 #include "fim_db.h"
@@ -51,15 +51,15 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_COUNT_DATA] = "SELECT count(*) FROM file_data",
     [FIMDB_STMT_GET_INODE] = "SELECT inode FROM file_data where rowid=(SELECT inode_id FROM file_entry WHERE path = ?)",
 #ifdef WIN32
-    [FIMDB_STMT_REPLACE_REG_DATA] = "INSERT OR REPLACE INTO registry_data (key_id, name, type, hash_md5, hash_sha1, hash_sha256, scanned, checksum, last_event, options) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [FIMDB_STMT_REPLACE_REG_KEY] = "INSERT OR REPLACE INTO registry_key (path, perm, uid, gid, user_name, group_name, scanned, options, checksum, rowid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [FIMDB_STMT_GET_REG_KEY] = "SELECT path, perm, uid, gid, user_name, group_name, scanned, options, checksum, rowid FROM registry_key WHERE path = ?;",
-    [FIMDB_STMT_GET_REG_DATA] = "SELECT key_id, name, type, hash_md5, hash_sha1, hash_sha256, scanned, checksum, last_event, options FROM registry_data WHERE name = ? AND key_id = ?;",
-    [FIMDB_STMT_UPDATE_REG_DATA] = "UPDATE registry_data SET type = ?, hash_md5 = ?, hash_sha1 = ?, hash_sha256 = ?, scanned = ?, checksum = ?, last_event = ?, options = ? WHERE key_id = ? AND name = ?;",
-    [FIMDB_STMT_UPDATE_REG_KEY] = "UPDATE registry_key SET perm = ?, uid = ?, gid = ?, user_name = ?, group_name = ?, scanned = ?, options = ?, checksum = ? WHERE path = ?;",
-    [FIMDB_STMT_GET_ALL_REG_ENTRIES] = "SELECT path, perm, uid, gid, user_name, group_name, registry_key.scanned, registry_key.options, registry_key.checksum, key_id, name, type, hash_md5, hash_sha1, hash_sha256, registry_data.scanned, registry_data.checksum, last_event, registry_data.options FROM registry_data INNER JOIN registry_key ON registry_key.rowid = registry_data.key_id ORDER BY PATH ASC;",
-    [FIMDB_STMT_GET_REG_KEY_NOT_SCANNED] = "SELECT path, perm, uid, gid, user_name, group_name, scanned, options, checksum, rowid FROM registry_key WHERE scanned = 0;",
-    [FIMDB_STMT_GET_REG_DATA_NOT_SCANNED] = "SELECT key_id, name, type, hash_md5, hash_sha1, hash_sha256, scanned, checksum, last_event, options FROM registry_data WHERE scanned = 0;",
+    [FIMDB_STMT_REPLACE_REG_DATA] = "INSERT OR REPLACE INTO registry_data (key_id, name, type, hash_md5, hash_sha1, hash_sha256, scanned, checksum, last_event) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [FIMDB_STMT_REPLACE_REG_KEY] = "INSERT OR REPLACE INTO registry_key (path, perm, uid, gid, user_name, group_name, scanned, checksum, arch, rowid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [FIMDB_STMT_GET_REG_KEY] = "SELECT path, perm, uid, gid, user_name, group_name, scanned, checksum FROM registry_key WHERE path = ?;",
+    [FIMDB_STMT_GET_REG_DATA] = "SELECT key_id, name, type, hash_md5, hash_sha1, hash_sha256, scanned, checksum, last_event FROM registry_data WHERE name = ? AND key_id = ?;",
+    [FIMDB_STMT_UPDATE_REG_DATA] = "UPDATE registry_data SET type = ?, hash_md5 = ?, hash_sha1 = ?, hash_sha256 = ?, scanned = ?, checksum = ?, last_event = ? WHERE key_id = ? AND name = ?;",
+    [FIMDB_STMT_UPDATE_REG_KEY] = "UPDATE registry_key SET perm = ?, uid = ?, gid = ?, user_name = ?, group_name = ?, scanned = ?, checksum = ? WHERE path = ?;",
+    [FIMDB_STMT_GET_ALL_REG_ENTRIES] = "SELECT path, perm, uid, gid, user_name, group_name, registry_key.scanned, registry_key.checksum, key_id, name, type, hash_md5, hash_sha1, hash_sha256, registry_data.scanned, registry_data.checksum, last_event FROM registry_data INNER JOIN registry_key ON registry_key.rowid = registry_data.key_id ORDER BY PATH ASC;",
+    [FIMDB_STMT_GET_REG_KEY_NOT_SCANNED] = "SELECT path, perm, uid, gid, user_name, group_name, scanned, checksum FROM registry_key WHERE scanned = 0;",
+    [FIMDB_STMT_GET_REG_DATA_NOT_SCANNED] = "SELECT key_id, name, type, hash_md5, hash_sha1, hash_sha256, scanned, checksum, last_event FROM registry_data WHERE scanned = 0;",
     [FIMDB_STMT_SET_ALL_REG_KEY_UNSCANNED] = "UPDATE registry_key SET scanned = 0;",
     [FIMDB_STMT_SET_REG_KEY_UNSCANNED] = "UPDATE registry_key SET scanned = 0 WHERE path = ?;",
     [FIMDB_STMT_SET_ALL_REG_DATA_UNSCANNED] = "UPDATE registry_data SET scanned = 0;",
@@ -74,9 +74,10 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_LAST_REG_KEY] = "SELECT path FROM registry_key ORDER BY path DESC LIMIT 1;",
     [FIMDB_STMT_GET_FIRST_REG_KEY] = "SELECT path FROM registry_key ORDER BY path ASC LIMIT 1;",
     [FIMDB_STMT_GET_REG_COUNT_RANGE] = "SELECT count(*) FROM registry_key INNER JOIN registry_data ON registry_data.key_id = registry_key.rowid WHERE path BETWEEN ? and ? ORDER BY path;",
-    [FIMDB_STMT_GET_REG_PATH_RANGE] = "SELECT path, perm, uid, gid, user_name, group_name, registry_key.scanned, registry_key.options, registry_key.checksum, key_id, name, type, hash_md5, hash_sha1, hash_sha256, registry_data.scanned, registry_data.checksum, last_event, registry_data.options FROM registry_key INNER JOIN registry_data ON registry_data.key_id = registry_key.rowid WHERE path BETWEEN ? and ? ORDER BY path;",
+    [FIMDB_STMT_GET_REG_PATH_RANGE] = "SELECT path, perm, uid, gid, user_name, group_name, registry_key.scanned, registry_key.checksum, key_id, name, type, hash_md5, hash_sha1, hash_sha256, registry_data.scanned, registry_data.checksum, last_event FROM registry_key INNER JOIN registry_data ON registry_data.key_id = registry_key.rowid WHERE path BETWEEN ? and ? ORDER BY path;",
     [FIMDB_STMT_SET_REG_KEY_SCANNED] = "UPDATE registry_data SET scanned = 1 WHERE name = ? AND key_id = ?;",
     [FIMDB_STMT_SET_REG_DATA_SCANNED] = "UPDATE registry_key SET scanned = 1 WHERE path = ?;",
+    [FIMDB_STMT_GET_REG_KEY_ROWID] = "SELECT path, perm, uid, gid, user_name, group_name, scanned, checksum FROM registry_key WHERE rowid = ?;",
 #endif
 };
 

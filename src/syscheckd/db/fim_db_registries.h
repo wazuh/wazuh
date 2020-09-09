@@ -1,3 +1,10 @@
+/**
+ * @file fim_db_registries.h
+ * @brief Definition of FIM database for registries library.
+ * @date 2020-09-9
+ *
+ * @copyright Copyright (c) 2020 Wazuh, Inc.
+ */
 
 #include "fim_db.h"
 
