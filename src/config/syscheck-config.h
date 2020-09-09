@@ -62,6 +62,7 @@ typedef enum fdb_stmt {
     FIMDB_STMT_DELETE_REG_DATA_PATH,
     FIMDB_STMT_GET_COUNT_REG_KEY,
     FIMDB_STMT_GET_COUNT_REG_DATA,
+    FIMDB_STMT_GET_REG_DATA_ID,
     FIMDB_STMT_GET_COUNT_REG_KEY_AND_DATA,
     FIMDB_STMT_GET_LAST_REG_KEY,
     FIMDB_STMT_GET_FIRST_REG_KEY,
@@ -251,6 +252,7 @@ typedef struct fim_registry_key {
     char * user_name;
     char * group_name;
     unsigned int mtime;
+    int arch;
 
     unsigned int scanned;
     // path:perm:uid:user_name:gid:group_name

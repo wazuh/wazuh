@@ -367,31 +367,13 @@ int fim_db_get_count_registry_key_data(fdb_t *fim_sql);
  *
  * @param fim_sql FIM database struct.
  * @param entry Registry entry.
- * @param mutex
- * @param alert False don't send alert, True send delete alert.
- * @param fim_ev_mode FIM Mode (scheduled/whodata)
- * @param w_evt Whodata information
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-void fim_db_remove_registry_key(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
-                                __attribute__((unused))void *alert,
-                                __attribute__((unused))void *fim_ev_mode,
-                                __attribute__((unused))void *w_evt);
+int fim_db_remove_registry_key(fdb_t *fim_sql, fim_entry *entry);
 
 /**
- * @brief Delete registry using registry entry.
+ * @brief Delete registry data using fim_registry_value_data entry.
  *
  * @param fim_sql FIM database struct.
- * @param entry Registry entry.
- * @param mutex
- * @param alert False don't send alert, True send delete alert.
- * @param fim_ev_mode FIM Mode (scheduled/whodata)
- * @param w_evt Whodata information
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ * @param entry fim_registry_value_data entry.
  */
-void fim_db_remove_registry_value_data(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
-                                        __attribute__((unused))void *alert,
-                                        __attribute__((unused))void *fim_ev_mode,
-                                        __attribute__((unused))void *w_evt);
+int fim_db_remove_registry_value_data(fdb_t *fim_sql, fim_registry_value_data *entry);

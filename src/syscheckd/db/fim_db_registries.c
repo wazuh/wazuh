@@ -102,17 +102,44 @@ static void fim_db_bind_get_registry_key_rowid(fdb_t *fim_sql, unsigned int rowi
                                      void * w_evt);
 
 
-void fim_db_remove_registry_key (fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
-                                 __attribute__((unused))void *alert,
-                                 __attribute__((unused))void *fim_ev_mode,
-                                 __attribute__((unused))void *w_evt) {
+int fim_db_remove_registry_key(fdb_t *fim_sql, fim_entry *entry) {
 
+    if (entry->type != FIM_TYPE_REGISTRY) {
+        return FIMDB_ERR;
+    }
+
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_DELETE_REG_DATA_PATH);
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_DELETE_REG_KEY_PATH);
+    fim_db_bind_delete_registry_data_path(fim_sql, FIMDB_STMT_DELETE_REG_DATA_PATH, entry->registry_entry.key->path);
+    fim_db_bind_delete_registry_data_path(fim_sql, FIMDB_STMT_DELETE_REG_KEY_PATH, entry->registry_entry.key->path);
+
+    if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_REG_DATA_PATH]) != SQLITE_DONE) {
+        merror("Step error deleting data value from key '%s': %s", entry->registry_entry.key->path, sqlite3_errmsg(fim_sql->db));
+        return FIMDB_ERR;
+    }
+
+    if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_REG_KEY_PATH]) != SQLITE_DONE) {
+        merror("Step error deleting key path '%s': %s", entry->registry_entry.key->path, sqlite3_errmsg(fim_sql->db));
+        return FIMDB_ERR;
+    }
+
+    fim_db_check_transaction(fim_sql);
+
+    return FIMDB_OK;
 }
 
-void fim_db_remove_registry_value_data (fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
-                                        __attribute__((unused))void *alert,
-                                        __attribute__((unused))void *fim_ev_mode,
-                                        __attribute__((unused))void *w_evt) {
+int fim_db_remove_registry_value_data(fdb_t *fim_sql, fim_registry_value_data *entry) {
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_DELETE_REG_DATA);
+    fim_db_bind_registry_data_name_key_id(fim_sql, FIMDB_STMT_DELETE_REG_DATA, entry->name, entry->id);
+
+    if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_REG_DATA]) != SQLITE_DONE) {
+        merror("Step error deleting entry name '%s': %s", entry->name, sqlite3_errmsg(fim_sql->db));
+        return FIMDB_ERR;
+    }
+
+    fim_db_check_transaction(fim_sql);
+
+    return FIMDB_OK;
 }
 
 fim_entry *fim_db_decode_full_reg_row(sqlite3_stmt *stmt) {
@@ -162,7 +189,7 @@ void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, 
         merror("Error escaping '%s'", entry->registry_entry.value->name);
         return;
     }
-    //
+
     snprintf(buffer, MAX_DIR_SIZE, "%d %s", entry->registry_entry.value->id, base);
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
@@ -186,16 +213,16 @@ end:
 
 // Registry functions
 int fim_db_set_all_registry_data_unscanned(fdb_t *fim_sql) {
-
     int retval = fim_db_exec_simple_wquery(fim_sql, SQL_STMT[FIMDB_STMT_SET_ALL_REG_DATA_UNSCANNED]);
     fim_db_check_transaction(fim_sql);
+
     return retval;
 }
 
 int fim_db_set_all_registry_key_unscanned(fdb_t *fim_sql) {
-
     int retval = fim_db_exec_simple_wquery(fim_sql, SQL_STMT[FIMDB_STMT_SET_ALL_REG_KEY_UNSCANNED]);
     fim_db_check_transaction(fim_sql);
+
     return retval;
 }
 
@@ -396,7 +423,7 @@ static void fim_db_bind_insert_registry_key(fdb_t *fim_sql, fim_registry_key *re
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 6, registry_key->group_name, -1, NULL);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 7, registry_key->scanned);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 8, registry_key->checksum, -1, NULL);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 9, registry_key->arch);
+    //sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 9, registry_key->arch);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 10, registry_key->id);
 }
 
@@ -471,7 +498,7 @@ static int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *
         id = strtoul(name, &split, 10);
 
         // Skip if the fields couldn't be extracted.
-        if (*split != ' ' && id == 0) {
+        if (*split != ' ' || id == 0) {
             mwarn("Temporary path file '%s' is corrupt: wrong line format", file->path);
             continue;
         }
