@@ -1,5 +1,5 @@
 /*
- * Wazuh DBSYNC
+ * Wazuh RSYNC
  * Copyright (C) 2015-2020, Wazuh Inc.
  * August 28, 2020.
  *

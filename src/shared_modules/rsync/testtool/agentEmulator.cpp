@@ -1,5 +1,5 @@
 /*
- * Wazuh DBSYNC
+ * Wazuh RSYNC
  * Copyright (C) 2015-2020, Wazuh Inc.
  * August 28, 2020.
  *
@@ -31,7 +31,7 @@ static DBSYNC_HANDLE createDbsyncHandle(const std::string& dbName)
     return handle;
 }
 
-struct smartDeleterJson
+struct SmartDeleterJson final
 {
     void operator()(cJSON * data)
     {
@@ -116,7 +116,7 @@ void AgentEmulator::updateData()
         {
             R"({"table":"data_values","data":[{"key":)" + key + R"(, "data1":)" + data1 + R"(, "data2":)" + data2 + R"(, "data3":)" + data3 + R"(}]})"
         };
-        const std::unique_ptr<cJSON, smartDeleterJson> jsSync{ cJSON_Parse(dataToSync.c_str()) };
+        const std::unique_ptr<cJSON, SmartDeleterJson> jsSync{ cJSON_Parse(dataToSync.c_str()) };
         callback_data_t callbackData { callback, nullptr };
 
         dbsync_sync_row(m_dbSyncHandle, jsSync.get(), callbackData);

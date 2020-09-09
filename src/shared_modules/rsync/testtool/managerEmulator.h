@@ -1,5 +1,5 @@
 /*
- * Wazuh DBSYNC
+ * Wazuh RSYNC
  * Copyright (C) 2015-2020, Wazuh Inc.
  * August 28, 2020.
  *
@@ -21,11 +21,11 @@
 class ManagerEmulator
 {
 public:
-	ManagerEmulator(const std::shared_ptr<SyncQueue>& inQueue);
-	~ManagerEmulator();
+    ManagerEmulator(const std::shared_ptr<SyncQueue>& inQueue);
+    ~ManagerEmulator();
 private:
 
-	void syncData();
+    void syncData();
 
     const std::shared_ptr<SyncQueue> m_inQueue;
     std::thread m_syncThread;

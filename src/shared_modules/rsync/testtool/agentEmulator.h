@@ -1,5 +1,5 @@
 /*
- * Wazuh DBSYNC
+ * Wazuh RSYNC
  * Copyright (C) 2015-2020, Wazuh Inc.
  * August 28, 2020.
  *
@@ -29,16 +29,16 @@ using SyncQueue = Utils::SafeQueue<SyncMessage>;
 class AgentEmulator
 {
 public:
-	AgentEmulator(const std::chrono::milliseconds updatePeriod,
+    AgentEmulator(const std::chrono::milliseconds updatePeriod,
                   const unsigned int maxDbItems,
                   const std::shared_ptr<SyncQueue>& outQueue,
                   const std::string& dbFolder);
-	~AgentEmulator();
+    ~AgentEmulator();
 private:
 
-	void updateData();
-	void syncData(const void* buffer, size_t bufferSize);
-	static void agentEmulatorSyncCallback(const void* buffer, size_t bufferSize, void* userData);
+    void updateData();
+    void syncData(const void* buffer, size_t bufferSize);
+    static void agentEmulatorSyncCallback(const void* buffer, size_t bufferSize, void* userData);
 
     const std::string m_agentId;
     const RSYNC_HANDLE m_rsyncHandle;
