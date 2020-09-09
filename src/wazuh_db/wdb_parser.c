@@ -4990,8 +4990,8 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
                 agent_id = cJSON_IsNumber(json_field) ? json_field->valueint : -1;
 
                 if (agent_id == -1){
-                    mdebug1("Global DB Cannot execute SQL query; incorrect agent id in labels array");
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot update labels due to invalid id;");
+                    mdebug1("Global DB Cannot execute SQL query; incorrect agent id in labels array.");
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot update labels due to invalid id.");
                     cJSON_Delete(root);
                     return OS_INVALID;
                 }
@@ -5062,20 +5062,20 @@ int wdb_parse_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output) {
     /* Get keepalive condition */
     next = strtok_r(input, delim, &savedptr);
     if (next == NULL || strcmp(input, "condition") != 0) {
-        mdebug1("Invalid arguments 'condition' not found");
+        mdebug1("Invalid arguments 'condition' not found.");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
         return OS_INVALID;
     }
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
-        mdebug1("Invalid arguments 'condition' not found");
+        mdebug1("Invalid arguments 'condition' not found.");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
         return OS_INVALID;
     }
     comparator = *next;
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
-        mdebug1("Invalid arguments 'condition' not found");
+        mdebug1("Invalid arguments 'condition' not found.");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
         return OS_INVALID;
     }
@@ -5084,13 +5084,13 @@ int wdb_parse_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output) {
     /* Get start_id*/
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL || strcmp(next, "start_id") != 0) {
-        mdebug1("Invalid arguments 'start_id' not found");
+        mdebug1("Invalid arguments 'start_id' not found.");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
         return OS_INVALID;
     }
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
-        mdebug1("Invalid arguments 'start_id' not found");
+        mdebug1("Invalid arguments 'start_id' not found.");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
         return OS_INVALID;
     }

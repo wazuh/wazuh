@@ -228,10 +228,38 @@ cJSON* __wrap_wdb_global_select_groups(__attribute__((unused)) wdb_t *wdb) {
     return mock_ptr_type(cJSON*);
 }
 
-cJSON* __wrap_wdb_global_select_agent_keepalive(   __attribute__((unused)) wdb_t *wdb,
-                                            char* name,
-                                            char* ip) {
+cJSON* __wrap_wdb_global_select_agent_keepalive(__attribute__((unused)) wdb_t *wdb,
+                                                char* name,
+                                                char* ip) {
     check_expected(name);
     check_expected(ip);
     return mock_ptr_type(cJSON*);
+}
+
+wdbc_result __wrap_wdb_sync_agent_info_get( __attribute__((unused)) wdb_t *wdb,
+                                            int* last_agent_id,
+                                            char **output) {
+    check_expected(*last_agent_id);
+    os_strdup(mock_ptr_type(char*), *output);
+    return mock();
+}
+
+int __wrap_wdb_global_sync_agent_info_set(  __attribute__((unused)) wdb_t *wdb,
+                                            cJSON *json_agent) {
+    char *str_agent = cJSON_PrintUnformatted(json_agent);
+    check_expected(str_agent);
+    os_free(str_agent);
+    return mock();
+}
+
+wdbc_result __wrap_wdb_global_get_agents_by_keepalive(  __attribute__((unused)) wdb_t *wdb,
+                                                        int* last_agent_id,
+                                                        char comparator,
+                                                        int keep_alive,
+                                                        char **output) {
+    check_expected(*last_agent_id);
+    check_expected(comparator);
+    check_expected(keep_alive);
+    os_strdup(mock_ptr_type(char*), *output);
+    return mock();
 }

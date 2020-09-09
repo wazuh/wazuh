@@ -2005,6 +2005,319 @@ void test_wdb_parse_global_select_agent_keepalive_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+void test_wdb_parse_global_sync_agent_info_get_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-info-get";
+    char *sync_info = "{SYNC INFO}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-get");
+    expect_value(__wrap_wdb_sync_agent_info_get, *last_agent_id, 0);
+    will_return(__wrap_wdb_sync_agent_info_get, sync_info);
+    will_return(__wrap_wdb_sync_agent_info_get, WDBC_OK);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok {SYNC INFO}");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_sync_agent_info_get_start_id_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-info-get start_id 1";
+    char *sync_info = "{SYNC INFO}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-get start_id 1");
+    expect_value(__wrap_wdb_sync_agent_info_get, *last_agent_id, 1);
+    will_return(__wrap_wdb_sync_agent_info_get, sync_info);
+    will_return(__wrap_wdb_sync_agent_info_get, WDBC_OK);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok {SYNC INFO}");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_sync_agent_info_set_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-info-set";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-set");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for sync-agent-info-set.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: sync-agent-info-set");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'sync-agent-info-set'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_sync_agent_info_set_invalid_json(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-info-set {INVALID_JSON}";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-set {INVALID_JSON}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax updating unsynced agents.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_sync_agent_info_set_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
+     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
+     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]");
+    expect_string(__wrap_wdb_global_sync_agent_info_set, str_agent,
+     "{\"id\":1,\"name\":\"test_name\",\"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}");
+    will_return(__wrap_wdb_global_sync_agent_info_set, OS_INVALID);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
+        
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_sync_agent_info_set_id_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-info-set [{\"id\":null,\"name\":\"test_name\",\
+     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-set [{\"id\":null,\"name\":\"test_name\",\
+     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]");
+    expect_string(__wrap_wdb_global_sync_agent_info_set, str_agent,
+     "{\"id\":null,\"name\":\"test_name\",\"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}");
+    will_return(__wrap_wdb_global_sync_agent_info_set, OS_SUCCESS);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; incorrect agent id in labels array.");
+    
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Cannot update labels due to invalid id.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_sync_agent_info_set_del_label_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
+     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
+     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]");
+    expect_string(__wrap_wdb_global_sync_agent_info_set, str_agent,
+     "{\"id\":1,\"name\":\"test_name\",\"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}");
+    will_return(__wrap_wdb_global_sync_agent_info_set, OS_SUCCESS);
+
+    expect_value(__wrap_wdb_global_del_agent_labels, id, 1);
+    will_return(__wrap_wdb_global_del_agent_labels, OS_INVALID);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
+        
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_sync_agent_info_set_set_label_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
+     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
+     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]");
+    expect_string(__wrap_wdb_global_sync_agent_info_set, str_agent,
+     "{\"id\":1,\"name\":\"test_name\",\"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}");
+    will_return(__wrap_wdb_global_sync_agent_info_set, OS_SUCCESS);
+    expect_value(__wrap_wdb_global_del_agent_labels, id, 1);
+    will_return(__wrap_wdb_global_del_agent_labels, OS_SUCCESS);
+
+    expect_value(__wrap_wdb_global_set_agent_label, id, 1);
+    expect_string(__wrap_wdb_global_set_agent_label, key, "test_key");
+    expect_string(__wrap_wdb_global_set_agent_label, value, "test_value");
+    will_return(__wrap_wdb_global_set_agent_label, OS_INVALID);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
+        
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_sync_agent_info_set_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
+     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
+     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]");
+    expect_string(__wrap_wdb_global_sync_agent_info_set, str_agent,
+     "{\"id\":1,\"name\":\"test_name\",\"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}");
+    will_return(__wrap_wdb_global_sync_agent_info_set, OS_SUCCESS);
+    expect_value(__wrap_wdb_global_del_agent_labels, id, 1);
+    will_return(__wrap_wdb_global_del_agent_labels, OS_SUCCESS);
+
+    expect_value(__wrap_wdb_global_set_agent_label, id, 1);
+    expect_string(__wrap_wdb_global_set_agent_label, key, "test_key");
+    expect_string(__wrap_wdb_global_set_agent_label, value, "test_value");
+    will_return(__wrap_wdb_global_set_agent_label, OS_SUCCESS);
+        
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_get_agents_by_keepalive_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-keepalive";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-keepalive");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for get-agents-by-keepalive.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: get-agents-by-keepalive");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-agents-by-keepalive'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_get_agents_by_keepalive_condition_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-keepalive invalid";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-keepalive invalid");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'condition' not found.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid arguments 'condition' not found");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_get_agents_by_keepalive_condition2_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-keepalive condition";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-keepalive condition");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'condition' not found.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid arguments 'condition' not found");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_get_agents_by_keepalive_condition3_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-keepalive condition <";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-keepalive condition <");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'condition' not found.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid arguments 'condition' not found");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_get_agents_by_keepalive_start_id_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-keepalive condition < 123 invalid";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-keepalive condition < 123 invalid");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'start_id' not found.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid arguments 'start_id' not found");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_get_agents_by_keepalive_start_id2_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-keepalive condition < 123 start_id ";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-keepalive condition < 123 start_id ");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'start_id' not found.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid arguments 'start_id' not found");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_get_agents_by_keepalive_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-keepalive condition < 123 start_id 1";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-keepalive condition < 123 start_id 1");
+    expect_value(__wrap_wdb_global_get_agents_by_keepalive, *last_agent_id, 1);
+    expect_value(__wrap_wdb_global_get_agents_by_keepalive, comparator, '<');
+    expect_value(__wrap_wdb_global_get_agents_by_keepalive, keep_alive, 123);
+    will_return(__wrap_wdb_global_get_agents_by_keepalive, "1,2,3,4,5");
+    will_return(__wrap_wdb_global_get_agents_by_keepalive, WDBC_OK);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok 1,2,3,4,5");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -2111,8 +2424,24 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_keepalive_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_keepalive_syntax_error2, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_keepalive_query_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_keepalive_success, test_setup, test_teardown)
-       };
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_keepalive_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_get_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_get_start_id_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_invalid_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_id_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_del_label_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_set_label_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_get_agents_by_keepalive_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_get_agents_by_keepalive_condition_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_get_agents_by_keepalive_condition2_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_get_agents_by_keepalive_condition3_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_get_agents_by_keepalive_start_id_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_get_agents_by_keepalive_start_id2_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_get_agents_by_keepalive_success, test_setup, test_teardown)
+    };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
