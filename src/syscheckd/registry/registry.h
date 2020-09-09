@@ -26,14 +26,16 @@ void fim_registry_scan();
  * @param configuration Configuration associated with the given registry.
  * @param mode FIM event mode which caused the event.
  * @param event_type Added, modifed or deleted event.
+ * @param w_evt Whodata information associated with the current event.
  * @param diff A string holding the difference between the original and new value of the registry.
- * @return 0 if no event was sent, 1 if event was sent, OS_INVALID on error.
+ * @return A cJSON object holding the generated event, NULL on error.
  */
-int fim_registry_event(const fim_entry *new,
-                       const fim_entry *saved,
-                       const registry *configuration,
-                       fim_event_mode mode,
-                       unsigned int event_type,
-                       const char *diff);
+cJSON *fim_registry_event(const fim_entry *new,
+                          const fim_entry *saved,
+                          const registry *configuration,
+                          fim_event_mode mode,
+                          unsigned int event_type,
+                          whodata_evt *w_evt,
+                          const char *diff);
 
 #endif

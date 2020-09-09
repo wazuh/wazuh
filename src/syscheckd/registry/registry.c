@@ -9,6 +9,7 @@
  */
 
 
+#include "registry.h"
 #include "shared.h"
 #include "../syscheck.h"
 #include "os_crypto/md5/md5_op.h"
@@ -28,12 +29,8 @@
 /* Global variables */
 static int _base_line = 0;
 
-static const char *FIM_EVENT_TYPE[] = { "added", "deleted", "modified" };
-
-static const char *FIM_EVENT_MODE[] = { "scheduled", "realtime", "whodata" };
-
 /* Check if the registry entry is valid */
-int fim_set_root_key(HKEY *root_key_handle, const char *full_key, char **sub_key) {
+int fim_set_root_key(HKEY *root_key_handle, const char *full_key, const char **sub_key) {
     int root_key_length;
 
     if (root_key_handle == NULL || full_key == NULL || sub_key == NULL) {
@@ -95,7 +92,6 @@ registry *fim_registry_configuration(const char *key, int arch) {
 fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, const registry *configuration) {
     return NULL;
 }
-
 
 
 int fim_registry_validate_path(const char *entry_path, const registry *configuration) {
@@ -195,6 +191,7 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, const re
         char *diff = NULL;
         char value_path[MAX_KEY + 2];
         registry *value_configuration;
+        cJSON *json_event;
 
         value_size = MAX_VALUE_NAME;
         data_size = MAX_VALUE_NAME;
@@ -241,12 +238,26 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, const re
             diff = fim_registry_value_diff(new->registry_entry.key->path, new->registry_entry.value->name, data_buffer, data_type);
         }
 
-        fim_registry_event(new, saved, value_configuration, FIM_SCHEDULED,
-                           saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED, diff);
+        json_event = fim_registry_event(new, saved, value_configuration, FIM_SCHEDULED,
+                                        saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED, NULL, diff);
+
+        os_free(diff);
 
         fim_db_set_registry_data_scanned(syscheck.database, new->registry_entry.value->name, new->registry_entry.key->id);
 
-        os_free(diff);
+        if (json_event) {
+            if (fim_db_insert_registry(syscheck.database, new) != 0) {
+                mwarn("Couldn't insert into DB");
+            }
+
+            if (_base_line) {
+                char *json_formated = cJSON_PrintUnformatted(json_event);
+                send_syscheck_msg(json_formated);
+                os_free(json_formated);
+            }
+
+            cJSON_Delete(json_event);
+        }
 
         /* Write value name and data in the file (for checksum later) */
         // EVP_DigestUpdate(ctx, value_buffer, strlen(value_buffer));
@@ -344,7 +355,7 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
 
     // Done scanning sub_keys, trigger an alert on the current key if required.
     new.type = FIM_TYPE_REGISTRY;
-    new.registry_entry.key = fim_registry_get_key_data(current_key_handle, configuration);
+    new.registry_entry.key = fim_registry_get_key_data(current_key_handle, full_key, configuration);
     new.registry_entry.value = NULL;
 
     saved.type = FIM_TYPE_REGISTRY;
@@ -352,10 +363,24 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     saved.registry_entry.value = NULL;
 
     if (!fim_check_restrict(full_key, configuration->filerestrict)) {
-        fim_registry_event(&new, &saved, configuration, FIM_SCHEDULED,
-                           saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFIED, NULL);
+        cJSON *json_event = fim_registry_event(&new, &saved, configuration, FIM_SCHEDULED,
+                                               saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFIED, NULL, NULL);
 
-        fim_db_set_registry_key_scanned(syscheck.database, new.registry_entry.key->path);
+        fim_db_set_registry_key_scanned(syscheck.database, full_key);
+
+        if (json_event) {
+            if (fim_db_insert_registry(syscheck.database, &new) != 0) {
+                mwarn("Couldn't insert into DB");
+            }
+
+            if (_base_line) {
+                char *json_formated = cJSON_PrintUnformatted(json_event);
+                send_syscheck_msg(json_formated);
+                os_free(json_formated);
+            }
+
+            cJSON_Delete(json_event);
+        }
     }
 
     if (value_count) {
@@ -368,7 +393,7 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
 
 void fim_registry_scan() {
     HKEY root_key_handle = NULL;
-    char *sub_key = NULL;
+    const char *sub_key = NULL;
     int i = 0;
 
     /* Debug entries */
