@@ -1,7 +1,7 @@
 /*
- * Wazuh DBSYNC
+ * Wazuh shared modules utils
  * Copyright (C) 2015-2020, Wazuh Inc.
- * June 11, 2020.
+ * Sep 8, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -47,7 +47,7 @@ namespace Utils
                     "Error getting digest final."
                 };
             }
-            // LCOV_EXCL_START
+            // LCOV_EXCL_STOP
         }
         std::vector<unsigned char> hash()
         {
@@ -69,7 +69,7 @@ namespace Utils
             return {digest, digest+digestSize};
         }
     private:
-        struct EvpContextDeleter
+        struct EvpContextDeleter final
         {
             void operator()(EVP_MD_CTX* ctx)
             {
