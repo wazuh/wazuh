@@ -10,11 +10,13 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
+include_directories(${SRC_FOLDER}/external/openssl/include/)
 
 file(GLOB UTIL_CXX_UNITTEST_SRC
     "*.cpp")
 
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
+link_directories(${SRC_FOLDER}/external/openssl/)
 
 add_executable(utils_unit_test 
     "${UTIL_CXX_UNITTEST_SRC}")
@@ -31,7 +33,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         optimized gmock_maind
         pthread
         gcov
+        crypto
+        ssl
         -static-libgcc -static-libstdc++
+        ws2_32
+        crypt32
     )
 else()
     target_link_libraries(utils_unit_test
@@ -45,6 +51,8 @@ else()
         optimized gmock_maind
         gcov
         pthread
+        crypto
+        dl
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 

@@ -12,9 +12,9 @@
 #ifndef _HASH_HELPER_H
 #define _HASH_HELPER_H
 
-#include <openssl/evp.h>
 #include <vector>
 #include <memory>
+#include "openssl/evp.h"
 
 namespace Utils
 {
