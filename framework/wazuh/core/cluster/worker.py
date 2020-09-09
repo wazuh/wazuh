@@ -105,7 +105,7 @@ class SyncInfo:
     """
 
     def __init__(self, worker, daemon, logger, data_retriever: callable, msg_format='{payload}', n_retries=3,
-                 expected_res='ok'):
+                 wait_for_response=True, expected_res='ok'):
         """Class constructor
 
         Parameters
@@ -124,6 +124,8 @@ class SyncInfo:
             I. e: 'global sync-agent-info-set {payload}'
         n_retries : int
             Number of times a chunk has to be resent when it fails.
+        wait_for_response : bool
+            Whether to wait for the target daemon to respond.
         expected_res : str
             Master's response that will be interpreted as correct. If it doesn't match,
             send retries will be made.
@@ -134,6 +136,7 @@ class SyncInfo:
         self.logger = logger
         self.data_retriever = data_retriever
         self.n_retries = n_retries
+        self.wait_for_response = wait_for_response
         self.expected_res = expected_res
         self.lc = local_client.LocalClient()
 
@@ -162,7 +165,8 @@ class SyncInfo:
         for chunk in chunks_to_send:
             data = json.dumps({
                 'daemon_name': self.daemon,
-                'message': self.msg_format.format(payload=chunk)
+                'message': self.msg_format.format(payload=chunk),
+                'wait_for_response': self.wait_for_response
             }).encode()
 
             try:
