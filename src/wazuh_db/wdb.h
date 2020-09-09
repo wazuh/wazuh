@@ -1199,7 +1199,7 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
  * @param [out] output Response of the query.
  * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
  */
-int wdb_parse_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output);
+int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output);
 
 /**
  * @brief Function to parse start_id get-all-agents.
@@ -1209,7 +1209,7 @@ int wdb_parse_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output);
  * @param [out] output Response of the query.
  * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
  */
-int wdb_parse_get_all_agents(wdb_t* wdb, char* input, char* output);
+int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output);
 
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 

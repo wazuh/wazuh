@@ -263,3 +263,17 @@ wdbc_result __wrap_wdb_global_get_agents_by_keepalive(  __attribute__((unused)) 
     os_strdup(mock_ptr_type(char*), *output);
     return mock();
 }
+
+wdbc_result __wrap_wdb_global_get_all_agents(   __attribute__((unused)) wdb_t *wdb,
+                                                int* last_agent_id,
+                                                char **output) {
+    check_expected(*last_agent_id);
+    os_strdup(mock_ptr_type(char*), *output);
+    return mock();
+}
+
+cJSON* __wrap_wdb_global_get_agent_info(__attribute__((unused)) wdb_t *wdb,
+                                        int id){
+    check_expected(id);
+    return mock_ptr_type(cJSON*);
+}

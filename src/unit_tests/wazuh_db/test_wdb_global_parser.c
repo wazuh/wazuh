@@ -2201,7 +2201,7 @@ void test_wdb_parse_global_sync_agent_info_set_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-void test_wdb_parse_get_agents_by_keepalive_syntax_error(void **state)
+void test_wdb_parse_global_get_agents_by_keepalive_syntax_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -2218,7 +2218,7 @@ void test_wdb_parse_get_agents_by_keepalive_syntax_error(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_get_agents_by_keepalive_condition_error(void **state)
+void test_wdb_parse_global_get_agents_by_keepalive_condition_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -2234,7 +2234,7 @@ void test_wdb_parse_get_agents_by_keepalive_condition_error(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_get_agents_by_keepalive_condition2_error(void **state)
+void test_wdb_parse_global_get_agents_by_keepalive_condition2_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -2250,7 +2250,7 @@ void test_wdb_parse_get_agents_by_keepalive_condition2_error(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_get_agents_by_keepalive_condition3_error(void **state)
+void test_wdb_parse_global_get_agents_by_keepalive_condition3_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -2266,7 +2266,7 @@ void test_wdb_parse_get_agents_by_keepalive_condition3_error(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_get_agents_by_keepalive_start_id_error(void **state)
+void test_wdb_parse_global_get_agents_by_keepalive_start_id_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -2282,7 +2282,7 @@ void test_wdb_parse_get_agents_by_keepalive_start_id_error(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_get_agents_by_keepalive_start_id2_error(void **state)
+void test_wdb_parse_global_get_agents_by_keepalive_start_id2_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -2298,7 +2298,7 @@ void test_wdb_parse_get_agents_by_keepalive_start_id2_error(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_get_agents_by_keepalive_success(void **state)
+void test_wdb_parse_global_get_agents_by_keepalive_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -2317,6 +2317,130 @@ void test_wdb_parse_get_agents_by_keepalive_success(void **state)
     assert_string_equal(data->output, "ok 1,2,3,4,5");
     assert_int_equal(ret, OS_SUCCESS);
 }
+
+void test_wdb_parse_global_get_all_agents_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-all-agents";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for get-all-agents.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: get-all-agents");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-all-agents'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_all_agents_argument_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-all-agents invalid";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents invalid");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'start_id' not found.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid arguments 'start_id' not found");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_all_agents_argument2_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-all-agents start_id";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents start_id");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'start_id' not found.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid arguments 'start_id' not found");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_all_agents_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-all-agents start_id 1";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents start_id 1");
+    expect_value(__wrap_wdb_global_get_all_agents, *last_agent_id, 1);
+    will_return(__wrap_wdb_global_get_all_agents, "1,2,3,4,5");
+    will_return(__wrap_wdb_global_get_all_agents, WDBC_OK);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok 1,2,3,4,5");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_get_agent_info_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agent-info";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agent-info");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for get-agent-info.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: get-agent-info");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-agent-info'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_agent_info_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agent-info 1";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agent-info 1");
+    expect_value(__wrap_wdb_global_get_agent_info, id, 1);
+    will_return(__wrap_wdb_global_get_agent_info, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent information from global.db.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Error getting agent information from global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_agent_info_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agent-info 1";
+    cJSON *j_object = NULL;
+
+    j_object = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_object, "name", "test_name");
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agent-info 1");
+    expect_value(__wrap_wdb_global_get_agent_info, id, 1);
+    will_return(__wrap_wdb_global_get_agent_info, j_object);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok {\"name\":\"test_name\"}");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 
 int main()
 {
@@ -2434,13 +2558,20 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_del_label_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_set_label_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_get_agents_by_keepalive_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_get_agents_by_keepalive_condition_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_get_agents_by_keepalive_condition2_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_get_agents_by_keepalive_condition3_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_get_agents_by_keepalive_start_id_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_get_agents_by_keepalive_start_id2_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_get_agents_by_keepalive_success, test_setup, test_teardown)
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_condition_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_condition2_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_condition3_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_start_id_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_start_id2_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_all_agents_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_all_agents_argument_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_all_agents_argument2_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_all_agents_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_info_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_info_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_info_success, test_setup, test_teardown)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
