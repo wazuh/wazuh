@@ -1,7 +1,7 @@
 /*
  * Wazuh shared modules utils
  * Copyright (C) 2015-2020, Wazuh Inc.
- * July 14, 2020.
+ * Sep 8, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,18 +9,19 @@
  * Foundation.
  */
 
-#ifndef THREAD_SAFE_QUEUE_TESTS_H
-#define THREAD_SAFE_QUEUE_TESTS_H
+#ifndef HASH_HELPER_TESTS_H
+#define HASH_HELPER_TESTS_H
 #include "gtest/gtest.h"
+#include "gmock/gmock.h"
 
-class ThreadSafeQueueTest : public ::testing::Test
+class HashHelperTest : public ::testing::Test
 {
 protected:
 
-    ThreadSafeQueueTest() = default;
-    virtual ~ThreadSafeQueueTest() = default;
+    HashHelperTest() = default;
+    virtual ~HashHelperTest() = default;
 
     void SetUp() override;
     void TearDown() override;
 };
-#endif //THREAD_SAFE_QUEUE_TESTS_H
+#endif //HASH_HELPER_TESTS_H

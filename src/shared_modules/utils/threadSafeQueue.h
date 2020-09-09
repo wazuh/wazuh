@@ -1,5 +1,5 @@
 /*
- * Wazuh DBSYNC
+ * Wazuh shared modules utils
  * Copyright (C) 2015-2020, Wazuh Inc.
  * July 14, 2020.
  *
