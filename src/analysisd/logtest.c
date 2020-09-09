@@ -679,8 +679,7 @@ int w_logtest_check_input_request(cJSON * root, OSList * list_msg) {
     }
 
     token = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
-    if (token && (!cJSON_IsString(token)
-        || (cJSON_IsString(token) && token->valuestring && strlen(token->valuestring) != W_LOGTEST_TOKEN_LENGH))) {
+    if (token && (!cJSON_IsString(token) || !valid_str_session(token, W_LOGTEST_TOKEN_LENGH)) {
         
         char * str_token = NULL;
         

@@ -52,6 +52,7 @@
 #define W_LOGTEST_REQUEST_TYPE_REMOVE_SESSION     0   ///< Request remove session
 #define W_LOGTEST_REQUEST_TYPE_LOG_PROCESSING     1   ///< Request log processing
 
+#define valid_str_session(x,y) (cJSON_IsString(x) && x->valuestring && strlen(x->valuestring) == y) ? 1 : 0)
 
 /**
  * @brief A w_logtest_session_t instance represents a client
