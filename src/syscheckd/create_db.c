@@ -13,7 +13,7 @@
 #include "syscheck_op.h"
 #include "integrity_op.h"
 #include "time_op.h"
-#include "db/fim_db.h"
+#include "db/fim_db_files.h"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when unit testing */
