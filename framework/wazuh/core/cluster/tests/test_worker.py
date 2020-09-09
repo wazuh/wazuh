@@ -139,7 +139,7 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 loop = asyncio.new_event_loop()
 current_path_logger = os.path.join(os.path.dirname(__file__), 'testing.log')
 logging.basicConfig(filename=current_path_logger, level=logging.DEBUG)
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('test')
 
 
 def get_worker_handler():
@@ -167,14 +167,12 @@ def test_ReceiveIntegrityTask():
 
 
 @pytest.mark.asyncio
-async def test_SyncWorker():
-    def get_last_logger_line():
-        return subprocess.check_output(['tail', '-1', current_path_logger])
-
+async def test_SyncWorker(caplog):
     async def check_message(mock, expected_message):
         with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=mock)):
-            await sync_worker.sync()
-            assert get_last_logger_line().decode() == expected_message
+            with caplog.at_level(logging.DEBUG):
+                await sync_worker.sync()
+                assert caplog.records[-1].message == expected_message
 
     worker_handler = get_worker_handler()
 
@@ -182,24 +180,21 @@ async def test_SyncWorker():
                                     logger=logger, worker=worker_handler)
 
     send_request_mock = KeyError(1)
-    await check_message(mock=send_request_mock, expected_message=f"ERROR:wazuh:Error asking for permission: "
-                                                                 f"{str(send_request_mock)}\n")
-    await check_message(mock=b'False', expected_message="INFO:wazuh:Master didnt grant permission to synchronize\n")
-    await check_message(mock=b'True', expected_message="INFO:wazuh:Worker files sent to master\n")
+    await check_message(mock=send_request_mock, expected_message=f"Error asking for permission: 1")
+    await check_message(mock=b'False', expected_message="Master didnt grant permission to synchronize")
+    await check_message(mock=b'True', expected_message="Worker files sent to master")
 
     error = WazuhException(1001)
     with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=b'True')):
         with patch('wazuh.core.cluster.common.Handler.send_file', new=AsyncMock(side_effect=error)):
             await sync_worker.sync()
-            assert b'ERROR:wazuh:Error sending files information' in get_last_logger_line()
+            assert 'Error sending files information' in caplog.records[-1].message
 
     error = KeyError(1)
     with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=b'True')):
         with patch('wazuh.core.cluster.common.Handler.send_file', new=AsyncMock(side_effect=error)):
             await sync_worker.sync()
-            assert b'ERROR:wazuh:Error sending files information' in get_last_logger_line()
-
-    os.remove(current_path_logger)
+            assert 'Error sending files information' in caplog.records[-1].message
 
 
 def test_WorkerHandler():

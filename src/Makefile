@@ -1679,7 +1679,7 @@ install_framework: install_python
 	chmod -R o=- ${WPYTHON_DIR}
 
 install_api: install_python
-	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
+	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py clean --all install --prefix=${WPYTHON_DIR}
 
 install_mitre: install_python
 	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db

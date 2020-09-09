@@ -506,7 +506,7 @@ class Agent:
         except Exception as e:
             raise WazuhInternalError(1748, extra_message=str(e))
 
-        return 'Agent deleted successfully.'
+        return 'Agent was successfully deleted'
 
     def _add(self, name, ip, id=None, key=None, force=-1, use_only_authd=False):
         """Adds an agent to OSSEC.

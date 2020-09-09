@@ -15,18 +15,12 @@ API_PATH_BACKUP=${PREFIX}/~api
 
 
 stop_api_3x(){
-    # stop api process if its still running
+    # Stop api process if its still running
     OLD_API_PID=$(pgrep -f "${API_PATH}/app.js")
     if [ -n "$OLD_API_PID" ]; then
         echo "killing old api process: ${OLD_API_PID}"
         kill -9 "${OLD_API_PID}"
     fi
-}
-
-
-
-stop_api_4x() {
-    "${PREFIX}"/bin/wazuh-apid stop
 }
 
 
@@ -38,20 +32,19 @@ backup_old_api() {
         exit 1
     fi
 
-    # remove backup folder and its contents if exists
+    # Remove backup folder and its contents if exists
     if [ -e "${API_PATH_BACKUP}" ]; then
         rm -rf "${API_PATH_BACKUP}"
     fi
 
-    # check current REVISION and perform the applicable backup
+    # Check current REVISION and perform the applicable backup
     if [ "$1" -ge 40000 ]; then
-        stop_api_4x
         backup_old_api_4x
     else
         stop_api_3x
     fi
 
-    # remove old API directory
+    # Remove old API directory
     rm -rf "${API_PATH}"
 }
 
@@ -59,18 +52,18 @@ backup_old_api() {
 
 backup_old_api_4x() {
 
-    # backup files only if configuration folder exists and its not empty
+    # Backup files only if configuration folder exists and its not empty
     if [ -d "${API_PATH}"/configuration ]; then
         if [ -n "$(ls -A "${API_PATH}"/configuration)" ]; then
 
             install -o root -g ossec -m 0770 -d "${API_PATH_BACKUP}"/configuration
 
-            # backup API yaml if exists
+            # Backup API yaml if exists
             if [ -e "${API_PATH}"/configuration/api.yaml ]; then
                 cp -rLfp "${API_PATH}"/configuration/api.yaml "${API_PATH_BACKUP}"/configuration/
             fi
 
-            # backup security files if the folder exists and its not empty
+            # Backup security files if the folder exists and its not empty
             if [ -d "${API_PATH}"/configuration/security ]; then
                 if [ -n "$(ls -A "${API_PATH}"/configuration/security)" ]; then
                     install -o root -g ossec -m 0770 -d "${API_PATH_BACKUP}"/configuration/security
@@ -78,7 +71,7 @@ backup_old_api_4x() {
                 fi
             fi
 
-            # backup ssl files if the folder exists and its not empty
+            # Backup ssl files if the folder exists and its not empty
             if [ -d "${API_PATH}"/configuration/ssl ]; then
                 if [ -n "$(ls -A "${API_PATH}"/configuration/ssl)" ]; then
                     install -o root -g ossec -m 0770 -d "${API_PATH_BACKUP}"/configuration/ssl
@@ -98,12 +91,12 @@ restore_old_api() {
         exit 1
     fi
 
-    # check current REVISION and perform the applicable restore
+    # Check current REVISION and perform the applicable restore
     if [ "$1" -ge 40000 ]; then
         restore_old_api_4x
     fi
 
-    # remove the old api backup
+    # Remove the old api backup
     rm -rf "${API_PATH_BACKUP}"
 }
 
@@ -111,17 +104,17 @@ restore_old_api() {
 
 restore_old_api_4x() {
 
-    # create configuration folder if it does not exists in the new api
+    # Create configuration folder if it does not exists in the new api
     if [ ! -d "${API_PATH}"/configuration ]; then
         install -o root -g ossec -m 0770 -d "${API_PATH}"/configuration
     fi
 
-    # create security folder if it does not exists in the new api
+    # Create security folder if it does not exists in the new api
     if [ ! -d "${API_PATH}"/configuration/security ]; then
         install -o root -g ossec -m 0770 -d "${API_PATH}"/configuration/security
     fi
 
-    # create ssl folder if it does not exists in the new api
+    # Create ssl folder if it does not exists in the new api
     if [ ! -d "${API_PATH}"/configuration/ssl ]; then
         install -o root -g ossec -m 0770 -d "${API_PATH}"/configuration/ssl
     fi

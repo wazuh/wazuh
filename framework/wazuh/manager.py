@@ -30,7 +30,7 @@ def get_status():
 
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Processes status read successfully"
+    result = AffectedItemsWazuhResult(all_msg=f"Processes status was successfully read"
                                               f"{' in specified node' if node_id != 'manager' else ''}",
                                       some_msg='Could not read basic information in some nodes',
                                       none_msg=f"Could not read processes status"
@@ -61,7 +61,7 @@ def ossec_log(level=None, tag=None, offset=0, limit=common.database_limit, sort_
     :param q: Defines query to filter.
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Logs read successfully"
+    result = AffectedItemsWazuhResult(all_msg=f"Logs were successfully read"
                                               f"{' in specified node' if node_id != 'manager' else ''}",
                                       some_msg='Could not read logs in some nodes',
                                       none_msg=f"Could not read logs"
@@ -91,7 +91,7 @@ def ossec_log_summary():
 
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Log summarized successfully"
+    result = AffectedItemsWazuhResult(all_msg=f"Log was successfully summarized"
                                               f"{' in specified node' if node_id != 'manager' else ''}",
                                       some_msg='Could not summarize the log in some nodes',
                                       none_msg=f"Could not summarize the log"
@@ -120,7 +120,7 @@ def upload_file(path=None, content=None, overwrite=False):
     :param overwrite: True for updating existing files, False otherwise
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg='File was uploaded successfully',
+    result = AffectedItemsWazuhResult(all_msg='File was successfully uploaded',
                                       none_msg='Could not upload file'
                                       )
     try:
@@ -191,7 +191,7 @@ def delete_file(path):
     :param path: Relative path of the file to be deleted
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg='File was deleted successfully',
+    result = AffectedItemsWazuhResult(all_msg='File was successfully deleted',
                                       none_msg='Could not delete file'
                                       )
 
@@ -214,7 +214,7 @@ def delete_file(path):
 
 
 _get_config_default_result_kwargs = {
-    'all_msg': f"API configuration read successfully{' in all specified nodes' if node_id != 'manager' else '' }",
+    'all_msg': f"API configuration was successfully read{' in all specified nodes' if node_id != 'manager' else '' }",
     'some_msg': 'Not all API configurations could be read',
     'none_msg': f"Could not read API configuration{' in any node' if node_id != 'manager' else ''}",
     'sort_casting': ['str']
@@ -246,7 +246,7 @@ def get_api_config():
 
 
 _update_config_default_result_kwargs = {
-    'all_msg': f"API configuration successfully updated{' in all specified nodes' if node_id != 'manager' else '' }. "
+    'all_msg': f"API configuration was successfully updated{' in all specified nodes' if node_id != 'manager' else '' }. "
                f"Some settings may require restarting the API to be applied",
     'some_msg': 'Not all API configuration could be updated',
     'none_msg': f"API configuration could not be updated{' in any node' if node_id != 'manager' else ''}",
@@ -287,8 +287,8 @@ def update_api_config(updated_config=None):
 
 _restart_default_result_kwargs = {
     'all_msg': f"Restart request sent to {' all specified nodes' if node_id != ' manager' else ''}",
-    'some_msg': 'Could not send restart request to some specified nodes',
-    'none_msg': "No restart request sent",
+    'some_msg': "Could not send restart request to some specified nodes",
+    'none_msg': "Could not send restart request to any node",
     'sort_casting': ['str']
 }
 
@@ -312,7 +312,7 @@ def restart():
 
 
 _validation_default_result_kwargs = {
-    'all_msg': f"Validation checked successfully{' in all nodes' if node_id != 'manager' else ''}",
+    'all_msg': f"Validation was successfully checked{' in all nodes' if node_id != 'manager' else ''}",
     'some_msg': 'Could not check validation in some nodes',
     'none_msg': f"Could not check validation{' in any node' if node_id != 'manager' else ''}",
     'sort_fields': ['name'],
@@ -349,7 +349,7 @@ def get_config(component=None, config=None):
     :param config: Configuration to get, written on disk.
     :return: AffectedItemsWazuhResult.
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Active configuration read successfully"
+    result = AffectedItemsWazuhResult(all_msg=f"Active configuration was successfully read"
                                               f"{' in specified node' if node_id != 'manager' else ''}",
                                       some_msg='Could not read active configuration in some nodes',
                                       none_msg=f"Could not read active configuration"
@@ -375,7 +375,7 @@ def read_ossec_conf(section=None, field=None):
     :param field: Filters by field in section (i.e. included).
     :return: AffectedItemsWazuhResult.
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Configuration read successfully"
+    result = AffectedItemsWazuhResult(all_msg=f"Configuration was successfully read"
                                               f"{' in specified node' if node_id != 'manager' else ''}",
                                       some_msg='Could not read configuration in some nodes',
                                       none_msg=f"Could not read configuration"
@@ -398,7 +398,7 @@ def get_basic_info():
 
     :return: AffectedItemsWazuhResult.
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Basic information read successfully"
+    result = AffectedItemsWazuhResult(all_msg=f"Basic information was successfully read"
                                               f"{' in specified node' if node_id != 'manager' else ''}",
                                       some_msg='Could not read basic information in some nodes',
                                       none_msg=f"Could not read basic information"

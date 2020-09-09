@@ -43,9 +43,9 @@ def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, 
     :return: WazuhResult
     """
 
-    result = AffectedItemsWazuhResult(all_msg='All selected agents information is shown',
-                                      some_msg='Some agents information is not shown',
-                                      none_msg='No agent information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected agents information was returned',
+                                      some_msg='Some agents information was not returned',
+                                      none_msg='No agent information was returned'
                                       )
 
     if len(agent_list) != 0:
@@ -109,9 +109,10 @@ def restart_agents(agent_list=None):
     :param agent_list: List of agents ID's.
     :return: AffectedItemsWazuhResult.
     """
-    result = AffectedItemsWazuhResult(none_msg='Could not send command to any agent',
-                                      all_msg='Restart command sent to all agents',
-                                      some_msg='Could not send command to some agents')
+    result = AffectedItemsWazuhResult(all_msg='Restart command was sent to all agents',
+                                      some_msg='Restart command was not sent to some agents',
+                                      none_msg='Restart command was not sent to any agent'
+                                      )
 
     system_agents = get_agents_info()
     for agent_id in agent_list:
@@ -167,9 +168,9 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
     :param q: Defines query to filter in DB.
     :return: AffectedItemsWazuhResult.
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected agents information is shown',
-                                      some_msg='Some agents information is not shown',
-                                      none_msg='No agent information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected agents information was returned',
+                                      some_msg='Some agents information was not returned',
+                                      none_msg='No agent information was returned'
                                       )
     if len(agent_list) != 0:
         if filters is None:
@@ -345,9 +346,9 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
     """
 
     affected_groups = list()
-    result = AffectedItemsWazuhResult(all_msg='Obtained information about all selected groups',
-                                      some_msg='Some groups information was not obtained',
-                                      none_msg='No group information was obtained'
+    result = AffectedItemsWazuhResult(all_msg='All selected groups information was returned',
+                                      some_msg='Some groups information was not returned',
+                                      none_msg='No group information was returned'
                                       )
 
     # Add failed items
@@ -397,9 +398,9 @@ def get_group_files(group_list=None, offset=0, limit=None, search_text=None, sea
     # a list of groups
     group_id = group_list[0]
     group_path = common.shared_path
-    result = AffectedItemsWazuhResult(all_msg='All selected groups files are shown',
-                                      some_msg='Some groups files are not shown',
-                                      none_msg='No groups files are shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected groups files were returned',
+                                      some_msg='Some groups files were not returned',
+                                      none_msg='No groups files were returned'
                                       )
     if group_id:
         if not Agent.group_exists(group_id):
@@ -460,7 +461,7 @@ def create_group(group_id):
         chown_r(group_path, common.ossec_uid(), common.ossec_gid())
         chmod_r(group_path, 0o660)
         chmod(group_path, 0o770)
-        msg = "Group '{0}' created.".format(group_id)
+        msg = f"Group '{group_id}' created."
     except Exception as e:
         raise WazuhInternalError(1005, extra_message=str(e))
 
@@ -584,9 +585,9 @@ def remove_agent_from_groups(agent_list=None, group_list=None):
     :return: AffectedItemsWazuhResult.
     """
     agent_id = agent_list[0]
-    result = AffectedItemsWazuhResult(all_msg='Specified agent removed from shown groups',
-                                      some_msg='Specified agent could not be removed from some groups',
-                                      none_msg='Specified agent could not be removed from any group'
+    result = AffectedItemsWazuhResult(all_msg='Specified agent was removed from returned groups',
+                                      some_msg='Specified agent was not removed from some groups',
+                                      none_msg='Specified agent was not removed from any group'
                                       )
 
     # Check if agent exists and it is not 000
@@ -667,9 +668,9 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, 
     :return: AffectedItemsWazuhResult.
     """
 
-    result = AffectedItemsWazuhResult(all_msg='All selected agents information is shown',
-                                      some_msg='Some agents information is not shown',
-                                      none_msg='No agent information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected agents information was returned',
+                                      some_msg='Some agents information was not returned',
+                                      none_msg='No agent information was returned'
                                       )
     if len(agent_list) != 0:
         # Get manager version
@@ -810,9 +811,10 @@ def get_agents_sync_group(agent_list=None):
     :param agent_list: List of agents ID's.
     :return AffectedItemsWazuhResult.
     """
-    result = AffectedItemsWazuhResult(none_msg='No sync info shown.',
-                                      all_msg='Sync info shown for all selected agents.',
-                                      some_msg='Could not show sync info for some selected agents.')
+    result = AffectedItemsWazuhResult(all_msg='Sync info was returned for all selected agents',
+                                      some_msg='Sync info was not returned for some selected agents',
+                                      none_msg='No sync info was returned',
+                                      )
 
     system_agents = get_agents_info()
     for agent_id in agent_list:

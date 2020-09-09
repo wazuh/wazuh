@@ -131,8 +131,14 @@ This agent will use **any** as IP.
 ### POST    /agents/restart
 * Endpoint removed. Use `PUT /agents/restart` instead.
 
-### PUT     /agents/{agent_id}/upgrade
-* Changed parameter type **force** in request body from integer to boolean.
+### PUT     /agents/upgrade
+* New endpoint. Upgrade all agents or a list of them to a different Wazuh version.
+
+### PUT     /agents/upgrade_custom
+* New endpoint. Upgrade all agents or a list of them to a different Wazuh version using a local WPK file.
+
+### GET     /agents/upgrade
+* New endpoint.  Get upgrade results from all agents or a list of them.
 
 ### PUT     /agents/{agent_name}
 * Endpoint removed. Use `POST /agents/insert/quick?agent_name=name`.
@@ -204,10 +210,21 @@ or a list of them if parameter **list_nodes** is used.
 * Renamed **type_log** parameter to **level**.
 
 ### GET     /cluster/{node_id}/stats
+* Changed response in order to use an affected_items and failed_items response type.
 * Changed date format from YYYYMMDD to YYYY-MM-DD for **date** parameter in query.
 
+### GET ​   /cluster/{node_id}/stats/hourly
+* Changed response in order to use an affected_items and failed_items response type.
+
 ### GET ​   /cluster/{node_id}/stats/weekly
+* Changed response in order to use an affected_items and failed_items response type.
 * Parameter **hours** changed to **averages** in response body.
+
+### GET ​   /cluster/{node_id}/stats/analysisd
+* Changed response in order to use an affected_items and failed_items response type.
+
+### GET ​   /cluster/{node_id}/stats/remoted
+* Changed response in order to use an affected_items and failed_items response type.
 
 ### GET     /cluster/nodes
 * Get information about all nodes in the cluster or a list of them
@@ -361,10 +378,21 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * Return a summary of the last 2000 wazuh log entries instead of the last three months.
 
 ### GET     /manager/stats
+* Changed response in order to use an affected_items and failed_items response type.
 * Changed date format from YYYYMMDD to YYYY-MM-DD for **date** parameter in query.
 
+### GET     /manager/stats/hourly
+* Changed response in order to use an affected_items and failed_items response type.
+
 ### GET     /manager/stats/weekly
+* Changed response in order to use an affected_items and failed_items response type.
 * Parameter **hours** changed to **averages** in response body.
+
+### GET     /manager/stats/analysisd
+* Changed response in order to use an affected_items and failed_items response type.
+
+### GET     /manager/stats/remoted
+* Changed response in order to use an affected_items and failed_items response type.
 
 ### POST    /manager/files
 * Endpoint removed. Use `PUT /manager/files` instead.

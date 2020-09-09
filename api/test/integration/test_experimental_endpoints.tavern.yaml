@@ -534,19 +534,27 @@ stages:
                 state: !anystr
                 tx_queue: !anyint
             - <<: *ports_response
+              agent_id: '000'
             - <<: *ports_response
+              agent_id: '001'
             - <<: *ports_response
+              agent_id: '002'
             - <<: *ports_response
+              agent_id: '003'
             - <<: *ports_response
+              agent_id: '004'
             - <<: *ports_response
+              agent_id: '005'
             - <<: *ports_response
+              agent_id: '006'
             - <<: *ports_response
+              agent_id: '007'
             - <<: *ports_response
-            - <<: *ports_response
-            - <<: *ports_response
+              agent_id: '008'
           failed_items: []
-          total_affected_items: 12
+          total_affected_items: !anyint
           total_failed_items: 0
+        message: !anystr
 
   - name: Request
     request:

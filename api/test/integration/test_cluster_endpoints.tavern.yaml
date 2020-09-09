@@ -2226,7 +2226,7 @@ stages:
   - name: unexisting_node stats
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting_node/stats"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting-node/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2257,52 +2257,56 @@ stages:
       status_code: 200
       json:
         data:
-          total_events_decoded: !anyfloat
-          syscheck_events_decoded: !anyfloat
-          syscheck_edps: !anyfloat
-          syscollector_events_decoded: !anyfloat
-          syscollector_edps: !anyfloat
-          rootcheck_events_decoded: !anyfloat
-          rootcheck_edps: !anyfloat
-          sca_events_decoded: !anyfloat
-          sca_edps: !anyfloat
-          hostinfo_events_decoded: !anyfloat
-          hostinfo_edps: !anyfloat
-          winevt_events_decoded: !anyfloat
-          winevt_edps: !anyfloat
-          other_events_decoded: !anyfloat
-          other_events_edps: !anyfloat
-          events_processed: !anyfloat
-          events_edps: !anyfloat
-          events_received: !anyfloat
-          events_dropped: !anyfloat
-          alerts_written: !anyfloat
-          firewall_written: !anyfloat
-          fts_written: !anyfloat
-          syscheck_queue_usage: !anyfloat
-          syscheck_queue_size: !anyfloat
-          syscollector_queue_usage: !anyfloat
-          syscollector_queue_size: !anyfloat
-          rootcheck_queue_usage: !anyfloat
-          rootcheck_queue_size: !anyfloat
-          sca_queue_usage: !anyfloat
-          sca_queue_size: !anyfloat
-          hostinfo_queue_usage: !anyfloat
-          hostinfo_queue_size: !anyfloat
-          winevt_queue_usage: !anyfloat
-          winevt_queue_size: !anyfloat
-          event_queue_usage: !anyfloat
-          event_queue_size: !anyfloat
-          rule_matching_queue_usage: !anyfloat
-          rule_matching_queue_size: !anyfloat
-          alerts_queue_usage: !anyfloat
-          alerts_queue_size: !anyfloat
-          firewall_queue_usage: !anyfloat
-          firewall_queue_size: !anyfloat
-          statistical_queue_usage: !anyfloat
-          statistical_queue_size: !anyfloat
-          archives_queue_usage: !anyfloat
-          archives_queue_size: !anyfloat
+          affected_items:
+            - total_events_decoded: !anyfloat
+              syscheck_events_decoded: !anyfloat
+              syscheck_edps: !anyfloat
+              syscollector_events_decoded: !anyfloat
+              syscollector_edps: !anyfloat
+              rootcheck_events_decoded: !anyfloat
+              rootcheck_edps: !anyfloat
+              sca_events_decoded: !anyfloat
+              sca_edps: !anyfloat
+              hostinfo_events_decoded: !anyfloat
+              hostinfo_edps: !anyfloat
+              winevt_events_decoded: !anyfloat
+              winevt_edps: !anyfloat
+              other_events_decoded: !anyfloat
+              other_events_edps: !anyfloat
+              events_processed: !anyfloat
+              events_edps: !anyfloat
+              events_received: !anyfloat
+              events_dropped: !anyfloat
+              alerts_written: !anyfloat
+              firewall_written: !anyfloat
+              fts_written: !anyfloat
+              syscheck_queue_usage: !anyfloat
+              syscheck_queue_size: !anyfloat
+              syscollector_queue_usage: !anyfloat
+              syscollector_queue_size: !anyfloat
+              rootcheck_queue_usage: !anyfloat
+              rootcheck_queue_size: !anyfloat
+              sca_queue_usage: !anyfloat
+              sca_queue_size: !anyfloat
+              hostinfo_queue_usage: !anyfloat
+              hostinfo_queue_size: !anyfloat
+              winevt_queue_usage: !anyfloat
+              winevt_queue_size: !anyfloat
+              event_queue_usage: !anyfloat
+              event_queue_size: !anyfloat
+              rule_matching_queue_usage: !anyfloat
+              rule_matching_queue_size: !anyfloat
+              alerts_queue_usage: !anyfloat
+              alerts_queue_size: !anyfloat
+              firewall_queue_usage: !anyfloat
+              firewall_queue_size: !anyfloat
+              statistical_queue_usage: !anyfloat
+              statistical_queue_size: !anyfloat
+              archives_queue_usage: !anyfloat
+              archives_queue_size: !anyfloat
+          total_affected_items: 1
+          failed_items: []
+          total_failed_items: 0
 
 ---
 test_name: GET /cluster/{node_id}/stats/hourly
@@ -2328,8 +2332,12 @@ stages:
       status_code: 200
       json:
         data:
-          averages: !anything
-          interactions: !anyint
+          affected_items:
+            - averages: !anything
+              interactions: !anyint
+          total_affected_items: 1
+          failed_items: []
+          total_failed_items: 0
 
 ---
 test_name: GET /cluster/{node_id}/stats/remoted
@@ -2355,14 +2363,18 @@ stages:
       status_code: 200
       json:
         data:
-          queue_size: !anyfloat
-          total_queue_size: !anyfloat
-          tcp_sessions: !anyfloat
-          evt_count: !anyfloat
-          ctrl_msg_count: !anyfloat
-          discarded_count: !anyfloat
-          msg_sent: !anyfloat
-          recv_bytes: !anyfloat
+          affected_items:
+            - queue_size: !anyfloat
+              total_queue_size: !anyfloat
+              tcp_sessions: !anyfloat
+              evt_count: !anyfloat
+              ctrl_msg_count: !anyfloat
+              discarded_count: !anyfloat
+              msg_sent: !anyfloat
+              recv_bytes: !anyfloat
+          total_affected_items: 1
+          failed_items: []
+          total_failed_items: 0
 
 ---
 test_name: GET /cluster/{node_id}/stats/weekly
@@ -2388,27 +2400,31 @@ stages:
       status_code: 200
       json:
         data:
-          Mon:
-            hours: !anything
-            interactions: !anyint
-          Tue:
-            hours: !anything
-            interactions: !anyint
-          Wed:
-            hours: !anything
-            interactions: !anyint
-          Thu:
-            hours: !anything
-            interactions: !anyint
-          Fri:
-            hours: !anything
-            interactions: !anyint
-          Sat:
-            hours: !anything
-            interactions: !anyint
-          Sun:
-            hours: !anything
-            interactions: !anyint
+          affected_items:
+            - Sun:
+                hours: !anything
+                interactions: !anyint
+            - Mon:
+                hours: !anything
+                interactions: !anyint
+            - Tue:
+                hours: !anything
+                interactions: !anyint
+            - Wed:
+                hours: !anything
+                interactions: !anyint
+            - Thu:
+                hours: !anything
+                interactions: !anyint
+            - Fri:
+                hours: !anything
+                interactions: !anyint
+            - Sat:
+                hours: !anything
+                interactions: !anyint
+          total_affected_items: 7
+          failed_items: []
+          total_failed_items: 0
 
 ---
 test_name: GET /cluster/{node_id}/status
