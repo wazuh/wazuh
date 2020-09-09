@@ -13,8 +13,8 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "wazuh_db/wdb.h"
 #include "wazuhdb_op.h"
@@ -4753,6 +4753,8 @@ void test_get_agent_date_added_error_invalid_date(void **state) {
 void test_get_agent_date_added_success(void **state) {
     time_t date_add = 0;
     int agent_id = 1;
+    struct tm test_time;
+    time_t date_returned = 0;
 
     will_return(__wrap_isChroot, 0);
 
@@ -4770,8 +4772,18 @@ void test_get_agent_date_added_success(void **state) {
 
     date_add = get_agent_date_added(agent_id);
 
-    // The number 1577851261 is the date 2020-01-01 01:01:01 transformed to INT
-    assert_int_equal(1577851261, date_add);
+    // The date_returned variable is the date 2020-01-01 01:01:01 transformed to INT
+    test_time.tm_year = 2020-1900; 
+    test_time.tm_mon = 1-1; 
+    test_time.tm_mday = 1; 
+    test_time.tm_hour = 1; 
+    test_time.tm_min = 1; 
+    test_time.tm_sec = 1; 
+    test_time.tm_isdst = 0; 
+
+    date_returned = mktime(&test_time);
+    
+    assert_int_equal(date_returned, date_add);
 }
 
 int main()
