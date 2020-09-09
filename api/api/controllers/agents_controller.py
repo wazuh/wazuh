@@ -405,7 +405,7 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_agents(request, list_agents, pretty=False, wait_for_complete=False, wpk_repo=None,
+async def put_upgrade_agents(request, list_agents=None, pretty=False, wait_for_complete=False, wpk_repo=None,
                              version=None, use_http=False, force=False):
     """Upgrade agents using a WPK file from online repository.
     Parameters
@@ -448,7 +448,7 @@ async def put_upgrade_agents(request, list_agents, pretty=False, wait_for_comple
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_custom_agents(request, list_agents, pretty=False, wait_for_complete=False,
+async def put_upgrade_custom_agents(request, list_agents=None, pretty=False, wait_for_complete=False,
                                     file_path=None, installer=None):
     """Upgrade agents using a local WPK file.
     Parameters
@@ -485,7 +485,7 @@ async def put_upgrade_custom_agents(request, list_agents, pretty=False, wait_for
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_upgrade(request, list_agents, pretty=False, wait_for_complete=False):
+async def get_agent_upgrade(request, list_agents=None, pretty=False, wait_for_complete=False):
     """Get upgrade results from agents.
     Parameters
     ----------
