@@ -81,7 +81,8 @@ LIST(APPEND analysisd_names "test_decoder_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,FreeDecoderInfo")
 
 LIST(APPEND analysisd_names "test_decode-xml")
-LIST(APPEND analysisd_flags "")
+LIST(APPEND analysisd_flags "-Wl,--wrap,_os_analysisd_add_logmsg -Wl,--wrap,_merror -Wl,--wrap,OSStore_Create \
+                             -Wl,--wrap,OSStore_Put")
 
 LIST(APPEND analysisd_names "test_lists_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern")
@@ -89,6 +90,9 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern")
 LIST(APPEND analysisd_names "test_rule_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,os_remove_cdbrules \
                             -Wl,--wrap,_os_analysisd_add_logmsg")
+
+LIST(APPEND analysisd_names "test_rules")
+LIST(APPEND analysisd_flags "-Wl,--wrap,_os_analysisd_add_logmsg -Wl,--wrap,_merror")
 
 LIST(APPEND analysisd_names "test_eventinfo_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,Free_Eventinfo")
