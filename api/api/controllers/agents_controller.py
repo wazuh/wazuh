@@ -487,7 +487,7 @@ async def put_upgrade_custom_agents(request, list_agents, pretty=False, wait_for
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_upgrade(request, list_agents, timeout=3, pretty=False, wait_for_complete=False):
+async def get_agent_upgrade(request, list_agents, pretty=False, wait_for_complete=False):
     """Get upgrade results from agents.
     Parameters
     ----------
@@ -497,15 +497,12 @@ async def get_agent_upgrade(request, list_agents, timeout=3, pretty=False, wait_
         Disable timeout response.
     list_agents : list
         List of agent IDs. All possible values since 000 onwards.
-    timeout : int
-        Seconds to wait for the agent to respond.
     Returns
     -------
     ApiResponse
         Upgrade message after having upgraded the agents.
     """
-    f_kwargs = {'agents_list': list_agents,
-                'timeout': timeout}
+    f_kwargs = {'agents_list': list_agents}
 
     dapi = DistributedAPI(f=agent.get_upgrade_result,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

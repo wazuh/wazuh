@@ -5740,12 +5740,6 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/list_agents'
-        - in: query
-          name: timeout
-          description: "Seconds to wait for the agent to respond"
-          schema:
-            type: integer
-            format: int32
       responses:
         '200':
           description: "Get agent upgrade results"
