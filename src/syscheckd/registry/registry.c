@@ -151,14 +151,81 @@ int fim_registry_validate_path(const char *entry_path, const registry *configura
     return 0;
 }
 
+void fim_registry_process_value_delete_event(fdb_t *fim_sql,
+                                             fim_entry *data,
+                                             pthread_mutex_t *mutex,
+                                             void *_alert,
+                                             void *_ev_mode,
+                                             __attribute__((unused)) void *_w_evt) {
+    int alert = *(int *)_alert;
+    fim_event_mode event_mode = *(fim_event_mode *)_ev_mode;
+    registry *configuration;
+    char full_path[MAX_KEY];
+
+    snprintf(full_path, MAX_KEY, "%s\\%s", data->registry_entry.key->path, data->registry_entry.value->name);
+
+    configuration = fim_registry_configuration(full_path, data->registry_entry.key->arch);
+
+    if (alert && configuration) {
+        cJSON *json_event = fim_registry_event(data, NULL, configuration, event_mode, FIM_DELETE, NULL, NULL);
+
+        if (json_event) {
+            char *json_formated = cJSON_PrintUnformatted(json_event);
+            send_syscheck_msg(json_formated);
+            os_free(json_formated);
+
+            cJSON_Delete(json_event);
+        }
+    }
+
+    fim_db_remove_registry_value(fim_sql, data->registry_entry.value->name, data->registry_entry.key->id);
+}
+
+void fim_registry_process_key_delete_event(fdb_t *fim_sql, fim_entry *data, pthread_mutex_t *mutex, void *_alert, void *_ev_mode, void *_w_evt) {
+    int alert = *(int *)_alert;
+    fim_event_mode event_mode = *(fim_event_mode *)_ev_mode;
+    fim_tmp_file *file;
+    registry *configuration;
+
+    configuration = fim_registry_configuration(data->registry_entry.key->path, data->registry_entry.key->arch);
+
+    if (alert && configuration) {
+        cJSON *json_event = fim_registry_event(data, NULL, configuration, event_mode, FIM_DELETE, NULL, NULL);
+
+        if (json_event) {
+            char *json_formated = cJSON_PrintUnformatted(json_event);
+            send_syscheck_msg(json_formated);
+            os_free(json_formated);
+
+            cJSON_Delete(json_event);
+        }
+    }
+
+    if (fim_db_get_values_from_registry_key(fim_sql, &file, syscheck.database_store, data->registry_entry.key->id) == 0) {
+        fim_db_process_read_file(fim_sql, file, mutex, fim_registry_process_value_delete_event, syscheck.database_store,
+                                 _alert, _ev_mode, _w_evt);
+    }
+
+    fim_db_remove_registry_key(fim_sql, data->registry_entry.key->path);
+}
+
 void fim_registry_process_unscanned_entries() {
     fim_tmp_file *file;
+    fim_event_mode event_mode = FIM_SCHEDULED;
 
     if (fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store)) {
         mwarn("Failed to get unscanned registry keys");
     }
 
+    fim_db_process_read_file(syscheck.database, file, NULL, fim_registry_process_key_delete_event,
+                             syscheck.database_store, &_base_line, &event_mode, NULL);
 
+    if (fim_db_get_registry_data_not_scanned(syscheck.database, &file, syscheck.database_store)) {
+        mwarn("Failed to get unscanned registry values");
+    }
+
+    fim_db_process_read_file(syscheck.database, file, NULL, fim_registry_process_value_delete_event,
+                             syscheck.database_store, &_base_line, &event_mode, NULL);
 }
 
 /* Query the key and get all its values */
