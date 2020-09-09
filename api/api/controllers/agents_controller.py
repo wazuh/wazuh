@@ -403,7 +403,8 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_agent(request, list_agents, pretty=False, wpk_repo=None, version=None, use_http=False, force=False):
+async def put_upgrade_agent(request, list_agents, pretty=False, wpk_repo=None, version=None, use_http=False,
+                            force=False):
     """Upgrade agent using a WPK file from online repository.
 
     :param pretty: Show results in human-readable format
@@ -422,7 +423,7 @@ async def put_upgrade_agent(request, list_agents, pretty=False, wpk_repo=None, v
 
     dapi = DistributedAPI(f=agent.upgrade_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
+                          request_type='local_master',
                           is_async=False,
                           wait_for_complete=True,  # Force wait_for_complete until timeout problems are resolved
                           logger=logger,
@@ -451,9 +452,32 @@ async def put_upgrade_custom_agent(request, list_agents, pretty=False, wait_for_
 
     dapi = DistributedAPI(f=agent.upgrade_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
+                          request_type='local_master',
                           is_async=False,
-                          wait_for_complete=True,  # Force wait_for_complete until timeout problems are resolved
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def get_agent_upgrade(request, list_agents, pretty=False, wait_for_complete=False):
+    """Get upgrade result from agent.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param list_agents: Array of agent's IDs.
+    :return: ApiResponse
+    """
+    f_kwargs = {'agent_list': list_agents}
+
+    dapi = DistributedAPI(f=agent.get_upgrade_result,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -486,31 +510,6 @@ async def post_new_agent(request, agent_name, pretty=False, wait_for_complete=Fa
     response = Data(data)
 
     return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
-
-
-async def get_agent_upgrade(request, task_ids, timeout=3, pretty=False, wait_for_complete=False):
-    """Get upgrade result from agent.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param task_ids: Array of task's IDs.
-    :param timeout: Seconds to wait for the agent to respond.
-    :return: ApiResponse
-    """
-    f_kwargs = {'task_list': task_ids,
-                'timeout': timeout}
-
-    dapi = DistributedAPI(f=agent.get_upgrade_result,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def delete_multiple_agent_single_group(request, group_id, list_agents=None, pretty=False,

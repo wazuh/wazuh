@@ -1060,9 +1060,24 @@ def expand_group(group_name):
     return agents_ids
 
 
-def core_upgrade_agents(command):
+def core_upgrade_agents(command, get_result=False):
+    """Send command to upgrade module / task module
+
+    Parameters
+    ----------
+    command
+    get_result : bool
+        Get the result of an update (True -> Task module), Create new upgrade task (False -> Upgrade module)
+
+    Returns
+    -------
+    Message received from the socket (Task module or Upgrade module)
+    """
     # Send upgrading command
-    s = OssecSocket(common.UPGRADE_SOCKET)
+    if not get_result:
+        s = OssecSocket(common.UPGRADE_SOCKET)
+    else:
+        s = OssecSocket(common.TASKS_SOCKET)
 
     s.send(dumps(command).encode())
     data = loads(s.receive().decode())

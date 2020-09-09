@@ -711,7 +711,7 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
 
     Returns
     -------
-    Confirmation message
+    ID of created tasks
     """
     result = AffectedItemsWazuhResult(all_msg='All upgrade tasks have been created',
                                       some_msg='Some upgrade tasks have been created',
@@ -719,7 +719,7 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
 
     wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url_4_x
     msg = {
-        'command': 'upgrade',
+        'command': 'upgrade' if not (installer or file_path) else 'upgrade_custom',
         'agents': list(map(int, agent_list)),
         'params': {
             'version': version,
@@ -748,26 +748,35 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
     return result
 
 
-# @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_upgrade_result(task_list=None, timeout=3):
+@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)
+def get_upgrade_result(agent_list=None):
     """Read upgrade result output from agent.
 
-    :param task_list: List of tasks ID's.
-    :param timeout: Maximum time for the call to be considered failed.
-    :return: Upgrade result.
-    """
-    result = AffectedItemsWazuhResult(all_msg='TBD',
-                                      some_msg='TBD',
-                                      none_msg='TBD')
+    Parameters
+    ----------
+    agent_list : list
+        List of agent ID's.
 
-    for task in task_list:
-        task_result = core_upgrade_agents({'command': 'task_result', 'module': 'api', 'task_id': int(task)})
-        if task_result['error'] == 0:
-            result.affected_items.append()
-        else:
-            # Change this
-            error = WazuhError(code=1810 + task_result['error'], cmd_error=True, extra_message=task_result['data'])
-            result.add_failed_item(id_=task_result['error'], error=error)
+    Returns
+    -------
+    Upgrade result.
+    """
+    result = AffectedItemsWazuhResult(all_msg='All agents have been updated',
+                                      some_msg='Some agents have not been updated',
+                                      none_msg='No agent has been updated')
+
+    for agent in agent_list:
+        task_results = core_upgrade_agents([{'command': 'upgrade_result', 'module': 'api', 'agent': int(agent)}],
+                                           get_result=True)
+        for task_result in task_results:
+            task_error = task_result.pop('error')
+            if task_error == 0:
+                task_result.pop('data')
+                result.affected_items.append(task_result)
+                result.total_affected_items += 1
+            else:
+                error = WazuhError(code=1810 + task_error, cmd_error=True, extra_message=task_result['data'])
+                result.add_failed_item(id_=str(agent).zfill(3), error=error)
 
     return result
 
