@@ -665,6 +665,8 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     const char *internal_key = "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301";
     const char *group = "default";
     int keep_date = 1;
+    struct tm test_time;
+    time_t date_returned = 0;
 
     const char *json_str = "{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1577851261}";
@@ -691,6 +693,17 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     will_return_always(__wrap_cJSON_AddStringToObject, 1);
 
     // Adding data to JSON
+    // Transforming the date 2020-01-01 01:01:01 to a number
+    test_time.tm_year = 2020-1900; 
+    test_time.tm_mon = 1-1; 
+    test_time.tm_mday = 1; 
+    test_time.tm_hour = 1; 
+    test_time.tm_min = 1; 
+    test_time.tm_sec = 1; 
+    test_time.tm_isdst = 0; 
+
+    date_returned = mktime(&test_time);
+
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "name");
@@ -704,7 +717,7 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     expect_string(__wrap_cJSON_AddStringToObject, name, "group");
     expect_value(__wrap_cJSON_AddStringToObject, string, "default");
     expect_string(__wrap_cJSON_AddNumberToObject, name, "date_add");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, 1577851261);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, date_returned);
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
