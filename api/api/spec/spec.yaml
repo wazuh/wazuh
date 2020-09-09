@@ -1131,6 +1131,24 @@ components:
               items:
                   $ref: '#/components/schemas/ValidationStatus'
 
+    AllItemsResponseWazuhStats:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                anyOf:
+                  - $ref: '#/components/schemas/WazuhStats'
+                  - $ref: '#/components/schemas/WazuhHourlyStats'
+                  - $ref: '#/components/schemas/WazuhWeeklyStats'
+                  - $ref: '#/components/schemas/WazuhAnalysisdStats'
+                  - $ref: '#/components/schemas/WazuhRemotedStats'
+        - $ref: '#/components/schemas/AllItemsResponse'
+
     BasicInfo:
       type: object
       properties:
@@ -1926,7 +1944,7 @@ components:
           type: object
 
     WazuhStats:
-      type: array
+      type: object
       items:
         type: object
         properties:
@@ -5106,7 +5124,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: "Command sent to all agents"
+                message: 'AR command was sent to all agents'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5297,7 +5315,7 @@ paths:
                       status: active
                       version: Wazuh v3.10.0
                   total_affected_items: 3
-                message: 'All selected agents information is shown'
+                message: 'All selected agents information was returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5459,7 +5477,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: Specified agent removed from shown groups
+                message: 'Specified agent was removed from returned groups'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5504,7 +5522,7 @@ paths:
                   failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
-                message: Sync info shown for all selected agents
+                message: 'Sync info was returned for all selected agents'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5784,7 +5802,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Agent upgraded successfully
+                message: Agent was successfully upgraded
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5936,7 +5954,7 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: "Restart command sent to all selected agents"
+                  message: "Restart command sent to all agents"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6049,7 +6067,7 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
-                message: "Obtained information about all selected groups"
+                message: "All selected groups information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6319,7 +6337,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Agent configuration was updated successfully
+                message: Agent configuration was successfully updated
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6393,7 +6411,7 @@ paths:
                   total_affected_items: 10
                   failed_items: []
                   total_failed_items: 0
-                message: All selected groups files are shown
+                message: 'All selected groups files were returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6823,6 +6841,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
+                message: 'All selected agents information was returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6860,7 +6879,7 @@ paths:
                     data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: Restart command sent to all selected agents
+                  message: 'Restart command was sent to all agents'
                   data:
                     affected_items:
                       - '002'
@@ -6964,7 +6983,7 @@ paths:
                   total_affected_items: 13
                   total_failed_items: 0
                   failed_items: []
-                message: All selected agents information is shown
+                message: 'All selected agents information was returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7114,7 +7133,7 @@ paths:
                   failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
-                message: All CISCAT results loaded
+                message: 'All CISCAT results were returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7168,7 +7187,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All selected information is shown"
+                message: "All selected information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7230,7 +7249,7 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
-                message: "All selected nodes information is shown"
+                message: "All selected information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7301,6 +7320,7 @@ paths:
                         last_keep_alive: "2019-01-11T18:52:16.66Z"
                         sync_agentinfo_free: true
                         sync_extravalid_free: true
+                message: "All selected nodes healthcheck information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7435,7 +7455,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All selected information is shown"
+                message: "All selected information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7528,7 +7548,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
-                message: "API configuration read successfully in all specified nodes"
+                message: "API configuration was successfully read in all specified nodes"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7572,7 +7592,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: "API configuration successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
+                message: "API configuration was successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7615,7 +7635,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: "API configuration successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
+                message: "API configuration was successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -7676,6 +7696,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Processes status was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7727,6 +7748,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Basic information was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7804,6 +7826,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Configuration was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7840,35 +7863,39 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  - hour: 15
-                    alerts:
-                      - sigid: 5303
-                        level: 3
-                        times: 1
-                      - sigid: 5501
-                        level: 3
-                        times: 4
-                      - sigid: 221
-                        level: 0
-                        times: 653
-                    totalAlerts: 658
-                    events: 4387
-                    firewall: 0
-                  - hour: 16
-                    alerts:
-                      - sigid: 5521
-                        level: 0
-                        times: 1
-                      - sigid: 530
-                        level: 0
-                        times: 120
-                    totalAlerts: 121
-                    events: 4379
-                    syscheck: 0
-                    firewall: 0
+                  affected_items:
+                    - hour: 15
+                      alerts:
+                        - sigid: 5303
+                          level: 3
+                          times: 1
+                        - sigid: 5501
+                          level: 3
+                          times: 4
+                        - sigid: 221
+                          level: 0
+                          times: 653
+                      totalAlerts: 658
+                      events: 4387
+                      firewall: 0
+                    - hour: 16
+                      alerts:
+                        - sigid: 5521
+                          level: 0
+                          times: 1
+                        - sigid: 530
+                          level: 0
+                          times: 120
+                      totalAlerts: 121
+                      events: 4379
+                      syscheck: 0
+                      firewall: 0
+                  total_affected_items: 2
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7884,7 +7911,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's stats by hour"
+      summary: "Get a specified node's stats per hour"
       description: "Return Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the average of alerts per hour"
       operationId: api.controllers.cluster_controller.get_stats_hourly_node
       x-rbac-actions:
@@ -7904,35 +7931,39 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhHourlyStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                  interactions: 0
+                  affected_items:
+                    - averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                      interactions: 0
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7948,7 +7979,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's stats by week"
+      summary: "Get a specified node's stats per week"
       description: "Return Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the average of alerts per hour for that specific day"
       operationId: api.controllers.cluster_controller.get_stats_weekly_node
       x-rbac-actions:
@@ -7968,198 +7999,202 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhWeeklyStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  Sun:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Mon:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Tue:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Wed:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Thu:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Fri:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Sat:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
+                  affected_items:
+                    - Sun:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Mon:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Tue:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Wed:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Thu:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Fri:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Sat:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                  total_affected_items: 7
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8195,55 +8230,59 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhAnalysisdStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  total_events_decoded: 5
-                  syscheck_events_decoded: 0
-                  syscheck_edps: 0
-                  syscollector_events_decoded: 0
-                  syscollector_edps: 0
-                  rootcheck_events_decoded: 0
-                  rootcheck_edps: 0
-                  sca_events_decoded: 0
-                  sca_edps: 0
-                  hostinfo_events_decoded: 0
-                  hostinfo_edps: 0
-                  winevt_events_decoded: 0
-                  winevt_edps: 0
-                  other_events_decoded: 5
-                  other_events_edps: 1
-                  events_processed: 5
-                  events_edps: 1
-                  events_received: 5
-                  events_dropped: 0
-                  alerts_written: 0
-                  firewall_written: 0
-                  fts_written: 0
-                  syscheck_queue_usage: 0
-                  syscheck_queue_size: 16384
-                  syscollector_queue_usage: 0
-                  syscollector_queue_size: 16384
-                  rootcheck_queue_usage: 0
-                  rootcheck_queue_size: 16384
-                  sca_queue_usage: 0
-                  sca_queue_size: 16384
-                  hostinfo_queue_usage: 0
-                  hostinfo_queue_size: 16384
-                  winevt_queue_usage: 0
-                  winevt_queue_size: 16384
-                  event_queue_usage: 0
-                  event_queue_size: 16384
-                  rule_matching_queue_usage: 0
-                  rule_matching_queue_size: 16384
-                  alerts_queue_usage: 0
-                  alerts_queue_size: 16384
-                  firewall_queue_usage: 0
-                  firewall_queue_size: 16384
-                  statistical_queue_usage: 0
-                  statistical_queue_size: 16384
-                  archives_queue_usage: 0
-                  archives_queue_size: 16384
+                  affected_items:
+                    - total_events_decoded: 5
+                      syscheck_events_decoded: 0
+                      syscheck_edps: 0
+                      syscollector_events_decoded: 0
+                      syscollector_edps: 0
+                      rootcheck_events_decoded: 0
+                      rootcheck_edps: 0
+                      sca_events_decoded: 0
+                      sca_edps: 0
+                      hostinfo_events_decoded: 0
+                      hostinfo_edps: 0
+                      winevt_events_decoded: 0
+                      winevt_edps: 0
+                      other_events_decoded: 5
+                      other_events_edps: 1
+                      events_processed: 5
+                      events_edps: 1
+                      events_received: 5
+                      events_dropped: 0
+                      alerts_written: 0
+                      firewall_written: 0
+                      fts_written: 0
+                      syscheck_queue_usage: 0
+                      syscheck_queue_size: 16384
+                      syscollector_queue_usage: 0
+                      syscollector_queue_size: 16384
+                      rootcheck_queue_usage: 0
+                      rootcheck_queue_size: 16384
+                      sca_queue_usage: 0
+                      sca_queue_size: 16384
+                      hostinfo_queue_usage: 0
+                      hostinfo_queue_size: 16384
+                      winevt_queue_usage: 0
+                      winevt_queue_size: 16384
+                      event_queue_usage: 0
+                      event_queue_size: 16384
+                      rule_matching_queue_usage: 0
+                      rule_matching_queue_size: 16384
+                      alerts_queue_usage: 0
+                      alerts_queue_size: 16384
+                      firewall_queue_usage: 0
+                      firewall_queue_size: 16384
+                      statistical_queue_usage: 0
+                      statistical_queue_size: 16384
+                      archives_queue_usage: 0
+                      archives_queue_size: 16384
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8279,17 +8318,21 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhRemotedStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  queue_size: 0
-                  total_queue_size: 131072
-                  tcp_sessions: 0
-                  evt_count: 0
-                  ctrl_msg_count: 0
-                  discarded_count: 0
-                  msg_sent: 0
-                  recv_bytes: 0
+                  affected_items:
+                    - queue_size: 0
+                      total_queue_size: 131072
+                      tcp_sessions: 0
+                      evt_count: 0
+                      ctrl_msg_count: 0
+                      discarded_count: 0
+                      msg_sent: 0
+                      recv_bytes: 0
+                  total_affected_items: 0
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8351,7 +8394,7 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
-                message: Logs read successfully in specified node
+                message: "Logs were successfully read in specified node"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8509,7 +8552,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: File updated successfully
+                message: "File was successfully updated"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8551,7 +8594,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: File was deleted successfully
+                message: File was successfully deleted
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8590,7 +8633,7 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseNodeIDs'
                 example:
-                  message: Restart command sent to all shown nodes
+                  message: "Restart request sent to all specified nodes"
                   data:
                     affected_items:
                       - 'master-node'
@@ -8646,7 +8689,7 @@ paths:
                     total_affected_items: 3
                     failed_items: []
                     total_failed_items: 0
-                  message: Validation checked successfully in all nodes
+                  message: Validation was successfully checked in all nodes
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8786,7 +8829,7 @@ paths:
                   total_affected_items: 4
                   failed_items: []
                   total_failed_items: 0
-                message: All specified lists were shown
+                message: 'All specified lists were returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8842,7 +8885,7 @@ paths:
                   total_affected_items: 4
                   failed_items: []
                   total_failed_items: 0
-                message: All specified paths were shown
+                message: 'All specified paths were returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9020,6 +9063,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Processes status successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9070,6 +9114,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Basic information was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9146,6 +9191,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
+                message: "Configuration was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9181,35 +9227,39 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  - hour: 15
-                    alerts:
-                      - sigid: 5303
-                        level: 3
-                        times: 1
-                      - sigid: 5501
-                        level: 3
-                        times: 4
-                      - sigid: 221
-                        level: 0
-                        times: 653
-                    totalAlerts: 658
-                    events: 4387
-                    firewall: 0
-                  - hour: 16
-                    alerts:
-                      - sigid: 5521
-                        level: 0
-                        times: 1
-                      - sigid: 530
-                        level: 0
-                        times: 120
-                    totalAlerts: 121
-                    events: 4379
-                    syscheck: 0
-                    firewall: 0
+                  affected_items:
+                    - hour: 15
+                      alerts:
+                        - sigid: 5303
+                          level: 3
+                          times: 1
+                        - sigid: 5501
+                          level: 3
+                          times: 4
+                        - sigid: 221
+                          level: 0
+                          times: 653
+                      totalAlerts: 658
+                      events: 4387
+                      firewall: 0
+                    - hour: 16
+                      alerts:
+                        - sigid: 5521
+                          level: 0
+                          times: 1
+                        - sigid: 530
+                          level: 0
+                          times: 120
+                      totalAlerts: 121
+                      events: 4379
+                      syscheck: 0
+                      firewall: 0
+                  total_affected_items: 2
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9244,35 +9294,39 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhHourlyStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                  interactions: 0
+                  affected_items:
+                    - averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                      interactions: 0
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9307,198 +9361,202 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhWeeklyStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  Sun:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Mon:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Tue:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Wed:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Thu:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Fri:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
-                  Sat:
-                    averages:
-                    - 40
-                    - 24
-                    - 67
-                    - 234
-                    - 66
-                    - 24
-                    - 634
-                    - 66
-                    - 123
-                    - 56
-                    - 65
-                    - 23
-                    - 666
-                    - 233
-                    - 646
-                    - 44
-                    - 64
-                    - 99
-                    - 34
-                    - 235
-                    - 653
-                    - 25
-                    - 65
-                    - 23
-                    interactions: 0
+                  affected_items:
+                    - Sun:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Mon:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Tue:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Wed:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Thu:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Fri:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                    - Sat:
+                        averages:
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
+                        interactions: 0
+                  total_affected_items: 7
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9529,59 +9587,63 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/WazuhAnalysisdStats'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  total_events_decoded: 5
-                  syscheck_events_decoded: 0
-                  syscheck_edps: 0
-                  syscollector_events_decoded: 0
-                  syscollector_edps: 0
-                  rootcheck_events_decoded: 0
-                  rootcheck_edps: 0
-                  sca_events_decoded: 0
-                  sca_edps: 0
-                  hostinfo_events_decoded: 0
-                  hostinfo_edps: 0
-                  winevt_events_decoded: 0
-                  winevt_edps: 0
-                  other_events_decoded: 5
-                  other_events_edps: 1
-                  events_processed: 5
-                  events_edps: 1
-                  events_received: 5
-                  events_dropped: 0
-                  alerts_written: 0
-                  firewall_written: 0
-                  fts_written: 0
-                  syscheck_queue_usage: 0
-                  syscheck_queue_size: 16384
-                  syscollector_queue_usage: 0
-                  syscollector_queue_size: 16384
-                  rootcheck_queue_usage: 0
-                  rootcheck_queue_size: 16384
-                  sca_queue_usage: 0
-                  sca_queue_size: 16384
-                  hostinfo_queue_usage: 0
-                  hostinfo_queue_size: 16384
-                  winevt_queue_usage: 0
-                  winevt_queue_size: 16384
-                  event_queue_usage: 0
-                  event_queue_size: 16384
-                  rule_matching_queue_usage: 0
-                  rule_matching_queue_size: 16384
-                  alerts_queue_usage: 0
-                  alerts_queue_size: 16384
-                  firewall_queue_usage: 0
-                  firewall_queue_size: 16384
-                  statistical_queue_usage: 0
-                  statistical_queue_size: 16384
-                  archives_queue_usage: 0
-                  archives_queue_size: 16384
+                  affected_items:
+                    - total_events_decoded: 5
+                      syscheck_events_decoded: 0
+                      syscheck_edps: 0
+                      syscollector_events_decoded: 0
+                      syscollector_edps: 0
+                      rootcheck_events_decoded: 0
+                      rootcheck_edps: 0
+                      sca_events_decoded: 0
+                      sca_edps: 0
+                      hostinfo_events_decoded: 0
+                      hostinfo_edps: 0
+                      winevt_events_decoded: 0
+                      winevt_edps: 0
+                      other_events_decoded: 5
+                      other_events_edps: 1
+                      events_processed: 5
+                      events_edps: 1
+                      events_received: 5
+                      events_dropped: 0
+                      alerts_written: 0
+                      firewall_written: 0
+                      fts_written: 0
+                      syscheck_queue_usage: 0
+                      syscheck_queue_size: 16384
+                      syscollector_queue_usage: 0
+                      syscollector_queue_size: 16384
+                      rootcheck_queue_usage: 0
+                      rootcheck_queue_size: 16384
+                      sca_queue_usage: 0
+                      sca_queue_size: 16384
+                      hostinfo_queue_usage: 0
+                      hostinfo_queue_size: 16384
+                      winevt_queue_usage: 0
+                      winevt_queue_size: 16384
+                      event_queue_usage: 0
+                      event_queue_size: 16384
+                      rule_matching_queue_usage: 0
+                      rule_matching_queue_size: 16384
+                      alerts_queue_usage: 0
+                      alerts_queue_size: 16384
+                      firewall_queue_usage: 0
+                      firewall_queue_size: 16384
+                      statistical_queue_usage: 0
+                      statistical_queue_size: 16384
+                      archives_queue_usage: 0
+                      archives_queue_size: 16384
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9616,17 +9678,21 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhRemotedStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
               example:
                 data:
-                  queue_size: 0
-                  total_queue_size: 131072
-                  tcp_sessions: 0
-                  evt_count: 0
-                  ctrl_msg_count: 0
-                  discarded_count: 0
-                  msg_sent: 0
-                  recv_bytes: 0
+                  affected_items:
+                    - queue_size: 0
+                      total_queue_size: 131072
+                      tcp_sessions: 0
+                      evt_count: 0
+                      ctrl_msg_count: 0
+                      discarded_count: 0
+                      msg_sent: 0
+                      recv_bytes: 0
+                  total_affected_items: 0
+                  failed_items: []
+                  total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9750,6 +9816,7 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
+                message: "Log was successfully summarized"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9838,7 +9905,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - $ref: '#/components/schemas/ConfirmationMessage'
               example:
-                message: File updated successfully
+                message: "File was uploaded successfully"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9881,7 +9948,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: File was deleted
+                message: File was deleted successfully
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9947,7 +10014,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "API configuration read successfully"
+                message: "API configuration was successfully read"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9989,7 +10056,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "API configuration successfully updated. Some settings may require restarting the API to be applied"
+                message: "API configuration was successfully updated. Some settings may require restarting the API to be applied"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10031,7 +10098,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "API configuration successfully updated. Some settings may require restarting the API to be applied"
+                message: "API configuration was successfully updated. Some settings may require restarting the API to be applied"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10109,7 +10176,7 @@ paths:
                     total_affected_items: 1
                     failed_items: []
                     total_failed_items: 0
-                  message: "Validation checked succesfully in all nodes"
+                  message: "Validation was successfully checked in all nodes"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10155,7 +10222,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "Active configuration read successfully on specified node"
+                message: "Active configuration was successfully read in specified node"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10238,7 +10305,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All selected MITRE information is shown"
+                message: "All selected MITRE information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10333,7 +10400,7 @@ paths:
                   total_affected_items: 54
                   failed_items: []
                   total_failed_items: 0
-                message: All selected rules were shown
+                message: "All selected rules were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10385,7 +10452,7 @@ paths:
                   total_affected_items: 6
                   failed_items: []
                   total_failed_items: 0
-                message: All groups in rules are shown
+                message: "All groups in rules were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10439,7 +10506,7 @@ paths:
                   total_affected_items: 7
                   failed_items: []
                   total_failed_items: 0
-                message: Selected rules were shown
+                message: "All selected rules were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10500,7 +10567,7 @@ paths:
                   total_affected_items: 4
                   failed_items: []
                   total_failed_items: 0
-                message: All rules files were shown
+                message: "All rules files were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10606,7 +10673,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: All selected sca information is shown
+                message: "All selected sca information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10700,7 +10767,7 @@ paths:
                   failed_items: []
                   total_affected_items: 2
                   total_failed_items: 0
-                message: All selected sca/policy information is shown
+                message: "All selected sca/policy information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10747,7 +10814,7 @@ paths:
                   failed_items: []
                   total_affected_items: 4
                   total_failed_items: 0
-                message: "Restarting syscheck scan on shown agents"
+                message: "Syscheck scan was restarted on returned agents"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10834,7 +10901,7 @@ paths:
                   total_affected_items: 1433
                   failed_items: []
                   total_failed_items: 0
-                message: FIM findings of the agent
+                message: "FIM findings of the agent were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10877,7 +10944,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "Cleared syscheck database on shown agents"
+                message: "Syscheck database was cleared on returned agents"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10922,7 +10989,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: Last scan of the agent
+                message: "Last syscheck scan of the agent was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10992,7 +11059,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: All selected decoders were shown
+                message: "All selected decoders were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11050,7 +11117,7 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
-                message: All decoder files were shown
+                message: "All decoder files were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11143,7 +11210,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: All selected decoders were shown
+                message: "All selected decoders were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11291,7 +11358,7 @@ paths:
                   failed_items: []
                   total_affected_items: 3
                   total_failed_items: 0
-                message: All CISCAT results loaded
+                message: 'All CISCAT results were returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11384,7 +11451,7 @@ paths:
                   failed_items: []
                   total_affected_items: 3
                   total_failed_items: 0
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11460,7 +11527,7 @@ paths:
                   failed_items: []
                   total_affected_items: 3
                   total_failed_items: 0
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11578,7 +11645,7 @@ paths:
                   failed_items: []
                   total_affected_items: 3
                   total_failed_items: 0
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11651,7 +11718,7 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11752,7 +11819,7 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11850,7 +11917,7 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11951,7 +12018,7 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12077,7 +12144,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
-                message: All specified syscollector information is shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12134,7 +12201,7 @@ paths:
                   failed_items: []
                   total_affected_items: 2
                   total_failed_items: 0
-                message: All specified items were shown
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12192,7 +12259,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified syscollector information is shown"
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12246,7 +12313,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified syscollector information is shown"
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12307,7 +12374,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified syscollector information is shown"
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12388,7 +12455,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified syscollector information is shown"
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12448,7 +12515,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified syscollector information is shown"
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12508,7 +12575,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified syscollector information is shown"
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12607,7 +12674,7 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
-                  message: "All specified syscollector information is shown"
+                  message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12709,7 +12776,7 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified syscollector information is shown"
+                message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12836,7 +12903,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                  message: "All specified syscollector information is shown"
+                  message: "All specified syscollector information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12900,7 +12967,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "User wazuh logout correctly."
+                message: "User wazuh was successfully logged out"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13063,7 +13130,7 @@ paths:
       operationId: api.controllers.security_controller.revoke_all_tokens
       responses:
         '200':
-          description: "Tokens revoked succesfully"
+          description: "Tokens were successfully revoked"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13125,7 +13192,7 @@ paths:
                       rule:
                         - 3
                   total_affected_items: 2
-                message: "All available roles were shown"
+                message: "All specified roles were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13177,7 +13244,7 @@ paths:
                         MATCH:
                           definition: limit_access
                   total_affected_items: 1
-                message: Role created correctly
+                message: "Role was successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13303,7 +13370,7 @@ paths:
                         MATCH:
                           definition: normalRule8
                   total_affected_items: 1
-                message: Role updated correctly
+                message: "Role was successfully updated"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13363,7 +13430,7 @@ paths:
                         MATCH:
                           privileges: 'limit_access'
                   total_affected_items: 2
-                message: "All available rules were shown"
+                message: "All specified security rules were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13421,7 +13488,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "Rule created correctly"
+                message: "Security rule was successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13473,7 +13540,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: "All specified rules were deleted"
+                message: "All specified security rules were deleted"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13532,7 +13599,7 @@ paths:
                     total_affected_items: 1
                     failed_items: []
                     total_failed_items: 0
-                  message: "Rule updated correctly"
+                  message: "Security rule was successfully updated"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13595,7 +13662,7 @@ paths:
                           - agent:id:005
                           - agent:id:006
                   total_affected_items: 2
-                message: All available policies were shown
+                message: "All specified policies were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13646,6 +13713,7 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponsePolicies'
               example:
+                #TODO AffectedItemWazuhResult
                 data:
                   id: 2
                   name: 'normal_policy'
@@ -13656,6 +13724,7 @@ paths:
                       - "agent:id:001"
                     effect: "allow"
                   roles: []
+                message: "Policy was successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13720,7 +13789,7 @@ paths:
                   failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
-                message: All specified policies were deleted
+                message: "All specified policies were deleted"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13787,7 +13856,7 @@ paths:
                           - agent:id:003
                       roles: []
                   total_affected_items: 1
-                message: Policy updated correctly
+                message: "Policy was successfully updated"
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -13955,7 +14024,7 @@ paths:
                   failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
-                message: "All rules were linked to role 5"
+                message: "All security rules were linked to role 5"
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -14000,7 +14069,7 @@ paths:
                   failed_items: []
                   total_affected_items: 2
                   total_failed_items: 0
-                message: All rules were unlinked from role 3
+                message: "All security rules were unlinked from role 3"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14169,7 +14238,7 @@ paths:
                     total_affected_items: 1
                     total_failed_items: 0
                     failed_items: []
-                  message: Current user information was shown
+                  message: "Current user information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14257,7 +14326,7 @@ paths:
                     failed_items: []
                     total_affected_items: 8
                     total_failed_items: 0
-                  message: All specified users were shown
+                  message: "All specified users were returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14322,7 +14391,7 @@ paths:
                     failed_items: []
                     total_affected_items: 1
                     total_failed_items: 0
-                  message: User created correctly
+                  message: "User was successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14360,7 +14429,8 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseUsers'
                 example:
                   data:
-                    message: 'User deleted correctly'
+                    # TODO AffectedItemWazuhResult
+                    message: "Users were successfully deleted"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14420,7 +14490,7 @@ paths:
                     total_affected_items: 1
                     total_failed_items: 0
                     failed_items: []
-                  message: User modified correctly
+                  message: "User was successfully updated"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

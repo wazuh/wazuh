@@ -22,7 +22,7 @@ else
 fi
 
 sleep 1
-/var/ossec/bin/ossec-control restart
+
 
 # Manager configuration
 for py_file in /configuration_files/*.py; do
@@ -33,11 +33,13 @@ for sh_file in /configuration_files/*.sh; do
   . $sh_file
 done
 
+/var/ossec/bin/ossec-control restart
+
 # RBAC configuration
 for sql_file in /configuration_files/*.sql; do
   sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file
 done
 
-/var/ossec/bin/wazuh-apid restart
+
 
 /usr/bin/supervisord

@@ -308,7 +308,6 @@ stages:
               global: !anything
               integration: !anything
               localfile: !anything
-              open-scap: !anything
               osquery: !anything
               remote: !anything
               rootcheck: !anything
