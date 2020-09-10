@@ -89,6 +89,7 @@
 #define VU_NO_SRC_NAME        "(5481): Unable to get the source '%s' name for agent '%.3d'"
 #define VU_VULN_SEND_AG_FEED  "(5482): A total of '%d' vulnerabilities have been reported for agent '%.3d' thanks to the '%s' feed."
 #define VU_NO_HOTFIX_DISABLED "(5483): No MSU data found, so the Windows hotfixes scan will be disabled for agent '%.3d'"
+#define VU_METADATA_CLEAN     "(5484): Cleaning metadata for target '%s'"
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
