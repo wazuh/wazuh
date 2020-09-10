@@ -1026,7 +1026,7 @@ int wdb_global_set_sync_status(wdb_t *wdb, int id, wdb_sync_status_t status) {
     }
 }
 
-wdbc_result wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output) {
+wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output) {
     sqlite3_stmt* agent_stmt = NULL;
     unsigned response_size = 2;     //Starts with "[]" size
     wdbc_result status = WDBC_UNKNOWN;
