@@ -13,6 +13,7 @@
 #include "registry.h"
 #include "shared.h"
 #include "../syscheck.h"
+#include "../db/fim_db.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
@@ -224,7 +225,7 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql, fim_entry *data, pthr
         }
     }
 
-    if (fim_db_get_values_from_registry_key(fim_sql, &file, syscheck.database_store, data->registry_entry.key->id) == 0) {
+    if (fim_db_get_values_from_registry_key(fim_sql, &file, syscheck.database_store, data->registry_entry.key->id) == FIMDB_OK) {
         fim_db_process_read_file(fim_sql, file, mutex, fim_registry_process_value_delete_event, syscheck.database_store,
                                  _alert, _ev_mode, _w_evt);
     }
@@ -236,14 +237,14 @@ void fim_registry_process_unscanned_entries() {
     fim_tmp_file *file;
     fim_event_mode event_mode = FIM_SCHEDULED;
 
-    if (fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store) == 0) {
+    if (fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store) == FIMDB_OK) {
         fim_db_process_read_file(syscheck.database, file, NULL, fim_registry_process_key_delete_event,
                                  syscheck.database_store, &_base_line, &event_mode, NULL);
     } else {
         mwarn("Failed to get unscanned registry keys");
     }
 
-    if (fim_db_get_registry_data_not_scanned(syscheck.database, &file, syscheck.database_store) == 0) {
+    if (fim_db_get_registry_data_not_scanned(syscheck.database, &file, syscheck.database_store) == FIMDB_OK) {
         fim_db_process_read_file(syscheck.database, file, NULL, fim_registry_process_value_delete_event,
                                  syscheck.database_store, &_base_line, &event_mode, NULL);
     } else {
@@ -273,7 +274,7 @@ void fim_registry_process_value_event(fim_entry *new, fim_entry *saved, int arch
     }
 
     saved->registry_entry.value =
-    fim_db_get_registry_data(syscheck.database, new->registry_entry.key->id, new->registry_entry.value->name);
+    fim_db_get_registry_data(syscheck.database, new->registry_entry.value->name, new->registry_entry.key->id);
     fim_db_set_registry_data_scanned(syscheck.database, new->registry_entry.value->name, new->registry_entry.key->id);
 
     if (configuration->opts | CHECK_SEECHANGES) {
@@ -285,7 +286,7 @@ void fim_registry_process_value_event(fim_entry *new, fim_entry *saved, int arch
                                     saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED, NULL, diff);
 
     if (json_event) {
-        if (fim_db_insert_registry(syscheck.database, new) != 0) {
+        if (fim_db_insert_registry(syscheck.database, new) != FIMDB_OK) {
             mwarn("Couldn't insert into DB");
         }
 
@@ -312,6 +313,14 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, int arch
     DWORD data_type = 0;
     DWORD i;
 
+    if (new->registry_entry.key->id == 0) {
+        if (fim_db_get_registry_key_rowid(syscheck.database, new->registry_entry.key->path, &new->registry_entry.key->id) != FIMDB_OK) {
+            mwarn("Unable to get id for registry key '%s'", new->registry_entry.key->path);
+            return;
+        }
+    }
+
+    value_data.id = new->registry_entry.key->id;
     new->registry_entry.value = &value_data;
 
     for (i = 0; i < value_count; i++) {
@@ -416,7 +425,7 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
         fim_db_set_registry_key_scanned(syscheck.database, full_key);
 
         if (json_event) {
-            if (fim_db_insert_registry(syscheck.database, &new) != 0) {
+            if (fim_db_insert_registry(syscheck.database, &new) != FIMDB_OK) {
                 mwarn("Couldn't insert into DB");
             }
 
