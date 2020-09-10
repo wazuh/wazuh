@@ -7458,7 +7458,7 @@ paths:
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
                         access:
-                          max_login_attempts: 5
+                          max_login_attempts: 50
                           block_time: 300
                           max_request_per_minute: 300
                         logs:
@@ -9830,7 +9830,7 @@ paths:
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
                         access:
-                          max_login_attempts: 5
+                          max_login_attempts: 50
                           block_time: 300
                           max_request_per_minute: 300
                         logs:
