@@ -27,10 +27,6 @@ cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, c
         cJSON_AddNumberToObject(attributes, "size", data->size);
     }
 
-    if (configuration->opts & CHECK_MTIME) {
-        cJSON_AddNumberToObject(attributes, "mtime", data->mtime);
-    }
-
     if (configuration->opts & CHECK_MD5SUM) {
         cJSON_AddStringToObject(attributes, "hash_md5", data->hash_md5);
     }
@@ -50,32 +46,28 @@ cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, c
     return attributes;
 }
 
-cJSON *fim_registry_compare_value_attrs(const fim_entry *new_data, const fim_entry *old_data, const registry *configuration) {
-    fim_registry_value_data *new_value = new_data->registry_entry.value;
-    fim_registry_value_data *old_value = old_data->registry_entry.value;
+cJSON *fim_registry_compare_value_attrs(const fim_registry_value_data *new_data,
+                                        const fim_registry_value_data *old_data,
+                                        const registry *configuration) {
     cJSON *changed_attributes = cJSON_CreateArray();
 
-    if ((configuration->opts & CHECK_SIZE) && old_value->size != new_value->size) {
+    if ((configuration->opts & CHECK_SIZE) && old_data->size != new_data->size) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
     }
 
-    if ((configuration->opts & CHECK_TYPE) && old_value->type != new_value->type) {
+    if ((configuration->opts & CHECK_TYPE) && old_data->type != new_data->type) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("type"));
     }
 
-    if ((configuration->opts & CHECK_MTIME) && old_value->mtime != new_value->mtime) {
-        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
-    }
-
-    if ((configuration->opts & CHECK_MD5SUM) && (strcmp(old_value->hash_md5, new_value->hash_md5) != 0)) {
+    if ((configuration->opts & CHECK_MD5SUM) && (strcmp(old_data->hash_md5, new_data->hash_md5) != 0)) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("md5"));
     }
 
-    if ((configuration->opts & CHECK_SHA1SUM) && (strcmp(old_value->hash_sha1, new_value->hash_sha1) != 0)) {
+    if ((configuration->opts & CHECK_SHA1SUM) && (strcmp(old_data->hash_sha1, new_data->hash_sha1) != 0)) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha1"));
     }
 
-    if ((configuration->opts & CHECK_SHA256SUM) && (strcmp(old_value->hash_sha256, new_value->hash_sha256) != 0)) {
+    if ((configuration->opts & CHECK_SHA256SUM) && (strcmp(old_data->hash_sha256, new_data->hash_sha256) != 0)) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha256"));
     }
 
@@ -90,9 +82,11 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
                                      __attribute__((unused)) whodata_evt *w_evt,
                                      const char *diff) {
     cJSON *changed_attributes;
+    char path[OS_SIZE_512];
 
     if (old_data != NULL) {
-        changed_attributes = fim_registry_compare_value_attrs(new_data, old_data, configuration);
+        changed_attributes =
+        fim_registry_compare_value_attrs(new_data->registry_entry.value, old_data->registry_entry.value, configuration);
 
         if (cJSON_GetArraySize(changed_attributes) == 0) {
             cJSON_Delete(changed_attributes);
@@ -106,7 +100,6 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
     cJSON *data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
-    char path[OS_SIZE_512];
     snprintf(path, OS_SIZE_512, "%s\\%s", new_data->registry_entry.key->path, new_data->registry_entry.value->name);
     cJSON_AddStringToObject(data, "path", path);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
@@ -143,18 +136,22 @@ cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const regi
 
     if (configuration->opts & CHECK_OWNER) {
         cJSON_AddStringToObject(attributes, "uid", data->uid);
+
+        if (data->user_name) {
+            cJSON_AddStringToObject(attributes, "user_name", data->user_name);
+        }
     }
 
     if (configuration->opts & CHECK_GROUP) {
         cJSON_AddStringToObject(attributes, "gid", data->gid);
+
+        if (data->group_name) {
+            cJSON_AddStringToObject(attributes, "group_name", data->group_name);
+        }
     }
 
-    if (data->user_name) {
-        cJSON_AddStringToObject(attributes, "user_name", data->user_name);
-    }
-
-    if (data->group_name) {
-        cJSON_AddStringToObject(attributes, "group_name", data->group_name);
+    if (configuration->opts & CHECK_MTIME) {
+        cJSON_AddNumberToObject(attributes, "mtime", data->mtime);
     }
 
     if (*data->checksum) {
@@ -189,6 +186,10 @@ cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data, const fi
         if (old_data->group_name && new_data->group_name && strcmp(old_data->group_name, new_data->group_name) != 0) {
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group_name"));
         }
+    }
+
+    if ((configuration->opts & CHECK_MTIME) && old_data->mtime != new_data->mtime) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
     }
 
     return changed_attributes;
