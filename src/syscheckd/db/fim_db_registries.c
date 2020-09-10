@@ -344,6 +344,20 @@ int fim_db_set_registry_data_scanned(fdb_t *fim_sql, char *name, unsigned int ke
 
     return FIMDB_OK;
 }
+
+int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, int *rowid) {
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_REG_ROWID);
+    fim_db_bind_registry_path(fim_sql, FIMDB_STMT_GET_REG_ROWID, path);
+
+    if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_REG_ROWID]) != SQLITE_ROW) {
+        merror("Step error getting registry rowid %s: %s", path, sqlite3_errmsg(fim_sql->db));
+        return FIMDB_ERR;
+    }
+    *rowid = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_REG_ROWID], 0);
+
+    return FIMDB_OK;
+}
+
 fim_entry *fim_db_get_registry(fdb_t *fim_sql, const char *path) {}
 
 int fim_db_get_registry_keys_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage){

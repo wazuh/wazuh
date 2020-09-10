@@ -45,6 +45,16 @@ int fim_db_get_registry_key_checksum(fdb_t *fim_sql, void * arg);
 int fim_db_get_registry_data_checksum(fdb_t *fim_sql, void * arg);
 
 /**
+ * @brief Get the rowid of a key path.
+ * @param fim_sql FIM database struct
+ * @param path Path of the key to look for
+ * @param rowid Variable where the rowid will be stored
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, int *rowid);
+
+/**
  * @brief Get a registry key using its path.
  *
  * @param fim_sql FIM database struct.
@@ -63,7 +73,7 @@ fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path);
  *
  * @return FIM registry data struct on success, NULL on error.
  */
-fim_registry_value_data *fim_db_get_registry_data(fdb_t *fim_sql, const int key_id, const char *name);
+fim_registry_value_data *fim_db_get_registry_data(fdb_t *fim_sql, const char *name, const int key_id);
 
 /**
  * @brief Get all the key paths

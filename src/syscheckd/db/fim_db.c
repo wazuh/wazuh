@@ -335,13 +335,13 @@ int fim_db_clean_stmt(fdb_t *fim_sql, int index) {
 
 //wrappers
 
-int fim_db_process_get_query(fdb_t *fim_sql, int registry, int index,
+int fim_db_process_get_query(fdb_t *fim_sql, int type, int index,
                              void (*callback)(fdb_t *, fim_entry *, int , void *), int storage, void * arg) {
     int result;
     int i;
     for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
-        fim_entry *entry = registry == FIM_TYPE_REGISTRY ? fim_db_decode_full_reg_row(fim_sql->stmt[index])
-                                                         : fim_db_decode_full_row(fim_sql->stmt[index]);
+        fim_entry *entry = type == FIM_TYPE_REGISTRY ? fim_db_decode_full_reg_row(fim_sql->stmt[index])
+                                                     : fim_db_decode_full_row(fim_sql->stmt[index]);
         callback(fim_sql, entry, storage, arg);
         free_entry(entry);
     }

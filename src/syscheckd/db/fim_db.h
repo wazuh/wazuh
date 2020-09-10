@@ -57,7 +57,7 @@ int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
  * @brief
  *
  * @param fim_sql FIM database structure.
- * @param registry Variable to indicate if the query is for registries or for files. 0 (FIM_TYPE_FILE) for files
+ * @param type Variable to indicate if the query is for registries or for files. 0 (FIM_TYPE_FILE) for files
  *  1 (FIM_TYPE_REGISTRY) for registries.
  * @param index
  * @param callback
@@ -65,7 +65,7 @@ int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
  * @param pos
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_process_get_query(fdb_t *fim_sql, int registry, int index,
+int fim_db_process_get_query(fdb_t *fim_sql, int type, int index,
                                     void (*callback)(fdb_t *, fim_entry *, int, void *),
                                     int memory, void * arg);
 
