@@ -213,36 +213,36 @@ typedef struct fim_file_data {
     os_sha1 checksum;
 } fim_file_data;
 
-typedef struct fim_registry_value_data {
-    char * name;
-    unsigned int type;
-    // char * data;
-    unsigned int size;
-    os_md5 hash_md5;
-    os_sha1 hash_sha1;
-    os_sha256 hash_sha256;
-    unsigned int mtime;
-    time_t last_event;
-    unsigned int scanned;
-
-    //type:size:hash_sh1:mtime
-    os_sha1 checksum;
-    fim_event_mode mode;
-} fim_registry_value_data;
-
 typedef struct fim_registry_key {
-    char * path;
     unsigned int id;
+    char * path;
     char * perm;
     char * uid;
     char * gid;
     char * user_name;
     char * group_name;
+    unsigned int mtime;
 
     unsigned int scanned;
     // path:perm:uid:user_name:gid:group_name
     os_sha1 checksum;
 } fim_registry_key;
+
+typedef struct fim_registry_value_data {
+    unsigned int id;
+    char *name;
+    unsigned int type;
+    unsigned int size;
+    os_md5 hash_md5;
+    os_sha1 hash_sha1;
+    os_sha256 hash_sha256;
+
+    unsigned int scanned;
+    time_t last_event;
+    //type:size:hash_sh1:mtime
+    os_sha1 checksum;
+    fim_event_mode mode;
+} fim_registry_value_data;
 
 typedef struct fim_entry {
     fim_type type;

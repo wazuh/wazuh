@@ -46,9 +46,10 @@ CREATE TABLE IF NOT EXISTS registry_key (
     gid INTEGER,
     user_name TEXT,
     group_name TEXT,
+    mtime INTEGER,
     scanned INTEGER,
-    options INTEGER,
     checksum TEXT NOT NULL,
+
     PRIMARY KEY(path)
 );
 
@@ -58,15 +59,16 @@ CREATE TABLE IF NOT EXISTS registry_data (
     key_id INTEGER,
     name TEXT,
     type INTEGER,
+    size INTEGER,
     hash_md5 TEXT,
     hash_sha1 TEXT,
     hash_sha256 TEXT,
     scanned INTEGER,
-    checksum TEXT NOT NULL,
     last_event INTEGER,
-    options INTEGER,
+    checksum TEXT NOT NULL,
+
     PRIMARY KEY(key_id, name)
-    FOREING KEY (key_id) REFERENCES registry_key(rowid)
+    FOREIGN KEY (key_id) REFERENCES registry_key(rowid)
 );
 
 CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (key_id, name);
