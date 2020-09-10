@@ -3,18 +3,16 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import concurrent.futures
-from base64 import b64decode
-from json import loads
 from logging import getLogger
 from time import time
-from connexion.problem import problem as connexion_problem
-from connexion.exceptions import ProblemException, ExtraParameterProblem, OAuthProblem
 
 from aiohttp import web
+from connexion.exceptions import ProblemException, OAuthProblem
+from connexion.problem import problem as connexion_problem
 
-from api.authentication import get_api_conf
+from api.configuration import api_conf
 from api.util import raise_if_exc
-from wazuh.core.exception import WazuhError, WazuhTooManyRequests, WazuhPermissionError
+from wazuh.core.exception import WazuhTooManyRequests, WazuhPermissionError
 
 logger = getLogger('wazuh')
 pool = concurrent.futures.ThreadPoolExecutor()
@@ -88,7 +86,7 @@ async def prevent_denial_of_service(request, max_requests=300):
 
 @web.middleware
 async def security_middleware(request, handler):
-    access_conf = get_api_conf()['access']
+    access_conf = api_conf['access']
     await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
     await unlock_ip(request=request, block_time=access_conf['block_time'])
 
@@ -105,6 +103,7 @@ async def response_postprocessing(request, handler):
 
     Additionally, it cleans the output given by connexion's exceptions. If no exception is raised during the
     'await handler(request) it means the output will be a 200 response and no fields needs to be removed."""
+
     def cleanup_detail_field(detail):
         return ' '.join(str(detail).replace("\n\n", ". ").replace("\n", "").split())
 
