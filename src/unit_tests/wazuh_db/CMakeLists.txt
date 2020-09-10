@@ -30,7 +30,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                              -Wl,--wrap,wdb_global_update_agent_status -Wl,--wrap,wdb_global_update_agent_group -Wl,--wrap,wdb_global_find_group \
                              -Wl,--wrap,wdb_global_insert_agent_group -Wl,--wrap,wdb_global_insert_agent_belong -Wl,--wrap,wdb_global_delete_group_belong \
                              -Wl,--wrap,wdb_global_delete_group -Wl,--wrap,wdb_global_select_groups -Wl,--wrap,wdb_global_select_agent_keepalive \
-                             -Wl,--wrap,wdb_sync_agent_info_get -Wl,--wrap,wdb_global_sync_agent_info_set -Wl,--wrap,wdb_global_get_agents_by_keepalive \
+                             -Wl,--wrap,wdb_global_sync_agent_info_get -Wl,--wrap,wdb_global_sync_agent_info_set -Wl,--wrap,wdb_global_get_agents_by_keepalive \
                              -Wl,--wrap,wdb_global_get_all_agents -Wl,--wrap,wdb_global_get_agent_info")
 
 list(APPEND wdb_tests_names "test_wdb_global")

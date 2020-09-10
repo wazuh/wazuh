@@ -236,7 +236,7 @@ cJSON* __wrap_wdb_global_select_agent_keepalive(__attribute__((unused)) wdb_t *w
     return mock_ptr_type(cJSON*);
 }
 
-wdbc_result __wrap_wdb_sync_agent_info_get( __attribute__((unused)) wdb_t *wdb,
+wdbc_result __wrap_wdb_global_sync_agent_info_get( __attribute__((unused)) wdb_t *wdb,
                                             int* last_agent_id,
                                             char **output) {
     check_expected(*last_agent_id);

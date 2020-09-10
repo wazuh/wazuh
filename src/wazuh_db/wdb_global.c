@@ -105,12 +105,12 @@ int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name) {
 
     stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_AGENT_NAME];
 
-    if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+    if (sqlite3_bind_text(stmt, 1, name, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_text(stmt, 2, name, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+    if (sqlite3_bind_int(stmt, 2, id) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 
@@ -1026,7 +1026,7 @@ int wdb_global_set_sync_status(wdb_t *wdb, int id, wdb_sync_status_t status) {
     }
 }
 
-wdbc_result wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output) {
+wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output) {
     sqlite3_stmt* agent_stmt = NULL;
     unsigned response_size = 2;     //Starts with "[]" size
     wdbc_result status = WDBC_UNKNOWN;
