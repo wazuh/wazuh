@@ -7,6 +7,7 @@
  * Foundation.
  */
 
+#ifdef WIN32
 
 #include "../syscheck.h"
 
@@ -273,3 +274,5 @@ cJSON *fim_registry_event(const fim_entry *new,
 
     return json_event;
 }
+
+#endif

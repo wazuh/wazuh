@@ -8,6 +8,7 @@
  * Foundation.
  */
 
+#ifdef WIN32
 
 #include "registry.h"
 #include "shared.h"
@@ -506,3 +507,5 @@ void fim_registry_scan() {
 
     return;
 }
+
+#endif
