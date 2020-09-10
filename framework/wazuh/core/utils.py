@@ -870,13 +870,15 @@ class WazuhDBBackend(AbstractDatabaseBackend):
         parameters by itself.
         """
         for k, v in request.items():
-            query = query.replace(f':{k}', f"{v}" if isinstance(v, int) else f"'{v}'")
+            query = re.sub(r':\b' + re.escape(str(k)) + r'\b', f"{v}" if isinstance(v, int) else f"'{v}'", query)
         return query
 
     def _render_query(self, query):
         """Render query attending the format."""
         if self.query_format == 'mitre':
             return f'mitre sql {query}'
+        elif self.query_format == 'global':
+            return f'global sql {query}'
         else:
             return f'agent {self.agent_id} sql {query}'
 

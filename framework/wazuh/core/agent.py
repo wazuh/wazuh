@@ -36,7 +36,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             filters = {}
         if min_select_fields is None:
             min_select_fields = {'lastKeepAlive', 'version', 'id'}
-        backend = SQLiteBackend(common.database_path_global)
+        backend = WazuhDBBackend(query_format='global')
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
                               filters=filters, fields=Agent.fields, default_sort_field=default_sort_field,
                               default_sort_order='ASC', query=query, backend=backend,
