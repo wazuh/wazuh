@@ -10,25 +10,25 @@ from api.models.base_model_ import Body
 
 class LogtestModel(Body):
     """Run logtest model."""
-    def __init__(self, token: str = None, log_format: str = None, location: str = None, log: str = None):
+    def __init__(self, token: str = None, log_format: str = None, location: str = None, event: str = None):
         self.swagger_types = {
             'token': str,
             'log_format': str,
             'location': str,
-            'log': str
+            'event': str
         }
 
         self.attribute_map = {
             'token': 'token',
             'log_format': 'log_format',
             'location': 'location',
-            'log': 'log'
+            'event': 'event'
         }
 
         self._token = token
         self._log_format = log_format
         self._location = location
-        self._log = log
+        self._event = event
 
     @property
     def token(self):
@@ -55,9 +55,9 @@ class LogtestModel(Body):
         self._location = loc
 
     @property
-    def log(self):
-        return self._log
+    def event(self):
+        return self._event
 
-    @log.setter
-    def log(self, log_new):
-        self._log = log_new
+    @event.setter
+    def event(self, event_new):
+        self._event = event_new

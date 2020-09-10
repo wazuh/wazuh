@@ -10,7 +10,7 @@ from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
 from api.models.logtest_model import LogtestModel
 from api.util import remove_nones_to_dict, raise_if_exc
-# from wazuh import logtest # Uncomment when merged with the logtest functions
+from wazuh import logtest
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh')
