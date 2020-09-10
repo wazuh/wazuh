@@ -94,11 +94,6 @@ registry *fim_registry_configuration(const char *key, int arch) {
     return ret;
 }
 
-fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, const registry *configuration) {
-    return NULL;
-}
-
-
 int fim_registry_validate_path(const char *entry_path, const registry *configuration) {
     int ign_it;
     const char *pos;
@@ -154,6 +149,29 @@ int fim_registry_validate_path(const char *entry_path, const registry *configura
     }
 
     return 0;
+}
+
+fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, const registry *configuration) {
+    return NULL;
+}
+
+void fim_registry_free_key(fim_registry_key *key) {
+    if (key) {
+        os_free(key->path);
+        os_free(key->perm);
+        os_free(key->uid);
+        os_free(key->gid);
+        os_free(key->user_name);
+        os_free(key->group_name);
+        free(key);
+    }
+}
+
+void fim_registry_free_value_data(fim_registry_value_data *data) {
+    if (data) {
+        os_free(data->name);
+        free(data);
+    }
 }
 
 void fim_registry_process_value_delete_event(fdb_t *fim_sql,
@@ -234,7 +252,7 @@ void fim_registry_process_unscanned_entries() {
 }
 
 /* Query the key and get all its values */
-void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, int arch, DWORD value_count) {
+void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, int arch, DWORD value_count, fim_event_mode mode) {
     DWORD i;
 
     /* Variables for RegEnumValue */
@@ -248,10 +266,6 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, int arch
 
     fim_registry_value_data value_data;
 
-    /* Clear the values for value_size and data_size */
-    value_buffer[MAX_VALUE_NAME] = '\0';
-    data_buffer[MAX_VALUE_NAME] = '\0';
-
     new->registry_entry.value = &value_data;
 
     for (i = 0; i < value_count; i++) {
@@ -263,10 +277,6 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, int arch
         value_size = MAX_VALUE_NAME;
         data_size = MAX_VALUE_NAME;
 
-        value_buffer[0] = '\0';
-        data_buffer[0] = '\0';
-
-        /* No more values available */
         if (RegEnumValue(key_handle, i, value_buffer, &value_size, NULL, &data_type, data_buffer, &data_size) != ERROR_SUCCESS) {
             break;
         }
@@ -280,23 +290,14 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, int arch
         snprintf(value_path, MAX_KEY, "%s\\%s", new->registry_entry.key->path, value_buffer);
 
         configuration = fim_registry_configuration(value_path, arch);
-        if (configuration == NULL) {
-            mwarn("No configuration found for '%s'", value_path);
-            continue;
-        }
-
-        if (fim_registry_validate_path(value_path, configuration)) {
-            continue;
-        }
-
-        if (fim_check_restrict(value_path, configuration->filerestrict)) {
+        if (configuration == NULL || fim_registry_validate_path(value_path, configuration) ||
+            fim_check_restrict(value_path, configuration->filerestrict)) {
             continue;
         }
 
         new->registry_entry.value->name = value_buffer;
         new->registry_entry.value->type = data_type;
         new->registry_entry.value->size = data_size;
-        new->registry_entry.value->mode = FIM_SCHEDULED;
 
         saved->registry_entry.value =
         fim_db_get_registry_data(syscheck.database, new->registry_entry.key->id, new->registry_entry.value->name);
@@ -305,10 +306,11 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, int arch
             diff = fim_registry_value_diff(new->registry_entry.key->path, new->registry_entry.value->name, data_buffer, data_type);
         }
 
-        json_event = fim_registry_event(new, saved, configuration, FIM_SCHEDULED,
+        json_event = fim_registry_event(new, saved, configuration, mode,
                                         saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED, NULL, diff);
 
         os_free(diff);
+        fim_registry_free_value_data(saved->registry_entry.value);
 
         fim_db_set_registry_data_scanned(syscheck.database, new->registry_entry.value->name, new->registry_entry.key->id);
 
@@ -331,7 +333,7 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, int arch
 }
 
 /* Open the registry key */
-void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_key, int arch) {
+void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_key, int arch, fim_event_mode mode) {
     HKEY current_key_handle = NULL;
     REGSAM access_rights;
     DWORD sub_key_count = 0;
@@ -365,6 +367,7 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     /* We use the class_name, sub_key_count and the value count */
     if (RegQueryInfoKey(current_key_handle, NULL, NULL, NULL, &sub_key_count, NULL, NULL, &value_count, NULL, NULL,
                         NULL, &file_time) != ERROR_SUCCESS) {
+        RegCloseKey(current_key_handle);
         return;
     }
 
@@ -386,7 +389,7 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
         }
 
         /* Open sub_key */
-        fim_open_key(root_key_handle, new_full_key, new_sub_key, arch);
+        fim_open_key(root_key_handle, new_full_key, new_sub_key, arch, mode);
     }
 
     // Done scanning sub_keys, trigger an alert on the current key if required.
@@ -403,7 +406,7 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     }
 
     if (!fim_check_restrict(full_key, configuration->filerestrict)) {
-        cJSON *json_event = fim_registry_event(&new, &saved, configuration, FIM_SCHEDULED,
+        cJSON *json_event = fim_registry_event(&new, &saved, configuration, mode,
                                                saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFIED, NULL, NULL);
 
         fim_db_set_registry_key_scanned(syscheck.database, full_key);
@@ -424,9 +427,11 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     }
 
     if (value_count) {
-        fim_read_values(current_key_handle, &new, &saved, arch, value_count);
+        fim_read_values(current_key_handle, &new, &saved, arch, value_count, mode);
     }
 
+    fim_registry_free_key(new.registry_entry.key);
+    fim_registry_free_key(saved.registry_entry.key);
     RegCloseKey(current_key_handle);
     return;
 }
@@ -459,7 +464,7 @@ void fim_registry_scan() {
             continue;
         }
 
-        fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, syscheck.registry[i].arch);
+        fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, syscheck.registry[i].arch, FIM_SCHEDULED);
     }
 
     fim_registry_process_unscanned_entries();
