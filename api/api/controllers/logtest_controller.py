@@ -24,14 +24,6 @@ async def run_logtest_tool(request, pretty: bool = False, wait_for_complete: boo
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    token : str
-        Token of the saved session.
-    log_format : str
-        Format of the log.
-    location : str
-        Path string.
-    log : str
-        Request body with the log information.
 
     Returns
     -------
