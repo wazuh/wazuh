@@ -66,11 +66,9 @@ namespace Utils
     static std::string asciiToHex(const std::vector<unsigned char>& asciiData)
     {
         std::stringstream ss;
-        ss << std::setfill('0') << std::setw(2);
-        
         for (const auto& val : asciiData)
         {
-            ss << std::hex << val;
+            ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(val);
         }
         return ss.str();
     }
