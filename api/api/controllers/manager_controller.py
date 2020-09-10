@@ -17,6 +17,7 @@ from api.models.base_model_ import Data, Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh.core import common
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.exception import WazuhError
 
 logger = logging.getLogger('wazuh')
 
@@ -136,9 +137,8 @@ async def get_stats_hourly(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_weekly(request, pretty=False, wait_for_complete=False):
@@ -161,9 +161,8 @@ async def get_stats_weekly(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_analysisd(request, pretty=False, wait_for_complete=False):
@@ -183,9 +182,8 @@ async def get_stats_analysisd(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_remoted(request, pretty=False, wait_for_complete=False):
@@ -205,9 +203,8 @@ async def get_stats_remoted(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_log(request, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
@@ -376,8 +373,8 @@ async def put_api_config(request, pretty=False, wait_for_complete=False):
 
     try:
         f_kwargs = {"updated_config": await request.json()}
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
+    except JSONDecodeError:
+        raise_if_exc(WazuhError(code=1018))
 
     dapi = DistributedAPI(f=manager.update_api_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

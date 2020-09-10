@@ -20,13 +20,24 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mwarn \
-                             -Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg")
+                             -Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg \
+                             -Wl,--wrap,wdb_global_insert_agent -Wl,--wrap,wdb_global_update_agent_name -Wl,--wrap,wdb_global_update_agent_version \
+                             -Wl,--wrap,wdb_global_get_agent_labels -Wl,--wrap,wdb_global_del_agent_labels -Wl,--wrap,wdb_global_set_agent_label \
+                             -Wl,--wrap,wdb_global_update_agent_keepalive -Wl,--wrap,wdb_global_delete_agent -Wl,--wrap,wdb_global_select_agent_name \
+                             -Wl,--wrap,wdb_global_select_agent_group -Wl,--wrap,wdb_global_delete_agent_belong -Wl,--wrap,wdb_global_find_agent \
+                             -Wl,--wrap,wdb_global_select_agent_fim_offset -Wl,--wrap,wdb_global_select_agent_reg_offset \
+                             -Wl,--wrap,wdb_global_update_agent_fim_offset -Wl,--wrap,wdb_global_update_agent_reg_offset -Wl,--wrap,wdb_global_select_agent_status \
+                             -Wl,--wrap,wdb_global_update_agent_status -Wl,--wrap,wdb_global_update_agent_group -Wl,--wrap,wdb_global_find_group \
+                             -Wl,--wrap,wdb_global_insert_agent_group -Wl,--wrap,wdb_global_insert_agent_belong -Wl,--wrap,wdb_global_delete_group_belong \
+                             -Wl,--wrap,wdb_global_delete_group -Wl,--wrap,wdb_global_select_groups -Wl,--wrap,wdb_global_select_agent_keepalive \
+                             -Wl,--wrap,wdb_sync_agent_info_get -Wl,--wrap,wdb_global_sync_agent_info_set -Wl,--wrap,wdb_global_get_agents_by_keepalive \
+                             -Wl,--wrap,wdb_global_get_all_agents -Wl,--wrap,wdb_global_get_agent_info")
 
 list(APPEND wdb_tests_names "test_wdb_global")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mwarn \
-                            -Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_begin2 \
+                            -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_begin2 \
                             -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,wdb_exec_stmt -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_bind_text \
-                            -Wl,--wrap,sqlite3_bind_parameter_index")
+                            -Wl,--wrap,sqlite3_bind_parameter_index -Wl,--wrap,cJSON_Delete")
 
 list(APPEND wdb_tests_names "test_wdb_agent")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,strerror \

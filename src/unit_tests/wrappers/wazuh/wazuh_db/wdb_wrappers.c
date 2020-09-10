@@ -13,6 +13,10 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+wdb_t* __wrap_wdb_open_global() {
+    return mock_ptr_type(wdb_t*);
+}
+
 int __wrap_wdb_begin2(__attribute__((unused)) wdb_t* aux) {
     return mock();
 }
@@ -32,6 +36,10 @@ int __wrap_wdb_fim_update_date_entry(__attribute__((unused)) wdb_t* socket,
 }
 
 int __wrap_wdb_finalize() {
+    return mock();
+}
+
+int  __wrap_wdb_step(__attribute__((unused)) sqlite3_stmt *stmt) {
     return mock();
 }
 
@@ -77,6 +85,10 @@ int __wrap_wdb_syscheck_save(__attribute__((unused)) wdb_t *wdb,
 int __wrap_wdb_syscheck_save2(__attribute__((unused)) wdb_t *wdb,
                               __attribute__((unused)) const char *payload) {
     return mock();
+}
+
+cJSON * __wrap_wdb_exec_stmt(__attribute__((unused)) sqlite3_stmt *stmt) {
+    return mock_ptr_type(cJSON *);
 }
 
 int __wrap_wdbc_parse_result(char *result, char **payload) {
@@ -146,3 +158,10 @@ cJSON* __wrap_wdbc_query_parse_json(__attribute__((unused)) int *sock,
 
     return mock_ptr_type(cJSON *);
 }
+cJSON* __wrap_wdb_exec(__attribute__((unused)) sqlite3 *db, 
+                 const char *sql) {
+    check_expected(sql);
+    return mock_ptr_type(cJSON*);
+}
+
+void __wrap_wdb_leave(__attribute__((unused)) wdb_t *wdb){;}

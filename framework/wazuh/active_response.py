@@ -22,9 +22,10 @@ def run_command(agent_list=None, command=None, arguments=None, custom=False):
     """
     msg_queue = active_response.create_message(command=command, arguments=arguments, custom=custom)
     oq = OssecQueue(common.ARQUEUE)
-    result = AffectedItemsWazuhResult(none_msg='Could not send command to any agent',
-                                      some_msg='Could not send command to some agents',
-                                      all_msg='Command sent to all agents')
+    result = AffectedItemsWazuhResult(all_msg='AR command was sent to all agents',
+                                      some_msg='AR command was not sent to some agents',
+                                      none_msg='AR command was not sent to any agent'
+                                      )
     for agent_id in agent_list:
         try:
             active_response.send_command(msg_queue, oq, agent_id)

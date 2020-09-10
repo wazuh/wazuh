@@ -689,7 +689,7 @@ def upload_group_configuration(group_id, file_content):
         except Exception as e:
             raise WazuhInternalError(1016, extra_message=str(e))
 
-        return 'Agent configuration was updated successfully'
+        return 'Agent configuration was successfully updated'
     except Exception as e:
         # remove created temporary file
         if os.path.exists(tmp_file_path):

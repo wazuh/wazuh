@@ -20,8 +20,8 @@ def read_config_wrapper():
 
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected information is shown',
-                                      none_msg='No information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected information was returned',
+                                      none_msg='No information was returned'
                                       )
     try:
         result.affected_items.append(read_config())
@@ -38,8 +38,8 @@ def get_node_wrapper():
 
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected information is shown',
-                                      none_msg='No information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected information was returned',
+                                      none_msg='No information was returned'
                                       )
     try:
         result.affected_items.append(get_node())
@@ -63,9 +63,9 @@ def get_status_json():
 @expose_resources(actions=['cluster:read'], resources=['node:id:{filter_node}'], post_proc_func=async_list_handler)
 async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
     """ Wrapper for get_health """
-    result = AffectedItemsWazuhResult(all_msg='All selected nodes healthcheck information is shown',
-                                      some_msg='Some nodes healthcheck information is not shown',
-                                      none_msg='No healthcheck information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected nodes healthcheck information was returned',
+                                      some_msg='Some nodes healthcheck information was not returned',
+                                      none_msg='No healthcheck information was returned'
                                       )
 
     data = await get_health(lc, filter_node=filter_node)
@@ -81,9 +81,9 @@ async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
 @expose_resources(actions=['cluster:read'], resources=['node:id:{filter_node}'], post_proc_func=async_list_handler)
 async def get_nodes_info(lc: local_client.LocalClient, filter_node=None, **kwargs):
     """ Wrapper for get_nodes """
-    result = AffectedItemsWazuhResult(all_msg='All selected nodes information is shown',
-                                      some_msg='Some nodes information is not shown',
-                                      none_msg='No information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected nodes information was returned',
+                                      some_msg='Some nodes information was not returned',
+                                      none_msg='No information was returned'
                                       )
 
     nodes = set(filter_node).intersection(set(common.cluster_nodes.get()))

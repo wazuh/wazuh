@@ -112,8 +112,8 @@ def get_attack(id_: str = None, phase_name: str = None, platform_name: str = Non
     :param q: Query to filter by
     :return: AffectedItemsWazuhResult with the data of the query from Mitre database
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected MITRE information is shown',
-                                      none_msg='No MITRE information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected MITRE information was returned',
+                                      none_msg='No MITRE information was returned'
                                       )
 
     # Set default limit to 500 if json is not selected and 10 otherwise in order to avoid congesting wdb socket

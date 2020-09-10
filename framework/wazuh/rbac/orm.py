@@ -12,6 +12,7 @@ from time import time
 
 import yaml
 from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean
+from sqlalchemy import desc
 from sqlalchemy.dialects.sqlite import TEXT
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
 from sqlalchemy.ext.declarative import declarative_base
@@ -21,6 +22,9 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.configuration import security_conf
 from api.constants import SECURITY_PATH
+
+# Max reserved ID value
+max_id_reserved = 99
 
 # Start a session and set the default security elements
 _auth_db_file = os.path.join(SECURITY_PATH, 'rbac.db')
@@ -216,7 +220,8 @@ class User(_Base):
     roles = relationship("Roles", secondary='user_roles',
                          backref=backref("rolesu", cascade="all, delete", order_by=UserRoles.role_id), lazy='dynamic')
 
-    def __init__(self, username, password, allow_run_as=False):
+    def __init__(self, username, password, allow_run_as=False, user_id=None):
+        self.id = user_id
         self.username = username
         self.password = password
         self.allow_run_as = allow_run_as
@@ -279,7 +284,8 @@ class Roles(_Base):
     rules = relationship("Rules", secondary='roles_rules',
                          backref=backref("ruless", cascade="all, delete", order_by=RolesRules.id), lazy='dynamic')
 
-    def __init__(self, name):
+    def __init__(self, name, role_id=None):
+        self.id = role_id
         self.name = name
         self.created_at = datetime.utcnow()
 
@@ -321,14 +327,14 @@ class Rules(_Base):
     name = Column('name', String(20))
     rule = Column('rule', TEXT)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
-    __table_args__ = (UniqueConstraint('name', name='rule_name'),
-                      UniqueConstraint('rule', name='rule_definition'))
+    __table_args__ = (UniqueConstraint('name', name='rule_name'),)
 
     # Relations
     roles = relationship("Roles", secondary='roles_rules',
                          backref=backref("ruless", cascade="all, delete", order_by=id), lazy='dynamic')
 
-    def __init__(self, name, rule):
+    def __init__(self, name, rule, rule_id=None):
+        self.id = rule_id
         self.name = name
         self.rule = rule
         self.created_at = datetime.utcnow()
@@ -372,7 +378,8 @@ class Policies(_Base):
     roles = relationship("Roles", secondary='roles_policies',
                          backref=backref("roless", cascade="all, delete", order_by=id), lazy='dynamic')
 
-    def __init__(self, name, policy):
+    def __init__(self, name, policy, policy_id=None):
+        self.id = policy_id
         self.name = name
         self.policy = policy
         self.created_at = datetime.utcnow()
@@ -573,17 +580,34 @@ class AuthenticationManager:
     It manages users and token generation.
     """
 
-    def add_user(self, username: str, password: str, allow_run_as: bool = False):
+    def add_user(self, username: str, password: str, allow_run_as: bool = False, check_default: bool = True):
         """Creates a new user if it does not exist.
 
-        :param username: string Unique user name
-        :param password: string Password provided by user. It will be stored hashed
-        :param allow_run_as: Flag that indicates if the user can log into the API throw an authorization context
-        :return: True if the user has been created successfully. False otherwise (i.e. already exists)
+        Parameters
+        ----------
+        username : str
+            Unique user name
+        password : str
+            Password provided by user. It will be stored hashed
+        allow_run_as : bool
+            Flag that indicates if the user can log into the API throw an authorization context
+        check_default : bool
+            Flag that indicates if the user ID can be less than max_id_reserved
+
+        Returns
+        -------
+        True if the user has been created successfully. False otherwise (i.e. already exists)
         """
         try:
+            user_id = None
+            try:
+                if check_default and self.session.query(User).order_by(desc(User.id)
+                                                                       ).limit(1).scalar().id < max_id_reserved:
+                    user_id = max_id_reserved + 1
+            except (TypeError, AttributeError):
+                pass
             self.session.add(User(username=username, password=generate_password_hash(password),
-                                  allow_run_as=allow_run_as))
+                                  allow_run_as=allow_run_as, user_id=user_id))
             self.session.commit()
             return True
         except IntegrityError:
@@ -778,15 +802,29 @@ class RolesManager:
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
 
-    def add_role(self, name: str):
-        """Add a new role
+    def add_role(self, name: str, check_default: bool = True):
+        """Add a new role.
 
-        :param name: Name of the new role
-        :param rule: Rule of the new role
-        :return: True -> Success | Role already exist | Invalid rule
+        Parameters
+        ----------
+        name : str
+            Name of the new role
+        check_default : bool
+            Flag that indicates if the user ID can be less than max_id_reserved
+
+        Returns
+        -------
+        True -> Success | Role already exist
         """
         try:
-            self.session.add(Roles(name=name))
+            role_id = None
+            try:
+                if check_default and self.session.query(Roles).order_by(desc(Roles.id)
+                                                                        ).limit(1).scalar().id < max_id_reserved:
+                    role_id = max_id_reserved + 1
+            except (TypeError, AttributeError):
+                pass
+            self.session.add(Roles(name=name, role_id=role_id))
             self.session.commit()
             return True
         except IntegrityError:
@@ -946,7 +984,7 @@ class RulesManager:
         except IntegrityError:
             return SecurityError.RULE_NOT_EXIST
 
-    def add_rule(self, name: str, rule: dict):
+    def add_rule(self, name: str, rule: dict, check_default: bool = True):
         """Add a new rule.
 
         Parameters
@@ -955,6 +993,9 @@ class RulesManager:
             Name of the new rule.
         rule : dict
             Rule dictionary.
+        check_default : bool
+            Flag that indicates if the user ID can be less than max_id_reserved
+
         Returns
         -------
         True -> Success | Rule already exists | Invalid rule
@@ -962,7 +1003,15 @@ class RulesManager:
         try:
             if rule is not None and not json_validator(rule):
                 return SecurityError.INVALID
-            self.session.add(Rules(name=name, rule=json.dumps(rule)))
+            rule_id = None
+            try:
+                if check_default and \
+                        self.session.query(Policies).order_by(desc(Policies.id)
+                                                              ).limit(1).scalar().id < max_id_reserved:
+                    rule_id = max_id_reserved + 1
+            except (TypeError, AttributeError):
+                pass
+            self.session.add(Rules(name=name, rule=json.dumps(rule), rule_id=rule_id))
             self.session.commit()
             return True
         except IntegrityError:
@@ -1131,12 +1180,21 @@ class PoliciesManager:
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
 
-    def add_policy(self, name: str, policy: dict):
-        """Add a new role
+    def add_policy(self, name: str, policy: dict, check_default: bool = True):
+        """Add a new policy.
 
-        :param name: Name of the new policy
-        :param policy: Policy of the new policy
-        :return: True -> Success | Invalid policy | Missing key (actions, resources, effect) or invalid policy (regex)
+        Parameters
+        ----------
+        name : str
+            Name of the new policy
+        policy : dict
+            Policy of the new policy
+        check_default : bool
+            Flag that indicates if the user ID can be less than max_id_reserved
+
+        Returns
+        -------
+        True -> Success | Invalid policy | Missing key (actions, resources, effect) or invalid policy (regex)
         """
         try:
             if policy is not None and not json_validator(policy):
@@ -1157,7 +1215,15 @@ class PoliciesManager:
                         for resource in policy['resources']:
                             if not re.match(regex, resource):
                                 return SecurityError.INVALID
-                        self.session.add(Policies(name=name, policy=json.dumps(policy)))
+                        policy_id = None
+                        try:
+                            if check_default and \
+                                    self.session.query(Policies).order_by(desc(Policies.id)
+                                                                          ).limit(1).scalar().id < max_id_reserved:
+                                policy_id = max_id_reserved + 1
+                        except (TypeError, AttributeError):
+                            pass
+                        self.session.add(Policies(name=name, policy=json.dumps(policy), policy_id=policy_id))
                         self.session.commit()
                     else:
                         return SecurityError.INVALID
@@ -2079,7 +2145,7 @@ with open(os.path.join(default_path, "users.yaml"), 'r') as stream:
     with AuthenticationManager() as auth:
         for d_username, payload in default_users[next(iter(default_users))].items():
             auth.add_user(username=d_username, password=payload['password'],
-                          allow_run_as=payload['allow_run_as'])
+                          allow_run_as=payload['allow_run_as'], check_default=False)
 
 # Create default roles if they don't exist yet
 with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:
@@ -2087,14 +2153,14 @@ with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:
 
     with RolesManager() as rm:
         for d_role_name, payload in default_roles[next(iter(default_roles))].items():
-            rm.add_role(name=d_role_name)
+            rm.add_role(name=d_role_name, check_default=False)
 
 with open(os.path.join(default_path, 'rules.yaml'), 'r') as stream:
     default_rules = yaml.safe_load(stream)
 
     with RulesManager() as rum:
         for d_rule_name, payload in default_rules[next(iter(default_rules))].items():
-            rum.add_rule(name=d_rule_name, rule=payload['rule'])
+            rum.add_rule(name=d_rule_name, rule=payload['rule'], check_default=False)
 
 # Create default policies if they don't exist yet
 with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
@@ -2103,7 +2169,7 @@ with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
     with PoliciesManager() as pm:
         for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
             for name, policy in payload['policies'].items():
-                pm.add_policy(name=f'{d_policy_name}_{name}', policy=policy)
+                pm.add_policy(name=f'{d_policy_name}_{name}', policy=policy, check_default=False)
 
 # Create the relationships
 with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
