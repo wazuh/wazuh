@@ -52,3 +52,10 @@ TEST_F(StringUtilsTest, SplitDelimiterCoincidence)
     EXPECT_EQ(split_text_vector[1], "world");
 }
 
+TEST_F(StringUtilsTest, AsciiToHexString)
+{
+    const std::vector<unsigned char> data{0x2d, 0x53, 0x3b, 0x9d, 0x9f, 0x0f, 0x06, 0xef, 0x4e, 0x3c, 0x23, 0xfd, 0x49, 0x6c, 0xfe, 0xb2, 0x78, 0x0e, 0xda, 0x7f};
+    const std::string expected { "2d533b9d9f0f06ef4e3c23fd496cfeb2780eda7f" };
+    const auto result {Utils::asciiToHex(data)};
+    EXPECT_EQ(expected, result);
+}
