@@ -326,24 +326,6 @@ void test_os_remove_rules_list_OK(void **state)
 
 }
 
-// Test OS_AddChild
-void test_OS_AddChild_inconsistent_rule(void ** state) {
-    RuleInfo * read_rule = NULL;
-    RuleNode * r_node = NULL;
-    OSList list_msg = {0};
-    const int expect_value = 1;
-    int retval;
-
-    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
-    expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
-    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg,
-                  "rules_list: Passing a NULL rule. Inconsistent state");
-
-    retval = OS_AddChild(read_rule, &r_node, &list_msg);
-
-    assert_int_equal(retval, expect_value);
-}
-
 
 int main(void)
 {
@@ -358,9 +340,7 @@ int main(void)
         cmocka_unit_test(test_os_remove_ruleinfo_NULL),
         cmocka_unit_test(test_os_remove_ruleinfo_OK),
         // Tests os_remove_rules_list
-        cmocka_unit_test(test_os_remove_rules_list_OK),
-        // Tests OS_AddChild
-        cmocka_unit_test(test_OS_AddChild_inconsistent_rule),
+        cmocka_unit_test(test_os_remove_rules_list_OK)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
