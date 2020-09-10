@@ -16,7 +16,7 @@
 #include "labels.h"
 
 static OSHash *label_cache;
-static pthread_mutex_t label_mutex;
+static pthread_mutex_t label_cache_mutex;
 
 /* Free label cache */
 void free_label_cache(wlabel_data_t *data) {
@@ -34,123 +34,81 @@ int labels_init() {
 
     OSHash_SetFreeDataPointer(label_cache, (void (*)(void *))free_label_cache);
 
-    label_mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+    label_cache_mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
     return (1);
 }
 
 wlabel_t* labels_find(const Eventinfo *lf) {
-    char hostname[OS_BUFFER_SIZE] = "";
-    char *ip = NULL;
-    char *end = NULL;
     cJSON *json_labels = NULL;
     wlabel_data_t *data = NULL;
+    time_t mtime = 0;
+    time_t last_update = 0;
     wlabel_t *ret_labels = NULL;
+    int first_update = 0;
 
     if (strcmp(lf->agent_id, "000") == 0) {
         return Config.labels;
     }
 
-    if (lf->location[0] != '(') {
-        return NULL;
+    // Gettings last labels update time from cache
+    w_mutex_lock(&label_cache_mutex);
+    data = (wlabel_data_t*)OSHash_Get(label_cache, lf->agent_id);
+
+    if (data) {
+        w_rwlock_rdlock(&data->labels_rwlock);
+        last_update = data->mtime;
+        w_rwlock_unlock(&data->labels_rwlock);
     }
-
-    strncpy(hostname, lf->location + 1, OS_BUFFER_SIZE - 1);
-    hostname[OS_BUFFER_SIZE - 1] = '\0';
-
-    if (!(ip = strstr(hostname, ") "))) {
-        return NULL;
+    else {
+        // The labels were never requested for this agent
+        os_calloc(1, sizeof(wlabel_data_t), data);
+        if (2 != OSHash_Add(label_cache, lf->agent_id, data)) {
+            merror("Adding labels to cache for agent %s.", lf->agent_id);
+            free(data);
+        }
+        else {
+            first_update = 1;
+            w_rwlock_wrlock(&data->labels_rwlock);
+        }
     }
+    w_mutex_unlock(&label_cache_mutex);
 
-    *ip = '\0';
+    // Checking if we must update labels or get them from the cache
+    mtime = time(NULL);
 
-    if ((end = strchr(ip += 2, '-'))) {
-        *end = '\0';
-    }
+    if ((!last_update || mtime == -1) ||
+        (mtime > last_update + Config.label_cache_maxage)) {
+        // We perform the update either if we can't determine the decision by 
+        // time, or if the time difference is greater than the configured.
+        mdebug1("Updating labels for agent %s.", lf->agent_id);
 
-    w_mutex_lock(&label_mutex);
-    if (data = (wlabel_data_t*)OSHash_Get(label_cache, lf->agent_id), !data) {
-        // Data not cached
-        w_mutex_unlock(&label_mutex);
-
+        // Update labels
         json_labels = wdb_get_agent_labels(atoi(lf->agent_id));
 
         if (!json_labels) {
             mdebug1("No labels in Wazuh DB for agent %s.", lf->agent_id);
-            return NULL;
+            // We don't return because we must update the cache with labels NULL.
         }
-
-        os_calloc(1, sizeof(wlabel_data_t), data);
-        data->labels = labels_parse(json_labels);
-
-        cJSON_Delete(json_labels);
-
-        if (!data->labels) {
-            mdebug1("Couldn't parse labels for agent %s.", lf->agent_id);
-            free(data);
-            return NULL;
-        }
-
-        data->mtime = wdb_get_agent_keepalive(hostname, ip);
-
-        if (data->mtime == -1) {
-            merror("Getting last keepalive for agent %s. Cannot update labels.", lf->agent_id);
-            labels_free(data->labels);
-            free(data);
-            return NULL;
-        }
-
-        w_mutex_lock(&label_mutex);
-        if (OSHash_Add(label_cache, lf->agent_id, data) != 2) {
-            merror("Couldn't store labels for agent %s on cache.", lf->agent_id);
-            labels_free(data->labels);
-            free(data);
-            w_mutex_unlock(&label_mutex);
-            return NULL;
-        }
-    } else {
-        // Data cached, check modification time
-        w_mutex_unlock(&label_mutex);
-
-        wlabel_data_t *new_data;
-        time_t mtime = time(NULL);
-
-        if (mtime == -1) {
-            if (!data->error_flag) {
-                minfo("Can't determine current time to compare with last keepalive for agent %s. Using old labels.", lf->agent_id);
-                data->error_flag = 1;
-            }
-        } else if (mtime > data->mtime + Config.label_cache_maxage) {
-            // Update file, keep old to return in case of error
-
-            json_labels = wdb_get_agent_labels(atoi(lf->agent_id));
-
-            if (!json_labels) {
-                mdebug1("No labels in Wazuh DB for agent %s.", lf->agent_id);
-                return NULL;
-            }
-
-            os_calloc(1, sizeof(wlabel_data_t), new_data);
-            new_data->labels = labels_parse(json_labels);
-
+        else {
+            ret_labels = labels_parse(json_labels);
             cJSON_Delete(json_labels);
-
-            new_data->mtime = wdb_get_agent_keepalive(hostname, ip);
-
-            w_mutex_lock(&label_mutex);
-            if (!OSHash_Update(label_cache, lf->agent_id, new_data)) {
-                merror("Couldn't update labels for agent %s on cache.", lf->agent_id);
-                labels_free(new_data->labels);
-                free(new_data);
-                w_mutex_unlock(&label_mutex);
-                return NULL;
-            }
-
-            data = new_data;
-            data->error_flag = 0;
         }
+
+        // Adding/updating labels data
+        // If this is not the first update, we should take the write lock before
+        if (!first_update) {
+            w_rwlock_wrlock(&data->labels_rwlock);
+        }
+
+        data->labels = labels_dup(ret_labels);
+        data->mtime = mtime;
+    } else {
+        // Getting data from cache
+        w_rwlock_rdlock(&data->labels_rwlock);
+        ret_labels = labels_dup(data->labels);
     }
-    ret_labels = labels_dup(data->labels);
-    w_mutex_unlock(&label_mutex);
+
+    w_rwlock_unlock(&data->labels_rwlock);
 
     return ret_labels;
 }
