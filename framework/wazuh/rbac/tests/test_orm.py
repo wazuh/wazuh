@@ -419,12 +419,9 @@ def test_add_user_roles(db_setup):
             roles_ids.append(rm.get_role('advanced')['id'])
 
         # New user-role
-        for role in roles_ids:
-            assert urm.add_role_to_user(user_id='3', role_id=role)
-            assert urm.add_user_to_role(user_id='4', role_id=role)
-        for role in roles_ids:
-            assert urm.exist_user_role(user_id='3', role_id=role)
-            assert urm.exist_role_user(user_id='4', role_id=role)
+        for user in user_list:
+            for role in roles_ids:
+                assert urm.add_role_to_user(user_id=user, role_id=role)
 
         return user_list, roles_ids
 
@@ -605,8 +602,9 @@ def test_exist_user_role(db_setup):
         user_ids, roles_ids = test_add_user_roles(db_setup)
         for role in roles_ids:
             for user_id in user_ids:
+                with db_setup.AuthenticationManager() as am:
+                    assert am.get_user(username='normalUser')
                 assert urm.exist_user_role(user_id=user_id, role_id=role)
-                assert urm.exist_role_user(user_id=user_id, role_id=role)
 
         assert urm.exist_user_role(user_id='999', role_id=8) == db_setup.SecurityError.USER_NOT_EXIST
         assert urm.exist_user_role(user_id=user_ids[0], role_id=99) == db_setup.SecurityError.ROLE_NOT_EXIST

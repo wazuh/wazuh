@@ -498,17 +498,13 @@ stages:
       json:
         data:
           affected_items:
-            - agentless: !anything
-              alerts: !anything
+            - alerts: !anything
               auth: !anything
               cis-cat: !anything
               cluster: !anything
               command: !anything
-              email_alerts: !anything
               global: !anything
-              integration: !anything
               localfile: !anything
-              open-scap: !anything
               osquery: !anything
               remote: !anything
               rootcheck: !anything
@@ -516,7 +512,6 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
-              syslog_output: !anything
               vulnerability-detector: !anything
           failed_items: []
           total_affected_items: 1
@@ -786,6 +781,7 @@ stages:
         path: etc/rules/new-rules_corrupted.xml
     response:
       status_code: 200
+    delay_after: 5
 
   - name: Request cluster validation
     request:
@@ -967,45 +963,6 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of csyslog/csyslog in the manager through a worker
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/csyslog/csyslog"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - syslog_output:
-              - format: !anystr
-                level: !anyint
-                port: !anyint
-                server: !anystr
-                use_fqdn: !anystr
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to show the config of integrator/integration in the manager through a worker
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/integrator/integration"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - integration: !anything
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
   - name: Try to show the config of analysis/internal through a worker
     request:
       verify: False
@@ -1099,67 +1056,6 @@ stages:
                   sample_log_length: !anyint
                   sock_fail_time: !anyint
                   vcheck_files: !anyint
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to show the config of mail/global in the manager trough a worker
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/mail/global"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - global:
-                email_maxperhour: !anyint
-                email_to: !anything
-                email_from: !anything
-                smtp_server: !anystr
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to show the config of mail/alerts in the manager trough a worker
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/mail/alerts"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - email_alerts:
-              - email_to: !anystr
-                format: !anystr
-                level: !anyint
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to show the config of mail/internal in the manager trough a worker
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/mail/internal"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - internal:
-                mail:
-                  grouping: !anyint
-                  strict_checking: !anyint
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

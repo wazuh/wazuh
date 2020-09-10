@@ -1050,25 +1050,6 @@ stages:
               request_rto_sec: !anyint
               verify_msg_id: !anyint
 
-  - name: Request-Agentless-Agentless
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/agentless/agentless"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          agentless:
-            - arguments: !anystr
-              frequency: !anyint
-              host: !anything
-              port: !anyint
-              state: !anystr
-              type: !anystr
-
   - name: Request-Analysis-Global
     request:
       verify: False
@@ -1275,43 +1256,6 @@ stages:
           nodes: !anything
           port: !anyint
 
-  - name: Request-Csyslog-Csyslog
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/csyslog/csyslog"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          syslog_output:
-            - format: !anystr
-              level: !anyint
-              port: !anyint
-              server: !anystr
-              use_fqdn: !anystr
-
-  - name: Request-Integrator-Integration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/integrator/integration"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          integration:
-            - alert_format: !anystr
-              api_key: !anystr
-              group: !anystr
-              level: !anyint
-              max_log: !anyint
-              name: !anystr
-
   - name: Request-Logcollector-Localfile (Manager)
     request:
       verify: False
@@ -1415,53 +1359,6 @@ stages:
               sample_log_length: !anyint
               sock_fail_time: !anyint
               vcheck_files: !anyint
-
-  - name: Request-Mail-Global
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/global"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          global:
-            email_from: !anystr
-            email_log_source: !anystr
-            email_maxperhour: !anyint
-            email_to: !anything
-            smtp_server: !anystr
-
-  - name: Request-Mail-Alerts
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/alerts"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          email_alerts: !anything
-
-  - name: Request-Mail-Internal
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/internal"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          internal:
-            mail:
-              grouping: !anyint
-              strict_checking: !anyint
 
   - name: Request-Monitor-Internal
     request:
@@ -1726,18 +1623,6 @@ stages:
       status_code: 400
       json:
         <<: *error_spec
-
-  - name: Request Error
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/mail/global"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
-      json:
-        code: 1117
 
   - name: Request Error Component Parameter
     request:

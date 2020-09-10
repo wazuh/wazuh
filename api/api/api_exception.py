@@ -39,7 +39,7 @@ class APIException(Exception):
 
     def __str__(self):
         details = '.' if self.details is None else f': {self.details}.'
-        return f"Error {self.code} - {self.exceptions[self.code]}{details}"
+        return f"{self.code} - {self.exceptions[self.code]}{details}"
 
 
 class APIError(APIException):
