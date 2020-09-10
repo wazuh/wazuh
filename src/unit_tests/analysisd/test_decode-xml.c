@@ -99,7 +99,7 @@ void test_FreeDecoderInfo_OK(void **state)
     Config.decoder_order_size = 1;
 
     FreeDecoderInfo(info);
-    
+
 }
 
 // _loadmemory
@@ -107,15 +107,15 @@ void test__loadmemory_null_append_ok(void ** state)
 {
     char * at = NULL;
     char * str;
-    
+
     const size_t len = 1000;
     char * expect_retval;
     char * retval;
-    
+
     os_calloc(len, sizeof(char), str);
     memset(str, (int) '-', len - 1);
     str[len-1] = '\0';
-    
+
     os_calloc(len, sizeof(char), expect_retval);
     memset(expect_retval, (int) '-', len - 1);
     expect_retval[len-1] = '\0';
@@ -135,10 +135,10 @@ void test__loadmemory_null_append_oversize(void ** state)
     char * at = NULL;
     char * str;
     OSList list_msg = {0};
-    
+
     const size_t len = 1025;
     char * retval;
-    
+
     os_calloc(len, sizeof(char), str);
     memset(str, (int) '-', len - 1);
     str[len-1] = '\0';
@@ -163,10 +163,10 @@ void test__loadmemory_append_oversize(void ** state)
     char * at = NULL;
     char * str = NULL;
     OSList list_msg = {0};
-    
+
     const size_t len = 513;
     char * retval;
-    
+
     os_calloc(len, sizeof(char), str);
     memset(str, (int) '-', len - 1);
     str[len-1] = '\0';
@@ -178,7 +178,7 @@ void test__loadmemory_append_oversize(void ** state)
     char expect_msg[OS_SIZE_4096];
 
     snprintf(expect_msg, OS_SIZE_4096, "(1104): Maximum string size reached for: %s.", str);
-    
+
     expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
     expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, expect_msg);
@@ -196,11 +196,11 @@ void test__loadmemory_append_ok(void ** state)
     char * at = NULL;
     char * str = NULL;
     OSList list_msg = {0};
-    
+
     const size_t len = 512;
     char * retval;
     char * expect_retval;
-    
+
     os_calloc(len, sizeof(char), str);
     memset(str, (int) '-', len - 1);
     str[len-1] = '\0';
@@ -208,7 +208,7 @@ void test__loadmemory_append_ok(void ** state)
     os_calloc(len, sizeof(char), at);
     memset(at, (int) '+', len - 1);
     at[len-1] = '\0';
-    
+
     os_calloc(len * 2, sizeof(char), expect_retval);
     strncat(expect_retval, at, len * 2);
     strncat(expect_retval, str, len * 2);
@@ -304,8 +304,7 @@ int main(void)
         cmocka_unit_test(test_addDecoder2list_empty_list_deco_error),
         cmocka_unit_test(test_addDecoder2list_empty_list_deco_ok),
         cmocka_unit_test(test_addDecoder2list_fail_push),
-        cmocka_unit_test(test_addDecoder2list_push_ok),
-
+        cmocka_unit_test(test_addDecoder2list_push_ok)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
