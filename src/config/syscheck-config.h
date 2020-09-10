@@ -222,6 +222,7 @@ typedef struct fim_registry_key {
     char * user_name;
     char * group_name;
     unsigned int mtime;
+    int arch;
 
     unsigned int scanned;
     // path:perm:uid:user_name:gid:group_name

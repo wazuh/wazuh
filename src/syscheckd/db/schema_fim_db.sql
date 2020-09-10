@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS registry_key (
     mtime INTEGER,
     scanned INTEGER,
     checksum TEXT NOT NULL,
+    arch INTEGER,
 
     PRIMARY KEY(path)
 );
