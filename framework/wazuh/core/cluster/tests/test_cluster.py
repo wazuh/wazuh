@@ -66,6 +66,7 @@ def test_read_empty_configuration():
     Test reading an empty cluster configuration
     """
     with patch('wazuh.core.cluster.utils.get_ossec_conf') as m:
+        wazuh.core.cluster.utils.read_config.cache_clear()
         m.side_effect = WazuhException(1106)
         configuration = wazuh.core.cluster.utils.read_config()
         configuration['disabled'] = 'yes' if configuration['disabled'] else 'no'

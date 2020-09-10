@@ -78,21 +78,21 @@ marks:
  - parametrize:
      key: section
      vals:
+       - alerts
        - auth
        - cis-cat
        - cluster
        - command
        - global
        - localfile
-       - open-scap
        - osquery
        - remote
        - rootcheck
        - ruleset
+       - sca
        - syscheck
        - syscollector
        - vulnerability-detector
-       - sca
 
 stages:
 
@@ -132,17 +132,13 @@ stages:
       json:
         data:
           affected_items:
-            - agentless: !anything
-              alerts: !anything
+            - alerts: !anything
               auth: !anything
               cis-cat: !anything
               cluster: !anything
               command: !anything
-              email_alerts: !anything
               global: !anything
-              integration: !anything
               localfile: !anything
-              open-scap: !anything
               osquery: !anything
               remote: !anything
               rootcheck: !anything
@@ -150,7 +146,6 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
-              syslog_output: !anything
               vulnerability-detector: !anything
           failed_items: []
           total_affected_items: 1
@@ -665,7 +660,7 @@ stages:
             - ossec-execd: !anything
             - ossec-integratord: !anything
             - ossec-logcollector: !anything
-            - ossec-maild: !anything
+            #- ossec-maild: !anything
             - ossec-monitord: !anything
             - ossec-remoted: !anything
             - ossec-rootcheck: !anything
@@ -677,11 +672,10 @@ stages:
             - wazuh-modulesd:control: !anything
             - wazuh-modulesd:database: !anything
             - wazuh-modulesd:download: !anything
-            - wazuh-modulesd:oscap: !anything
             - wazuh-modulesd:osquery: !anything
             - wazuh-modulesd:syscollector: !anything
           failed_items: []
-          total_affected_items: 23
+          total_affected_items: !anyint
           total_failed_items: 0
 
 ---
@@ -1398,23 +1392,6 @@ test_name: GET /manager/configuration/{component}/{configuration}
 
 stages:
 
-  - name: Try to show the config of agentless/agentless in the manager
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/agentless/agentless"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - agentless: !anything
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
   - name: Try to show the config of analysis/global in the manager
     request:
       verify: False
@@ -1535,40 +1512,6 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of csyslog/csyslog in the manager
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/csyslog/csyslog"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - syslog_output: !anything
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to show the config of integrator/integration in the manager
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/integrator/integration"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - integration: !anything
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
   - name: Try to show the config of logcollector/localfile in the manager
     request:
       verify: False
@@ -1606,57 +1549,6 @@ stages:
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/logcollector/internal"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - internal: !anything
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to show the config of mail/global in the manager
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/mail/global"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - global: !anything
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to show the config of mail/alerts in the manager
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/mail/alerts"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - email_alerts: !anything
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to show the config of mail/internal in the manager
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/mail/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

@@ -27,7 +27,7 @@ stages:
               username: wazuh-wui
               allow_run_as: true
               roles:
-                - 2
+                - 1
             - id: 99
               username: testing
               allow_run_as: false
@@ -225,13 +225,14 @@ stages:
           affected_items:
             - id: 1
             - id: 2
+            - id: 99
             - id: 100
             - id: 101
             - id: 102
             - id: 104
             - id: 105
           failed_items: []
-          total_affected_items: 7
+          total_affected_items: 8
           total_failed_items: 0
 
   - name: Get a specified rule by its id (Deny)
@@ -1045,6 +1046,7 @@ stages:
           failed_items: []
 
   - name: Delete all rules in the system (Allow and deny)
+    delay_after: 5
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/rules"
@@ -1058,13 +1060,19 @@ stages:
       json:
         data:
           affected_items: # Admin rules cannot be deleted. 105 is denied
+            - id: 99
             - id: 100
             - id: 101
             - id: 102
             - id: 104
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 5
           total_failed_items: 0
+
+---
+test_name: DELETE /security/rules (invalid)
+
+stages:
 
   - name: Delete one specified rule in the system (Deny)
     request:
