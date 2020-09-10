@@ -688,7 +688,8 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, 
     return result
 
 
-@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)
+@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1818]})
 def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, use_http=False,
                    file_path=None, installer=None):
     """Start the agent upgrade process.
@@ -716,8 +717,10 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
     """
     result = AffectedItemsWazuhResult(all_msg='All upgrade tasks have been created',
                                       some_msg='Some upgrade tasks have been created',
-                                      none_msg='No upgrade task has been created')
+                                      none_msg='No upgrade task has been created',
+                                      sort_fields=['task_id'], sort_ascending='True')
 
+    '000' in agent_list and agent_list.remove('000')
     wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url_4_x
     msg = {
         'command': 'upgrade' if not (installer or file_path) else 'upgrade_custom',
@@ -749,7 +752,8 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
     return result
 
 
-@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)
+@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1817]})
 def get_upgrade_result(agent_list=None):
     """Read upgrade result output from agent.
 
@@ -773,11 +777,14 @@ def get_upgrade_result(agent_list=None):
             task_error = task_result.pop('error')
             if task_error == 0:
                 task_result.pop('data')
+                task_result['agent_id'] = str(task_result.pop('agent')).zfill(3)
                 result.affected_items.append(task_result)
                 result.total_affected_items += 1
             else:
                 error = WazuhError(code=1810 + task_error, cmd_error=True, extra_message=task_result['data'])
                 result.add_failed_item(id_=str(agent).zfill(3), error=error)
+
+        result.affected_items = sorted(result.affected_items, key=lambda k: k['task_id'])
 
     return result
 

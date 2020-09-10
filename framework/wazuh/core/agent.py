@@ -1074,11 +1074,7 @@ def core_upgrade_agents(command, get_result=False):
     Message received from the socket (Task module or Upgrade module)
     """
     # Send upgrading command
-    if not get_result:
-        s = OssecSocket(common.UPGRADE_SOCKET)
-    else:
-        s = OssecSocket(common.TASKS_SOCKET)
-
+    s = OssecSocket(common.UPGRADE_SOCKET) if not get_result else OssecSocket(common.TASKS_SOCKET)
     s.send(dumps(command).encode())
     data = loads(s.receive().decode())
     s.close()

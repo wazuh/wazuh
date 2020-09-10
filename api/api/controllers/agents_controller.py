@@ -405,7 +405,7 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_agents(request, list_agents=None, pretty=False, wait_for_complete=False, wpk_repo=None,
+async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_complete=False, wpk_repo=None,
                              version=None, use_http=False, force=False):
     """Upgrade agents using a WPK file from online repository.
     Parameters
@@ -437,10 +437,11 @@ async def put_upgrade_agents(request, list_agents=None, pretty=False, wait_for_c
 
     dapi = DistributedAPI(f=agent.upgrade_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
+                          request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
+                          broadcasting=list_agents == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -448,7 +449,7 @@ async def put_upgrade_agents(request, list_agents=None, pretty=False, wait_for_c
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_custom_agents(request, list_agents=None, pretty=False, wait_for_complete=False,
+async def put_upgrade_custom_agents(request, list_agents='*', pretty=False, wait_for_complete=False,
                                     file_path=None, installer=None):
     """Upgrade agents using a local WPK file.
     Parameters
@@ -474,10 +475,11 @@ async def put_upgrade_custom_agents(request, list_agents=None, pretty=False, wai
 
     dapi = DistributedAPI(f=agent.upgrade_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
+                          request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
+                          broadcasting=list_agents == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -504,7 +506,7 @@ async def get_agent_upgrade(request, list_agents=None, pretty=False, wait_for_co
 
     dapi = DistributedAPI(f=agent.get_upgrade_result,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
+                          request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
