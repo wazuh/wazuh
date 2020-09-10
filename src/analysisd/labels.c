@@ -100,6 +100,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
             w_rwlock_wrlock(&data->labels_rwlock);
         }
 
+        labels_free(data->labels);
         data->labels = labels_dup(ret_labels);
         data->mtime = mtime;
     } else {
