@@ -25,6 +25,22 @@ void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, 
 // Registry functions.
 
 /**
+ * @brief Decodes a row from the database to be saved in a fim_registry_key structure.
+ *
+ * @param stmt The statement to be decoded.
+ * @return Pointer to filled fim_registry_key structure.
+*/
+fim_registry_key *fim_db_decode_registry_key_row(sqlite3_stmt *stmt);
+
+/**
+ * @brief Decodes a row from the database to be saved in a fim_registry_value_data structure.
+ *
+ * @param stmt The statement to be decoded.
+ * @return Pointer to filled fim_registry_value_data structure.
+*/
+fim_registry_value_data *fim_db_decode_registry_data_row(sqlite3_stmt *stmt);
+
+/**
  * @brief Get checksum of all registry key.
  *
  * @param fim_sql FIM database struct.
@@ -55,16 +71,6 @@ int fim_db_get_registry_data_checksum(fdb_t *fim_sql, void * arg);
 int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, int *rowid);
 
 /**
- * @brief Get a registry key using its path.
- *
- * @param fim_sql FIM database struct.
- * @param path Path to registry key.
- *
- * @return FIM registry key struct on success, NULL on error.
-*/
-fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path);
-
-/**
  * @brief Get registry data using its key_id and name.
  *
  * @param fim_sql FIM database struct.
@@ -73,7 +79,17 @@ fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path);
  *
  * @return FIM registry data struct on success, NULL on error.
  */
-fim_registry_value_data *fim_db_get_registry_data(fdb_t *fim_sql, const char *name, const int key_id);
+fim_registry_value_data *fim_db_get_registry_data(fdb_t *fim_sql, const unsigned int key_id, const char *name);
+
+/**
+ * @brief Get a registry key using its path.
+ *
+ * @param fim_sql FIM database struct.
+ * @param path Path to registry key.
+ *
+ * @return FIM registry key struct on success, NULL on error.
+*/
+fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path);
 
 /**
  * @brief Get all the key paths
@@ -94,17 +110,18 @@ char **fim_db_get_all_registry_key(fdb_t *fim_sql, const unsigned long int key_i
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_registry_data(fdb_t *fim_sql, fim_registry_value_data *data, int key_id);
+int fim_db_insert_registry_data(fdb_t *fim_sql, fim_registry_value_data *data, unsigned int key_id);
 
 /**
  * @brief Insert or update registry key.
  *
  * @param fim_sql FIM database struct.
  * @param entry Registry key to be inserted.
+ * @param rowid Row id of the registry.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry);
+int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, unsigned int rowid);
 
 /**
  * @brief Insert a registry entry in the needed tables.
@@ -114,7 +131,7 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_registry(fdb_t *fim_sql, int key_id, fim_entry *new);
+int fim_db_insert_registry(fdb_t *fim_sql, fim_entry *new);
 
 /**
  * @brief Calculate checksum of registry keys between @start and @top.
