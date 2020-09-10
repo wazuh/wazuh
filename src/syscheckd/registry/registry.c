@@ -234,7 +234,7 @@ void fim_registry_process_unscanned_entries() {
 }
 
 /* Query the key and get all its values */
-void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, const registry *configuration, DWORD value_count) {
+void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, int arch, DWORD value_count) {
     DWORD i;
 
     /* Variables for RegEnumValue */
@@ -248,11 +248,6 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, const re
 
     fim_registry_value_data value_data;
 
-    // char *mt_data;
-
-    // EVP_MD_CTX *ctx = EVP_MD_CTX_create();
-    // EVP_DigestInit(ctx, EVP_sha1());
-
     /* Clear the values for value_size and data_size */
     value_buffer[MAX_VALUE_NAME] = '\0';
     data_buffer[MAX_VALUE_NAME] = '\0';
@@ -262,7 +257,7 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, const re
     for (i = 0; i < value_count; i++) {
         char *diff = NULL;
         char value_path[MAX_KEY + 2];
-        registry *value_configuration;
+        registry *configuration;
         cJSON *json_event;
 
         value_size = MAX_VALUE_NAME;
@@ -284,8 +279,8 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, const re
 
         snprintf(value_path, MAX_KEY, "%s\\%s", new->registry_entry.key->path, value_buffer);
 
-        value_configuration = fim_registry_configuration(value_path, configuration->arch);
-        if (value_configuration == NULL) {
+        configuration = fim_registry_configuration(value_path, arch);
+        if (configuration == NULL) {
             mwarn("No configuration found for '%s'", value_path);
             continue;
         }
@@ -306,11 +301,11 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, const re
         saved->registry_entry.value =
         fim_db_get_registry_data(syscheck.database, new->registry_entry.key->id, new->registry_entry.value->name);
 
-        if (value_configuration->opts | CHECK_SEECHANGES) {
+        if (configuration->opts | CHECK_SEECHANGES) {
             diff = fim_registry_value_diff(new->registry_entry.key->path, new->registry_entry.value->name, data_buffer, data_type);
         }
 
-        json_event = fim_registry_event(new, saved, value_configuration, FIM_SCHEDULED,
+        json_event = fim_registry_event(new, saved, configuration, FIM_SCHEDULED,
                                         saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED, NULL, diff);
 
         os_free(diff);
@@ -330,36 +325,6 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, const re
 
             cJSON_Delete(json_event);
         }
-
-        /* Write value name and data in the file (for checksum later) */
-        // EVP_DigestUpdate(ctx, value_buffer, strlen(value_buffer));
-        // switch (data_type) {
-        // case REG_SZ:
-        // case REG_EXPAND_SZ:
-        //     EVP_DigestUpdate(ctx, data_buffer, strlen(data_buffer));
-        //     break;
-        // case REG_MULTI_SZ:
-        //     /* Print multiple strings */
-        //     mt_data = data_buffer;
-
-        //     while (*mt_data) {
-        //         EVP_DigestUpdate(ctx, mt_data, strlen(mt_data));
-        //         mt_data += strlen(mt_data) + 1;
-        //     }
-        //     break;
-        // case REG_DWORD:
-        //     snprintf(buffer, OS_SIZE_2048, "%08x", *((unsigned int *)data_buffer));
-        //     EVP_DigestUpdate(ctx, buffer, strlen(buffer));
-        //     buffer[0] = '\0';
-        //     break;
-        // default:
-        //     for (j = 0; j < data_size; j++) {
-        //         snprintf(buffer, 3, "%02x", (unsigned int)data_buffer[j] & 0xFF);
-        //         EVP_DigestUpdate(ctx, buffer, strlen(buffer));
-        //         buffer[0] = '\0';
-        //     }
-        //     break;
-        // }
 
         // free_entry_data(data);
     }
@@ -459,7 +424,7 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     }
 
     if (value_count) {
-        fim_read_values(current_key_handle, &new, &saved, configuration, value_count);
+        fim_read_values(current_key_handle, &new, &saved, arch, value_count);
     }
 
     RegCloseKey(current_key_handle);
