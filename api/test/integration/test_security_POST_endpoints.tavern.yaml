@@ -170,7 +170,7 @@ stages:
           total_affected_items: 1
 
   # POST /security/rules
-  - name: Add a rule to the system
+  - name: Add a rule to the system (same rule but different name)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/rules"
@@ -181,7 +181,7 @@ stages:
         name: "test_i2"
         rule:
           FIND$:
-            definition: "normal_rule2"
+            definition: "normal_rule1"
     response:
       status_code: 200
       json:
@@ -191,7 +191,7 @@ stages:
               name: test_i2
               rule:
                 FIND$:
-                  definition: "normal_rule2"
+                  definition: "normal_rule1"
           total_affected_items: 1
 
 ---

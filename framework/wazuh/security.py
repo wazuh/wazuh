@@ -29,7 +29,7 @@ def get_user_me():
     -------
     AffectedItemsWazuhResult with the desired information
     """
-    result = AffectedItemsWazuhResult(all_msg='Current user information was shown')
+    result = AffectedItemsWazuhResult(all_msg='Current user information was returned')
     affected_items = list()
     with AuthenticationManager() as auth:
         user = auth.get_user(common.current_user.get())
@@ -86,9 +86,9 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.databa
     -------
     AffectedItemsWazuhResult with the desired information
     """
-    result = AffectedItemsWazuhResult(none_msg='No user was shown',
-                                      some_msg='Some users could not be shown',
-                                      all_msg='All specified users were shown')
+    result = AffectedItemsWazuhResult(none_msg='No user was returned',
+                                      some_msg='Some users were not returned',
+                                      all_msg='All specified users were returned')
     affected_items = list()
     with AuthenticationManager() as auth:
         for user_id in user_ids:
@@ -126,7 +126,7 @@ def create_user(username: str = None, password: str = None, allow_run_as: bool =
         raise WazuhError(5007)
 
     result = AffectedItemsWazuhResult(none_msg='User could not be created',
-                                      all_msg='User created correctly')
+                                      all_msg='User was successfully created')
     with AuthenticationManager() as auth:
         if auth.add_user(username, password, allow_run_as=allow_run_as):
             operation = auth.get_user(username)
@@ -162,7 +162,7 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
         raise WazuhError(4001)
     if password and not _user_password.match(password):
         raise WazuhError(5007)
-    result = AffectedItemsWazuhResult(all_msg='User modified correctly',
+    result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
     with AuthenticationManager() as auth:
         query = auth.update_user(user_id[0], password, allow_run_as)
@@ -191,8 +191,8 @@ def remove_users(user_ids):
     Status message
     """
     result = AffectedItemsWazuhResult(none_msg='No user was deleted',
-                                      some_msg='Some users could not be deleted',
-                                      all_msg='Users deleted correctly')
+                                      some_msg='Some users were not deleted',
+                                      all_msg='Users were successfully deleted')
     with AuthenticationManager() as auth:
         for user_id in user_ids:
             current_user = auth.get_user(common.current_user.get())
@@ -230,9 +230,9 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     affected_items = list()
-    result = AffectedItemsWazuhResult(none_msg='No roles were shown',
-                                      some_msg='Some roles could not be shown',
-                                      all_msg='All specified roles were shown')
+    result = AffectedItemsWazuhResult(none_msg='No role was returned',
+                                      some_msg='Some roles were not returned',
+                                      all_msg='All specified roles were returned')
     with RolesManager() as rm:
         for r_id in role_ids:
             role = rm.get_role_id(int(r_id))
@@ -259,8 +259,8 @@ def remove_roles(role_ids):
     :param role_ids: List of roles ids (None for all roles)
     :return Result of operation
     """
-    result = AffectedItemsWazuhResult(none_msg='No role were deleted',
-                                      some_msg='Some roles could not be delete',
+    result = AffectedItemsWazuhResult(none_msg='No role was deleted',
+                                      some_msg='Some roles were not deleted',
                                       all_msg='All specified roles were deleted')
     with RolesManager() as rm:
         for r_id in role_ids:
@@ -287,8 +287,8 @@ def add_role(name=None):
     :param name: The new role name
     :return Role information
     """
-    result = AffectedItemsWazuhResult(none_msg='Role could not be created',
-                                      all_msg='Role created correctly')
+    result = AffectedItemsWazuhResult(none_msg='Role was not created',
+                                      all_msg='Role was successfully created')
     with RolesManager() as rm:
         status = rm.add_role(name=name)
         if status == SecurityError.ALREADY_EXIST:
@@ -312,8 +312,8 @@ def update_role(role_id=None, name=None):
     """
     if name is None:
         raise WazuhError(4001)
-    result = AffectedItemsWazuhResult(none_msg='Role could not be updated',
-                                      all_msg='Role updated correctly')
+    result = AffectedItemsWazuhResult(none_msg='Role was not updated',
+                                      all_msg='Role was successfully updated')
     with RolesManager() as rm:
         status = rm.update_role(role_id=role_id[0], name=name)
         if status == SecurityError.ALREADY_EXIST:
@@ -349,9 +349,9 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
     :param search_in_fields: Fields to search in
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    result = AffectedItemsWazuhResult(none_msg='No policy were shown',
-                                      some_msg='Some policies could not be shown',
-                                      all_msg='All specified policies were shown')
+    result = AffectedItemsWazuhResult(none_msg='No policy was returned',
+                                      some_msg='Some policies were not returned',
+                                      all_msg='All specified policies were returned')
     affected_items = list()
     with PoliciesManager() as pm:
         for p_id in policy_ids:
@@ -379,8 +379,8 @@ def remove_policies(policy_ids=None):
     :param policy_ids: ID of the policy to be removed (All for all policies)
     :return Result of operation
     """
-    result = AffectedItemsWazuhResult(none_msg='No policies were deleted',
-                                      some_msg='Some policies could not be deleted',
+    result = AffectedItemsWazuhResult(none_msg='No policy was deleted',
+                                      some_msg='Some policies were not deleted',
                                       all_msg='All specified policies were deleted')
     with PoliciesManager() as pm:
         for p_id in policy_ids:
@@ -409,8 +409,8 @@ def add_policy(name=None, policy=None):
     :param policy: The new policy
     :return Policy information
     """
-    result = AffectedItemsWazuhResult(none_msg='Policy could not be created',
-                                      all_msg='Policy created correctly')
+    result = AffectedItemsWazuhResult(none_msg='Policy was not created',
+                                      all_msg='Policy was successfully created')
     with PoliciesManager() as pm:
         status = pm.add_policy(name=name, policy=policy)
         if status == SecurityError.ALREADY_EXIST:
@@ -435,8 +435,8 @@ def update_policy(policy_id=None, name=None, policy=None):
     """
     if name is None and policy is None:
         raise WazuhError(4001)
-    result = AffectedItemsWazuhResult(none_msg='Policy could not be updated',
-                                      all_msg='Policy updated correctly')
+    result = AffectedItemsWazuhResult(none_msg='Policy was not updated',
+                                      all_msg='Policy was successfully updated')
     with PoliciesManager() as pm:
         status = pm.update_policy(policy_id=policy_id[0], name=name, policy=policy)
         if status == SecurityError.ALREADY_EXIST:
@@ -473,9 +473,9 @@ def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     affected_items = list()
-    result = AffectedItemsWazuhResult(none_msg='No rules were shown',
-                                      some_msg='Some rules could not be shown',
-                                      all_msg='All specified rules were shown')
+    result = AffectedItemsWazuhResult(none_msg='No security rule was returned',
+                                      some_msg='Some security rules were not returned',
+                                      all_msg='All specified security rules were returned')
 
     with RulesManager() as rum:
         for ru_id in rule_ids:
@@ -503,8 +503,8 @@ def add_rule(name=None, rule=None):
     :param rule: The new rule
     :return Rule information
     """
-    result = AffectedItemsWazuhResult(none_msg='Rule could not be created',
-                                      all_msg='Rule created correctly')
+    result = AffectedItemsWazuhResult(none_msg='Security rule was not created',
+                                      all_msg='Security rule was successfully created')
     with RulesManager() as rum:
         status = rum.add_rule(name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
@@ -526,9 +526,9 @@ def remove_rules(rule_ids=None):
     :param rule_ids: List of rule ids (None for all rules)
     :return Result of operation
     """
-    result = AffectedItemsWazuhResult(none_msg='No rule were deleted',
-                                      some_msg='Some rules could not be delete',
-                                      all_msg='All specified rules were deleted')
+    result = AffectedItemsWazuhResult(none_msg='No security rule was deleted',
+                                      some_msg='Some security rules were not deleted',
+                                      all_msg='All specified security rules were deleted')
     with RulesManager() as rum:
         for r_id in rule_ids:
             rule = rum.get_rule(int(r_id))
@@ -558,8 +558,8 @@ def update_rule(rule_id=None, name=None, rule=None):
     """
     if name is None and rule is None:
         raise WazuhError(4001)
-    result = AffectedItemsWazuhResult(none_msg='Rule could not be updated',
-                                      all_msg='Rule updated correctly')
+    result = AffectedItemsWazuhResult(none_msg='Security rule was not updated',
+                                      all_msg='Security rule was successfully updated')
     with RulesManager() as rum:
         status = rum.update_rule(rule_id=rule_id[0], name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
@@ -621,8 +621,8 @@ def set_user_role(user_id, role_ids, position=None):
         raise WazuhError(4018)
 
     username = get_username(user_id=user_id)
-    result = AffectedItemsWazuhResult(none_msg=f'No link created to user {username}',
-                                      some_msg=f'Some roles could not be linked to user {username}',
+    result = AffectedItemsWazuhResult(none_msg=f'No link was created to user {username}',
+                                      some_msg=f'Some roles were not linked to user {username}',
                                       all_msg=f'All roles were linked to user {username}')
     success = False
     with UserRolesManager() as urm:
@@ -661,8 +661,8 @@ def remove_user_role(user_id, role_ids):
     :return User-Roles information
     """
     username = get_username(user_id=user_id)
-    result = AffectedItemsWazuhResult(none_msg=f'No role unlinked from user {username}',
-                                      some_msg=f'Some roles could not be unlinked from user {username}',
+    result = AffectedItemsWazuhResult(none_msg=f'No role was unlinked from user {username}',
+                                      some_msg=f'Some roles were not unlinked from user {username}',
                                       all_msg=f'All roles were unlinked from user {username}')
     success = False
     with UserRolesManager() as urm:
@@ -698,9 +698,9 @@ def set_role_rule(role_id, rule_ids):
     :param rule_ids: List of rule ids
     :return Result of operation
     """
-    result = AffectedItemsWazuhResult(none_msg=f'No link created to role {role_id[0]}',
-                                      some_msg=f'Some rules could not be linked to role {role_id[0]}',
-                                      all_msg=f'All rules were linked to role {role_id[0]}')
+    result = AffectedItemsWazuhResult(none_msg=f'No link was created to role {role_id[0]}',
+                                      some_msg=f'Some security rules were not linked to role {role_id[0]}',
+                                      all_msg=f'All security rules were linked to role {role_id[0]}')
     success = False
     with RolesRulesManager() as rrm:
         for rule_id in rule_ids:
@@ -740,9 +740,9 @@ def remove_role_rule(role_id, rule_ids):
     :param rule_ids: List of rule ids
     :return Result of operation
     """
-    result = AffectedItemsWazuhResult(none_msg=f'No rule unlinked from role {role_id[0]}',
-                                      some_msg=f'Some rules could not be unlinked from role {role_id[0]}',
-                                      all_msg=f'All rules were unlinked from role {role_id[0]}')
+    result = AffectedItemsWazuhResult(none_msg=f'No security rule was unlinked from role {role_id[0]}',
+                                      some_msg=f'Some security rules were not unlinked from role {role_id[0]}',
+                                      all_msg=f'All security rules were unlinked from role {role_id[0]}')
     success = False
     with RolesRulesManager() as rrm:
         for rule_id in rule_ids:
@@ -792,8 +792,8 @@ def set_role_policy(role_id, policy_ids, position=None):
     dict
         Role-Policies information
     """
-    result = AffectedItemsWazuhResult(none_msg=f'No link created to role {role_id[0]}',
-                                      some_msg=f'Some policies could not be linked to role {role_id[0]}',
+    result = AffectedItemsWazuhResult(none_msg=f'No link was created to role {role_id[0]}',
+                                      some_msg=f'Some policies were not linked to role {role_id[0]}',
                                       all_msg=f'All policies were linked to role {role_id[0]}')
     success = False
     with RolesPoliciesManager() as rpm:
@@ -831,8 +831,8 @@ def remove_role_policy(role_id, policy_ids):
     :param policy_ids: List of policies ids
     :return Result of operation
     """
-    result = AffectedItemsWazuhResult(none_msg=f'No policy unlinked from role {role_id[0]}',
-                                      some_msg=f'Some policies could not be unlinked from role {role_id[0]}',
+    result = AffectedItemsWazuhResult(none_msg=f'No policy was unlinked from role {role_id[0]}',
+                                      some_msg=f'Some policies were not unlinked from role {role_id[0]}',
                                       all_msg=f'All policies were unlinked from role {role_id[0]}')
     success = False
     with RolesPoliciesManager() as rpm:
@@ -865,7 +865,7 @@ def revoke_current_user_tokens():
         with AuthenticationManager() as am:
             tm.add_user_roles_rules(users={am.get_user(common.current_user.get())['id']})
 
-    return WazuhResult({'msg': f'User {common.current_user.get()} logout correctly.'})
+    return WazuhResult({'msg': f'User {common.current_user.get()} was successfully logged out'})
 
 
 @expose_resources(actions=['security:revoke'], resources=['*:*:*'],
@@ -875,7 +875,7 @@ def wrapper_revoke_tokens():
     """ Revoke all tokens """
     revoke_tokens()
 
-    return WazuhResult({'msg': 'Tokens revoked successfully'})
+    return WazuhResult({'msg': 'Tokens were successfully revoked'})
 
 
 @lru_cache(maxsize=None)
@@ -983,7 +983,7 @@ def update_security_config(updated_config=None):
     """
     try:
         update_security_conf(updated_config)
-        result = 'Configuration successfully updated'
+        result = 'Configuration was successfully updated'
     except WazuhError as e:
         result = f'Configuration could not be updated. Error: {e}'
 
