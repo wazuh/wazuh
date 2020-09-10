@@ -251,29 +251,70 @@ void fim_registry_process_unscanned_entries() {
     }
 }
 
+void fim_registry_process_value_event(fim_entry *new, fim_entry *saved, int arch, fim_event_mode mode, BYTE *data_buffer) {
+    char value_path[MAX_KEY + 2];
+    registry *configuration;
+    cJSON *json_event;
+    char *diff = NULL;
+
+    snprintf(value_path, MAX_KEY, "%s\\%s", new->registry_entry.key->path, new->registry_entry.value->name);
+
+    configuration = fim_registry_configuration(value_path, arch);
+    if (configuration == NULL) {
+        return;
+    }
+
+    if (fim_registry_validate_path(value_path, configuration)) {
+        return;
+    }
+
+    if (fim_check_restrict(value_path, configuration->filerestrict)) {
+        return;
+    }
+
+    saved->registry_entry.value =
+    fim_db_get_registry_data(syscheck.database, new->registry_entry.key->id, new->registry_entry.value->name);
+    fim_db_set_registry_data_scanned(syscheck.database, new->registry_entry.value->name, new->registry_entry.key->id);
+
+    if (configuration->opts | CHECK_SEECHANGES) {
+        diff = fim_registry_value_diff(new->registry_entry.key->path, new->registry_entry.value->name, data_buffer,
+                                       new->registry_entry.value->type);
+    }
+
+    json_event = fim_registry_event(new, saved, configuration, mode,
+                                    saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED, NULL, diff);
+
+    if (json_event) {
+        if (fim_db_insert_registry(syscheck.database, new) != 0) {
+            mwarn("Couldn't insert into DB");
+        }
+
+        if (_base_line) {
+            char *json_formated = cJSON_PrintUnformatted(json_event);
+            send_syscheck_msg(json_formated);
+            os_free(json_formated);
+        }
+
+        cJSON_Delete(json_event);
+    }
+
+    fim_registry_free_value_data(saved->registry_entry.value);
+    os_free(diff);
+}
+
 /* Query the key and get all its values */
 void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, int arch, DWORD value_count, fim_event_mode mode) {
-    DWORD i;
-
-    /* Variables for RegEnumValue */
-    TCHAR value_buffer[MAX_VALUE_NAME + 1];
-    BYTE data_buffer[MAX_VALUE_NAME + 1];
-    DWORD value_size;
-    DWORD data_size;
-
-    /* Data type for RegEnumValue */
-    DWORD data_type = 0;
-
     fim_registry_value_data value_data;
+    TCHAR value_buffer[MAX_VALUE_NAME + 1];
+    DWORD value_size;
+    BYTE data_buffer[MAX_VALUE_NAME + 1];
+    DWORD data_size;
+    DWORD data_type = 0;
+    DWORD i;
 
     new->registry_entry.value = &value_data;
 
     for (i = 0; i < value_count; i++) {
-        char *diff = NULL;
-        char value_path[MAX_KEY + 2];
-        registry *configuration;
-        cJSON *json_event;
-
         value_size = MAX_VALUE_NAME;
         data_size = MAX_VALUE_NAME;
 
@@ -287,48 +328,11 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, int arch
             value_buffer[1] = '\0';
         }
 
-        snprintf(value_path, MAX_KEY, "%s\\%s", new->registry_entry.key->path, value_buffer);
-
-        configuration = fim_registry_configuration(value_path, arch);
-        if (configuration == NULL || fim_registry_validate_path(value_path, configuration) ||
-            fim_check_restrict(value_path, configuration->filerestrict)) {
-            continue;
-        }
-
         new->registry_entry.value->name = value_buffer;
         new->registry_entry.value->type = data_type;
         new->registry_entry.value->size = data_size;
 
-        saved->registry_entry.value =
-        fim_db_get_registry_data(syscheck.database, new->registry_entry.key->id, new->registry_entry.value->name);
-
-        if (configuration->opts | CHECK_SEECHANGES) {
-            diff = fim_registry_value_diff(new->registry_entry.key->path, new->registry_entry.value->name, data_buffer, data_type);
-        }
-
-        json_event = fim_registry_event(new, saved, configuration, mode,
-                                        saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED, NULL, diff);
-
-        os_free(diff);
-        fim_registry_free_value_data(saved->registry_entry.value);
-
-        fim_db_set_registry_data_scanned(syscheck.database, new->registry_entry.value->name, new->registry_entry.key->id);
-
-        if (json_event) {
-            if (fim_db_insert_registry(syscheck.database, new) != 0) {
-                mwarn("Couldn't insert into DB");
-            }
-
-            if (_base_line) {
-                char *json_formated = cJSON_PrintUnformatted(json_event);
-                send_syscheck_msg(json_formated);
-                os_free(json_formated);
-            }
-
-            cJSON_Delete(json_event);
-        }
-
-        // free_entry_data(data);
+        fim_registry_process_value_event(new, saved, arch, mode, data_buffer);
     }
 }
 
