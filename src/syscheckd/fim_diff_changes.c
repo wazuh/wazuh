@@ -27,20 +27,21 @@
 
 static const char *STR_MORE_CHANGES = "More changes...";
 
-typedef struct diff_paths {
-
-    char *compress_folder;
-    char *compress_file;
-
-    char *tmp_folder;
-    char *file_origin;
-    char *uncompress_file;
-    char *compress_tmp_file;
-    char *diff_file;
-
+typedef struct diff_data {
+    int file_size;
     int size_limit;
 
-} diff_paths;
+    char *file_origin;
+    char *compress_folder;
+    char *compress_file;
+    char *uncompress_file;
+
+    char *tmp_folder;
+    char *compress_tmp_file;
+    char *diff_file;
+} diff_data;
+
+#ifdef WIN32
 
 /* Prototypes */
 //TODO description
@@ -51,9 +52,9 @@ typedef struct diff_paths {
  * @param encode_value
  * @param configuration
  *
- * @return diff_paths structure
+ * @return diff_data structure
  */
-diff_paths *initialize_registry_diff_paths(
+diff_data *initialize_registry_diff_data(
         char *encode_key,
         char *encode_value,
         registry *configuration);
@@ -62,11 +63,31 @@ diff_paths *initialize_registry_diff_paths(
 /**
  * @brief
  *
+ * @param key_name
+ * @param value_name
+ * @param value_data
+ * @param data_type
+ * @param diff
+ *
+ * @return -1 on error 0 on success
+ */
+int fim_diff_registry_tmp(char *key_name,
+                          char *value_name,
+                          char *value_data,
+                          DWORD data_type,
+                          diff_data *diff);
+
+#endif
+
+//TODO description
+/**
+ * @brief
+ *
  * @param filename
  *
- * @return diff_paths structure
+ * @return diff_data structure
  */
-diff_paths *initialize_file_diff_paths(char *filename);
+diff_data *initialize_file_diff_data(char *filename);
 
 //TODO description
 /**
@@ -74,9 +95,19 @@ diff_paths *initialize_file_diff_paths(char *filename);
  *
  * @param diff
  *
- * @return diff_paths structure
+ * @return diff_data structure
  */
-void free_diff_paths(diff_paths *diff);
+void free_diff_data(diff_data *diff);
+
+//TODO description
+/**
+ * @brief
+ *
+ * @param diff
+ *
+ * @return diff_data structure
+ */
+bool fim_diff_check_limits(diff_data *diff);
 
 //TODO description
 /**
@@ -86,7 +117,7 @@ void free_diff_paths(diff_paths *diff);
  *
  * @return
  */
-char *fim_diff_check_file(diff_paths *diff);
+char *fim_diff_check_file(diff_data *diff);
 
 //TODO description
 /**
@@ -117,7 +148,7 @@ int fim_diff_estimate_compression(const float file_size);
  *
  * @return
  */
-int fim_diff_create_compress(diff_paths *diff, float file_size);
+void fim_diff_create_compress(diff_data *diff);
 
 //TODO description
 /**
@@ -138,7 +169,7 @@ int is_nodiff(const char *filename);
  *
  * @return
  */
-char *gen_diff_str(diff_paths *diff, __attribute__((unused)) int status);
+char *gen_diff_str(diff_data *diff, __attribute__((unused)) int status);
 
 //TODO description
 /**
@@ -150,41 +181,164 @@ char *gen_diff_str(diff_paths *diff, __attribute__((unused)) int status);
  */
 char* filter(const char *string);
 
-#ifdef WIN32
-char * fim_registry_value_diff(
-            char *key_name,
-            char *value_name,
-            char *value_data,
-            DWORD data_type,
-            registry registry) {
+//TODO description
+/**
+ * @brief
+ *
+ * @param string
+ *
+ * @return
+ */
+int symlink_to_dir (const char *filename);
 
-    char buffer[PATH_MAX + 1];
-    char *diff_changes = NULL;
-    char *aux_data = NULL;
-    char *key_path = NULL;
-    char *value_path = NULL;
+
+
+#ifdef WIN32
+
+char *fim_registry_value_diff(char *key_name,
+                               char *value_name,
+                               char *value_data,
+                               DWORD data_type,
+                               registry registry) {
+
     os_sha1 encoded_key;
     os_sha1 encoded_value;
-    FILE *fp;
+    char *diff_changes = NULL;
+    bool reach_limit;
 
     // Invalid types for report_changes
-    if (data_type == REG_NONE || data_type == REG_BINARY || data_type == REG_LINK || data_type == REG_RESOURCE_LIST
-        || data_type == REG_FULL_RESOURCE_DESCRIPTOR || data_type == REG_RESOURCE_REQUIREMENTS_LIST){
+    if (data_type == REG_NONE || data_type == REG_BINARY || data_type == REG_LINK ||
+        data_type == REG_RESOURCE_LIST || data_type == REG_FULL_RESOURCE_DESCRIPTOR ||
+        data_type == REG_RESOURCE_REQUIREMENTS_LIST) {
             return NULL;
     }
 
     OS_SHA1_Str(key_name, strlen(key_name), encoded_key);
     OS_SHA1_Str(value_name, strlen(value_name), encoded_value);
 
-    snprintf(buffer, MAX_PATH, "%s\\tmp\\%s", DIFF_DIR_PATH, encoded_key);
-    os_strdup(key_path, buffer);
+    // Generate diff structure
+    diff_data diff = initialize_registry_diff_data(encoded_key, encoded_value);
+    // Create tmp directory and file with de content of the registry
+    fim_diff_registry_tmp(key_name, value_name, value_data, data_type, diff);
 
-    mkdir(key_path);
+    // Check for file limit and disk quota
+    if (reach_limit = fim_diff_check_limits(diff), reach_limit) {
+        goto cleanup;
+    }
+
+    // If the file is not there, create compressed file and return.
+    if (w_uncompress_gzfile(diff->compress_file, diff->uncompress_file) != 0) {
+        fim_diff_create_compress(diff);
+        goto cleanup;
+    } else {
+        backup_file_size = (FileSize(diff->compress_file) / 1024);
+        syscheck.diff_folder_size -= backup_file_size;
+
+        if (fim_diff_create_compress(diff) == -1) {
+            syscheck.diff_folder_size += backup_file_size;
+        }
+
+    }
+
+    if (fim_diff_compare(diff) == -1) {
+        goto cleanup;
+    }
+
+    diff_changes = fim_diff_generate(diff);
+
+
+cleanup:
+
+    if (rmdir_ex(diff->tmp_folder) < 0) {
+        mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
+    }
+
+    if (rmdir(diff->encoded_key) < 0) {
+        mdebug2(RMDIR_ERROR, diff->encoded_key, errno, strerror(errno));
+    }
+
+    free_diff_data(diff);
+
+    return diff_changes;
+}
+
+
+diff_data *initialize_registry_diff_data(
+            char *encode_key,
+            char *encode_value,
+            registry *configuration){
+
+    diff_data *diff;
+    char buffer[PATH_MAX + 1];
+
+    os_calloc(1, sizeof(diff_data), diff);
+
+    diff->file_size = 0;
+
+    snprintf(
+        buffer,
+        PATH_MAX,
+        "%s/registry/%s/%s",
+        DIFF_DIR_PATH,
+        encode_key,
+        encode_value
+    );
+    os_strdup(buffer, diff->compress_folder);
+
+    snprintf(
+        buffer,
+        PATH_MAX,
+        "%s/last-entry.gz",
+        diff->compress_folder
+    );
+    os_strdup(buffer, diff->compress_file);
+
+    snprintf(
+        buffer,
+        PATH_MAX,
+        "%s/tmp-entry",
+        diff->tmp_folder
+    );
+    os_strdup(buffer, diff->uncompress_file);
+
+    snprintf(
+        buffer,
+        PATH_MAX,
+        "%s/tmp-entry.gz",
+        diff->tmp_folder
+    );
+    os_strdup(buffer, diff->compress_tmp_file);
+
+    snprintf(
+        buffer,
+        PATH_MAX,
+        "%s/diff-file",
+        diff->tmp_folder
+    );
+    os_strdup(buffer, diff->diff_file);
+
+    diff->size_limit = configuration->diff_size_limit;
+}
+
+int fim_diff_registry_tmp(os_sha1 encoded_key,
+                          os_sha1 encoded_value,
+                          char *value_data,
+                          DWORD data_type,
+                          diff_data *diff) {
+
+    char buffer[PATH_MAX + 1];
+    char *aux_data = NULL;
+    FILE *fp;
+
+    snprintf(buffer, MAX_PATH, "%s\\tmp\\%s", DIFF_DIR_PATH, encoded_key);
+    os_strdup(diff->tmp_folder, buffer);
+    mkdir_ex(diff->tmp_folder);
+
     snprintf(buffer, MAX_PATH, "%s\\%s", encoded_key, encoded_value);
-    os_strdup(value_path, buffer);
+    os_strdup(diff->file_origin, buffer);
 
     //TODO: Ensure that the content generation is correct
-    if (fp = fopen(value_path, "w"), fp) {
+    if (fp = fopen(diff->file_origin, "w"), fp) {
         switch (data_type) {
             case REG_SZ:
             case REG_EXPAND_SZ:
@@ -219,112 +373,22 @@ char * fim_registry_value_diff(
                 break;
         }
     } else {
-        merror(FOPEN_ERROR, value_path, errno, strerror(errno));
-        os_free(key_path);
-        os_free(value_path);
-        return NULL;
+        merror(FOPEN_ERROR, diff->file_origin, errno, strerror(errno));
+        return -1;
     }
 
     fclose(fp);
-
-    diff_paths diff = initialize_registry_diff_paths(key_path, value_path);
-
-    // We send the file with the value data to "seechanges" as if it were a monitored file
-    if (diff_changes = fim_diff_check_file(diff), !diff_changes) {
-        // error, comprobar
-        return NULL;
-    }
-
-    // Remove file with value data, no longer needed
-    _unlink(value_path);
-    // Remove dir if empty
-    rmdir(key_path);
-
-    return diff_changes;
-}
-
-
-diff_paths *initialize_registry_diff_paths(
-            char *encode_key,
-            char *encode_value,
-            registry *configuration){
-
-    diff_paths *diff;
-    char buffer[PATH_MAX + 1];
-
-    os_calloc(1, sizeof(diff_paths), diff);
-
-    //TODO: remove encode_KEY folder, if no more value files are inside
-    snprintf(
-        buffer,
-        PATH_MAX,
-        "%s/registry/%s/%s",
-        DIFF_DIR_PATH,
-        encode_key,
-        encode_value
-    );
-    os_strdup(buffer, diff->compress_folder);
-
-    snprintf(
-        buffer,
-        PATH_MAX,
-        "%s/last-entry.gz",
-        diff->compress_folder
-    );
-    os_strdup(buffer, diff->compress_file);
-
-    snprintf(
-        buffer,
-        PATH_MAX,
-        "%s/tmp",
-        DIFF_DIR_PATH
-    );
-    os_strdup(buffer, diff->tmp_folder);
-
-    snprintf(
-        buffer,
-        PATH_MAX,
-        "%s/%s/%s",
-        diff->tmp_folder,
-        encode_key,
-        encode_value
-    );
-    os_strdup(buffer, diff->file_origin);
-
-    snprintf(
-        buffer,
-        PATH_MAX,
-        "%s/tmp-entry",
-        diff->tmp_folder
-    );
-    os_strdup(buffer, diff->uncompress_file);
-
-    snprintf(
-        buffer,
-        PATH_MAX,
-        "%s/tmp-entry.gz",
-        diff->tmp_folder
-    );
-    os_strdup(buffer, diff->compress_tmp_file);
-
-    snprintf(
-        buffer,
-        PATH_MAX,
-        "%s/diff-file",
-        diff->tmp_folder
-    );
-    os_strdup(buffer, diff->diff_file);
-
-    diff->size_limit = configuration->diff_size_limit;
+    return 0;
 }
 
 #endif
 
-diff_paths *initialize_file_diff_paths(char *filename) {
-    diff_paths *diff;
+//TODO: Restruct file trace
+diff_data *initialize_file_diff_data(char *filename) {
+    diff_data *diff;
     char buffer[PATH_MAX + 1];
 
-    os_calloc(1, sizeof(diff_paths), diff);
+    os_calloc(1, sizeof(diff_data), diff);
 
     os_strdup(diff->file_origin, filename);
 
@@ -337,101 +401,183 @@ diff_paths *initialize_file_diff_paths(char *filename) {
         filename + PATH_OFFSET
     );
 
-
+    return diff;
 }
 
-//TODO free diff_paths structure
-void free_diff_paths(diff_paths *diff) {
+void free_diff_data(diff_data *diff) {
+    if (!diff){
+        return;
+    }
+
+    os_free(diff->file_origin);
+    os_free(diff->compress_folder);
+    os_free(diff->compress_file);
+    os_free(diff->uncompress_file);
+    os_free(diff->tmp_folder);
+    os_free(diff->compress_tmp_file);
+    os_free(diff->diff_file);
+
+    os_free(diff);
+
     return;
 }
 
-
-char *fim_diff_check_file(diff_paths *diff) {
+bool fim_diff_check_limits(diff_data *diff) {
     float file_size = 0;
-    os_md5 md5sum_old;
-    os_md5 md5sum_new;
-    int status = -1;
-    char diff_cmd[PATH_MAX * 3 + OS_SIZE_1024];
-    char *diff_str = NULL;
-    char *uncompress_file_filtered = NULL;
-    char *file_origin_filtered = NULL;
-    char *diff_file_filtered = NULL;
 
-    file_size = (float)FileSize(diff->file_origin) / 1024;
+    diff->file_size = (float)FileSize(diff->file_origin) / 1024;
 
     if (syscheck.file_size_enabled) {
-        if (file_size > diff->size_limit) {
+        if (diff->file_size > diff->size_limit) {
             // TODO: get real name for registry key and value
             mdebug2(FIM_BIG_FILE_REPORT_CHANGES, diff->file_origin);
             fim_diff_delete_compress_folder(diff->compress_folder);
-            return NULL;
+            return true;
         }
     }
 
     // Estimate if the file could fit in the disk_quota limit. If not, return.
-    if (syscheck.disk_quota_enabled && !fim_diff_estimate_compression(file_size)) {
+    if (syscheck.disk_quota_enabled && !fim_diff_estimate_compression(diff->file_size)) {
         // TODO: check that, when the quota is exceeded, the last backup of the file that could be stored is kept
-        return NULL;
+        return true;
     }
 
-    fim_diff_createpath(diff->tmp_folder);
+    return false;
+}
 
-    // If the file is not there, create compressed file and return.
-    if (w_uncompress_gzfile(diff->compress_file, diff->uncompress_file) != 0) {
-        fim_diff_create_compress(diff, file_size);
-        if (rmdir_ex(diff->tmp_folder) < 0) {
-            mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
+void fim_diff_delete_compress_folder(char *folder) {
+    float file_size = 0.0;
+
+    if (IsDir(folder) == -1) {
+        return;     // The folder does not exist
+    }
+
+    file_size = (float)FileSize(folder) / 1024;
+
+    if (rmdir_ex(folder) < 0) {
+        mdebug2(RMDIR_ERROR, folder, errno, strerror(errno));
+    } else {
+        if (file_size != -1) {
+            syscheck.diff_folder_size -= file_size;
+
+            if (syscheck.diff_folder_size < 0) {
+                syscheck.diff_folder_size = 0;
+            }
         }
-        return NULL;
+    }
+}
+
+int fim_diff_estimate_compression(const float file_size) {
+    float compressed_estimation = 0.0;
+    int result = -1;
+
+    compressed_estimation = file_size - (syscheck.comp_estimation_perc * file_size);
+    result = (syscheck.diff_folder_size + compressed_estimation) <= syscheck.disk_quota_limit;
+
+    return result;
+}
+
+
+void fim_diff_create_compress(diff_data *diff) {
+    unsigned int zip_size = 0;
+
+    if (w_compress_gzfile(diff->file_origin, diff->compress_tmp_file) != 0) {
+        mwarn(FIM_WARN_GENDIFF_SNAPSHOT, diff->file_origin);
+        return -1;
+    } else if (syscheck.disk_quota_enabled) {
+        zip_size = FileSize(diff->compress_tmp_file) / 1024;
+
+        if (syscheck.diff_folder_size + zip_size <= syscheck.disk_quota_limit) {
+            mkdir_ex(diff->compress_folder);
+
+            if (rename_ex(diff->compress_tmp_file, diff->compress_file) != 0) {
+                mdebug2(RENAME_ERROR, diff->compress_tmp_file, diff->compress_file, errno, strerror(errno));
+                return -1;
+            }
+            syscheck.diff_folder_size += zip_size;
+
+        } else {
+            if (syscheck.disk_quota_full_msg) {
+                syscheck.disk_quota_full_msg = false;
+                mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
+            }
+            fim_diff_modify_compress_estimation(zip_size, diff->file_size);
+            return -1;
+        }
+    } else {
+        if (rename_ex(diff->compress_tmp_file, diff->compress_file) != 0) {
+            mdebug2(RENAME_ERROR, diff->compress_tmp_file, diff->compress_file, errno, strerror(errno));
+        }
     }
 
-    /**~~~~~~~~~~~~~~~~Start the comparison~~~~~~~~~~~~~~~~*/
+    return 0;
+}
+
+void fim_diff_modify_compress_estimation(const float compressed_size, const float uncompressed_size) {
+    float compression_rate = 1 - (compressed_size / uncompressed_size);
+
+    if (compression_rate < 0.1) {
+        return;     // Small compression rates won't update the estimation value
+    }
+
+    syscheck.comp_estimation_perc = (compression_rate + syscheck.comp_estimation_perc) / 2;
+
+    if (syscheck.comp_estimation_perc < MIN_COMP_ESTIM) {
+        syscheck.comp_estimation_perc = MIN_COMP_ESTIM;
+    }
+}
+
+int fim_diff_compare(diff_data *diff) {
+    os_md5 md5sum_old;
+    os_md5 md5sum_new;
+
     md5sum_new[0] = '\0';
     md5sum_old[0] = '\0';
 
     /* Get md5sum of the old file */
     if (OS_MD5_File(diff->uncompress_file, md5sum_old, OS_BINARY) != 0) {
-        if (rmdir_ex(diff->tmp_folder) < 0) {
-            mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
-        }
-        return (NULL);
+        return -1;
     }
 
     /* Get md5sum of the new file */
     if (OS_MD5_File(diff->file_origin, md5sum_new, OS_BINARY) != 0) {
-        if (rmdir_ex(diff->tmp_folder) < 0) {
-            mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
-        }
-        return (NULL);
+        return -1;
     }
 
     /* If they match (not changes), keep the compress file and remove the uncompress, wait for changes */
     if (strcmp(md5sum_new, md5sum_old) == 0) {
-        if (rmdir_ex(diff->tmp_folder) < 0) {
-            mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
-        }
-        return (NULL);
+        return -1;
     }
 
-#ifndef WIN32
-    if (is_nodiff(diff->file_origin) || symlink_to_dir(diff->file_origin)) {
-#else
+    return 0;
+}
+
+char *fim_diff_generate(diff_data *diff) {
+    char diff_cmd[PATH_MAX * 3 + OS_SIZE_1024];
+    char *diff_str = NULL;
+    char *uncompress_file_filtered = NULL;
+    char *file_origin_filtered = NULL;
+    char *diff_file_filtered = NULL;
+    int status = -1;
+
     if (is_nodiff(diff->file_origin)) {
-#endif
         /* Dont leak sensible data with a diff hanging around */
         FILE *fdiff;
         char* nodiff_message = "<Diff truncated because nodiff option>";
+
         fdiff = wfopen(diff->diff_file, "wb");
         if (!fdiff){
             merror(FIM_ERROR_GENDIFF_OPEN_FILE, diff->diff_file);
-            goto cleanup;
+            return NULL;
         }
 
         if (fwrite(nodiff_message, strlen(nodiff_message) + 1, 1, fdiff) < 1) {
             merror(FIM_ERROR_GENDIFF_WRITING_DATA, diff->diff_file);
+            fclose(fdiff);
+            return NULL;
         }
+
         fclose(fdiff);
-        /* Success nodiff */
         status = 1;
     } else {
         /* OK, run diff */
@@ -440,8 +586,11 @@ char *fim_diff_check_file(diff_paths *diff) {
         diff_file_filtered = filter(diff->diff_file);
 
         if (!(uncompress_file_filtered && file_origin_filtered && diff_file_filtered)) {
-            mdebug1(FIM_DIFF_SKIPPED); //LCOV_EXCL_LINE
-            goto cleanup; //LCOV_EXCL_LINE
+            mdebug1(FIM_DIFF_SKIPPED);
+            os_free(uncompress_file_filtered);
+            os_free(file_origin_filtered);
+            os_free(diff_file_filtered);
+            return NULL;
         }
 
         snprintf(
@@ -456,6 +605,9 @@ char *fim_diff_check_file(diff_paths *diff) {
             file_origin_filtered,
             diff_file_filtered
         );
+        os_free(uncompress_file_filtered);
+        os_free(file_origin_filtered);
+        os_free(diff_file_filtered);
 
         status = system(diff_cmd);
     }
@@ -467,64 +619,18 @@ char *fim_diff_check_file(diff_paths *diff) {
         merror("Diff command error");
     }
 
-cleanup:
-
-    free(uncompress_file_filtered);
-    free(file_origin_filtered);
-    free(diff_file_filtered);
-    free_diff_paths(diff);
-    if (rmdir_ex(diff->tmp_folder) < 0) {
-        mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
-    }
-
     return diff_str;
 }
 
-char *gen_diff_str(diff_paths *diff, int status){
-    float tmp_diff_size = syscheck.diff_folder_size;
+char *gen_diff_str(diff_data *diff, int status){
     FILE *fp;
     char buf[OS_MAXSTR + 1];
-    size_t n = 0;
     char *diff_str;
-
-    tmp_diff_size -= (FileSize(diff->compress_file) / 1024);
-/* COMPROBACION NECESARIA?
-    if (syscheck.disk_quota_enabled && !seechanges_estimate_compression(FileSize(diff->file_origin) / 1024)) {
-        if (rmdir_ex(diff->tmp_folder) < 0) {
-            mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
-        }
-        return NULL;
-    }
-*/
-
-    if (w_compress_gzfile(diff->file_origin, diff->compress_tmp_file) != 0) {
-            mwarn(FIM_WARN_GENDIFF_SNAPSHOT, diff->file_origin);
-    } else if (syscheck.disk_quota_enabled) {
-        tmp_diff_size += (FileSize(diff->compress_tmp_file) / 1024);
-
-        if (tmp_diff_size > syscheck.disk_quota_limit) {
-            if (syscheck.disk_quota_full_msg) {
-                syscheck.disk_quota_full_msg = false;
-                mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
-            }
-            fim_diff_modify_compress_estimation(FileSize(diff->compress_tmp_file) / 1024, FileSize(diff->file_origin) / 1024);
-            fim_diff_delete_compress_folder(diff->compress_folder);
-
-            if (rmdir_ex(diff->tmp_folder) < 0) {
-                mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
-            }
-            return NULL;
-        }
-
-        syscheck.diff_folder_size = tmp_diff_size;
-    }
+    size_t n = 0;
 
     fp = wfopen(diff->diff_file, "rb");
     if (!fp) {
         merror(FIM_ERROR_GENDIFF_OPEN, diff->diff_file);
-        if (rmdir_ex(diff->tmp_folder) < 0) {
-            mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
-        }
         return NULL;
     }
 
@@ -535,10 +641,8 @@ char *gen_diff_str(diff_paths *diff, int status){
     switch (n) {
     case 0:
         merror(FIM_ERROR_GENDIFF_READ);
-        if (rmdir_ex(diff->tmp_folder) < 0) {
-            mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
-        }
         return NULL;
+
 // TODO: unify MORE_CHANGES utility, windows and linux
 #ifndef WIN32
     case OS_MAXSTR - OS_SK_HEADER - 1:
@@ -551,15 +655,13 @@ char *gen_diff_str(diff_paths *diff, int status){
         strcpy(buf + n, STR_MORE_CHANGES);
         break;
 #endif
+
     default:
         buf[n] = '\0';
     }
 
 #ifdef WIN32
     if (diff_str = adapt_win_fc_output(buf), !diff_str) {
-        if (rmdir_ex(diff->tmp_folder) < 0) {
-            mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
-        }
         return NULL;
     }
 
@@ -599,141 +701,6 @@ char *gen_diff_str(diff_paths *diff, int status){
         mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
     }
     return diff_str;
-}
-
-void fim_diff_delete_compress_folder(char *folder) {
-    float file_size = 0.0;
-
-    if (IsDir(folder) == -1) {
-        return;     // The folder does not exist
-    }
-
-    file_size = (float)FileSize(folder) / 1024;
-
-    if (rmdir_ex(folder) < 0) {
-        mdebug2(RMDIR_ERROR, folder, errno, strerror(errno));
-    } else {
-        if (file_size != -1) {
-            syscheck.diff_folder_size -= file_size;
-
-            if (syscheck.diff_folder_size < 0) {
-                syscheck.diff_folder_size = 0;
-            }
-        }
-    }
-}
-
-void fim_diff_modify_compress_estimation(const float compressed_size, const float uncompressed_size) {
-    float compression_rate = 1 - (compressed_size / uncompressed_size);
-
-    if (compression_rate < 0.1) {
-        return;     // Small compression rates won't update the estimation value
-    }
-
-    syscheck.comp_estimation_perc = (compression_rate + syscheck.comp_estimation_perc) / 2;
-
-    if (syscheck.comp_estimation_perc < MIN_COMP_ESTIM) {
-        syscheck.comp_estimation_perc = MIN_COMP_ESTIM;
-    }
-}
-
-int fim_diff_estimate_compression(const float file_size) {
-    float compressed_estimation = 0.0;
-    int result = -1;
-
-    compressed_estimation = file_size - (syscheck.comp_estimation_perc * file_size);
-    result = (syscheck.diff_folder_size + compressed_estimation) <= syscheck.disk_quota_limit;
-
-    return result;
-}
-
-int fim_diff_createpath(const char *filename){
-    char *buffer = NULL;
-    char *tmpstr = NULL;
-    char *newdir = NULL;
-    char *next = NULL;
-    char *save_ptr = NULL;
-
-    os_strdup(filename, buffer);
-    newdir = buffer;
-#ifdef WIN32
-    tmpstr = strtok_r(buffer + PATH_OFFSET, "/\\", &save_ptr);
-#else
-    tmpstr = strtok_r(buffer + PATH_OFFSET, "/", &save_ptr);
-#endif
-    if (!tmpstr) {
-        merror(FIM_ERROR_GENDIFF_INVALID_PATH, filename);
-        free(buffer);
-        return (0);
-    }
-#ifdef WIN32
-    while (next = strtok_r(NULL, "/\\", &save_ptr), next) {
-#else
-    while (next = strtok_r(NULL, "/", &save_ptr), next) {
-#endif
-        if (IsDir(newdir) != 0) {
-#ifndef WIN32
-            if (mkdir(newdir, 0770) == -1){
-#else
-            if (mkdir(newdir) == -1){
-#endif
-                merror(MKDIR_ERROR, newdir, errno, strerror(errno));
-                free(buffer);
-                return (0);
-            }
-        }
-        tmpstr = next;
-        tmpstr[-1] = '/';
-    }
-    free(buffer);
-    return (1);
-}
-
-int fim_diff_create_compress(diff_paths *diff, float file_size) {
-    unsigned int compressed_new_size = 0;
-
-    fim_diff_createpath(diff->compress_folder);
-
-    if (w_compress_gzfile(diff->file_origin, diff->compress_tmp_file) != 0) {
-        mwarn(FIM_WARN_GENDIFF_SNAPSHOT, diff->file_origin);
-    } else if (syscheck.disk_quota_enabled) {
-        compressed_new_size = FileSize(diff->compress_tmp_file) / 1024;
-        /**
-         * Check if adding the new file doesn't exceed the disk quota limit.
-         * Update the diff_folder_size value if it's not exceeded and move
-         * the temporary file to the correct location.
-         * It shouldn't perform any diff operation if the file causes the
-         * diff folder to exceed the disk quota limit.
-         */
-        if (syscheck.diff_folder_size + compressed_new_size <= syscheck.disk_quota_limit) {
-            syscheck.diff_folder_size += compressed_new_size;
-
-            if (rename_ex(diff->compress_tmp_file, diff->compress_file) != 0) {
-                mdebug2(RENAME_ERROR, diff->compress_tmp_file, diff->compress_file, errno, strerror(errno));
-            }
-
-            return NULL;
-        } else {
-            if (syscheck.disk_quota_full_msg) {
-                syscheck.disk_quota_full_msg = false;
-                mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
-            }
-
-            fim_diff_modify_compress_estimation(compressed_new_size, file_size);
-
-            if (rmdir_ex(diff->compress_folder) < 0) {
-                mdebug2(RMDIR_ERROR, diff->compress_folder, errno, strerror(errno));
-            }
-        }
-    } else {
-        if (rename_ex(diff->compress_tmp_file, diff->compress_file) != 0) {
-            mdebug2(RENAME_ERROR, diff->compress_tmp_file, diff->compress_file, errno, strerror(errno));
-        }
-
-        return NULL;
-    }
-
-    return (NULL);
 }
 
 //TODO: Registry nodiff functionality
