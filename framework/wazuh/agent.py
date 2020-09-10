@@ -722,6 +722,8 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
 
     '000' in agent_list and agent_list.remove('000')
     wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url_4_x
+    if version and not version.startswith('v'):
+        version = f'v{version}'
     msg = {
         'command': 'upgrade' if not (installer or file_path) else 'upgrade_custom',
         'agents': list(map(int, agent_list)),
