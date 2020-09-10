@@ -16,7 +16,7 @@
 #include "../../headers/shared.h"
 #include "../../analysisd/logmsg.h"
 
-void _os_analysisd_add_logmsg(OSList * list, int level, int line, const char * func, 
+void _os_analysisd_add_logmsg(OSList * list, int level, int line, const char * func,
                                 const char * file, char * msg, ...) __attribute__((nonnull));
 char * os_analysisd_string_log_msg(os_analysisd_log_msg_t * log_msg);
 void os_analysisd_free_log_msg(os_analysisd_log_msg_t ** log_msg);
@@ -39,8 +39,8 @@ void * __wrap_OSList_AddData(OSList *list, void *data) {
     return mock_type(void *);
 }
 
-int __wrap_vsnprintf (char *__restrict __s, size_t __maxlen,
-		            const char *__restrict __format, _G_va_list __arg) {
+int __wrap_vsnprintf(char *__restrict __s, size_t __maxlen,
+		            const char *__restrict __format, ...) {
 
     check_expected(__format);
 
@@ -183,8 +183,7 @@ int main(void)
         cmocka_unit_test(test_os_analysisd_string_log_msg_isDebug_false),
         cmocka_unit_test(test_os_analysisd_string_log_msg_isDebug_true),
         //Test _os_analysisd_add_logmsg
-        cmocka_unit_test(test__os_analysisd_add_logmsg_OK),
-
+        cmocka_unit_test(test__os_analysisd_add_logmsg_OK)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

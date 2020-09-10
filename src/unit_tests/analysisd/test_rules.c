@@ -56,15 +56,15 @@ void test_loadmemory_null_append_ok(void ** state)
 {
     char * at = NULL;
     char * str;
-    
+
     const size_t len = 1000;
     char * expect_retval;
     char * retval;
-    
+
     os_calloc(len, sizeof(char), str);
     memset(str, (int) '-', len - 1);
     str[len-1] = '\0';
-    
+
     os_calloc(len, sizeof(char), expect_retval);
     memset(expect_retval, (int) '-', len - 1);
     expect_retval[len-1] = '\0';
@@ -84,10 +84,10 @@ void test_loadmemory_null_append_oversize(void ** state)
     char * at = NULL;
     char * str;
     OSList list_msg = {0};
-    
+
     const size_t len = 2049;
     char * retval;
-    
+
     os_calloc(len, sizeof(char), str);
     memset(str, (int) '-', len - 1);
     str[len-1] = '\0';
@@ -112,10 +112,10 @@ void test_loadmemory_append_oversize(void ** state)
     char * at = NULL;
     char * str = NULL;
     OSList list_msg = {0};
-    
+
     const size_t len = 2050;
     char * retval;
-    
+
     os_calloc(len, sizeof(char), str);
     memset(str, (int) '-', len - 1);
     str[len-1] = '\0';
@@ -127,7 +127,7 @@ void test_loadmemory_append_oversize(void ** state)
     char expect_msg[OS_SIZE_20480];
 
     snprintf(expect_msg, OS_SIZE_20480, "(1104): Maximum string size reached for: %s.", str);
-    
+
     expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
     expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, expect_msg);
@@ -146,11 +146,11 @@ void test_loadmemory_append_ok(void ** state)
     char * at = NULL;
     char * str = NULL;
     OSList list_msg = {0};
-    
+
     const size_t len = 512;
     char * retval;
     char * expect_retval;
-    
+
     os_calloc(len, sizeof(char), str);
     memset(str, (int) '-', len - 1);
     str[len-1] = '\0';
@@ -158,7 +158,7 @@ void test_loadmemory_append_ok(void ** state)
     os_calloc(len, sizeof(char), at);
     memset(at, (int) '+', len - 1);
     at[len-1] = '\0';
-    
+
     os_calloc(len * 2, sizeof(char), expect_retval);
     strncat(expect_retval, at, len * 2);
     strncat(expect_retval, str, len * 2);
@@ -185,7 +185,7 @@ void test_get_info_attributes_null(void ** state)
     const int expect_retval = 0;
 
     retval = get_info_attributes(attributes, values, &log_msg);
-    
+
     assert_int_equal(retval, expect_retval);
 }
 
@@ -193,7 +193,7 @@ void test_get_info_attributes_empty(void ** state)
 {
     OSList log_msg = {0};
     char ** values = NULL;
-    
+
     char ** attributes;
     os_calloc(1,sizeof(char *), attributes);
     attributes[0] = NULL;
@@ -202,7 +202,7 @@ void test_get_info_attributes_empty(void ** state)
     const int expect_retval = 0;
 
     retval = get_info_attributes(attributes, values, &log_msg);
-    
+
     assert_int_equal(retval, expect_retval);
 
     os_free(attributes);
@@ -232,9 +232,9 @@ void test_get_info_attributes_without_value(void ** state)
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, excpect_msg);
 
     retval = get_info_attributes(attributes, values, &log_msg);
-    
+
     assert_int_equal(retval, expect_retval);
-    
+
     os_free(attributes);
     os_free(values);
 }
@@ -257,9 +257,9 @@ void test_get_info_attributes_text(void ** state)
     const int expect_retval = 0;
 
     retval = get_info_attributes(attributes, values, &log_msg);
-    
+
     assert_int_equal(retval, expect_retval);
-    
+
     os_free(attributes);
     os_free(values);
 }
@@ -282,9 +282,9 @@ void test_get_info_attributes_link(void ** state)
     const int expect_retval = 1;
 
     retval = get_info_attributes(attributes, values, &log_msg);
-    
+
     assert_int_equal(retval, expect_retval);
-    
+
     os_free(attributes);
     os_free(values);
 }
@@ -307,9 +307,9 @@ void test_get_info_attributes_cve(void ** state)
     const int expect_retval = 2;
 
     retval = get_info_attributes(attributes, values, &log_msg);
-    
+
     assert_int_equal(retval, expect_retval);
-    
+
     os_free(attributes);
     os_free(values);
 }
@@ -332,9 +332,9 @@ void test_get_info_attributes_osvdb(void ** state)
     const int expect_retval = 3;
 
     retval = get_info_attributes(attributes, values, &log_msg);
-    
+
     assert_int_equal(retval, expect_retval);
-    
+
     os_free(attributes);
     os_free(values);
 }
@@ -364,9 +364,9 @@ void test_get_info_attributes_invalid_value(void ** state)
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, excpect_msg);
 
     retval = get_info_attributes(attributes, values, &log_msg);
-    
+
     assert_int_equal(retval, expect_retval);
-    
+
     os_free(attributes);
     os_free(values);
 }
@@ -397,9 +397,9 @@ void test_get_info_attributes_invalid_type(void ** state)
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, excpect_msg);
 
     retval = get_info_attributes(attributes, values, &log_msg);
-    
+
     assert_int_equal(retval, expect_retval);
-    
+
     os_free(attributes);
     os_free(values);
 }
@@ -421,7 +421,7 @@ int main(void)
         cmocka_unit_test(test_get_info_attributes_cve),
         cmocka_unit_test(test_get_info_attributes_osvdb),
         cmocka_unit_test(test_get_info_attributes_invalid_value),
-        //cmocka_unit_test(test_get_info_attributes_invalid_type),
+        cmocka_unit_test(test_get_info_attributes_invalid_type)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
