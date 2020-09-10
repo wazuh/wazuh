@@ -1332,17 +1332,16 @@ void test_wdb_global_update_agent_name_bind1_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char *name = NULL;
+    char *name = "test_name";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 000);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
-
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_value(__wrap_sqlite3_bind_text, buffer, name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
+    expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
     result = wdb_global_update_agent_name(data->socket, atoi(data->socket->id), name);
     
     assert_int_equal(result, OS_INVALID);
@@ -1358,15 +1357,15 @@ void test_wdb_global_update_agent_name_bind2_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 000);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, name);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, 000);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
     result = wdb_global_update_agent_name(data->socket, atoi(data->socket->id), name);
     
     assert_int_equal(result, OS_INVALID);
@@ -1381,12 +1380,12 @@ void test_wdb_global_update_agent_name_step_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 000);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, 000);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
@@ -1406,12 +1405,12 @@ void test_wdb_global_update_agent_name_success(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 000);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, 000);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
     
