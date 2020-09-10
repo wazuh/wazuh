@@ -374,7 +374,7 @@ char* __wrap_ParseRuleComment(Eventinfo *lf) {
 }
 
 cJSON* __wrap_cJSON_AddBoolToObject(cJSON * const object, const char * const name, const cJSON_bool boolean) {
-    return mock_type(cJSON *);    
+    return mock_type(cJSON *);
 }
 
 cJSON_bool __wrap_cJSON_IsNumber(const cJSON * const item) {
@@ -389,8 +389,8 @@ cJSON * __wrap_cJSON_CreateArray() {
     return mock_type(cJSON *);
 }
 
-cJSON * __wrap_cJSON_CreateObject() { 
-    return mock_type(cJSON *); 
+cJSON * __wrap_cJSON_CreateObject() {
+    return mock_type(cJSON *);
 }
 
 cJSON * __wrap_cJSON_AddNumberToObject(cJSON * const object, const char * const name, const double number) {
@@ -468,9 +468,9 @@ void __wrap_DecodeEvent(struct _Eventinfo *lf, OSHash *rules_hash, regex_matchin
     check_expected(node);
 }
 
-RuleInfo * __wrap_OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events, 
+RuleInfo * __wrap_OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                                       ListNode **cdblists, RuleNode *curr_node,
-                                      regex_matching *rule_match, OSList **fts_list, 
+                                      regex_matching *rule_match, OSList **fts_list,
                                       OSHash **fts_store) {
     return mock_type(RuleInfo *);
 }
@@ -610,11 +610,11 @@ void test_w_logtest_init_pthread_fail(void **state)
 
     //w_logtest_clients_handler
     will_return(__wrap_FOREVER, 1);
-    
+
     will_return(__wrap_pthread_mutex_lock, 0);
 
     will_return(__wrap_accept, 5);
-    
+
     will_return(__wrap_pthread_mutex_unlock, 0);
 
     will_return(__wrap_OS_RecvSecureTCP, 0);
@@ -624,7 +624,7 @@ void test_w_logtest_init_pthread_fail(void **state)
     will_return(__wrap_close, 0);
     will_return(__wrap_FOREVER, 0);
 
-    
+
     will_return(__wrap_pthread_join, 0);
     will_return(__wrap_close, 0);
 
@@ -659,11 +659,11 @@ void test_w_logtest_init_unlink_fail(void **state)
 
     //w_logtest_clients_handler
     will_return(__wrap_FOREVER, 1);
-    
+
     will_return(__wrap_pthread_mutex_lock, 0);
 
     will_return(__wrap_accept, 5);
-    
+
     will_return(__wrap_pthread_mutex_unlock, 0);
 
     will_return(__wrap_OS_RecvSecureTCP, 0);
@@ -673,14 +673,14 @@ void test_w_logtest_init_unlink_fail(void **state)
     will_return(__wrap_close, 0);
     will_return(__wrap_FOREVER, 0);
 
-    
+
     will_return(__wrap_close, 0);
 
     will_return(__wrap_unlink, 1);
 
     char msg[OS_SIZE_4096];
     errno = EBUSY;
-    snprintf(msg, OS_SIZE_4096, "(1129): Could not unlink file '%s' due to [(%d)-(%s)].", 
+    snprintf(msg, OS_SIZE_4096, "(1129): Could not unlink file '%s' due to [(%d)-(%s)].",
             LOGTEST_SOCK, errno, strerror(errno));
 
     expect_string(__wrap__merror, formatted_msg, msg);
@@ -714,11 +714,11 @@ void test_w_logtest_init_done(void **state)
 
     //w_logtest_clients_handler
     will_return(__wrap_FOREVER, 1);
-    
+
     will_return(__wrap_pthread_mutex_lock, 0);
 
     will_return(__wrap_accept, 5);
-    
+
     will_return(__wrap_pthread_mutex_unlock, 0);
 
     will_return(__wrap_OS_RecvSecureTCP, 0);
@@ -728,7 +728,7 @@ void test_w_logtest_init_done(void **state)
     will_return(__wrap_close, 0);
     will_return(__wrap_FOREVER, 0);
 
-    
+
     will_return(__wrap_close, 0);
 
     will_return(__wrap_unlink, 0);
@@ -908,7 +908,7 @@ void test_w_logtest_check_inactive_sessions_no_remove(void **state)
     will_return(__wrap_OSHash_Begin, hash_node);
 
     will_return(__wrap_pthread_mutex_lock, 0);
-    
+
     will_return(__wrap_time, NULL);
 
     will_return(__wrap_difftime, 1);
@@ -997,7 +997,7 @@ void test_w_logtest_check_inactive_sessions_remove(void **state)
 void test_w_logtest_remove_old_session_one(void ** state) {
 
     w_logtest_connection_t connection;
-    
+
     connection.active_client = 2;
     w_logtest_conf.max_sessions = 1;
 
@@ -1041,7 +1041,7 @@ void test_w_logtest_remove_old_session_one(void ** state) {
 void test_w_logtest_remove_old_session_many(void ** state) {
 
     w_logtest_connection_t connection;
-    
+
     connection.active_client = 3;
     w_logtest_conf.max_sessions = 2;
 
@@ -1092,7 +1092,7 @@ void test_w_logtest_remove_old_session_many(void ** state) {
 
     w_logtest_remove_old_session(&connection);
     assert_int_equal(connection.active_client, w_logtest_conf.max_sessions);
-    
+
     os_free(hash_node_other->key);
     os_free(hash_node_old->key);
     os_free(hash_node_other);
@@ -2249,8 +2249,6 @@ void test_w_logtest_check_input_type_request_ok(void ** state) {
 
     /* token */
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
-    will_return(__wrap_cJSON_IsString, false);
-
 
     retval = w_logtest_check_input(input_raw_json, &request, list_msg);
 
@@ -2308,7 +2306,6 @@ void test_w_logtest_check_input_request_empty_json(void ** state) {
 
     /* token */
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
-    will_return(__wrap_cJSON_IsString, false);
 
     retval = w_logtest_check_input_request(&root, list_msg);
 
@@ -2349,12 +2346,11 @@ void test_w_logtest_check_input_request_missing_location(void ** state) {
 
     /* token */
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
-    will_return(__wrap_cJSON_IsString, false);
 
     retval = w_logtest_check_input_request(&root, list_msg);
 
     assert_int_equal(retval, ret_expect);
-    
+
     os_free(event.valuestring);
     os_free(log_format.valuestring);
 }
@@ -2393,7 +2389,6 @@ void test_w_logtest_check_input_request_missing_log_format(void ** state) {
 
     /* token */
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
-    will_return(__wrap_cJSON_IsString, false);
 
     retval = w_logtest_check_input_request(&root, list_msg);
 
@@ -2437,7 +2432,6 @@ void test_w_logtest_check_input_request_missing_event(void ** state) {
 
     /* token */
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
-    will_return(__wrap_cJSON_IsString, false);
 
     retval = w_logtest_check_input_request(&root, list_msg);
 
@@ -2477,6 +2471,7 @@ void test_w_logtest_check_input_request_full(void ** state) {
     cJSON token = {0};
     token.valuestring = strdup("12345678");
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &token);
+    will_return(__wrap_cJSON_IsString, true);
     will_return(__wrap_cJSON_IsString, true);
 
     retval = w_logtest_check_input_request(&root, list_msg);
@@ -2518,7 +2513,6 @@ void test_w_logtest_check_input_request_full_empty_token(void ** state) {
 
     /* token */
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
-    will_return(__wrap_cJSON_IsString, false);
 
     retval = w_logtest_check_input_request(&root, list_msg);
 
@@ -2561,6 +2555,8 @@ void test_w_logtest_check_input_request_bad_token_lenght(void ** state) {
     token.valuestring = strdup("1234");
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &token);
     will_return(__wrap_cJSON_IsString, true);
+    will_return(__wrap_cJSON_IsString, true);
+    will_return(__wrap_cJSON_IsString, true);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(7309): '1234' is not a valid token");
 
@@ -2575,6 +2571,59 @@ void test_w_logtest_check_input_request_bad_token_lenght(void ** state) {
     os_free(log_format.valuestring);
     os_free(event.valuestring);
     os_free(token.valuestring);
+}
+
+void test_w_logtest_check_input_request_bad_token_type(void ** state) {
+
+    cJSON root = {0};
+
+    int retval;
+    const int ret_expect = W_LOGTEST_REQUEST_TYPE_LOG_PROCESSING;
+
+    OSList * list_msg = (OSList *) 2;
+
+   /* location */
+    cJSON location = {0};
+    location.valuestring = strdup("location str");
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &location);
+    will_return(__wrap_cJSON_IsString, true);
+
+    /* log_format */
+    cJSON log_format = {0};
+    log_format.valuestring = strdup("log format str");
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &log_format);
+    will_return(__wrap_cJSON_IsString, true);
+
+    /* event */
+    cJSON event = {0};
+    event.valuestring = strdup("event str");
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &event);
+    will_return(__wrap_cJSON_IsString, true);
+
+    /* token */
+    cJSON token = {0};
+    token.type = cJSON_Number;
+    token.valueint = 1234;
+
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &token);
+    will_return(__wrap_cJSON_IsString, false);
+
+    will_return(__wrap_cJSON_IsString, false);
+
+    will_return(__wrap_cJSON_PrintUnformatted, strdup("1234"));
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(7309): '1234' is not a valid token");
+
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, list_msg);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7309): '1234' is not a valid token");
+
+    retval = w_logtest_check_input_request(&root, list_msg);
+
+    assert_int_equal(retval, ret_expect);
+    os_free(location.valuestring);
+    os_free(log_format.valuestring);
+    os_free(event.valuestring);
 }
 
 // w_logtest_check_input_remove_session
@@ -2645,7 +2694,7 @@ void test_w_logtest_check_input_remove_session_ok(void ** state)
     will_return(__wrap_cJSON_IsString, (cJSON_bool) 1);
 
     assert_int_equal(W_LOGTEST_TOKEN_LENGH, strlen(token.valuestring));
-    
+
     retval = w_logtest_check_input_remove_session(&root, list_msg);
 
     assert_int_equal(retval, expected_retval);
@@ -2694,7 +2743,7 @@ void test_w_logtest_process_request_error_check_input(void ** state) {
     will_return(__wrap_OSList_SetMaxSize, 0);
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
-    
+
     /* Error w_logtest_check_input */
 
     char * input_raw_json = strdup("Test request");
@@ -2744,7 +2793,7 @@ void test_w_logtest_process_request_error_check_input(void ** state) {
     retval = w_logtest_process_request(input_raw_json, &connection);
 
     assert_string_equal(retval, "{json response}");
-    
+
     os_free(input_raw_json);
 
 }
@@ -2757,7 +2806,7 @@ void test_w_logtest_process_request_type_remove_session_ok(void ** state) {
     /* w_logtest_add_msg_response */
     OSList * list_msg;
     os_calloc(1, sizeof(OSList), list_msg);
-    
+
 
     /* w_logtest_process_request */
     will_return(__wrap_OSList_Create, list_msg);
@@ -2776,7 +2825,7 @@ void test_w_logtest_process_request_type_remove_session_ok(void ** state) {
     will_return(__wrap_cJSON_IsString, (cJSON_bool) 1);
     will_return(__wrap_cJSON_IsString, (cJSON_bool) 1);
     will_return(__wrap_cJSON_IsString, (cJSON_bool) 1);
-    
+
     /* w_logtest_process_request_remove_session_fail */
     w_logtest_connection_t connection = {0};
     connection.active_client = 5;
@@ -2827,7 +2876,7 @@ void test_w_logtest_process_request_type_remove_session_ok(void ** state) {
     retval = w_logtest_process_request(input_raw_json, &connection);
 
     assert_string_equal(retval, "{json response}");
-    
+
     os_free(input_raw_json);
     os_free(token.valuestring);
 
@@ -2837,14 +2886,13 @@ void test_w_logtest_process_request_type_log_processing(void ** state) {
 
     char * retval;
     char * input_raw_json = strdup("Test request");
-    
+
     w_logtest_connection_t connection = {0};
     connection.active_client = 5;
 
     /* w_logtest_add_msg_response */
     OSList * list_msg;
     os_calloc(1, sizeof(OSList), list_msg);
-    
 
     /* w_logtest_process_request */
     will_return(__wrap_OSList_Create, list_msg);
@@ -2854,9 +2902,6 @@ void test_w_logtest_process_request_type_log_processing(void ** state) {
     will_return(__wrap_cJSON_ParseWithOpts, (cJSON *) 1);
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 0);
 
-
-    
-    
     // w_logtest_check_input_requeset ok
     /* location */
     cJSON location = {0};
@@ -2880,6 +2925,7 @@ void test_w_logtest_process_request_type_log_processing(void ** state) {
     cJSON token = {0};
     token.valuestring = strdup("12345678");
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &token);
+    will_return(__wrap_cJSON_IsString, true);
     will_return(__wrap_cJSON_IsString, true);
 
     /* log processing fail get session*/
@@ -2991,7 +3037,7 @@ void test_w_logtest_decoding_phase_program_name(void ** state)
 
     lf.program_name = strdup("program name test");
     os_calloc(1, sizeof(OSDecoderNode), session.decoderlist_forpname);
-    
+
     expect_value(__wrap_DecodeEvent, node, session.decoderlist_forpname);
     w_logtest_decoding_phase(&lf, &session);
 
@@ -3007,7 +3053,7 @@ void test_w_logtest_decoding_phase_no_program_name(void ** state)
 
     lf.program_name = NULL;
     os_calloc(1, sizeof(OSDecoderNode), session.decoderlist_nopname);
-    
+
     expect_value(__wrap_DecodeEvent, node, session.decoderlist_nopname);
     w_logtest_decoding_phase(&lf, &session);
 
@@ -3019,14 +3065,14 @@ void test_w_logtest_preprocessing_phase_json_event_ok(void ** state)
 {
     Eventinfo lf = {0};
     cJSON request = {0};
-    
+
     cJSON json_event = {0};
     cJSON json_event_child = {0};
     char * raw_event = strdup("{event}");
     char * str_location = strdup("location");
 
     lf.log = strdup("{event}");
-    
+
     json_event.child = &json_event_child;
 
 
@@ -3035,7 +3081,7 @@ void test_w_logtest_preprocessing_phase_json_event_ok(void ** state)
 
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
     will_return(__wrap_cJSON_PrintUnformatted, raw_event);
-    
+
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_GetStringValue, str_location);
 
@@ -3043,7 +3089,7 @@ void test_w_logtest_preprocessing_phase_json_event_ok(void ** state)
 
 
     retval = w_logtest_preprocessing_phase(&lf, &request);
-    
+
     assert_int_equal(retval, expect_retval);
 
 
@@ -3059,12 +3105,12 @@ void test_w_logtest_preprocessing_phase_json_event_fail(void ** state)
     os_calloc(1, sizeof(Eventinfo), lf);
 
     cJSON request = {0};
-    
+
     cJSON json_event = {0};
     cJSON json_event_child = {0};
     char * raw_event = strdup("{event}");
     char * str_location = strdup("location");
-    
+
     json_event.child = &json_event_child;
 
 
@@ -3073,7 +3119,7 @@ void test_w_logtest_preprocessing_phase_json_event_fail(void ** state)
 
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
     will_return(__wrap_cJSON_PrintUnformatted, raw_event);
-    
+
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_GetStringValue, str_location);
 
@@ -3081,7 +3127,7 @@ void test_w_logtest_preprocessing_phase_json_event_fail(void ** state)
 
 
     retval = w_logtest_preprocessing_phase(lf, &request);
-    
+
     assert_int_equal(retval, expect_retval);
 
     os_free(str_location);
@@ -3098,7 +3144,7 @@ void test_w_logtest_preprocessing_phase_str_event_ok(void ** state)
     cJSON json_event = {0};
     char * raw_event = strdup("event");
     char * str_location = strdup("location");
-    
+
     lf->log = strdup("test log");
 
     const int expect_retval = 0;
@@ -3106,7 +3152,7 @@ void test_w_logtest_preprocessing_phase_str_event_ok(void ** state)
 
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
     will_return(__wrap_cJSON_GetStringValue, raw_event);
-    
+
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_GetStringValue, str_location);
 
@@ -3114,7 +3160,7 @@ void test_w_logtest_preprocessing_phase_str_event_ok(void ** state)
 
 
     retval = w_logtest_preprocessing_phase(lf, &request);
-    
+
     assert_int_equal(retval, expect_retval);
 
     os_free(str_location);
@@ -3133,7 +3179,7 @@ void test_w_logtest_preprocessing_phase_str_event_fail(void ** state)
     cJSON json_event = {0};
     char * raw_event = strdup("event");
     char * str_location = strdup("location");
-    
+
 
 
     const int expect_retval = -1;
@@ -3141,7 +3187,7 @@ void test_w_logtest_preprocessing_phase_str_event_fail(void ** state)
 
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
     will_return(__wrap_cJSON_GetStringValue, raw_event);
-    
+
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_GetStringValue, str_location);
 
@@ -3149,7 +3195,7 @@ void test_w_logtest_preprocessing_phase_str_event_fail(void ** state)
 
 
     retval = w_logtest_preprocessing_phase(lf, &request);
-    
+
     assert_int_equal(retval, expect_retval);
 
     Free_Eventinfo(lf);
@@ -3469,7 +3515,7 @@ void test_w_logtest_rulesmatching_phase_match_and_if_matched_sid_ok(void ** stat
     ruleinfo.level = 5;
     ruleinfo.category = SYSLOG;
     ruleinfo.ckignore = 0;
-    
+
 
     OSList pre_matched_list = {0};
     pre_matched_list.last_node = (OSListNode *) 10;
@@ -3511,7 +3557,7 @@ void test_w_logtest_rulesmatching_phase_match_and_if_matched_sid_fail(void ** st
     ruleinfo.level = 5;
     ruleinfo.category = SYSLOG;
     ruleinfo.ckignore = 0;
-    
+
 
     OSList pre_matched_list = {0};
     pre_matched_list.last_node = (OSListNode *) 10;
@@ -3611,7 +3657,7 @@ void test_w_logtest_rulesmatching_phase_match_and_group_prev_matched(void ** sta
 
     OSList pre_matched_list = {0};
     pre_matched_list.last_node = (OSListNode *) 10;
-    
+
     ruleinfo.sid_prev_matched = &pre_matched_list;
 
 
@@ -3648,12 +3694,12 @@ void test_w_logtest_process_log_preprocessing_fail(void ** state)
     w_logtest_session_t session = {0};
     OSList list_msg = {0};
 
-    
+
     cJSON * retval;
 
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
     will_return(__wrap_cJSON_GetStringValue, raw_event);
-    
+
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_GetStringValue, str_location);
 
@@ -3666,7 +3712,7 @@ void test_w_logtest_process_log_preprocessing_fail(void ** state)
 
 
     retval = w_logtest_process_log(&request, &session, &list_msg);
-    
+
     assert_null(retval);
 
     os_free(str_location);
@@ -3690,12 +3736,12 @@ void test_w_logtest_process_log_rule_match_fail(void ** state)
     OSDecoderInfo decoder_info = {0};
     decoder_info.accumulate = 0;
     decoder_CleanMSG = &decoder_info;
-    
+
     cJSON * retval;
 
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
     will_return(__wrap_cJSON_GetStringValue, raw_event);
-    
+
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_GetStringValue, str_location);
 
@@ -3704,7 +3750,7 @@ void test_w_logtest_process_log_rule_match_fail(void ** state)
     expect_value(__wrap_DecodeEvent, node, session.decoderlist_forpname);
 
     retval = w_logtest_process_log(&request, &session, &list_msg);
-    
+
     assert_null(retval);
 
     os_free(str_location);
@@ -3740,13 +3786,13 @@ void test_w_logtest_process_log_rule_dont_match(void ** state)
     os_calloc(1, sizeof(RuleNode), session.rule_list);
     session.rule_list->next = NULL;
     session.rule_list->ruleinfo = &ruleinfo;
-    
+
     cJSON * retval;
 
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
     will_return(__wrap_cJSON_GetStringValue, raw_event);
 
-    // w_logtest_preprocessing_phase    
+    // w_logtest_preprocessing_phase
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_GetStringValue, str_location);
 
@@ -3759,7 +3805,7 @@ void test_w_logtest_process_log_rule_dont_match(void ** state)
     will_return(__wrap_cJSON_Parse, output);
 
     retval = w_logtest_process_log(&request, &session, &list_msg);
-    
+
     assert_non_null(retval);
 
     os_free(str_location);
@@ -3797,13 +3843,13 @@ void test_w_logtest_process_log_rule_match(void ** state)
     os_calloc(1, sizeof(RuleNode), session.rule_list);
     session.rule_list->next = NULL;
     session.rule_list->ruleinfo = &ruleinfo;
-    
+
     cJSON * retval;
 
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
     will_return(__wrap_cJSON_GetStringValue, raw_event);
 
-    // w_logtest_preprocessing_phase    
+    // w_logtest_preprocessing_phase
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_GetStringValue, str_location);
 
@@ -3825,7 +3871,7 @@ void test_w_logtest_process_log_rule_match(void ** state)
     will_return(__wrap_cJSON_Parse, output);
 
     retval = w_logtest_process_log(&request, &session, &list_msg);
-    
+
     assert_non_null(retval);
 
     os_free(str_location);
@@ -3889,7 +3935,7 @@ void test_w_logtest_process_request_remove_session_invalid_token(void ** state)
 
     assert_int_equal(retval, expect_retval);
     assert_int_equal(connection.active_client, 5);
-    
+
     os_free(list_msg_node);
 }
 
@@ -4043,11 +4089,11 @@ void test_w_logtest_clients_handler_error_acept(void ** state)
     char expected_str[OS_SIZE_1024];
 
     will_return(__wrap_FOREVER, 1);
-    
+
     will_return(__wrap_pthread_mutex_lock, 0);
 
     will_return(__wrap_accept, -1);
-    
+
     will_return(__wrap_pthread_mutex_unlock, 0);
     errno = ENOMEM;
     snprintf(expected_str, OS_SIZE_1024, "(7301): Failure to accept connection. Errno: %s", strerror(errno));
@@ -4066,11 +4112,11 @@ void test_w_logtest_clients_handler_error_acept_close_socket(void ** state)
     char expected_str[OS_SIZE_1024];
 
     will_return(__wrap_FOREVER, 1);
-    
+
     will_return(__wrap_pthread_mutex_lock, 0);
 
     will_return(__wrap_accept, -1);
-    
+
     will_return(__wrap_pthread_mutex_unlock, 0);
     errno = EBADF;
     snprintf(expected_str, OS_SIZE_1024, "(7301): Failure to accept connection. Errno: %s", strerror(errno));
@@ -4087,11 +4133,11 @@ void test_w_logtest_clients_handler_recv_error(void ** state)
     char expected_str[OS_SIZE_1024];
 
     will_return(__wrap_FOREVER, 1);
-    
+
     will_return(__wrap_pthread_mutex_lock, 0);
 
     will_return(__wrap_accept, 5);
-    
+
     will_return(__wrap_pthread_mutex_unlock, 0);
 
     will_return(__wrap_OS_RecvSecureTCP, -1);
@@ -4113,11 +4159,11 @@ void test_w_logtest_clients_handler_recv_msg_empty(void ** state)
     w_logtest_connection_t conection = {0};
 
     will_return(__wrap_FOREVER, 1);
-    
+
     will_return(__wrap_pthread_mutex_lock, 0);
 
     will_return(__wrap_accept, 5);
-    
+
     will_return(__wrap_pthread_mutex_unlock, 0);
 
     will_return(__wrap_OS_RecvSecureTCP, 0);
@@ -4137,11 +4183,11 @@ void test_w_logtest_clients_handler_recv_msg_oversize(void ** state)
     w_logtest_connection_t conection = {0};
 
     will_return(__wrap_FOREVER, 1);
-    
+
     will_return(__wrap_pthread_mutex_lock, 0);
 
     will_return(__wrap_accept, 5);
-    
+
     will_return(__wrap_pthread_mutex_unlock, 0);
 
     will_return(__wrap_OS_RecvSecureTCP, -6);
@@ -4177,11 +4223,11 @@ void test_w_logtest_clients_handler_ok(void ** state)
     w_logtest_connection_t conection = {0};
 
     will_return(__wrap_FOREVER, 1);
-    
+
     will_return(__wrap_pthread_mutex_lock, 0);
 
     will_return(__wrap_accept, 5);
-    
+
     will_return(__wrap_pthread_mutex_unlock, 0);
 
     will_return(__wrap_OS_RecvSecureTCP, 100);
@@ -4206,7 +4252,7 @@ void test_w_logtest_clients_handler_ok(void ** state)
     will_return(__wrap_cJSON_IsString, (cJSON_bool) 1);
     will_return(__wrap_cJSON_IsString, (cJSON_bool) 1);
     will_return(__wrap_cJSON_IsString, (cJSON_bool) 1);
-    
+
     /* w_logtest_process_request_remove_session_fail */
     w_logtest_connection_t connection = {0};
     connection.active_client = 5;
@@ -4401,7 +4447,7 @@ void test_w_logtest_process_request_log_processing_fail_process_log(void ** stat
     will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
 
     will_return(__wrap_OSList_GetFirstNode, NULL);
-  
+
     /* Fail w_logtest_process_log */
     cJSON json_event = {0};
     json_event.child = false;
@@ -4411,7 +4457,7 @@ void test_w_logtest_process_request_log_processing_fail_process_log(void ** stat
 
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
     will_return(__wrap_cJSON_GetStringValue, raw_event);
-    
+
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_GetStringValue, str_location);
 
@@ -4524,7 +4570,7 @@ void test_w_logtest_process_request_log_processing_ok_and_alert(void ** state)
     will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
 
     will_return(__wrap_OSList_GetFirstNode, NULL);
-  
+
     /* Alert w_logtest_process_log */
     Config.decoder_order_size = 1;
 
@@ -4550,11 +4596,11 @@ void test_w_logtest_process_request_log_processing_ok_and_alert(void ** state)
     os_calloc(1, sizeof(RuleNode), active_session.rule_list);
     active_session.rule_list->next = NULL;
     active_session.rule_list->ruleinfo = &ruleinfo;
-    
+
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
     will_return(__wrap_cJSON_GetStringValue, raw_event);
 
-    // w_logtest_preprocessing_phase    
+    // w_logtest_preprocessing_phase
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_GetStringValue, str_location);
 
@@ -4680,6 +4726,7 @@ int main(void)
         cmocka_unit_test(test_w_logtest_check_input_request_full_empty_token),
         cmocka_unit_test(test_w_logtest_check_input_request_full),
         cmocka_unit_test(test_w_logtest_check_input_request_bad_token_lenght),
+        cmocka_unit_test(test_w_logtest_check_input_request_bad_token_type),
         // Tests w_logtest_check_input_remove_session
         cmocka_unit_test(test_w_logtest_check_input_remove_session_not_string),
         cmocka_unit_test(test_w_logtest_check_input_remove_session_invalid_token),
@@ -4732,11 +4779,7 @@ int main(void)
         // w_logtest_process_request_log_processing
         cmocka_unit_test(test_w_logtest_process_request_log_processing_fail_session),
         cmocka_unit_test(test_w_logtest_process_request_log_processing_fail_process_log),
-        cmocka_unit_test(test_w_logtest_process_request_log_processing_ok_and_alert),
-
-
-
-
+        cmocka_unit_test(test_w_logtest_process_request_log_processing_ok_and_alert)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

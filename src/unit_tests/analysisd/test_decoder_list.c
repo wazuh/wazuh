@@ -38,7 +38,7 @@ void __wrap_FreeDecoderInfo(OSDecoderInfo *pi) {
 
 /* tests */
 
-/* os_remove_decoders_list */   
+/* os_remove_decoders_list */
 void os_count_decoders_no_child(void **state)
 {
     OSDecoderNode * node;
@@ -151,7 +151,6 @@ int main(void)
         cmocka_unit_test(test_os_remove_decodernode_child),
         // Tests os_remove_decoders_list
         cmocka_unit_test(test_os_remove_decoders_list_OK)
-        
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
