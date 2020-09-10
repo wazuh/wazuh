@@ -22,7 +22,9 @@ constexpr auto PACKAGE_INCOMPLETE       { std::make_pair(5, "Incomplete package.
 constexpr auto INVALID_OPERATION        { std::make_pair(6, "Invalid message operation.") };
 constexpr auto UNEXPECTED_SIZE          { std::make_pair(7, "Unexpected size value during sync process.") };
 constexpr auto UNEXPECTED_RANGE_COUNT   { std::make_pair(8, "Unexpected range count during sync process.") };
-constexpr auto UNEXPECTED_CHECKSUM      { std::make_pair(9, "Unexpected checksum during sync process." )};
+constexpr auto UNEXPECTED_CHECKSUM      { std::make_pair(9, "Unexpected checksum during sync process." ) };
+constexpr auto ERROR_IN_SELECT_DATA     { std::make_pair(10, "Error during the select of data." ) };
+constexpr auto NOT_SPECIALIZED_FUNCTION { std::make_pair(11, "Function not specialized." ) };
 
 namespace RSync
 {

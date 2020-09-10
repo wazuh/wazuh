@@ -24,7 +24,7 @@ namespace RSync
     class IMessageDecoder 
     {
     public:
-        virtual SyncInputData decode(const std::pair<void*, size_t>& rawData) = 0;
+        virtual SyncInputData decode(const std::vector<unsigned char>& rawData) = 0;
     };
 };
 

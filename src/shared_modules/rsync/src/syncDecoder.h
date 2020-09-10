@@ -24,9 +24,9 @@ namespace RSync
         std::mutex m_mutex;
          
     public:
-        std::pair<std::string, SyncInputData> decode (const std::pair<void*, size_t>& rawData)
+        std::pair<std::string, SyncInputData> decode (const std::vector<unsigned char>& rawData)
         {
-            const std::string rawDataString(reinterpret_cast<char*>(rawData.first), rawData.second);
+            const std::string rawDataString(reinterpret_cast<const char *>(rawData.data()), rawData.size());
             const auto firstToken { rawDataString.find(' ') };
             std::string header;
 

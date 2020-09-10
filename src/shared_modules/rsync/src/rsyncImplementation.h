@@ -42,7 +42,7 @@ namespace RSync
     };
 
     using ResultCallback = std::function<void(const std::string&)>;
-    using MsgDispatcher = Utils::MsgDispatcher<std::string, SyncInputData, std::pair<void*, size_t>, SyncDecoder>;
+    using MsgDispatcher = Utils::MsgDispatcher<std::string, SyncInputData, std::vector<unsigned char>, SyncDecoder>;
 
     class RSyncImplementation final
     {
@@ -77,14 +77,22 @@ namespace RSync
 
         std::shared_ptr<RSyncContext> remoteSyncContext(const RSYNC_HANDLE handle);
 
-        size_t getRangeCount(const DBSYNC_HANDLE dbsync_handle, 
-                             const nlohmann::json& getRangeCountQuery, 
+        static size_t getRangeCount(const DBSYNC_HANDLE dbsync_handle, 
+                             const nlohmann::json& rangeCountQuery, 
                              const SyncInputData& syncData);
 
-        std::string getChecksums(const DBSYNC_HANDLE dbsync_handle, 
-                                 const nlohmann::json& getRangeQuery,
+        static std::string getChecksum(const DBSYNC_HANDLE dbsync_handle, 
+                                 const nlohmann::json& rangeQuery,
                                  const std::string& begin,
                                  const std::string& end);
+
+        static nlohmann::json getRowData(const DBSYNC_HANDLE dbsync_handle, 
+                                         const nlohmann::json& rowQuery,
+                                         const std::string& index);
+
+        static void sendAllData(const DBSYNC_HANDLE dbsync_handle, 
+                                const nlohmann::json& noDataQuery,
+                                const ResultCallback callbackWrapper);
         
         RSyncImplementation() = default;
         ~RSyncImplementation() = default;
