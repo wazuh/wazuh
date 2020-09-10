@@ -1590,7 +1590,9 @@ components:
     LogtestRequest:
       type: object
       required:
-        - token
+        - event
+        - log_format
+        - location
       properties:
         token:
           type: string
@@ -1601,7 +1603,7 @@ components:
         location:
           type: string
           description: "Path string"
-        log:
+        event:
           type: string
           description: "Event to look for"
 
@@ -8924,46 +8926,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                data:
+                token:  bd83b45f
+                message: ["INFO: (7202): Session initialized with token 'bd83b45f'"]
+                output:
                   timestamp: 2020-06-24T11:28:09.308+0200
                   rule:
-                    level: 3
-                    description: "Successful sudo to ROOT executed."
-                    id: 5402
-                    mitre:
-                      id: ["T1169"]
-                      tactics: ["Privilege Escalation"]
+                    description: "Systemd rules"
+                    id: 40700
                     firedtimes: 1
                     mail: false
-                    groups: ["syslog", "sudo"]
-                    pci_dss: ["10.2.5", "10.2.2"]
-                    gpg13: ["7.6", "7.8", "7.13"]
-                    gdpr: ["IV_32.2"]
-                    hipaa: ["164.312.b"]
-                    nist_800_53: ["AU.14", "AC.7", "AC.6"]
-                    tsc: ["CC6.8", "CC7.2", "CC7.3"]
+                    groups: ["local", "systemd"]
                   agent:
                     id: 000
-                    name: wazuh
+                    name: wazuh-master
                   manager:
+                    name: wazuh-master
+                  id: "1598517414.1892559"
+                  cluster:
                     name: wazuh
-                  id: 1592990889.62076
-                  full_log: "Jun 24 11:28:09 wazuh sudo: wazuh : TTY=pts/0 ; PWD=/home/wazuh ; USER=root ; COMMAND=/bin/su"
+                    node: master-node
+                  full_log: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
                   predecoder:
-                    program_name: sudo
-                    timestamp: "Jun 24 11:28:09"
-                    hostname: wazuh
+                    program_name: systemd
+                    timestamp: "Jun 24 11:54:19"
+                    hostname: Master
                   decoder:
-                    parent: sudo
-                    name: sudo
-                    ftscomment: "First time user executed the sudo command"
-                  data:
-                    srcuser: wazuh
-                    dstuser: root
-                    tty: pts/0
-                    pwd: /home/wazuh
-                    command: /bin/su
-                  location: /var/log/auth.log
+                    name: systemd
+                  location: "master->/var/log/syslog"
+                alert: false
+                codemsg: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

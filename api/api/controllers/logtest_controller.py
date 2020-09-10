@@ -8,7 +8,7 @@ from aiohttp import web
 
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
-from api.models.logtest_model import RunLogtestModel
+from api.models.logtest_model import LogtestModel
 from api.util import remove_nones_to_dict, raise_if_exc
 # from wazuh import logtest # Uncomment when merged with the logtest functions
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -39,7 +39,7 @@ async def run_logtest_tool(request, pretty: bool = False, wait_for_complete: boo
         Logtest result after analyzing the event.
     """
     Body.validate_content_type(request, expected_content_type='application/json')
-    f_kwargs = await RunLogtestModel.get_kwargs(request)
+    f_kwargs = await LogtestModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=logtest.get_logtest_output,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

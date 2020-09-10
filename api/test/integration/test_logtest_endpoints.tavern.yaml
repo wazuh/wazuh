@@ -33,3 +33,98 @@ stages:
         status_code: 400
         json:
           code: 7001
+
+  - name: Run logtest with a valid body
+      request:
+        verify: False
+        url: "{protocol:s}://{host:s}:{port:d}/logtest"
+        method: PUT
+        headers:
+          Authorization: "Bearer {test_login_token}"
+          content-type: application/json
+        json:
+          token: "bd83b45f"
+          event: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
+          log_format: "syslog"
+          location: "master->/var/log/syslog"
+      response:
+        status_code: 200
+        json:
+          token: "bd83b45f"
+          output:
+            full_log: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
+            location: "master->/var/log/syslog"
+          codemsg: 0
+
+  - name: Run logtest with a valid body but no token
+      request:
+        verify: False
+        url: "{protocol:s}://{host:s}:{port:d}/logtest"
+        method: PUT
+        headers:
+          Authorization: "Bearer {test_login_token}"
+          content-type: application/json
+        json:
+          event: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
+          log_format: "syslog"
+          location: "master->/var/log/syslog"
+      response:
+        status_code: 200
+        json:
+          token: !anystr
+          output:
+            full_log: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
+            location: "master->/var/log/syslog"
+          codemsg: 0
+        save:
+          json:
+            returned_token: token
+
+  - name: Run logtest with the token generated before
+      request:
+        verify: False
+        url: "{protocol:s}://{host:s}:{port:d}/logtest"
+        method: PUT
+        headers:
+          Authorization: "Bearer {test_login_token}"
+          content-type: application/json
+        json:
+          token: "{returned_token}"
+          event: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
+          log_format: "syslog"
+          location: "master->/var/log/syslog"
+      response:
+        status_code: 200
+        json:
+          token: "{returned_token}"
+          output:
+            full_log: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
+            location: "master->/var/log/syslog"
+          codemsg: 0
+
+---
+test_name: DELETE /logtest/sessions/{token}
+
+stages:
+
+  - name: End logtest session
+      request:
+        verify: False
+        url: "{protocol:s}://{host:s}:{port:d}/logtest/sessions/{returned_token}"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {test_login_token}"
+          content-type: application/json
+      response:
+        status_code: 200
+
+  - name: Check the logtest session has ended
+      request:
+        verify: False
+        url: "{protocol:s}://{host:s}:{port:d}/logtest/sessions/{returned_token}"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {test_login_token}"
+          content-type: application/json
+      response:
+        status_code: 400

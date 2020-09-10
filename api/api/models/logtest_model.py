@@ -8,7 +8,7 @@ from typing import List, Dict  # noqa: F401
 from api.models.base_model_ import Body
 
 
-class RunLogtestModel(Body):
+class LogtestModel(Body):
     """Run logtest model."""
     def __init__(self, token: str = None, log_format: str = None, location: str = None, log: str = None):
         self.swagger_types = {
