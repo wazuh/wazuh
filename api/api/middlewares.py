@@ -8,13 +8,13 @@ from json import loads
 from logging import getLogger
 from time import time
 from connexion.problem import problem as connexion_problem
-from connexion.exceptions import ProblemException, ExtraParameterProblem, OAuthProblem
+from connexion.exceptions import ProblemException, OAuthProblem
 
 from aiohttp import web
 
-from api.authentication import get_api_conf
+from api.configuration import api_conf
 from api.util import raise_if_exc
-from wazuh.core.exception import WazuhError, WazuhTooManyRequests, WazuhPermissionError
+from wazuh.core.exception import WazuhTooManyRequests, WazuhPermissionError
 
 logger = getLogger('wazuh')
 pool = concurrent.futures.ThreadPoolExecutor()
@@ -97,7 +97,7 @@ async def prevent_denial_of_service(request, max_requests=300):
 
 @web.middleware
 async def security_middleware(request, handler):
-    access_conf = get_api_conf()['access']
+    access_conf = api_conf['access']
     await prevent_bruteforce_attack(request, block_time=access_conf['block_time'],
                                     attempts=access_conf['max_login_attempts'])
     await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
