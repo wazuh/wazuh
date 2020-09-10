@@ -4068,33 +4068,11 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_syscollector_hotfix
       json:
         data:
-          affected_items:
-            - hotfix: !anystr
-              scan_id: !anyint
-              scan_time: !anystr
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
-      save:
-        json:
-          hotfix_filter: data.affected_items[0].hotfix
-
-  - name: Filter hotfix
-    request:
-      verify: False
-      <<: *hotfix_request_000
-      params:
-        hotfix: "{hotfix_filter}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - hotfix: "{hotfix_filter}"
-              scan_id: !anyint
-              scan_time: !anystr
+          affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
