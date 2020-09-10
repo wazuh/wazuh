@@ -871,20 +871,21 @@ int wdb_update_groups(const char *dirname) {
     }
 
     item = root->child;
+    os_calloc(cJSON_GetArraySize(root) + 1 , sizeof(char *),array);
 
     while (item)
     {
         json_name = cJSON_GetObjectItem(item,"name");
 
         if(cJSON_IsString(json_name) && json_name->valuestring != NULL ){
-            os_realloc(array, (n + 2) * sizeof(char *), array);
             os_strdup(json_name->valuestring, array[n]);
-            array[++n] = NULL;
+            n++;
         }
 
         item=item->next;
     }
 
+    array[n] = NULL;
     cJSON_Delete(root);
 
     for (i=0; array[i]; i++) {
