@@ -776,40 +776,54 @@ stages:
             - id: 1
               username: wazuh
               allow_run_as: false
-              roles: []
+              roles:
+                - 1
             - id: 2
               username: wazuh-wui
               allow_run_as: true
-              roles: []
+              roles:
+                - 1
             - id: 99
               username: testing
               allow_run_as: false
-              roles: []
+              roles:
+                - 99
             - id: 100
               username: administrator
               allow_run_as: false
-              roles: []
+              roles:
+                - 100
+                - 101
             - id: 101
               username: normal
               allow_run_as: false
-              roles: []
+              roles:
+                - 104
+                - 105
+                - 103
             - id: 102
               username: ossec
               allow_run_as: false
-              roles: []
+              roles:
+                - 101
+                - 104
             - id: 103
               username: python
               allow_run_as: false
-              roles: []
+              roles:
+                - 101
             - id: 104
               username: rbac
               allow_run_as: false
-              roles: []
+              roles:
+                - 104
+                - 102
+                - 103
             - id: 105
               username: guest
               allow_run_as: false
               roles: []
-          total_affected_items: 9
+          total_affected_items: !anyint
           total_failed_items: 0
           failed_items: []
 
@@ -1069,7 +1083,7 @@ stages:
               username: wazuh-wui
               allow_run_as: true
               roles:
-                - 2
+                - 1
             - id: 1
               username: wazuh
               allow_run_as: false
@@ -1178,7 +1192,7 @@ stages:
               username: wazuh-wui
               allow_run_as: true
               roles:
-                - 2
+                - 1
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
