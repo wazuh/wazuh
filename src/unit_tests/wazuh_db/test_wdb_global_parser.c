@@ -2014,9 +2014,9 @@ void test_wdb_parse_global_sync_agent_info_get_success(void **state)
 
     will_return(__wrap_wdb_open_global, data->socket);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-get");
-    expect_value(__wrap_wdb_sync_agent_info_get, *last_agent_id, 0);
-    will_return(__wrap_wdb_sync_agent_info_get, sync_info);
-    will_return(__wrap_wdb_sync_agent_info_get, WDBC_OK);
+    expect_value(__wrap_wdb_global_sync_agent_info_get, *last_agent_id, 0);
+    will_return(__wrap_wdb_global_sync_agent_info_get, sync_info);
+    will_return(__wrap_wdb_global_sync_agent_info_get, WDBC_OK);
 
     ret = wdb_parse(query, data->output);
 
@@ -2033,9 +2033,9 @@ void test_wdb_parse_global_sync_agent_info_get_last_id_success(void **state)
 
     will_return(__wrap_wdb_open_global, data->socket);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-get last_id 1");
-    expect_value(__wrap_wdb_sync_agent_info_get, *last_agent_id, 1);
-    will_return(__wrap_wdb_sync_agent_info_get, sync_info);
-    will_return(__wrap_wdb_sync_agent_info_get, WDBC_OK);
+    expect_value(__wrap_wdb_global_sync_agent_info_get, *last_agent_id, 1);
+    will_return(__wrap_wdb_global_sync_agent_info_get, sync_info);
+    will_return(__wrap_wdb_global_sync_agent_info_get, WDBC_OK);
 
     ret = wdb_parse(query, data->output);
 
