@@ -19,6 +19,9 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/winreg_wrappers.h"
+
+// Remove static qualifier when unit testing
+#define static
 #endif
 
 /* Default values */
@@ -51,11 +54,12 @@ int fim_set_root_key(HKEY *root_key_handle, const char *full_key, const char **s
         *root_key_handle = HKEY_USERS;
         root_key_length = 10;
     } else {
+        *root_key_handle = NULL;
         return -1;
     }
 
     if (full_key[root_key_length] != '\\') {
-        root_key_handle = NULL;
+        *root_key_handle = NULL;
         return -1;
     }
 
@@ -213,19 +217,19 @@ void fim_registry_process_unscanned_entries() {
     fim_tmp_file *file;
     fim_event_mode event_mode = FIM_SCHEDULED;
 
-    if (fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store)) {
+    if (fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store) == 0) {
+        fim_db_process_read_file(syscheck.database, file, NULL, fim_registry_process_key_delete_event,
+                                 syscheck.database_store, &_base_line, &event_mode, NULL);
+    } else {
         mwarn("Failed to get unscanned registry keys");
     }
 
-    fim_db_process_read_file(syscheck.database, file, NULL, fim_registry_process_key_delete_event,
-                             syscheck.database_store, &_base_line, &event_mode, NULL);
-
-    if (fim_db_get_registry_data_not_scanned(syscheck.database, &file, syscheck.database_store)) {
+    if (fim_db_get_registry_data_not_scanned(syscheck.database, &file, syscheck.database_store) == 0) {
+        fim_db_process_read_file(syscheck.database, file, NULL, fim_registry_process_value_delete_event,
+                                 syscheck.database_store, &_base_line, &event_mode, NULL);
+    } else {
         mwarn("Failed to get unscanned registry values");
     }
-
-    fim_db_process_read_file(syscheck.database, file, NULL, fim_registry_process_value_delete_event,
-                             syscheck.database_store, &_base_line, &event_mode, NULL);
 }
 
 /* Query the key and get all its values */
@@ -361,7 +365,7 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, const re
 }
 
 /* Open the registry key */
-void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_key, const registry *configuration) {
+void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_key, int arch) {
     HKEY current_key_handle = NULL;
     REGSAM access_rights;
     DWORD sub_key_count = 0;
@@ -369,8 +373,14 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     FILETIME file_time = { 0 };
     DWORD i;
     fim_entry new, saved;
+    registry *configuration;
 
-    if (root_key_handle == NULL || full_key == NULL || sub_key == NULL || configuration == NULL) {
+    if (root_key_handle == NULL || full_key == NULL || sub_key == NULL) {
+        return;
+    }
+
+    configuration = fim_registry_configuration(full_key, arch);
+    if (configuration == NULL) {
         return;
     }
 
@@ -379,10 +389,10 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
         return;
     }
 
-    access_rights = KEY_READ | (configuration->arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY);
+    access_rights = KEY_READ | (arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY);
 
     if (RegOpenKeyEx(root_key_handle, sub_key, 0, access_rights, &current_key_handle) != ERROR_SUCCESS) {
-        mdebug1(FIM_REG_OPEN, sub_key, configuration->arch == ARCH_32BIT ? "[x32]" : "[x64]");
+        mdebug1(FIM_REG_OPEN, sub_key, arch == ARCH_32BIT ? "[x32]" : "[x64]");
         return;
     }
 
@@ -396,7 +406,6 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     for (i = 0; i < sub_key_count; i++) {
         char new_full_key[MAX_KEY + 2];
         char *new_sub_key;
-        registry *new_configuration;
         TCHAR sub_key_name_b[MAX_KEY_LENGTH + 1];
         DWORD sub_key_name_s = MAX_KEY_LENGTH;
 
@@ -406,18 +415,12 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
 
         snprintf(new_full_key, MAX_KEY, "%s\\%s", full_key, sub_key_name_b);
 
-        new_configuration = fim_registry_configuration(new_full_key, configuration->arch);
-        if (new_configuration == NULL) {
-            mwarn("No configuration found for '%s'", new_full_key);
-            continue;
-        }
-
         if (new_sub_key = strchr(new_full_key, '\\'), new_sub_key) {
             new_sub_key++;
         }
 
         /* Open sub_key */
-        fim_open_key(root_key_handle, new_full_key, new_sub_key, new_configuration);
+        fim_open_key(root_key_handle, new_full_key, new_sub_key, arch);
     }
 
     // Done scanning sub_keys, trigger an alert on the current key if required.
@@ -428,6 +431,10 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     saved.type = FIM_TYPE_REGISTRY;
     saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, full_key);
     saved.registry_entry.value = NULL;
+
+    if (saved.registry_entry.key != NULL) {
+        new.registry_entry.key->id = saved.registry_entry.key->id;
+    }
 
     if (!fim_check_restrict(full_key, configuration->filerestrict)) {
         cJSON *json_event = fim_registry_event(&new, &saved, configuration, FIM_SCHEDULED,
@@ -486,7 +493,7 @@ void fim_registry_scan() {
             continue;
         }
 
-        fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, &syscheck.registry[i]);
+        fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, syscheck.registry[i].arch);
     }
 
     fim_registry_process_unscanned_entries();
