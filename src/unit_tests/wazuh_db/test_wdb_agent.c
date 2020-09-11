@@ -4351,7 +4351,7 @@ void test_wdb_update_groups_error_max_path(void **state) {
     cJSON *str2 = NULL;
     char *very_long_name = NULL;
 
-    // Generating a very log group name
+    // Generating a very long group name
     os_calloc(PATH_MAX+1, sizeof(char), very_long_name);
     int i = 0;
     for (i; i < PATH_MAX; ++i) {*(very_long_name + i) = 'A';};
