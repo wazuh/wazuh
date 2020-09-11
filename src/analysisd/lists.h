@@ -67,9 +67,10 @@ void OS_AddList( ListNode *new_listnode, ListNode **cdblists);
  * @brief Load cdb list
  * @param listfile file name where find cdb list
  * @param cdblists ListNode where save cdb list
+ * @param log_msg list to save log messages
  * @return 0 on success, otherwise -1
  */
-int Lists_OP_LoadList(char *listfile, ListNode **cdblists);
+int Lists_OP_LoadList(char *listfile, ListNode **cdblists, OSList* log_msg);
 
 /**
  * @brief Search a key in a cdb list
