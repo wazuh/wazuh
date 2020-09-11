@@ -1172,7 +1172,7 @@ int wdb_parse_global_select_agent_keepalive(wdb_t * wdb, char * input, char * ou
 
 /**
  * @brief Function to parse sync-agent-info-get params and set next ID to iterate on further calls.
- *        If no start_id is provided. Last obtained ID is used.
+ *        If no last_id is provided. Last obtained ID is used.
  * 
  * @param [in] wdb The global struct database.
  * @param [in] input String with starting ID [optional].
@@ -1192,20 +1192,20 @@ int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * outpu
 int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse start_id, condition and keepalive for get-agents-by-keepalive.
+ * @brief Function to parse last_id, condition and keepalive for get-agents-by-keepalive.
  * 
  * @param [in] wdb The global struct database.
- * @param [in] input String with start_id, condition, and keepalive.
+ * @param [in] input String with last_id, condition, and keepalive.
  * @param [out] output Response of the query.
  * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output);
 
 /**
- * @brief Function to parse start_id get-all-agents.
+ * @brief Function to parse last_id get-all-agents.
  * 
  * @param [in] wdb The global struct database.
- * @param [in] input String with start_id, condition, and keepalive.
+ * @param [in] input String with last_id, condition, and keepalive.
  * @param [out] output Response of the query.
  * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
  */
@@ -1590,7 +1590,7 @@ int wdb_global_set_sync_status(wdb_t *wdb, int id, wdb_sync_status_t status);
  * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
  * @return wdbc_result to represent if all agents has being obtained.
  */
-wdbc_result wdb_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output);
+wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output);
 
 /**
  * @brief Function to update the information of an agent.

@@ -2014,9 +2014,9 @@ void test_wdb_parse_global_sync_agent_info_get_success(void **state)
 
     will_return(__wrap_wdb_open_global, data->socket);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-get");
-    expect_value(__wrap_wdb_sync_agent_info_get, *last_agent_id, 0);
-    will_return(__wrap_wdb_sync_agent_info_get, sync_info);
-    will_return(__wrap_wdb_sync_agent_info_get, WDBC_OK);
+    expect_value(__wrap_wdb_global_sync_agent_info_get, *last_agent_id, 0);
+    will_return(__wrap_wdb_global_sync_agent_info_get, sync_info);
+    will_return(__wrap_wdb_global_sync_agent_info_get, WDBC_OK);
 
     ret = wdb_parse(query, data->output);
 
@@ -2024,18 +2024,18 @@ void test_wdb_parse_global_sync_agent_info_get_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-void test_wdb_parse_global_sync_agent_info_get_start_id_success(void **state)
+void test_wdb_parse_global_sync_agent_info_get_last_id_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global sync-agent-info-get start_id 1";
+    char query[OS_BUFFER_SIZE] = "global sync-agent-info-get last_id 1";
     char *sync_info = "{SYNC INFO}";
 
     will_return(__wrap_wdb_open_global, data->socket);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-get start_id 1");
-    expect_value(__wrap_wdb_sync_agent_info_get, *last_agent_id, 1);
-    will_return(__wrap_wdb_sync_agent_info_get, sync_info);
-    will_return(__wrap_wdb_sync_agent_info_get, WDBC_OK);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-get last_id 1");
+    expect_value(__wrap_wdb_global_sync_agent_info_get, *last_agent_id, 1);
+    will_return(__wrap_wdb_global_sync_agent_info_get, sync_info);
+    will_return(__wrap_wdb_global_sync_agent_info_get, WDBC_OK);
 
     ret = wdb_parse(query, data->output);
 
@@ -2266,7 +2266,7 @@ void test_wdb_parse_global_get_agents_by_keepalive_condition3_error(void **state
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_get_agents_by_keepalive_start_id_error(void **state)
+void test_wdb_parse_global_get_agents_by_keepalive_last_id_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -2274,27 +2274,27 @@ void test_wdb_parse_global_get_agents_by_keepalive_start_id_error(void **state)
 
     will_return(__wrap_wdb_open_global, data->socket);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-keepalive condition < 123 invalid");
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'start_id' not found.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'last_id' not found.");
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "err Invalid arguments 'start_id' not found");
+    assert_string_equal(data->output, "err Invalid arguments 'last_id' not found");
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_get_agents_by_keepalive_start_id2_error(void **state)
+void test_wdb_parse_global_get_agents_by_keepalive_last_id2_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-agents-by-keepalive condition < 123 start_id ";
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-keepalive condition < 123 last_id ";
 
     will_return(__wrap_wdb_open_global, data->socket);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-keepalive condition < 123 start_id ");
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'start_id' not found.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-keepalive condition < 123 last_id ");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'last_id' not found.");
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "err Invalid arguments 'start_id' not found");
+    assert_string_equal(data->output, "err Invalid arguments 'last_id' not found");
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -2302,10 +2302,10 @@ void test_wdb_parse_global_get_agents_by_keepalive_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-agents-by-keepalive condition < 123 start_id 1";
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-keepalive condition < 123 last_id 1";
 
     will_return(__wrap_wdb_open_global, data->socket);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-keepalive condition < 123 start_id 1");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-keepalive condition < 123 last_id 1");
     expect_value(__wrap_wdb_global_get_agents_by_keepalive, *last_agent_id, 1);
     expect_value(__wrap_wdb_global_get_agents_by_keepalive, comparator, '<');
     expect_value(__wrap_wdb_global_get_agents_by_keepalive, keep_alive, 123);
@@ -2343,11 +2343,11 @@ void test_wdb_parse_global_get_all_agents_argument_error(void **state)
 
     will_return(__wrap_wdb_open_global, data->socket);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents invalid");
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'start_id' not found.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'last_id' not found.");
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "err Invalid arguments 'start_id' not found");
+    assert_string_equal(data->output, "err Invalid arguments 'last_id' not found");
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -2355,15 +2355,15 @@ void test_wdb_parse_global_get_all_agents_argument2_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-all-agents start_id";
+    char query[OS_BUFFER_SIZE] = "global get-all-agents last_id";
 
     will_return(__wrap_wdb_open_global, data->socket);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents start_id");
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'start_id' not found.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents last_id");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'last_id' not found.");
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "err Invalid arguments 'start_id' not found");
+    assert_string_equal(data->output, "err Invalid arguments 'last_id' not found");
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -2371,10 +2371,10 @@ void test_wdb_parse_global_get_all_agents_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-all-agents start_id 1";
+    char query[OS_BUFFER_SIZE] = "global get-all-agents last_id 1";
 
     will_return(__wrap_wdb_open_global, data->socket);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents start_id 1");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents last_id 1");
     expect_value(__wrap_wdb_global_get_all_agents, *last_agent_id, 1);
     will_return(__wrap_wdb_global_get_all_agents, "1,2,3,4,5");
     will_return(__wrap_wdb_global_get_all_agents, WDBC_OK);
@@ -2550,7 +2550,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_keepalive_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_keepalive_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_get_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_get_start_id_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_get_last_id_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_invalid_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_query_error, test_setup, test_teardown),
@@ -2562,8 +2562,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_condition_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_condition2_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_condition3_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_start_id_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_start_id2_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_last_id_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_last_id2_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_all_agents_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_all_agents_argument_error, test_setup, test_teardown),

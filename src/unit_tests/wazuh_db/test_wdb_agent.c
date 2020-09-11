@@ -3016,7 +3016,7 @@ void test_wdb_get_agents_by_keepalive_wdbc_query_error(void **state) {
     const char *condition = ">";
     int keepalive = 10;
 
-    const char *query_str = "global get-agents-by-keepalive condition > 10 start_id 0";
+    const char *query_str = "global get-agents-by-keepalive condition > 10 last_id 0";
     const char *response = "err";
 
     // Calling Wazuh DB
@@ -3035,7 +3035,7 @@ void test_wdb_get_agents_by_keepalive_wdbc_parse_error(void **state) {
     const char *condition = ">";
     int keepalive = 10;
 
-    const char *query_str = "global get-agents-by-keepalive condition > 10 start_id 0";
+    const char *query_str = "global get-agents-by-keepalive condition > 10 last_id 0";
     const char *response = "err";
 
     // Calling Wazuh DB
@@ -3058,7 +3058,7 @@ void test_wdb_get_agents_by_keepalive_success(void **state) {
     const char *condition = ">";
     int keepalive = 10;
 
-    const char *query_str = "global get-agents-by-keepalive condition > 10 start_id 0";
+    const char *query_str = "global get-agents-by-keepalive condition > 10 last_id 0";
 
     // Setting the payload
     set_payload = 1;
@@ -3092,7 +3092,7 @@ void test_wdb_get_agents_by_keepalive_success(void **state) {
 /* Tests wdb_get_all_agents */
 
 void test_wdb_get_all_agents_wdbc_query_error(void **state) {
-    const char *query_str = "global get-all-agents start_id 0";
+    const char *query_str = "global get-all-agents last_id 0";
     const char *response = "err";
 
     // Calling Wazuh DB
@@ -3108,8 +3108,8 @@ void test_wdb_get_all_agents_wdbc_query_error(void **state) {
 }
 
 void test_wdb_get_all_agents_wdbc_parse_error(void **state) {
-    const char *query_str = "global get-all-agents start_id 0";
-    const char *response = "ok";
+    const char *query_str = "global get-all-agents last_id 0";
+    const char *response = "err";
 
     // Calling Wazuh DB
     expect_any(__wrap_wdbc_query_ex, sock);
@@ -3128,7 +3128,7 @@ void test_wdb_get_all_agents_wdbc_parse_error(void **state) {
 }
 
 void test_wdb_get_all_agents_success(void **state) {
-    const char *query_str = "global get-all-agents start_id 0";
+    const char *query_str = "global get-all-agents last_id 0";
 
     // Setting the payload
     set_payload = 1;
@@ -4568,7 +4568,7 @@ void test_wdb_agent_belongs_first_time_success(void **state) {
     int ret = OS_INVALID;
 
     //// Call to wdb_get_all_agents
-    const char *query_str = "global get-all-agents start_id 0";
+    const char *query_str = "global get-all-agents last_id 0";
 
     // Setting the payload
     set_payload = 1;

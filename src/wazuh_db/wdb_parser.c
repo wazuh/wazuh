@@ -4924,24 +4924,24 @@ int wdb_parse_global_select_agent_keepalive(wdb_t * wdb, char * input, char * ou
 }
 
 int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) {
-    static int start_id = 0;
+    static int last_id = 0;
     char* agent_info_sync = NULL;
 
     if (input) {
         char *next = wstr_chr(input, ' ');
         if(next) {
             *next++ = '\0';
-            if (strcmp(input, "start_id") == 0) {
-                start_id = atoi(next);
+            if (strcmp(input, "last_id") == 0) {
+                last_id = atoi(next);
             }
         }
     }
 
-    wdbc_result status = wdb_sync_agent_info_get(wdb, &start_id, &agent_info_sync);
+    wdbc_result status = wdb_global_sync_agent_info_get(wdb, &last_id, &agent_info_sync);
     snprintf(output, WDB_MAX_RESPONSE_SIZE, "%s %s",  WDBC_RESULT[status], agent_info_sync);
     os_free(agent_info_sync)
     if (status != WDBC_DUE) {
-        start_id = 0;
+        last_id = 0;
     }
 
     return OS_SUCCESS;
@@ -5051,7 +5051,7 @@ int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
 }
 
 int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output) {
-    static int start_id = 0;
+    static int last_id = 0;
     char* out = NULL;
     char *next = NULL;
     char comparator = '<';
@@ -5081,22 +5081,22 @@ int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* outp
     }
     keep_alive = atoi(next);
     
-    /* Get start_id*/
+    /* Get last_id*/
     next = strtok_r(NULL, delim, &savedptr);
-    if (next == NULL || strcmp(next, "start_id") != 0) {
-        mdebug1("Invalid arguments 'start_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
+    if (next == NULL || strcmp(next, "last_id") != 0) {
+        mdebug1("Invalid arguments 'last_id' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
         return OS_INVALID;
     }
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
-        mdebug1("Invalid arguments 'start_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
+        mdebug1("Invalid arguments 'last_id' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
         return OS_INVALID;
     }
-    start_id = atoi(next);
+    last_id = atoi(next);
     
-    wdbc_result status = wdb_global_get_agents_by_keepalive(wdb, &start_id, comparator, keep_alive, &out);
+    wdbc_result status = wdb_global_get_agents_by_keepalive(wdb, &last_id, comparator, keep_alive, &out);
     snprintf(output, OS_MAXSTR + 1, "%s %s", WDBC_RESULT[status], out);
 
     os_free(out)
@@ -5105,28 +5105,28 @@ int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* outp
 }
 
 int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
-    int start_id = 0;
+    int last_id = 0;
     char* out = NULL;
     char *next = NULL;
     const char delim[2] = " ";
     char *savedptr = NULL;
     
-    /* Get start_id*/
+    /* Get last_id*/
     next = strtok_r(input, delim, &savedptr);
-    if (next == NULL || strcmp(input, "start_id") != 0) {
-        mdebug1("Invalid arguments 'start_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
+    if (next == NULL || strcmp(input, "last_id") != 0) {
+        mdebug1("Invalid arguments 'last_id' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
         return OS_INVALID;
     }
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
-        mdebug1("Invalid arguments 'start_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'start_id' not found");
+        mdebug1("Invalid arguments 'last_id' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
         return OS_INVALID;
     }
-    start_id = atoi(next);
+    last_id = atoi(next);
     
-    wdbc_result status = wdb_global_get_all_agents(wdb, &start_id, &out);
+    wdbc_result status = wdb_global_get_all_agents(wdb, &last_id, &out);
     snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
     
     os_free(out)
