@@ -123,7 +123,7 @@ static const char *SQL_STMT[] = {
                                     SELECT id, '#\"_node_name\"' AS key, node_name AS value FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_DEL] = "DELETE FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_SET] = "INSERT INTO labels (id, key, value) VALUES (?,?,?);",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE] = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), sync_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE] = "UPDATE agent SET last_keepalive = CASE WHEN last_keepalive IS NULL THEN 0 ELSE STRFTIME('%s', 'NOW') END, sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_DELETE_AGENT] = "DELETE FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_SELECT_AGENT_NAME] = "SELECT name FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_SELECT_AGENT_GROUP] = "SELECT `group` FROM agent WHERE id = ?;",
