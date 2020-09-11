@@ -71,11 +71,11 @@ wlabel_t* labels_find(const Eventinfo *lf) {
 
         w_mutex_lock(&label_cache_mutex);
         ret = OSHash_Add(label_cache, lf->agent_id, data);
-        w_mutex_unlock(&label_cache_mutex);
 
         if (2 == ret) {
             first_update = 1;
             w_rwlock_wrlock(&data->labels_rwlock);
+            w_mutex_unlock(&label_cache_mutex);
         }
         else if (1 == ret) {
             // This could happen if more than one thread tryes to insert the labels
@@ -84,7 +84,6 @@ wlabel_t* labels_find(const Eventinfo *lf) {
             mdebug2("Labels already in cache for agent %s. Updating.", lf->agent_id);
             free(data);
 
-            w_mutex_lock(&label_cache_mutex);
             data = (wlabel_data_t*)OSHash_Get(label_cache, lf->agent_id);
             w_mutex_unlock(&label_cache_mutex);
 
@@ -97,6 +96,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         else {
             // In this case we allow the execution to get the labels from Wazuh DB
             // but the data will not be saved in the labels cache
+            w_mutex_unlock(&label_cache_mutex);
             merror("Adding labels to cache for agent %s.", lf->agent_id);
             error_flag = 1;
         }
