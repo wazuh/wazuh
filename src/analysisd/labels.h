@@ -18,7 +18,6 @@ typedef struct wlabel_data_t {
     pthread_rwlock_t labels_rwlock;
     wlabel_t *labels;
     time_t mtime;
-    unsigned int error_flag;
 } wlabel_data_t;
 
 /* Initialize label cache */

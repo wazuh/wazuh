@@ -45,6 +45,8 @@ wlabel_t* labels_find(const Eventinfo *lf) {
     time_t last_update = 0;
     wlabel_t *ret_labels = NULL;
     int first_update = 0;
+    int error_flag = 0;
+    int ret = 0;
 
     if (strcmp(lf->agent_id, "000") == 0) {
         return Config.labels;
@@ -53,30 +55,64 @@ wlabel_t* labels_find(const Eventinfo *lf) {
     // Gettings last labels update time from cache
     w_mutex_lock(&label_cache_mutex);
     data = (wlabel_data_t*)OSHash_Get(label_cache, lf->agent_id);
+    w_mutex_unlock(&label_cache_mutex);
 
     if (data) {
+        // The labels information was saved in the cache at least one time
+        // for this agent. Reading when it was the last labels update.
         w_rwlock_rdlock(&data->labels_rwlock);
         last_update = data->mtime;
         w_rwlock_unlock(&data->labels_rwlock);
     }
     else {
-        // The labels were never requested for this agent
+        // The labels were never saved in the cache for this agent.
+        // Initializing and saving the structure.
         os_calloc(1, sizeof(wlabel_data_t), data);
-        if (2 != OSHash_Add(label_cache, lf->agent_id, data)) {
-            merror("Adding labels to cache for agent %s.", lf->agent_id);
-            free(data);
-        }
-        else {
+
+        w_mutex_lock(&label_cache_mutex);
+        ret = OSHash_Add(label_cache, lf->agent_id, data);
+        w_mutex_unlock(&label_cache_mutex);
+
+        if (2 == ret) {
             first_update = 1;
             w_rwlock_wrlock(&data->labels_rwlock);
         }
+        else if (1 == ret) {
+            // This could happen if more than one thread tryes to insert the labels
+            // data structure for the first time in the labels cache. We need to release
+            // the memory and request the labels from cache again.
+            mdebug2("Labels already in cache for agent %s. Updating.", lf->agent_id);
+            free(data);
+
+            w_mutex_lock(&label_cache_mutex);
+            data = (wlabel_data_t*)OSHash_Get(label_cache, lf->agent_id);
+            w_mutex_unlock(&label_cache_mutex);
+
+            // The labels information was saved in the cache at least one time
+            // for this agent. Reading when it was the last labels update.
+            w_rwlock_rdlock(&data->labels_rwlock);
+            last_update = data->mtime;
+            w_rwlock_unlock(&data->labels_rwlock);
+        }
+        else {
+            // In this case we allow the execution to get the labels from Wazuh DB
+            // but the data will not be saved in the labels cache
+            merror("Adding labels to cache for agent %s.", lf->agent_id);
+            error_flag = 1;
+        }
     }
-    w_mutex_unlock(&label_cache_mutex);
 
     // Checking if we must update labels or get them from the cache
     mtime = time(NULL);
 
-    if ((!last_update || mtime == -1) ||
+    // There are three possible situations here:
+    // 1- There was an error adding the labels structure to cache. We will just
+    //    get the labels from Wazuh DB and return them.
+    // 2- We dont have data to determine if the cache timeout has expired. We
+    //    will get the labels from Wazuh DB and perform the update in the cache anyways.
+    // 3- The cache timeout expired. We will get the labels
+    //    from Wazuh DB and perform the update in the cache.
+    if (error_flag || (!last_update || mtime == -1) ||
         (mtime > last_update + Config.label_cache_maxage)) {
         // We perform the update either if we can't determine the decision by 
         // time, or if the time difference is greater than the configured.
@@ -92,10 +128,14 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         else {
             ret_labels = labels_parse(json_labels);
             cJSON_Delete(json_labels);
+
+            if (error_flag) {
+                return ret_labels;
+            }
         }
 
-        // Adding/updating labels data
-        // If this is not the first update, we should take the write lock before
+        // Adding/updating labels data. If this is not the first
+        // update, we should take the write lock before.
         if (!first_update) {
             w_rwlock_wrlock(&data->labels_rwlock);
         }
