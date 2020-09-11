@@ -403,7 +403,7 @@ w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* list_msg)
     files = Config.lists;
 
     while (files && *files) {
-        if (Lists_OP_LoadList(*files, &session->cdblistnode) < 0) {
+        if (Lists_OP_LoadList(*files, &session->cdblistnode, list_msg) < 0) {
             goto cleanup;
         }
         files++;

@@ -250,7 +250,7 @@ int __wrap_SetDecodeXML(OSList* log_msg, OSStore **decoder_list,
     return mock_type(int);
 }
 
-int __wrap_Lists_OP_LoadList(char * files, ListNode ** cdblistnode) {
+int __wrap_Lists_OP_LoadList(char * files, ListNode ** cdblistnode, OSList * msg) {
     return mock_type(int);
 }
 
@@ -258,7 +258,7 @@ void __wrap_Lists_OP_MakeAll(int force, int show_message, ListNode **lnode) {
     return;
 }
 
-int __wrap_Rules_OP_ReadRules(char * file, RuleNode ** rule_list, ListNode ** cbd , EventList ** evet , OSList * msg) {
+int __wrap_Rules_OP_ReadRules(char * file, RuleNode ** rule_list, ListNode ** cbd , EventList ** evet, OSList * msg) {
     return mock_type(int);
 }
 
