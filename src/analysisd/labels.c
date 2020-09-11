@@ -52,7 +52,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         return Config.labels;
     }
 
-    // Gettings last labels update time from cache
+    // Getting last labels update time from cache
     w_mutex_lock(&label_cache_mutex);
     data = (wlabel_data_t*)OSHash_Get(label_cache, lf->agent_id);
     w_mutex_unlock(&label_cache_mutex);
@@ -78,7 +78,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
             w_mutex_unlock(&label_cache_mutex);
         }
         else if (1 == ret) {
-            // This could happen if more than one thread tryes to insert the labels
+            // This could happen if more than one thread tries to insert the labels
             // data structure for the first time in the labels cache. We need to release
             // the memory and request the labels from cache again.
             mdebug2("Labels already in cache for agent %s. Updating.", lf->agent_id);
@@ -108,7 +108,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
     // There are three possible situations here:
     // 1- There was an error adding the labels structure to cache. We will just
     //    get the labels from Wazuh DB and return them.
-    // 2- We dont have data to determine if the cache timeout has expired. We
+    // 2- We don't have data to determine if the cache timeout has expired. We
     //    will get the labels from Wazuh DB and perform the update in the cache anyways.
     // 3- The cache timeout expired. We will get the labels
     //    from Wazuh DB and perform the update in the cache.
