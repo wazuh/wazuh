@@ -439,8 +439,6 @@ void test_w_uncompress_gzfile_first_read_fail(void **state) {
     will_return(__wrap_gzread, 0);
     will_return(__wrap_gzread, "failstring");
 
-    will_return(__wrap_fwrite, 0);
-
     expect_value(__wrap_gzeof, file, 2);
     will_return(__wrap_gzeof, 0);
 
@@ -487,8 +485,6 @@ void test_w_uncompress_gzfile_first_read_success(void **state) {
     expect_value(__wrap_gzread, gz_fd, 2);
     will_return(__wrap_gzread, 0);
     will_return(__wrap_gzread, "failstring");
-
-    will_return(__wrap_fwrite, 0);
 
     expect_value(__wrap_gzeof, file, 2);
     will_return(__wrap_gzeof, 0);
