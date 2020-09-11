@@ -132,6 +132,8 @@ wlabel_t* labels_parse(cJSON *json_labels) {
                         flags.system = 0;
                         key_start = str_key + 2;
                     } else {
+                        os_free(str_key);
+                        os_free(str_value);
                         continue;
                     }
 
@@ -142,6 +144,8 @@ wlabel_t* labels_parse(cJSON *json_labels) {
                         flags.hidden = 0;
                         key_start = str_key + 2;
                     } else {
+                        os_free(str_key);
+                        os_free(str_value);
                         continue;
                     }
 
@@ -151,10 +155,14 @@ wlabel_t* labels_parse(cJSON *json_labels) {
                     key_start = str_key + 1;
                     break;
                 default:
+                    os_free(str_key);
+                    os_free(str_value);
                     continue;
                 }
 
                 if (!(key_end = strstr(key_start, "\""))) {
+                    os_free(str_key);
+                    os_free(str_value);
                     continue;
                 }
 
