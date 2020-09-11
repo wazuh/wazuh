@@ -15,6 +15,7 @@
 
 #include "../../headers/shared.h"
 #include "../../analysisd/logtest.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 int w_logtest_init_parameters();
 void * w_logtest_init();
@@ -69,42 +70,6 @@ int __wrap_accept(int __fd, __SOCKADDR_ARG __addr, socklen_t *__restrict __addr_
     return mock_type(int);
 }
 
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror_exit(__attribute__((unused)) const char * file,
-                         __attribute__((unused)) int line,
-                         __attribute__((unused)) const char * func,
-                         const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
 void __wrap__os_analysisd_add_logmsg(OSList * list, int level, int line, const char * func,
                                     const char * file, char * msg, ...) {
     char formatted_msg[OS_MAXSTR];
@@ -133,8 +98,9 @@ int __wrap_pthread_join (pthread_t __th, void **__thread_return) {
     return mock_type(int);
 }
 
-int __wrap_unlink (const char *__name) {
-    return mock_type(int);
+int __wrap_unlink(const char *file) {
+    check_expected_ptr(file);
+    return mock();
 }
 
 int __wrap_pthread_mutex_init() {
@@ -180,17 +146,6 @@ OSListNode *__wrap_OSList_GetFirstNode(OSList * list) {
 
 int __wrap_OSList_SetMaxSize() {
     return mock();
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
 }
 
 void __wrap_w_mutex_init() {
@@ -628,6 +583,7 @@ void test_w_logtest_init_pthread_fail(void **state)
     will_return(__wrap_pthread_join, 0);
     will_return(__wrap_close, 0);
 
+    expect_string(__wrap_unlink, file, LOGTEST_SOCK);
     will_return(__wrap_unlink, 0);
 
     will_return(__wrap_pthread_mutex_destroy, 0);
@@ -676,6 +632,7 @@ void test_w_logtest_init_unlink_fail(void **state)
 
     will_return(__wrap_close, 0);
 
+    expect_string(__wrap_unlink, file, LOGTEST_SOCK);
     will_return(__wrap_unlink, 1);
 
     char msg[OS_SIZE_4096];
@@ -731,6 +688,7 @@ void test_w_logtest_init_done(void **state)
 
     will_return(__wrap_close, 0);
 
+    expect_string(__wrap_unlink, file, LOGTEST_SOCK);
     will_return(__wrap_unlink, 0);
 
 
