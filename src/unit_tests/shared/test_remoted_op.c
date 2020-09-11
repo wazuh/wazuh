@@ -225,6 +225,48 @@ void test_parse_uname_string_linux(void **state)
     os_free(uname);
 }
 
+void test_parse_uname_string_macos(void **state)
+{
+    char *uname = NULL;
+    os_strdup("Darwin |TESTmac.local |19.6.0 |Darwin Kernel Version 19.6.0: Thu Jun 18 20:49:00 PDT 2020; \
+root:xnu-6153.141.1~1/RELEASE_X86_64 |x86_64 [Mac OS X|darwin: 10.15.6 (Catalina)]", uname);
+
+    char *os_name = NULL;
+    char *os_major = NULL;
+    char *os_minor = NULL;
+    char *os_build = NULL;
+    char *os_version = NULL;
+    char *os_codename = NULL;
+    char *os_platform = NULL;
+    char *os_arch = NULL;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Detected architecture from Darwin |TESTmac.local |19.6.0 |Darwin Kernel Version 19.6.0: Thu Jun 18 20:49:00 PDT 2020; \
+root:xnu-6153.141.1~1/RELEASE_X86_64 |x86_64: x86_64");
+
+    parse_uname_string(uname, &os_name, &os_major, &os_minor, &os_build,
+                       &os_version, &os_codename, &os_platform, &os_arch);
+
+    assert_string_equal("Mac OS X",os_name);
+    assert_string_equal("10",os_major);
+    assert_string_equal("15", os_minor);
+    assert_null(os_build);
+    assert_string_equal("10.15.6",os_version);
+    assert_string_equal("Catalina",os_codename);
+    assert_string_equal("darwin",os_platform);
+    assert_string_equal("x86_64",os_arch);
+    assert_string_equal("Darwin |TESTmac.local |19.6.0 |Darwin Kernel Version 19.6.0: Thu Jun 18 20:49:00 PDT 2020; root:xnu-6153.141.1~1/RELEASE_X86_64 |x86_64",uname);
+
+    os_free(os_name);
+    os_free(os_major);
+    os_free(os_minor);
+    os_free(os_build);
+    os_free(os_version);
+    os_free(os_codename);
+    os_free(os_platform);
+    os_free(os_arch);
+    os_free(uname);
+}
+
 /* Tests parse_agent_update_msg */
 
 void test_parse_agent_update_msg_ok_debian(void **state)
@@ -324,6 +366,63 @@ merged.mg\n#\"_agent_ip\":192.168.0.133\n";
     assert_string_equal("ab73af41699f13fdd81903b5f23d8d00",config_sum);
     assert_string_equal("fd756ba04d9c32c8848d4608bec41251",merged_sum);
     assert_string_equal("192.168.0.133",agent_ip);
+
+    os_free(version);
+    os_free(os_name);
+    os_free(os_major);
+    os_free(os_minor);
+    os_free(os_build);
+    os_free(os_version);
+    os_free(os_codename);
+    os_free(os_platform);
+    os_free(os_arch);
+    os_free(uname);
+    os_free(config_sum);
+    os_free(merged_sum);
+    os_free(agent_ip);
+    os_free(labels);
+}
+
+void test_parse_agent_update_msg_ok_macos(void **state)
+{
+    char *msg = "Darwin |TESTmac.local |19.6.0 |Darwin Kernel Version 19.6.0: Thu Jun 18 20:49:00 PDT 2020; \
+root:xnu-6153.141.1~1/RELEASE_X86_64 |x86_64 [Mac OS X|darwin: 10.15.6 (Catalina)] - Wazuh v3.13.1 / \
+ab73af41699f13fdd81903b5f23d8d00\nfd756ba04d9c32c8848d4608bec41251 merged.mg\n#\"_agent_ip\":192.168.0.123\n";
+
+    char *version = NULL;
+    char *os_name = NULL;
+    char *os_major = NULL;
+    char *os_minor = NULL;
+    char *os_build = NULL;
+    char *os_version = NULL;
+    char *os_codename = NULL;
+    char *os_platform = NULL;
+    char *os_arch = NULL;
+    char *uname = NULL;
+    char *config_sum = NULL;
+    char *merged_sum = NULL;
+    char *agent_ip = NULL;
+    char *labels = NULL;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Detected architecture from Darwin |TESTmac.local |19.6.0 |Darwin Kernel Version 19.6.0: Thu Jun 18 20:49:00 PDT 2020; root:xnu-6153.141.1~1/RELEASE_X86_64 |x86_64: x86_64");
+
+    int result = parse_agent_update_msg (msg, &version, &os_name, &os_major, &os_minor, &os_build, &os_version, &os_codename,
+                                         &os_platform, &os_arch, &uname, &config_sum, &merged_sum, &agent_ip, &labels);
+    
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("Wazuh v3.13.1", version);
+    assert_string_equal("Mac OS X", os_name);
+    assert_string_equal("10", os_major);
+    assert_string_equal("15", os_minor);
+    assert_null(os_build);
+    assert_string_equal("10.15.6", os_version);
+    assert_string_equal("Catalina", os_codename);
+    assert_string_equal("darwin", os_platform);
+    assert_string_equal("x86_64", os_arch);
+    assert_string_equal("Darwin |TESTmac.local |19.6.0 |Darwin Kernel Version 19.6.0: Thu Jun 18 20:49:00 PDT 2020; root:xnu-6153.141.1~1/RELEASE_X86_64 |x86_64", uname);
+    assert_string_equal("ab73af41699f13fdd81903b5f23d8d00",config_sum);
+    assert_string_equal("fd756ba04d9c32c8848d4608bec41251",merged_sum);
+    assert_string_equal("192.168.0.123",agent_ip);
 
     os_free(version);
     os_free(os_name);
@@ -472,9 +571,11 @@ int main()
         // Tests parse_uname_string
         cmocka_unit_test_setup_teardown(test_parse_uname_string_windows, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_uname_string_linux, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_uname_string_macos, setup_remoted_op, teardown_remoted_op),
         // Tests parse_agent_update_msg
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_debian, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_ubuntu, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_macos, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_windows, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_labels, setup_remoted_op, teardown_remoted_op)
     };
