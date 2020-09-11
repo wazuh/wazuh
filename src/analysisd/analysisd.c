@@ -566,6 +566,7 @@ int main_analysisd(int argc, char **argv)
             if (error_exit) {
                 merror_exit(DEC_PLUGIN_ERR);
             }
+            os_free(list_msg);
         }
         {
             /* Load Lists */
@@ -573,6 +574,10 @@ int main_analysisd(int argc, char **argv)
             Lists_OP_CreateLists();
             /* Load each list into list struct */
             {
+                /* Error and warning messages */
+                OSList * list_msg = OSList_Create();
+                OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+
                 char **listfiles;
                 listfiles = Config.lists;
                 while (listfiles && *listfiles) {
@@ -580,12 +585,25 @@ int main_analysisd(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading the lists file: '%s'", *listfiles);
                     }
-                    if (Lists_OP_LoadList(*listfiles, &os_analysisd_cdblists) < 0) {
+                    if (Lists_OP_LoadList(*listfiles, &os_analysisd_cdblists, list_msg) < 0) {
+                        char * msg;
+                        OSListNode * node_log_msg;
+                        node_log_msg = OSList_GetFirstNode(list_msg);
+                        while (node_log_msg) {
+                            os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                            msg = os_analysisd_string_log_msg(data_msg);
+                            merror("%s", msg);
+                            os_free(msg);
+                            os_analysisd_free_log_msg(&data_msg);
+                            OSList_DeleteCurrentlyNode(list_msg);
+                            node_log_msg = OSList_GetFirstNode(list_msg);
+                        }
                         merror_exit(LISTS_ERROR, *listfiles);
                     }
 
                     listfiles++;
                 }
+                os_free(list_msg);
             }
             Lists_OP_MakeAll(0, 0, &os_analysisd_cdblists);
         }
@@ -645,6 +663,7 @@ int main_analysisd(int argc, char **argv)
 
                     rulesfiles++;
                 }
+                os_free(list_msg);
             }
 
             /* Find all rules that require list lookups and attache the the
