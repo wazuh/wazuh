@@ -14,6 +14,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <vector>
 #include "typedef.h"
 
 namespace RSync
@@ -30,6 +31,7 @@ namespace RSync
         void release();
         bool releaseContext(const RSYNC_HANDLE handle);
         RSYNC_HANDLE create();
+        void push(const RSYNC_HANDLE handle, const std::vector<unsigned char>& data);
     private:
 
         class RSyncContext final

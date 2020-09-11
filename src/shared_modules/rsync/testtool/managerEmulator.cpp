@@ -36,7 +36,7 @@ void ManagerEmulator::syncData()
         {
             std::cout << "MGR: syncData: " << msg.first << std::endl;
             //TODO: check received data and apply changes to local db.
-            rsync_push_message(msg.first, msg.second.data());
+            rsync_push_message(msg.first, msg.second.data(), msg.second.size());
         }
         std::this_thread::yield();
     }
