@@ -436,7 +436,7 @@ void test_wdb_insert_agent_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent {\"id\":1,\
 \"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
@@ -495,7 +495,7 @@ void test_wdb_insert_agent_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent {\"id\":1,\
 \"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
@@ -616,7 +616,7 @@ void test_wdb_insert_agent_success(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    // Hnadling result and creating agent database
+    // Handling result and creating agent database
     // Opening source database file
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
@@ -734,7 +734,7 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    // Hnadling result and creating agent database
+    // Handling result and creating agent database
     // Opening source database file
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
@@ -821,7 +821,7 @@ void test_wdb_update_agent_name_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-name {\"id\":1,\"name\":\"agent1\"}");
 
@@ -861,7 +861,7 @@ void test_wdb_update_agent_name_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-name {\"id\":1,\"name\":\"agent1\"}");
 
@@ -1069,7 +1069,7 @@ void test_wdb_update_agent_version_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-version \
 {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
@@ -1169,7 +1169,7 @@ void test_wdb_update_agent_version_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-version \
 {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
@@ -1454,7 +1454,7 @@ void test_wdb_set_agent_labels_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-labels 1 key1:value1\nkey2:value2");
 
@@ -1479,7 +1479,7 @@ void test_wdb_set_agent_labels_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-labels 1 key1:value1\nkey2:value2");
 
@@ -1586,7 +1586,7 @@ void test_wdb_update_agent_keepalive_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-keepalive {\"id\":1,\"sync_status\":0}");
 
@@ -1625,7 +1625,7 @@ void test_wdb_update_agent_keepalive_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-keepalive {\"id\":1,\"sync_status\":0}");
 
@@ -1730,7 +1730,7 @@ void test_wdb_delete_agent_belongs_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-agent-belong 1");
 
@@ -1754,7 +1754,7 @@ void test_wdb_delete_agent_belongs_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-agent-belong 1");
 
@@ -1937,7 +1937,7 @@ void test_wdb_remove_agent_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-agent 1");
 
@@ -1961,7 +1961,7 @@ void test_wdb_remove_agent_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-agent 1");
 
@@ -2024,7 +2024,7 @@ void test_wdb_remove_agent_error_delete_belongs_and_name(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-agent-belong 1");
 
@@ -2285,7 +2285,7 @@ void test_wdb_find_agent_error_json_output(void **state)
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB for agent name.");
 
     ret = wdb_find_agent(name_str, ip_str);
@@ -2360,7 +2360,7 @@ void test_wdb_get_agent_offset_error_json_output(void **state)
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get agent offset.");
 
     ret = wdb_get_agent_offset(id, type);
@@ -2498,7 +2498,7 @@ void test_wdb_set_agent_offset_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-fim-offset {\"id\":1,\"offset\":100}");
 
@@ -2538,7 +2538,7 @@ void test_wdb_set_agent_offset_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-fim-offset {\"id\":1,\"offset\":100}");
 
@@ -2800,7 +2800,7 @@ void test_wdb_set_agent_status_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-status {\"id\":1,\"status\":\"empty\"}");
 
@@ -2840,7 +2840,7 @@ void test_wdb_set_agent_status_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-status {\"id\":1,\"status\":\"empty\"}");
 
@@ -3207,7 +3207,7 @@ void test_wdb_update_agent_group_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-group {\"id\":1,\"group\":\"test_group\"}");
 
@@ -3247,7 +3247,7 @@ void test_wdb_update_agent_group_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-group {\"id\":1,\"group\":\"test_group\"}");
 
@@ -3343,7 +3343,7 @@ void test_wdb_update_agent_group_error_multi_group(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-agent-belong 1");
 
@@ -3533,7 +3533,7 @@ void test_wdb_insert_group_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent-group test_group");
 
@@ -3557,7 +3557,7 @@ void test_wdb_insert_group_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent-group test_group");
 
@@ -3662,7 +3662,7 @@ void test_wdb_update_agent_belongs_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent-belong {\"id_group\":1,\"id_agent\":2}");
 
@@ -3701,7 +3701,7 @@ void test_wdb_update_agent_belongs_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent-belong {\"id_group\":1,\"id_agent\":2}");
 
@@ -3806,7 +3806,7 @@ void test_wdb_update_agent_multi_group_error_deleting_agent(void **state) {
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-agent-belong 1");
 
@@ -4063,7 +4063,7 @@ void test_wdb_remove_group_from_belongs_db_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-group-belong test_group");
 
@@ -4087,7 +4087,7 @@ void test_wdb_remove_group_from_belongs_db_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-group-belong test_group");
 
@@ -4162,11 +4162,11 @@ void test_wdb_remove_group_db_error_removing_belongs(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-group-belong test_group");
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__merror, formatted_msg, "At wdb_remove_group_from_belongs_db(): couldn't delete 'test_group' from 'belongs' table.");
 
     ret = wdb_remove_group_db(name);
@@ -4203,7 +4203,7 @@ void test_wdb_remove_group_db_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-group test_group");
 
@@ -4241,7 +4241,7 @@ void test_wdb_remove_group_db_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-group test_group");
 
@@ -4394,11 +4394,11 @@ void test_wdb_update_groups_error_max_path(void **state) {
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-group-belong test_group");
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__merror, formatted_msg, "At wdb_remove_group_from_belongs_db(): couldn't delete 'test_group' from 'belongs' table.");
 
     ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR);
@@ -4446,11 +4446,11 @@ void test_wdb_update_groups_error_removing_group_db(void **state) {
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-group-belong test_group");
 
-    // Hnadling result
+    // Handling result
     expect_string(__wrap__merror, formatted_msg, "At wdb_remove_group_from_belongs_db(): couldn't delete 'test_group' from 'belongs' table.");
 
     ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR);
