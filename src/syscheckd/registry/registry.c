@@ -420,7 +420,7 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
 
     if (!fim_check_restrict(full_key, configuration->filerestrict)) {
         cJSON *json_event = fim_registry_event(&new, &saved, configuration, mode,
-                                               saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFIED, NULL, NULL);
+                                               saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFICATION, NULL, NULL);
 
         fim_db_set_registry_key_scanned(syscheck.database, full_key);
 

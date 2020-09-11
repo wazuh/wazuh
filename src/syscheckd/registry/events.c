@@ -259,17 +259,23 @@ cJSON *fim_registry_event(const fim_entry *new,
         return NULL;
     }
 
-    if (new->type != FIM_TYPE_REGISTRY || saved ? saved->type != FIM_TYPE_REGISTRY : 0) {
+    if (new->type != FIM_TYPE_REGISTRY) {
         // This is just silly now
-        merror("LOGIC ERROR - Entry type is not Registry - new '%d' - saved '%d'", new->type, saved->type);
+        merror("LOGIC ERROR - New entry type is not Registry");
+        return NULL;
+    }
+
+    if (saved && saved->type != FIM_TYPE_REGISTRY) {
+        // This is silly too
+        merror("LOGIC ERROR - Saved entry type is not Registry");
         return NULL;
     }
 
     if (new->registry_entry.value != NULL) {
         json_event = fim_registry_value_json_event(new, saved, configuration, mode, event_type, w_evt, diff);
     } else {
-        json_event = fim_registry_key_json_event(new->registry_entry.key, saved->registry_entry.key, configuration,
-                                                 mode, event_type, w_evt);
+        json_event = fim_registry_key_json_event(new->registry_entry.key, saved ? saved->registry_entry.key : NULL,
+                                                 configuration, mode, event_type, w_evt);
     }
 
     return json_event;
