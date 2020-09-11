@@ -190,7 +190,7 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
             if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                 id_exist = keys.keyentries[index]->id;
                 minfo("Duplicated IP '%s' (%s). Removing old agent.", ip, id_exist);
-                
+
                 add_remove(keys.keyentries[index]);
                 OS_DeleteKey(&keys, id_exist, 0);
             } else {
