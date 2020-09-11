@@ -677,7 +677,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             os_calloc(1, sizeof(FieldInfo), config_ruleinfo->fields[ifield]);
 
                             if (strcasecmp(rule_opt[k]->attributes[0], xml_name) == 0) {
-                                // Avoid STATIC fields
+                                // Avoid static fields
                                 if (strcasecmp(rule_opt[k]->values[0], xml_srcuser) &&
                                     strcasecmp(rule_opt[k]->values[0], xml_dstuser) &&
                                     strcasecmp(rule_opt[k]->values[0], xml_user) &&
@@ -696,7 +696,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                     config_ruleinfo->fields[ifield]->name = loadmemory(config_ruleinfo->fields[ifield]->name,
                                                                                         rule_opt[k]->values[0], log_msg);
                                 else {
-                                    smerror(log_msg, "Field '%s' is STATIC.", rule_opt[k]->values[0]);
+                                    smerror(log_msg, "Field '%s' is static.", rule_opt[k]->values[0]);
                                     goto cleanup;
                                 }
 
