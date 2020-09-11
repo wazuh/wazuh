@@ -104,8 +104,8 @@ EXPORTED int rsync_push_message(const RSYNC_HANDLE handle,
         {
             errorMessage += "Unrecognized error.";
         }
+        // LCOV_EXCL_STOP
     }
-    // LCOV_EXCL_STOP
     log_message(errorMessage);
     return retVal;
 }
