@@ -187,6 +187,10 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
         if (is_startup) {
             /* Unlock mutex */
             w_mutex_unlock(&lastmsg_mutex);
+            agent_id = atoi(key->id);
+            if (OS_SUCCESS != wdb_update_agent_keepalive(agent_id, logr.worker_node?WDB_SYNC_REQ:WDB_SYNCED)) {            
+                mwarn("Unable to set last keepalive as pending");
+            }
         } else {
             /* Update message */
             mdebug2("save_controlmsg(): inserting '%s'", msg);
