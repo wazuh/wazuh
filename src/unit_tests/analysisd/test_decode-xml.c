@@ -24,6 +24,7 @@
 #include "../../analysisd/decoders/decoder.h"
 #include "../../analysisd/decoders/plugin_decoders.h"
 #include "../../analysisd/config.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 
 void FreeDecoderInfo(OSDecoderInfo *pi);
@@ -44,17 +45,6 @@ void __wrap__os_analysisd_add_logmsg(OSList * list, int level, int line, const c
 
     check_expected(level);
     check_expected_ptr(list);
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
     check_expected(formatted_msg);
 }
 
