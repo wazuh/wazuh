@@ -8,6 +8,8 @@
 
 #ifndef FIMDB_COMMON
 #define FIMDB_COMMON
+#define fim_db_decode_registry_value(stmt) _fim_db_decode_registry_value(stmt, 0)
+#define fim_db_decode_registry_value_full_row(stmt) _fim_db_decode_registry_value(stmt, 11)
 
 #include "shared.h"
 #include <openssl/evp.h>
@@ -98,9 +100,10 @@ void fim_db_clean_file(fim_tmp_file **file, int storage);
  * @brief Decodes a row from the registry database to be saved in a registry key structure.
  *
  * @param stmt The statement to be decoded.
+ * @param index Index of the statement
  * @return fim_entry* The filled structure.
  */
-fim_entry *fim_db_decode_full_reg_row(sqlite3_stmt *stmt);
+fim_entry *fim_db_decode_registry(int index, sqlite3_stmt *stmt);
 
 /**
  * @brief Decodes a row from the database to be saved in a fim_entry structure.

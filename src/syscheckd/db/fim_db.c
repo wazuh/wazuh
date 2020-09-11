@@ -340,7 +340,7 @@ int fim_db_process_get_query(fdb_t *fim_sql, int type, int index,
     int result;
     int i;
     for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
-        fim_entry *entry = type == FIM_TYPE_REGISTRY ? fim_db_decode_full_reg_row(fim_sql->stmt[index])
+        fim_entry *entry = type == FIM_TYPE_REGISTRY ? fim_db_decode_registry(index, fim_sql->stmt[index])
                                                      : fim_db_decode_full_row(fim_sql->stmt[index]);
         callback(fim_sql, entry, storage, arg);
         free_entry(entry);
@@ -442,7 +442,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, int type, pthre
 
         if (path) {
             w_mutex_lock(mutex);
-            fim_entry *entry = type == FIM_TYPE_FILE ? fim_db_get_path(fim_sql, path) : fim_db_get_registry(fim_sql, path);
+            fim_entry *entry = type == FIM_TYPE_FILE ? fim_db_get_path(fim_sql, path) : NULL; /*fim_db_get_registry(fim_sql, path);*/
             w_mutex_unlock(mutex);
             if (entry != NULL) {
                 callback(fim_sql, entry, mutex, alert, mode, w_evt);

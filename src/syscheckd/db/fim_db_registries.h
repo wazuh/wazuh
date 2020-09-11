@@ -25,22 +25,6 @@ void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, 
 // Registry functions.
 
 /**
- * @brief Decodes a row from the database to be saved in a fim_registry_key structure.
- *
- * @param stmt The statement to be decoded.
- * @return Pointer to filled fim_registry_key structure.
-*/
-fim_registry_key *fim_db_decode_registry_key_row(sqlite3_stmt *stmt);
-
-/**
- * @brief Decodes a row from the database to be saved in a fim_registry_value_data structure.
- *
- * @param stmt The statement to be decoded.
- * @return Pointer to filled fim_registry_value_data structure.
-*/
-fim_registry_value_data *fim_db_decode_registry_data_row(sqlite3_stmt *stmt);
-
-/**
  * @brief Get checksum of all registry key.
  *
  * @param fim_sql FIM database struct.
@@ -68,7 +52,7 @@ int fim_db_get_registry_data_checksum(fdb_t *fim_sql, void * arg);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, int *rowid);
+int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, unsigned int *rowid);
 
 /**
  * @brief Get registry data using its key_id and name.
