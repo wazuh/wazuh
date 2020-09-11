@@ -70,16 +70,6 @@ typedef struct fim_tmp_file {
     int elements;
 } fim_tmp_file;
 
-typedef struct registry {
-    char *entry;
-    int arch;
-    int opts;
-    int recursion_level;
-    int diff_size_limit;
-    OSMatch *filerestrict;
-    char *tag;
-} registry;
-
 #ifdef WIN32
 /* Flags to know if a directory/file's watcher has been removed */
 #define FIM_RT_HANDLE_CLOSED 0
@@ -376,49 +366,12 @@ void delete_subdirectories_watches(char *dir);
 unsigned int count_watches();
 
 /**
- * @brief Check if a file has changed
- *
- * @param filename The name of the file to be checked
- * @param is_registry 1 if we are checking for a registry, 0 if is a directory
- * @return The diff alert generated, NULL on error
- */
-char *seechanges_addfile(const char *filename, registry *registry) __attribute__((nonnull));
-
-/**
  * @brief Get queue/diff/local path from file path
  *
  * @param path Path to the file
  * @return Path to the queue/diff/local folder
  */
 char *seechanges_get_diff_path(char *path);
-
-/**
- * @brief Estimate whether the compressed file will fit in the disk_quota limit
- *
- * @param file_size Uncompressed file size
- * @return true for files which compressed version could fit, false otherwise
- */
-int seechanges_estimate_compression(const float file_size);
-
-/**
- * @brief Changed the value of syscheck.comp_estimation_perc based on the actual compression rate
- *
- * @param compressed_size Size of the compressed file
- * @param uncompressed_size Size of the file before the compression
- */
-void seechanges_modify_estimation_percentage(const float compressed_size, const float uncompressed_size);
-
-#ifndef WIN32
-
-/**
- * @brief Check if the filename is symlink to a directory
- *
- * @param filename Path to file
- * @return TRUE if filename is a symlink to a directory, FALSE otherwise
- */
-int symlink_to_dir(const char *filename);
-
-#endif
 
 /**
  * @brief Frees the memory of a Whodata event structure
@@ -649,11 +602,21 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
  * @param value_name Name of the value that has generated the alert
  * @param value_data Content of the value to be checked
  * @param data_type The type of value we are checking
+ * @param registry Config of the registry key
  * @return String with the diff to add to the alert
  */
 
-char * fim_registry_value_diff(char *key_name, char *value_name, char *value_data, DWORD data_type);
+char * fim_registry_value_diff(char *key_name, char *value_name, char *value_data, DWORD data_type, registry *configuration);
 #endif
+
+/**
+ * @brief Function that generates the diff file of a file monitored when the option report_changes is activated
+ *
+ * @param filename Path of file monitored
+ * @return String with the diff to add to the alert
+ */
+
+char * fim_file_diff(char *filename);
 
 /**
  * @brief Checks if a specific file has been configured with the ``nodiff`` option

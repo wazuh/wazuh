@@ -175,6 +175,10 @@ typedef struct whodata {
 typedef struct registry {
     char *entry;
     int arch;
+    int opts;
+    int recursion_level;
+    int diff_size_limit;
+    OSMatch *filerestrict;
     char *tag;
 } registry;
 

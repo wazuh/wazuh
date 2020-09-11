@@ -180,8 +180,10 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
 
     /* Get values (if available) */
     if (value_count) {
-        registry *registry;
-        registry->diff_size_limit = 2;
+        registry *configuration;
+        os_calloc(1, sizeof(registry), configuration);
+        configuration->diff_size_limit = 50;
+
         char *mt_data;
         char buffer[OS_SIZE_2048];
         EVP_MD_CTX *ctx = EVP_MD_CTX_create();
@@ -214,7 +216,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
                 value_buffer[1] = '\0';
             }
             minfo("~~~~~~~~~~~~~START~~~~~~~~~~~~~");
-            fim_registry_value_diff(full_key_name, value_buffer, data_buffer, data_type, registry);
+            fim_registry_value_diff(full_key_name, value_buffer, data_buffer, data_type, configuration);
             minfo("~~~~~~~~~~~~~FINISHED~~~~~~~~~~~~~");
 
             /* Write value name and data in the file (for checksum later) */

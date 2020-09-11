@@ -71,9 +71,7 @@ diff_data *initialize_registry_diff_data(
  *
  * @return -1 on error 0 on success
  */
-int fim_diff_registry_tmp(char *key_name,
-                          char *value_name,
-                          char *value_data,
+int fim_diff_registry_tmp(char *value_data,
                           DWORD data_type,
                           diff_data *diff);
 
@@ -154,6 +152,37 @@ int fim_diff_create_compress(diff_data *diff);
 /**
  * @brief
  *
+ * @param compressed_size
+ * @param uncompressed_size
+ *
+ * @return
+ */
+void fim_diff_modify_compress_estimation(const float compressed_size, const float uncompressed_size);
+
+//TODO description
+/**
+ * @brief
+ *
+ * @param diff
+ *
+ * @return
+ */
+int fim_diff_compare(diff_data *diff);
+
+//TODO description
+/**
+ * @brief
+ *
+ * @param diff
+ *
+ * @return
+ */
+char *fim_diff_generate(diff_data *diff);
+
+//TODO description
+/**
+ * @brief
+ *
  * @param filename
  *
  * @return
@@ -181,14 +210,24 @@ char *gen_diff_str(diff_data *diff, __attribute__((unused)) int status);
  */
 char* filter(const char *string);
 
-
 #ifdef WIN32
+
+//TODO description
+/**
+ * @brief
+ *
+ * @param command_output
+ *
+ * @return
+ */
+char *adapt_win_fc_output(char *command_output);
+
 
 char *fim_registry_value_diff(char *key_name,
                               char *value_name,
                               char *value_data,
                               DWORD data_type,
-                              registry registry) {
+                              registry *configuration) {
 
     os_sha1 encoded_key;
     os_sha1 encoded_value;
@@ -205,17 +244,21 @@ char *fim_registry_value_diff(char *key_name,
     OS_SHA1_Str(key_name, strlen(key_name), encoded_key);
     OS_SHA1_Str(value_name, strlen(value_name), encoded_value);
 
+    minfo("~~~~~~~~~~~~~1~~~~~~~~~~~~~");
     // Generate diff structure
-    diff_data *diff = initialize_registry_diff_data(encoded_key, encoded_value);
+    diff_data *diff = initialize_registry_diff_data(encoded_key, encoded_value, configuration);
 
+    minfo("~~~~~~~~~~~~~2~~~~~~~~~~~~~");
     // Create tmp directory and file with de content of the registry
-    fim_diff_registry_tmp(key_name, value_name, value_data, data_type, diff);
+    fim_diff_registry_tmp(value_data, data_type, diff);
 
+    minfo("~~~~~~~~~~~~~3~~~~~~~~~~~~~");
     // Check for file limit and disk quota
     if (reach_limit = fim_diff_check_limits(diff), reach_limit) {
         goto cleanup;
     }
 
+    minfo("~~~~~~~~~~~~~4~~~~~~~~~~~~~");
     // If the file is not there, create compressed file and return.
     if (w_uncompress_gzfile(diff->compress_file, diff->uncompress_file) != 0) {
         fim_diff_create_compress(diff);
@@ -232,10 +275,12 @@ char *fim_registry_value_diff(char *key_name,
 
     }
 
+    minfo("~~~~~~~~~~~~~5~~~~~~~~~~~~~");
     if (fim_diff_compare(diff) == -1) {
         goto cleanup;
     }
 
+    minfo("~~~~~~~~~~~~~6~~~~~~~~~~~~~");
     diff_changes = fim_diff_generate(diff);
 
 
@@ -255,12 +300,11 @@ cleanup:
         DIFF_DIR_PATH,
         encoded_key
     );
-    if (rmdir(key_folder) < 0) {
-        mdebug2(RMDIR_ERROR, key_folder, errno, strerror(errno));
-    }
 
+    rmdir(key_folder);
     free_diff_data(diff);
 
+    minfo("~~~~~~~~~~~~~%s~~~~~~~~~~~~~", diff_changes);
     return diff_changes;
 }
 
@@ -344,13 +388,10 @@ diff_data *initialize_registry_diff_data(
     return diff;
 }
 
-int fim_diff_registry_tmp(os_sha1 encoded_key,
-                          os_sha1 encoded_value,
-                          char *value_data,
+int fim_diff_registry_tmp(char *value_data,
                           DWORD data_type,
                           diff_data *diff) {
 
-    char buffer[PATH_MAX + 1];
     char *aux_data = NULL;
     FILE *fp;
 
@@ -391,7 +432,7 @@ int fim_diff_registry_tmp(os_sha1 encoded_key,
 
             default:
                 // Wrong type
-                mwarn(FIM_REG_VAL_WRONG_TYPE, data_type);
+                mwarn(FIM_REG_VAL_WRONG_TYPE);
                 break;
         }
     } else {
@@ -474,6 +515,7 @@ diff_data *initialize_file_diff_data(char *filename){
 
     // Get absolute path of filename:
     if (abspath(filename, buffer, sizeof(buffer)) == NULL) {
+        //TODO Error msg
         merror("Cannot get absolute path of '%s': %s (%d)", filename, strerror(errno), errno);
         return NULL;
     }
@@ -483,9 +525,10 @@ diff_data *initialize_file_diff_data(char *filename){
     // Remove ":" from filename
     filename = os_strip_char(diff->file_origin, ':');
 
-    if (filename_strip == NULL) {
+    if (filename == NULL) {
+        //TODO Error msg
         merror("Cannot remove heading colon from full path '%s'", diff->file_origin);
-        return diff;
+        return NULL;
     }
 
     // Get cwd for Windows
@@ -565,8 +608,6 @@ void free_diff_data(diff_data *diff) {
 }
 
 bool fim_diff_check_limits(diff_data *diff) {
-    float file_size = 0;
-
     diff->file_size = (float)FileSize(diff->file_origin) / 1024;
 
     if (syscheck.file_size_enabled) {
@@ -907,4 +948,90 @@ char* filter(const char *string) {
 
         return s;
 #endif
+}
+
+char *adapt_win_fc_output(char *command_output) {
+    char *adapted_output;
+    char *line;
+    char *next_line;
+    const char *line_tag = ":  ";
+    const char *split_tag = "---";
+    char line_mode = 0; // 0: waiting for section, 1: remove, 2: add
+    char first_line = 0;
+    size_t line_tag_size = strlen(line_tag);
+    size_t written = 0;
+
+    if (line = strchr(command_output, '\n'), !line) {
+        mdebug2("%s: %s", FIM_ERROR_GENDIFF_SECONDLINE_MISSING, command_output);
+        return strdup(command_output);
+    }
+
+    os_calloc(OS_MAXSTR + 1, sizeof(char), adapted_output);
+
+    while (line) {
+        next_line = strstr(++line, "\r\n");
+
+        if (*line == '*') {
+            if (next_line) {
+                next_line++;
+            }
+
+            if (!line_mode) {
+                if (first_line) {
+                    written += snprintf(adapted_output + written, OS_MAXSTR - written, "%s\n", split_tag);
+                }
+                first_line = 1;
+            } else if (line_mode == 1) {
+                written += snprintf(adapted_output + written, OS_MAXSTR - written, "%s\n", split_tag);
+            }
+
+            line_mode = (line_mode + 1) % 3;
+            goto next_it;
+        }
+
+        if (next_line) {
+            *(next_line++) = '\0';
+            *next_line = '\0';
+        }
+
+        if (line = strstr(line, line_tag), !line) {
+            goto next_it;
+        } else {
+            line += line_tag_size;
+        }
+
+        written += snprintf(adapted_output + written, OS_MAXSTR - written, "%s%s%s", line_mode == 1 ? "< " : "> ", line, next_line ? "\n" : "");
+
+next_it:
+        line = next_line;
+    }
+
+    return adapted_output;
+}
+
+char *seechanges_get_diff_path(char *path) {
+    char *full_path;
+    os_malloc(sizeof(char) * (strlen(DIFF_DIR_PATH) + strlen(path) + 8), full_path);
+    snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
+
+#ifdef WIN32
+    char drive[3];
+    drive[0] = PATH_SEP;
+    drive[1] = path[0];
+
+    char *windows_path = strchr(path, ':');
+
+    if (windows_path == NULL) {
+        mdebug1("Incorrect path. This does not contain ':' ");
+        os_free(full_path);
+        return NULL;
+    }
+
+    strncat(full_path, drive, 2);
+    strncat(full_path, (windows_path + 1), PATH_MAX - strlen(full_path) - 1);
+#else
+    strncat(full_path, path, PATH_MAX - strlen(full_path) - 1);
+#endif
+
+    return full_path;
 }
