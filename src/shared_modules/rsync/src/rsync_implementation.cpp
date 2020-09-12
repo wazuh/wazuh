@@ -47,3 +47,12 @@ std::shared_ptr<RSyncImplementation::RSyncContext> RSyncImplementation::remoteSy
     }
     return it->second;
 }
+
+void RSyncImplementation::push(const RSYNC_HANDLE handle, const std::vector<unsigned char>& data)
+{
+    const auto spRSyncContext
+    {
+        remoteSyncContext(handle)
+    };
+    //spRSyncContext->m_msgDispatcher.push(data);
+}

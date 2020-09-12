@@ -52,8 +52,11 @@ TEST_F(RSyncTest, registerSyncId)
 
 TEST_F(RSyncTest, pushMessage)
 {
+    const std::string buffer{"test buffer"};
     const auto handle { rsync_create() };
-    ASSERT_EQ(0, rsync_push_message(handle, nullptr));
+    ASSERT_NE(0, rsync_push_message(handle, nullptr, 1000));
+    ASSERT_NE(0, rsync_push_message(handle, reinterpret_cast<const void*>(0x1000), 0));
+    ASSERT_EQ(0, rsync_push_message(handle, reinterpret_cast<const void*>(buffer.data()), buffer.size()));
 }
 
 TEST_F(RSyncTest, CloseWithoutInitialization)

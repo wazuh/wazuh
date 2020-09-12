@@ -22,7 +22,7 @@
 
 
 using SyncId = RSYNC_HANDLE;
-using SyncData = std::vector<char>;
+using SyncData = std::vector<unsigned char>;
 using SyncMessage = std::pair<SyncId, SyncData>;
 using SyncQueue = Utils::SafeQueue<SyncMessage>;
 
