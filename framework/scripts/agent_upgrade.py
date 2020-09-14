@@ -157,7 +157,7 @@ def check_status(affected_agents, result_dict, failed_agents):
                 agent.load_info_from_db()
                 result_dict[task_result['agent_id']]['new_version'] = args.version if args.version else agent.version
                 affected_agents.discard(task_result['agent_id'])
-            elif task_result['status'] == 'Error':
+            elif 'Error' in task_result['status'] or 'Timeout' in task_result['status']:
                 failed_agents[task_result['agent_id']] = task_result['error_msg']
                 result_dict.pop(task_result['agent_id'])
                 affected_agents.discard(task_result['agent_id'])
