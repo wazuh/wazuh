@@ -125,7 +125,11 @@ async def response_postprocessing(request, handler):
                                     detail=cleanup_detail_field(ex.__dict__['detail']) if 'detail' in ex.__dict__ else '',
                                     ext=ex.__dict__['ext'] if 'ext' in ex.__dict__ else None)
     except OAuthProblem:
-        problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="No authorization token provided")
+        if request.path == '/security/user/authenticate' and request.method == 'GET':
+            problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="Invalid credentials")
+        else:
+            problem = connexion_problem(401, "Unauthorized", type="about:blank",
+                                        detail="No authorization token provided")
     finally:
         if problem:
             remove_unwanted_fields()
