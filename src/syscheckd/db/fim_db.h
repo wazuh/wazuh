@@ -143,15 +143,9 @@ fim_entry *fim_db_get_registry(fdb_t *fim_sql, const char *path);
  * @param w_evt Whodata information for callback function.
  *
  */
- int fim_db_process_read_file(fdb_t *fim_sql,
-                                     fim_tmp_file *file,
-                                     int type,
-                                     pthread_mutex_t *mutex,
-                                     void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
-                                     int storage,
-                                     void * alert,
-                                     void * mode,
-                                     void * w_evt);
+ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, int type, pthread_mutex_t *mutex,
+                              void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
+                              int storage, void * alert, void * mode, void * w_evt);
 
 
 

@@ -76,7 +76,7 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_REG_PATH_RANGE] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, registry_key.scanned, registry_key.checksum, key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, registry_data.scanned, last_event, registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_data.key_id = registry_key.id WHERE path BETWEEN ? and ? ORDER BY path;",
     [FIMDB_STMT_SET_REG_KEY_SCANNED] = "UPDATE registry_data SET scanned = 1 WHERE name = ? AND key_id = ?;",
     [FIMDB_STMT_SET_REG_DATA_SCANNED] = "UPDATE registry_key SET scanned = 1 WHERE path = ?;",
-    [FIMDB_STMT_GET_REG_KEY_ROWID] = "SELECT path, perm, uid, gid, user_name, group_name, mtime, scanned, checksum, arch FROM registry_key WHERE id = ?;",
+    [FIMDB_STMT_GET_REG_KEY_ROWID] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum FROM registry_key WHERE id = ?;",
 #endif
 };
 
@@ -408,9 +408,8 @@ int fim_db_get_count(fdb_t *fim_sql, int index) {
 }
 
 int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, int type, pthread_mutex_t *mutex,
-    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
-    int storage, void * alert, void * mode, void * w_evt) {
-
+                             void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
+                             int storage, void * alert, void * mode, void * w_evt) {
     char line[PATH_MAX + 1];
     char *path = NULL;
     int i = 0;
@@ -420,34 +419,39 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, int type, pthre
     }
 
     do {
-
         if (storage == FIM_DB_DISK) {
-            /* fgets() adds \n(newline) to the end of the string,
-             So it must be removed. */
+            // fgets() adds \n(newline) to the end of the string,
+            // so it must be removed.
             if (fgets(line, sizeof(line), file->fd)) {
                 size_t len = strlen(line);
 
                 if (len > 2 && line[len - 1] == '\n') {
                     line[len - 1] = '\0';
-                } else {
+                }
+                else {
                     merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
                     continue;
                 }
 
                 path = wstr_unescape_json(line);
             }
-        } else {
+        }
+        else {
             path = wstr_unescape_json((char *) W_Vector_get(file->list, i));
         }
 
         if (path) {
             w_mutex_lock(mutex);
-            fim_entry *entry = type == FIM_TYPE_FILE ? fim_db_get_path(fim_sql, path) : NULL; /*fim_db_get_registry(fim_sql, path);*/
+            fim_entry *entry = type == FIM_TYPE_FILE ? fim_db_get_path(fim_sql, path) :
+                                                       fim_db_get_registry_key(fim_sql, path);
+
             w_mutex_unlock(mutex);
+
             if (entry != NULL) {
                 callback(fim_sql, entry, mutex, alert, mode, w_evt);
                 free_entry(entry);
             }
+
             os_free(path);
         }
 

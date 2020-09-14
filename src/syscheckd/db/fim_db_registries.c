@@ -241,22 +241,23 @@ int fim_db_remove_registry_value_data(fdb_t *fim_sql, fim_registry_value_data *e
 }
 
 fim_registry_key *fim_db_decode_registry_key(sqlite3_stmt *stmt) {
-    fim_registry_key *reg_key = NULL;
+    fim_registry_key *entry;
+    os_calloc(1, sizeof(fim_registry_key), entry);
 
-    os_calloc(1, sizeof(fim_registry_key), reg_key);
+    entry->id = (unsigned int)sqlite3_column_int(stmt, 0);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 1), entry->path);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 2), entry->perm);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 3), entry->uid);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 4), entry->gid);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 5), entry->user_name);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 6), entry->group_name);
+    entry->mtime = (unsigned int)sqlite3_column_int(stmt, 7);
+    entry->arch = (unsigned int)sqlite3_column_int(stmt, 8);
+    entry->scanned = (unsigned int)sqlite3_column_int(stmt, 9);
+    strncpy(entry->checksum, (char *)sqlite3_column_text(stmt, 10), sizeof(os_sha1) - 1);
+    entry->scanned = (unsigned int)sqlite3_column_int(stmt, 11);
 
-    sqlite_strdup((char *)sqlite3_column_text(stmt, 0), reg_key->path);
-    sqlite_strdup((char *)sqlite3_column_text(stmt, 1), reg_key->perm);
-    sqlite_strdup((char *)sqlite3_column_text(stmt, 2), reg_key->uid);
-    sqlite_strdup((char *)sqlite3_column_text(stmt, 3), reg_key->gid);
-    sqlite_strdup((char *)sqlite3_column_text(stmt, 4), reg_key->user_name);
-    sqlite_strdup((char *)sqlite3_column_text(stmt, 5), reg_key->group_name);
-    reg_key->mtime = (unsigned int)sqlite3_column_int(stmt, 6);
-    reg_key->scanned = (unsigned int)sqlite3_column_int(stmt, 7);
-    strncpy(reg_key->checksum, (char *)sqlite3_column_text(stmt, 8), sizeof(os_sha1) - 1);
-    reg_key->scanned = (unsigned int)sqlite3_column_int(stmt, 9);
-
-    return reg_key;
+    return entry;
 }
 
 fim_registry_value_data *_fim_db_decode_registry_value(sqlite3_stmt *stmt, int offset) {
@@ -273,12 +274,12 @@ fim_registry_value_data *_fim_db_decode_registry_value(sqlite3_stmt *stmt, int o
     entry->scanned = (unsigned int)sqlite3_column_int(stmt, offset + 7);
     entry->last_event = (unsigned int)sqlite3_column_int(stmt, offset + 8);
     strncpy(entry->checksum, (char *)sqlite3_column_text(stmt, offset + 9), sizeof(os_sha1) - 1);
+
     return entry;
 }
 
 fim_entry *fim_db_decode_registry(int index, sqlite3_stmt *stmt) {
     fim_entry *entry = NULL;
-
     os_calloc(1, sizeof(fim_entry), entry);
 
     entry->type = FIM_TYPE_REGISTRY;
@@ -286,14 +287,18 @@ fim_entry *fim_db_decode_registry(int index, sqlite3_stmt *stmt) {
     entry->registry_entry.value = NULL;
 
     // Registry key
-    if (index == FIMDB_STMT_GET_REG_KEY_NOT_SCANNED || index == FIMDB_STMT_GET_REG_KEY_ROWID ||
+    if (index == FIMDB_STMT_GET_REG_KEY_NOT_SCANNED ||
+        index == FIMDB_STMT_GET_REG_KEY_ROWID ||
         index == FIMDB_STMT_GET_REG_KEY) {
+
         entry->registry_entry.key = fim_db_decode_registry_key(stmt);
     }
+
     if (index == FIMDB_STMT_GET_REG_DATA || index == FIMDB_STMT_GET_REG_DATA_NOT_SCANNED) {
         // The offset has to be 10 because the decoding of the registry key
         entry->registry_entry.value = fim_db_decode_registry_value(stmt);
     }
+
     return entry;
 }
 
