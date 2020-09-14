@@ -461,7 +461,7 @@ int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status);
 int wdb_set_agent_status(int id_agent, int status);
 
 /**
- * @brief Update agent group.
+ * @brief Update agent group. If the group is not specified, it is set to NULL.
  * 
  * @param[in] id ID of the agent.
  * @param[in] group The group to be set.
