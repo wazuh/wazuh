@@ -3310,7 +3310,7 @@ components:
                 properties:
                   name:
                     type: string
-                    format: alphanumeric
+                    format: alphanumeric_symbols
                   platform:
                     type: string
                     format: alphanumeric
