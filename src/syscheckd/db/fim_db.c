@@ -495,8 +495,17 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, int type, pthre
 
         if (path) {
             w_mutex_lock(mutex);
-            fim_entry *entry = type == FIM_TYPE_FILE ? fim_db_get_path(fim_sql, path) :
-                                                       fim_db_get_registry_key(fim_sql, path);
+            fim_entry *entry;
+
+            if (type == FIM_TYPE_FILE) {
+                entry = fim_db_get_path(fim_sql, path);
+            }
+            else {
+                os_calloc(1, sizeof(fim_entry), entry);
+
+                entry->type = FIM_TYPE_REGISTRY;
+                entry->registry_entry.key = fim_db_get_registry_key(fim_sql, path);
+            }
 
             w_mutex_unlock(mutex);
 
