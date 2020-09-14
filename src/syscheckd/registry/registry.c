@@ -225,9 +225,11 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql, fim_entry *data, pthr
         }
     }
 
-    if (fim_db_get_values_from_registry_key(fim_sql, &file, syscheck.database_store, data->registry_entry.key->id) == FIMDB_OK) {
-        fim_db_process_read_file(fim_sql, file, mutex, fim_registry_process_value_delete_event, syscheck.database_store,
-                                 _alert, _ev_mode, _w_evt);
+    if (fim_db_get_registry_data_id_name_from_id(fim_sql, &file, FIM_DB_DISK, data->registry_entry.key->id) == FIMDB_OK) {
+        if (file && file->elements) {
+            fim_db_process_read_registry_data_file(fim_sql, file, mutex, fim_registry_process_value_delete_event,
+                                                   FIM_DB_DISK, _alert, _ev_mode, _w_evt);
+        }
     }
 
     fim_db_remove_registry_key(fim_sql, data->registry_entry.key->path);
@@ -237,16 +239,20 @@ void fim_registry_process_unscanned_entries() {
     fim_tmp_file *file;
     fim_event_mode event_mode = FIM_SCHEDULED;
 
-    if (fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store) == FIMDB_OK) {
-        fim_db_process_read_file(syscheck.database, file, NULL, fim_registry_process_key_delete_event,
-                                 syscheck.database_store, &_base_line, &event_mode, NULL);
+    if (fim_db_get_registry_keys_not_scanned(syscheck.database, &file, FIM_DB_DISK) == FIMDB_OK) {
+        if (file && file->elements) {
+            fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, NULL, fim_registry_process_key_delete_event,
+                                     FIM_DB_DISK, &_base_line, &event_mode, NULL);
+        }
     } else {
         mwarn("Failed to get unscanned registry keys");
     }
 
-    if (fim_db_get_registry_data_not_scanned(syscheck.database, &file, syscheck.database_store) == FIMDB_OK) {
-        fim_db_process_read_file(syscheck.database, file, NULL, fim_registry_process_value_delete_event,
-                                 syscheck.database_store, &_base_line, &event_mode, NULL);
+    if (fim_db_get_registry_data_not_scanned(syscheck.database, &file, FIM_DB_DISK) == FIMDB_OK) {
+        if (file && file->elements) {
+            fim_db_process_read_registry_data_file(syscheck.database, file, NULL, fim_registry_process_value_delete_event,
+                                                   FIM_DB_DISK, &_base_line, &event_mode, NULL);
+        }
     } else {
         mwarn("Failed to get unscanned registry values");
     }
