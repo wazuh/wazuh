@@ -131,7 +131,7 @@ def print_result(agents_versions, failed_agents):
 
     len(failed_agents.keys()) > 0 and print('\nFailed upgrades:')
     for agent_id, error in failed_agents.items():
-        print(f"\tAgent {agent_id}. Status: {error}")
+        print(f"\tAgent {agent_id} status: {error}")
 
 
 def check_status(affected_agents, result_dict, failed_agents):
@@ -158,7 +158,8 @@ def check_status(affected_agents, result_dict, failed_agents):
                 result_dict[task_result['agent_id']]['new_version'] = args.version if args.version else agent.version
                 affected_agents.discard(task_result['agent_id'])
             elif 'Error' in task_result['status'] or 'Timeout' in task_result['status']:
-                failed_agents[task_result['agent_id']] = task_result['error_msg']
+                failed_agents[task_result['agent_id']] = task_result['error_msg'] if 'Error' in task_result['status'] \
+                    else task_result['status']
                 result_dict.pop(task_result['agent_id'])
                 affected_agents.discard(task_result['agent_id'])
         sleep(3)
