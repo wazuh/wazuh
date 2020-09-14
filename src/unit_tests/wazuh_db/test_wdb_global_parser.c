@@ -1541,15 +1541,15 @@ void test_wdb_parse_global_update_agent_group_invalid_data(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-agent-group {\"id\":1,\"group\":null}";
+    char query[OS_BUFFER_SIZE] = "global update-agent-group {\"group\":null}";
 
     will_return(__wrap_wdb_open_global, data->socket);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-group {\"id\":1,\"group\":null}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-group {\"group\":null}");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent group.");
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"group\":null}'");
+    assert_string_equal(data->output, "err Invalid JSON data, near '{\"group\":null}'");
     assert_int_equal(ret, OS_INVALID);
 }
 
