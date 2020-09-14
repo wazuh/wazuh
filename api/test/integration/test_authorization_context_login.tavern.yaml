@@ -2,7 +2,7 @@
 test_name: POST /security/user/authenticate/run_as
 
 marks:
-  - base_tests
+  - rbac_tests
 
 stages:
 
@@ -11,7 +11,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate/run_as"
       headers:
-        Authorization: "Basic {basic_auth:s}"
+        Authorization: "Basic {basic_auth_context:s}"
       method: POST
       json:
         username: "elastic"
@@ -28,7 +28,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate/run_as"
       headers:
-        Authorization: "Basic {basic_auth:s}"
+        Authorization: "Basic {basic_auth_context:s}"
       method: POST
       json:
         testing: "integration"
@@ -44,7 +44,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate/run_as"
       headers:
-        Authorization: "Basic {basic_auth:s}"
+        Authorization: "Basic {basic_auth_context:s}"
       method: POST
     response:
       status_code: 400
@@ -54,7 +54,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate/run_as"
       headers:
-        Authorization: "Basic {basic_auth:s}"
+        Authorization: "Basic {basic_auth_context:s}"
       method: POST
       json:
         testing: "unknown"

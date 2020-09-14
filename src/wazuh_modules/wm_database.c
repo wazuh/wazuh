@@ -264,15 +264,19 @@ void wm_sync_manager() {
                 // Get os_major
                 if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
                     match_size = match[1].rm_eo - match[1].rm_so;
-                    os_major = malloc(match_size +1);
-                    snprintf (os_major, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+
+                    os_malloc(match_size +1, os_major);
+
+                    snprintf(os_major, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
                 }
 
                 // Get os_minor
                 if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
                     match_size = match[1].rm_eo - match[1].rm_so;
-                    os_minor = malloc(match_size +1);
-                    snprintf (os_minor, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+
+                    os_malloc(match_size +1, os_minor);
+
+                    snprintf(os_minor, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
                 }
 
             } else

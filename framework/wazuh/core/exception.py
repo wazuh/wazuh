@@ -85,6 +85,11 @@ class WazuhException(Exception):
             'remediation': "Please, make sure your proxy is setting 'X-Forwarded-For' HTTP header"
             },
         1121: {'message': "Error connecting with socket"},
+        1122: {'message': 'Experimental features are disabled',
+               'remediation': 'Experimental features can be enabled in WAZUH_PATH/configuration/api.yaml or '
+                              'using API endpoint https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.manager_controller.put_api_config or '
+                              'https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.cluster_controller.put_api_config'},
+
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
                'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
@@ -533,7 +538,7 @@ class WazuhException(Exception):
                               'any other user with the necessary permissions'},
 
         # Security issues
-        6000: {'message': 'Limit of login attempts reached'
+        6000: {'message': 'Limit of login attempts reached. '
                           'The current IP has been blocked due to a high number of login attempts'},
         6001: {'message': 'Maximum number of request per minute reached',
                'remediation': 'This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html'},

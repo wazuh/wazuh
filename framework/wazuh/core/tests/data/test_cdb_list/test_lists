@@ -3,3 +3,8 @@ test-wazuh-r:read
 test-wazuh-a:attribute
 test-wazuh-x:execute
 test-wazuh-c:command
+test-key:"value:1"
+"test-key:1":value
+"test-key:2":"value:2"
+"test-key::::::3":value3
+test-key4:"value:::4"

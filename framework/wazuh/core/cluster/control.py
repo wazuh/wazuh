@@ -33,7 +33,7 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
         # get totalItems after applying q filter
         result['totalItems'] = len(result['items'])
         # apply offset and limit filters
-        result['items'] = result['items'][offset:offset+limit]
+        result['items'] = result['items'][offset:offset + limit]
 
     return result
 
@@ -74,7 +74,7 @@ async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_stat
                       'filters': {'status': ','.join(filter_status), 'node_name': ','.join(filter_node)},
                       'limit': None,
                       'select': list(select_fields)
-                      },
+                  },
                   'from_cluster': False,
                   'wait_for_complete': False
                   }

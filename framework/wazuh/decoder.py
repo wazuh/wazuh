@@ -36,9 +36,9 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
 
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(none_msg='No decoder was shown',
-                                      some_msg='Some decoders could not be shown',
-                                      all_msg='All selected decoders were shown')
+    result = AffectedItemsWazuhResult(none_msg='No decoder was returned',
+                                      some_msg='Some decoders were not returned',
+                                      all_msg='All selected decoders were returned')
     all_decoders = list()
     if names is None:
         names = list()
@@ -100,9 +100,9 @@ def get_decoders_files(status=None, relative_dirname=None, filename=None, offset
     :param search_in_fields: Fields to search in
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(none_msg='No decoder files were shown',
-                                      some_msg='Some decoder files were shown',
-                                      all_msg='All decoder files were shown')
+    result = AffectedItemsWazuhResult(none_msg='No decoder files were returned',
+                                      some_msg='Some decoder files were not returned',
+                                      all_msg='All decoder files were returned')
     status = check_status(status)
     ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
     if not ruleset_conf:

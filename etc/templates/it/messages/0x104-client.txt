@@ -1,4 +1,0 @@
-
- - Come prima cosa devi aggiungere questo agent al server affinchè possano comunicare
-   tra di loro. Una volta fatto questo, potrai utilizzare il comando 'manage_agents'
-   per importare la chiave di autenticazione dal server.

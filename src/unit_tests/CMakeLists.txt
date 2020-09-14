@@ -17,6 +17,7 @@ include_directories(${SRC_FOLDER}/external/openssl/include)
 include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
 include_directories(${SRC_FOLDER}/external/bzip2)
 include_directories(${SRC_FOLDER})
+add_definitions(-DWAZUH_UNIT_TESTING)
 
 # Wazuh libraries
 find_library(WAZUHLIB NAMES libwazuh.a HINTS "${SRC_FOLDER}")
@@ -44,7 +45,6 @@ if(NOT WAZUHEXT)
   message(FATAL_ERROR "libwazuhext not found! Aborting...")
 endif()
 
-add_definitions(-DWAZUH_UNIT_TESTING)
 add_subdirectory(syscheckd)
 add_subdirectory(shared)
 

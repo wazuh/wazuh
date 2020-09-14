@@ -28,6 +28,31 @@ if sys.version_info[0] == 3:
     unicode = str
 
 
+def find_nth(string, substring, n):
+    """Return the index corresponding to the n'th occurrence of a substring within a string.
+
+    Parameters
+    ----------
+    string : str
+        String where the substring is searched.
+    substring : str
+        String to be found in "string".
+    n : int
+        Occurrence to be found.
+
+    Returns
+    -------
+    int
+        Index of the n'th occurrence of a substring within a string.
+    """
+
+    start = string.find(substring)
+    while start >= 0 and n > 1:
+        start = string.find(substring, start+len(substring))
+        n -= 1
+    return start
+
+
 def previous_month(n=1):
     """Returns the first date of the previous n month.
 

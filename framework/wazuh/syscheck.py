@@ -22,9 +22,9 @@ def run(agent_list=None):
     :param agent_list: Run syscheck in the agent.
     :return: AffectedItemsWazuhResult.
     """
-    result = AffectedItemsWazuhResult(all_msg='Restarting syscheck scan on shown agents',
-                                      some_msg='Could not restart syscheck scan on some agents',
-                                      none_msg='No syscheck scan restarted')
+    result = AffectedItemsWazuhResult(all_msg='Syscheck scan was restarted on returned agents',
+                                      some_msg='Syscheck scan was not restarted on some agents',
+                                      none_msg='No syscheck scan was restarted')
     for agent_id in agent_list:
         try:
             agent_info = Agent(agent_id).get_basic_information()
@@ -52,9 +52,9 @@ def clear(agent_list=None):
     :param agent_list: List of agent ids
     :return: AffectedItemsWazuhResult.
     """
-    result = AffectedItemsWazuhResult(all_msg='Cleared syscheck database on shown agents',
-                                      some_msg='Could not clear syscheck database on some agents',
-                                      none_msg="No syscheck database cleared")
+    result = AffectedItemsWazuhResult(all_msg='Syscheck database was cleared on returned agents',
+                                      some_msg='Syscheck database was not cleared on some agents',
+                                      none_msg="No syscheck database was cleared")
     wdb_conn = WazuhDBConnection()
     for agent in agent_list:
         if agent not in get_agents_info():
@@ -85,8 +85,8 @@ def last_scan(agent_list):
     :return: AffectedItemsWazuhResult.
     """
     my_agent = Agent(agent_list[0])
-    result = AffectedItemsWazuhResult(all_msg='Last syscheck scan of the agent',
-                                      none_msg='No last scan information shown')
+    result = AffectedItemsWazuhResult(all_msg='Last syscheck scan of the agent was returned',
+                                      none_msg='No last scan information was returned')
     # If agent status is never_connected, a KeyError happens
     try:
         agent_version = my_agent.get_basic_information(select=['version'])['version']
@@ -157,8 +157,8 @@ def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, sea
                   "gname": "gname", "md5": "md5", "sha1": "sha1", "sha256": "sha256", "inode": "inode", "gid": "gid",
                   "uid": "uid", "type": "type", "changes": "changes", "attributes": "attributes"}
     summary_parameters = {"date": "date", "mtime": "mtime", "file": "file"}
-    result = AffectedItemsWazuhResult(all_msg='FIM findings of the agent',
-                                      none_msg='No FIM information shown')
+    result = AffectedItemsWazuhResult(all_msg='FIM findings of the agent were returned',
+                                      none_msg='No FIM information was returned')
 
     if 'hash' in filters:
         q = f'(md5={filters["hash"]},sha1={filters["hash"]},sha256={filters["hash"]})' + ('' if not q else ';' + q)
