@@ -22,7 +22,7 @@ namespace RSync
     class IMessageCreator
     {
     public:
-        virtual void send(const ResultCallback callback, const Type& data) = 0;
+        virtual void send(const ResultCallback callback, const nlohmann::json& config, const Type& data) = 0;
     };
 };
 

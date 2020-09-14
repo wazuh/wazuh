@@ -32,14 +32,6 @@ namespace RSync
     public:
         static std::shared_ptr<IMessageCreator<Type>> create()
         {
-            if (CHECKSUM == mType)
-            {
-                return std::make_shared<MessageChecksum<Type>>();
-            }
-            else if (ROW_DATA == mType)
-            {
-                return std::make_shared<MessageRowData<Type>>();
-            }
             throw rsync_error
             {
                 FACTORY_INSTANTATION
@@ -47,7 +39,25 @@ namespace RSync
         }
     };
 
-    
+    template <class Type>
+    class FactoryMessageCreator<Type, MessageType::CHECKSUM> final
+    {
+    public:
+        static std::shared_ptr<IMessageCreator<Type>> create()
+        {
+            return std::make_shared<MessageChecksum<Type>>();
+        }
+    };
+
+    template <class Type>
+    class FactoryMessageCreator<Type, MessageType::ROW_DATA> final
+    {
+    public:
+        static std::shared_ptr<IMessageCreator<Type>> create()
+        {
+            return std::make_shared<MessageRowData<Type>>();
+        }
+    };    
 }// namespace RSync
 
 #endif // _MESSAGE_CREATOR_FACTORY_H

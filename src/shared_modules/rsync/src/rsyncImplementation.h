@@ -19,7 +19,7 @@
 #include "json.hpp"
 #include "msgDispatcher.h"
 #include "syncDecoder.h"
-#include "dbsync.h"
+#include "dbsyncImplementation.h"
 
 struct CJsonDeleter
 {
@@ -61,7 +61,7 @@ namespace RSync
 
         void registerSyncId(const RSYNC_HANDLE handle, 
                             const std::string& message_header_id, 
-                            const DBSYNC_HANDLE dbsync_handle, 
+                            const std::shared_ptr<DBSyncImplementation>& spDBSyncImplementation, 
                             const char* sync_configuration, 
                             const ResultCallback callbackWrapper);
 
@@ -77,20 +77,20 @@ namespace RSync
 
         std::shared_ptr<RSyncContext> remoteSyncContext(const RSYNC_HANDLE handle);
 
-        static size_t getRangeCount(const DBSYNC_HANDLE dbsync_handle, 
-                             const nlohmann::json& rangeCountQuery, 
-                             const SyncInputData& syncData);
+        static size_t getRangeCount(const std::shared_ptr<DBSyncImplementation>& spDBSyncImplementation,
+                                    const nlohmann::json& rangeCountQuery, 
+                                    const SyncInputData& syncData);
 
-        static std::string getChecksum(const DBSYNC_HANDLE dbsync_handle, 
-                                 const nlohmann::json& rangeQuery,
-                                 const std::string& begin,
-                                 const std::string& end);
+        static std::string getChecksum(const std::shared_ptr<DBSyncImplementation>& spDBSyncImplementation, 
+                                       const nlohmann::json& rangeQuery,
+                                       const std::string& begin,
+                                       const std::string& end);
 
-        static nlohmann::json getRowData(const DBSYNC_HANDLE dbsync_handle, 
+        static nlohmann::json getRowData(const std::shared_ptr<DBSyncImplementation>& spDBSyncImplementation,
                                          const nlohmann::json& rowQuery,
                                          const std::string& index);
 
-        static void sendAllData(const DBSYNC_HANDLE dbsync_handle, 
+        static void sendAllData(const std::shared_ptr<DBSyncImplementation>& spDBSyncImplementation,
                                 const nlohmann::json& noDataQuery,
                                 const ResultCallback callbackWrapper);
         

@@ -12,7 +12,9 @@
 #include <string>
 #include "rsync.h"
 #include "rsync_exception.h"
+#include "dbsyncImplementation.h"
 #include "rsyncImplementation.h"
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -88,7 +90,7 @@ EXPORTED int rsync_register_sync_id(const RSYNC_HANDLE handle,
             }
         };
         const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(sync_configuration)};
-        RSyncImplementation::instance().registerSyncId(handle, message_header_id, dbsync_handle, spJsonBytes.get(), callbackWrapper);
+        RSyncImplementation::instance().registerSyncId(handle, message_header_id, std::make_shared<DBSyncImplementation>(dbsync_handle), spJsonBytes.get(), callbackWrapper);
         retVal = 0;
     }
     // LCOV_EXCL_START

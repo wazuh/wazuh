@@ -20,7 +20,7 @@ namespace RSync
     class MessageRowData : public IMessageCreator<Type>
     {
     public:
-        void send(const ResultCallback /*callback*/, const Type& /*data*/) override
+        void send(const ResultCallback /*callback*/, const nlohmann::json& /*config*/, const Type& /*data*/) override
         {
             throw rsync_error { NOT_SPECIALIZED_FUNCTION };   
         }
@@ -29,9 +29,20 @@ namespace RSync
     class MessageRowData<nlohmann::json> : public IMessageCreator<nlohmann::json>
     {
     public:
-        void send(const ResultCallback callback, const nlohmann::json& data) override
+        void send(const ResultCallback callback, const nlohmann::json& config, const nlohmann::json& data) override
         {
-            callback(data.dump());
+            nlohmann::json outputMessage;
+            outputMessage["component"] = config.at("component");
+            outputMessage["type"] = "state";
+            
+            nlohmann::json outputData;
+            outputData["index"] = data.at(config.at("index").get_ref<const std::string&>());
+            outputData["timestamp"] = data.at(config.at("last_event").get_ref<const std::string&>());
+            outputData["attributes"] = data;
+
+            outputMessage["data"] = outputData;
+
+            callback(outputMessage.dump());
         }
     };
 };

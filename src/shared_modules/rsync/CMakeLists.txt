@@ -32,6 +32,9 @@ link_directories(${SHARED_MODULES}/dbsync/build/lib/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SHARED_MODULES}/dbsync/build/lib/)
 
+link_directories(${SRC_FOLDER}/external/cJSON/)
+link_directories(${SHARED_MODULES}/dbsync/build/lib/)
+
 file(GLOB RSYNC_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
