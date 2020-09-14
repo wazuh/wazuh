@@ -11,6 +11,25 @@
 
 #include "fim_db.h"
 
+/**
+ * @brief Read registry data that are stored in a temporal storage.
+ *
+ * @param fim_sql FIM database structure.
+ * @param mutex
+ * @param storage 1 Store database in memory, disk otherwise.
+ * @param callback Function to call within a step.
+ * @param mode FIM mode for callback function.
+ * @param w_evt Whodata information for callback function.
+ *
+ */
+ int fim_db_process_read_registry_data_file(fdb_t *fim_sql,
+                                     fim_tmp_file *file,
+                                     pthread_mutex_t *mutex,
+                                     void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
+                                     int storage,
+                                     void * alert,
+                                     void * mode,
+                                     void * w_evt);
 
 // Registry callbacks
 
