@@ -82,8 +82,8 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
                            list(fields_translation_sca_check_rule.keys())
                            )
 
-            db_query = WazuhDBQuerySCA(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
-                                       select=full_select, count=True, get_data=True,
+            db_query = WazuhDBQuerySCA(agent_id=agent_list[0], offset=offset, limit=common.database_limit, sort=sort,
+                                       search=search, select=full_select, count=True, get_data=True,
                                        query=f"policy_id={policy_id}" if q == "" else f"policy_id={policy_id};{q}",
                                        filters=filters, default_query=default_query_sca_check,
                                        default_sort_field='policy_id', fields=fields_translation, count_field='id')
@@ -100,7 +100,7 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
             select_fields = set([field if field != 'compliance' else 'compliance'
                                  for field in select_fields if field in fields_translation_sca_check])
             # Rearrange check and compliance fields
-            for _, group in groups:
+            for idx, (_, group) in zip(range(0, limit), groups):
                 group_list = list(group)
                 check_dict = {k: v for k, v in group_list[0].items()
                               if k in select_fields
@@ -113,7 +113,6 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
                         check_dict[extra_field] = [dict(zip(field_translations.values(), x))
                                                    for x in set((map(itemgetter(*field_translations.keys()),
                                                                      group_list)))]
-
                 result.affected_items.append(check_dict)
             result.total_affected_items = result_dict['totalItems']
         else:
