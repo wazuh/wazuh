@@ -758,6 +758,23 @@ stages:
       status_code: 200
 
 ---
+test_name: PUT /cluster/restart
+
+stages:
+
+  # Restart nodes to apply changes
+  - name: Restart cluster
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+    delay_after: !float "{restart_delay}"
+
+---
 test_name: CHECK /security/config
 
 stages:
