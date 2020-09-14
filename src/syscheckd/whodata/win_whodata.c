@@ -9,7 +9,7 @@
  */
 #include "shared.h"
 #include "hash_op.h"
-#include "syscheck.h"
+#include "../syscheck.h"
 #include "syscheck_op.h"
 
 #ifdef WIN_WHODATA

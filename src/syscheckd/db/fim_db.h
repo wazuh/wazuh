@@ -9,7 +9,7 @@
 
 #include "shared.h"
 #include <openssl/evp.h>
-#include "syscheck.h"
+#include "../syscheck.h"
 #include "external/sqlite/sqlite3.h"
 #include "config/syscheck-config.h"
 

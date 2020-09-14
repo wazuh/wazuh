@@ -229,20 +229,33 @@ static int teardown_delete_json(void **state) {
     cJSON_Delete(fim_data->json);
     return 0;
 }
+typedef struct __fim_data_s {
+    fim_element *item;
+    whodata_evt *w_evt;
+    fim_entry *fentry;
+    fim_inode_data *inode_data;
+    fim_file_data *new_data;
+    fim_file_data *old_data;
+    fim_file_data *local_data; // Used on certain tests, not affected by group setup/teardown
+    struct dirent *entry;       // Used on fim_directory tests, not affected by group setup/teardown
+    cJSON *json;
+}fim_data_t;
 
 static int setup_fim_entry(void **state) {
     fim_data_t *fim_data = *state;
     fim_data->fentry = calloc(1, sizeof(fim_entry));
-    fim_data->fentry.file_entry->type = FIM_TYPE_FILE;
+    fim_data->fentry->type = FIM_TYPE_FILE;
 
     if(fim_data->fentry == NULL)
         return -1;
 
+    fim_data->fentry->type = FIM_TYPE_FILE;
+
     if(fim_data->local_data = calloc(1, sizeof(fim_file_data)), fim_data->local_data == NULL)
         return -1;
 
-    fim_data->fentry->data = fim_data->local_data;
-    fim_data->fentry->path = NULL;
+    fim_data->fentry->file_entry.data = fim_data->local_data;
+    fim_data->fentry->file_entry.path = NULL;
 
     return 0;
 }
@@ -1213,8 +1226,8 @@ static void test_fim_file_modify(void **state) {
                                     CHECK_SHA1SUM |
                                     CHECK_SHA256SUM;
 
-    fim_data->fentry->path = strdup("file");
-    fim_data->fentry->data = fim_data->local_data;
+    fim_data->fentry->file_entry.path = strdup("file");
+    fim_data->fentry->file_entry.data = fim_data->local_data;
 
     fim_data->local_data->size = 1500;
     fim_data->local_data->perm = strdup("0664");
@@ -1361,8 +1374,8 @@ static void test_fim_file_error_on_insert(void **state) {
                                     CHECK_SHA1SUM |
                                     CHECK_SHA256SUM;
 
-    fim_data->fentry->path = strdup("file");
-    fim_data->fentry->data = fim_data->local_data;
+    fim_data->fentry->file_entry.path = strdup("file");
+    fim_data->fentry->file_entry.data = fim_data->local_data;
 
     fim_data->local_data->size = 1500;
     fim_data->local_data->perm = strdup("0664");
@@ -1536,8 +1549,8 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     fim_data->item->index = 3;
     syscheck.opts[3] |= CHECK_SEECHANGES;
 
-    fim_data->fentry->path = strdup("file");
-    fim_data->fentry->data = fim_data->local_data;
+    fim_data->fentry->file_entry.path = strdup("file");
+    fim_data->fentry->file_entry.data = fim_data->local_data;
 
     fim_data->local_data->size = 1500;
     fim_data->local_data->perm = strdup("0664");
@@ -3935,8 +3948,8 @@ static void test_fim_realtime_event_file_exists(void **state) {
 
     fim_data_t *fim_data = *state;
 
-    fim_data->fentry->path = strdup("file");
-    fim_data->fentry->data = fim_data->local_data;
+    fim_data->fentry->file_entry.path = strdup("file");
+    fim_data->fentry->file_entry.data = fim_data->local_data;
 
     fim_data->local_data->size = 1500;
     fim_data->local_data->perm = strdup("0664");
@@ -4189,8 +4202,8 @@ static void test_fim_process_missing_entry_data_exists(void **state) {
 
     fim_data_t *fim_data = *state;
 
-    fim_data->fentry->path = strdup("file");
-    fim_data->fentry->data = fim_data->local_data;
+    fim_data->fentry->file_entry.path = strdup("file");
+    fim_data->fentry->file_entry.data = fim_data->local_data;
 
     fim_data->local_data->size = 1500;
     fim_data->local_data->perm = strdup("0664");
