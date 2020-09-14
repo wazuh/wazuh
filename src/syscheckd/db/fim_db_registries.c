@@ -85,6 +85,14 @@ static void fim_db_bind_update_registry_key(fdb_t *fim_sql, fim_registry_key *re
 static void fim_db_bind_get_registry_key_id(fdb_t *fim_sql, const unsigned int id);
 
 /**
+ * @brief Bind id into get registry value statement.
+ *
+ * @param fim_sql FIM database structure.
+ * @param key_id ID of the registry key.
+ */
+static void fim_db_bind_get_registry_data_key_id(fdb_t *fim_sql, const unsigned int key_id);
+
+/**
  * @brief Read registry data that are stored in a temporal storage.
  *
  * @param fim_sql FIM database structure.
@@ -200,6 +208,10 @@ static void fim_db_bind_get_registry_key_id(fdb_t *fim_sql, const unsigned int i
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_GET_REG_KEY_ROWID], 1, id);
 }
 
+static void fim_db_bind_get_registry_data_key_id(fdb_t *fim_sql, const unsigned int key_id) {
+    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_GET_REG_DATA_ROWID], 1, key_id);
+}
+
 int fim_db_remove_registry_key(fdb_t *fim_sql, fim_entry *entry) {
 
     if (entry->type != FIM_TYPE_REGISTRY) {
@@ -276,6 +288,10 @@ fim_registry_value_data *_fim_db_decode_registry_value(sqlite3_stmt *stmt, int o
     strncpy(entry->checksum, (char *)sqlite3_column_text(stmt, offset + 9), sizeof(os_sha1) - 1);
 
     return entry;
+}
+
+fim_registry_value_data * fim_db_decode_registry_value(sqlite3_stmt *stmt) {
+    return _fim_db_decode_registry_value(stmt, 0);
 }
 
 fim_entry *fim_db_decode_registry(int index, sqlite3_stmt *stmt) {
@@ -544,6 +560,24 @@ int fim_db_insert_registry(fdb_t *fim_sql, fim_entry *new) {
     fim_db_check_transaction(fim_sql);
 
     return res_data || res_key;
+}
+
+int fim_db_get_values_from_registry_key(fdb_t * fim_sql, fim_tmp_file **file, int storage, unsigned long int key_id) {
+    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
+        return FIMDB_ERR;
+    }
+
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_REG_DATA_ROWID);
+    fim_db_bind_get_registry_data_key_id(fim_sql, key_id);
+
+    int ret = fim_db_multiple_row_query(fim_sql, FIMDB_STMT_GET_REG_DATA_ROWID, FIM_DB_DECODE_TYPE(fim_db_decode_registry_value), free,
+                                       FIM_DB_CALLBACK_TYPE(fim_db_callback_save_string), storage, (void*) *file);
+
+    if (*file && (*file)->elements == 0) {
+        fim_db_clean_file(file, storage);
+    }
+
+    return ret;
 }
 
 static int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,

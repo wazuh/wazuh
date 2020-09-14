@@ -8,7 +8,6 @@
 
 #ifndef FIMDB_COMMON
 #define FIMDB_COMMON
-#define fim_db_decode_registry_value(stmt) _fim_db_decode_registry_value(stmt, 0)
 #define fim_db_decode_registry_value_full_row(stmt) _fim_db_decode_registry_value(stmt, 11)
 
 #include "shared.h"
@@ -43,6 +42,9 @@
 
 #define FIM_DB_PATHS    100
 
+#define FIM_DB_DECODE_TYPE(_func) (void *(*)(sqlite3_stmt *))(_func)
+#define FIM_DB_CALLBACK_TYPE(_func) (void (*)(fdb_t *, void *, int,  void *))(_func)
+
 extern const char *schema_fim_sql;
 
 /**
@@ -70,6 +72,26 @@ int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
 int fim_db_process_get_query(fdb_t *fim_sql, int type, int index,
                                     void (*callback)(fdb_t *, fim_entry *, int, void *),
                                     int memory, void * arg);
+
+/**
+ * @brief
+ *
+ * @param fim_sql FIM database structure.
+ * @param index
+ * @param decode
+ * @param free_row
+ * @param callback
+ * @param storage
+ * @param arg
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_multiple_row_query(fdb_t *fim_sql,
+                              int index,
+                              void *(*decode)(sqlite3_stmt *),
+                              void (*free_row)(void *),
+                              void (*callback)(fdb_t *, void *, int, void *),
+                              int storage,
+                              void *arg);
 
 /**
  * @brief Create a new database.
@@ -236,5 +258,16 @@ int fim_db_get_count(fdb_t *fim_sql, int index);
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 void fim_db_callback_save_path(fdb_t *fim_sql, fim_entry *entry, int storage, void *arg);
+
+/**
+ * @brief Write a string into the storage pointed by @args.
+ *
+ * @param fim_sql FIM database struct.
+ * @param str     String to be saved into storage.
+ * @param storage 1 Store database in memory, disk otherwise.
+ * @param arg     Storage which contains all the strings.
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+void fim_db_callback_save_string(fdb_t * fim_sql, char *str, int storage, void *arg);
 
 #endif /*FIMDB_COMMON*/

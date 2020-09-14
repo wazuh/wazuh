@@ -77,6 +77,7 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_SET_REG_KEY_SCANNED] = "UPDATE registry_data SET scanned = 1 WHERE name = ? AND key_id = ?;",
     [FIMDB_STMT_SET_REG_DATA_SCANNED] = "UPDATE registry_key SET scanned = 1 WHERE path = ?;",
     [FIMDB_STMT_GET_REG_KEY_ROWID] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum FROM registry_key WHERE id = ?;",
+    [FIMDB_STMT_GET_REG_DATA_ROWID] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE key_id = ?;",
 #endif
 };
 
@@ -351,6 +352,33 @@ int fim_db_process_get_query(fdb_t *fim_sql, int type, int index,
     return result != SQLITE_DONE ? FIMDB_ERR : FIMDB_OK;
 }
 
+int fim_db_multiple_row_query(fdb_t *fim_sql,
+                              int index,
+                              void *(*decode)(sqlite3_stmt *),
+                              void (*free_row)(void *),
+                              void (*callback)(fdb_t *, void *, int, void *),
+                              int storage,
+                              void *arg) {
+    int result;
+    int i;
+
+    if (decode == NULL || callback == NULL || free_row == NULL) {
+        return FIMDB_ERR;
+    }
+
+    for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
+        void *decoded_row = decode(fim_sql->stmt[index]);
+        if (decoded_row != NULL) {
+            callback(fim_sql, decoded_row, storage, arg);
+            free_row(decoded_row);
+        }
+    }
+
+    fim_db_check_transaction(fim_sql);
+
+    return result != SQLITE_DONE ? FIMDB_ERR : FIMDB_OK;
+}
+
 int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query) {
     char *error = NULL;
 
@@ -363,6 +391,31 @@ int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query) {
     }
 
     return FIMDB_OK;
+}
+
+void fim_db_callback_save_string(__attribute__((unused))fdb_t * fim_sql, char *str, int storage, void *arg) {
+    char *base = str;
+    if (base == NULL) {
+        merror("Error escaping '%s'", str);
+        return;
+    }
+
+    if (storage == FIM_DB_DISK) { // disk storage enabled
+        if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
+            merror("%s - %s", str, strerror(errno));
+            goto end;
+        }
+
+             fflush(((fim_tmp_file *) arg)->fd);
+
+    } else {
+        W_Vector_insert(((fim_tmp_file *) arg)->list, base);
+    }
+
+    ((fim_tmp_file *) arg)->elements++;
+
+end:
+    os_free(base);
 }
 
 void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage, void *arg) {
