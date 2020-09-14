@@ -241,5 +241,8 @@
 #define FIM_DIFF_FOLDER_SIZE                "(6348): Size of '%s' folder: %.5f KB."
 #define FIM_BIG_FILE_REPORT_CHANGES         "(6349): File '%s' is too big for configured maximum size to perform diff operation."
 #define FIM_DISK_QUOTA_LIMIT_REACHED        "(6350): The maximum configured size for the '%s' folder has been reached, the diff operation cannot be performed."
+#define FIM_DISK_QUOTA_ESTIMATION           "(6351): The estimate of the file size '%s' exceeds the disk_quota. Operation discarded. "
+#define FIM_DIFF_IDENTICAL_MD5_FILES        "(6352): The files have the same MD5 hash, don't compute differences"
+#define FIM_DIFF_COMMAND_OUTPUT_EQUAL       "(6353): Command diff/fc output 0, files are the same"
 
 #endif /* DEBUG_MESSAGES_H */

@@ -603,7 +603,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
  * @param value_data Content of the value to be checked
  * @param data_type The type of value we are checking
  * @param registry Config of the registry key
- * @return String with the diff to add to the alert
+ * @return String with the changes to add to the alert
  */
 
 char * fim_registry_value_diff(char *key_name, char *value_name, char *value_data, DWORD data_type, registry *configuration);
