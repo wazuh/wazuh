@@ -128,8 +128,8 @@ void AgentEmulator::updateData()
 void AgentEmulator::syncData(const void* buffer, size_t bufferSize)
 {
     std::cout << "AGENT: sync." << std::endl;
-    const char* first{reinterpret_cast<const char*>(buffer)};
-    const char* last{first + bufferSize};
+    const auto first{reinterpret_cast<const unsigned char*>(buffer)};
+    const auto last{first + bufferSize};
     const auto data
     {
         std::make_pair<SyncId, SyncData>(RSYNC_HANDLE{m_rsyncHandle}, SyncData{first, last})

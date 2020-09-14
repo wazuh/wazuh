@@ -21,8 +21,8 @@ make TARGET=server|agent DEBUG=1 TEST=1
 
 ## How to use the tool
 In order to run the `rsync_test_tool` utility the following steps need to be accomplished:
-
+```
 ./rsync_test_tool -u 100 -o ./output
 ```
-5) Considering the example above all databases will be located in ./output folder and will be updated with random values every 100 milliseconds.
+Considering the example above all databases will be located in ./output folder and will be updated with random values every 100 milliseconds.
 

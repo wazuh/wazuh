@@ -104,10 +104,35 @@ EXPORTED int rsync_register_sync_id(const RSYNC_HANDLE handle,
     return retVal; 
 }
 
-EXPORTED int rsync_push_message(const RSYNC_HANDLE /*handle*/,
-                                const char* /*payload*/)
+EXPORTED int rsync_push_message(const RSYNC_HANDLE handle,
+                                const void* payload,
+                                const size_t size)
 {
-    return 0;    
+    auto retVal { -1 };
+    std::string errorMessage;
+    if (!handle || !payload || !size)
+    {
+        errorMessage += "Invalid Parameters.";
+    }
+    else
+    {
+        try
+        {
+            const auto first{reinterpret_cast<const unsigned char*>(payload)};
+            const auto last{first + size};
+            const std::vector<unsigned char> data{first, last};
+            RSyncImplementation::instance().push(handle, data);
+            retVal = 0;
+        }
+        // LCOV_EXCL_START
+        catch(...)
+        {
+            errorMessage += "Unrecognized error.";
+        }
+        // LCOV_EXCL_STOP
+    }
+    log_message(errorMessage);
+    return retVal;
 }
 
 EXPORTED int rsync_close(const RSYNC_HANDLE handle)

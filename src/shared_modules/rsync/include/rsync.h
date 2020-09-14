@@ -84,12 +84,14 @@ EXPORTED int rsync_register_sync_id(const RSYNC_HANDLE handle,
  *
  * @param handle  Current rsync handle being used.
  * @param payload Message to be queued and processed.
+ * @param size    Size of the message to be queued and processed.
  *
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
 EXPORTED int rsync_push_message(const RSYNC_HANDLE handle,
-                                const char* payload);
+                                const void* payload,
+                                const size_t size);
 
 /**
  * @brief Turns off an specific rsync instance.
