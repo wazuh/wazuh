@@ -13,10 +13,11 @@
 #include "wm_agent_upgrade_tasks.h"
 #include "wm_agent_upgrade_parsing.h"
 #include "wm_agent_upgrade_validate.h"
+#include "wm_agent_upgrade_upgrades.h"
 #include "os_net/os_net.h"
 #include "shared.h"
 
-int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request, cJSON* (*success_callback)(int *error, cJSON* input_json), void (*error_callback)(int agent_id)) {
+int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request, cJSON* (*success_callback)(int *error, cJSON* input_json), void (*error_callback)(int agent_id, int free)) {
     int agents = 0;
     int error = OS_SUCCESS;
     cJSON *task_module_response = NULL;
@@ -57,8 +58,8 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
             if (agent_json && (agent_json->type == cJSON_Number)) {
                 int agent_id = agent_json->valueint;
                 if (error_callback) {
-                    error_callback(agent_id);
-                } 
+                    error_callback(agent_id, 1);
+                }
                 cJSON *error_json = wm_agent_upgrade_parse_response_message(WM_UPGRADE_TASK_MANAGER_COMMUNICATION, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION], &agent_id, NULL, NULL);
                 cJSON_AddItemToArray(json_response, error_json);
             }
@@ -91,7 +92,7 @@ cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json) 
             wm_agent_upgrade_insert_task_id(agent_id, task_id);
         } else {
             // Remove from table since upgrade will not be started
-            wm_agent_upgrade_remove_entry(agent_id);
+            wm_agent_upgrade_remove_entry(agent_id, 1);
             response = wm_agent_upgrade_parse_response_message(WM_UPGRADE_TASK_MANAGER_FAILURE, data, &agent_id, NULL, NULL);
         }
     } else {
