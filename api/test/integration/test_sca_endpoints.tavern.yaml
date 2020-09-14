@@ -289,6 +289,8 @@ stages:
           affected_items:
             - <<: *sca_check_result_001
             - <<: *sca_check_result_001
+            - <<: *sca_check_result_001
+            - <<: *sca_check_result_001
           failed_items: []
           total_failed_items: 0
 
@@ -308,6 +310,7 @@ stages:
         data:
           total_affected_items: !anyint
           affected_items:
+            - <<: *sca_check_result_001
             - <<: *sca_check_result_001
           failed_items: []
           total_failed_items: 0
