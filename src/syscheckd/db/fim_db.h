@@ -6,8 +6,9 @@
  * @copyright Copyright (c) 2020 Wazuh, Inc.
  */
 
-#ifndef FIMDB_COMMON
-#define FIMDB_COMMON
+#ifndef FIM_DB_COMMON_H
+#define FIM_DB_COMMON_H
+
 #define fim_db_decode_registry_value_full_row(stmt) _fim_db_decode_registry_value(stmt, 11)
 
 #include "shared.h"
@@ -283,4 +284,4 @@ void fim_db_callback_save_path(fdb_t *fim_sql, fim_entry *entry, int storage, vo
  */
 void fim_db_callback_save_string(fdb_t * fim_sql, char *str, int storage, void *arg);
 
-#endif /*FIMDB_COMMON*/
+#endif /* FIM_DB_COMMON_H */

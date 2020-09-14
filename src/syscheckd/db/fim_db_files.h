@@ -6,6 +6,9 @@
  * @copyright Copyright (c) 2020 Wazuh, Inc.
  */
 
+#ifndef FIM_DB_FILES_H
+#define FIM_DB_FILES_H
+
 #include "fim_db.h"
 
 /**
@@ -272,3 +275,5 @@ int fim_db_get_count_file_data(fdb_t * fim_sql);
  * @return Number of entries in file_entry table.
  */
 int fim_db_get_count_file_entry(fdb_t * fim_sql);
+
+#endif /* FIM_DB_FILES_H */

@@ -6,6 +6,9 @@
  * @copyright Copyright (c) 2020 Wazuh, Inc.
  */
 
+#ifndef FIM_DB_REGISTRIES_H
+#define FIM_DB_REGISTRIES_H
+
 #include "fim_db.h"
 
 
@@ -433,3 +436,5 @@ fim_registry_key *fim_db_decode_registry_key(sqlite3_stmt *stmt);
  * @return fim_registry_value_data* The filled structure.
  */
 fim_registry_value_data * fim_db_decode_registry_value(sqlite3_stmt *stmt);
+
+#endif /* FIM_DB_REGISTRIES_H */
