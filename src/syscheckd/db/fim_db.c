@@ -169,7 +169,6 @@ void fim_db_clean(void) {
 
 }
 
-
 int fim_db_cache(fdb_t *fim_sql) {
     int index;
     int retval = FIMDB_ERR;
@@ -333,13 +332,13 @@ int fim_db_clean_stmt(fdb_t *fim_sql, int index) {
     return FIMDB_OK;
 }
 
-
 //wrappers
 
-int fim_db_process_get_query(fdb_t *fim_sql, int type, int index,
-                             void (*callback)(fdb_t *, fim_entry *, int , void *), int storage, void * arg) {
+int fim_db_process_get_query(fdb_t *fim_sql, int type, int index, void (*callback)(fdb_t *, fim_entry *, int , void *),
+                             int storage, void * arg) {
     int result;
     int i;
+
     for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
         fim_entry *entry = type == FIM_TYPE_REGISTRY ? fim_db_decode_registry(index, fim_sql->stmt[index])
                                                      : fim_db_decode_full_row(fim_sql->stmt[index]);
@@ -352,13 +351,8 @@ int fim_db_process_get_query(fdb_t *fim_sql, int type, int index,
     return result != SQLITE_DONE ? FIMDB_ERR : FIMDB_OK;
 }
 
-int fim_db_multiple_row_query(fdb_t *fim_sql,
-                              int index,
-                              void *(*decode)(sqlite3_stmt *),
-                              void (*free_row)(void *),
-                              void (*callback)(fdb_t *, void *, int, void *),
-                              int storage,
-                              void *arg) {
+int fim_db_multiple_row_query(fdb_t *fim_sql, int index, void *(*decode)(sqlite3_stmt *), void (*free_row)(void *),
+                              void (*callback)(fdb_t *, void *, int, void *), int storage, void *arg) {
     int result;
     int i;
 
@@ -368,6 +362,7 @@ int fim_db_multiple_row_query(fdb_t *fim_sql,
 
     for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
         void *decoded_row = decode(fim_sql->stmt[index]);
+
         if (decoded_row != NULL) {
             callback(fim_sql, decoded_row, storage, arg);
             free_row(decoded_row);
@@ -406,7 +401,7 @@ void fim_db_callback_save_string(__attribute__((unused))fdb_t * fim_sql, char *s
             goto end;
         }
 
-             fflush(((fim_tmp_file *) arg)->fd);
+        fflush(((fim_tmp_file *) arg)->fd);
 
     } else {
         W_Vector_insert(((fim_tmp_file *) arg)->list, base);
