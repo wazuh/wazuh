@@ -145,13 +145,14 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
 fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path);
 
 /**
- * @brief Get registry entry using key path.
+ * @brief Get a registry key using its path.
  *
  * @param fim_sql FIM database struct.
- * @param path key path.
- * @return FIM entry struct on success, NULL on error.
- */
-fim_entry *fim_db_get_registry(fdb_t *fim_sql, const char *path);
+ * @param path Path to registry key.
+ *
+ * @return FIM registry key struct on success, NULL on error.
+*/
+fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path);
 
 /**
  * @brief Read paths and registry paths which are stored in a temporal storage.

@@ -66,16 +66,6 @@ int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, unsigned int
 fim_registry_value_data *fim_db_get_registry_data(fdb_t *fim_sql, const unsigned int key_id, const char *name);
 
 /**
- * @brief Get a registry key using its path.
- *
- * @param fim_sql FIM database struct.
- * @param path Path to registry key.
- *
- * @return FIM registry key struct on success, NULL on error.
-*/
-fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path);
-
-/**
  * @brief Get all the key paths
  *
  * @param fim_sql FIM databse struct.
@@ -388,3 +378,11 @@ int fim_db_remove_registry_key(fdb_t *fim_sql, fim_entry *entry);
  * @param entry fim_registry_value_data entry.
  */
 int fim_db_remove_registry_value_data(fdb_t *fim_sql, fim_registry_value_data *entry);
+
+/**
+ * @brief Get a registry using it's id
+ *
+ * @param fim_sql FIM database struct.
+ * @param id Id of the registry key
+ */
+fim_registry_key *fim_db_get_registry_key_using_id(fdb_t *fim_sql, unsigned int id);

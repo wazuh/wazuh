@@ -28,7 +28,7 @@ static void fim_db_bind_registry_data_name_key_id(fdb_t *fim_sql, const int inde
  * @param index Index of the particular statement.
  * @param path Path to registry.
 */
-static void fim_db_bind_registry_path(fdb_t *fim_sql, const int index, const char *path);
+static void fim_db_bind_registry_path(fdb_t *fim_sql, const unsigned int index, const char *path);
 
 
 /**
@@ -124,7 +124,7 @@ static void fim_db_bind_registry_data_name_key_id(fdb_t *fim_sql, const int inde
     }
 }
 
-static void fim_db_bind_registry_path(fdb_t *fim_sql, const int index, const char *path) {
+static void fim_db_bind_registry_path(fdb_t *fim_sql, const unsigned int index, const char *path) {
     if (index == FIMDB_STMT_GET_REG_KEY ||
         index == FIMDB_STMT_SET_REG_KEY_UNSCANNED ||
         index == FIMDB_STMT_GET_REG_ROWID ||
@@ -475,6 +475,19 @@ fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path) {
     return reg_key;
 }
 
+fim_registry_key *fim_db_get_registry_key_using_id(fdb_t *fim_sql, unsigned int id) {
+    fim_registry_key *reg_key = NULL;
+
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_REG_KEY_ROWID);
+    fim_db_bind_get_registry_key_id(fim_sql, id);
+
+    if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_REG_KEY_ROWID]) == SQLITE_ROW) {
+        reg_key = fim_db_decode_registry_key(fim_sql->stmt[FIMDB_STMT_GET_REG_KEY_ROWID]);
+    }
+
+    return reg_key;
+}
+
 int fim_db_delete_registry_keys_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
     return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, NULL, storage,
                                     (void *) true, (void *) FIM_SCHEDULED, NULL);
@@ -637,7 +650,7 @@ static int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *
 
         entry->type = FIM_TYPE_REGISTRY;
         w_mutex_lock(mutex);
-        // entry->registry_entry.key = fim_db_get_key_reg_rowid(fim_sql, id);
+        entry->registry_entry.key = fim_db_get_registry_key_using_id(fim_sql, id);
         entry->registry_entry.value = fim_db_get_registry_data(fim_sql, id, split);
 
         w_mutex_unlock(mutex);
