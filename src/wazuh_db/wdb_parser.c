@@ -4131,9 +4131,9 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
 
         // These are the only constraints defined in the database for this
         // set of parameters. All the other parameters could be NULL.
-        if (cJSON_IsNumber(j_id) && j_id->valueint &&
+        if (cJSON_IsNumber(j_id) &&
             cJSON_IsString(j_name) && j_name->valuestring &&
-            cJSON_IsNumber(j_date_add) && j_date_add->valueint) {
+            cJSON_IsNumber(j_date_add)) {
 
             // Getting each field
             int id = j_id->valueint;
@@ -4180,7 +4180,7 @@ int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output)
         j_id = cJSON_GetObjectItem(agent_data, "id");
         j_name = cJSON_GetObjectItem(agent_data, "name");
 
-        if (cJSON_IsNumber(j_id) && j_id->valueint &&
+        if (cJSON_IsNumber(j_id) &&
             cJSON_IsString(j_name) && j_name->valuestring) {
 
             // Getting each field
@@ -4253,7 +4253,7 @@ int wdb_parse_global_update_agent_version(wdb_t * wdb, char * input, char * outp
         j_agent_ip = cJSON_GetObjectItem(agent_data, "agent_ip");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
 
-        if (cJSON_IsNumber(j_id) && j_id->valueint) {
+        if (cJSON_IsNumber(j_id)) {
             // Getting each field
             int id = j_id->valueint;
             char *os_name = cJSON_IsString(j_os_name) ? j_os_name->valuestring : NULL;
@@ -4739,10 +4739,10 @@ int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output
         j_id = cJSON_GetObjectItem(agent_data, "id");
         j_group = cJSON_GetObjectItem(agent_data, "group");
 
-        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_group) && j_group->valuestring) {
+        if (cJSON_IsNumber(j_id)) {
             // Getting each field
             int id = j_id->valueint;
-            char *group = j_group->valuestring;
+            char *group = cJSON_IsString(j_group) ? j_group->valuestring : NULL;
 
             if (OS_SUCCESS != wdb_global_update_agent_group(wdb, id, group)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
