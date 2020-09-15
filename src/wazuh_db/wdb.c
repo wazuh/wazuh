@@ -205,6 +205,9 @@ wdb_t * wdb_open_global() {
         else {
             wdb = wdb_init(db, WDB_GLOB_NAME);
             wdb_pool_append(wdb);
+            if(wdb_global_upgrade(wdb) != OS_SUCCESS) {
+                merror("Failed to upgrade global.db");
+            }
         }
     }
 

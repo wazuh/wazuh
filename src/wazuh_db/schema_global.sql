@@ -63,4 +63,11 @@ CREATE TABLE IF NOT EXISTS belongs (
     PRIMARY KEY (id_agent, id_group)
 );
 
+CREATE TABLE IF NOT EXISTS metadata (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
+
+INSERT INTO metadata (key, value) VALUES ('db_version', '1');
+
 PRAGMA journal_mode=WAL;

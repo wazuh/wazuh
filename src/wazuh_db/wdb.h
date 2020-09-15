@@ -232,6 +232,7 @@ extern char *schema_upgrade_v2_sql;
 extern char *schema_upgrade_v3_sql;
 extern char *schema_upgrade_v4_sql;
 extern char *schema_upgrade_v5_sql;
+extern char *schema_global_upgrade_v1_sql;
 extern int wdb_sock_agent;
 
 extern wdb_config wconfig;
@@ -1225,6 +1226,14 @@ int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check);
 
 // Upgrade agent database to last version
 wdb_t * wdb_upgrade(wdb_t *wdb);
+
+/**
+ * @brief Function to upgrade Global DB to the last version.
+ * 
+ * @param wdb The global.db struct database.
+ * @return OS_SUCCESS: Database upgraded successfully. OS_INVALID: Upgrade failed.
+ */
+int wdb_global_upgrade(wdb_t *wdb);
 
 // Create backup and generate an emtpy DB
 wdb_t * wdb_backup(wdb_t *wdb, int version);
