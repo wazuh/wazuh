@@ -331,6 +331,7 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
 
         /* Check if we should ignore it */
         if (ruleinformation->ckignore && IGnore(lf, 0)) {
+            lf->generated_rule = NULL;
             break;
         }
 

@@ -56,6 +56,8 @@ bool session_load_acm_store = false;
 
 bool refill_OS_CleanMSG =  false;
 OSDecoderInfo * decoder_CleanMSG;
+
+Eventinfo * event_OS_AddEvent = NULL;
 /* setup/teardown */
 
 
@@ -431,6 +433,7 @@ RuleInfo * __wrap_OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_eve
 }
 
 void __wrap_OS_AddEvent(Eventinfo *lf, EventList *list) {
+    event_OS_AddEvent = lf;
     return;
 }
 
@@ -3589,6 +3592,7 @@ void test_w_logtest_rulesmatching_phase_match_and_group_prev_matched_fail(void *
 
     os_free(session.rule_list);
     os_free(ruleinfo.group_prev_matched);
+    os_free(lf.group_node_to_delete);
 
 }
 
@@ -3831,6 +3835,7 @@ void test_w_logtest_process_log_rule_match(void ** state)
 
     assert_non_null(retval);
 
+    Free_Eventinfo(event_OS_AddEvent);
     os_free(str_location);
     os_free(raw_event);
     os_free(session.rule_list);
@@ -4570,7 +4575,7 @@ void test_w_logtest_process_request_log_processing_ok_and_alert(void ** state)
     // w_logtest_rulesmatching_phase
     will_return(__wrap_OS_CheckIfRuleMatch, &ruleinfo);
 
-    will_return(__wrap_ParseRuleComment, strdup("Comment test"));
+    will_return(__wrap_ParseRuleComment, "Comment test");
 
     will_return(__wrap_Eventinfo_to_jsonstr, strdup("output example"));
     will_return(__wrap_cJSON_Parse, output);
