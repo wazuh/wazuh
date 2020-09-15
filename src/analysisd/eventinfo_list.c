@@ -112,19 +112,18 @@ void OS_AddEvent(Eventinfo *lf, EventList *list)
 
 void os_remove_eventlist(EventList *list) {
 
-    EventNode *tmp = list->first_node;
-
-    while (tmp) {
-        if (tmp->event) Free_Eventinfo(tmp->event);
-        tmp = tmp->next;
-    }
+    EventNode *tmp = NULL;
 
     while (list->first_node) {
         tmp = list->first_node;
+        if (tmp->event) {
+            tmp->event->node = NULL;
+            Free_Eventinfo(tmp->event);
+            w_mutex_destroy(&tmp->mutex);
+        }
         list->first_node = list->first_node->next;
         os_free(tmp);
     }
 
-    os_free(list->last_added_node);
     os_free(list);
 }
