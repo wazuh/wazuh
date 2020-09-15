@@ -228,7 +228,7 @@ STATIC cJSON *wm_agent_send_task_information_master(const cJSON *message_object)
 }
 
 STATIC cJSON *wm_agent_send_task_information_worker(const cJSON *message_object) {
-    char response[OS_MAXSTR];
+    char response[OS_MAXSTR] = "";
     cJSON *message_duplicate = cJSON_Duplicate(message_object, 1);
 
     cJSON *payload = w_create_sendsync_payload(TASK_MANAGER_WM_NAME, message_duplicate);
@@ -239,7 +239,9 @@ STATIC cJSON *wm_agent_send_task_information_worker(const cJSON *message_object)
 
     w_send_clustered_message("sendsync", message, response);
 
-    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_RECEIVE_MESSAGE, response);
+    if (response[0]) {
+        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_RECEIVE_MESSAGE, response);
+    }
 
     os_free(message);
     cJSON_Delete(payload);

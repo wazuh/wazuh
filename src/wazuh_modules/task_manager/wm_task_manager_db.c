@@ -160,7 +160,7 @@ void* wm_task_manager_clean_db(void *arg) {
     #endif
     }
 
-    return NULL;
+    pthread_exit(NULL);
 }
 
 STATIC int wm_task_manager_set_timeout_status(time_t now, int timeout, time_t *next_timeout) {

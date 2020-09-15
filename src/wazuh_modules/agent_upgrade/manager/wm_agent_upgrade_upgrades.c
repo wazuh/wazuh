@@ -25,7 +25,7 @@
 #include "os_net/os_net.h"
 
 /* Queue to store agents ready to be upgraded */
-static w_queue_t * upgrade_queue;
+static w_queue_t *upgrade_queue;
 
 /* Number of threads running an upgrade */
 static unsigned int upgrade_threads_count = 0;
@@ -158,6 +158,7 @@ void wm_agent_upgrade_prepare_upgrades() {
 
 void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
     wm_manager_configs *config = (wm_manager_configs *)arg;
+    wm_upgrade_args *upgrade_config = NULL;
 
     // Initialize threads count mutex
     w_mutex_init(&upgrade_threads_mutex, NULL);
@@ -173,14 +174,14 @@ void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
 
             wm_agent_task *agent_task = queue_pop_ex(upgrade_queue);
 
-            wm_upgrade_args upgrade_config;
-            upgrade_config.config = config;
-            upgrade_config.agent_task = agent_task;
+            os_calloc(1, sizeof(wm_upgrade_args), upgrade_config);
+            upgrade_config->config = config;
+            upgrade_config->agent_task = agent_task;
 
             w_mutex_lock(&upgrade_threads_mutex);
 
             // Thread that will launch the upgrade
-            w_create_thread(wm_agent_upgrade_start_upgrade, (void *)&upgrade_config);
+            w_create_thread(wm_agent_upgrade_start_upgrade, (void *)upgrade_config);
 
             upgrade_threads_count++;
 
@@ -200,7 +201,7 @@ void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
     // Destroy threads count condition variable
     w_cond_destroy(&upgrade_threads_cond);
 
-    return NULL;
+    pthread_exit(NULL);
 }
 
 void* wm_agent_upgrade_start_upgrade(void *arg) {
@@ -261,7 +262,9 @@ void* wm_agent_upgrade_start_upgrade(void *arg) {
 
     w_mutex_unlock(&upgrade_threads_mutex);
 
-    return NULL;
+    os_free(upgrade_config);
+
+    pthread_exit(NULL);
 }
 
 STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs) {
