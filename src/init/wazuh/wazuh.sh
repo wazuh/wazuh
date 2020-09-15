@@ -98,7 +98,7 @@ WazuhUpgrade()
     fi
 
     # Remove existing SQLite databases
-    if [-f "$DIRECTORY/var/db/global.db"]; then
+    if [ -f "$DIRECTORY/var/db/global.db" ]; then
         cp $DIRECTORY/var/db/global.db* $DIRECTORY/queue/db/global.db*
         chmod 640 $DIRECTORY/queue/db/global.db*
         chown ossec:ossec $DIRECTORY/queue/db/global.db*
