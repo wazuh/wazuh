@@ -1231,9 +1231,9 @@ wdb_t * wdb_upgrade(wdb_t *wdb);
  * @brief Function to upgrade Global DB to the last version.
  * 
  * @param wdb The global.db struct database.
- * @return OS_SUCCESS: Database upgraded successfully. OS_INVALID: Upgrade failed.
+ * @return wdb: The global.db struct database.
  */
-int wdb_global_upgrade(wdb_t *wdb);
+wdb_t * wdb_global_upgrade(wdb_t *wdb);
 
 // Create backup and generate an emtpy DB
 wdb_t * wdb_backup(wdb_t *wdb, int version);

@@ -60,7 +60,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
     return wdb;
 }
 
-int wdb_global_upgrade(wdb_t *wdb) {
+wdb_t * wdb_global_upgrade(wdb_t *wdb) {
     const char * UPDATES[] = {
         schema_global_upgrade_v1_sql,
     };
@@ -70,17 +70,15 @@ int wdb_global_upgrade(wdb_t *wdb) {
 
     switch (wdb_metadata_get_entry(wdb, "db_version", db_version)) {
     case -1:
-        return OS_INVALID;
-
+        return wdb;
     case 0:
         break;
-
     default:
         version = atoi(db_version);
 
         if (version < 0) {
             merror("DB(%s): Incorrect database version: %d", wdb->id, version);
-            return OS_INVALID;
+            return wdb;
         }
     }
 
@@ -88,14 +86,13 @@ int wdb_global_upgrade(wdb_t *wdb) {
         mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
 
         if (wdb_sql_exec(wdb, UPDATES[i]) == -1) {
-            wdb = wdb_backup(wdb, version);
-            return OS_INVALID;
+            merror("Failed to update global.db to version %d", i + 1);
+            break;
         }
     }
 
-    return OS_SUCCESS;
+    return wdb;
 }
-
 
 // Create backup and generate an emtpy DB
 wdb_t * wdb_backup(wdb_t *wdb, int version) {
