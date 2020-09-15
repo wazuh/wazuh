@@ -16,6 +16,7 @@
 
 #define WM_UPGRADE_WPK_REPO_URL "packages.wazuh.com/4.x/wpk/"
 #define WM_UPGRADE_CHUNK_SIZE 512
+#define WM_UPGRADE_MAX_THREADS 8
 #define WM_UPGRADE_WAIT_START 300
 #define WM_UPGRADE_WAIT_MAX 3600
 #define WM_UPGRADE_WAIT_FACTOR_INCREASE 2.0
@@ -33,6 +34,7 @@ typedef struct _wm_agent_configs {
  * Configuration only for manager
  */
 typedef struct _wm_manager_configs {
+    unsigned int max_threads;
     unsigned int chunk_size;
     char *wpk_repository;
 } wm_manager_configs;

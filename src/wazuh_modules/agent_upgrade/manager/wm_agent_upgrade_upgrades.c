@@ -27,6 +27,27 @@
 /* Queue to store agents ready to be upgraded */
 static w_queue_t * upgrade_queue;
 
+/* Number of threads running an upgrade */
+static unsigned int upgrade_threads_count = 0;
+
+/* Mutex needed to access threads counter */
+static pthread_mutex_t upgrade_threads_mutex;
+
+/* Condition variable that indicates when all the threads finished */
+static pthread_cond_t upgrade_threads_cond;
+
+/* Definition of upgrade arguments structure */
+typedef struct _wm_upgrade_args {
+    wm_manager_configs *config;
+    wm_agent_task *agent_task;
+} wm_upgrade_args;
+
+/**
+ * Main function of upgrade threads
+ * @param arg Upgrade arguments structure
+ * */
+STATIC void* wm_agent_upgrade_start_upgrade(void *arg);
+
 /**
  * Send WPK file to agent and verify SHA1
  * @param agent_task structure with the information of the agent and the WPK
@@ -138,9 +159,57 @@ void wm_agent_upgrade_prepare_upgrades() {
 void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
     wm_manager_configs *config = (wm_manager_configs *)arg;
 
-    while (1) {
-        wm_agent_task *agent_task = queue_pop_ex(upgrade_queue);
+    // Initialize threads count mutex
+    w_mutex_init(&upgrade_threads_mutex, NULL);
 
+    // Initialize threads count condition variable
+    w_cond_init(&upgrade_threads_cond, NULL);
+
+    while (1) {
+        w_mutex_lock(&upgrade_threads_mutex);
+
+        if (upgrade_threads_count < config->max_threads) {
+            w_mutex_unlock(&upgrade_threads_mutex);
+
+            wm_agent_task *agent_task = queue_pop_ex(upgrade_queue);
+
+            wm_upgrade_args upgrade_config;
+            upgrade_config.config = config;
+            upgrade_config.agent_task = agent_task;
+
+            w_mutex_lock(&upgrade_threads_mutex);
+
+            // Thread that will launch the upgrade
+            w_create_thread(wm_agent_upgrade_start_upgrade, (void *)&upgrade_config);
+
+            upgrade_threads_count++;
+
+            w_mutex_unlock(&upgrade_threads_mutex);
+
+        } else {
+            // Wait until any thread finish its execution
+            w_cond_wait(&upgrade_threads_cond, &upgrade_threads_mutex);
+
+            w_mutex_unlock(&upgrade_threads_mutex);
+        }
+    }
+
+    // Destroy threads count mutex
+    w_mutex_destroy(&upgrade_threads_mutex);
+
+    // Destroy threads count condition variable
+    w_cond_destroy(&upgrade_threads_cond);
+
+    return NULL;
+}
+
+void* wm_agent_upgrade_start_upgrade(void *arg) {
+    wm_upgrade_args *upgrade_config = (wm_upgrade_args *)arg;
+
+    wm_manager_configs *config = upgrade_config->config;
+    wm_agent_task *agent_task = upgrade_config->agent_task;
+
+    do {
         int error_code = WM_UPGRADE_SUCCESS;
 
         if (error_code = wm_agent_upgrade_send_wpk_to_agent(agent_task, config), error_code == WM_UPGRADE_SUCCESS) {
@@ -177,7 +246,20 @@ void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
         }
 
         wm_agent_upgrade_free_agent_task(agent_task);
-    }
+
+        struct timespec timeout = { .tv_sec = time(NULL) + 1 };
+        agent_task = queue_pop_ex_timedwait(upgrade_queue, &timeout);
+
+    } while (agent_task);
+
+    w_mutex_lock(&upgrade_threads_mutex);
+
+    upgrade_threads_count--;
+
+    // Notify execution finished
+    w_cond_signal(&upgrade_threads_cond);
+
+    w_mutex_unlock(&upgrade_threads_mutex);
 
     return NULL;
 }
