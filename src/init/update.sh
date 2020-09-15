@@ -132,7 +132,6 @@ UpdateStopOSSEC()
 
     # The agent info was stored in plain-text files before migrating it to Wazuh DB. Deleting
     if [ -d "$DIRECTORY/queue/agent-info" ]; then
-        echo "Removing queue/agent-info folder..."
         rm -rf $DIRECTORY/queue/agent-info > /dev/null 2>&1
     fi
 }
