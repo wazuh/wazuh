@@ -201,7 +201,7 @@ void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
     // Destroy threads count condition variable
     w_cond_destroy(&upgrade_threads_cond);
 
-    pthread_exit(NULL);
+    return NULL;
 }
 
 void* wm_agent_upgrade_start_upgrade(void *arg) {
@@ -265,6 +265,8 @@ void* wm_agent_upgrade_start_upgrade(void *arg) {
     os_free(upgrade_config);
 
     pthread_exit(NULL);
+
+    return NULL;
 }
 
 STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs) {
