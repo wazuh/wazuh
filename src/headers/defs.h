@@ -199,9 +199,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Decoder file */
 #define XML_LDECODER    "etc/decoders/local_decoder.xml"
 
-/* Agent information location */
-#define AGENTINFO_DIR    "/queue/agent-info"
-
 /* Agent groups location */
 #define GROUPS_DIR    "/queue/agent-groups"
 
@@ -217,8 +214,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Wazuh Database */
 #define WDB_DIR         "var/db"
 #define WDB2_DIR        "queue/db"
-#define WDB_GLOB_NAME   "global.db"
-#define WDB2_GLOB_NAME   "global"
+#define WDB_GLOB_NAME   "global"
 #define WDB_MITRE_NAME  "mitre"
 #define WDB_PROF_NAME   ".template.db"
 

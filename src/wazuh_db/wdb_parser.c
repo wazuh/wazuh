@@ -397,7 +397,7 @@ int wdb_parse(char * input, char * output) {
         mdebug2("Global query: %s", query);
 
         if (wdb = wdb_open_global(), !wdb) {
-            mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
             return OS_INVALID;
         }
@@ -419,7 +419,7 @@ int wdb_parse(char * input, char * output) {
                     os_free(out);
                     cJSON_Delete(data);
                 } else {
-                    mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                    mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                     mdebug2("Global DB SQL query: %s", next);
                     snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                     result = OS_INVALID;
@@ -4145,7 +4145,7 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
             int date_add = j_date_add->valueint;
 
             if (OS_SUCCESS != wdb_global_insert_agent(wdb, id, name, ip, register_ip, internal_key, group, date_add)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
                 return OS_INVALID;
@@ -4188,7 +4188,7 @@ int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output)
             char* name = j_name->valuestring;
 
             if (OS_SUCCESS != wdb_global_update_agent_name(wdb, id, name)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
                 return OS_INVALID;
@@ -4277,7 +4277,7 @@ int wdb_parse_global_update_agent_version(wdb_t * wdb, char * input, char * outp
             if (OS_SUCCESS != wdb_global_update_agent_version(wdb, id, os_name, os_version, os_major, os_minor, os_codename,
                                                               os_platform, os_build, os_uname, os_arch, version, config_sum,
                                                               merged_sum, manager_host, node_name, agent_ip, sync_status)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
                 return OS_INVALID;
@@ -4343,7 +4343,7 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) 
     } else {
         // Removing old labels from the labels table
         if (OS_SUCCESS != wdb_global_del_agent_labels(wdb, agent_id)) {
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
             snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
             return OS_INVALID;
         }
@@ -4362,7 +4362,7 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) 
 
             // Inserting new labels in the database
             if (OS_SUCCESS != wdb_global_set_agent_label(wdb, agent_id, label, value)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 return OS_INVALID;
             }
@@ -4398,7 +4398,7 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
             wdb_sync_status_t sync_status = (j_sync_status->valueint == 1) ? WDB_SYNC_REQ : WDB_SYNCED;
 
             if (OS_SUCCESS != wdb_global_update_agent_keepalive(wdb, id, sync_status)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
                 return OS_INVALID;
@@ -4515,7 +4515,7 @@ int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output) {
             char *ip = j_ip->valuestring;
 
             if (j_id = wdb_global_find_agent(wdb, name, ip), !j_id) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
                 return OS_INVALID;
@@ -4601,7 +4601,7 @@ int wdb_parse_global_update_fim_offset(wdb_t * wdb, char * input, char * output)
             long offset = j_offset->valuedouble;
 
             if (OS_SUCCESS != wdb_global_update_agent_fim_offset(wdb, id, offset)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
                 return OS_INVALID;
@@ -4642,7 +4642,7 @@ int wdb_parse_global_update_reg_offset(wdb_t * wdb, char * input, char * output)
             long offset = j_offset->valuedouble;
 
             if (OS_SUCCESS != wdb_global_update_agent_reg_offset(wdb, id, offset)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
                 return OS_INVALID;
@@ -4704,7 +4704,7 @@ int wdb_parse_global_update_agent_status(wdb_t * wdb, char * input, char * outpu
             char *status = j_status->valuestring;
 
             if (OS_SUCCESS != wdb_global_update_agent_status(wdb, id, status)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
                 return OS_INVALID;
@@ -4745,7 +4745,7 @@ int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output
             char *group = cJSON_IsString(j_group) ? j_group->valuestring : NULL;
 
             if (OS_SUCCESS != wdb_global_update_agent_group(wdb, id, group)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
                 return OS_INVALID;
@@ -4823,7 +4823,7 @@ int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * outpu
             int id_agent = j_id_agent->valueint;
 
             if (OS_SUCCESS != wdb_global_insert_agent_belong(wdb, id_group, id_agent)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
                 return OS_INVALID;
@@ -4976,7 +4976,7 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
         cJSON_ArrayForEach(json_agent, root){
             // Inserting new agent information in the database
             if (OS_SUCCESS != wdb_global_sync_agent_info_set(wdb, json_agent)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(root);
                 return OS_INVALID;
@@ -4997,7 +4997,7 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
                 }
 
                 else if (OS_SUCCESS != wdb_global_del_agent_labels(wdb, agent_id)) {
-                    mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                    mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                     snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                     cJSON_Delete(root);
                     return OS_INVALID;
@@ -5012,7 +5012,7 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
                         json_value->valuestring != NULL && cJSON_IsNumber(json_id)){
                         // Inserting labels in the database
                         if (OS_SUCCESS != wdb_global_set_agent_label(wdb, json_id->valueint, json_key->valuestring, json_value->valuestring)) {
-                            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB2_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                             snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                             cJSON_Delete(root);
                             return OS_INVALID;
