@@ -205,7 +205,7 @@ wdb_t * wdb_open_global() {
         else {
             wdb = wdb_init(db, WDB_GLOB_NAME);
             wdb_pool_append(wdb);
-            wdb = wdb_global_upgrade(wdb);
+            wdb = wdb_upgrade_global(wdb);
         }
     }
 

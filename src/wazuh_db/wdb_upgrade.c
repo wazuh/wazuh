@@ -60,7 +60,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
     return wdb;
 }
 
-wdb_t * wdb_global_upgrade(wdb_t *wdb) {
+wdb_t * wdb_upgrade_global(wdb_t *wdb) {
     const char * UPDATES[] = {
         schema_global_upgrade_v1_sql,
     };

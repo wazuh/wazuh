@@ -1233,7 +1233,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb);
  * @param wdb The global.db struct database.
  * @return wdb: The global.db struct database.
  */
-wdb_t * wdb_global_upgrade(wdb_t *wdb);
+wdb_t * wdb_upgrade_global(wdb_t *wdb);
 
 // Create backup and generate an emtpy DB
 wdb_t * wdb_backup(wdb_t *wdb, int version);
