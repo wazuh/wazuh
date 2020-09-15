@@ -111,7 +111,7 @@ void wm_agent_upgrade_init_upgrade_queue() {
 }
 
 void wm_agent_upgrade_destroy_upgrade_queue() {
-    os_free(upgrade_queue);
+    queue_free(upgrade_queue);
 }
 
 void wm_agent_upgrade_prepare_upgrades() {

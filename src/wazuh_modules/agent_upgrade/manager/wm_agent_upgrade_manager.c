@@ -76,6 +76,7 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SELECT_ERROR, strerror(errno));
                 close(sock);
                 wm_agent_upgrade_destroy_task_map();
+                wm_agent_upgrade_destroy_upgrade_queue();
                 return;
             }
             continue;
