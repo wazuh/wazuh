@@ -217,7 +217,9 @@ cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, OSL
     os_free(output_str);
 
     /* Clear the memory if the event was not added to the stateful memory */
-    w_free_event_info(lf);
+    if (lf->generated_rule == NULL) {
+        Free_Eventinfo(lf);
+    }
 
     return output;
 }
@@ -288,6 +290,8 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
         return -1;
     }
 
+    lf->generated_rule = NULL;
+
     do {
 
         if (lf->decoder_info->type == OSSEC_ALERT && !lf->generated_rule) {
@@ -305,7 +309,6 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
             continue;
         }
 
-        lf->generated_rule = ruleinformation;
 
         /* Ignore level 0 */
         if (ruleinformation->level == 0) {
@@ -328,9 +331,11 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
 
         /* Check if we should ignore it */
         if (ruleinformation->ckignore && IGnore(lf, 0)) {
-            lf->generated_rule = NULL;
             break;
         }
+
+        /* If the rule's matching is not ignored, it is added to the event list */
+        lf->generated_rule = ruleinformation;
 
         /* Copy the structure to the state memory of if_matched_sid */
         if (ruleinformation->sid_prev_matched) {
@@ -344,9 +349,12 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
 
         /* Group list */
         else if (ruleinformation->group_prev_matched) {
-
+            OSListNode *node;
+            os_calloc(ruleinformation->group_prev_matched_sz, sizeof(OSListNode *), lf->group_node_to_delete);
             for (unsigned int i = 0; i < ruleinformation->group_prev_matched_sz; i++) {
-                if (!OSList_AddData(ruleinformation->group_prev_matched[i], lf)) {
+                if (node = OSList_AddData(ruleinformation->group_prev_matched[i], lf), node) {
+                    lf->group_node_to_delete[i] = node;
+                } else {
                     smerror(list_msg, "Unable to add data to grp list.");
                 }
             }

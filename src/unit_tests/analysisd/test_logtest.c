@@ -3269,7 +3269,7 @@ void test_w_logtest_rulesmatching_phase_dont_match(void ** state)
 
 }
 
-void test_w_logtest_rulesmatching_phase_match_level_0(void ** state)
+void test_w_logtest_rulesmatching_phase_dont_match_level_0(void ** state)
 {
     Eventinfo lf = {0};
     w_logtest_session_t session = {0};
@@ -3297,8 +3297,7 @@ void test_w_logtest_rulesmatching_phase_match_level_0(void ** state)
     retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
 
     assert_int_equal(retval, expect_retval);
-    assert_int_equal(lf.generated_rule->level, 0);
-    assert_ptr_equal(lf.generated_rule, &ruleinfo);
+    assert_null(lf.generated_rule);
 
     os_free(session.rule_list);
 
@@ -3374,8 +3373,7 @@ void test_w_logtest_rulesmatching_phase_match_ignore_time_ignore(void ** state)
     retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
 
     assert_int_equal(retval, expect_retval);
-    assert_ptr_equal(lf.generated_rule, &ruleinfo);
-    assert_ptr_equal(lf.generated_rule->time_ignored, (time_t) 2015);
+    assert_null(lf.generated_rule);
 
     os_free(session.rule_list);
 
@@ -3797,6 +3795,7 @@ void test_w_logtest_process_log_rule_match(void ** state)
 
     RuleInfo ruleinfo = {0};
     ruleinfo.category = SYSLOG;
+    ruleinfo.level = 10;
 
     os_calloc(1, sizeof(RuleNode), session.rule_list);
     session.rule_list->next = NULL;
@@ -4709,7 +4708,7 @@ int main(void)
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_ossec_alert),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_dont_match_category),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_dont_match),
-        cmocka_unit_test(test_w_logtest_rulesmatching_phase_match_level_0),
+        cmocka_unit_test(test_w_logtest_rulesmatching_phase_dont_match_level_0),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_match_dont_ignore_first_time),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_match_ignore_time_ignore),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_match_dont_ignore_time_out_windows),
