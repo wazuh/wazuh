@@ -98,6 +98,10 @@ void fim_scan() {
         nodes_count = fim_db_get_count_entry_path(syscheck.database);
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
+#ifdef WIN32
+        nodes_count += fim_db_get_count_registry_key(syscheck.database) + fim_db_get_count_registry_data(syscheck.database);
+#endif
+
         if (nodes_count < syscheck.file_limit) {
             it = 0;
 
@@ -511,6 +515,10 @@ void fim_check_db_state() {
     w_mutex_lock(&syscheck.fim_entry_mutex);
     nodes_count = fim_db_get_count_entry_path(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+#ifdef WIN32
+    nodes_count += fim_db_get_count_registry_key(syscheck.database) + fim_db_get_count_registry_data(syscheck.database);
+#endif
 
     switch (_db_state) {
     case FIM_STATE_DB_FULL:
