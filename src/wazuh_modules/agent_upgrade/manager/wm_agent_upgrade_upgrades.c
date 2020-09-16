@@ -183,6 +183,10 @@ void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
 
         // Thread that will launch the upgrade
         w_create_thread(wm_agent_upgrade_start_upgrade, (void *)upgrade_config);
+
+    #ifdef WAZUH_UNIT_TESTING
+        break;
+    #endif
     }
 
     return NULL;

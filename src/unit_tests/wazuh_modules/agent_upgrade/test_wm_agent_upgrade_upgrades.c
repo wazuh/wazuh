@@ -15,9 +15,9 @@
 
 #include "../../wrappers/common.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
+#include "../../wrappers/posix/pthread_wrappers.h"
 #include "../../wrappers/posix/unistd_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../../wrappers/wazuh/shared/pthreads_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/queue_op_wrappers.h"
 #include "../../wrappers/wazuh/os_crypto/sha1_op_wrappers.h"
 #include "../../wrappers/wazuh/os_net/os_net_wrappers.h"
@@ -32,11 +32,17 @@ extern w_queue_t *upgrade_queue;
 
 extern unsigned int upgrade_threads_count;
 
+extern pthread_mutex_t upgrade_threads_mutex;
+
+extern pthread_cond_t upgrade_threads_cond;
+
 typedef struct _test_upgrade_args {
     wm_manager_configs *config;
     wm_agent_task *agent_task;
 } test_upgrade_args;
 
+void wm_agent_upgrade_wait_available_thread(unsigned int max_threads);
+void wm_agent_upgrade_release_thread();
 void* wm_agent_upgrade_start_upgrade(void *arg);
 int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs);
 int wm_agent_upgrade_send_lock_restart(int agent_id);
@@ -48,26 +54,28 @@ int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, const char
 
 // Setup / teardown
 
-static int setup_config(void **state) {
-    wm_manager_configs *config = NULL;
-    os_calloc(1, sizeof(wm_manager_configs), config);
-    *state = config;
-    return 0;
-}
-
-static int teardown_config(void **state) {
-    wm_manager_configs *config = *state;
-    os_free(config);
-    return 0;
-}
-
 static int teardown_string(void **state) {
     char *string = *state;
     os_free(string);
     return 0;
 }
 
-static int setup_config_upgrade_args(void **state) {
+static int setup_config(void **state) {
+    wm_manager_configs *config = NULL;
+    os_calloc(1, sizeof(wm_manager_configs), config);
+    *state = config;
+    upgrade_queue = queue_init(10);
+    return 0;
+}
+
+static int teardown_config(void **state) {
+    wm_manager_configs *config = *state;
+    os_free(config);
+    queue_free(upgrade_queue);
+    return 0;
+}
+
+static int setup_upgrade_args(void **state) {
     test_upgrade_args *args = NULL;
     wm_manager_configs *config = NULL;
     wm_agent_task *agent_task = NULL;
@@ -81,15 +89,13 @@ static int setup_config_upgrade_args(void **state) {
     state[0] = (void *)args;
     state[1] = (void *)config;
     upgrade_queue = queue_init(10);
-    upgrade_threads_count = 5;
     return 0;
 }
 
-static int teardown_config_upgrade_args(void **state) {
+static int teardown_upgrade_args(void **state) {
     wm_manager_configs *config = state[1];
     os_free(config);
     queue_free(upgrade_queue);
-    upgrade_threads_count = 0;
     return 0;
 }
 
@@ -162,6 +168,24 @@ static int setup_group(void **state) {
 static int teardown_group(void **state) {
     test_mode = 0;
     return 0;
+}
+
+// Wrappers
+
+int __wrap_CreateThread(void * (*function_pointer)(void *), void *data) {
+    check_expected_ptr(function_pointer);
+
+    test_upgrade_args *args = (test_upgrade_args *)data;
+    wm_agent_task *agent_task = args->agent_task;
+    wm_manager_configs *config = args->config;
+
+    check_expected(agent_task);
+    check_expected(config);
+
+    wm_agent_upgrade_free_agent_task(agent_task);
+    os_free(args);
+
+    return 1;
 }
 
 // Tests
@@ -2490,6 +2514,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
 {
     (void) state;
 
+    upgrade_threads_count = 5;
+
     int socket = 555;
     int agent_id = 25;
     char *status = "In progress";
@@ -2643,6 +2669,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
     will_return(__wrap_queue_pop_ex_timedwait, OS_INVALID);
     expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
 
+    expect_value(__wrap_pthread_cond_signal, cond, &upgrade_threads_cond);
+
     wm_agent_upgrade_start_upgrade(args);
 
     assert_int_equal(upgrade_threads_count, 4);
@@ -2651,6 +2679,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
 void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
 {
     (void) state;
+
+    upgrade_threads_count = 5;
 
     int socket = 555;
     int agent_id = 25;
@@ -2844,6 +2874,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
     will_return(__wrap_queue_pop_ex_timedwait, OS_INVALID);
     expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
 
+    expect_value(__wrap_pthread_cond_signal, cond, &upgrade_threads_cond);
+
     wm_agent_upgrade_start_upgrade(args);
 
     assert_int_equal(upgrade_threads_count, 4);
@@ -2852,6 +2884,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
 void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
 {
     (void) state;
+
+    upgrade_threads_count = 5;
 
     int socket = 555;
     int agent_id = 25;
@@ -3010,6 +3044,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
     will_return(__wrap_queue_pop_ex_timedwait, OS_INVALID);
     expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
 
+    expect_value(__wrap_pthread_cond_signal, cond, &upgrade_threads_cond);
+
     wm_agent_upgrade_start_upgrade(args);
 
     assert_int_equal(upgrade_threads_count, 4);
@@ -3018,6 +3054,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
 void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
 {
     (void) state;
+
+    upgrade_threads_count = 5;
 
     int socket = 555;
     int agent_id = 25;
@@ -3118,6 +3156,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
     will_return(__wrap_queue_pop_ex_timedwait, OS_INVALID);
     expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
 
+    expect_value(__wrap_pthread_cond_signal, cond, &upgrade_threads_cond);
+
     wm_agent_upgrade_start_upgrade(args);
 
     assert_int_equal(upgrade_threads_count, 4);
@@ -3126,6 +3166,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
 void test_wm_agent_upgrade_start_upgrade_upgrade_multiple(void **state)
 {
     (void) state;
+
+    upgrade_threads_count = 5;
 
     int socket = 555;
     int agent_id = 25;
@@ -3372,9 +3414,72 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_multiple(void **state)
     will_return(__wrap_queue_pop_ex_timedwait, OS_INVALID);
     expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
 
+    expect_value(__wrap_pthread_cond_signal, cond, &upgrade_threads_cond);
+
     wm_agent_upgrade_start_upgrade(args);
 
     assert_int_equal(upgrade_threads_count, 4);
+}
+
+void test_wm_agent_upgrade_wait_available_thread(void **state) {
+    int max_threads = 8;
+
+    upgrade_threads_count = 5;
+
+    wm_agent_upgrade_wait_available_thread(max_threads);
+
+    assert_int_equal(upgrade_threads_count, 6);
+}
+
+void test_wm_agent_upgrade_wait_available_thread_max(void **state) {
+    int max_threads = 8;
+
+    upgrade_threads_count = 8;
+
+    expect_value(__wrap_pthread_cond_wait, cond, &upgrade_threads_cond);
+    expect_value(__wrap_pthread_cond_wait, mutex, &upgrade_threads_mutex);
+
+    wm_agent_upgrade_wait_available_thread(max_threads);
+
+    assert_int_equal(upgrade_threads_count, 9);
+}
+
+void test_wm_agent_upgrade_release_thread(void **state) {
+    upgrade_threads_count = 5;
+
+    expect_value(__wrap_pthread_cond_signal, cond, &upgrade_threads_cond);
+
+    wm_agent_upgrade_release_thread();
+
+    assert_int_equal(upgrade_threads_count, 4);
+}
+
+void test_wm_agent_upgrade_dispatch_upgrades(void **state) {
+    wm_manager_configs *config = *state;
+
+    upgrade_threads_count = 0;
+
+    config->max_threads = 8;
+
+    wm_agent_task *agent_task_next = NULL;
+    wm_upgrade_task *upgrade_task_next = NULL;
+
+    wm_agent_task *agent_task = wm_agent_upgrade_init_agent_task();
+
+    config->chunk_size = 5;
+
+    queue_push(upgrade_queue, agent_task);
+
+    will_return(__wrap_queue_pop_ex, 1);
+    expect_memory(__wrap_queue_pop_ex, queue, upgrade_queue, sizeof(upgrade_queue));
+
+    expect_memory(__wrap_CreateThread, function_pointer, wm_agent_upgrade_start_upgrade, sizeof(wm_agent_upgrade_start_upgrade));
+    expect_memory(__wrap_CreateThread, agent_task, agent_task, sizeof(agent_task));
+    expect_memory(__wrap_CreateThread, config, config, sizeof(config));
+
+    wm_agent_upgrade_dispatch_upgrades(config);
+
+    assert_int_equal(upgrade_threads_count, 1);
 }
 
 int main(void) {
@@ -3420,11 +3525,20 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_err, setup_config_agent_task, teardown_config_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_custom_err, setup_config_agent_task, teardown_config_agent_task),
         // wm_agent_upgrade_start_upgrade
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_ok, setup_config_upgrade_args, teardown_config_upgrade_args),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok, setup_config_upgrade_args, teardown_config_upgrade_args),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok, setup_config_upgrade_args, teardown_config_upgrade_args),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_err, setup_config_upgrade_args, teardown_config_upgrade_args),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_multiple, setup_config_upgrade_args, teardown_config_upgrade_args)
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_ok, setup_upgrade_args, teardown_upgrade_args),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok, setup_upgrade_args, teardown_upgrade_args),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok, setup_upgrade_args, teardown_upgrade_args),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_err, setup_upgrade_args, teardown_upgrade_args),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_multiple, setup_upgrade_args, teardown_upgrade_args),
+        // wm_agent_upgrade_wait_available_thread
+        cmocka_unit_test(test_wm_agent_upgrade_wait_available_thread),
+        cmocka_unit_test(test_wm_agent_upgrade_wait_available_thread_max),
+        // wm_agent_upgrade_release_thread
+        cmocka_unit_test(test_wm_agent_upgrade_release_thread),
+        // wm_agent_upgrade_dispatch_upgrades
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_dispatch_upgrades, setup_config, teardown_config),
+        // wm_agent_upgrade_prepare_upgrades
+
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
