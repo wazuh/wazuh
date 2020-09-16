@@ -215,9 +215,10 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
                 value_buffer[0] = '@';
                 value_buffer[1] = '\0';
             }
+            char *diff_str = NULL;
             minfo("~~~~~~~~~~~~~START~~~~~~~~~~~~~");
-            fim_registry_value_diff(full_key_name, value_buffer, data_buffer, data_type, configuration);
-            minfo("~~~~~~~~~~~~~FINISHED~~~~~~~~~~~~~");
+            diff_str = fim_registry_value_diff(full_key_name, value_buffer, data_buffer, data_type, configuration);
+            minfo("~~~~~~~~~~~~~diff_str: %s~~~~~~~~~~~~~", diff_str);
 
             /* Write value name and data in the file (for checksum later) */
             EVP_DigestUpdate(ctx, value_buffer, strlen(value_buffer));

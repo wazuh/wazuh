@@ -366,14 +366,6 @@ void delete_subdirectories_watches(char *dir);
 unsigned int count_watches();
 
 /**
- * @brief Get queue/diff/local path from file path
- *
- * @param path Path to the file
- * @return Path to the queue/diff/local folder
- */
-char *seechanges_get_diff_path(char *path);
-
-/**
  * @brief Frees the memory of a Whodata event structure
  *
  * @param [out] w_evt
@@ -625,6 +617,33 @@ char * fim_file_diff(char *filename);
  * @return 1 if the file has been configured with the ``nodiff`` option, 0 if not
  */
 int is_nodiff(const char *filename);
+
+/**
+ * @brief Deletes the filename diff folder and modify diff_folder_size if disk_quota enabled
+ *
+ * @param filename Path of the file that has been deleted
+ * @return 0 if success, -1 on error
+ */
+int fim_diff_process_delete_file(char *filename);
+
+/**
+ * @brief Deletes the registry diff folder and modify diff_folder_size if disk_quota enabled
+ *
+ * @param key_name Path of the registry that has been deleted
+ * @param arch Arch type of the registry
+ * @return 0 if success, -1 on error
+ */
+int fim_diff_process_delete_registry(char *key_name, int arch);
+
+/**
+ * @brief Deletes the value diff folder and modify diff_folder_size if disk_quota enabled
+ *
+ * @param key_name Path of the registry that contain value deleted
+ * @param value_name Path of the value that has been deleted
+ * @param arch Arch type of the registry
+ * @return 0 if success, -1 on error
+ */
+int fim_diff_process_delete_value(char *key_name, char *value_name, int arch);
 
 /**
  * @brief Initializes all syscheck data

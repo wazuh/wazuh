@@ -495,6 +495,7 @@
 #define FIM_ERROR_GET_ABSOLUTE_PATH                 "(6711): Cannot get absolute path of '%s': %s (%d)"
 #define FIM_ERROR_REMOVE_COLON                      "(6712): Cannot remove heading colon from full path '%s'"
 #define FIM_DIFF_COMMAND_OUTPUT_ERROR               "(6713): Command diff/fc output an error"
+#define FIM_DIFF_DELETE_DIFF_FOLDER_ERROR           "(6714): Cannot remove diff folder for file: '%s'"
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
