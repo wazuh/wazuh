@@ -50,7 +50,7 @@ async def unlock_ip(request, block_time):
 async def prevent_bruteforce_attack(request, status, attempts=5):
     """This function checks that the IPs that are requesting an API token do not do so repeatedly"""
     global ip_stats, ip_block
-    if request.path == '/security/user/authenticate' and request.method == 'GET' and status != 200:
+    if request.path == '/security/user/authenticate' and request.method in ['GET', 'POST']:
         if request.remote not in ip_stats.keys():
             ip_stats[request.remote] = dict()
             ip_stats[request.remote]['attempts'] = 1
@@ -92,8 +92,6 @@ async def security_middleware(request, handler):
 
     response = await handler(request)
 
-    await prevent_bruteforce_attack(request=request, status=response.status, attempts=access_conf['max_login_attempts'])
-
     return response
 
 
@@ -125,7 +123,9 @@ async def response_postprocessing(request, handler):
                                     detail=cleanup_detail_field(ex.__dict__['detail']) if 'detail' in ex.__dict__ else '',
                                     ext=ex.__dict__['ext'] if 'ext' in ex.__dict__ else None)
     except OAuthProblem:
-        if request.path == '/security/user/authenticate' and request.method == 'GET':
+        if request.path == '/security/user/authenticate' and request.method in ['GET', 'POST']:
+            await prevent_bruteforce_attack(request=request, status=401,
+                                            attempts=api_conf['access']['max_login_attempts'])
             problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="Invalid credentials")
         else:
             problem = connexion_problem(401, "Unauthorized", type="about:blank",
