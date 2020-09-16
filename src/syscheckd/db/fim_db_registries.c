@@ -313,7 +313,7 @@ void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, 
 
     if (base == NULL) {
         merror("Error escaping '%s'", entry->registry_entry.value->name);
-        return;
+        goto end;
     }
 
     snprintf(buffer, MAX_DIR_SIZE, "%d %s", entry->registry_entry.value->id, base);
