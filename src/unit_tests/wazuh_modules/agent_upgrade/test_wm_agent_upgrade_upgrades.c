@@ -81,6 +81,7 @@ static int setup_config_upgrade_args(void **state) {
     state[0] = (void *)args;
     state[1] = (void *)config;
     upgrade_queue = queue_init(10);
+    upgrade_threads_count = 5;
     return 0;
 }
 
@@ -88,6 +89,7 @@ static int teardown_config_upgrade_args(void **state) {
     wm_manager_configs *config = state[1];
     os_free(config);
     queue_free(upgrade_queue);
+    upgrade_threads_count = 0;
     return 0;
 }
 
@@ -2664,12 +2666,10 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
     char *agent_res_ok_0 = "ok 0";
     char *agent_res_ok_sha1 = "ok d321af65983fa412e3a12c312ada12ab321a253a";
 
-    wm_manager_configs *config = state[0];
-    OSHashNode *node = state[1];
-    wm_agent_task *agent_task = node->data;
+    test_upgrade_args *args = state[0];
+    wm_manager_configs *config = args->config;
+    wm_agent_task *agent_task = args->agent_task;
     wm_upgrade_task *upgrade_task = NULL;
-
-    os_strdup("025", node->key);
 
     config->chunk_size = 5;
 
@@ -2695,16 +2695,6 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
     cJSON_AddStringToObject(task_response_status, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(task_response_status, "agent", agent_id);
     cJSON_AddStringToObject(task_response_status, "status", status);
-
-    // wm_agent_upgrade_get_first_node
-
-    will_return(__wrap_wm_agent_upgrade_get_first_node, 1);
-    will_return(__wrap_wm_agent_upgrade_get_first_node, node);
-
-    // wm_agent_upgrade_get_next_node
-
-    will_return(__wrap_wm_agent_upgrade_get_next_node, 1);
-    will_return(__wrap_wm_agent_upgrade_get_next_node, NULL);
 
     // wm_agent_upgrade_send_wpk_to_agent
 
@@ -2850,15 +2840,13 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
 
     expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response_status, sizeof(task_response_status));
     will_return(__wrap_wm_agent_upgrade_validate_task_status_message, agent_id);
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, 1);
 
-    // wm_agent_upgrade_remove_entry
+    will_return(__wrap_queue_pop_ex_timedwait, OS_INVALID);
+    expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
 
-    expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agent_id);
-    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
-    will_return(__wrap_wm_agent_upgrade_remove_entry, 1);
+    wm_agent_upgrade_start_upgrade(args);
 
-    wm_agent_upgrade_start_upgrade(config);
+    assert_int_equal(upgrade_threads_count, 4);
 }
 
 void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
@@ -2879,12 +2867,10 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
     char *agent_res_ok_0 = "ok 0";
     char *agent_res_ok_sha1 = "ok d321af65983fa412e3a12c312ada12ab321a253a";
 
-    wm_manager_configs *config = state[0];
-    OSHashNode *node = state[1];
-    wm_agent_task *agent_task = node->data;
+    test_upgrade_args *args = state[0];
+    wm_manager_configs *config = args->config;
+    wm_agent_task *agent_task = args->agent_task;
     wm_upgrade_custom_task *upgrade_custom_task = NULL;
-
-    os_strdup("025", node->key);
 
     config->chunk_size = 5;
 
@@ -2894,16 +2880,6 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
     upgrade_custom_task = wm_agent_upgrade_init_upgrade_custom_task();
     os_strdup("/tmp/test.wpk", upgrade_custom_task->custom_file_path);
     agent_task->task_info->task = upgrade_custom_task;
-
-    // wm_agent_upgrade_get_first_node
-
-    will_return(__wrap_wm_agent_upgrade_get_first_node, 1);
-    will_return(__wrap_wm_agent_upgrade_get_first_node, node);
-
-    // wm_agent_upgrade_get_next_node
-
-    will_return(__wrap_wm_agent_upgrade_get_next_node, 1);
-    will_return(__wrap_wm_agent_upgrade_get_next_node, NULL);
 
     // wm_agent_upgrade_send_wpk_to_agent
 
@@ -3031,13 +3007,12 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok_0);
     will_return_count(__wrap_wm_agent_upgrade_parse_agent_response, 0, 6);
 
-    // wm_agent_upgrade_remove_entry
+    will_return(__wrap_queue_pop_ex_timedwait, OS_INVALID);
+    expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
 
-    expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agent_id);
-    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
-    will_return(__wrap_wm_agent_upgrade_remove_entry, 1);
+    wm_agent_upgrade_start_upgrade(args);
 
-    wm_agent_upgrade_start_upgrade(config);
+    assert_int_equal(upgrade_threads_count, 4);
 }
 
 void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
@@ -3058,12 +3033,10 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
     char *agent_res_err = "err ";
     char *agent_res_ok_sha1 = "ok d321af65983fa412e3a12c312ada12ab321a253a";
 
-    wm_manager_configs *config = state[0];
-    OSHashNode *node = state[1];
-    wm_agent_task *agent_task = node->data;
+    test_upgrade_args *args = state[0];
+    wm_manager_configs *config = args->config;
+    wm_agent_task *agent_task = args->agent_task;
     wm_upgrade_task *upgrade_task = NULL;
-
-    os_strdup("025", node->key);
 
     config->chunk_size = 5;
 
@@ -3089,16 +3062,6 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
     cJSON_AddStringToObject(task_response_status, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(task_response_status, "agent", agent_id);
     cJSON_AddStringToObject(task_response_status, "status", status);
-
-    // wm_agent_upgrade_get_first_node
-
-    will_return(__wrap_wm_agent_upgrade_get_first_node, 1);
-    will_return(__wrap_wm_agent_upgrade_get_first_node, node);
-
-    // wm_agent_upgrade_get_next_node
-
-    will_return(__wrap_wm_agent_upgrade_get_next_node, 1);
-    will_return(__wrap_wm_agent_upgrade_get_next_node, NULL);
 
     // wm_agent_upgrade_send_wpk_to_agent
 
@@ -3151,15 +3114,13 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
 
     expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response_status, sizeof(task_response_status));
     will_return(__wrap_wm_agent_upgrade_validate_task_status_message, agent_id);
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, 1);
 
-    // wm_agent_upgrade_remove_entry
+    will_return(__wrap_queue_pop_ex_timedwait, OS_INVALID);
+    expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
 
-    expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agent_id);
-    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
-    will_return(__wrap_wm_agent_upgrade_remove_entry, 1);
+    wm_agent_upgrade_start_upgrade(args);
 
-    wm_agent_upgrade_start_upgrade(config);
+    assert_int_equal(upgrade_threads_count, 4);
 }
 
 void test_wm_agent_upgrade_start_upgrade_upgrade_multiple(void **state)
@@ -3185,18 +3146,17 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_multiple(void **state)
     char *agent_res_ok_0 = "ok 0";
     char *agent_res_ok_sha1 = "ok d321af65983fa412e3a12c312ada12ab321a253a";
 
-    wm_manager_configs *config = state[0];
-    OSHashNode *node = state[1];
-    wm_agent_task *agent_task = node->data;
+    test_upgrade_args *args = state[0];
+    wm_manager_configs *config = args->config;
+    wm_agent_task *agent_task = args->agent_task;
     wm_upgrade_task *upgrade_task = NULL;
 
-    OSHashNode *node_next = node->next;
-    wm_agent_task *agent_task_next = node_next->data;
+    wm_agent_task *agent_task_next = NULL;
     wm_upgrade_task *upgrade_task_next = NULL;
 
-    os_strdup("025", node->key);
-
-    os_strdup("035", node_next->key);
+    agent_task_next = wm_agent_upgrade_init_agent_task();
+    agent_task_next->agent_info = wm_agent_upgrade_init_agent_info();
+    agent_task_next->task_info = wm_agent_upgrade_init_task_info();
 
     config->chunk_size = 5;
 
@@ -3216,6 +3176,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_multiple(void **state)
     os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task_next->wpk_sha1);
     agent_task_next->task_info->task = upgrade_task_next;
 
+    queue_push(upgrade_queue, agent_task_next);
+
     cJSON *task_request_status = cJSON_CreateObject();
 
     cJSON_AddStringToObject(task_request_status, "module", "upgrade_module");
@@ -3230,16 +3192,6 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_multiple(void **state)
     cJSON_AddStringToObject(task_response_status, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(task_response_status, "agent", agent_id);
     cJSON_AddStringToObject(task_response_status, "status", status);
-
-    // wm_agent_upgrade_get_first_node
-
-    will_return(__wrap_wm_agent_upgrade_get_first_node, 1);
-    will_return(__wrap_wm_agent_upgrade_get_first_node, node);
-
-    // wm_agent_upgrade_get_next_node
-
-    will_return(__wrap_wm_agent_upgrade_get_next_node, 1);
-    will_return(__wrap_wm_agent_upgrade_get_next_node, node_next);
 
     // wm_agent_upgrade_send_wpk_to_agent
 
@@ -3292,18 +3244,9 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_multiple(void **state)
 
     expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response_status, sizeof(task_response_status));
     will_return(__wrap_wm_agent_upgrade_validate_task_status_message, agent_id);
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, 1);
 
-    // wm_agent_upgrade_remove_entry
-
-    expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agent_id);
-    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
-    will_return(__wrap_wm_agent_upgrade_remove_entry, 1);
-
-    // wm_agent_upgrade_get_next_node
-
-    will_return(__wrap_wm_agent_upgrade_get_next_node, 1);
-    will_return(__wrap_wm_agent_upgrade_get_next_node, NULL);
+    will_return(__wrap_queue_pop_ex_timedwait, 1);
+    expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
 
     // wm_agent_upgrade_send_wpk_to_agent
 
@@ -3426,13 +3369,12 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_multiple(void **state)
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok_0);
     will_return_count(__wrap_wm_agent_upgrade_parse_agent_response, 0, 6);
 
-    // wm_agent_upgrade_remove_entry
+    will_return(__wrap_queue_pop_ex_timedwait, OS_INVALID);
+    expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
 
-    expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agent_id_next);
-    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
-    will_return(__wrap_wm_agent_upgrade_remove_entry, 1);
+    wm_agent_upgrade_start_upgrade(args);
 
-    wm_agent_upgrade_start_upgrade(config);
+    assert_int_equal(upgrade_threads_count, 4);
 }
 
 int main(void) {
@@ -3479,10 +3421,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_custom_err, setup_config_agent_task, teardown_config_agent_task),
         // wm_agent_upgrade_start_upgrade
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_ok, setup_config_upgrade_args, teardown_config_upgrade_args),
-        /*cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok, setup_config_upgrade_args, teardown_config_upgrade_args),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok, setup_config_upgrade_args, teardown_config_upgrade_args),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok, setup_config_upgrade_args, teardown_config_upgrade_args),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_err, setup_config_upgrade_args, teardown_config_upgrade_args),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_multiple, setup_config_upgrade_args, teardown_config_upgrade_args)*/
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_multiple, setup_config_upgrade_args, teardown_config_upgrade_args)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

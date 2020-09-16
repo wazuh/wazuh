@@ -28,11 +28,7 @@
 STATIC w_queue_t *upgrade_queue;
 
 /* Number of threads running an upgrade */
-#ifdef WAZUH_UNIT_TESTING
-STATIC unsigned int upgrade_threads_count = 5;
-#else
 STATIC unsigned int upgrade_threads_count = 0;
-#endif
 
 /* Mutex needed to access threads counter */
 pthread_mutex_t upgrade_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -255,6 +251,10 @@ void* wm_agent_upgrade_start_upgrade(void *arg) {
     w_mutex_unlock(&upgrade_threads_mutex);
 
     os_free(upgrade_config);
+
+#ifndef WAZUH_UNIT_TESTING
+    pthread_exit(NULL);
+#endif
 
     return NULL;
 }
