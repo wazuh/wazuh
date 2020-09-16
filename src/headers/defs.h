@@ -234,7 +234,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DIFF_LAST_FILE  "last-entry"
 #define DIFF_GZ_FILE    "last-entry.gz"
 #define DIFF_TEST_HOST  "__test"
-#define DIFF_TMP_FILE   "tmp"
 
 /* Syscheck data */
 #define SYSCHECK        "syscheck"

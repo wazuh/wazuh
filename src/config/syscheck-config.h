@@ -339,6 +339,8 @@ typedef struct _config {
     registry *registry;                         /* array of registry entries to be scanned */
     int max_fd_win_rt;
     whodata wdata;
+    registry *registry_nodiff;                     /* list of values/registries to never output diff */
+    registry_regex *registry_nodiff_regex;            /* regex of values/registries to never output diff */
 #endif
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
     char **audit_key;               // Listen audit keys

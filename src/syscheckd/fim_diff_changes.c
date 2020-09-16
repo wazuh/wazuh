@@ -159,20 +159,28 @@ char *fim_diff_generate(diff_data *diff);
  * @brief Reads the diff file and generates the string with the differences
  *
  * @param diff Structure with all the data necessary to compute differences
- * @param status Value result of the diff/fc command
  *
  * @return String with the changes to add to the alert
  */
-char *gen_diff_str(diff_data *diff, __attribute__((unused)) int status);
+char *gen_diff_str(diff_data *diff);
 
 /**
- * @brief Checks if the nodiff option is enabled for this entry
+ * @brief Checks if a specific file has been configured with the ``nodiff`` option
  *
- * @param filename Entry to check
- *
- * @return true if nodiff option is enabled, false if not
+ * @param filename The name of the file to check
+ * @return 1 if the file has been configured with the ``nodiff`` option, 0 if not
  */
-int is_nodiff(const char *filename);
+int is_file_nodiff(const char *filename);
+
+/**
+ * @brief Checks if a specific registry value has been configured with the ``nodiff`` option
+ *
+ * @param key_name The name of the key to check
+ * @param value_name The name of the value to check
+ * @param arch Architecture type of the value to check
+ * @return 1 if the value has been configured with the ``nodiff`` option, 0 if not
+ */
+int is_registry_nodiff(const char *key_name, const char *value_name, int arch);
 
 /**
  * @brief Filter a path so that it cannot contain strange symbols. In the case of Windows, change the '/' to '\'.
@@ -253,10 +261,19 @@ char *fim_registry_value_diff(char *key_name,
     }
 
     if (fim_diff_compare(diff) == -1) {
+        mdebug2(FIM_DIFF_IDENTICAL_MD5_FILES);
+        syscheck.diff_folder_size += backup_file_size;
+        goto cleanup;
+    }
+
+    if (is_registry_nodiff(key_name, value_name, configuration->arch)) {
+        diff_changes = "<Diff truncated because nodiff option>";
+        syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
 
     if (diff_changes = fim_diff_generate(diff), !diff_changes){
+        syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
 
@@ -447,10 +464,18 @@ char *fim_file_diff(char *filename) {
 
     if (fim_diff_compare(diff) == -1) {
         mdebug2(FIM_DIFF_IDENTICAL_MD5_FILES);
+        syscheck.diff_folder_size += backup_file_size;
+        goto cleanup;
+    }
+
+    if (is_file_nodiff(diff->file_origin)) {
+        diff_changes = "<Diff truncated because nodiff option>";
+        syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
 
     if (diff_changes = fim_diff_generate(diff), !diff_changes){
+        syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
 
@@ -707,60 +732,38 @@ char *fim_diff_generate(diff_data *diff) {
     char *diff_file_filtered = NULL;
     int status = -1;
 
-    if (is_nodiff(diff->file_origin)) {
-        /* Dont leak sensible data with a diff hanging around */
-        FILE *fdiff;
-        char* nodiff_message = "<Diff truncated because nodiff option>";
+    uncompress_file_filtered = filter(diff->uncompress_file);
+    file_origin_filtered = filter(diff->file_origin);
+    diff_file_filtered = filter(diff->diff_file);
 
-        fdiff = wfopen(diff->diff_file, "wb");
-        if (!fdiff){
-            merror(FIM_ERROR_GENDIFF_OPEN_FILE, diff->diff_file);
-            return NULL;
-        }
-
-        if (fwrite(nodiff_message, strlen(nodiff_message) + 1, 1, fdiff) < 1) {
-            merror(FIM_ERROR_GENDIFF_WRITING_DATA, diff->diff_file);
-            fclose(fdiff);
-            return NULL;
-        }
-
-        fclose(fdiff);
-        status = 1;
-    } else {
-        /* OK, run diff */
-        uncompress_file_filtered = filter(diff->uncompress_file);
-        file_origin_filtered = filter(diff->file_origin);
-        diff_file_filtered = filter(diff->diff_file);
-
-        if (!(uncompress_file_filtered && file_origin_filtered && diff_file_filtered)) {
-            mdebug1(FIM_DIFF_SKIPPED);
-            os_free(uncompress_file_filtered);
-            os_free(file_origin_filtered);
-            os_free(diff_file_filtered);
-            return NULL;
-        }
-
-        snprintf(
-            diff_cmd,
-            sizeof(diff_cmd),
-#ifndef WIN32
-            "diff \"%s\" \"%s\" > \"%s\" 2> /dev/null",
-#else
-            "fc /n \"%s\" \"%s\" > \"%s\" 2> nul",
-#endif
-            uncompress_file_filtered,
-            file_origin_filtered,
-            diff_file_filtered
-        );
+    if (!(uncompress_file_filtered && file_origin_filtered && diff_file_filtered)) {
+        mdebug1(FIM_DIFF_SKIPPED);
         os_free(uncompress_file_filtered);
         os_free(file_origin_filtered);
         os_free(diff_file_filtered);
-
-        status = system(diff_cmd);
+        return NULL;
     }
 
+    snprintf(
+        diff_cmd,
+        sizeof(diff_cmd),
+#ifndef WIN32
+        "diff \"%s\" \"%s\" > \"%s\" 2> /dev/null",
+#else
+        "fc /n \"%s\" \"%s\" > \"%s\" 2> nul",
+#endif
+        uncompress_file_filtered,
+        file_origin_filtered,
+        diff_file_filtered
+    );
+    os_free(uncompress_file_filtered);
+    os_free(file_origin_filtered);
+    os_free(diff_file_filtered);
+
+    status = system(diff_cmd);
+
     if (status == 1){
-        diff_str = gen_diff_str(diff, status);
+        diff_str = gen_diff_str(diff);
     } else if (status == 0){
         mdebug2(FIM_DIFF_COMMAND_OUTPUT_EQUAL);
     } else {
@@ -770,7 +773,7 @@ char *fim_diff_generate(diff_data *diff) {
     return diff_str;
 }
 
-char *gen_diff_str(diff_data *diff, int status){
+char *gen_diff_str(diff_data *diff){
     FILE *fp;
     char buf[OS_MAXSTR + 1];
     char *diff_str;
@@ -814,24 +817,24 @@ char *gen_diff_str(diff_data *diff, int status){
     }
 
     // On Windows we handle long diffs after adapting the fc output.
-    if(status) {
-        char *p = strchr(buf, '\n');
 
-        n = strlen(diff_str);
+    char *p = strchr(buf, '\n');
 
-        if(p && p[1] != '*') {
-            // If the second line does not start with '*', an error message was printed,
-            // most likely stating that the files are "too different"
-            if(n >= OS_MAXSTR - OS_SK_HEADER - 1 - strlen(STR_MORE_CHANGES)) {
-                n -= strlen(STR_MORE_CHANGES);
+    n = strlen(diff_str);
 
-                while (n > 0 && diff_str[n - 1] != '\n')
-                    n--;
-            }
+    if(p && p[1] != '*') {
+        // If the second line does not start with '*', an error message was printed,
+        // most likely stating that the files are "too different"
+        if(n >= OS_MAXSTR - OS_SK_HEADER - 1 - strlen(STR_MORE_CHANGES)) {
+            n -= strlen(STR_MORE_CHANGES);
 
-            strcpy(diff_str + n, STR_MORE_CHANGES);
+            while (n > 0 && diff_str[n - 1] != '\n')
+                n--;
         }
+
+        strcpy(diff_str + n, STR_MORE_CHANGES);
     }
+
 #else
     os_strdup(buf, diff_str);
 #endif
@@ -850,8 +853,7 @@ void save_compress_file(diff_data *diff){
     return;
 }
 
-//TODO: Registry nodiff functionality
-int is_nodiff(const char *filename){
+int is_file_nodiff(const char *filename){
     if (syscheck.nodiff){
         int i;
         for (i = 0; syscheck.nodiff[i] != NULL; i++){
@@ -871,6 +873,40 @@ int is_nodiff(const char *filename){
     }
     return (FALSE);
 }
+
+#ifdef WIN32
+int is_registry_nodiff(const char *key_name, const char *value_name, int arch){
+    char *full_value_name = NULL;
+
+    os_malloc(sizeof(char) * (strlen(key_name) + strlen(value_name) + 2), full_value_name);
+
+    snprintf(full_value_name, PATH_MAX, "%s\\%s", key_name, value_name);
+
+    if (syscheck.registry_nodiff){
+        int i;
+        for (i = 0; syscheck.registry_nodiff[i].entry != NULL; i++){
+            if ((strcmp(syscheck.registry_nodiff[i].entry, full_value_name)) == 0
+                && syscheck.registry_nodiff[i].arch == arch) {
+                os_free(full_value_name);
+                return (TRUE);
+            }
+        }
+    }
+    if (syscheck.registry_nodiff_regex) {
+        int i;
+        for (i = 0; syscheck.registry_nodiff_regex[i].regex != NULL; i++) {
+            if (OSMatch_Execute(full_value_name, strlen(full_value_name), syscheck.registry_nodiff_regex[i].regex)
+                && syscheck.registry_nodiff_regex[i].arch == arch) {
+                os_free(full_value_name);
+                return (TRUE);
+            }
+        }
+    }
+
+    os_free(full_value_name);
+    return (FALSE);
+}
+#endif
 
 char* filter(const char *string) {
 #ifndef WIN32
@@ -1016,7 +1052,7 @@ int fim_diff_process_delete_registry(char *key_name, int arch){
     os_sha1 encoded_key;
     OS_SHA1_Str(key_name, strlen(key_name), encoded_key);
 
-    os_malloc(sizeof(char) * (strlen(DIFF_DIR_PATH) + 33), full_path);
+    os_malloc(sizeof(char) * (strlen(DIFF_DIR_PATH) + 34), full_path);
 
     if (arch){
         snprintf(full_path, PATH_MAX, "%s/registry/[x64] %s", DIFF_DIR_PATH, encoded_key);
@@ -1040,7 +1076,7 @@ int fim_diff_process_delete_value(char *key_name, char *value_name, int arch){
     OS_SHA1_Str(key_name, strlen(key_name), encoded_key);
     OS_SHA1_Str(value_name, strlen(value_name), encoded_value);
 
-    os_malloc(sizeof(char) * (strlen(DIFF_DIR_PATH) + 54), full_path);
+    os_malloc(sizeof(char) * (strlen(DIFF_DIR_PATH) + 55), full_path);
 
     if (arch){
         snprintf(full_path, PATH_MAX, "%s/registry/[x64] %s/%s", DIFF_DIR_PATH, encoded_key, encoded_value);

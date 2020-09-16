@@ -611,14 +611,6 @@ char * fim_registry_value_diff(char *key_name, char *value_name, char *value_dat
 char * fim_file_diff(char *filename);
 
 /**
- * @brief Checks if a specific file has been configured with the ``nodiff`` option
- *
- * @param filename The name of the file to check
- * @return 1 if the file has been configured with the ``nodiff`` option, 0 if not
- */
-int is_nodiff(const char *filename);
-
-/**
  * @brief Deletes the filename diff folder and modify diff_folder_size if disk_quota enabled
  *
  * @param filename Path of the file that has been deleted
