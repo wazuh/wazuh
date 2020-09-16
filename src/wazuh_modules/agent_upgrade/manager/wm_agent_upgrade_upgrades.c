@@ -43,6 +43,17 @@ typedef struct _wm_upgrade_args {
 } wm_upgrade_args;
 
 /**
+ * Waits until a thread is available and increments the threads counter
+ * @param max_threads Maximum number of threads in paralel
+ * */
+STATIC void wm_agent_upgrade_wait_available_thread(unsigned int max_threads);
+
+/**
+ * Decrements the threads counter and notifies it
+ * */
+STATIC void wm_agent_upgrade_release_thread();
+
+/**
  * Main function of upgrade threads
  * @param arg Upgrade arguments structure
  * */
@@ -147,7 +158,7 @@ void wm_agent_upgrade_prepare_upgrades() {
 
         node = wm_agent_upgrade_get_next_node(&index, node);
 
-        if (!queue_full(upgrade_queue) && !queue_push_ex(upgrade_queue, agent_task)) {
+        if (!queue_push_ex(upgrade_queue, agent_task)) {
             wm_agent_upgrade_remove_entry(agent_key, 0);
         } else {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UPGRADE_QUEUE_FULL, agent_key);
@@ -161,38 +172,47 @@ void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
     wm_upgrade_args *upgrade_config = NULL;
 
     while (1) {
-        w_mutex_lock(&upgrade_threads_mutex);
+        // Blocks until an available thread is ready
+        wm_agent_upgrade_wait_available_thread(config->max_threads);
 
-        if (upgrade_threads_count < config->max_threads) {
-            w_mutex_unlock(&upgrade_threads_mutex);
+        wm_agent_task *agent_task = queue_pop_ex(upgrade_queue);
 
-            wm_agent_task *agent_task = queue_pop_ex(upgrade_queue);
+        os_calloc(1, sizeof(wm_upgrade_args), upgrade_config);
+        upgrade_config->config = config;
+        upgrade_config->agent_task = agent_task;
 
-            os_calloc(1, sizeof(wm_upgrade_args), upgrade_config);
-            upgrade_config->config = config;
-            upgrade_config->agent_task = agent_task;
-
-            w_mutex_lock(&upgrade_threads_mutex);
-
-            // Thread that will launch the upgrade
-            w_create_thread(wm_agent_upgrade_start_upgrade, (void *)upgrade_config);
-
-            upgrade_threads_count++;
-
-            w_mutex_unlock(&upgrade_threads_mutex);
-
-        } else {
-            // Wait until any thread finish its execution
-            w_cond_wait(&upgrade_threads_cond, &upgrade_threads_mutex);
-
-            w_mutex_unlock(&upgrade_threads_mutex);
-        }
+        // Thread that will launch the upgrade
+        w_create_thread(wm_agent_upgrade_start_upgrade, (void *)upgrade_config);
     }
 
     return NULL;
 }
 
-void* wm_agent_upgrade_start_upgrade(void *arg) {
+STATIC void wm_agent_upgrade_wait_available_thread(unsigned int max_threads) {
+    w_mutex_lock(&upgrade_threads_mutex);
+
+    if (upgrade_threads_count >= max_threads) {
+        // Wait until any thread finish its execution
+        w_cond_wait(&upgrade_threads_cond, &upgrade_threads_mutex);
+    }
+
+    upgrade_threads_count++;
+
+    w_mutex_unlock(&upgrade_threads_mutex);
+}
+
+STATIC void wm_agent_upgrade_release_thread() {
+    w_mutex_lock(&upgrade_threads_mutex);
+
+    upgrade_threads_count--;
+
+    // Notify execution finished
+    w_cond_signal(&upgrade_threads_cond);
+
+    w_mutex_unlock(&upgrade_threads_mutex);
+}
+
+STATIC void* wm_agent_upgrade_start_upgrade(void *arg) {
     wm_upgrade_args *upgrade_config = (wm_upgrade_args *)arg;
 
     wm_manager_configs *config = upgrade_config->config;
@@ -241,14 +261,8 @@ void* wm_agent_upgrade_start_upgrade(void *arg) {
 
     } while (agent_task);
 
-    w_mutex_lock(&upgrade_threads_mutex);
-
-    upgrade_threads_count--;
-
-    // Notify execution finished
-    w_cond_signal(&upgrade_threads_cond);
-
-    w_mutex_unlock(&upgrade_threads_mutex);
+    // Notify end of execution
+    wm_agent_upgrade_release_thread();
 
     os_free(upgrade_config);
 
