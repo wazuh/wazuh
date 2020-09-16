@@ -25,16 +25,20 @@
 #include "os_net/os_net.h"
 
 /* Queue to store agents ready to be upgraded */
-static w_queue_t *upgrade_queue;
+STATIC w_queue_t *upgrade_queue;
 
 /* Number of threads running an upgrade */
-static unsigned int upgrade_threads_count = 0;
+#ifdef WAZUH_UNIT_TESTING
+STATIC unsigned int upgrade_threads_count = 5;
+#else
+STATIC unsigned int upgrade_threads_count = 0;
+#endif
 
 /* Mutex needed to access threads counter */
-static pthread_mutex_t upgrade_threads_mutex;
+pthread_mutex_t upgrade_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Condition variable that indicates when all the threads finished */
-static pthread_cond_t upgrade_threads_cond;
+pthread_cond_t upgrade_threads_cond = PTHREAD_COND_INITIALIZER;
 
 /* Definition of upgrade arguments structure */
 typedef struct _wm_upgrade_args {
@@ -160,12 +164,6 @@ void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
     wm_manager_configs *config = (wm_manager_configs *)arg;
     wm_upgrade_args *upgrade_config = NULL;
 
-    // Initialize threads count mutex
-    w_mutex_init(&upgrade_threads_mutex, NULL);
-
-    // Initialize threads count condition variable
-    w_cond_init(&upgrade_threads_cond, NULL);
-
     while (1) {
         w_mutex_lock(&upgrade_threads_mutex);
 
@@ -194,12 +192,6 @@ void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
             w_mutex_unlock(&upgrade_threads_mutex);
         }
     }
-
-    // Destroy threads count mutex
-    w_mutex_destroy(&upgrade_threads_mutex);
-
-    // Destroy threads count condition variable
-    w_cond_destroy(&upgrade_threads_cond);
 
     return NULL;
 }
@@ -263,8 +255,6 @@ void* wm_agent_upgrade_start_upgrade(void *arg) {
     w_mutex_unlock(&upgrade_threads_mutex);
 
     os_free(upgrade_config);
-
-    pthread_exit(NULL);
 
     return NULL;
 }
