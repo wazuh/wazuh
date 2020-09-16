@@ -250,7 +250,7 @@ async def wazuh_sendasync(daemon_name, message=None):
     return data
 
 
-async def wazuh_sendsync(daemon_name=None, message=None):
+async def wazuh_sendsync(daemon_name=None, message=None, wait_for_response=True):
     """Send a message to the specified daemon's socket and wait for its response.
 
     Parameters
@@ -259,12 +259,17 @@ async def wazuh_sendsync(daemon_name=None, message=None):
         Name of the daemon to send the message.
     message : str, optional
         Message in JSON format to be sent to the daemon's socket.
+    wait_for_response : bool
+        Whether to wait for the daemon to respond.
     """
     try:
         sock = OssecSocketJSON(daemons[daemon_name]['path'])
         sock.send(msg=message, header_format=daemons[daemon_name]['header_format'])
-        data = sock.receive(header_format=daemons[daemon_name]['header_format'],
-                            header_size=daemons[daemon_name]['size'], raw=True)
+        if wait_for_response:
+            data = sock.receive(header_format=daemons[daemon_name]['header_format'],
+                                header_size=daemons[daemon_name]['size'], raw=True)
+        else:
+            data = 'ok'
         sock.close()
     except WazuhException as e:
         raise e
