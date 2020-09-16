@@ -22,14 +22,9 @@
  * @param w_evt Whodata information for callback function.
  *
  */
- int fim_db_process_read_registry_data_file(fdb_t *fim_sql,
-                                     fim_tmp_file *file,
-                                     pthread_mutex_t *mutex,
-                                     void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
-                                     int storage,
-                                     void * alert,
-                                     void * mode,
-                                     void * w_evt);
+int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
+                                           void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
+                                           int storage, void * alert, void * mode, void * w_evt);
 
 // Registry callbacks
 
@@ -43,7 +38,8 @@
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage, void *arg);
+void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage,
+                                        void *arg);
 
 // Registry functions.
 
