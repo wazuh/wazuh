@@ -26,7 +26,6 @@ void * w_logtest_check_inactive_sessions(w_logtest_connection_t * connection);
 int w_logtest_fts_init(OSList ** fts_list, OSHash ** fts_store);
 w_logtest_session_t * w_logtest_initialize_session(char * token, OSList * list_msg);
 char * w_logtest_generate_token();
-int w_logtest_get_rule_level(cJSON * json_log_processed);
 w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg, w_logtest_connection_t * connection);
 void w_logtest_add_msg_response(cJSON * response, OSList * list_msg, int * error_code);
 int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg);
@@ -37,7 +36,7 @@ char * w_logtest_generate_error_response(char * msg);
 int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request);
 void w_logtest_decoding_phase(Eventinfo * lf, w_logtest_session_t * session);
 int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session, OSList * list_msg);
-cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, OSList * list_msg);
+cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, bool * alert_generated, OSList * list_msg);
 int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_response, OSList * list_msg,
                                              w_logtest_connection_t * connection);
 void * w_logtest_clients_handler(w_logtest_connection_t * connection);
@@ -1504,67 +1503,6 @@ void test_w_logtest_generate_token_success_empty_bytes(void ** state) {
     assert_string_equal(token, "000015b3");
 
     os_free(token);
-}
-
-/* w_logtest_get_rule_level */
-void test_w_logtest_get_rule_level_empty_log(void ** state) {
-    cJSON * log = NULL;
-    int level;
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(7203): Empty log for check alert level");
-
-    level = w_logtest_get_rule_level(log);
-
-    assert_int_equal(level, 0);
-}
-
-void test_w_logtest_get_rule_level_empty_rule(void ** state) {
-    cJSON * log = (cJSON *) 1;
-    cJSON * rule = NULL;
-    int level;
-
-    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, rule);
-    expect_string(__wrap__mdebug1, formatted_msg, "(7204): Output without rule");
-
-    level = w_logtest_get_rule_level(log);
-
-    assert_int_equal(level, 0);
-}
-
-void test_w_logtest_get_rule_level_empty_level(void ** state) {
-    cJSON * json_log = (cJSON *) 1;
-    cJSON * json_rule = (cJSON *) 1;
-    cJSON * json_level = NULL;
-    int level;
-
-    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, json_rule);
-    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, json_level);
-    expect_string(__wrap__mdebug1, formatted_msg, "(7205): Rule without alert level");
-
-    level = w_logtest_get_rule_level(json_log);
-
-    assert_int_equal(level, 0);
-}
-
-void test_w_logtest_get_rule_level_ok(void ** state) {
-    cJSON * json_log = (cJSON *) 1;
-    cJSON * json_rule = (cJSON *) 1;
-    cJSON * json_level;
-    const int expect_level = 5;
-    int ret_level;
-
-    os_calloc(1, sizeof(cJSON), json_level);
-    json_level->valueint = expect_level;
-
-    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, json_rule);
-    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, json_level);
-    will_return(__wrap_cJSON_IsNumber, 1);
-
-    ret_level = w_logtest_get_rule_level(json_log);
-
-    assert_int_equal(ret_level, expect_level);
-
-    os_free(json_level);
 }
 
 /* w_logtest_get_session */
@@ -3272,7 +3210,7 @@ void test_w_logtest_rulesmatching_phase_dont_match(void ** state)
 
 }
 
-void test_w_logtest_rulesmatching_phase_dont_match_level_0(void ** state)
+void test_w_logtest_rulesmatching_phase_match_level_0(void ** state)
 {
     Eventinfo lf = {0};
     w_logtest_session_t session = {0};
@@ -3300,7 +3238,7 @@ void test_w_logtest_rulesmatching_phase_dont_match_level_0(void ** state)
     retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
 
     assert_int_equal(retval, expect_retval);
-    assert_null(lf.generated_rule);
+    assert_ptr_equal(lf.generated_rule, &ruleinfo);
 
     os_free(session.rule_list);
 
@@ -3311,7 +3249,7 @@ void test_w_logtest_rulesmatching_phase_match_dont_ignore_first_time(void ** sta
     Eventinfo lf = {0};
     w_logtest_session_t session = {0};
     OSList list_msg = {0};
-    const int expect_retval = 0;
+    const int expect_retval = 1;
     int retval;
 
     lf.generate_time = (time_t) 2020;
@@ -3376,7 +3314,7 @@ void test_w_logtest_rulesmatching_phase_match_ignore_time_ignore(void ** state)
     retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
 
     assert_int_equal(retval, expect_retval);
-    assert_null(lf.generated_rule);
+    assert_ptr_equal(lf.generated_rule, &ruleinfo);
 
     os_free(session.rule_list);
 
@@ -3387,7 +3325,7 @@ void test_w_logtest_rulesmatching_phase_match_dont_ignore_time_out_windows(void 
     Eventinfo lf = {0};
     w_logtest_session_t session = {0};
     OSList list_msg = {0};
-    const int expect_retval = 0;
+    const int expect_retval = 1;
     int retval;
 
     lf.generate_time = (time_t) 2020;
@@ -3451,7 +3389,7 @@ void test_w_logtest_rulesmatching_phase_match_ignore_event(void ** state)
     retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
 
     assert_int_equal(retval, expect_retval);
-    assert_null(lf.generated_rule);
+    assert_ptr_equal(lf.generated_rule, &ruleinfo);
 
     os_free(session.rule_list);
 
@@ -3462,7 +3400,7 @@ void test_w_logtest_rulesmatching_phase_match_and_if_matched_sid_ok(void ** stat
     Eventinfo lf = {0};
     w_logtest_session_t session = {0};
     OSList list_msg = {0};
-    const int expect_retval = 0;
+    const int expect_retval = 1;
     int retval;
 
     OSDecoderInfo decoder_info = {0};
@@ -3504,7 +3442,7 @@ void test_w_logtest_rulesmatching_phase_match_and_if_matched_sid_fail(void ** st
     Eventinfo lf = {0};
     w_logtest_session_t session = {0};
     OSList list_msg = {0};
-    const int expect_retval = 0;
+    const int expect_retval = 1;
     int retval;
 
     OSDecoderInfo decoder_info = {0};
@@ -3551,7 +3489,7 @@ void test_w_logtest_rulesmatching_phase_match_and_group_prev_matched_fail(void *
     Eventinfo lf = {0};
     w_logtest_session_t session = {0};
     OSList list_msg = {0};
-    const int expect_retval = 0;
+    const int expect_retval = 1;
     int retval;
 
     OSDecoderInfo decoder_info = {0};
@@ -3601,7 +3539,7 @@ void test_w_logtest_rulesmatching_phase_match_and_group_prev_matched(void ** sta
     Eventinfo lf = {0};
     w_logtest_session_t session = {0};
     OSList list_msg = {0};
-    const int expect_retval = 0;
+    const int expect_retval = 1;
     int retval;
 
     OSDecoderInfo decoder_info = {0};
@@ -3613,13 +3551,12 @@ void test_w_logtest_rulesmatching_phase_match_and_group_prev_matched(void ** sta
     ruleinfo.level = 5;
     ruleinfo.category = SYSLOG;
     ruleinfo.ckignore = 0;
+    ruleinfo.sid_prev_matched = (OSList *) 0;
+    ruleinfo.group_prev_matched_sz = 1;
     os_calloc(1, sizeof(RuleInfo *), ruleinfo.group_prev_matched);
 
     OSList pre_matched_list = {0};
     pre_matched_list.last_node = (OSListNode *) 10;
-
-    ruleinfo.sid_prev_matched = &pre_matched_list;
-
 
     assert_int_equal(ruleinfo.category, decoder_info.type);
 
@@ -3634,15 +3571,18 @@ void test_w_logtest_rulesmatching_phase_match_and_group_prev_matched(void ** sta
 
     assert_int_equal(retval, expect_retval);
     assert_ptr_equal(lf.generated_rule, &ruleinfo);
-    assert_ptr_equal(lf.sid_node_to_delete, (OSListNode *) 10);
 
+    os_free(lf.group_node_to_delete);
     os_free(session.rule_list);
     os_free(ruleinfo.group_prev_matched);
 }
 
+// w_logtest_process_log
 void test_w_logtest_process_log_preprocessing_fail(void ** state)
 {
     Config.decoder_order_size = 1;
+
+    bool alert_generated = false;
 
     cJSON request = {0};
     cJSON json_event = {0};
@@ -3671,10 +3611,10 @@ void test_w_logtest_process_log_preprocessing_fail(void ** state)
 
 
 
-    retval = w_logtest_process_log(&request, &session, &list_msg);
+    retval = w_logtest_process_log(&request, &session, &alert_generated, &list_msg);
 
     assert_null(retval);
-
+    assert_false(alert_generated);
     os_free(str_location);
     os_free(raw_event);
 
@@ -3684,6 +3624,7 @@ void test_w_logtest_process_log_rule_match_fail(void ** state)
 {
     Config.decoder_order_size = 1;
 
+    bool alert_generated = false;
     cJSON request = {0};
     cJSON json_event = {0};
     json_event.child = false;
@@ -3709,10 +3650,10 @@ void test_w_logtest_process_log_rule_match_fail(void ** state)
     will_return(__wrap_OS_CleanMSG, 0);
     expect_value(__wrap_DecodeEvent, node, session.decoderlist_forpname);
 
-    retval = w_logtest_process_log(&request, &session, &list_msg);
+    retval = w_logtest_process_log(&request, &session, &alert_generated, &list_msg);
 
     assert_null(retval);
-
+    assert_false(alert_generated);
     os_free(str_location);
     os_free(raw_event);
     refill_OS_CleanMSG = false;
@@ -3726,6 +3667,7 @@ void test_w_logtest_process_log_rule_dont_match(void ** state)
     cJSON * output;
     os_calloc(1, sizeof(cJSON), output);
 
+    bool alert_generated = false;
     cJSON request = {0};
     cJSON json_event = {0};
     json_event.child = false;
@@ -3764,10 +3706,10 @@ void test_w_logtest_process_log_rule_dont_match(void ** state)
     will_return(__wrap_Eventinfo_to_jsonstr, strdup("output example"));
     will_return(__wrap_cJSON_Parse, output);
 
-    retval = w_logtest_process_log(&request, &session, &list_msg);
+    retval = w_logtest_process_log(&request, &session, &alert_generated, &list_msg);
 
     assert_non_null(retval);
-
+    assert_false(alert_generated);
     os_free(str_location);
     os_free(raw_event);
     os_free(session.rule_list);
@@ -3779,6 +3721,7 @@ void test_w_logtest_process_log_rule_dont_match(void ** state)
 void test_w_logtest_process_log_rule_match(void ** state)
 {
     Config.decoder_order_size = 1;
+    bool alert_generated = false;
 
     cJSON * output;
     os_calloc(1, sizeof(cJSON), output);
@@ -3831,8 +3774,9 @@ void test_w_logtest_process_log_rule_match(void ** state)
     will_return(__wrap_Eventinfo_to_jsonstr, strdup("output example"));
     will_return(__wrap_cJSON_Parse, output);
 
-    retval = w_logtest_process_log(&request, &session, &list_msg);
+    retval = w_logtest_process_log(&request, &session, &alert_generated, &list_msg);
 
+    assert_true(alert_generated);
     assert_non_null(retval);
 
     Free_Eventinfo(event_OS_AddEvent);
@@ -4594,9 +4538,6 @@ void test_w_logtest_process_request_log_processing_ok_and_alert(void ** state)
     cJSON * json_rule = (cJSON *) 1;
     json_level->valueint = 5;
 
-    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, json_rule);
-    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, json_level);
-    will_return(__wrap_cJSON_IsNumber, 1);
 
     will_return(__wrap_cJSON_AddBoolToObject, NULL);
 
@@ -4658,11 +4599,6 @@ int main(void)
         // Tests w_logtest_generate_token
         cmocka_unit_test(test_w_logtest_generate_token_success),
         cmocka_unit_test(test_w_logtest_generate_token_success_empty_bytes),
-        // Tests w_logtest_get_rule_level
-        cmocka_unit_test(test_w_logtest_get_rule_level_empty_log),
-        cmocka_unit_test(test_w_logtest_get_rule_level_empty_rule),
-        cmocka_unit_test(test_w_logtest_get_rule_level_empty_level),
-        cmocka_unit_test(test_w_logtest_get_rule_level_ok),
         // Tests w_logtest_get_session
         cmocka_unit_test(test_w_logtest_get_session_fail),
         cmocka_unit_test(test_w_logtest_get_session_active),
@@ -4713,7 +4649,7 @@ int main(void)
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_ossec_alert),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_dont_match_category),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_dont_match),
-        cmocka_unit_test(test_w_logtest_rulesmatching_phase_dont_match_level_0),
+        cmocka_unit_test(test_w_logtest_rulesmatching_phase_match_level_0),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_match_dont_ignore_first_time),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_match_ignore_time_ignore),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_match_dont_ignore_time_out_windows),
