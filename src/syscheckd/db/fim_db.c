@@ -74,8 +74,8 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_FIRST_REG_KEY] = "SELECT path FROM registry_key ORDER BY path ASC LIMIT 1;",
     [FIMDB_STMT_GET_REG_COUNT_RANGE] = "SELECT count(*) FROM registry_key INNER JOIN registry_data ON registry_data.key_id = registry_key.id WHERE path BETWEEN ? and ? ORDER BY path;",
     [FIMDB_STMT_GET_REG_PATH_RANGE] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, registry_key.scanned, registry_key.checksum, key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, registry_data.scanned, last_event, registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_data.key_id = registry_key.id WHERE path BETWEEN ? and ? ORDER BY path;",
-    [FIMDB_STMT_SET_REG_KEY_SCANNED] = "UPDATE registry_data SET scanned = 1 WHERE name = ? AND key_id = ?;",
-    [FIMDB_STMT_SET_REG_DATA_SCANNED] = "UPDATE registry_key SET scanned = 1 WHERE path = ?;",
+    [FIMDB_STMT_SET_REG_DATA_SCANNED] = "UPDATE registry_data SET scanned = 1 WHERE name = ? AND key_id = ?;",
+    [FIMDB_STMT_SET_REG_KEY_SCANNED] = "UPDATE registry_key SET scanned = 1 WHERE path = ?;",
     [FIMDB_STMT_GET_REG_KEY_ROWID] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum FROM registry_key WHERE id = ?;",
     [FIMDB_STMT_GET_REG_DATA_ROWID] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE key_id = ?;",
 #endif

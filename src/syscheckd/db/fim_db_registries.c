@@ -96,7 +96,7 @@ static void fim_db_bind_get_registry_data_key_id(fdb_t *fim_sql, const unsigned 
 static void fim_db_bind_registry_data_name_key_id(fdb_t *fim_sql, const int index, const char *name, const int key_id) {
     if (index == FIMDB_STMT_SET_REG_DATA_UNSCANNED ||
         index == FIMDB_STMT_DELETE_REG_DATA ||
-        index == FIMDB_STMT_SET_REG_KEY_SCANNED ||
+        index == FIMDB_STMT_SET_REG_DATA_SCANNED ||
         index == FIMDB_STMT_GET_REG_DATA) {
 
         sqlite3_bind_text(fim_sql->stmt[index], 1, name, -1, NULL);
@@ -110,7 +110,7 @@ static void fim_db_bind_registry_path(fdb_t *fim_sql, const unsigned int index, 
         index == FIMDB_STMT_GET_REG_ROWID ||
         index == FIMDB_STMT_DELETE_REG_KEY_PATH ||
         index == FIMDB_STMT_DELETE_REG_DATA_PATH ||
-        index == FIMDB_STMT_SET_REG_DATA_SCANNED) {
+        index == FIMDB_STMT_SET_REG_KEY_SCANNED) {
 
         sqlite3_bind_text(fim_sql->stmt[index], 1, path, -1, NULL);
     }
