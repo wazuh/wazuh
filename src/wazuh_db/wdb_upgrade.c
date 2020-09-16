@@ -70,7 +70,6 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     switch (wdb_metadata_get_entry(wdb, "db_version", db_version)) {
     case -1:
-        return wdb;
     case 0:
         break;
     default:
