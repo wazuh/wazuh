@@ -23,9 +23,9 @@ constexpr auto TEMP_TABLE_SUBFIX {"_TEMP"};
 constexpr auto STATUS_FIELD_NAME {"db_status_field_dm"};
 constexpr auto STATUS_FIELD_TYPE {"INTEGER"};
 
-const std::vector<std::string> InternalColumnNames = 
+const std::vector<std::string> InternalColumnNames
 {
-    { STATUS_FIELD_NAME }
+    STATUS_FIELD_NAME
 };
 
 enum ColumnType
