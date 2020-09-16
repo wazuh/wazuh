@@ -5,6 +5,12 @@ project(dbsync_example)
 include_directories(${CMAKE_SOURCE_DIR}/include/)
 link_directories(${CMAKE_BINARY_DIR}/lib)
 
+if(COVERITY)
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
+else()
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++11")
+endif(COVERITY)
+
 add_executable(dbsync_example 
     "${CMAKE_SOURCE_DIR}/example/main.cpp" )
 
