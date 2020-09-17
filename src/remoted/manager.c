@@ -108,9 +108,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     char *agent_ip = NULL;
     char manager_host[512] = "";
     char *labels = NULL;
-    const char * AGENT_IP_LABEL = "#\"_agent_ip\":";
-    const char * MANAGER_LABEL = "#\"_manager_hostname\":";
-    const char * NODE_LABEL = "#\"_node_name\":";
+    const char * agent_ip_label = "#\"_agent_ip\":";
+    const char * manager_label = "#\"_manager_hostname\":";
+    const char * node_label = "#\"_node_name\":";
     pending_data_t *data = NULL;
     int is_startup = 0;
     int agent_id = 0;
@@ -233,16 +233,16 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 mwarn("Unable to get hostname due to: '%s'", strerror(errno));
             }
             else {
-                wm_strcat(&labels, MANAGER_LABEL, labels ? '\n' : 0);
+                wm_strcat(&labels, manager_label, labels ? '\n' : 0);
                 wm_strcat(&labels, manager_host, 0);
             }
 
             if (agent_ip) {
-                wm_strcat(&labels, AGENT_IP_LABEL, labels ? '\n' : 0);
+                wm_strcat(&labels, agent_ip_label, labels ? '\n' : 0);
                 wm_strcat(&labels, agent_ip, 0);
             }
             if (node_name) {
-                wm_strcat(&labels, NODE_LABEL, labels ? '\n' : 0);
+                wm_strcat(&labels, node_label, labels ? '\n' : 0);
                 wm_strcat(&labels, node_name, 0);
             }
 
