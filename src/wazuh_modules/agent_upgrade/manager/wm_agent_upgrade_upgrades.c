@@ -23,35 +23,19 @@
 #include "wm_agent_upgrade_validate.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_net/os_net.h"
+#include <semaphore.h>
 
 /* Queue to store agents ready to be upgraded */
 STATIC w_queue_t *upgrade_queue;
 
-/* Number of threads running an upgrade */
-STATIC unsigned int upgrade_threads_count = 0;
-
-/* Mutex needed to access threads counter */
-pthread_mutex_t upgrade_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-/* Condition variable that indicates when all the threads finished */
-pthread_cond_t upgrade_threads_cond = PTHREAD_COND_INITIALIZER;
+/* Running threads semaphore */
+sem_t upgrade_semaphore;
 
 /* Definition of upgrade arguments structure */
 typedef struct _wm_upgrade_args {
     wm_manager_configs *config;
     wm_agent_task *agent_task;
 } wm_upgrade_args;
-
-/**
- * Waits until a thread is available and increments the threads counter
- * @param max_threads Maximum number of threads in paralel
- * */
-STATIC void wm_agent_upgrade_wait_available_thread(unsigned int max_threads);
-
-/**
- * Decrements the threads counter and notifies it
- * */
-STATIC void wm_agent_upgrade_release_thread();
 
 /**
  * Main function of upgrade threads
@@ -171,9 +155,11 @@ void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
     wm_manager_configs *config = (wm_manager_configs *)arg;
     wm_upgrade_args *upgrade_config = NULL;
 
+    sem_init(&upgrade_semaphore, 0, config->max_threads);
+
     while (1) {
         // Blocks until an available thread is ready
-        wm_agent_upgrade_wait_available_thread(config->max_threads);
+        sem_wait(&upgrade_semaphore);
 
         wm_agent_task *agent_task = queue_pop_ex(upgrade_queue);
 
@@ -189,31 +175,9 @@ void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
     #endif
     }
 
+    sem_destroy(&upgrade_semaphore);
+
     return NULL;
-}
-
-STATIC void wm_agent_upgrade_wait_available_thread(unsigned int max_threads) {
-    w_mutex_lock(&upgrade_threads_mutex);
-
-    if (upgrade_threads_count >= max_threads) {
-        // Wait until any thread finish its execution
-        w_cond_wait(&upgrade_threads_cond, &upgrade_threads_mutex);
-    }
-
-    upgrade_threads_count++;
-
-    w_mutex_unlock(&upgrade_threads_mutex);
-}
-
-STATIC void wm_agent_upgrade_release_thread() {
-    w_mutex_lock(&upgrade_threads_mutex);
-
-    upgrade_threads_count--;
-
-    // Notify execution finished
-    w_cond_signal(&upgrade_threads_cond);
-
-    w_mutex_unlock(&upgrade_threads_mutex);
 }
 
 STATIC void* wm_agent_upgrade_start_upgrade(void *arg) {
@@ -222,53 +186,47 @@ STATIC void* wm_agent_upgrade_start_upgrade(void *arg) {
     wm_manager_configs *config = upgrade_config->config;
     wm_agent_task *agent_task = upgrade_config->agent_task;
 
-    do {
-        int error_code = WM_UPGRADE_SUCCESS;
+    int error_code = WM_UPGRADE_SUCCESS;
 
-        if (error_code = wm_agent_upgrade_send_wpk_to_agent(agent_task, config), error_code == WM_UPGRADE_SUCCESS) {
+    if (error_code = wm_agent_upgrade_send_wpk_to_agent(agent_task, config), error_code == WM_UPGRADE_SUCCESS) {
 
-            if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
-                wm_upgrade_task *upgrade_task = agent_task->task_info->task;
+        if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
+            wm_upgrade_task *upgrade_task = agent_task->task_info->task;
 
-                if (upgrade_task->custom_version && (wm_agent_upgrade_compare_versions(upgrade_task->custom_version, WM_UPGRADE_NEW_UPGRADE_MECHANISM) < 0)) {
+            if (upgrade_task->custom_version && (wm_agent_upgrade_compare_versions(upgrade_task->custom_version, WM_UPGRADE_NEW_UPGRADE_MECHANISM) < 0)) {
 
-                    // Update task to "Legacy". The agent won't report the result of the upgrade task
-                    cJSON *status_request = cJSON_CreateArray();
-                    cJSON *status_response = cJSON_CreateArray();
+                // Update task to "Legacy". The agent won't report the result of the upgrade task
+                cJSON *status_request = cJSON_CreateArray();
+                cJSON *status_response = cJSON_CreateArray();
 
-                    cJSON_AddItemToArray(status_request, wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_LEGACY], NULL));
-                    wm_agent_upgrade_task_module_callback(status_response, status_request, NULL, NULL);
-                    wm_agent_upgrade_validate_task_status_message(cJSON_GetArrayItem(status_response, 0), NULL, NULL);
+                cJSON_AddItemToArray(status_request, wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_LEGACY], NULL));
+                wm_agent_upgrade_task_module_callback(status_response, status_request, NULL, NULL);
+                wm_agent_upgrade_validate_task_status_message(cJSON_GetArrayItem(status_response, 0), NULL, NULL);
 
-                    cJSON_Delete(status_request);
-                    cJSON_Delete(status_response);
-                }
+                cJSON_Delete(status_request);
+                cJSON_Delete(status_response);
             }
-        } else {
-
-            // Update task to "Failed"
-            cJSON *status_request = cJSON_CreateArray();
-            cJSON *status_response = cJSON_CreateArray();
-
-            cJSON_AddItemToArray(status_request, wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_FAILED], upgrade_error_codes[error_code]));
-            wm_agent_upgrade_task_module_callback(status_response, status_request, NULL, NULL);
-            wm_agent_upgrade_validate_task_status_message(cJSON_GetArrayItem(status_response, 0), NULL, NULL);
-
-            cJSON_Delete(status_request);
-            cJSON_Delete(status_response);
         }
+    } else {
 
-        wm_agent_upgrade_free_agent_task(agent_task);
+        // Update task to "Failed"
+        cJSON *status_request = cJSON_CreateArray();
+        cJSON *status_response = cJSON_CreateArray();
 
-        struct timespec timeout = { .tv_sec = time(NULL) + 1 };
-        agent_task = queue_pop_ex_timedwait(upgrade_queue, &timeout);
+        cJSON_AddItemToArray(status_request, wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_FAILED], upgrade_error_codes[error_code]));
+        wm_agent_upgrade_task_module_callback(status_response, status_request, NULL, NULL);
+        wm_agent_upgrade_validate_task_status_message(cJSON_GetArrayItem(status_response, 0), NULL, NULL);
 
-    } while (agent_task);
+        cJSON_Delete(status_request);
+        cJSON_Delete(status_response);
+    }
 
-    // Notify end of execution
-    wm_agent_upgrade_release_thread();
+    wm_agent_upgrade_free_agent_task(agent_task);
 
     os_free(upgrade_config);
+
+    // Notify end of execution
+    sem_post(&upgrade_semaphore);
 
 #ifndef WAZUH_UNIT_TESTING
     pthread_exit(NULL);
