@@ -27,6 +27,12 @@ typedef enum _wm_upgrade_agent_state {
 } wm_upgrade_agent_state;
 
 /**
+ * Start main loop of the upgrade module for the agent
+ * @param agent_config Agent configuration parameters 
+ * */
+void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config) __attribute__((nonnull));
+
+/**
  * Checks if an agent has been recently upgraded, by reading upgrade_results file
  * If there has been an upgrade, dispatchs a message to notificate the manager.
  * This method will block the thread if the agent is not connected to the manager

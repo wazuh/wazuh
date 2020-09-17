@@ -11,6 +11,10 @@
 
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_agent.h"
+#include "wm_agent_upgrade_com.h"
+#ifndef WIN32
+#include "os_net/os_net.h"
+#endif
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
@@ -62,6 +66,89 @@ STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_st
  * @retval either the upgrade_result file does not exist or contains invalid information
  * */
 STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
+
+/**
+ * Listen to the upgrade socket in order to receive commands
+ * */
+STATIC void wm_agent_upgrade_listen_messages(__attribute__((unused)) void * arg);
+
+void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config) {
+    #ifndef WIN32
+        w_create_thread(wm_agent_upgrade_listen_messages, NULL);
+    #endif
+    wm_agent_upgrade_check_status(agent_config);
+}
+ 
+#ifndef WIN32
+STATIC void wm_agent_upgrade_listen_messages(__attribute__((unused)) void * arg) {
+    // Initialize socket
+    int sock = OS_BindUnixDomain(AGENT_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
+    if (sock < 0) {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_BIND_SOCK_ERROR, AGENT_UPGRADE_SOCK, strerror(errno));
+        return;
+    }
+
+    while(1) {
+        // listen - wait connection
+        fd_set fdset;    
+        FD_ZERO(&fdset);
+        FD_SET(sock, &fdset);
+
+        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
+        case -1:
+            if (errno != EINTR) {
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SELECT_ERROR, strerror(errno));
+                close(sock);
+                return;
+            }
+            continue;
+        case 0:
+            continue;
+        }
+
+        //Accept 
+        int peer;
+        if (peer = accept(sock, NULL, NULL), peer < 0) {
+            if (errno != EINTR) {
+                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACCEPT_ERROR, strerror(errno));
+            }
+            continue;
+        }
+
+        // Get request string
+        char *buffer = NULL;
+        
+        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        int length;
+        switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length) {
+        case OS_SOCKTERR:
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SOCKTERR_ERROR);
+            break;
+        case -1:
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RECV_ERROR, strerror(errno));
+            break;
+        case 0:
+            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_EMPTY_MESSAGE);
+            break;
+        default:
+            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INCOMMING_MESSAGE, buffer);
+            char* message = wm_agent_upgrade_process_command(buffer);
+            
+            OS_SendSecureTCP(peer, strlen(message), message);
+            break;
+        }
+        
+        close(peer);
+
+
+    #ifdef WAZUH_UNIT_TESTING
+        break;
+    #endif
+    }
+
+    close(sock);
+}
+#endif
 
 void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
     /**

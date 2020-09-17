@@ -51,7 +51,8 @@ STATIC void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_STARTED);
 
     #ifdef CLIENT
-        wm_agent_upgrade_check_status(&upgrade_config->agent_config);
+        wm_agent_upgrade_start_agent_module(&upgrade_config->agent_config);
+        
     #else
         wm_agent_upgrade_listen_messages(&upgrade_config->manager_config);
     #endif
