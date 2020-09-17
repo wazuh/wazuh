@@ -67,7 +67,6 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     char db_version[OS_SIZE_256 + 2];
     int version = 0;
-    int ret_get_entry = -1;
 
     switch (wdb_metadata_table_check(wdb,"metadata")) {
     case OS_INVALID:
@@ -77,8 +76,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         // The table doesn't exist, this is the global.db version 0
         break;
     default:
-        ret_get_entry = wdb_metadata_get_entry(wdb, "db_version", db_version);
-        if( ret_get_entry == 1) {
+        if( wdb_metadata_get_entry(wdb, "db_version", db_version) == 1) {
             version = atoi(db_version);
         }
         else{

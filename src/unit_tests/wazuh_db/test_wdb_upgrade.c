@@ -16,15 +16,10 @@
 #include <stdlib.h>
 
 #include "wazuh_db/wdb.h"
-//#include "wazuhdb_op.h"
-//#include "hash_op.h"
-
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-/*
-#include "../wrappers/posix/pthread_wrappers.h"
-#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
-#include "../wrappers/externals/sqlite/sqlite3_wrappers.h"*/
+#include "../wrappers/wazuh/wazuh_db/wdb_metadata_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
 typedef struct test_struct {
     wdb_t *socket;
@@ -54,32 +49,99 @@ int teardown_wdb(void **state) {
     return 0;
 }
 
-/* Tests wdb_open_global */
+/* Tests wdb_upgrade_global */
 
-void test_wdb_upgrade_version_fail(void **state)
-{
+void test_wdb_upgrade_global_table_fail(void **state)
+{   
     wdb_t *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
+    
+    expect_string(__wrap_wdb_metadata_table_check, key, "metadata");
+    will_return(__wrap_wdb_metadata_table_check, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Failed trying to find metadata table");
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_value(__wrap_OSHash_Get, self, (OSHash*) 0);
-    expect_string(__wrap_OSHash_Get, key, WDB_GLOB_NAME);
-    will_return(__wrap_OSHash_Get, data->socket);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    ret = wdb_upgrade_global();
+    ret = wdb_upgrade_global(data->socket);
 
     assert_int_equal(ret, data->socket);
 }
 
+void test_wdb_upgrade_global_update_success(void **state)
+{   
+    wdb_t *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    
+    expect_string(__wrap_wdb_metadata_table_check, key, "metadata");
+    will_return(__wrap_wdb_metadata_table_check, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database '000' to version 1");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v1_sql);
+    will_return(__wrap_wdb_sql_exec, 0);
+
+    ret = wdb_upgrade_global(data->socket);
+
+    assert_int_equal(ret, data->socket);
+}
+
+void test_wdb_upgrade_global_update_fail(void **state)
+{   
+    wdb_t *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    
+    expect_string(__wrap_wdb_metadata_table_check, key, "metadata");
+    will_return(__wrap_wdb_metadata_table_check, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database '000' to version 1");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v1_sql);
+    will_return(__wrap_wdb_sql_exec, -1);
+    expect_string(__wrap__merror, formatted_msg, "Failed to update global.db to version 1");
+
+    ret = wdb_upgrade_global(data->socket);
+
+    assert_int_equal(ret, data->socket);
+}
+
+void test_wdb_upgrade_global_get_version_fail(void **state)
+{   
+    wdb_t *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    
+    expect_string(__wrap_wdb_metadata_table_check, key, "metadata");
+    will_return(__wrap_wdb_metadata_table_check, 1);
+
+    expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
+    will_return(__wrap_wdb_metadata_get_entry, "1");
+    will_return(__wrap_wdb_metadata_get_entry, -1);
+    expect_string(__wrap__merror, formatted_msg, "DB(000): Failed trying to get DB version");
+
+    ret = wdb_upgrade_global(data->socket);
+
+    assert_int_equal(ret, data->socket);
+}
+
+void test_wdb_upgrade_global_get_version_success(void **state)
+{   
+    wdb_t *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    
+    expect_string(__wrap_wdb_metadata_table_check, key, "metadata");
+    will_return(__wrap_wdb_metadata_table_check, 1);
+
+    expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
+    will_return(__wrap_wdb_metadata_get_entry, "1");
+    will_return(__wrap_wdb_metadata_get_entry, 1);
+
+    ret = wdb_upgrade_global(data->socket);
+
+    assert_int_equal(ret, data->socket);
+}
 
 int main()
 {
     const struct CMUnitTest tests[] = 
     {
-        cmocka_unit_test_setup_teardown(test_wdb_open_global_pool_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_table_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_get_version_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_get_version_success, setup_wdb, teardown_wdb)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

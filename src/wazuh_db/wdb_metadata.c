@@ -179,7 +179,7 @@ int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output) {
 
 int wdb_metadata_table_check(wdb_t * wdb, const char * key) {
     sqlite3_stmt *stmt = NULL;
-    int ret = -1;
+    int ret = OS_INVALID;
 
     if (sqlite3_prepare_v2(wdb->db,
                             SQL_METADATA_STMT[WDB_STMT_METADATA_TABLE_CHECK],
@@ -187,10 +187,13 @@ int wdb_metadata_table_check(wdb_t * wdb, const char * key) {
                             &stmt,
                             NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return -1;
+        return OS_INVALID;
     }
 
-    sqlite3_bind_text(stmt, 1, key, -1, NULL);
+    if (sqlite3_bind_text(stmt, 1, key, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
 
     switch (sqlite3_step(stmt)) {
     case SQLITE_ROW:

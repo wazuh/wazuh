@@ -165,3 +165,9 @@ cJSON* __wrap_wdb_exec(__attribute__((unused)) sqlite3 *db,
 }
 
 void __wrap_wdb_leave(__attribute__((unused)) wdb_t *wdb){;}
+
+int __wrap_wdb_sql_exec(__attribute__((unused)) wdb_t *wdb,
+                        const char *sql_exec) {
+    check_expected(sql_exec);
+    return mock();
+}
