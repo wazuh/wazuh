@@ -390,11 +390,11 @@ int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query) {
 }
 
 void fim_db_callback_save_string(__attribute__((unused))fdb_t * fim_sql, char *str, int storage, void *arg) {
-    char *base = str;
-    if (base == NULL) {
-        merror("Error escaping '%s'", str);
+    if (str == NULL) {
         return;
     }
+
+    char *base = str;
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
         if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {

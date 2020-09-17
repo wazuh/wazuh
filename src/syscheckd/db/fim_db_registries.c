@@ -352,7 +352,7 @@ int fim_db_set_all_registry_key_unscanned(fdb_t *fim_sql) {
     return retval;
 }
 
-int fim_db_set_registry_key_scanned(fdb_t *fim_sql, char *path) {
+int fim_db_set_registry_key_scanned(fdb_t *fim_sql, const char *path) {
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_SET_REG_KEY_SCANNED);
     fim_db_bind_registry_path(fim_sql, FIMDB_STMT_SET_REG_KEY_SCANNED, path);
@@ -367,7 +367,7 @@ int fim_db_set_registry_key_scanned(fdb_t *fim_sql, char *path) {
     return FIMDB_OK;
 }
 
-int fim_db_set_registry_data_scanned(fdb_t *fim_sql, char *name, unsigned int key_id) {
+int fim_db_set_registry_data_scanned(fdb_t *fim_sql, const char *name, unsigned int key_id) {
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_SET_REG_DATA_SCANNED);
     fim_db_bind_registry_data_name_key_id(fim_sql, FIMDB_STMT_SET_REG_DATA_SCANNED, name, key_id);
@@ -483,7 +483,7 @@ int fim_db_delete_registry_data_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, 
                                     (void *) true, (void *) FIM_SCHEDULED, NULL);
 }
 
-int fim_db_get_registry_keys_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
+int fim_db_get_registry_keys_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file, int storage) {
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
     }
