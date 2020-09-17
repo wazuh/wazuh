@@ -101,7 +101,7 @@ int fim_db_multiple_row_query(fdb_t *fim_sql, int index, void *(*decode)(sqlite3
  *
  * @return 0 on success, -1 otherwise
  */
-int fim_db_create_file(const char *path, const char *source, const int storage, sqlite3 **fim_db);
+int fim_db_create_file(const char *path, const char *source, int storage, sqlite3 **fim_db);
 
 /**
  * @brief Create a new temporal storage to save all the files' paths.

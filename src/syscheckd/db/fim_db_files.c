@@ -24,6 +24,7 @@ static void fim_db_bind_insert_data(fdb_t *fim_sql, fim_file_data *entry);
  * @brief Binds data into a insert data statement.
  *
  * @param fim_sql FIM database structure.
+ * @param index Index of the particular statement.
  * @param start First entry of the range.
  * @param top Last entry of the range.
  */
@@ -62,8 +63,8 @@ static void fim_db_bind_path(fdb_t *fim_sql, int index,
  * @param dev dev of the file.
  */
 static void fim_db_bind_get_inode(fdb_t *fim_sql, int index,
-                                  const unsigned long int inode,
-                                  const unsigned long int dev);
+                                  unsigned long int inode,
+                                  unsigned long int dev);
 
 
 /**
@@ -255,7 +256,7 @@ void fim_db_bind_path(fdb_t *fim_sql, int index, const char *file_path) {
 }
 
 /* FIMDB_STMT_GET_PATHS_INODE, FIMDB_STMT_GET_PATHS_INODE_COUNT, FIMDB_STMT_GET_DATA_ROW */
-void fim_db_bind_get_inode(fdb_t *fim_sql, int index, const unsigned long int inode, const unsigned long int dev) {
+void fim_db_bind_get_inode(fdb_t *fim_sql, int index, unsigned long int inode, unsigned long int dev) {
     if (index == FIMDB_STMT_GET_PATHS_INODE || index == FIMDB_STMT_GET_PATHS_INODE_COUNT
         || index == FIMDB_STMT_GET_DATA_ROW) {
         sqlite3_bind_int64(fim_sql->stmt[index], 1, inode);
@@ -321,7 +322,7 @@ fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
     return entry;
 }
 
-char **fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long int inode, const unsigned long int dev) {
+char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev) {
     char **paths = NULL;
 
     // Clean statements
@@ -492,7 +493,7 @@ void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, 
 }
 
 int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
-                                const long id, const int n, pthread_mutex_t *mutex) {
+                                long id, int n, pthread_mutex_t *mutex) {
     fim_entry *entry = NULL;
     int m = n / 2;
     int i;

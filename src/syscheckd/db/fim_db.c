@@ -1,5 +1,5 @@
 /**
- * @file fim_db.h
+ * @file fim_db.c
  * @brief Definition of FIM database library.
  * @date 2019-08-28
  *

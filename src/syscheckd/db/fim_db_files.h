@@ -41,7 +41,7 @@ int fim_db_get_multiple_path(fdb_t *fim_sql, int index, FILE *fd);
  *
  * @return char** An array of the paths asociated to the inode.
  */
-char **fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long int inode, const unsigned long int dev);
+char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
 
 /**
  * @brief Insert or update entry data.
@@ -116,7 +116,7 @@ void fim_db_callback_calculate_checksum(fdb_t *fim_sql, fim_entry *entry, int st
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
-                               const long id, const int n, pthread_mutex_t *mutex);
+                               long id, int n, pthread_mutex_t *mutex);
 
 /**
  * @brief Count the number of entries between range @start and @top.

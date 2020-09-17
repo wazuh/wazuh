@@ -82,7 +82,7 @@ int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, unsigned int
  *
  * @return FIM registry data struct on success, NULL on error.
  */
-fim_registry_value_data *fim_db_get_registry_data(fdb_t *fim_sql, const unsigned int key_id, const char *name);
+fim_registry_value_data *fim_db_get_registry_data(fdb_t *fim_sql, unsigned int key_id, const char *name);
 
 /**
  * @brief Get all the key paths
@@ -92,7 +92,7 @@ fim_registry_value_data *fim_db_get_registry_data(fdb_t *fim_sql, const unsigned
  *
  * @return char** An array of the paths asociated to the key_id.
  */
-char **fim_db_get_all_registry_key(fdb_t *fim_sql, const unsigned long int key_id);
+char **fim_db_get_all_registry_key(fdb_t *fim_sql, unsigned long int key_id);
 
 /**
  * @brief Insert or update registry data.
@@ -142,7 +142,7 @@ int fim_db_insert_registry(fdb_t *fim_sql, fim_entry *new);
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_registry_key_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
-                                       const long id, const int n, pthread_mutex_t *mutex);
+                                       long id, int n, pthread_mutex_t *mutex);
 
 /**
  * @brief Count the number of entries between range @start and @top.
