@@ -52,8 +52,7 @@ static const char * error_messages[] = {
 static char* wm_agent_upgrade_command_ack(int error_code, const char* message);
 
 /**
- * Process command that opens a file
- * @param file_path path to the wile that will be opened
+ * Process a command that opens a file
  * @param json_obj expected json format
  * {
  *  "command": "open",
@@ -64,9 +63,22 @@ static char* wm_agent_upgrade_command_ack(int error_code, const char* message);
 static char* wm_agent_upgrade_com_open(const cJSON* json_object);
 
 /**
- * Process command that writes on an already opened file
+ * Process a command that writes on an already opened file
+ * @param json_obj expected json format
+ * {
+ *  "command": "write",
+ *  "buffer" : "{binary_data}",
+ *  "length" : "{data_length}"
+ * }
  * */
 static char * wm_agent_upgrade_com_write(const cJSON* json_object);
+
+/**
+ * Process a command the close an already opened file
+ * @param json_obj expected json format
+ * */
+static char * wm_agent_upgrade_com_close(const cJSON* json_object);
+
 
 /* Helpers methods */
 static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
@@ -164,6 +176,27 @@ static char * wm_agent_upgrade_com_write(const cJSON* json_object) {
         merror("At WCOM write: Cannot write on '%s'", final_path);
         return wm_agent_upgrade_command_ack(ERROR_WRITE_FILE, error_messages[ERROR_WRITE_FILE]);
     }
+}
+
+static char * wm_agent_upgrade_com_close(const cJSON* json_object) {
+    const cJSON *file_path_obj = cJSON_GetObjectItem(json_object, "file");
+
+    if (!*file.path) {
+        merror("At WCOM close: No file is opened.");
+        return wm_agent_upgrade_command_ack(ERROR_FILE_NOT_OPENED2, error_messages[ERROR_FILE_NOT_OPENED2]);
+    }
+    
+    if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(final_path, INCOMING_DIR, file_path_obj->valuestring) < 0) {
+        merror("At WCOM open: Invalid file name");
+        return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
+    }
+
+    if (strcmp(file.path, file_path_obj->valuestirng) != 0) {
+        merror("At WCOM close: The target file doesn't match the opened file (%s).", file.path);
+        
+    }
+     
+
 }
 
 
