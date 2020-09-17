@@ -418,6 +418,14 @@ x-rbac-catalog:
         actions: ['syscollector:read']
         resources: ['agent:id:*']
         effect: "allow"
+    'tasks:status':
+      description: "Get tasks status information about a specified list of tasks"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['tasks:status']
+        resources: ['*:*:*']
+        effect: "deny"
 
 components:
   responses:
@@ -3810,6 +3818,14 @@ components:
         type: array
         items:
           type: string
+    list_tasks:
+      in: query
+      name: list_tasks
+      description: "List of task IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          type: integer
     manager_host:
       in: query
       name: manager
@@ -13549,17 +13565,22 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponsePolicies'
               example:
-                #TODO AffectedItemWazuhResult
                 data:
-                  id: 2
-                  name: 'normal_policy'
-                  policy:
-                    actions:
-                      - "agent:delete"
-                    resources:
-                      - "agent:id:001"
-                    effect: "allow"
-                  roles: []
+                  affected_items:
+                    - id: 100
+                      name: "normal_policy"
+                      policy:
+                        actions:
+                          - agent:delete
+                        resources:
+                          - agent:id:001
+                          - agent:id:002
+                          - agent:id:003
+                        effect: allow
+                      roles: [ ]
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: [ ]
                 message: "Policy was successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -14265,8 +14286,15 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseUsers'
                 example:
                   data:
-                    # TODO AffectedItemWazuhResult
-                    message: "Users were successfully deleted"
+                    affected_items:
+                      - id: 100
+                        username: test
+                        allow_run_as: false
+                        roles: [ ]
+                    total_affected_items: 1
+                    total_failed_items: 0
+                    failed_items: [ ]
+                  message: "Users were successfully deleted"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14512,6 +14540,37 @@ paths:
       responses:
         '200':
           description: 'Configuration successfully restored'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /tasks/status:
+    get:
+      tags:
+        - tasks
+      summary: "Get the status of a specified list of tasks"
+      description: "Returns all available information about the specified list of tasks"
+      operationId: api.controllers.tasks_controller.get_tasks_status
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/tasks:status'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_tasks'
+      responses:
+        '200':
+          description: "Tasks's status"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: Agents upgraded successfully
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

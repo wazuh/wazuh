@@ -269,3 +269,13 @@ default_policies:
         resources:
           - node:id:*&file:path:*
         effect: allow
+
+  tasks_status:
+    description: Provides permissions to check the status of tasks
+    policies:
+      tasks:
+        actions:
+          - tasks:status
+        resources:
+          - '*:*:*'
+        effect: allow
