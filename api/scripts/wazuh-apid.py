@@ -64,12 +64,6 @@ def start(foreground, root, config_file):
     config_file : str
         Path to the API config file
     """
-
-    pids = get_wazuh_apid_pids()
-    if pids:
-        print(f"Cannot start API while other processes are running. Kill these before {pids}")
-        sys.exit(2)
-
     configuration.api_conf.update(configuration.read_yaml_config(config_file=args.config_file))
     api_conf = configuration.api_conf
     cors = api_conf['cors']
@@ -91,16 +85,17 @@ def start(foreground, root, config_file):
             if e.errno == 22:
                 raise APIError(2003, details='PEM phrase is not correct')
 
-    # Foreground/Daemon
-    if not foreground:
-        print(f"Starting API in background")
-        pyDaemonModule.pyDaemon()
-
     # Drop privileges to ossec
     if not root:
         if api_conf['drop_privileges']:
             os.setgid(common.ossec_gid())
             os.setuid(common.ossec_uid())
+
+    # Foreground/Daemon
+    if not foreground:
+        print(f"Starting API in background")
+        pyDaemonModule.pyDaemon()
+        pyDaemonModule.create_pid('wazuh-apid', os.getpid())
 
     set_logging(log_path=log_path, debug_mode=api_conf['logs']['level'], foreground_mode=args.foreground)
 
@@ -186,81 +181,6 @@ def start(foreground, root, config_file):
             )
 
 
-def stop():
-    """
-    Stop the Wazuh API
-
-    This function applies when the API is running in daemon mode.
-    """
-
-    def on_terminate(p):
-        print(f"Wazuh API process {p.pid} terminated.")
-
-    pids = get_wazuh_apid_pids()
-    if pids:
-        procs = [psutil.Process(pid=pid) for pid in pids]
-        for proc in procs:
-            proc.terminate()
-        gone, alive = psutil.wait_procs(procs=procs, timeout=5, callback=on_terminate)
-        for proc in alive:
-            proc.kill()
-
-
-def restart(foreground, root, config_file):
-    """
-    Restart the API by calling the `stop` and `start` functions respectively.
-
-    Arguments
-    ---------
-    foreground : bool
-        If the API must be daemonized or not
-    root : bool
-        If true, the daemon is run as root. Normally not recommended for security reasons
-    config_file : str
-        Path to the API config file
-    """
-    print("Restarting Wazuh API")
-    stop()
-    start(foreground, root, config_file)
-    print("Wazuh API restarted")
-
-
-def status():
-    """
-    Print the current status of the API daemon.
-    """
-    if get_wazuh_apid_pids():
-        print("Wazuh API is running")
-    else:
-        print("Wazuh API is stopped")
-        try:
-            with open(API_LOG_FILE_PATH, 'r') as log:
-                for line in deque(log, 20):
-                    print(line)
-            print(f"Full log in {API_LOG_FILE_PATH}")
-        except FileNotFoundError:
-            print(f"Could not find API log in '{os.path.dirname(API_LOG_FILE_PATH)}'")
-
-
-def get_wazuh_apid_pids():
-    """
-    Get the API service pid.
-
-    This function applies when the API is running as a daemon.
-
-    Returns
-    -------
-    list
-        List with all the pids of API processes. None if no one is found.
-    """
-    result = []
-    for process in psutil.process_iter(attrs=['pid', 'name']):
-        if process.pid != os.getpid() and process.info['name'] == 'python3':
-            if 'wazuh-apid.py' in ' '.join(process.cmdline()):
-                result.append(process.pid)
-    return result if len(result) > 0 else None
-
-
 def test_config(config_file):
     """
     Make an attempt to read the API config file
@@ -292,29 +212,19 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     ####################################################################################################################
-    parser.add_argument('action', help="Action to be performed", choices=('start', 'stop', 'restart',
-                                                                          'status', 'test_config', 'version'),
-                        default='start', nargs='?')
     parser.add_argument('-f', help="Run in foreground", action='store_true', dest='foreground')
     parser.add_argument('-V', help="Print version", action='store_true', dest="version")
     parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
     parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
                         default=common.api_config_path)
+    parser.add_argument('-d', help="Enable debug messages. Use twice to increase verbosity.", action='count',
+                        dest='debug_level')
     args = parser.parse_args()
 
-    if args.action == 'start':
-        start(args.foreground, args.root, args.config_file)
-    elif args.action == 'stop':
-        stop()
-    elif args.action == 'restart':
-        restart(args.foreground, args.root, args.config_file)
-    elif args.action == 'status':
-        status()
-    elif args.action == 'test_config':
-        test_config(args.config_file)
-    elif args.action == 'version':
+    if args.version:
         version()
+    elif args.test_config:
+        test_config(args.config_file)
     else:
-        print("Invalid action")
-        sys.exit(1)
+        start(args.foreground, args.root, args.config_file)

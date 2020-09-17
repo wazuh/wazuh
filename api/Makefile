@@ -16,9 +16,9 @@ INSTALL_CONFIG_FILE   = install -o root -g ${OSSEC_GROUP} -m 0660
 PYTHON_BIN     = $(PREFIX)/framework/python/bin/python3
 
 
-.PHONY: all backup install restore service
+.PHONY: all backup install restore
 
-all: backup install restore service
+all: backup install restore
 
 backup:
 	# Backup previous configuration
@@ -39,5 +39,6 @@ install:
     # Install scripts/%.py on $(PREFIX)/bin/%
 	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
 
+restore:
     # Restore old API config
-	. ../api/service/inst-api-functions.sh; restore_old_api
+	. ../api/service/inst-api-functions.sh; restore_old_api ${REVISION}
