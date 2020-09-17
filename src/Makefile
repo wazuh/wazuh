@@ -79,6 +79,11 @@ SHARED_MODULES_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 GTEST_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 endif
 
+ifeq (${COVERITY}, YES)
+	SHARED_MODULES_RELEASE_TYPE+=-DCOVERITY=1
+	export COVERITY_UNSUPPORTED_COMPILER_INVOCATION=1
+endif
+
 ifneq ($(HAS_CHECKMODULE),)
 ifneq ($(HAS_SEMODULE_PACKAGE),)
 USE_SELINUX=yes
@@ -591,9 +596,7 @@ ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
 BUILD_SERVER+=wazuh-framework
 endif
 
-BUILD_AGENT+=build_dbsync
-BUILD_AGENT+=build_rsync
-BUILD_AGENT+=build_shared_utils_test
+BUILD_AGENT+=build_shared_modules
 BUILD_AGENT+=ossec-agentd
 BUILD_AGENT+=agent-auth
 BUILD_AGENT+=ossec-logcollector
@@ -649,7 +652,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: external win32/dbsync.dll win32/rsync.dll win32/shared_utils_ut.exe win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
+winagent: external win32/shared_modules win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl ossec-pre6.conf > default-ossec-pre6.conf
@@ -667,13 +670,9 @@ winagent: external win32/dbsync.dll win32/rsync.dll win32/shared_utils_ut.exe wi
 	cd win32/ && makensis ossec-installer.nsi
 
 
-win32/dbsync.dll:
+win32/shared_modules:
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && cmake --build .
-
-win32/rsync.dll:
 	cd ${RSYNC} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && cmake --build .
-
-win32/shared_utils_ut.exe:
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && cmake --build .
@@ -1150,16 +1149,9 @@ config_o := $(config_c:.c=.o)
 config/%.o: config/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-#### DBSync ##########
-build_dbsync:
+build_shared_modules:
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && cmake --build .
-
-#### RSync ##########
-build_rsync:
 	cd ${RSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && cmake --build .
-
-#### shared_modules utils tests ##########
-build_shared_utils_test:
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && cmake --build .

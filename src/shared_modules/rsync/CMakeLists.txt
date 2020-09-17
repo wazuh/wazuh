@@ -9,7 +9,14 @@ endif()
 get_filename_component(SHARED_MODULES ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++11")
+
+if(COVERITY)
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
+  add_definitions(-D__GNUC__=8)
+ else()
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++11")
+endif(COVERITY)
+
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
@@ -70,4 +77,6 @@ else()
     target_link_libraries(rsync dbsync cjson crypto)
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
+if(NOT DEFINED COVERITY)
 add_subdirectory(testtool)
+endif(NOT DEFINED COVERITY)
