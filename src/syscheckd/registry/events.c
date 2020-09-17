@@ -86,8 +86,8 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
     char path[OS_SIZE_512];
 
     if (old_data != NULL) {
-        changed_attributes =
-        fim_registry_compare_value_attrs(new_data->registry_entry.value, old_data->registry_entry.value, configuration);
+        changed_attributes = fim_registry_compare_value_attrs(new_data->registry_entry.value,
+                                                              old_data->registry_entry.value, configuration);
 
         if (cJSON_GetArraySize(changed_attributes) == 0) {
             cJSON_Delete(changed_attributes);
@@ -107,7 +107,8 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[type]);
     cJSON_AddNumberToObject(data, "timestamp", new_data->registry_entry.value->last_event);
 
-    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(new_data->registry_entry.value, configuration));
+    cJSON_AddItemToObject(data, "attributes",
+                          fim_registry_value_attributes_json(new_data->registry_entry.value, configuration));
 
     if (old_data) {
         cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
@@ -162,7 +163,9 @@ cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const regi
     return attributes;
 }
 
-cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data, const fim_registry_key *old_data, const registry *configuration) {
+cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data,
+                                      const fim_registry_key *old_data,
+                                      const registry *configuration) {
     cJSON *changed_attributes = cJSON_CreateArray();
 
     if ((configuration->opts & CHECK_PERM) && strcmp(old_data->perm, new_data->perm) != 0) {
@@ -222,7 +225,6 @@ cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
     cJSON_AddStringToObject(data, "path", new_data->path);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[type]);
-    // cJSON_AddNumberToObject(data, "timestamp", new_data->last_event);
 
     cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(new_data, configuration));
 
@@ -248,26 +250,22 @@ cJSON *fim_registry_event(const fim_entry *new,
     cJSON *json_event = NULL;
 
     if (new == NULL) {
-        // This should never happen
-        merror("LOGIC ERROR - new '%p' - saved '%p'", new, saved);
+        mwarn(FIM_REGISTRY_EVENT_NULL_ENTRY);
         return NULL;
     }
 
     if (new->registry_entry.key == NULL) {
-        // This shouldn't happen either
-        merror("LOGIC ERROR - Registry event with no new key data");
+        mwarn(FIM_REGISTRY_EVENT_NULL_ENTRY_KEY);
         return NULL;
     }
 
     if (new->type != FIM_TYPE_REGISTRY) {
-        // This is just silly now
-        merror("LOGIC ERROR - New entry type is not Registry");
+        mwarn(FIM_REGISTRY_EVENT_WRONG_ENTRY_TYPE);
         return NULL;
     }
 
     if (saved && saved->type != FIM_TYPE_REGISTRY) {
-        // This is silly too
-        merror("LOGIC ERROR - Saved entry type is not Registry");
+        mwarn(FIM_REGISTRY_EVENT_WRONG_SAVED_TYPE);
         return NULL;
     }
 

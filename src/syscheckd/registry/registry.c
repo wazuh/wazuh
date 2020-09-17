@@ -204,9 +204,19 @@ void fim_registry_process_value_delete_event(fdb_t *fim_sql,
     }
 
     fim_db_remove_registry_value_data(fim_sql, data->registry_entry.value);
+
+    if (configuration->opts | CHECK_SEECHANGES) {
+        fim_diff_process_delete_value(data->registry_entry.key->path, data->registry_entry.value->name,
+                                      data->registry_entry.key->arch);
+    }
 }
 
-void fim_registry_process_key_delete_event(fdb_t *fim_sql, fim_entry *data, pthread_mutex_t *mutex, void *_alert, void *_ev_mode, void *_w_evt) {
+void fim_registry_process_key_delete_event(fdb_t *fim_sql,
+                                           fim_entry *data,
+                                           pthread_mutex_t *mutex,
+                                           void *_alert,
+                                           void *_ev_mode,
+                                           void *_w_evt) {
     int alert = *(int *)_alert;
     fim_event_mode event_mode = *(fim_event_mode *)_ev_mode;
     fim_tmp_file *file;
@@ -234,6 +244,10 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql, fim_entry *data, pthr
     }
 
     fim_db_remove_registry_key(fim_sql, data);
+
+    if (configuration->opts | CHECK_SEECHANGES) {
+        fim_diff_process_delete_registry(data->registry_entry.key->path, data->registry_entry.key->arch);
+    }
 }
 
 void fim_registry_process_unscanned_entries() {
@@ -243,10 +257,11 @@ void fim_registry_process_unscanned_entries() {
     if (fim_db_get_registry_keys_not_scanned(syscheck.database, &file, FIM_DB_DISK) == FIMDB_OK) {
         if (file && file->elements) {
             fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, &syscheck.fim_registry_mutex,
-                                     fim_registry_process_key_delete_event, FIM_DB_DISK, &_base_line, &event_mode, NULL);
+                                     fim_registry_process_key_delete_event, FIM_DB_DISK, &_base_line, &event_mode,
+                                     NULL);
         }
     } else {
-        mwarn("Failed to get unscanned registry keys");
+        mwarn(FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
     }
 
     if (fim_db_get_registry_data_not_scanned(syscheck.database, &file, FIM_DB_DISK) == FIMDB_OK) {
@@ -256,11 +271,15 @@ void fim_registry_process_unscanned_entries() {
                                                    &event_mode, NULL);
         }
     } else {
-        mwarn("Failed to get unscanned registry values");
+        mwarn(FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
     }
 }
 
-void fim_registry_process_value_event(fim_entry *new, fim_entry *saved, int arch, fim_event_mode mode, BYTE *data_buffer) {
+void fim_registry_process_value_event(fim_entry *new,
+                                      fim_entry *saved,
+                                      int arch,
+                                      fim_event_mode mode,
+                                      BYTE *data_buffer) {
     char value_path[MAX_KEY + 2];
     registry *configuration;
     cJSON *json_event;
@@ -281,8 +300,8 @@ void fim_registry_process_value_event(fim_entry *new, fim_entry *saved, int arch
         return;
     }
 
-    saved->registry_entry.value =
-    fim_db_get_registry_data(syscheck.database, new->registry_entry.key->id, new->registry_entry.value->name);
+    saved->registry_entry.value = fim_db_get_registry_data(syscheck.database, new->registry_entry.key->id,
+                                                           new->registry_entry.value->name);
 
     if (configuration->opts | CHECK_SEECHANGES) {
         diff = fim_registry_value_diff(new->registry_entry.key->path, new->registry_entry.value->name, data_buffer,
@@ -293,8 +312,10 @@ void fim_registry_process_value_event(fim_entry *new, fim_entry *saved, int arch
                                     saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED, NULL, diff);
 
     if (json_event) {
-        if (fim_db_insert_registry_data(syscheck.database, new->registry_entry.value, new->registry_entry.key->id) != FIMDB_OK) {
-            mwarn("Couldn't insert into DB");
+        if (fim_db_insert_registry_data(syscheck.database, new->registry_entry.value, new->registry_entry.key->id) !=
+            FIMDB_OK) {
+            mwarn(FIM_REGISTRY_FAIL_TO_INSERT_VALUE, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
+                  new->registry_entry.key->path, new->registry_entry.value->name);
         }
 
         if (_base_line) {
@@ -312,7 +333,12 @@ void fim_registry_process_value_event(fim_entry *new, fim_entry *saved, int arch
 }
 
 /* Query the key and get all its values */
-void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, int arch, DWORD value_count, fim_event_mode mode) {
+void fim_read_values(HKEY key_handle,
+                     fim_entry *new,
+                     fim_entry *saved,
+                     int arch,
+                     DWORD value_count,
+                     fim_event_mode mode) {
     fim_registry_value_data value_data;
     TCHAR value_buffer[MAX_VALUE_NAME + 1];
     DWORD value_size;
@@ -322,8 +348,10 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, int arch
     DWORD i;
 
     if (new->registry_entry.key->id == 0) {
-        if (fim_db_get_registry_key_rowid(syscheck.database, new->registry_entry.key->path, &new->registry_entry.key->id) != FIMDB_OK) {
-            mwarn("Unable to get id for registry key '%s'", new->registry_entry.key->path);
+        if (fim_db_get_registry_key_rowid(syscheck.database, new->registry_entry.key->path,
+                                          &new->registry_entry.key->id) != FIMDB_OK) {
+            mwarn(FIM_REGISTRY_FAIL_TO_GET_KEY_ID, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
+                  new->registry_entry.key->path);
             return;
         }
     }
@@ -335,7 +363,8 @@ void fim_read_values(HKEY key_handle, fim_entry *new, fim_entry *saved, int arch
         value_size = MAX_VALUE_NAME;
         data_size = MAX_VALUE_NAME;
 
-        if (RegEnumValue(key_handle, i, value_buffer, &value_size, NULL, &data_type, data_buffer, &data_size) != ERROR_SUCCESS) {
+        if (RegEnumValue(key_handle, i, value_buffer, &value_size, NULL, &data_type, data_buffer, &data_size) !=
+            ERROR_SUCCESS) {
             break;
         }
 
@@ -399,7 +428,8 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
         TCHAR sub_key_name_b[MAX_KEY_LENGTH + 1];
         DWORD sub_key_name_s = MAX_KEY_LENGTH;
 
-        if (RegEnumKeyEx(current_key_handle, i, sub_key_name_b, &sub_key_name_s, NULL, NULL, NULL, NULL) != ERROR_SUCCESS) {
+        if (RegEnumKeyEx(current_key_handle, i, sub_key_name_b, &sub_key_name_s, NULL, NULL, NULL, NULL) !=
+            ERROR_SUCCESS) {
             continue;
         }
 
@@ -427,11 +457,13 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     }
 
     if (!fim_check_restrict(full_key, configuration->filerestrict)) {
-        cJSON *json_event = fim_registry_event(&new, &saved, configuration, mode,
-                                               saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFICATION, NULL, NULL);
+        cJSON *json_event =
+        fim_registry_event(&new, &saved, configuration, mode,
+                           saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFICATION, NULL, NULL);
 
         if (json_event) {
-            if (fim_db_insert_registry_key(syscheck.database, new.registry_entry.key, new.registry_entry.key->id) != FIMDB_OK) {
+            if (fim_db_insert_registry_key(syscheck.database, new.registry_entry.key, new.registry_entry.key->id) !=
+                FIMDB_OK) {
                 mwarn("Couldn't insert into DB");
             }
 
@@ -454,7 +486,6 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     fim_registry_free_key(new.registry_entry.key);
     fim_registry_free_key(saved.registry_entry.key);
     RegCloseKey(current_key_handle);
-    return;
 }
 
 void fim_registry_scan() {
@@ -480,7 +511,8 @@ void fim_registry_scan() {
                 syscheck.registry[i].entry);
 
         if (fim_set_root_key(&root_key_handle, syscheck.registry[i].entry, &sub_key) != 0) {
-            mdebug1(FIM_INV_REG, syscheck.registry[i].entry, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32]");
+            mdebug1(FIM_INV_REG, syscheck.registry[i].entry,
+                    syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32]");
             *syscheck.registry[i].entry = '\0';
             continue;
         }
@@ -494,8 +526,6 @@ void fim_registry_scan() {
     if (_base_line == 0) {
         _base_line = 1;
     }
-
-    return;
 }
 
 #endif

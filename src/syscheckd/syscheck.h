@@ -306,12 +306,6 @@ void free_entry(fim_entry * entry);
 void free_inode_data(fim_inode_data **data);
 
 /**
- * @brief Check the registries in the configuration for changes
- *
- */
-void fim_registry_scan(void);
-
-/**
  * @brief Start real time monitoring
  *
  * @return 0 on success, -1 on error

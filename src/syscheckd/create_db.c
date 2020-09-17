@@ -99,7 +99,8 @@ void fim_scan() {
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
 #ifdef WIN32
-        nodes_count += fim_db_get_count_registry_key(syscheck.database) + fim_db_get_count_registry_data(syscheck.database);
+        nodes_count += fim_db_get_count_registry_key(syscheck.database) +
+                       fim_db_get_count_registry_data(syscheck.database);
 #endif
 
         if (nodes_count < syscheck.file_limit) {

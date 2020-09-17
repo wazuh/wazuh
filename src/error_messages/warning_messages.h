@@ -47,6 +47,14 @@
 #define FIM_WHODATA_PARAMETER                   "(6932): Invalid parameter type (%ld) for '%s'."
 #define FIM_WHODATA_RENDER_EVENT                "(6933): Error rendering the event. Error %lu."
 #define FIM_WHODATA_RENDER_PARAM                "(6934): Invalid number of rendered parameters."
+#define FIM_REGISTRY_EVENT_NULL_ENTRY           "(6935): Invalid null registry event."
+#define FIM_REGISTRY_EVENT_NULL_ENTRY_KEY       "(6936): Invalid registry event with a null key was detected."
+#define FIM_REGISTRY_EVENT_WRONG_ENTRY_TYPE     "(6937): Invalid registry event with a type different than registry was detected."
+#define FIM_REGISTRY_EVENT_WRONG_SAVED_TYPE     "(6938): Invalid registry event with a saved type different than registry was detected."
+#define FIM_REGISTRY_UNSCANNED_KEYS_FAIL        "(6939): Failed to get unscanned registry keys."
+#define FIM_REGISTRY_UNSCANNED_VALUE_FAIL       "(6940): Failed to get unscanned registry values."
+#define FIM_REGISTRY_FAIL_TO_INSERT_VALUE       "(6941): Failed to insert value '%s %s\\%s'"
+#define FIM_REGISTRY_FAIL_TO_GET_KEY_ID         "(6942): Unable to get id for registry key '%s %s'"
 
 
 /* Monitord warning messages */
