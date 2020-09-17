@@ -700,6 +700,15 @@ int wdb_metadata_fill_version(sqlite3 *db);
 /* Get value data in output variable. Returns 0 if doesn't found, 1 on success or -1 on error. */
 int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
 
+/**
+ * @brief Checks if the table exists in the database.
+ * 
+ * @param[in] wdb Database to query for the table existence.
+ * @param[in] key Name of the agent for whom its database must be deleted.
+ * @return 1 if the table exists, 0 if the table doesn't exist or OS_INVALID on failure.
+ */
+ int wdb_metadata_table_check(wdb_t * wdb, const char * key);
+
 /* Update field date for specific fim_entry. */
 int wdb_fim_update_date_entry(wdb_t * wdb, const char *path);
 

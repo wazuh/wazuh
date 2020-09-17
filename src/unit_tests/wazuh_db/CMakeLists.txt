@@ -51,6 +51,13 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                              -Wl,--wrap,chmod -Wl,--wrap,IsDir -Wl,--wrap,isChroot -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek \
                              -Wl,--wrap,stat")
 
+list(APPEND wdb_tests_names "test_wdb")
+list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,pthread_mutex_lock \
+                             -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Delete_ex \
+                             -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,sqlite3_open_v2 -Wl,--wrap,sqlite3_close_v2")
+
+list(APPEND wdb_tests_names "test_wdb_upgrade")
+list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror")
 
 
 # Compilig tests

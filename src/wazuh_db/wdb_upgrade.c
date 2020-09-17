@@ -67,15 +67,21 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     char db_version[OS_SIZE_256 + 2];
     int version = 0;
+    int ret_get_entry = -1;
 
-    switch (wdb_metadata_get_entry(wdb, "db_version", db_version)) {
-    case -1:
+    switch (wdb_metadata_table_check(wdb,"metadata")) {
+    case OS_INVALID:
+        mdebug1("DB(%s) Failed trying to find metadata table", wdb->id);
+        return wdb;
     case 0:
+        // The table doesn't exist, this is the global.db version 0
         break;
     default:
-        version = atoi(db_version);
-
-        if (version < 0) {
+        ret_get_entry = wdb_metadata_get_entry(wdb, "db_version", db_version);
+        if( ret_get_entry == 1) {
+            version = atoi(db_version);
+        }
+        else{
             merror("DB(%s): Incorrect database version: %d", wdb->id, version);
             return wdb;
         }
