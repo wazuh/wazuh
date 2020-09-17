@@ -26,25 +26,41 @@ namespace RSync
         }
     };
     template <>
-    class MessageChecksum<std::string> : public IMessageCreator<std::string>
+    class MessageChecksum<SplitContext> final : public IMessageCreator<SplitContext>
     {
     public:
-        void send(const ResultCallback callback, const nlohmann::json& config, const std::string& data) override
+        void send(const ResultCallback callback, const nlohmann::json& config, const SplitContext& data) override
         {
             nlohmann::json outputMessage;
-            outputMessage["component"] = config.at("component");
-            outputMessage["type"] = "state";
-            nlohmann::json outputData;
-            outputData["index"] = data.at(config.at("index"));
-            outputData["timestamp"] = data.at(config.at("last_event"));
-            outputData["attributes"] = data;
+            
+            if (IntegrityCommands.end() != IntegrityCommands.find(data.type))
+            {
+                outputMessage["component"] = config.at("component");
+                outputMessage["type"] = IntegrityCommands.at(data.type);
 
-            outputMessage["data"] = outputData;
-
-            callback(outputMessage.dump());
-            callback(data.c_str());
+                nlohmann::json outputData;
+                outputData["id"] = data.id;
+                if (INTEGRITY_CLEAR != data.type)
+                {
+                    outputData["begin"] = data.begin;
+                    outputData["end"] = data.end;
+                    if (INTEGRITY_CHECK_LEFT == data.type)
+                    {
+                        outputData["tail"] = data.tail;
+                    }
+                    outputData["checksum"] = data.checksum;
+                }
+                outputMessage["data"] = outputData;
+                callback(outputMessage.dump());
+            }
+            // LCOV_EXCL_START
+            else
+            {
+                throw rsync_error { INVALID_OPERATION };
+            }
+            // LCOV_EXCL_STOP
         }
     };
-};
+};// namespace RSync
 
 #endif //_MESSAGECHECKSUM_H

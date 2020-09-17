@@ -16,7 +16,6 @@
 #include "messageRowData.h"
 #include "rsync_exception.h"
 #include "commonDefs.h"
-#include <iostream>
 
 namespace RSync
 {

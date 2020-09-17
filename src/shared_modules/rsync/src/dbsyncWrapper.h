@@ -9,23 +9,22 @@
  * Foundation.
  */
 
-#ifndef _DBSYNCIMPLEMENTATION_H
-#define _DBSYNCIMPLEMENTATION_H
+#ifndef _DBSYNCWRAPPER_H
+#define _DBSYNCWRAPPER_H
 
 #include "dbsync.h"
 
 namespace RSync
 {
-    class DBSyncImplementation
+    class DBSyncWrapper
     {
         DBSYNC_HANDLE m_dbsync_handle;
     public:
    
-        explicit DBSyncImplementation(DBSYNC_HANDLE dbsync_handle)
+        explicit DBSyncWrapper(DBSYNC_HANDLE dbsync_handle)
         : m_dbsync_handle(dbsync_handle) { }
-
         virtual void select(const cJSON*    s_data_input,
-                    callback_data_t callback_data)
+                            callback_data_t callback_data)
         {
             if(0 != dbsync_select_rows(m_dbsync_handle, s_data_input, callback_data))
             {
@@ -33,7 +32,7 @@ namespace RSync
             }
         }
     };
-};
+};// namespace RSync
 
 
-#endif //_DBSYNCIMPLEMENTATION_H
+#endif //_DBSYNCWRAPPER_H

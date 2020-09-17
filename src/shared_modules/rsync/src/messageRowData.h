@@ -17,7 +17,7 @@
 namespace RSync
 {
     template <class Type>
-    class MessageRowData : public IMessageCreator<Type>
+    class MessageRowData final : public IMessageCreator<Type>
     {
     public:
         void send(const ResultCallback /*callback*/, const nlohmann::json& /*config*/, const Type& /*data*/) override
@@ -26,7 +26,7 @@ namespace RSync
         }
     };
     template <>
-    class MessageRowData<nlohmann::json> : public IMessageCreator<nlohmann::json>
+    class MessageRowData<nlohmann::json> final : public IMessageCreator<nlohmann::json>
     {
     public:
         void send(const ResultCallback callback, const nlohmann::json& config, const nlohmann::json& data) override
@@ -45,6 +45,6 @@ namespace RSync
             callback(outputMessage.dump());
         }
     };
-};
+};// namespace RSync
 
 #endif //_MESSAGEROWDATA_H

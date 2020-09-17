@@ -17,14 +17,10 @@
 constexpr auto INVALID_HANDLE           { std::make_pair(1, "Invalid handle value.") };
 constexpr auto FACTORY_INSTANTATION     { std::make_pair(2, "Unspecified type during factory instantiation") };
 constexpr auto INVALID_HEADER           { std::make_pair(3, "Invalid message header.") };
-constexpr auto INVALID_DECODER          { std::make_pair(4, "Invalid message decoder.") };
-constexpr auto PACKAGE_INCOMPLETE       { std::make_pair(5, "Incomplete package.") };
-constexpr auto INVALID_OPERATION        { std::make_pair(6, "Invalid message operation.") };
-constexpr auto UNEXPECTED_SIZE          { std::make_pair(7, "Unexpected size value during sync process.") };
-constexpr auto UNEXPECTED_RANGE_COUNT   { std::make_pair(8, "Unexpected range count during sync process.") };
-constexpr auto UNEXPECTED_CHECKSUM      { std::make_pair(9, "Unexpected checksum during sync process." ) };
-constexpr auto ERROR_IN_SELECT_DATA     { std::make_pair(10, "Error during the select of data." ) };
-constexpr auto NOT_SPECIALIZED_FUNCTION { std::make_pair(11, "Function not specialized." ) };
+constexpr auto INVALID_OPERATION        { std::make_pair(4, "Invalid message operation.") };
+constexpr auto UNEXPECTED_SIZE          { std::make_pair(5, "Unexpected size value during sync process.") };
+constexpr auto ERROR_IN_SELECT_DATA     { std::make_pair(6, "Error during the select of data." ) };
+constexpr auto NOT_SPECIALIZED_FUNCTION { std::make_pair(7, "Function not specialized." ) };
 
 namespace RSync
 {
@@ -61,6 +57,6 @@ namespace RSync
         const int m_id;
         std::runtime_error m_error;
     };
-}
+}// namespace RSync
 
 #endif // _RSYNC_EXCEPTION_H

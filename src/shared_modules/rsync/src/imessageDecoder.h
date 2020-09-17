@@ -18,7 +18,7 @@ namespace RSync
         std::string command;
         std::string begin;
         std::string end;
-        double_t id;
+        int32_t id;
     };
 
     class IMessageDecoder 
@@ -26,7 +26,6 @@ namespace RSync
     public:
         virtual SyncInputData decode(const std::vector<unsigned char>& rawData) = 0;
     };
-};
+};// namespace RSync
 
-
-#endif 
+#endif //_IMESSAGEDECODER_H

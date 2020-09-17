@@ -22,19 +22,25 @@ namespace RSync
     public:
         SyncInputData decode(const std::vector<unsigned char>& rawData) override 
         {
-            SyncInputData retVal;
+            SyncInputData retVal{};
             const std::string rawDataString(reinterpret_cast<const char*>(rawData.data()), rawData.size());
             const auto firstToken { rawDataString.find(' ') };
 
             if (std::string::npos != firstToken)
             {
-                retVal.command = rawDataString.substr(0, firstToken);
-                const auto rawDataStringJson { rawDataString.substr(firstToken, rawDataString.length() - firstToken) };
-                const auto& json { nlohmann::json::parse(rawDataStringJson)[0] };
-
-                retVal.begin = json.at("begin").get_ref<const std::string&>() ;
-                retVal.end = json.at("end").get_ref<const std::string&>() ;
-                retVal.id = json.at("id").get<int64_t>();
+                const auto rawDataStringFromFirst { rawDataString.substr(firstToken + 1, rawDataString.length() - firstToken - 1) };
+                const auto secondToken { rawDataStringFromFirst.find(' ') };
+                if (std::string::npos != secondToken)
+                {
+                    retVal.command = rawDataStringFromFirst.substr(0, secondToken);
+                    
+                    const auto rawDataStringFromSecond { rawDataStringFromFirst.substr(secondToken + 1, rawDataStringFromFirst.length() - secondToken - 1) };
+                    const auto& json { nlohmann::json::parse(rawDataStringFromSecond) };
+                    
+                    retVal.begin = json.at("begin").get_ref<const std::string&>() ;
+                    retVal.end = json.at("end").get_ref<const std::string&>() ;
+                    retVal.id = json.at("id").get<int32_t>();
+                }
             }
             return retVal;
         }

@@ -15,7 +15,6 @@
 #include "messageDecoderJSON.h"
 #include "rsync_exception.h"
 #include "commonDefs.h"
-#include <iostream>
 
 namespace RSync
 {
@@ -29,14 +28,12 @@ namespace RSync
     public:
         static std::shared_ptr<IMessageDecoder> create(const SyncMsgBodyType sync_message_type)
         {
+            std::shared_ptr<IMessageDecoder> retVal;
             if (SyncMsgBodyType::SYNC_RANGE_JSON == sync_message_type)
             {
-                return std::make_shared<JSONMessageDecoder>();
+                retVal = std::make_shared<JSONMessageDecoder>();
             }
-            throw rsync_error
-            {
-                FACTORY_INSTANTATION
-            };
+            return retVal;
         }
     };
 }// namespace RSync

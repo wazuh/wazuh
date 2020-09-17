@@ -12,13 +12,14 @@
 #ifndef _MSGDECODER_SYNC_H
 #define _MSGDECODER_SYNC_H
 
+#include <iostream>
 #include "commonDefs.h"
 #include "rsync_exception.h"
 #include "messageDecoderFactory.h"
 
 namespace RSync
 {
-    class SyncDecoder
+    class SyncDecoder 
     {
         std::map<std::string, std::shared_ptr<IMessageDecoder>> m_decodersRegistered;
         std::mutex m_mutex;
@@ -26,19 +27,25 @@ namespace RSync
     public:
         std::pair<std::string, SyncInputData> decode (const std::vector<unsigned char>& rawData)
         {
-            const std::string rawDataString(reinterpret_cast<const char *>(rawData.data()), rawData.size());
-            const auto firstToken { rawDataString.find(' ') };
-            std::string header;
+            try
+            {
+                const std::string rawDataString(reinterpret_cast<const char *>(rawData.data()), rawData.size());
+                const auto firstToken { rawDataString.find(' ') };
 
-            if (std::string::npos != firstToken)
-            {
-                header = rawDataString.substr(0, firstToken);
-                std::lock_guard<std::mutex> lock{ m_mutex };
-                return std::make_pair(header, m_decodersRegistered.at(header)->decode(rawData));
+                if (std::string::npos != firstToken)
+                {
+                    const auto header { rawDataString.substr(0, firstToken) };
+                    std::lock_guard<std::mutex> lock{ m_mutex };
+                    return std::make_pair(header, m_decodersRegistered.at(header)->decode(rawData));
+                }
+                else
+                {
+                    throw rsync_error { INVALID_HEADER };
+                }
             }
-            else
+            catch(const std::exception& e)
             {
-                throw INVALID_HEADER;
+                std::cerr << e.what() << '\n';
             }
             return {};
         }

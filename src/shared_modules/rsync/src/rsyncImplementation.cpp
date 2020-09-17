@@ -20,13 +20,18 @@ using namespace RSync;
 void RSyncImplementation::release()
 {
     std::lock_guard<std::mutex> lock{ m_mutex };
+    for (const auto& ctx : m_remoteSyncContexts)
+    {
+        ctx.second->m_msgDispatcher.rundown();
+    }
     m_remoteSyncContexts.clear();
 }
 
-bool RSyncImplementation::releaseContext(const RSYNC_HANDLE handle)
+void RSyncImplementation::releaseContext(const RSYNC_HANDLE handle)
 {
+    remoteSyncContext(handle)->m_msgDispatcher.rundown();
     std::lock_guard<std::mutex> lock{ m_mutex };
-    return 1 == m_remoteSyncContexts.erase(handle);
+    m_remoteSyncContexts.erase(handle);
 }
 
 RSYNC_HANDLE RSyncImplementation::create()
@@ -52,7 +57,6 @@ std::shared_ptr<RSyncImplementation::RSyncContext> RSyncImplementation::remoteSy
     return it->second;
 }
 
-
 void callbackDBSync(ReturnTypeCallback /*result_type*/, const cJSON* result_json, void* user_data)
 {
     std::function<void(const nlohmann::json&)>* callback = static_cast<std::function<void(const nlohmann::json&)>*>(user_data);
@@ -62,90 +66,112 @@ void callbackDBSync(ReturnTypeCallback /*result_type*/, const cJSON* result_json
 }
 
 void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle, 
-                                         const std::string& message_header_id,
-                                         const std::shared_ptr<DBSyncImplementation>& spDBSyncImplementation, 
-                                         const char* sync_configuration, 
+                                         const std::string& messageHeaderID,
+                                         const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper, 
+                                         const char* syncConfigurationRaw, 
                                          const ResultCallback callbackWrapper)
 {
     const auto ctx { remoteSyncContext(handle) };
-    const auto json_sync_configuration { nlohmann::json::parse(sync_configuration)[0] };
+    const auto& jsonSyncConfiguration { nlohmann::json::parse(syncConfigurationRaw) };
     
-    const SyncMsgBodyType sync_message_type { SyncMsgBodyTypeMap.at(json_sync_configuration.at("decoder_type")) };
+    const SyncMsgBodyType sync_message_type { SyncMsgBodyTypeMap.at(jsonSyncConfiguration.at("decoder_type")) };
     
-    ctx->m_msgDispatcher.setMessageDecoderType(message_header_id, sync_message_type);
+    ctx->m_msgDispatcher.setMessageDecoderType(messageHeaderID, sync_message_type);
     
     const auto registerCallback
     {
-        [spDBSyncImplementation, json_sync_configuration, callbackWrapper] (const SyncInputData syncData)
+        [spDBSyncWrapper, jsonSyncConfiguration, callbackWrapper] (const SyncInputData syncData)
         {
-            if (0 == syncData.command.compare("checksum_fail"))
+            try
             {
-                const auto size { getRangeCount(spDBSyncImplementation, json_sync_configuration.at("count_range_query_json"), syncData) };
-                
-                if (1 == size)
+                if (0 == syncData.command.compare("checksum_fail"))
                 {
-                    const auto& rowDataQueryConfig { json_sync_configuration.at("row_data_query_json") };
-                    const auto& rowData{ getRowData(spDBSyncImplementation, rowDataQueryConfig, syncData.begin) };
-
-                    FactoryMessageCreator<nlohmann::json, MessageType::ROW_DATA>::create()->send(callbackWrapper, rowDataQueryConfig, rowData);
+                    sendChecksumFail(spDBSyncWrapper, jsonSyncConfiguration, callbackWrapper, syncData);
+                } 
+                else if (0 == syncData.command.compare("no_data"))
+                {
+                    sendAllData(spDBSyncWrapper, jsonSyncConfiguration, callbackWrapper);
                 }
-                else if (1 < size)
+                else 
                 {
-                    const auto end { std::stoull(syncData.end) };
-                    const auto& rangeChecksumQueryConfig { json_sync_configuration.at("range_checksum_query_json") };
-
-                    auto messageCreator { FactoryMessageCreator<std::string, MessageType::CHECKSUM>::create() };
-
-                    const auto& checksumsLeft { getChecksum(spDBSyncImplementation, rangeChecksumQueryConfig, syncData.begin, std::to_string(end/2)) };
-                    messageCreator->send(callbackWrapper, rangeChecksumQueryConfig, checksumsLeft);
-
-                    const auto& checksumsRight { getChecksum(spDBSyncImplementation, rangeChecksumQueryConfig, std::to_string(end/2+1), syncData.end) };
-                    messageCreator->send(callbackWrapper, rangeChecksumQueryConfig, checksumsRight);
-                }
-                else
-                {
-                    throw rsync_error { UNEXPECTED_SIZE };
+                    throw rsync_error { INVALID_OPERATION };
                 }
             } 
-            else if (0 == syncData.command.compare("no_data"))
+            catch(const std::exception& e)
             {
-                sendAllData(spDBSyncImplementation, json_sync_configuration.at("no_data_query_json"), callbackWrapper);
+                std::cerr << e.what() << '\n';
             }
-            else 
-            {
-                throw rsync_error { INVALID_OPERATION };
-            }
+            
         }
     };
-    ctx->m_msgDispatcher.addCallback(message_header_id, registerCallback);
+    ctx->m_msgDispatcher.addCallback(messageHeaderID, registerCallback);
 }
 
 
-size_t RSyncImplementation::getRangeCount(const std::shared_ptr<DBSyncImplementation>& spDBSyncImplementation, 
-                                          const nlohmann::json& rangeCountQuery, 
+void RSyncImplementation::push(const RSYNC_HANDLE handle, const std::vector<unsigned char>& data)
+{
+    const auto spRSyncContext
+    {
+        remoteSyncContext(handle)
+    };
+    spRSyncContext->m_msgDispatcher.push(data);
+}
+
+void RSyncImplementation::sendChecksumFail(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper, 
+                      const nlohmann::json& jsonSyncConfiguration,
+                      const ResultCallback callbackWrapper,
+                      const SyncInputData syncData)
+{
+    const auto size { getRangeCount(spDBSyncWrapper, jsonSyncConfiguration, syncData) };
+                
+    if (1 == size)
+    {
+        const auto& rowData{ getRowData(spDBSyncWrapper, jsonSyncConfiguration, syncData.begin) };
+
+        FactoryMessageCreator<nlohmann::json, MessageType::ROW_DATA>::create()->send(callbackWrapper, jsonSyncConfiguration, rowData.at(0));
+    }
+    else if (1 < size)
+    {
+        auto messageCreator { FactoryMessageCreator<SplitContext, MessageType::CHECKSUM>::create() };
+
+        ChecksumContext checksumCtx;
+        checksumCtx.type = CHECKSUM_SPLIT;
+        checksumCtx.size = size;
+        checksumCtx.leftCtx.id = syncData.id;
+        checksumCtx.leftCtx.type = IntegrityMsgType::INTEGRITY_CHECK_LEFT;
+        checksumCtx.leftCtx.begin = syncData.begin;
+
+        checksumCtx.rightCtx.id = syncData.id;
+        checksumCtx.rightCtx.type = IntegrityMsgType::INTEGRITY_CHECK_RIGHT;
+        checksumCtx.rightCtx.end = syncData.end;
+        fillChecksum(spDBSyncWrapper, jsonSyncConfiguration, syncData.begin, syncData.end, checksumCtx);
+
+        messageCreator->send(callbackWrapper, jsonSyncConfiguration, checksumCtx.leftCtx);
+        messageCreator->send(callbackWrapper, jsonSyncConfiguration, checksumCtx.rightCtx);
+    }
+    else
+    {
+        throw rsync_error { UNEXPECTED_SIZE };
+    }
+}
+
+size_t RSyncImplementation::getRangeCount(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper, 
+                                          const nlohmann::json& jsonSyncConfiguration, 
                                           const SyncInputData& syncData)
 {
     nlohmann::json selectData;
-    selectData["table"] = rangeCountQuery.at("table");
+    selectData["table"] = jsonSyncConfiguration.at("table");
     auto& queryParam { selectData["query"] };
-    const auto& querySelect { rangeCountQuery["query"] };
+    const auto& querySelect { jsonSyncConfiguration.at("count_range_query_json") };
     
     const auto& countFieldName { querySelect.at("count_field_name").get_ref<const std::string&>() };
 
     size_t size { 0ull };
-    auto sizeRange
+    std::function<void(const nlohmann::json&)> sizeRange
     {
         [&size, &countFieldName] (const nlohmann::json& resultJSON)
         {
-            const auto countValue { resultJSON.at(countFieldName) };
-            if (countValue.is_number_unsigned())
-            {
-                size = countValue.get<uint64_t>();
-            }
-            else 
-            {
-                throw rsync_error { UNEXPECTED_RANGE_COUNT };
-            }
+            size = resultJSON.at(0).at(countFieldName);
         }
     };
 
@@ -154,71 +180,92 @@ size_t RSyncImplementation::getRangeCount(const std::shared_ptr<DBSyncImplementa
     Utils::replaceFirst(rowFilter, "?", syncData.end);
     
     queryParam["row_filter"] = rowFilter;
-    queryParam["colum_list"] = querySelect.at("colum_list");
+    queryParam["column_list"] = querySelect.at("column_list");
     queryParam["distinct_opt"] = querySelect.at("distinct_opt");
     queryParam["order_by_opt"] = querySelect.at("order_by_opt");
     
-    std::cout << selectData.dump() << std::endl;
-
     const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
-    spDBSyncImplementation->select(spJson.get(), { callbackDBSync, &sizeRange });
+    spDBSyncWrapper->select(spJson.get(), { callbackDBSync, &sizeRange });
 
     return size;
 }
 
 
-std::string RSyncImplementation::getChecksum(const std::shared_ptr<DBSyncImplementation>& spDBSyncImplementation, 
-                                             const nlohmann::json& rangeQuery,
+void RSyncImplementation::fillChecksum(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper, 
+                                             const nlohmann::json& jsonSyncConfiguration,
                                              const std::string& begin,
-                                             const std::string& end) 
+                                             const std::string& end,
+                                             ChecksumContext& ctx) 
 {
     nlohmann::json selectData;
-    selectData["table"] = rangeQuery.at("table");
-    auto& queryParam { selectData["query"] };
-    const auto& querySelect { rangeQuery["query"] };
+    const auto& indexFieldName { jsonSyncConfiguration.at("index").get_ref<const std::string&>() };
+    selectData["table"] = jsonSyncConfiguration.at("table");
+    
+    const auto& querySelect { jsonSyncConfiguration.at("range_checksum_query_json") };
+    const auto& checksumFieldName { jsonSyncConfiguration.at("checksum_field").get_ref<const std::string&>() };
+    
+    const auto middle { ctx.size / 2 };
+    auto index { 1ull };
 
-    const auto& checksumFieldName { querySelect.at("checksum_field_name").get_ref<const std::string&>() };
-    Utils::HashData hash{ Utils::HashType::Sha256 };
-    auto calcChecksum
+    std::unique_ptr<Utils::HashData> hash{ std::make_unique<Utils::HashData>(Utils::HashType::Sha256) };
+    std::function<void(const nlohmann::json&)> calcChecksum
     {
-        [&hash, &checksumFieldName] (const nlohmann::json& resultJSON)
+        [&] (const nlohmann::json& resultJSON)
         {
-            const auto checksumValue { resultJSON.at(checksumFieldName) };
-            if (checksumValue.is_string())
+            const auto checksumValue { resultJSON.at(0).at(checksumFieldName).get_ref<const std::string&>() };
+            hash->update(checksumValue.data(), checksumValue.size());
+
+            if (CHECKSUM_SPLIT == ctx.type)
             {
-                const auto& checksumRow { checksumValue.get_ref<const std::string&>() }; 
-                hash.update(checksumRow.data(), checksumRow.size());
+                if (middle+1 == index)
+                {
+                    ctx.rightCtx.begin = resultJSON.at(0).at(indexFieldName);
+                    ctx.leftCtx.tail = ctx.rightCtx.begin;
+                } 
+                else if(middle == index)
+                {
+                    ctx.leftCtx.end = resultJSON.at(0).at(indexFieldName);
+                    ctx.leftCtx.checksum = Utils::asciiToHex(hash->hash());
+                    hash = std::make_unique<Utils::HashData>(Utils::HashType::Sha256);
+                }
+
+                if(ctx.size == index)
+                {
+                    ctx.rightCtx.checksum = Utils::asciiToHex(hash->hash());
+                }
             }
             else
             {
-                throw rsync_error { UNEXPECTED_CHECKSUM };
-            }            
+                if(ctx.size == index)
+                {
+                    ctx.leftCtx.checksum = Utils::asciiToHex(hash->hash());
+                }
+            }
+            
+            ++index;
         }
     };
 
     auto rowFilter { querySelect.at("row_filter").get_ref<const std::string&>() } ;
     Utils::replaceFirst(rowFilter, "?", begin);
     Utils::replaceFirst(rowFilter, "?", end);
-    
+
+    auto& queryParam { selectData["query"] };
     queryParam["row_filter"] = rowFilter;
-    queryParam["colum_list"] = querySelect.at("colum_list");
+    queryParam["column_list"] = querySelect.at("column_list");
     queryParam["distinct_opt"] = querySelect.at("distinct_opt");
     queryParam["order_by_opt"] = querySelect.at("order_by_opt");
 
-    std::cout << selectData.dump() << std::endl;
-
     const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
-    spDBSyncImplementation->select(spJson.get(), { callbackDBSync, &calcChecksum });
-
-    return Utils::asciiToHex(hash.hash());
+    spDBSyncWrapper->select(spJson.get(), { callbackDBSync, &calcChecksum });
 }
 
-nlohmann::json RSyncImplementation::getRowData(const std::shared_ptr<DBSyncImplementation>& spDBSyncImplementation, 
-                                               const nlohmann::json& rowQuery,
+nlohmann::json RSyncImplementation::getRowData(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper, 
+                                               const nlohmann::json& jsonSyncConfiguration,
                                                const std::string& index)
 {
     nlohmann::json rowData;
-    auto getRowData
+    std::function<void(const nlohmann::json&)> getRowData
     {
         [&rowData] (const nlohmann::json& resultJSON)
         {
@@ -227,49 +274,48 @@ nlohmann::json RSyncImplementation::getRowData(const std::shared_ptr<DBSyncImple
     };
 
     nlohmann::json selectData;
-    selectData["table"] = rowQuery.at("table");
+    selectData["table"] = jsonSyncConfiguration.at("table");
     auto& queryParam { selectData["query"] };
-    const auto& querySelect { rowQuery["query"] };
+    const auto& querySelect { jsonSyncConfiguration.at("row_data_query_json") };
 
     auto rowFilter { querySelect.at("row_filter").get_ref<const std::string&>() } ;
     Utils::replaceFirst(rowFilter, "?", index);
     
     queryParam["row_filter"] = rowFilter;
-    queryParam["colum_list"] = querySelect.at("colum_list");
+    queryParam["column_list"] = querySelect.at("column_list");
     queryParam["distinct_opt"] = querySelect.at("distinct_opt");
     queryParam["order_by_opt"] = querySelect.at("order_by_opt");
 
     const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
 
-    spDBSyncImplementation->select(spJson.get(), { callbackDBSync, &getRowData });
+    spDBSyncWrapper->select(spJson.get(), { callbackDBSync, &getRowData });
     return rowData;
 }
 
-void RSyncImplementation::sendAllData(const std::shared_ptr<DBSyncImplementation>& spDBSyncImplementation, 
-                                      const nlohmann::json& noDataQuery,
+void RSyncImplementation::sendAllData(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper, 
+                                      const nlohmann::json& jsonSyncConfiguration,
                                       const ResultCallback callbackWrapper)
 {
     const auto& messageCreator { FactoryMessageCreator<nlohmann::json, MessageType::ROW_DATA>::create() };
-    auto sendRowData
+    std::function<void(const nlohmann::json&)> sendRowData
     {
-        [&callbackWrapper, &messageCreator, &noDataQuery] (const nlohmann::json& resultJSON)
+        [&callbackWrapper, &messageCreator, &jsonSyncConfiguration] (const nlohmann::json& resultJSON)
         {
-            messageCreator->send(callbackWrapper, noDataQuery, resultJSON);  
+            messageCreator->send(callbackWrapper, jsonSyncConfiguration, resultJSON.at(0));  
         }
     };
-
     nlohmann::json selectData;
-    selectData["table"] = noDataQuery.at("table");
-    const auto& querySelect { noDataQuery["query"] };
+    selectData["table"] = jsonSyncConfiguration.at("table");
+    const auto& querySelect { jsonSyncConfiguration.at("no_data_query_json") };
 
     auto& queryParam { selectData["query"] };
        
     queryParam["row_filter"] = querySelect.at("row_filter");
-    queryParam["colum_list"] = querySelect.at("colum_list");
+    queryParam["column_list"] = querySelect.at("column_list");
     queryParam["distinct_opt"] = querySelect.at("distinct_opt");
     queryParam["order_by_opt"] = querySelect.at("order_by_opt");
 
     const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
-    spDBSyncImplementation->select(spJson.get(), { callbackDBSync, &sendRowData });
+    spDBSyncWrapper->select(spJson.get(), { callbackDBSync, &sendRowData });
     
 }

@@ -12,7 +12,7 @@
 #include <string>
 #include "rsync.h"
 #include "rsync_exception.h"
-#include "dbsyncImplementation.h"
+#include "dbsyncWrapper.h"
 #include "rsyncImplementation.h"
 
 
@@ -80,25 +80,32 @@ EXPORTED int rsync_register_sync_id(const RSYNC_HANDLE handle,
 {
     int retVal{ -1 };
     std::string errorMessage;
-    try
+    if (!message_header_id || !dbsync_handle || !sync_configuration || !callback_data.callback)
     {
-        const auto callbackWrapper
+        errorMessage += "Invalid Parameters.";
+    }
+    else
+    {
+        try
         {
-            [callback_data](const std::string& payload)
+            const auto callbackWrapper
             {
-                callback_data.callback(payload.c_str(), payload.size(), callback_data.user_data);
-            }
-        };
-        const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(sync_configuration)};
-        RSyncImplementation::instance().registerSyncId(handle, message_header_id, std::make_shared<DBSyncImplementation>(dbsync_handle), spJsonBytes.get(), callbackWrapper);
-        retVal = 0;
+                [callback_data](const std::string& payload)
+                {
+                    callback_data.callback(payload.c_str(), payload.size(), callback_data.user_data);
+                }
+            };
+            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(sync_configuration)};
+            RSyncImplementation::instance().registerSyncId(handle, message_header_id, std::make_shared<DBSyncWrapper>(dbsync_handle), spJsonBytes.get(), callbackWrapper);
+            retVal = 0;
+        }
+        // LCOV_EXCL_START
+        catch(...)
+        {
+            errorMessage += "Unrecognized error.";
+        }
+        // LCOV_EXCL_STOP
     }
-    // LCOV_EXCL_START
-    catch(...)
-    {
-        errorMessage += "Unrecognized error.";
-    }
-    // LCOV_EXCL_STOP
     
     log_message(errorMessage);
     return retVal; 
@@ -140,11 +147,17 @@ EXPORTED int rsync_close(const RSYNC_HANDLE handle)
     std::string message;
     auto retVal { 0 };
     
-    if (!RSyncImplementation::instance().releaseContext(handle))
+    try
+    {
+        RSyncImplementation::instance().releaseContext(handle);
+    }
+    // LCOV_EXCL_START
+    catch (...)
     {
         message += "RSYNC invalid context handle.";
         retVal = -1;
     }
+    // LCOV_EXCL_STOP
 
     log_message(message);
     return retVal;

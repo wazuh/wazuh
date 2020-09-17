@@ -24,6 +24,6 @@ namespace RSync
     public:
         virtual void send(const ResultCallback callback, const nlohmann::json& config, const Type& data) = 0;
     };
-};
+};// namespace RSync
 
 #endif //_IMESSAGECREATOR_H
