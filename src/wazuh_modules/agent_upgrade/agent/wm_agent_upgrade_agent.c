@@ -104,13 +104,13 @@ void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
 STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state) {
     int msg_delay = 1000000 / wm_max_eps;
     cJSON* root = cJSON_CreateObject();
-    cJSON* params = cJSON_CreateObject();
+    cJSON* parameters = cJSON_CreateObject();
 
     cJSON_AddStringToObject(root, task_manager_json_keys[WM_TASK_COMMAND], task_manager_commands_list[WM_TASK_UPGRADE_UPDATE_STATUS]);
-    cJSON_AddNumberToObject(params, task_manager_json_keys[WM_TASK_ERROR], atoi(upgrade_values[state]));
-    cJSON_AddStringToObject(params, task_manager_json_keys[WM_TASK_ERROR_DATA], upgrade_messages[state]);
-    cJSON_AddStringToObject(params,  task_manager_json_keys[WM_TASK_STATUS], task_statuses_map[state]);
-    cJSON_AddItemToObject(root, "params", params);
+    cJSON_AddNumberToObject(parameters, task_manager_json_keys[WM_TASK_ERROR], atoi(upgrade_values[state]));
+    cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], upgrade_messages[state]);
+    cJSON_AddStringToObject(parameters,  task_manager_json_keys[WM_TASK_STATUS], task_statuses_map[state]);
+    cJSON_AddItemToObject(root, task_manager_json_keys[WM_TASK_PARAMETERS], parameters);
 
     char *msg_string = cJSON_PrintUnformatted(root);
     if (wm_sendmsg(msg_delay, *queue_fd, msg_string, task_manager_modules_list[WM_TASK_UPGRADE_MODULE], UPGRADE_MQ) < 0) {

@@ -45,47 +45,112 @@ static const char *error_codes[] = {
 };
 
 cJSON* wm_task_manager_parse_message(const char *msg) {
-    cJSON *event_array = NULL;
-    cJSON *task_object = NULL;
-    cJSON *module_json = NULL;
+    cJSON *response_array = NULL;
+    cJSON *event_json = NULL;
     cJSON *command_json = NULL;
+    cJSON *parameters_json = NULL;
+    cJSON *origin_json = NULL;
+    cJSON *module_json = NULL;
     const char *error;
-    int task = 0;
-    int tasks = 0;
 
     // Parsing event
-    if (event_array = cJSON_ParseWithOpts(msg, &error, 0), !event_array) {
+    if (event_json = cJSON_ParseWithOpts(msg, &error, 0), !event_json) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_JSON_ERROR, msg);
         return NULL;
     }
 
-    // Getting array size
-    if (tasks = cJSON_GetArraySize(event_array), !tasks) {
-        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_EMPTY_ERROR);
-        cJSON_Delete(event_array);
+    // Detect origin
+    if (origin_json = cJSON_GetObjectItem(event_json, task_manager_json_keys[WM_TASK_ORIGIN]), !origin_json || (origin_json->type != cJSON_Object)) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_ORIGIN], 0);
+        cJSON_Delete(event_json);
         return NULL;
     }
 
-    for (task = 0; task < tasks; ++task) {
-        // Getting task
-        task_object = cJSON_GetArrayItem(event_array, task);
+    // Detect module
+    if (module_json = cJSON_GetObjectItem(origin_json, task_manager_json_keys[WM_TASK_MODULE]), !module_json || module_json->type != cJSON_String) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_MODULE], 0);
+        cJSON_Delete(event_json);
+        return NULL;
+    }
 
-        // Detect module
-        if (module_json = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_MODULE]), !module_json || module_json->type != cJSON_String) {
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_MODULE], task);
-            cJSON_Delete(event_array);
-            return NULL;
+    // Detect command
+    if (command_json = cJSON_GetObjectItem(event_json, task_manager_json_keys[WM_TASK_COMMAND]), !command_json || command_json->type != cJSON_String) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_COMMAND], 0);
+        cJSON_Delete(event_json);
+        return NULL;
+    }
+
+    // Detect parameters
+    if (parameters_json = cJSON_GetObjectItem(event_json, task_manager_json_keys[WM_TASK_PARAMETERS]), !parameters_json || (parameters_json->type != cJSON_Object)) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_PARAMETERS], 0);
+        cJSON_Delete(event_json);
+        return NULL;
+    }
+
+    // Create response JSON array
+    response_array = cJSON_CreateArray();
+
+    cJSON *agents_json = cJSON_GetObjectItem(parameters_json, task_manager_json_keys[WM_TASK_AGENTS]);
+    cJSON *tasks_json = cJSON_GetObjectItem(parameters_json, task_manager_json_keys[WM_TASK_TASKS]);
+    cJSON *status_json = cJSON_GetObjectItem(parameters_json, task_manager_json_keys[WM_TASK_STATUS]);
+    cJSON *error_msg_json = cJSON_GetObjectItem(parameters_json, task_manager_json_keys[WM_TASK_ERROR_MSG]);
+
+    if (agents_json && (agents_json->type == cJSON_Array)) {
+        cJSON *agent_json = NULL;
+        int agent_index = 0;
+
+        while(agent_json = cJSON_GetArrayItem(agents_json, agent_index++), agent_json) {
+
+            if (agent_json->type == cJSON_Number) {
+                cJSON *task = cJSON_CreateObject();
+
+                cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_MODULE], module_json->valuestring);
+                cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_COMMAND], command_json->valuestring);
+                cJSON_AddNumberToObject(task, task_manager_json_keys[WM_TASK_AGENT_ID], agent_json->valueint);
+                if (status_json && (status_json->type = cJSON_String)) {
+                    cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_STATUS], status_json->valuestring);
+                }
+                if (error_msg_json && (error_msg_json->type = cJSON_String)) {
+                    cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_ERROR_MSG], error_msg_json->valuestring);
+                }
+
+                cJSON_AddItemToArray(response_array, task);
+
+            } else {
+                mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, task_manager_json_keys[WM_TASK_AGENTS], agent_index);
+            }
         }
 
-        // Detect command
-        if (command_json = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_COMMAND]), !command_json || command_json->type != cJSON_String) {
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_COMMAND], task);
-            cJSON_Delete(event_array);
-            return NULL;
+    } else if (tasks_json && (tasks_json->type == cJSON_Array)) {
+        cJSON *task_json = NULL;
+        int task_index = 0;
+
+        while(task_json = cJSON_GetArrayItem(agents_json, task_index++), task_json) {
+
+            if (task_json->type == cJSON_Number) {
+                cJSON *task = cJSON_CreateObject();
+
+                cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_MODULE], module_json->valuestring);
+                cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_COMMAND], command_json->valuestring);
+                cJSON_AddNumberToObject(task, task_manager_json_keys[WM_TASK_TASK_ID], task_json->valueint);
+                if (status_json && (status_json->type = cJSON_String)) {
+                    cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_STATUS], status_json->valuestring);
+                }
+                if (error_msg_json && (error_msg_json->type = cJSON_String)) {
+                    cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_ERROR_MSG], error_msg_json->valuestring);
+                }
+
+                cJSON_AddItemToArray(response_array, task);
+
+            } else {
+                mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, task_manager_json_keys[WM_TASK_TASKS], task_index);
+            }
         }
     }
 
-    return event_array;
+    cJSON_Delete(event_json);
+
+    return response_array;
 }
 
 void wm_task_manager_parse_response_result(cJSON *response, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command) {
@@ -135,7 +200,7 @@ cJSON* wm_task_manager_parse_response(int error_code, int agent_id, int task_id,
     cJSON *response_json = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(response_json, task_manager_json_keys[WM_TASK_ERROR], error_code);
-    cJSON_AddStringToObject(response_json, task_manager_json_keys[WM_TASK_ERROR_DATA], error_codes[error_code]);
+    cJSON_AddStringToObject(response_json, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], error_codes[error_code]);
     if (agent_id != OS_INVALID) {
         cJSON_AddNumberToObject(response_json, task_manager_json_keys[WM_TASK_AGENT_ID], agent_id);
     }

@@ -21,11 +21,12 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
     int agents = 0;
     int error = OS_SUCCESS;
     cJSON *task_module_response = NULL;
-    cJSON *temp_array = cJSON_CreateArray();
-    if (agents = cJSON_GetArraySize(task_module_request), !agents) {
-        cJSON_Delete(temp_array);
+
+    if (agents = cJSON_GetArraySize(cJSON_GetObjectItem(task_module_request, task_manager_json_keys[WM_TASK_AGENTS])), !agents) {
         return OS_INVALID;
     }
+
+    cJSON *temp_array = cJSON_CreateArray();
 
     // Send request to task module
     task_module_response = wm_agent_upgrade_send_tasks_information(task_module_request);
@@ -53,7 +54,7 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
 
     if (error) {
         for(int i = 0; i < agents; i++) {
-            cJSON *agent_json = cJSON_GetObjectItem(cJSON_GetArrayItem(task_module_request, i), task_manager_json_keys[WM_TASK_AGENT_ID]);
+            cJSON *agent_json = cJSON_GetArrayItem(cJSON_GetObjectItem(task_module_request, task_manager_json_keys[WM_TASK_AGENTS]), i);
 
             if (agent_json && (agent_json->type == cJSON_Number)) {
                 int agent_id = agent_json->valueint;

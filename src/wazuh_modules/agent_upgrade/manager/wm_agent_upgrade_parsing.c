@@ -67,58 +67,75 @@ STATIC wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(con
 STATIC wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status(const cJSON* params, char** error_message);
 
 int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error) {
+    cJSON *root = NULL;
     int retval = OS_INVALID;
     int error_code = WM_UPGRADE_SUCCESS;
     char* error_message = NULL;
     cJSON *error_json = NULL;
 
-    cJSON *root = cJSON_Parse(buffer);
-
-    if (!root) {
+    if (root = cJSON_Parse(buffer), !root) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_JSON_PARSE_ERROR,  buffer);
-        error_code = WM_UPGRADE_PARSING_ERROR;
-    } else {
-        cJSON *command = cJSON_GetObjectItem(root, "command");
-        cJSON *params = cJSON_GetObjectItem(root, "params");
-        cJSON *agents = cJSON_GetObjectItem(root, "agents");
+        error_json = wm_agent_upgrade_parse_response_message(WM_UPGRADE_PARSING_ERROR, upgrade_error_codes[WM_UPGRADE_PARSING_ERROR], NULL, NULL, NULL);
+        *error = cJSON_PrintUnformatted(error_json);
+        cJSON_Delete(error_json);
+        return retval;
+    }
 
-        if (command && (command->type == cJSON_String) && agents && (agents->type == cJSON_Array) && cJSON_GetArraySize(agents)) {
+    cJSON *command = cJSON_GetObjectItem(root, task_manager_json_keys[WM_TASK_COMMAND]);
+    cJSON *parameters = cJSON_GetObjectItem(root, task_manager_json_keys[WM_TASK_PARAMETERS]);
+
+    if (command && (command->type == cJSON_String) && parameters && (parameters->type == cJSON_Object)) {
+
+        cJSON *agents = cJSON_DetachItemFromObject(parameters, task_manager_json_keys[WM_TASK_AGENTS]);
+
+        if (agents && (agents->type == cJSON_Array) && cJSON_GetArraySize(agents)) {
+
             if (strcmp(command->valuestring, task_manager_commands_list[WM_UPGRADE_UPGRADE]) == 0) { // Upgrade command
                 // Analyze agent IDs
                 *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
                 if (!error_message) {
                     // Analyze upgrade parameters
-                    *task = (wm_upgrade_task *)wm_agent_upgrade_parse_upgrade_command(params, &error_message);
+                    *task = (wm_upgrade_task *)wm_agent_upgrade_parse_upgrade_command(parameters, &error_message);
                     if (!error_message) {
                         retval = WM_UPGRADE_UPGRADE;
                     }
                 }
+
             } else if (strcmp(command->valuestring, task_manager_commands_list[WM_UPGRADE_UPGRADE_CUSTOM]) == 0) { // Upgrade custom command
                 // Analyze agent IDs
                 *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
                 if (!error_message) {
                     // Analyze upgrade custom parameters
-                    *task = (wm_upgrade_custom_task *)wm_agent_upgrade_parse_upgrade_custom_command(params, &error_message);
+                    *task = (wm_upgrade_custom_task *)wm_agent_upgrade_parse_upgrade_custom_command(parameters, &error_message);
                     if (!error_message) {
                         retval = WM_UPGRADE_UPGRADE_CUSTOM;
                     }
                 }
-            } else if (strcmp(command->valuestring, task_manager_commands_list[WM_UPGRADE_AGENT_UPDATE_STATUS]) == 0) {
+
+            } else if (strcmp(command->valuestring, task_manager_commands_list[WM_UPGRADE_AGENT_UPDATE_STATUS]) == 0) { // Upgrade update status command
                 *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
                 if (!error_message) {
-                    *task = (wm_upgrade_agent_status_task*)wm_agent_upgrade_parse_upgrade_agent_status(params, &error_message);
+                    *task = (wm_upgrade_agent_status_task*)wm_agent_upgrade_parse_upgrade_agent_status(parameters, &error_message);
                     if (!error_message) {
                         retval = WM_UPGRADE_AGENT_UPDATE_STATUS;
                     }
                 }
+
             } else {
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR, command->valuestring);
                 error_code = WM_UPGRADE_TASK_CONFIGURATIONS;
             }
+
         } else {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUIRED_PARAMETERS);
             error_code = WM_UPGRADE_PARSING_REQUIRED_PARAMETER;
         }
+
+        cJSON_Delete(agents);
+
+    } else {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUIRED_PARAMETERS);
+        error_code = WM_UPGRADE_PARSING_REQUIRED_PARAMETER;
     }
 
     if (error_message) {
@@ -321,7 +338,7 @@ STATIC wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
                     sprintf(output, "Parameter \"%s\" should be a number", item->string);
                     error_flag = 1;
                 }
-            } else if(strcmp(item->string, task_manager_json_keys[WM_TASK_ERROR_DATA]) == 0) {
+            } else if(strcmp(item->string, task_manager_json_keys[WM_TASK_ERROR_MESSAGE]) == 0) {
                 if (item->type == cJSON_String) {
                     os_strdup(item->valuestring, task->message);
                 } else {
@@ -357,10 +374,11 @@ STATIC wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
 }
 
 cJSON* wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
-    cJSON * response = cJSON_CreateObject();
+    cJSON *response = cJSON_CreateObject();
+
     cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_ERROR], error_id);
     if (message) {
-        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_DATA], message);
+        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], message);
     }
     if(agent_id) {
         cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_AGENT_ID], *agent_id);
@@ -371,21 +389,28 @@ cJSON* wm_agent_upgrade_parse_response_message(int error_id, const char* message
     if (status) {
         cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_STATUS], status);
     }
+
     return response;
 }
 
-cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status, const char* error) {
-    cJSON * response = cJSON_CreateObject();
-    cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_MODULE], task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
-    cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_COMMAND], task_manager_commands_list[command]);
-    cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_AGENT_ID], agent_id);
+cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJSON *agents_array, const char* status, const char* error) {
+    cJSON *request = cJSON_CreateObject();
+    cJSON *origin = cJSON_CreateObject();
+    cJSON *parameters = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(origin, task_manager_json_keys[WM_TASK_MODULE], task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
+    cJSON_AddItemToObject(request, task_manager_json_keys[WM_TASK_ORIGIN], origin);
+    cJSON_AddStringToObject(request, task_manager_json_keys[WM_TASK_COMMAND], task_manager_commands_list[command]);
+    cJSON_AddItemToObject(parameters, task_manager_json_keys[WM_TASK_AGENTS], agents_array);
     if (status) {
-        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_STATUS], status);
+        cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_STATUS], status);
     }
     if (error) {
-        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_MSG], error);
+        cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_ERROR_MSG], error);
     }
-    return response;
+    cJSON_AddItemToObject(request, task_manager_json_keys[WM_TASK_PARAMETERS], parameters);
+
+    return request;
 }
 
 int wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data) {
