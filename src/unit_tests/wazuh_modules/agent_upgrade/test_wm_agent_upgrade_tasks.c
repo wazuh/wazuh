@@ -150,7 +150,7 @@ void test_wm_agent_upgrade_remove_entry_ok(void **state)
     expect_string(__wrap_OSHash_Delete_ex, key, "10");
     will_return(__wrap_OSHash_Delete_ex, agent_task);
 
-    wm_agent_upgrade_remove_entry(agent_id);
+    wm_agent_upgrade_remove_entry(agent_id, 1);
 }
 
 void test_wm_agent_upgrade_remove_entry_err(void **state)
@@ -161,7 +161,7 @@ void test_wm_agent_upgrade_remove_entry_err(void **state)
     expect_string(__wrap_OSHash_Delete_ex, key, "10");
     will_return(__wrap_OSHash_Delete_ex, NULL);
 
-    wm_agent_upgrade_remove_entry(agent_id);
+    wm_agent_upgrade_remove_entry(agent_id, 0);
 }
 
 void test_wm_agent_upgrade_get_first_node(void **state)

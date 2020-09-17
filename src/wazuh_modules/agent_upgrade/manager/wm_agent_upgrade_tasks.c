@@ -161,11 +161,11 @@ void wm_agent_upgrade_insert_task_id(int agent_id, int task_id) {
     }
 }
 
-void wm_agent_upgrade_remove_entry(int agent_id) {
+void wm_agent_upgrade_remove_entry(int agent_id, int free) {
     char agent_id_string[128];
     sprintf(agent_id_string, "%d", agent_id);
     wm_agent_task *agent_task = (wm_agent_task *)OSHash_Delete_ex(task_table_by_agent_id, agent_id_string);
-    if (agent_task) {
+    if (free) {
         wm_agent_upgrade_free_agent_task(agent_task);
     }
 }
@@ -228,7 +228,7 @@ STATIC cJSON *wm_agent_send_task_information_master(const cJSON *message_object)
 }
 
 STATIC cJSON *wm_agent_send_task_information_worker(const cJSON *message_object) {
-    char response[OS_MAXSTR];
+    char response[OS_MAXSTR] = "";
     cJSON *message_duplicate = cJSON_Duplicate(message_object, 1);
 
     cJSON *payload = w_create_sendsync_payload(TASK_MANAGER_WM_NAME, message_duplicate);
@@ -239,7 +239,9 @@ STATIC cJSON *wm_agent_send_task_information_worker(const cJSON *message_object)
 
     w_send_clustered_message("sendsync", message, response);
 
-    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_RECEIVE_MESSAGE, response);
+    if (response[0]) {
+        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_RECEIVE_MESSAGE, response);
+    }
 
     os_free(message);
     cJSON_Delete(payload);

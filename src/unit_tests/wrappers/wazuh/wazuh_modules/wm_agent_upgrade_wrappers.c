@@ -47,20 +47,16 @@ int __wrap_wm_agent_upgrade_parse_message(const char* buffer, void** task, int**
     return mock();
 }
 
-char* __wrap_wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, __attribute__((unused)) const wm_manager_configs* manager_configs, int *upgrade_agents) {
+char* __wrap_wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, __attribute__((unused)) const wm_manager_configs* manager_configs) {
     check_expected_ptr(agent_ids);
     check_expected_ptr(task);
-
-    *upgrade_agents = mock();
 
     return mock_type(char *);
 }
 
-char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, __attribute__((unused)) const wm_manager_configs* manager_configs, int *upgrade_agents) {
+char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, __attribute__((unused)) const wm_manager_configs* manager_configs) {
     check_expected_ptr(agent_ids);
     check_expected_ptr(task);
-
-    *upgrade_agents = mock();
 
     return mock_type(char *);
 }
@@ -178,8 +174,9 @@ int __wrap_wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* ag_ta
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_remove_entry(int agent_id) {
+int __wrap_wm_agent_upgrade_remove_entry(int agent_id, int free) {
     check_expected(agent_id);
+    check_expected(free);
 
     return mock();
 }
@@ -246,8 +243,6 @@ cJSON* __wrap_wm_agent_upgrade_send_tasks_information(const cJSON *message_objec
     return mock_type(cJSON *);
 }
 
-int __wrap_wm_agent_upgrade_start_upgrades(const wm_manager_configs* manager_configs) {
-    check_expected(manager_configs);
-
+int __wrap_wm_agent_upgrade_prepare_upgrades() {
     return mock();
 }

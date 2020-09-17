@@ -74,6 +74,7 @@ void test_wm_agent_upgrade_upgrade_success_callback_no_task_id(void **state)
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 1);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agent);
+    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
     will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
     expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_FAILURE);
@@ -315,6 +316,7 @@ void test_wm_agent_upgrade_task_module_callback_success_callback_ok(void **state
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 1);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 10);
+    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
     will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
     expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_FAILURE);
@@ -455,6 +457,7 @@ void test_wm_agent_upgrade_task_module_callback_error_callback_error(void **stat
     will_return(__wrap_wm_agent_upgrade_send_tasks_information, task_response);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 12);
+    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
     will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
     expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
@@ -463,6 +466,7 @@ void test_wm_agent_upgrade_task_module_callback_error_callback_error(void **stat
     will_return(__wrap_wm_agent_upgrade_parse_response_message, error1);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 10);
+    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
     will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
     expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
@@ -561,6 +565,7 @@ void test_wm_agent_upgrade_task_module_callback_success_error_callback_error(voi
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 0);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 12);
+    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
     will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
     expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
@@ -569,6 +574,7 @@ void test_wm_agent_upgrade_task_module_callback_success_error_callback_error(voi
     will_return(__wrap_wm_agent_upgrade_parse_response_message, error1);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 10);
+    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
     will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
     expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);

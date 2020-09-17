@@ -12,6 +12,7 @@
 #include "wm_agent_upgrade_manager.h"
 #include "wm_agent_upgrade_parsing.h"
 #include "wm_agent_upgrade_tasks.h"
+#include "wm_agent_upgrade_upgrades.h"
 #include "os_net/os_net.h"
 
 const char* upgrade_error_codes[] = {
@@ -48,15 +49,22 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
     // Initialize task hashmap
     wm_agent_upgrade_init_task_map();
 
+    // Initialize upgrade queue
+    wm_agent_upgrade_init_upgrade_queue();
+
     // Initialize socket
     int sock = OS_BindUnixDomain(WM_UPGRADE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
     if (sock < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_BIND_SOCK_ERROR, WM_UPGRADE_SOCK_PATH, strerror(errno));
         wm_agent_upgrade_destroy_task_map();
+        wm_agent_upgrade_destroy_upgrade_queue();
         return;
     }
 
-    while(1) {
+    // Start dispatch upgrades thread
+    w_create_thread(wm_agent_upgrade_dispatch_upgrades, (void *)manager_configs);
+
+    while (1) {
         // listen - wait connection
         fd_set fdset;    
         FD_ZERO(&fdset);
@@ -68,6 +76,7 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SELECT_ERROR, strerror(errno));
                 close(sock);
                 wm_agent_upgrade_destroy_task_map();
+                wm_agent_upgrade_destroy_upgrade_queue();
                 return;
             }
             continue;
@@ -86,7 +95,6 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
 
         // Get request string
         char *buffer = NULL;
-        int upgrade_agents = 0;
 
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         int length;
@@ -116,14 +124,14 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
             case WM_UPGRADE_UPGRADE:
                 // Upgrade command
                 if (task && agent_ids) {
-                    message = wm_agent_upgrade_process_upgrade_command(agent_ids, (wm_upgrade_task *)task, manager_configs, &upgrade_agents);
+                    message = wm_agent_upgrade_process_upgrade_command(agent_ids, (wm_upgrade_task *)task, manager_configs);
                 }
                 wm_agent_upgrade_free_upgrade_task(task);
                 break;
             case WM_UPGRADE_UPGRADE_CUSTOM:
                 // Upgrade custom command
                 if (task && agent_ids) {
-                    message = wm_agent_upgrade_process_upgrade_custom_command(agent_ids, (wm_upgrade_custom_task *)task, manager_configs, &upgrade_agents);
+                    message = wm_agent_upgrade_process_upgrade_custom_command(agent_ids, (wm_upgrade_custom_task *)task, manager_configs);
                 }
                 wm_agent_upgrade_free_upgrade_custom_task(task);
                 break;
@@ -153,10 +161,6 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
         os_free(buffer);
         close(peer);
 
-        if (upgrade_agents) {
-            wm_agent_upgrade_start_upgrades(manager_configs);
-        }
-
     #ifdef WAZUH_UNIT_TESTING
         break;
     #endif
@@ -166,4 +170,7 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
 
     // Destroy task hashmap
     wm_agent_upgrade_destroy_task_map();
+
+    // Destroy upgrade queue
+    wm_agent_upgrade_destroy_upgrade_queue();
 }

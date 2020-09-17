@@ -17,6 +17,7 @@ static const char *XML_WAIT_FACTOR = "notification_wait_factor";
 #else
 static const char *XML_WPK_REPOSITORY = "wpk_repository";
 static const char *XML_CHUNK_SIZE = "chunk_size";
+static const char *XML_MAX_THREADS = "max_threads";
 #endif
 
 int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
@@ -33,6 +34,7 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
         data->agent_config.upgrade_wait_max = WM_UPGRADE_WAIT_MAX;
         data->agent_config.upgrade_wait_factor_increase = WM_UPGRADE_WAIT_FACTOR_INCREASE;
         #else
+        data->manager_config.max_threads = WM_UPGRADE_MAX_THREADS;
         data->manager_config.chunk_size = WM_UPGRADE_CHUNK_SIZE;
         data->manager_config.wpk_repository = strdup(WM_UPGRADE_WPK_REPO_URL);
         #endif
@@ -129,9 +131,25 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_CHUNK_SIZE, WM_AGENT_UPGRADE_CONTEXT.name);
                 return (OS_INVALID);
             }
-            
+
             data->manager_config.chunk_size = chunk;
-            
+
+        } else if (!strcmp(nodes[i]->element, XML_MAX_THREADS)) {
+            if (!OS_StrIsNum(nodes[i]->content)) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_MAX_THREADS, WM_AGENT_UPGRADE_CONTEXT.name);
+                return (OS_INVALID);
+            }
+            int max_threads = atoi(nodes[i]->content);
+            if (!max_threads) {
+                // If 0, we assign the number of cpu cores
+                data->manager_config.max_threads = get_nproc();
+            } else if (max_threads <= 256) {
+                data->manager_config.max_threads = max_threads;
+            } else {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_MAX_THREADS, WM_AGENT_UPGRADE_CONTEXT.name);
+                return (OS_INVALID);
+            }
+
         } else if (!strcmp(nodes[i]->element, XML_WPK_REPOSITORY)) {
             os_free(data->manager_config.wpk_repository);
             os_strdup(nodes[i]->content, data->manager_config.wpk_repository);
