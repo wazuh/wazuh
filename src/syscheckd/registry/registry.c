@@ -130,7 +130,7 @@ int fim_registry_validate_path(const char *entry_path, const registry *configura
                 continue;
             }
 
-            if (strcasecmp(syscheck.registry_ignore[ign_it].entry, entry_path) == 0) {
+            if (strncasecmp(syscheck.registry_ignore[ign_it].entry, entry_path, strlen(syscheck.registry_ignore[ign_it].entry)) == 0) {
                 mdebug2(FIM_IGNORE_ENTRY, "registry", entry_path, syscheck.registry_ignore[ign_it].entry);
                 return -1;
             }
@@ -412,7 +412,6 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
         /* Open sub_key */
         fim_open_key(root_key_handle, new_full_key, new_sub_key, arch, mode);
     }
-
     // Done scanning sub_keys, trigger an alert on the current key if required.
     new.type = FIM_TYPE_REGISTRY;
     new.registry_entry.key = fim_registry_get_key_data(current_key_handle, full_key, configuration);
