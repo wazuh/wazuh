@@ -23,7 +23,6 @@
 #include "wm_agent_upgrade_validate.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_net/os_net.h"
-#include <semaphore.h>
 
 /* Queue to store agents ready to be upgraded */
 STATIC w_queue_t *upgrade_queue;

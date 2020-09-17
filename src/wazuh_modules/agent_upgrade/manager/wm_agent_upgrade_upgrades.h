@@ -13,6 +13,7 @@
 #define WM_AGENT_UPGRADE_UPGRADES_H
 
 #include "wm_agent_upgrade_manager.h"
+#include <semaphore.h>
 
 /**
  * Upgrade queue initialization

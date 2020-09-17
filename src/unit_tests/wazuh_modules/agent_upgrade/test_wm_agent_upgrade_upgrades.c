@@ -30,19 +30,13 @@
 
 extern w_queue_t *upgrade_queue;
 
-extern unsigned int upgrade_threads_count;
-
-extern pthread_mutex_t upgrade_threads_mutex;
-
-extern pthread_cond_t upgrade_threads_cond;
+sem_t upgrade_semaphore;
 
 typedef struct _test_upgrade_args {
     wm_manager_configs *config;
     wm_agent_task *agent_task;
 } test_upgrade_args;
 
-void wm_agent_upgrade_wait_available_thread(unsigned int max_threads);
-void wm_agent_upgrade_release_thread();
 void* wm_agent_upgrade_start_upgrade(void *arg);
 int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs);
 int wm_agent_upgrade_send_lock_restart(int agent_id);
@@ -89,6 +83,7 @@ static int setup_upgrade_args(void **state) {
     state[0] = (void *)args;
     state[1] = (void *)config;
     upgrade_queue = queue_init(10);
+    sem_init(&upgrade_semaphore, 0, 5);
     return 0;
 }
 
@@ -96,6 +91,7 @@ static int teardown_upgrade_args(void **state) {
     wm_manager_configs *config = state[1];
     os_free(config);
     queue_free(upgrade_queue);
+    sem_destroy(&upgrade_semaphore);
     return 0;
 }
 
@@ -2507,8 +2503,6 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
 {
     (void) state;
 
-    upgrade_threads_count = 5;
-
     int socket = 555;
     int agent_id = 25;
     char *status = "In progress";
@@ -2659,21 +2653,17 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok_0);
     will_return_count(__wrap_wm_agent_upgrade_parse_agent_response, 0, 6);
 
-    will_return(__wrap_queue_pop_ex_timedwait, OS_INVALID);
-    expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
-
-    expect_value(__wrap_pthread_cond_signal, cond, &upgrade_threads_cond);
-
     wm_agent_upgrade_start_upgrade(args);
 
-    assert_int_equal(upgrade_threads_count, 4);
+    int value = 0;
+    sem_getvalue(&upgrade_semaphore, &value);
+
+    assert_int_equal(value, 6);
 }
 
 void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
 {
     (void) state;
-
-    upgrade_threads_count = 5;
 
     int socket = 555;
     int agent_id = 25;
@@ -2864,21 +2854,17 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
     expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response_status, sizeof(task_response_status));
     will_return(__wrap_wm_agent_upgrade_validate_task_status_message, agent_id);
 
-    will_return(__wrap_queue_pop_ex_timedwait, OS_INVALID);
-    expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
-
-    expect_value(__wrap_pthread_cond_signal, cond, &upgrade_threads_cond);
-
     wm_agent_upgrade_start_upgrade(args);
 
-    assert_int_equal(upgrade_threads_count, 4);
+    int value = 0;
+    sem_getvalue(&upgrade_semaphore, &value);
+
+    assert_int_equal(value, 6);
 }
 
 void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
 {
     (void) state;
-
-    upgrade_threads_count = 5;
 
     int socket = 555;
     int agent_id = 25;
@@ -3034,21 +3020,17 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok_0);
     will_return_count(__wrap_wm_agent_upgrade_parse_agent_response, 0, 6);
 
-    will_return(__wrap_queue_pop_ex_timedwait, OS_INVALID);
-    expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
-
-    expect_value(__wrap_pthread_cond_signal, cond, &upgrade_threads_cond);
-
     wm_agent_upgrade_start_upgrade(args);
 
-    assert_int_equal(upgrade_threads_count, 4);
+    int value = 0;
+    sem_getvalue(&upgrade_semaphore, &value);
+
+    assert_int_equal(value, 6);
 }
 
 void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
 {
     (void) state;
-
-    upgrade_threads_count = 5;
 
     int socket = 555;
     int agent_id = 25;
@@ -3146,311 +3128,16 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
     expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response_status, sizeof(task_response_status));
     will_return(__wrap_wm_agent_upgrade_validate_task_status_message, agent_id);
 
-    will_return(__wrap_queue_pop_ex_timedwait, OS_INVALID);
-    expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
-
-    expect_value(__wrap_pthread_cond_signal, cond, &upgrade_threads_cond);
-
     wm_agent_upgrade_start_upgrade(args);
 
-    assert_int_equal(upgrade_threads_count, 4);
-}
+    int value = 0;
+    sem_getvalue(&upgrade_semaphore, &value);
 
-void test_wm_agent_upgrade_start_upgrade_upgrade_multiple(void **state)
-{
-    (void) state;
-
-    upgrade_threads_count = 5;
-
-    int socket = 555;
-    int agent_id = 25;
-    int agent_id_next = 35;
-    char *status = "Failed";
-    char *status_next = "In progress";
-    char *error = "Send lock restart error.";
-
-    char *lock_restart = "025 com lock_restart -1";
-    char *lock_restart_next = "035 com lock_restart -1";
-    char *open_file_next = "035 com open wb test.wpk";
-    char *write_file_next = "035 com write 5 test.wpk test\n";
-    char *close_file_next = "035 com close test.wpk";
-    char *calculate_sha1_next = "035 com sha1 test.wpk";
-    char *run_upgrade_next = "035 com upgrade test.wpk upgrade.sh";
-    char *agent_res_ok = "ok ";
-    char *agent_res_err = "err ";
-    char *agent_res_ok_0 = "ok 0";
-    char *agent_res_ok_sha1 = "ok d321af65983fa412e3a12c312ada12ab321a253a";
-
-    test_upgrade_args *args = state[0];
-    wm_manager_configs *config = args->config;
-    wm_agent_task *agent_task = args->agent_task;
-    wm_upgrade_task *upgrade_task = NULL;
-
-    wm_agent_task *agent_task_next = NULL;
-    wm_upgrade_task *upgrade_task_next = NULL;
-
-    agent_task_next = wm_agent_upgrade_init_agent_task();
-    agent_task_next->agent_info = wm_agent_upgrade_init_agent_info();
-    agent_task_next->task_info = wm_agent_upgrade_init_task_info();
-
-    config->chunk_size = 5;
-
-    agent_task->agent_info->agent_id = agent_id;
-    os_strdup("ubuntu", agent_task->agent_info->platform);
-    agent_task->task_info->command = WM_UPGRADE_UPGRADE;
-    upgrade_task = wm_agent_upgrade_init_upgrade_task();
-    os_strdup("test.wpk", upgrade_task->wpk_file);
-    os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task->wpk_sha1);
-    agent_task->task_info->task = upgrade_task;
-
-    agent_task_next->agent_info->agent_id = agent_id_next;
-    os_strdup("ubuntu", agent_task_next->agent_info->platform);
-    agent_task_next->task_info->command = WM_UPGRADE_UPGRADE;
-    upgrade_task_next = wm_agent_upgrade_init_upgrade_task();
-    os_strdup("test.wpk", upgrade_task_next->wpk_file);
-    os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task_next->wpk_sha1);
-    agent_task_next->task_info->task = upgrade_task_next;
-
-    queue_push(upgrade_queue, agent_task_next);
-
-    cJSON *task_request_status = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(task_request_status, "module", "upgrade_module");
-    cJSON_AddStringToObject(task_request_status, "command", "upgrade_update_status");
-    cJSON_AddNumberToObject(task_request_status, "agent", agent_id);
-    cJSON_AddStringToObject(task_request_status, "status", status);
-    cJSON_AddStringToObject(task_request_status, "error_msg", error);
-
-    cJSON *task_response_status = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(task_response_status, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response_status, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-    cJSON_AddNumberToObject(task_response_status, "agent", agent_id);
-    cJSON_AddStringToObject(task_response_status, "status", status);
-
-    // wm_agent_upgrade_send_wpk_to_agent
-
-    will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '025'");
-
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
-    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_ConnectUnixDomain, socket);
-
-    // Lock restart
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
-    expect_value(__wrap_OS_SendSecureTCP, size, strlen(lock_restart));
-    expect_string(__wrap_OS_SendSecureTCP, msg, lock_restart);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
-
-    expect_string_count(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade", 2);
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '025 com lock_restart -1'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
-
-    expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_err);
-    will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
-
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_UPDATE_STATUS);
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, agent_id, agent_id);
-    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, status);
-    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, error, error);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, task_request_status);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, task_request_status, sizeof(task_request_status));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response_status);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
-
-    // wm_agent_upgrade_validate_task_status_message
-
-    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response_status, sizeof(task_response_status));
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, agent_id);
-
-    will_return(__wrap_queue_pop_ex_timedwait, 1);
-    expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
-
-    // wm_agent_upgrade_send_wpk_to_agent
-
-    will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '035'");
-
-    will_return_count(__wrap_isChroot, 0, 6);
-
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
-    expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
-    expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
-    will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
-
-    // Lock restart
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
-    expect_value(__wrap_OS_SendSecureTCP, size, strlen(lock_restart_next));
-    expect_string(__wrap_OS_SendSecureTCP, msg, lock_restart_next);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
-
-    // Open file
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
-    expect_value(__wrap_OS_SendSecureTCP, size, strlen(open_file_next));
-    expect_string(__wrap_OS_SendSecureTCP, msg, open_file_next);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
-
-    // Write file
-
-    expect_string(__wrap_fopen, path, "var/upgrade/test.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
-
-    will_return(__wrap_fread, "test\n");
-    will_return(__wrap_fread, config->chunk_size);
-
-    will_return(__wrap_fread, "test\n");
-    will_return(__wrap_fread, 0);
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
-    expect_value(__wrap_OS_SendSecureTCP, size, strlen(write_file_next));
-    expect_string(__wrap_OS_SendSecureTCP, msg, write_file_next);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 0);
-
-    // Close file
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
-    expect_value(__wrap_OS_SendSecureTCP, size, strlen(close_file_next));
-    expect_string(__wrap_OS_SendSecureTCP, msg, close_file_next);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
-
-    // Calculate file sha1
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
-    expect_value(__wrap_OS_SendSecureTCP, size, strlen(calculate_sha1_next));
-    expect_string(__wrap_OS_SendSecureTCP, msg, calculate_sha1_next);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_sha1);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_sha1) + 1);
-
-    // Run upgrade script
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
-    expect_value(__wrap_OS_SendSecureTCP, size, strlen(run_upgrade_next));
-    expect_string(__wrap_OS_SendSecureTCP, msg, run_upgrade_next);
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
-
-    expect_string_count(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade", 12);
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '035 com lock_restart -1'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '035 com open wb test.wpk'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '035 com write 5 test.wpk test\n'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '035 com close test.wpk'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '035 com sha1 test.wpk'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a12c312ada12ab321a253a'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '035 com upgrade test.wpk upgrade.sh'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 0'");
-
-    expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
-    expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
-    expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
-    expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
-    expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok_sha1);
-    expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok_0);
-    will_return_count(__wrap_wm_agent_upgrade_parse_agent_response, 0, 6);
-
-    will_return(__wrap_queue_pop_ex_timedwait, OS_INVALID);
-    expect_memory(__wrap_queue_pop_ex_timedwait, queue, upgrade_queue, sizeof(upgrade_queue));
-
-    expect_value(__wrap_pthread_cond_signal, cond, &upgrade_threads_cond);
-
-    wm_agent_upgrade_start_upgrade(args);
-
-    assert_int_equal(upgrade_threads_count, 4);
-}
-
-void test_wm_agent_upgrade_wait_available_thread(void **state) {
-    int max_threads = 8;
-
-    upgrade_threads_count = 5;
-
-    wm_agent_upgrade_wait_available_thread(max_threads);
-
-    assert_int_equal(upgrade_threads_count, 6);
-}
-
-void test_wm_agent_upgrade_wait_available_thread_max(void **state) {
-    int max_threads = 8;
-
-    upgrade_threads_count = 8;
-
-    expect_value(__wrap_pthread_cond_wait, cond, &upgrade_threads_cond);
-    expect_value(__wrap_pthread_cond_wait, mutex, &upgrade_threads_mutex);
-
-    wm_agent_upgrade_wait_available_thread(max_threads);
-
-    assert_int_equal(upgrade_threads_count, 9);
-}
-
-void test_wm_agent_upgrade_release_thread(void **state) {
-    upgrade_threads_count = 5;
-
-    expect_value(__wrap_pthread_cond_signal, cond, &upgrade_threads_cond);
-
-    wm_agent_upgrade_release_thread();
-
-    assert_int_equal(upgrade_threads_count, 4);
+    assert_int_equal(value, 6);
 }
 
 void test_wm_agent_upgrade_dispatch_upgrades(void **state) {
     wm_manager_configs *config = *state;
-
-    upgrade_threads_count = 0;
 
     config->max_threads = 8;
 
@@ -3472,7 +3159,10 @@ void test_wm_agent_upgrade_dispatch_upgrades(void **state) {
 
     wm_agent_upgrade_dispatch_upgrades(config);
 
-    assert_int_equal(upgrade_threads_count, 1);
+    int value = 0;
+    sem_getvalue(&upgrade_semaphore, &value);
+
+    assert_int_equal(value, 7);
 }
 
 void test_wm_agent_upgrade_prepare_upgrades_ok(void **state) {
@@ -3614,12 +3304,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok, setup_upgrade_args, teardown_upgrade_args),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok, setup_upgrade_args, teardown_upgrade_args),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_err, setup_upgrade_args, teardown_upgrade_args),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_multiple, setup_upgrade_args, teardown_upgrade_args),
-        // wm_agent_upgrade_wait_available_thread
-        cmocka_unit_test(test_wm_agent_upgrade_wait_available_thread),
-        cmocka_unit_test(test_wm_agent_upgrade_wait_available_thread_max),
-        // wm_agent_upgrade_release_thread
-        cmocka_unit_test(test_wm_agent_upgrade_release_thread),
         // wm_agent_upgrade_dispatch_upgrades
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_dispatch_upgrades, setup_config, teardown_config),
         // wm_agent_upgrade_prepare_upgrades
