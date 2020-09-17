@@ -82,7 +82,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
             version = atoi(db_version);
         }
         else{
-            merror("DB(%s): Incorrect database version: %d", wdb->id, version);
+            merror("DB(%s): Failed trying to get DB version", wdb->id);
             return wdb;
         }
     }
