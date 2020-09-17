@@ -13,7 +13,7 @@ file(GLOB INTERFACE_UNITTEST_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
 add_executable(rsync_implementation_unit_test 
-    "${INTERFACE_UNITTEST_SRC}" )
+    ${INTERFACE_UNITTEST_SRC} )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(rsync_implementation_unit_test
