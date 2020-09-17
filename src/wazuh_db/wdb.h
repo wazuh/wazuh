@@ -704,7 +704,7 @@ int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
  * @brief Checks if the table exists in the database.
  * 
  * @param[in] wdb Database to query for the table existence.
- * @param[in] key Name of the agent for whom its database must be deleted.
+ * @param[in] key Name of the table to find.
  * @return 1 if the table exists, 0 if the table doesn't exist or OS_INVALID on failure.
  */
  int wdb_metadata_table_check(wdb_t * wdb, const char * key);
