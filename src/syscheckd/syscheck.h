@@ -598,7 +598,11 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
  * @return String with the changes to add to the alert
  */
 
-char * fim_registry_value_diff(char *key_name, char *value_name, char *value_data, DWORD data_type, registry *configuration);
+char *fim_registry_value_diff(const char *key_name,
+                              const char *value_name,
+                              const char *value_data,
+                              DWORD data_type,
+                              const registry *configuration);
 #endif
 
 /**
@@ -608,7 +612,7 @@ char * fim_registry_value_diff(char *key_name, char *value_name, char *value_dat
  * @return String with the diff to add to the alert
  */
 
-char * fim_file_diff(char *filename);
+char * fim_file_diff(const char *filename);
 
 /**
  * @brief Deletes the filename diff folder and modify diff_folder_size if disk_quota enabled
@@ -616,7 +620,7 @@ char * fim_file_diff(char *filename);
  * @param filename Path of the file that has been deleted
  * @return 0 if success, -1 on error
  */
-int fim_diff_process_delete_file(char *filename);
+int fim_diff_process_delete_file(const char *filename);
 
 /**
  * @brief Deletes the registry diff folder and modify diff_folder_size if disk_quota enabled
@@ -625,17 +629,17 @@ int fim_diff_process_delete_file(char *filename);
  * @param arch Arch type of the registry
  * @return 0 if success, -1 on error
  */
-int fim_diff_process_delete_registry(char *key_name, int arch);
+int fim_diff_process_delete_registry(const char *key_name, int arch);
 
 /**
- * @brief Deletes the value diff folder and modify diff_folder_size if disk_quota enabled
+ * @brief Deletes the value diff folder and modifies diff_folder_size if disk_quota enabled
  *
- * @param key_name Path of the registry that contain value deleted
+ * @param key_name Path of the registry that contains the deleted value
  * @param value_name Path of the value that has been deleted
  * @param arch Arch type of the registry
  * @return 0 if success, -1 on error
  */
-int fim_diff_process_delete_value(char *key_name, char *value_name, int arch);
+int fim_diff_process_delete_value(const char *key_name, const char *value_name, int arch);
 
 /**
  * @brief Initializes all syscheck data

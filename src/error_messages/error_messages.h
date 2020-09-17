@@ -494,8 +494,12 @@
 #define FIM_ERROR_WHODATA_INIT                      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode"
 #define FIM_ERROR_GET_ABSOLUTE_PATH                 "(6711): Cannot get absolute path of '%s': %s (%d)"
 #define FIM_ERROR_REMOVE_COLON                      "(6712): Cannot remove heading colon from full path '%s'"
-#define FIM_DIFF_COMMAND_OUTPUT_ERROR               "(6713): Command diff/fc output an error"
-#define FIM_DIFF_DELETE_DIFF_FOLDER_ERROR           "(6714): Cannot remove diff folder for file: '%s'"
+#define FIM_DIFF_DELETE_DIFF_FOLDER_ERROR           "(6713): Cannot remove diff folder for file: '%s'"
+#ifdef WIN32
+#define FIM_DIFF_COMMAND_OUTPUT_ERROR               "(6714): Command fc output an error"
+#else
+#define FIM_DIFF_COMMAND_OUTPUT_ERROR               "(6714): Command diff output an error"
+#endif
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

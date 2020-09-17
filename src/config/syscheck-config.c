@@ -375,7 +375,7 @@ int dump_registry_ignore_regex(syscheck_config *syscheck, char *regex, int arch)
     return 1;
 }
 
-void dump_registry_nodiff(syscheck_config *syscheck, char *entry, int arch) {
+void dump_registry_nodiff(syscheck_config *syscheck, const char *entry, int arch) {
     int ign_size = 0;
 
     if (syscheck->registry_nodiff) {
@@ -399,7 +399,7 @@ void dump_registry_nodiff(syscheck_config *syscheck, char *entry, int arch) {
     syscheck->registry_nodiff[ign_size].arch = arch;
 }
 
-int dump_registry_nodiff_regex(syscheck_config *syscheck, char *regex, int arch) {
+int dump_registry_nodiff_regex(syscheck_config *syscheck, const char *regex, int arch) {
     OSMatch *mt_pt;
     int ign_size = 0;
 
@@ -413,12 +413,11 @@ int dump_registry_nodiff_regex(syscheck_config *syscheck, char *regex, int arch)
         }
 
         os_realloc(syscheck->registry_nodiff_regex, sizeof(registry_regex) * (ign_size + 2),
-                syscheck->registry_nodiff_regex);
+                   syscheck->registry_nodiff_regex);
         syscheck->registry_nodiff_regex[ign_size + 1].regex = NULL;
     }
 
-    os_calloc(1, sizeof(OSMatch),
-            syscheck->registry_nodiff_regex[ign_size].regex);
+    os_calloc(1, sizeof(OSMatch), syscheck->registry_nodiff_regex[ign_size].regex);
 
     if (!OSMatch_Compile(regex, syscheck->registry_nodiff_regex[ign_size].regex, 0)) {
         mt_pt = syscheck->registry_nodiff_regex[ign_size].regex;
@@ -1184,9 +1183,9 @@ int read_data_unit(const char *content) {
                 }
             }
             else {
+                os_free(value_str);
                 return -1;
             }
-
             os_free(value_str);
         }
         else if (isdigit(content[len_value_str - 2])) {
@@ -1325,7 +1324,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
             if (node[i]->attributes && node[i]->values) {
                 int j;
 
-                for (j = 0; node[i]->attributes[j]; j++) {
+                for (j = 0; node[i]->attributes[j] && node[i]->values[j]; j++) {
                     if (strcmp(node[i]->attributes[j], "type") == 0 &&
                     strcmp(node[i]->values[j], "sregex") == 0) {
                         sregex = 1;
