@@ -15,6 +15,14 @@ static const char *FIM_EVENT_TYPE[] = { "added", "deleted", "modified" };
 
 static const char *FIM_EVENT_MODE[] = { "scheduled", "realtime", "whodata" };
 
+/**
+ * @brief Create a cJSON object holding the attributes associated with a fim_registry_value_data according to its
+ * configuration.
+ *
+ * @param data A fim_registry_value_data object holding the value attributes to be tranlated.
+ * @param configuration The configuration associated with the registry value.
+ * @return A pointer to a cJSON object the translated value attributes.
+ */
 cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, const registry *configuration) {
     cJSON *attributes = cJSON_CreateObject();
 
@@ -47,6 +55,16 @@ cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, c
     return attributes;
 }
 
+/**
+ * @brief Compare new and old attributes from a registry value and return an array specifying which of them changed.
+ *
+ * @param new_data A fim_registry_value_data object holding the most recent information associated with a registry
+ * value.
+ * @param old_data A fim_registry_value_data object holding information associated with a registry value retrieved from
+ * the FIM DB.
+ * @param configuration The configuration associated with the registry value.
+ * @return A pointer to a cJSON array holding strings with the changed attributes.
+ */
 cJSON *fim_registry_compare_value_attrs(const fim_registry_value_data *new_data,
                                         const fim_registry_value_data *old_data,
                                         const registry *configuration) {
@@ -75,6 +93,18 @@ cJSON *fim_registry_compare_value_attrs(const fim_registry_value_data *new_data,
     return changed_attributes;
 }
 
+/**
+ * @brief Generate a registry value event from the provided information.
+ *
+ * @param new_data A fim_entry object holding the most recent information associated with a registry value.
+ * @param old_data A fim_entry object holding information associated with a registry value retrieved from the FIM DB.
+ * @param configuration The configuration associated with the registry value.
+ * @param mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
+ * @param type A value specifying if the event corresponds to an add, delete or modify event.
+ * @param w_evt A whodata object holding information corresponding to the event.
+ * @param diff A string holding the change in the value content.
+ * @return A pointer to a cJSON object holding the FIM event, NULL on error or if no event is generated.
+ */
 cJSON *fim_registry_value_json_event(const fim_entry *new_data,
                                      const fim_entry *old_data,
                                      const registry *configuration,
@@ -127,6 +157,14 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
     return json_event;
 }
 
+/**
+ * @brief Create a cJSON object holding the attributes associated with a fim_registry_key according to its
+ * configuration.
+ *
+ * @param data A fim_registry_key object holding the key attributes to be tranlated.
+ * @param configuration The configuration associated with the registry key.
+ * @return A pointer to a cJSON object the translated key attributes.
+ */
 cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const registry *configuration) {
     cJSON *attributes = cJSON_CreateObject();
 
@@ -163,6 +201,15 @@ cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const regi
     return attributes;
 }
 
+/**
+ * @brief Compare new and old attributes from a registry key and return an array specifying which of them changed.
+ *
+ * @param new_data A fim_registry_key object holding the most recent information associated with a registry key.
+ * @param old_data A fim_registry_key object holding information associated with a registry key retrieved from the FIM
+ * DB.
+ * @param configuration The configuration associated with the registry key.
+ * @return A pointer to a cJSON array holding strings with the changed attributes.
+ */
 cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data,
                                       const fim_registry_key *old_data,
                                       const registry *configuration) {
@@ -199,6 +246,18 @@ cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data,
     return changed_attributes;
 }
 
+/**
+ * @brief Generate a registry key event from the provided information.
+ *
+ * @param new_data A fim_registry_key object holding the most recent information associated with a registry key.
+ * @param old_data A fim_registry_key object holding information associated with a registry key retrieved from the FIM
+ * DB.
+ * @param configuration The configuration associated with the registry key.
+ * @param mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
+ * @param type A value specifying if the event corresponds to an add, delete or modify event.
+ * @param w_evt A whodata object holding information corresponding to the event.
+ * @return A pointer to a cJSON object holding the FIM event, NULL on error.
+ */
 cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
                                    const fim_registry_key *old_data,
                                    const registry *configuration,

@@ -35,7 +35,15 @@
 /* Global variables */
 static int _base_line = 0;
 
-/* Check if the registry entry is valid */
+/**
+ * @brief Set the root key and subkey associated with a given key.
+ *
+ * @param root_key_handle A pointer to a handle which will hold the root key handle on success, NULL on failure.
+ * @param full_key A string holding the full path to a registry key.
+ * @param sub_key A pointer to a pointer which will point to the byte where the first sub key of full_key starts,
+ * unchanged on error.
+ * @return 0 if the root key is properly set, -1 otherwise.
+ */
 int fim_set_root_key(HKEY *root_key_handle, const char *full_key, const char **sub_key) {
     int root_key_length;
 
@@ -70,6 +78,13 @@ int fim_set_root_key(HKEY *root_key_handle, const char *full_key, const char **s
     return 0;
 }
 
+/**
+ * @brief Retrieves the configuration associated with a given registry element.
+ *
+ * @param key A string holding the full path to the registry element.
+ * @param arch An integer specifying the bit count of the register element, must be ARCH_32BIT or ARCH_64BIT.
+ * @return A pointer to the associated registry configuration, NULL on error or if no valid configuration was found.
+ */
 registry *fim_registry_configuration(const char *key, int arch) {
     int it = 0;
     int top = 0;
@@ -96,6 +111,13 @@ registry *fim_registry_configuration(const char *key, int arch) {
     return ret;
 }
 
+/**
+ * @brief Validates a registry path against recursion level and ignore restrictions.
+ *
+ * @param entry_path A string holding the full path to be validated.
+ * @param configuration The configuration associated with the registry entry.
+ * @return 0 if the path is valid, -1 if the path is to be excluded.
+ */
 int fim_registry_validate_path(const char *entry_path, const registry *configuration) {
     int ign_it;
     const char *pos;
@@ -153,10 +175,23 @@ int fim_registry_validate_path(const char *entry_path, const registry *configura
     return 0;
 }
 
+/**
+ * @brief Gets all information from a given registry key.
+ *
+ * @param key_handle A handle to the key whose information we want.
+ * @param path A string holding the full path to the key we want to query.
+ * @param configuration The confguration associated with the key.
+ * @return A fim_registry_key object holding the information from the queried key, NULL on error.
+ */
 fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, const registry *configuration) {
     return NULL;
 }
 
+/**
+ * @brief Free all memory associated with a registry key.
+ *
+ * @param data A fim_registry_key object to be free'd.
+ */
 void fim_registry_free_key(fim_registry_key *key) {
     if (key) {
         os_free(key->path);
@@ -169,6 +204,11 @@ void fim_registry_free_key(fim_registry_key *key) {
     }
 }
 
+/**
+ * @brief Free all memory associated with a registry value.
+ *
+ * @param data A fim_registry_value_data object to be free'd.
+ */
 void fim_registry_free_value_data(fim_registry_value_data *data) {
     if (data) {
         os_free(data->name);
@@ -176,6 +216,16 @@ void fim_registry_free_value_data(fim_registry_value_data *data) {
     }
 }
 
+/**
+ * @brief Process and trigger delete events for a given registry value.
+ *
+ * @param fim_sql An object holding all information corresponding to the FIM DB.
+ * @param data A fim_entry object holding the deleted value information retrieved from the FIM DB.
+ * @param mutex A mutex to be locked before operating on the registry tables from the FIM DB.
+ * @param _alert A pointer to an integer specifying if an alert should be generated.
+ * @param _ev_mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
+ * @param _w_evt A whodata object holding information corresponding to the event.
+ */
 void fim_registry_process_value_delete_event(fdb_t *fim_sql,
                                              fim_entry *data,
                                              __attribute__((unused)) pthread_mutex_t *mutex,
@@ -211,6 +261,16 @@ void fim_registry_process_value_delete_event(fdb_t *fim_sql,
     }
 }
 
+/**
+ * @brief Process and trigger delete events for a given registry key.
+ *
+ * @param fim_sql An object holding all information corresponding to the FIM DB.
+ * @param data A fim_entry object holding the deleted key information retrieved from the FIM DB.
+ * @param mutex A mutex to be locked before operating on the registry tables from the FIM DB.
+ * @param _alert A pointer to an integer specifying if an alert should be generated.
+ * @param _ev_mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
+ * @param _w_evt A whodata object holding information corresponding to the event.
+ */
 void fim_registry_process_key_delete_event(fdb_t *fim_sql,
                                            fim_entry *data,
                                            pthread_mutex_t *mutex,
@@ -250,6 +310,9 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
     }
 }
 
+/**
+ * @brief Process and trigger delete events for all unscanned registry elements.
+ */
 void fim_registry_process_unscanned_entries() {
     fim_tmp_file *file;
     fim_event_mode event_mode = FIM_SCHEDULED;
@@ -275,6 +338,15 @@ void fim_registry_process_unscanned_entries() {
     }
 }
 
+/**
+ * @brief Generate and send value event
+ *
+ * @param new A fim_entry object holding the information gathered from the key and value.
+ * @param saved A fim_entry object holding the information from the key and value retrieved from the database.
+ * @param arch An integer specifying the bit count of the register to scan, must be ARCH_32BIT or ARCH_64BIT.
+ * @param mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
+ * @param data_buffer A pointer to the raw data buffer contained in the value.
+ */
 void fim_registry_process_value_event(fim_entry *new,
                                       fim_entry *saved,
                                       int arch,
@@ -332,7 +404,16 @@ void fim_registry_process_value_event(fim_entry *new,
     os_free(diff);
 }
 
-/* Query the key and get all its values */
+/**
+ * @brief Query the values belonging to a key.
+ *
+ * @param key_handle A handle to the key holding the values to query.
+ * @param new A fim_entry object holding the information gathered from the key.
+ * @param saved A fim_entry object holding the information from the key retrieved from the database.
+ * @param arch An integer specifying the bit count of the register to scan, must be ARCH_32BIT or ARCH_64BIT.
+ * @param value_count An integer holding the amount of values stored in the queried key.
+ * @param mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
+ */
 void fim_read_values(HKEY key_handle,
                      fim_entry *new,
                      fim_entry *saved,
@@ -382,7 +463,15 @@ void fim_read_values(HKEY key_handle,
     }
 }
 
-/* Open the registry key */
+/**
+ * @brief Open a registry key and scan its contents.
+ *
+ * @param root_key_handle A handle to the root key to which the key to be scanned belongs.
+ * @param full_key A string holding the full path to the key to scan.
+ * @param sub_key A string holding the path to the key to scan, excluding the root key part of the path.
+ * @param arch An integer specifying the bit count of the register to scan, must be ARCH_32BIT or ARCH_64BIT.
+ * @param mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
+ */
 void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_key, int arch, fim_event_mode mode) {
     HKEY current_key_handle = NULL;
     REGSAM access_rights;
