@@ -348,7 +348,6 @@ int fim_diff_registry_tmp(const char *value_data,
 
     mkdir_ex(diff->tmp_folder);
 
-    //TODO: Ensure that the content generation is correct
     if (fp = fopen(diff->file_origin, "w"), fp) {
         switch (data_type) {
             case REG_SZ:
@@ -724,55 +723,30 @@ char *gen_diff_str(const diff_data *diff){
     fclose(fp);
     unlink(diff->diff_file);
 
-    switch (n) {
-    case 0:
+    if (!n){
         merror(FIM_ERROR_GENDIFF_READ);
         return NULL;
-
-// TODO: unify MORE_CHANGES utility, windows and linux
-#ifndef WIN32
-    case OS_MAXSTR - OS_SK_HEADER - 1:
-        buf[n] = '\0';
-        n -= strlen(STR_MORE_CHANGES);
-
-        while (n > 0 && buf[n - 1] != '\n')
-            n--;
-
-        strcpy(buf + n, STR_MORE_CHANGES);
-        break;
-#endif
-
-    default:
-        buf[n] = '\0';
     }
+
+    buf[n] = '\0';
 
 #ifdef WIN32
     if (diff_str = adapt_win_fc_output(buf), !diff_str) {
         return NULL;
     }
-
-    // On Windows we handle long diffs after adapting the fc output.
-
-    char *p = strchr(buf, '\n');
-
     n = strlen(diff_str);
-
-    if(p && p[1] != '*') {
-        // If the second line does not start with '*', an error message was printed,
-        // most likely stating that the files are "too different"
-        if(n >= OS_MAXSTR - OS_SK_HEADER - 1 - strlen(STR_MORE_CHANGES)) {
-            n -= strlen(STR_MORE_CHANGES);
-
-            while (n > 0 && diff_str[n - 1] != '\n')
-                n--;
-        }
-
-        strcpy(diff_str + n, STR_MORE_CHANGES);
-    }
-
 #else
     os_strdup(buf, diff_str);
 #endif
+
+    if(n >= OS_MAXSTR - OS_SK_HEADER - 1) {
+        n -= strlen(STR_MORE_CHANGES);
+
+        while (n > 0 && diff_str[n - 1] != '\n')
+            n--;
+
+        strcpy(diff_str + n, STR_MORE_CHANGES);
+    }
 
     return diff_str;
 }
