@@ -59,3 +59,19 @@ TEST_F(StringUtilsTest, AsciiToHexString)
     const auto result {Utils::asciiToHex(data)};
     EXPECT_EQ(expected, result);
 }
+
+TEST_F(StringUtilsTest, CheckFirstReplacement) 
+{
+    std::string string_base { "bye_bye" };
+    const auto ret_val { Utils::replaceFirst(string_base, "bye", "hello") };
+    EXPECT_EQ(string_base, "hello_bye");
+    EXPECT_TRUE(ret_val);
+}
+
+TEST_F(StringUtilsTest, CheckNotFirstReplacement) 
+{
+    std::string string_base {"hello_world" };
+    const auto ret_val { Utils::replaceFirst(string_base, "nothing_", "bye_") };
+    EXPECT_EQ(string_base, "hello_world");
+    EXPECT_FALSE(ret_val);
+}

@@ -224,6 +224,8 @@ TEST_F(RSyncTest, RegisterAndPush)
     ASSERT_EQ(0, rsync_push_message(handle_rsync, reinterpret_cast<const void*>(buffer3.data()), buffer3.size()));
 
     EXPECT_EQ(0, rsync_close(handle_rsync));
+
+    dbsync_teardown();
 }
 
 TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
@@ -292,5 +294,7 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
     ASSERT_EQ(0, rsync_push_message(handle_rsync, reinterpret_cast<const void*>(buffer3.data()), buffer3.size()));
 
     EXPECT_EQ(0, rsync_close(handle_rsync));
+
+    dbsync_teardown();
 }
 

@@ -220,7 +220,7 @@ void SQLiteDBEngine::initializeStatusField(const nlohmann::json& tableNames)
 
             if (fields.end() == it)
             {
-                m_tableFields[table].clear();
+                m_tableFields.erase(table);
                 const auto& stmtAdd { getStatement(std::string("ALTER TABLE " +
                                                                table +
                                                                " ADD COLUMN ") + 
@@ -457,7 +457,8 @@ bool SQLiteDBEngine::cleanDB(const std::string& path)
 size_t SQLiteDBEngine::loadTableData(const std::string& table)
 {
     size_t fieldsNumber { 0ull };
-    if (0 == m_tableFields[table].size())
+    const auto& tableFields{ m_tableFields[table] };
+    if (0 == tableFields.size())
     {
         if (loadFieldData(table))
         {
@@ -466,7 +467,7 @@ size_t SQLiteDBEngine::loadTableData(const std::string& table)
     } 
     else
     {
-        fieldsNumber = m_tableFields[table].size();
+        fieldsNumber = tableFields.size();
     }
     return fieldsNumber;    
 }
@@ -519,17 +520,19 @@ bool SQLiteDBEngine::loadFieldData(const std::string& table)
 
     if (ret)
     {
+        TableColumns fieldList;
         auto stmt { m_sqliteFactory->createStatement(m_sqliteConnection, sql) };
         while (SQLITE_ROW == stmt->step())
         {
             const auto& fieldName { stmt->column(1)->value(std::string{}) };
-            m_tableFields[table].push_back(std::make_tuple(stmt->column(0)->value(int32_t{}),
-                                           fieldName,
-                                           columnTypeName(stmt->column(2)->value(std::string{})),
-                                           0 != stmt->column(5)->value(int32_t{}),
-                                           InternalColumnNames.end() != std::find(InternalColumnNames.begin(), 
-                                           InternalColumnNames.end(), fieldName)));
+            fieldList.push_back(std::make_tuple(stmt->column(0)->value(int32_t{}),
+                                                fieldName,
+                                                columnTypeName(stmt->column(2)->value(std::string{})),
+                                                0 != stmt->column(5)->value(int32_t{}),
+                                                InternalColumnNames.end() != std::find(InternalColumnNames.begin(), 
+                                                InternalColumnNames.end(), fieldName)));
         }
+        m_tableFields.insert(table, fieldList);
     }
     return ret;
 }
@@ -705,14 +708,17 @@ bool SQLiteDBEngine::removeNotExistsRows(const std::string& table,
 bool SQLiteDBEngine::getPrimaryKeysFromTable(const std::string& table,
                                              std::vector<std::string>& primaryKeyList)
 {
-    for(const auto& value : m_tableFields[table])
+    auto retVal { false };
+    const auto tableFields { m_tableFields[table] };
+    for(const auto& value : tableFields)
     {
         if (std::get<TableHeader::PK>(value) == true)
         {
             primaryKeyList.push_back(std::get<TableHeader::Name>(value));
         }
+        retVal = true;
     }
-    return m_tableFields.find(table) != m_tableFields.end();
+    return retVal;
 }
 
 void SQLiteDBEngine::getTableData(std::unique_ptr<SQLite::IStatement>const& stmt,
@@ -1153,7 +1159,8 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
 
     for (const auto& row : data)
     {
-        for (const auto& value : m_tableFields[table])
+        const auto tableFields { m_tableFields[table] };
+        for (const auto& value : tableFields)
         {
             auto it { row.find(std::get<TableHeader::Name>(value))};
             if (row.end() != it)
@@ -1320,8 +1327,8 @@ std::string SQLiteDBEngine::buildModifiedRowsQuery(const std::string& t1,
         fieldsList.append("t1."+value+",");
         onMatchList.append("t1." + value + "=t2." + value + " AND ");
     }
-
-    for (const auto& value : m_tableFields[t1])
+    const auto tableFields { m_tableFields[t1] };
+    for (const auto& value : tableFields)
     {
         const auto fieldName {std::get<TableHeader::Name>(value)};
         fieldsList.append("CASE WHEN t1.");
@@ -1557,6 +1564,8 @@ void SQLiteDBEngine::getFieldValueFromTuple(const Field& value,
 
 std::unique_ptr<SQLite::IStatement>const& SQLiteDBEngine::getStatement(const std::string& sql) 
 {
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lock(mutex);
     const auto it { m_statementsCache.find(sql) };
     if(m_statementsCache.end() != it) 
     {

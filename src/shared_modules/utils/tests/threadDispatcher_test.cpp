@@ -21,6 +21,7 @@ void ThreadDispatcherTest::TearDown() {};
 using ::testing::_;
 using namespace Utils;
 
+// LCOV_EXCL_START 
 class FunctorWrapper
 {
 public:
@@ -32,6 +33,7 @@ public:
         Operator(value);
     }
 };
+// LCOV_EXCL_STOP
 
 TEST_F(ThreadDispatcherTest, AsyncDispatcherPushAndRundown)
 {
