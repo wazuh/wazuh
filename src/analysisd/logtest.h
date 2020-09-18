@@ -27,16 +27,32 @@
 #include <time.h>
 
 
-/* JSON REQUEST / RESPONSE fields names */
+/* The JSON's fields of the requests and responses */
+#define w_LOGTEST_JSON_VERSION             "version"    ///< The protocol version
+#define W_LOGTEST_JSON_ORIGIN               "origin"    ///< The origin of the request
+#define w_LOGTEST_JSON_PARAMETERS       "parameters"    ///< The parameter of the request
+#define W_LOGTEST_JSON_DATA                   "data"    ///< The information of the response
+#define W_LOGTEST_JSON_MESSAGE             "message"    ///< Human readable information
+#define W_LOGTEST_JSON_ERROR                 "error"    ///< An error code
+#define W_LOGTEST_JSON_COMMAND             "command"    ///< The task to do
+
+/* Fiels of origins JSON object (field of JSON request) */
+#define W_LOGTEST_JSON_ORIGIN_NAME            "name"    ///< The origin name of the request
+#define W_LOGTEST_JSON_ORIGIN_MODULE        "module"    ///< The origin module of the request
+
+/* Wazuh-logtest's fields names for the requests and responses */
 #define W_LOGTEST_JSON_TOKEN                    "token"   ///< Token field name of json input/output
 #define W_LOGTEST_JSON_EVENT                    "event"   ///< Event field name of json input
 #define W_LOGTEST_JSON_LOGFORMAT           "log_format"   ///< Log format field name of json input
 #define W_LOGTEST_JSON_LOCATION              "location"   ///< Location field name of json input
-#define W_LOGTEST_JSON_REMOVE_SESSION  "remove_session"   ///< Remove session field name of json input
 #define W_LOGTEST_JSON_ALERT                    "alert"   ///< Alert field name of json output (boolean)
 #define W_LOGTEST_JSON_MESSAGES              "messages"   ///< Message format field name of json output
 #define W_LOGTEST_JSON_CODE                   "codemsg"   ///< Code of message field name of json output (number)
 #define W_LOGTEST_JSON_OUTPUT                  "output"   ///< Output field name of json output
+
+/* Commands allowed */
+#define W_LOGTEST_COMMAND_REMOVE_SESSION   "remove_session"    ///< Command used to remove a session
+#define W_LOGTEST_COMMAND_LOG_PROCESSING   "log_processing"    ///< Command used to log processing
 
 #define W_LOGTEST_TOKEN_LENGH                 8   ///< Lenght of token
 #define W_LOGTEST_ERROR_JSON_PARSE_NSTR      20   ///< Number of characters to show in parsing error
@@ -47,12 +63,16 @@
 #define W_LOGTEST_RCODE_SUCCESS               0   ///< Return code: Successful request
 #define W_LOGTEST_RCODE_WARNING               1   ///< Return code: Successful request with warning messages
 
-/* Type of request */
-#define W_LOGTEST_REQUEST_ERROR                  -1   ///< Request error: Missing fields or don't matches
-#define W_LOGTEST_REQUEST_TYPE_REMOVE_SESSION     0   ///< Request remove session
-#define W_LOGTEST_REQUEST_TYPE_LOG_PROCESSING     1   ///< Request log processing
+/* Comunication error codes */
+#define W_LOGTEST_CODE_SUCCESS              0   ///< Success
+#define W_LOGTEST_CODE_ERROR_PARSING        1   ///< Failure when parsing JSON request
+#define W_LOGTEST_CODE_INVALID_JSON         2   ///< Unabled to process JSON request (Fields not found or they aren't valid)
+#define W_LOGTEST_CODE_COMMAND_NOT_ALLOWED  3   ///< Unabled to process the command
+#define W_LOGTEST_CODE_INVALID_TOKEN        4   ///< Invalid client id
+
 
 #define valid_str_session(x,y) (cJSON_IsString(x) && x->valuestring && strlen(x->valuestring) == y) ? 1 : 0)
+
 
 /**
  * @brief A w_logtest_session_t instance represents a client
@@ -67,7 +87,7 @@ typedef struct w_logtest_session_t {
     RuleNode *rule_list;                    ///< Rule list
     OSDecoderNode *decoderlist_forpname;    ///< Decoder list to match logs which have a program name
     OSDecoderNode *decoderlist_nopname;     ///< Decoder list to match logs which haven't a program name
-    OSStore *decoder_store;                  ///< Decoder list to save internals decoders
+    OSStore *decoder_store;                 ///< Decoder list to save internals decoders
     ListNode *cdblistnode;                  ///< List of CDB lists
     ListRule *cdblistrule;                  ///< List to attach rules and CDB lists
     EventList *eventlist;                   ///< Previous events list
@@ -204,30 +224,32 @@ int w_logtest_fts_init(OSList **fts_list, OSHash **fts_store);
  * @brief Check if input_json its valid and generate a client request.
  * @param req Client request information
  * @param input_json Raw JSON input of requeset
+ * @param msg string to contains a error message (in case of error, otherwise it is null)
  * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
  * @retval \ref W_LOGTEST_REQUEST_ERROR on invalid input
  * @retval \ref W_LOGTEST_REQUEST_TYPE_LOG_PROCESSING on valid request input
  * @retval \ref W_LOGTEST_REQUEST_TYPE_REMOVE_SESSION on valid remove session input
  */
-int w_logtest_check_input(char* input_json, cJSON** req, OSList* list_msg);
+int w_logtest_check_input(char* input_json, cJSON** req, char ** command_value, char ** msg, OSList * list_msg);
 
 /**
  * @brief Check validity of the json for a log processing request
  * @param root json to validate
+ * @param msg string to contains a error message (in case of error, otherwise it is null)
  * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
  * @retval \ref W_LOGTEST_REQUEST_ERROR on invalid input
  * @retval \ref W_LOGTEST_REQUEST_TYPE_LOG_PROCESSING on valid request input
  */
-int w_logtest_check_input_request(cJSON * root, OSList * list_msg);
+int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg);
 
 /**
  * @brief Check validity of the json for a remove session request
  * @param root json to validate
- * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
+ * @param msg string to contains a error message (in case of error, otherwise it is null)
  * @retval \ref W_LOGTEST_REQUEST_ERROR on invalid input
  * @retval \ref W_LOGTEST_REQUEST_TYPE_REMOVE_SESSION on valid request input
  */
-int w_logtest_check_input_remove_session(cJSON * root, OSList * list_msg);
+int w_logtest_check_input_remove_session(cJSON * root, char ** msg);
 
 /**
  * @brief Add the messages to the json array and clear the list.
