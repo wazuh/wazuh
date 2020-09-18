@@ -142,6 +142,7 @@ int fim_registry_validate_path(const char *entry_path, const registry *configura
     }
 
     if (depth > configuration->recursion_level) {
+        mdebug2(FIM_MAX_RECURSION_LEVEL, depth, configuration->recursion_level);
         return -1;
     }
 
@@ -377,7 +378,7 @@ void fim_registry_process_value_event(fim_entry *new,
 
     if (configuration->opts | CHECK_SEECHANGES) {
         diff = fim_registry_value_diff(new->registry_entry.key->path, new->registry_entry.value->name, data_buffer,
-                                       new->registry_entry.value->type);
+                                       new->registry_entry.value->type, configuration);
     }
 
     json_event = fim_registry_event(new, saved, configuration, mode,

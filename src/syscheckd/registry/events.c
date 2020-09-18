@@ -115,7 +115,7 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
     cJSON *changed_attributes;
     char path[OS_SIZE_512];
 
-    if (old_data != NULL) {
+    if (old_data != NULL && old_data->registry_entry.value != NULL) {
         changed_attributes = fim_registry_compare_value_attrs(new_data->registry_entry.value,
                                                               old_data->registry_entry.value, configuration);
 
@@ -140,7 +140,7 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
     cJSON_AddItemToObject(data, "attributes",
                           fim_registry_value_attributes_json(new_data->registry_entry.value, configuration));
 
-    if (old_data) {
+    if (old_data != NULL && old_data->registry_entry.value != NULL) {
         cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
         cJSON_AddItemToObject(data, "old_attributes",
                               fim_registry_value_attributes_json(old_data->registry_entry.value, configuration));
