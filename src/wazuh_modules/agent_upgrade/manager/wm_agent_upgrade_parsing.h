@@ -16,6 +16,18 @@
 /**
  * Parse received upgrade message and returns task and agent ids values and a code
  * representing a command if it is valid or an error code otherwise
+ * 
+ * Example:
+ * 
+ * {
+ *	    "command": "upgrade",
+ *	    "parameters": {
+ *		    "agents": [5, 6],
+ *          "use_http": 0,
+ *          "force_upgrade": 0
+ *	    }
+ * }
+ * 
  * @param buffer message to be parsed
  * @param task on success command task will be stored in this variable
  * @param agent_ids on success agent ids list will be stored in this variable
@@ -29,18 +41,77 @@
 int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error);
 
 /**
- * Parse a response message based on state
- * @param error_id 1 if error, 0 if successs
+ * Parse a data message
+ * 
+ * 
+ * Example 1:
+ * 
+ * {
+ *     "error":12,
+ *     "message":"The repository is not reachable.",
+ *     "agent":4
+ * }
+ * 
+ * Example 2:
+ * 
+ * {
+ *     "error":1,
+ *     "message":"Could not parse message JSON."
+ * }
+ * 
+ * @param error_id positive number if error, 0 if successs
  * @param message response message
  * @param agent_id [OPTIONAL] id of the agent
- * @param task_id [OPTIONAL] id of the task
- * @param status [OPTIONAL] status string
+ * @return data json
+ * */
+cJSON* wm_agent_upgrade_parse_data_response(int error_id, const char* message, const int* agent_id);
+
+/**
+ * Parse a response message
+ * 
+ * Example:
+ * 
+ * {
+ *     "error":0,
+ *     "data": [
+ *          {
+ *              "error":0,
+ *              "message":"Success",
+ *              "agent":4,
+ *              "task_id":2
+ *          },
+ *          {
+ *              "error":12,
+ *              "message":"The repository is not reachable.",
+ *              "agent":5
+ *          }
+ *     ],
+ *     "message": "Successful"
+ * }
+ * 
+ * @param error_id positive number if error, 0 if successs
+ * @param data [OPTIONAL] array of responses
  * @return response json
  * */
-cJSON* wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int* agent_id, const int* task_id, const char* status);
+cJSON* wm_agent_upgrade_parse_response(int error_id, cJSON *data);
 
 /**
  * Parse a message to be sent to the task module
+ * 
+ * Example:
+ * 
+ * {
+ *	    "command": "upgrade_update_status",
+ *	    "origin": {
+ *		    "module": "upgrade_module"
+ *	    },
+ *	    "parameters": {
+ *		    "agents": [1],
+ *          "status": "Failed",
+ *          "error_msg": "Send open file error."
+ *	    }
+ * }
+ * 
  * @param command task command
  * @param agents_array JSON array of agents id
  * @param status optional status string

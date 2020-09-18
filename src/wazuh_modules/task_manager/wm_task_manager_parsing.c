@@ -153,7 +153,7 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
     return response_array;
 }
 
-void wm_task_manager_parse_response_result(cJSON *response, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command) {
+void wm_task_manager_parse_data_result(cJSON *response, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command) {
 
     if (module != NULL) {
         cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_MODULE], module);
@@ -196,22 +196,38 @@ void wm_task_manager_parse_response_result(cJSON *response, const char *module, 
     }
 }
 
-cJSON* wm_task_manager_parse_response(int error_code, int agent_id, int task_id, char *status) {
-    cJSON *response_json = cJSON_CreateObject();
+cJSON* wm_task_manager_parse_data_response(int error_code, int agent_id, int task_id, char *status) {
+    cJSON *response = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(response_json, task_manager_json_keys[WM_TASK_ERROR], error_code);
-    cJSON_AddStringToObject(response_json, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], error_codes[error_code]);
+    cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_ERROR], error_code);
+    cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], error_codes[error_code]);
     if (agent_id != OS_INVALID) {
-        cJSON_AddNumberToObject(response_json, task_manager_json_keys[WM_TASK_AGENT_ID], agent_id);
+        cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_AGENT_ID], agent_id);
     }
     if (task_id != OS_INVALID) {
-        cJSON_AddNumberToObject(response_json, task_manager_json_keys[WM_TASK_TASK_ID], task_id);
+        cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_TASK_ID], task_id);
     }
     if (status) {
-        cJSON_AddStringToObject(response_json, task_manager_json_keys[WM_TASK_STATUS], status);
+        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_STATUS], status);
     }
 
-    return response_json;
+    return response;
+}
+
+cJSON* wm_task_manager_parse_response(int error_code, cJSON *data) {
+    cJSON *response = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_ERROR], error_code);
+    if (data && (data->type == cJSON_Array)) {
+        cJSON_AddItemToObject(response, task_manager_json_keys[WM_TASK_DATA], data);
+    } else {
+        cJSON *data_array = cJSON_CreateArray();
+        cJSON_AddItemToArray(data_array, data);
+        cJSON_AddItemToObject(response, task_manager_json_keys[WM_TASK_DATA], data_array);
+    }
+    cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], error_codes[error_code]);
+
+    return response;
 }
 
 STATIC const char* wm_task_manager_decode_status(char *status) {
