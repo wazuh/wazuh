@@ -185,7 +185,15 @@ int fim_registry_validate_path(const char *entry_path, const registry *configura
  * @return A fim_registry_key object holding the information from the queried key, NULL on error.
  */
 fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, const registry *configuration) {
-    return NULL;
+    fim_registry_key *key;
+
+    os_calloc(1, sizeof(fim_registry_key), key);
+
+    if (configuration->opts & CHECK_OWNER) {
+        key->user_name = get_user(path, &key->uid, key_handle, FIM_TYPE_REGISTRY);
+    }
+
+    return key;
 }
 
 /**

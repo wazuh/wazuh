@@ -615,7 +615,7 @@ void ag_send_syscheck(char * message) {
 
 #else /* #ifndef WIN32 */
 
-char *get_user(const char *path, char **sid) {
+char *get_user(const char *path, char **sid, HANDLE hdnl, fim_type entry_type) {
     DWORD dwRtnCode = 0;
     DWORD dwSecurityInfoErrorCode = 0;
     PSID pSidOwner = NULL;
@@ -629,64 +629,74 @@ char *get_user(const char *path, char **sid) {
     PSECURITY_DESCRIPTOR pSD = NULL;
     char *result;
 
-    // Get the handle of the file object.
-    hFile = CreateFile(
-                       TEXT(path),
-                       GENERIC_READ,
-                       FILE_SHARE_READ | FILE_SHARE_WRITE,
-                       NULL,
-                       OPEN_EXISTING,
-                       FILE_ATTRIBUTE_NORMAL,
-                       NULL);
+    if (entry_type == FIM_TYPE_FILE) {
+        // Get the handle of the file object.
+        hFile = CreateFile(
+                           TEXT(path),
+                           GENERIC_READ,
+                           FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           NULL,
+                           OPEN_EXISTING,
+                           FILE_ATTRIBUTE_NORMAL,
+                           NULL);
 
-    // Check GetLastError for CreateFile error code.
-    if (hFile == INVALID_HANDLE_VALUE) {
-        DWORD dwErrorCode = GetLastError();
-        LPSTR messageBuffer = NULL;
-        LPSTR end;
+        // Check GetLastError for CreateFile error code.
+        if (hFile == INVALID_HANDLE_VALUE) {
+            DWORD dwErrorCode = GetLastError();
+            LPSTR messageBuffer = NULL;
+            LPSTR end;
 
-        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwErrorCode, 0, (LPTSTR) &messageBuffer, 0, NULL);
+            FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                          NULL, dwErrorCode, 0, (LPTSTR) &messageBuffer, 0, NULL);
 
-        if (end = strchr(messageBuffer, '\r'), end) {
-            *end = '\0';
+            if (end = strchr(messageBuffer, '\r'), end) {
+                *end = '\0';
+            }
+
+            switch (dwErrorCode) {
+            case ERROR_ACCESS_DENIED:     // 5
+            case ERROR_SHARING_VIOLATION: // 32
+                mdebug1("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
+                break;
+            default:
+                mwarn("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
+            }
+
+            LocalFree(messageBuffer);
+            *AcctName = '\0';
+            goto end;
         }
 
-        switch (dwErrorCode) {
-        case ERROR_ACCESS_DENIED:     // 5
-        case ERROR_SHARING_VIOLATION: // 32
-            mdebug1("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
-            break;
-        default:
-            mwarn("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
-        }
-
-        LocalFree(messageBuffer);
-        *AcctName = '\0';
-        goto end;
+        hdnl = hFile;
     }
 
-    // Get the owner SID of the file.
+    SE_OBJECT_TYPE object_type = entry_type == FIM_TYPE_FILE ? SE_FILE_OBJECT : SE_REGISTRY_KEY;
+
+    // Get the owner SID of the file or registry
     dwRtnCode = GetSecurityInfo(
-                                hFile,
-                                SE_FILE_OBJECT,
-                                OWNER_SECURITY_INFORMATION,
-                                &pSidOwner,
-                                NULL,
-                                NULL,
-                                NULL,
-                                &pSD);
+                                hdnl,                       // Object handle
+                                object_type,                // Object type (file or registry)
+                                OWNER_SECURITY_INFORMATION, // Security information bit flags
+                                &pSidOwner,                 // Owner SID
+                                NULL,                       // Group SID
+                                NULL,                       // DACL
+                                NULL,                       // SACL
+                                &pSD);                      // Security descriptor
 
     if (dwRtnCode != ERROR_SUCCESS) {
         dwSecurityInfoErrorCode = GetLastError();
     }
 
-    CloseHandle(hFile);
+    if (entry_type == FIM_TYPE_FILE) {
+        CloseHandle(hFile);
+    }
 
     char *aux;
     if (!ConvertSidToStringSid(pSidOwner, &aux)) {
         *sid = NULL;
         mdebug1("The user's SID could not be extracted.");
-    } else {
+    }
+    else {
         os_strdup(aux, *sid);
         LocalFree(aux);
     }
@@ -700,12 +710,12 @@ char *get_user(const char *path, char **sid) {
 
     // Second call to LookupAccountSid to get the account name.
     bRtnBool = LookupAccountSid(
-                                NULL,                   // name of local or remote computer
-                                pSidOwner,              // security identifier
-                                AcctName,               // account name buffer
-                                (LPDWORD)&dwAcctName,   // size of account name buffer
-                                DomainName,             // domain name
-                                (LPDWORD)&dwDomainName, // size of domain name buffer
+                                NULL,                   // Name of local or remote computer
+                                pSidOwner,              // Security identifier
+                                AcctName,               // Account name buffer
+                                (LPDWORD)&dwAcctName,   // Size of account name buffer
+                                DomainName,             // Domain name
+                                (LPDWORD)&dwDomainName, // Size of domain name buffer
                                 &eUse);                 // SID type
 
     // Check GetLastError for LookupAccountSid error condition.
@@ -714,10 +724,12 @@ char *get_user(const char *path, char **sid) {
 
         dwErrorCode = GetLastError();
 
-        if (dwErrorCode == ERROR_NONE_MAPPED)
+        if (dwErrorCode == ERROR_NONE_MAPPED) {
             mdebug1("Account owner not found for file '%s'", path);
-        else
+        }
+        else {
             merror("Error in LookupAccountSid.");
+        }
 
         *AcctName = '\0';
     }
