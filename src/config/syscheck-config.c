@@ -286,6 +286,8 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             syscheck->registry[pl].tag = NULL;
             syscheck->registry[pl + 1].tag = NULL;
             syscheck->registry[pl].arch = vals;
+            syscheck->registry[pl + 1].recursion_level = 0;
+            syscheck->registry[pl].recursion_level = recursion_limit;
             os_strdup(entry, syscheck->registry[pl].entry);
         } else {
             while (syscheck->registry[pl].entry != NULL) {
@@ -304,6 +306,8 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
                 syscheck->registry[pl].tag = NULL;
                 syscheck->registry[pl + 1].tag = NULL;
                 syscheck->registry[pl].arch = vals;
+                syscheck->registry[pl + 1].recursion_level = 0;
+                syscheck->registry[pl].recursion_level = recursion_limit;
                 os_strdup(entry, syscheck->registry[pl].entry);
             } else {
                 os_free(syscheck->registry[pl].tag);
@@ -376,7 +380,7 @@ int dump_registry_ignore_regex(syscheck_config *syscheck, char *regex, int arch)
 }
 
 /* Read Windows registry configuration */
-int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
+int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag, int recursion_level)
 {
     int j;
     char **entry;
@@ -427,9 +431,8 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
             if (clean_tag = os_strip_char(tag, ' '), !clean_tag)
                 merror("Processing tag '%s' for registry entry '%s'.", tag, tmp_entry);
         }
-
         /* Add new entry */
-        dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag, NULL, -1);
+        dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, recursion_level, clean_tag, NULL, -1);
 
         if (clean_tag)
             free(clean_tag);
@@ -1098,7 +1101,7 @@ int read_data_unit(const char *content) {
 
             if (OS_StrIsNum(value_str)) {
                 read_value = atoi(value_str);
-                
+
                 switch (content[len_value_str - 2]) {
                     case 'M':
                         // Fallthrough
@@ -1374,6 +1377,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_64bit = "64bit";
     const char *xml_both = "both";
     const char *xml_tag = "tags";
+    const char *xml_recursion_level = "recursion_level";
+
 #endif
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
@@ -1439,6 +1444,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 #ifdef WIN32
             char * tag = NULL;
             char arch[6] = "32bit";
+            int reg_recursion_level = MAX_REGISTRY_DEPTH;
 
             if (node[i]->attributes) {
                 int j = 0;
@@ -1458,6 +1464,19 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             os_free(tag);
                             return OS_INVALID;
                         }
+
+                    } else if (strcmp(node[i]->attributes[j], xml_recursion_level) == 0) {
+                        if (!OS_StrIsNum(node[i]->values[j])) {
+                            merror(XML_VALUEERR, xml_recursion_level, node[i]->content);
+                            os_free(tag);
+                            return OS_INVALID;
+                        }
+                        reg_recursion_level = (unsigned int) atoi(node[i]->values[j]);
+                        if (reg_recursion_level < 0 || reg_recursion_level > MAX_REGISTRY_DEPTH) {
+                            mwarn("Invalid recursion level value: %d. Setting default (%d).", reg_recursion_level, MAX_REGISTRY_DEPTH);
+                            reg_recursion_level = MAX_REGISTRY_DEPTH;
+                        }
+
                     } else {
                         merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
                         os_free(tag);
@@ -1468,20 +1487,20 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
 
             if (strcmp(arch, "both") == 0) {
-                if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT, tag) &&
-                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag))) {
+                if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT, tag, reg_recursion_level) &&
+                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag, reg_recursion_level))) {
                     free(tag);
                     return (OS_INVALID);
                 }
 
             } else if (strcmp(arch, "64bit") == 0) {
-                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag)) {
+                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag, reg_recursion_level)) {
                     free(tag);
                     return (OS_INVALID);
                 }
 
             } else {
-                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag)) {
+                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag, reg_recursion_level)) {
                     free(tag);
                     return (OS_INVALID);
                 }
