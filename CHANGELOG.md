@@ -1,6 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.13.2]
+
+### Fixed
+
+- Updated the default NVD feed URL from 1.0 to 1.1 in Vulnerability Detector. ([#6056](https://github.com/wazuh/wazuh/pull/6056))
+
+
 ## [v3.13.1] - 2020-07-14
 
 ### Added
