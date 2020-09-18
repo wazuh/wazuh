@@ -15,9 +15,11 @@
  * @brief Read registry data that are stored in a temporal storage.
  *
  * @param fim_sql FIM database structure.
- * @param mutex
- * @param storage 1 Store database in memory, disk otherwise.
+ * @param file Structure of the file which contains all the key ids and value names.
+ * @param mutex FIM database's mutex for thread synchronization.
  * @param callback Function to call within a step.
+ * @param storage 1 Store database in memory, disk otherwise.
+ * @param alert False don't send alert, True send delete alert.
  * @param mode FIM mode for callback function.
  * @param w_evt Whodata information for callback function.
  *
@@ -32,9 +34,9 @@ int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, p
  * @brief Write an entry path into the storage pointed by @args.
  *
  * @param fim_sql FIM database struct.
+ * @param entry Registry value data to be saved.
  * @param storage 1 Store database in memory, disk otherwise.
- * @param args Storage which contains all the paths.
- * @param pos If memory is 1, pos indicates the position in the array.
+ * @param arg Storage which contains all the paths.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
@@ -129,7 +131,7 @@ int fim_db_insert_registry(fdb_t *fim_sql, fim_entry *new);
 /**
  * @brief Calculate checksum of registry keys between @start and @top.
  *
- * Said range will be splitted into two and the resulting checksums will
+ * Said range will be split into two and the resulting checksums will
  * be sent as sync messages.
  *
  * @param fim_sql FIM database struct
@@ -235,8 +237,8 @@ int fim_db_set_registry_data_scanned(fdb_t *fim_sql, const char *name, unsigned 
  * @brief Get all the unscanned registries keys by saving them in a temporal storage.
  *
  * @param fim_sql FIM database struct.
- * @param storage 1 Store database in memory, disk otherwise.
  * @param file Structure of the file which contains all the paths.
+ * @param storage 1 Store database in memory, disk otherwise.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
@@ -246,8 +248,8 @@ int fim_db_get_registry_keys_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, i
  * @brief Get all the unscanned registries values by saving them in a temporal storage.
  *
  * @param fim_sql FIM database struct.
- * @param storage 1 Store database in memory, disk otherwise.
  * @param file Structure of the file which contains all the paths.
+ * @param storage 1 Store database in memory, disk otherwise.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */

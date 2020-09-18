@@ -82,9 +82,9 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim
  * @brief Send sync message for all entries.
  *
  * @param fim_sql FIM database struct.
- * @param storage 1 Store database in memory, disk otherwise.
  * @param mutex FIM database's mutex for thread synchronization.
- * @param fd Structure of temporal storage which contains all the paths.
+ * @param file Structure of temporal storage which contains all the paths.
+ * @param storage 1 Store database in memory, disk otherwise.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
@@ -107,6 +107,7 @@ void fim_db_callback_calculate_checksum(fdb_t *fim_sql, fim_entry *entry, int st
  * Said range will be splitted into two and the resulting checksums will
  * be sent as sync messages.
  *
+ * @param fim_sql FIM database struct.
  * @param start First entry of the range.
  * @param top Last entry of the range.
  * @param id Sync session counter (timetamp).
@@ -121,6 +122,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
 /**
  * @brief Count the number of entries between range @start and @top.
  *
+ * @param fim_sql FIM database struct.
  * @param start First entry of the range.
  * @param top Last entry of the range.
  * @param counter Pointer which will hold the final count.
@@ -133,7 +135,7 @@ int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *counter)
  * @brief Delete entry using file path.
  *
  * @param fim_sql FIM database struct.
- * @param file_path File path.
+ * @param entry Entry data to be removed.
  * @param mutex FIM database's mutex for thread synchronization.
  * @param alert False don't send alert, True send delete alert.
  * @param fim_ev_mode FIM Mode (scheduled/realtime/whodata)
@@ -170,7 +172,7 @@ int fim_db_set_all_unscanned(fdb_t *fim_sql);
  * @brief Set file entry scanned.
  *
  * @param fim_sql FIM database struct.
- * @param file_path File path.
+ * @param path File path.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
@@ -180,12 +182,12 @@ int fim_db_set_scanned(fdb_t *fim_sql, char *path);
  * @brief Get all the unscanned files by saving them in a temporal storage.
  *
  * @param fim_sql FIM database struct.
- * @param storage 1 Store database in memory, disk otherwise.
  * @param file Structure of the file which contains all the paths.
+ * @param storage 1 Store database in memory, disk otherwise.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_not_scanned(fdb_t * fim_sql,fim_tmp_file **file, int storage);
+int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage);
 
 /**
  * @brief Callback function to send a sync message for a sole entry.
@@ -193,7 +195,8 @@ int fim_db_get_not_scanned(fdb_t * fim_sql,fim_tmp_file **file, int storage);
  * @param fim_sql FIM database struct.
  * @param entry Entry data to be inserted.
  * @param mutex FIM database's mutex for thread synchronization.
- * @param mode  Unused argument.
+ * @param alert Unused argument.
+ * @param mode Unused argument.
  * @param w_event Unused argument.
  */
 void fim_db_callback_sync_path_range(__attribute__((unused)) fdb_t *fim_sql,
@@ -219,9 +222,9 @@ int fim_db_delete_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_
  * @brief Get path list between @start and @top. (stored in @file).
  *
  * @param fim_sql FIM database struct.
- * @param file  Structure of the storage which contains all the paths.
  * @param start First entry of the range.
  * @param top Last entry of the range.
+ * @param file  Structure of the storage which contains all the paths.
  * @param storage 1 Store database in memory, disk otherwise.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.

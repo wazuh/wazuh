@@ -106,7 +106,7 @@ int fim_db_create_file(const char *path, const char *source, int storage, sqlite
 /**
  * @brief Create a new temporal storage to save all the files' paths.
  *
- * @param size Number of paths(Only if memory is 1).
+ * @param storage Type of storage (memory or disk).
  *
  * @return New file structure.
  */

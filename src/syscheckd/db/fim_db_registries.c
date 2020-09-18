@@ -60,7 +60,7 @@ static void fim_db_bind_insert_registry_data(fdb_t *fim_sql, fim_registry_value_
 static void fim_db_bind_insert_registry_key(fdb_t *fim_sql, fim_registry_key *registry_key, unsigned int id);
 
 /**
- * @brief Bind registry data into a update registry data statement
+ * @brief Bind registry data into an update registry data statement
  *
  * @param fim_sql FIM database structure.
  * @param data Registy data structure with that will be updated.
@@ -69,7 +69,7 @@ static void fim_db_bind_insert_registry_key(fdb_t *fim_sql, fim_registry_key *re
 static void fim_db_bind_update_registry_data(fdb_t *fim_sql, fim_registry_value_data *data, unsigned int key_id);
 
 /**
- * @brief Bind registry key into a update registry data statement
+ * @brief Bind registry key into an update registry data statement
  *
  * @param fim_sql FIM database structure.
  * @param registry_key Structure that will be updated.
@@ -303,20 +303,24 @@ fim_entry *fim_db_decode_registry(int index, sqlite3_stmt *stmt) {
 
 void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage,
                                         void *arg) {
+    int length;
     if (entry->type != FIM_TYPE_REGISTRY) {
         return ;
     }
 
     char *base = wstr_escape_json(entry->registry_entry.value->name);
     char *buffer = NULL;
-    os_calloc(MAX_DIR_SIZE, sizeof(char), buffer);
 
     if (base == NULL) {
         merror("Error escaping '%s'", entry->registry_entry.value->name);
         goto end;
     }
 
-    snprintf(buffer, MAX_DIR_SIZE, "%d %s", entry->registry_entry.value->id, base);
+    length = snprintf(NULL, 0, "%d %s", entry->registry_entry.value->id, base) + 1;
+
+    os_malloc(length, buffer);
+
+    snprintf(buffer, length, "%d %s", entry->registry_entry.value->id, base);
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
         if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", buffer) != (strlen(buffer) + sizeof(char))) {
