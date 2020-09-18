@@ -287,6 +287,7 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             syscheck->registry[pl + 1].tag = NULL;
             syscheck->registry[pl].arch = (int)*link;
             syscheck->registry[pl].opts = vals;
+            syscheck->registry[pl].filerestrict = NULL;
             os_strdup(entry, syscheck->registry[pl].entry);
         } else {
             while (syscheck->registry[pl].entry != NULL) {
@@ -309,6 +310,19 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
                 os_strdup(entry, syscheck->registry[pl].entry);
             } else {
                 os_free(syscheck->registry[pl].tag);
+            }
+        }
+
+        if (restrictfile) {
+            os_calloc(1, sizeof(OSMatch), syscheck->registry[pl].filerestrict);
+            if (!OSMatch_Compile(restrictfile, syscheck->registry[pl].filerestrict, 0)) {
+                OSMatch *ptm;
+
+                ptm = syscheck->registry[pl].filerestrict;
+
+                merror(REGEX_COMPILE, restrictfile, ptm->error);
+                free(syscheck->registry[pl].filerestrict);
+                syscheck->registry[pl].filerestrict = NULL;
             }
         }
 
@@ -432,8 +446,7 @@ int dump_registry_nodiff_regex(syscheck_config *syscheck, const char *regex, int
 }
 
 /* Read Windows registry configuration */
-int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag, int vals)
-{
+int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag, int vals, const char *restrictfile){
     int j;
     char **entry;
     char *tmp_str;
@@ -485,7 +498,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag, int 
         }
 
         /* Add new entry */
-        dump_syscheck_entry(syscheck, tmp_entry, vals, 1, NULL, 0, clean_tag, &arch, -1);
+        dump_syscheck_entry(syscheck, tmp_entry, vals, 1, restrictfile, 0, clean_tag, &arch, -1);
 
         if (clean_tag)
             free(clean_tag);
@@ -1500,6 +1513,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_both = "both";
     const char *xml_tag = "tags";
     const char *xml_report_changes = "report_changes";
+    const char *xml_restrict = "restrict";
 #endif
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
@@ -1563,7 +1577,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         /* Get Windows registry */
         else if (strcmp(node[i]->element, xml_registry) == 0) {
 #ifdef WIN32
-            char * tag = NULL;
+            char *tag = NULL;
+            char *restrictfile = NULL;
             char arch[6] = "32bit";
             int opts = 0;
 
@@ -1595,6 +1610,10 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             os_free(tag);
                             return OS_INVALID;
                         }
+                    } else if (strcmp(node[i]->attributes[j], xml_restrict) == 0) {
+                        os_free(restrictfile);
+                        os_strdup(node[i]->values[j], restrictfile);
+                        str_lowercase(restrictfile);
                     } else {
                         merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
                         os_free(tag);
@@ -1605,25 +1624,28 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
 
             if (strcmp(arch, "both") == 0) {
-                if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT, tag, opts) &&
-                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag, opts))) {
+                if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT, tag, opts, restrictfile) &&
+                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag, opts, restrictfile))) {
                     free(tag);
+                    os_free(restrictfile);
                     return (OS_INVALID);
                 }
 
             } else if (strcmp(arch, "64bit") == 0) {
-                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag, opts)) {
+                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag, opts, restrictfile)) {
                     free(tag);
                     return (OS_INVALID);
                 }
 
             } else {
-                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag, opts)) {
+                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag, opts, restrictfile)) {
                     free(tag);
+                    os_free(restrictfile);
                     return (OS_INVALID);
                 }
-
             }
+
+            os_free(restrictfile);
 
             if (tag)
                 free(tag);
@@ -2239,6 +2261,9 @@ void Free_Syscheck(syscheck_config * config) {
                 free(config->registry[i].entry);
                 if (config->registry[i].tag) {
                     free(config->registry[i].tag);
+                }
+                if (config->registry[i].filerestrict) {
+                    free(config->registry[i].filerestrict);
                 }
             }
             free(config->registry);
