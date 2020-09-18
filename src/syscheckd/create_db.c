@@ -13,7 +13,9 @@
 #include "syscheck_op.h"
 #include "integrity_op.h"
 #include "time_op.h"
-#include "db/fim_db.h"
+#include "db/fim_db_files.h"
+#include "db/fim_db_registries.h"
+#include "registry/registry.h"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when unit testing */
@@ -95,7 +97,7 @@ void fim_scan() {
 
     if (syscheck.file_limit_enabled) {
         w_mutex_lock(&syscheck.fim_entry_mutex);
-        nodes_count = fim_db_get_count_entry_path(syscheck.database);
+        nodes_count = fim_db_get_count_file_entry(syscheck.database);
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
 #ifdef WIN32
@@ -118,7 +120,7 @@ void fim_scan() {
                 os_free(item);
 
                 w_mutex_lock(&syscheck.fim_entry_mutex);
-                nodes_count = fim_db_get_count_entry_path(syscheck.database);
+                nodes_count = fim_db_get_count_file_entry(syscheck.database);
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
             }
 
@@ -129,7 +131,7 @@ void fim_scan() {
                 fim_registry_scan();
 
                 w_mutex_lock(&syscheck.fim_entry_mutex);
-                fim_db_get_count_entry_path(syscheck.database);
+                fim_db_get_count_file_entry(syscheck.database);
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
             }
 #endif
@@ -214,22 +216,7 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         }
 
         if (item->configuration & CHECK_SEECHANGES) {
-            if (syscheck.disk_quota_enabled) {
-                char *full_path;
-                full_path = seechanges_get_diff_path(path);
-
-                if (full_path != NULL && IsDir(full_path) == 0) {
-                    syscheck.diff_folder_size -= (DirSize(full_path) / 1024);   // Update diff_folder_size
-
-                    if (!syscheck.disk_quota_full_msg) {
-                        syscheck.disk_quota_full_msg = true;
-                    }
-                }
-
-                os_free(full_path);
-            }
-
-            delete_target_file(path);
+            fim_diff_process_delete_file(path);
         }
 
         w_mutex_lock(&syscheck.fim_entry_mutex);
@@ -372,7 +359,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     }
 
     if (item->configuration & CHECK_SEECHANGES) {
-        diff = seechanges_addfile(file);
+        diff = fim_file_diff(file);
     }
 
     json_event = fim_json_event(file, saved ? saved->file_entry.data : NULL, new, item->index, alert_type, item->mode, w_evt, diff);
@@ -381,7 +368,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
 
     if (json_event) {
         if (result = fim_db_insert(syscheck.database, file, new, saved ? saved->file_entry.data : NULL), result < 0) {
-            free_entry_data(new);
+            free_file_data(new);
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             cJSON_Delete(json_event);
@@ -401,7 +388,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     }
 
     cJSON_Delete(json_event);
-    free_entry_data(new);
+    free_file_data(new);
     free_entry(saved);
 
     return 0;
@@ -514,7 +501,7 @@ void fim_check_db_state() {
     char alert_msg[OS_SIZE_256] = {'\0'};
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    nodes_count = fim_db_get_count_entry_path(syscheck.database);
+    nodes_count = fim_db_get_count_file_entry(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
 #ifdef WIN32
@@ -693,7 +680,7 @@ fim_file_data * fim_get_data(const char *file, fim_element *item) {
 
         if (error = w_get_file_permissions(file, perm, OS_SIZE_6144), error) {
             mdebug1(FIM_EXTRACT_PERM_FAIL, file, error);
-            free_entry_data(data);
+            free_file_data(data);
             return NULL;
         } else {
             data->perm = decode_win_permissions(perm);
@@ -758,7 +745,7 @@ fim_file_data * fim_get_data(const char *file, fim_element *item) {
                                         OS_BINARY,
                                         syscheck.file_max_size) < 0) {
                 mdebug1(FIM_HASHES_FAIL, file);
-                free_entry_data(data);
+                free_file_data(data);
                 return NULL;
         }
     }
@@ -1167,7 +1154,7 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
 }
 
 
-void free_entry_data(fim_file_data * data) {
+void free_file_data(fim_file_data * data) {
     if (!data) {
         return;
     }
@@ -1198,7 +1185,7 @@ void free_entry(fim_entry * entry) {
     if (entry) {
         if (entry->type == FIM_TYPE_FILE) {
             os_free(entry->file_entry.path);
-            free_entry_data(entry->file_entry.data);
+            free_file_data(entry->file_entry.data);
             free(entry);
         }
     }
@@ -1240,13 +1227,13 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
             (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
 
 #ifdef WIN32
-    mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_entry_path(syscheck.database));
+    mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_file_entry(syscheck.database));
 #else
     unsigned inode_items = 0;
     unsigned inode_paths = 0;
 
-    inode_items = fim_db_get_count_entry_data(syscheck.database);
-    inode_paths = fim_db_get_count_entry_path(syscheck.database);
+    inode_items = fim_db_get_count_file_data(syscheck.database);
+    inode_paths = fim_db_get_count_file_entry(syscheck.database);
 
     mdebug1(FIM_INODES_INFO, inode_items, inode_paths);
 #endif

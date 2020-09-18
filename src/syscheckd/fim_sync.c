@@ -17,7 +17,7 @@
 #include <openssl/evp.h>
 #include "syscheck.h"
 #include "integrity_op.h"
-#include "db/fim_db.h"
+#include "db/fim_db_files.h"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when unit testing */
@@ -151,7 +151,7 @@ end:    os_free(start);
 
 void fim_sync_checksum_split(const char * start, const char * top, long id) {
     fim_entry *entry    = NULL;
-    cJSON *entry_data   = NULL;
+    cJSON *file_data   = NULL;
     int range_size      = 0;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
@@ -176,8 +176,8 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         }
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-        entry_data = fim_entry_json(start, entry->file_entry.data);
-        char * plain = dbsync_state_msg("syscheck", entry_data);
+        file_data = fim_entry_json(start, entry->file_entry.data);
+        char * plain = dbsync_state_msg("syscheck", file_data);
         fim_send_sync_msg(plain);
         os_free(plain);
         free_entry(entry);

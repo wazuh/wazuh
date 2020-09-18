@@ -230,10 +230,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DIFF_DIR        "queue/diff"
 #define DIFF_DIR_PATH   DIFF_DIR
 #endif
-#define DIFF_NEW_FILE  "new-entry"
-#define DIFF_LAST_FILE "last-entry"
-#define DIFF_GZ_FILE "last-entry.gz"
-#define DIFF_TEST_HOST "__test"
+#define DIFF_NEW_FILE   "new-entry"
+#define DIFF_LAST_FILE  "last-entry"
+#define DIFF_GZ_FILE    "last-entry.gz"
+#define DIFF_TEST_HOST  "__test"
 
 /* Syscheck data */
 #define SYSCHECK        "syscheck"

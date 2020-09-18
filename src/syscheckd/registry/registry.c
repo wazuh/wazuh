@@ -142,7 +142,7 @@ int fim_registry_validate_path(const char *entry_path, const registry *configura
     }
 
     if (depth > configuration->recursion_level) {
-        mdebug2(FIM_MAX_RECURSION_LEVEL, depth, configuration->recursion_level);
+        mdebug2(FIM_MAX_RECURSION_LEVEL, depth, configuration->recursion_level, entry_path);
         return -1;
     }
 
@@ -241,8 +241,11 @@ void fim_registry_process_value_delete_event(fdb_t *fim_sql,
     snprintf(full_path, MAX_KEY, "%s\\%s", data->registry_entry.key->path, data->registry_entry.value->name);
 
     configuration = fim_registry_configuration(full_path, data->registry_entry.key->arch);
+    if (configuration == NULL) {
+        return;
+    }
 
-    if (alert && configuration) {
+    if (alert) {
         cJSON *json_event = fim_registry_event(data, NULL, configuration, event_mode, FIM_DELETE, NULL, NULL);
 
         if (json_event) {
@@ -284,8 +287,11 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
     registry *configuration;
 
     configuration = fim_registry_configuration(data->registry_entry.key->path, data->registry_entry.key->arch);
+    if (configuration == NULL) {
+        return;
+    }
 
-    if (alert && configuration) {
+    if (alert) {
         cJSON *json_event = fim_registry_event(data, NULL, configuration, event_mode, FIM_DELETE, NULL, NULL);
 
         if (json_event) {
@@ -377,8 +383,8 @@ void fim_registry_process_value_event(fim_entry *new,
                                                            new->registry_entry.value->name);
 
     if (configuration->opts | CHECK_SEECHANGES) {
-        diff = fim_registry_value_diff(new->registry_entry.key->path, new->registry_entry.value->name, data_buffer,
-                                       new->registry_entry.value->type, configuration);
+        diff = fim_registry_value_diff(new->registry_entry.key->path, new->registry_entry.value->name,
+                                       (char *)data_buffer, new->registry_entry.value->type, configuration);
     }
 
     json_event = fim_registry_event(new, saved, configuration, mode,

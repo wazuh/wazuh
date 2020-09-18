@@ -70,7 +70,6 @@ typedef struct fim_tmp_file {
     int elements;
 } fim_tmp_file;
 
-
 #ifdef WIN32
 /* Flags to know if a directory/file's watcher has been removed */
 #define FIM_RT_HANDLE_CLOSED 0
@@ -289,7 +288,7 @@ cJSON *fim_json_event(char *file_name, fim_file_data *old_data, fim_file_data *n
  *
  * @param [out] data The FIM entry data to be freed
  */
-void free_entry_data(fim_file_data *data);
+void free_file_data(fim_file_data *data);
 
 /**
  * @brief Deallocates fim_entry struct.
@@ -349,57 +348,6 @@ void delete_subdirectories_watches(char *dir);
  * @return Number of inotify watches
  */
 unsigned int count_watches();
-
-/**
- * @brief Check if a file has changed
- *
- * @param filename The name of the file to be checked
- * @return The diff alert generated, NULL on error
- */
-char *seechanges_addfile(const char *filename) __attribute__((nonnull));
-
-/**
- * @brief Delete stored compressed file for "path"
- *
- * @param path Path to the file which compressed version needs to be deleted
- */
-void seechanges_delete_compressed_file(const char *path);
-
-/**
- * @brief Get queue/diff/local path from file path
- *
- * @param path Path to the file
- * @return Path to the queue/diff/local folder
- */
-char *seechanges_get_diff_path(char *path);
-
-/**
- * @brief Estimate whether the compressed file will fit in the disk_quota limit
- *
- * @param file_size Uncompressed file size
- * @return true for files which compressed version could fit, false otherwise
- */
-int seechanges_estimate_compression(const float file_size);
-
-/**
- * @brief Changed the value of syscheck.comp_estimation_perc based on the actual compression rate
- *
- * @param compressed_size Size of the compressed file
- * @param uncompressed_size Size of the file before the compression
- */
-void seechanges_modify_estimation_percentage(const float compressed_size, const float uncompressed_size);
-
-#ifndef WIN32
-
-/**
- * @brief Check if the filename is symlink to a directory
- *
- * @param filename Path to file
- * @return TRUE if filename is a symlink to a directory, FALSE otherwise
- */
-int symlink_to_dir(const char *filename);
-
-#endif
 
 /**
  * @brief Frees the memory of a Whodata event structure
@@ -630,19 +578,52 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
  * @param value_name Name of the value that has generated the alert
  * @param value_data Content of the value to be checked
  * @param data_type The type of value we are checking
- * @return String with the diff to add to the alert
+ * @param registry Config of the registry key
+ * @return String with the changes to add to the alert
  */
 
-char * fim_registry_value_diff(char *key_name, char *value_name, LPBYTE value_data, DWORD data_type);
+char *fim_registry_value_diff(const char *key_name,
+                              const char *value_name,
+                              const char *value_data,
+                              DWORD data_type,
+                              const registry *configuration);
 #endif
 
 /**
- * @brief Checks if a specific file has been configured with the ``nodiff`` option
+ * @brief Function that generates the diff file of a file monitored when the option report_changes is activated
  *
- * @param filename The name of the file to check
- * @return 1 if the file has been configured with the ``nodiff`` option, 0 if not
+ * @param filename Path of file monitored
+ * @return String with the diff to add to the alert
  */
-int is_nodiff(const char *filename);
+
+char * fim_file_diff(const char *filename);
+
+/**
+ * @brief Deletes the filename diff folder and modify diff_folder_size if disk_quota enabled
+ *
+ * @param filename Path of the file that has been deleted
+ * @return 0 if success, -1 on error
+ */
+int fim_diff_process_delete_file(const char *filename);
+
+/**
+ * @brief Deletes the registry diff folder and modify diff_folder_size if disk_quota enabled
+ *
+ * @param key_name Path of the registry that has been deleted
+ * @param arch Arch type of the registry
+ * @return 0 if success, -1 on error
+ */
+int fim_diff_process_delete_registry(const char *key_name, int arch);
+
+/**
+ * @brief Deletes the value diff folder and modifies diff_folder_size if disk_quota enabled
+ *
+ * @param key_name Path of the registry that contains the deleted value
+ * @param value_name Path of the value that has been deleted
+ * @param arch Arch type of the registry
+ * @return 0 if success, -1 on error
+ */
+int fim_diff_process_delete_value(const char *key_name, const char *value_name, int arch);
 
 /**
  * @brief Initializes all syscheck data
