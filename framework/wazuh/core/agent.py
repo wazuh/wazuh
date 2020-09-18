@@ -1060,6 +1060,28 @@ def expand_group(group_name):
     return agents_ids
 
 
+def agents_padding(result, agent_list):
+    """This function remove agent 000 from agent_list and
+    it transforms the format of the agent ids to the general format
+
+    Parameters
+    ----------
+    result : AffectedItemsWazuhResult
+    agent_list : list
+        List of agent's IDs
+
+    Returns
+    -------
+    Formatted agent list
+    """
+    agent_list = [str(agent).zfill(3) for agent in agent_list]
+    if '000' in agent_list:
+        result.add_failed_item(id_='000', error=WazuhError(code=1703))
+        agent_list.remove('000')
+
+    return agent_list
+
+
 def core_upgrade_agents(command, get_result=False):
     """Send command to upgrade module / task module
 

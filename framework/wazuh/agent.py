@@ -19,7 +19,7 @@ from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException,
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
 from wazuh.rbac.decorators import expose_resources
-from wazuh.core.agent import core_upgrade_agents
+from wazuh.core.agent import core_upgrade_agents, agents_padding
 
 logger = logging.getLogger('wazuh')
 
@@ -720,7 +720,7 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
                                       none_msg='No upgrade task has been created',
                                       sort_fields=['task_id'], sort_ascending='True')
 
-    '000' in agent_list and agent_list.remove('000')
+    agent_list = agents_padding(result=result, agent_list=agent_list)
     wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url_4_x
     if version and not version.startswith('v'):
         version = f'v{version}'
@@ -739,17 +739,18 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
     msg['params'] = {k: v for k, v in msg['params'].items() if v is not None}
     data = core_upgrade_agents(command=msg)
 
-    for agent_result in data:
-        if agent_result['error'] == 0:
-            task_agent = {
-                'agent_id': str(agent_result['agent']).zfill(3),
-                'task_id': agent_result['task_id']
-            }
-            result.affected_items.append(task_agent)
-            result.total_affected_items += 1
-        else:
-            error = WazuhError(code=1810 + agent_result['error'], cmd_error=True, extra_message=agent_result['data'])
-            result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
+    if isinstance(data, list):
+        for agent_result in data:
+            if agent_result['error'] == 0:
+                task_agent = {
+                    'agent_id': str(agent_result['agent']).zfill(3),
+                    'task_id': agent_result['task_id']
+                }
+                result.affected_items.append(task_agent)
+                result.total_affected_items += 1
+            else:
+                error = WazuhError(code=1810 + agent_result['error'], cmd_error=True, extra_message=agent_result['data'])
+                result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
 
     return result
 
@@ -773,22 +774,24 @@ def get_upgrade_result(agent_list=None):
                                       none_msg='No agent has been updated')
 
     command_list = list()
+    agent_list = agents_padding(result=result, agent_list=agent_list)
     for agent in agent_list:
         command_list.append({'command': 'upgrade_result', 'module': 'api', 'agent': int(agent)})
 
     task_results = core_upgrade_agents(command_list, get_result=True)
-    for task_result in task_results:
-        task_error = task_result.pop('error')
-        if task_error == 0:
-            task_result.pop('data')
-            task_result['agent_id'] = str(task_result.pop('agent')).zfill(3)
-            result.affected_items.append(task_result)
-            result.total_affected_items += 1
-        else:
-            error = WazuhError(code=1810 + task_error, cmd_error=True, extra_message=task_result['data'])
-            result.add_failed_item(id_=str(task_result.pop('agent')).zfill(3), error=error)
+    if isinstance(task_results, list):
+        for task_result in task_results:
+            task_error = task_result.pop('error')
+            if task_error == 0:
+                task_result.pop('data')
+                task_result['agent_id'] = str(task_result.pop('agent')).zfill(3)
+                result.affected_items.append(task_result)
+                result.total_affected_items += 1
+            else:
+                error = WazuhError(code=1810 + task_error, cmd_error=True, extra_message=task_result['data'])
+                result.add_failed_item(id_=str(task_result.pop('agent')).zfill(3), error=error)
 
-    result.affected_items = sorted(result.affected_items, key=lambda k: k['task_id'])
+        result.affected_items = sorted(result.affected_items, key=lambda k: k['task_id'])
 
     return result
 
