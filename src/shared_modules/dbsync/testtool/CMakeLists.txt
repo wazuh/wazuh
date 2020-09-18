@@ -7,7 +7,11 @@ include_directories(${CMAKE_SOURCE_DIR}/utils/)
 include_directories(${CMAKE_SOURCE_DIR}/testtool/)
 link_directories(${CMAKE_BINARY_DIR}/lib)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g -std=c++11")
+if(COVERITY)
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
+else()
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++11")
+endif(COVERITY)
 
 add_executable(dbsync_test_tool
                ${CMAKE_SOURCE_DIR}/testtool/main.cpp )
