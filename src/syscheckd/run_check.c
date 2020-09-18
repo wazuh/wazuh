@@ -22,7 +22,7 @@
 #include "syscheck.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "rootcheck/rootcheck.h"
-#include "db/fim_db.h"
+#include "db/fim_db_files.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32

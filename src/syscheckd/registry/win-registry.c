@@ -270,7 +270,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
             mdebug1(FIM_REGISTRY_EVENT_FAIL, path);
         }
 
-        free_entry_data(data);
+        free_file_data(data);
     }
 }
 
