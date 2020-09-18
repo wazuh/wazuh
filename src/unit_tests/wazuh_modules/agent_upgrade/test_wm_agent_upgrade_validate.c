@@ -1246,7 +1246,7 @@ void test_wm_agent_upgrade_validate_task_status_message_ok(void **state)
     int agent_id = 0;
 
     cJSON_AddNumberToObject(response, "error", 0);
-    cJSON_AddStringToObject(response, "data", "Success");
+    cJSON_AddStringToObject(response, "message", "Success");
     cJSON_AddNumberToObject(response, "agent", 5);
     cJSON_AddStringToObject(response, "status", "Done");
 
@@ -1265,7 +1265,7 @@ void test_wm_agent_upgrade_validate_task_status_message_not_agent_status_ok(void
     cJSON *response = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(response, "error", 0);
-    cJSON_AddStringToObject(response, "data", "Success");
+    cJSON_AddStringToObject(response, "message", "Success");
     cJSON_AddNumberToObject(response, "agent", 5);
     cJSON_AddStringToObject(response, "status", "Done");
 
@@ -1281,7 +1281,7 @@ void test_wm_agent_upgrade_validate_task_status_message_error_code(void **state)
     cJSON *response = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(response, "error", 1);
-    cJSON_AddStringToObject(response, "data", "Error");
+    cJSON_AddStringToObject(response, "message", "Error");
     cJSON_AddNumberToObject(response, "agent", 5);
     cJSON_AddStringToObject(response, "status", "Done");
 
@@ -1324,7 +1324,7 @@ void test_wm_agent_upgrade_validate_task_ids_message_ok(void **state)
     char *data = NULL;
 
     cJSON_AddNumberToObject(response, "error", 0);
-    cJSON_AddStringToObject(response, "data", "Success");
+    cJSON_AddStringToObject(response, "message", "Success");
     cJSON_AddNumberToObject(response, "agent", 7);
     cJSON_AddNumberToObject(response, "task_id", 15);
 
@@ -1346,7 +1346,7 @@ void test_wm_agent_upgrade_validate_task_ids_message_not_agent_error(void **stat
     char *data = NULL;
 
     cJSON_AddNumberToObject(response, "error", 0);
-    cJSON_AddStringToObject(response, "data", "Success");
+    cJSON_AddStringToObject(response, "message", "Success");
     cJSON_AddNumberToObject(response, "agent", 7);
     cJSON_AddNumberToObject(response, "task_id", 15);
 
@@ -1366,7 +1366,7 @@ void test_wm_agent_upgrade_validate_task_ids_message_not_data_error(void **state
     int task_id = 0;
 
     cJSON_AddNumberToObject(response, "error", 0);
-    cJSON_AddStringToObject(response, "data", "Success");
+    cJSON_AddStringToObject(response, "message", "Success");
     cJSON_AddNumberToObject(response, "agent", 7);
     cJSON_AddNumberToObject(response, "task_id", 15);
 
@@ -1386,7 +1386,7 @@ void test_wm_agent_upgrade_validate_task_ids_message_not_task_ok(void **state)
     char *data = NULL;
 
     cJSON_AddNumberToObject(response, "error", 0);
-    cJSON_AddStringToObject(response, "data", "Success");
+    cJSON_AddStringToObject(response, "message", "Success");
     cJSON_AddNumberToObject(response, "agent", 7);
     cJSON_AddNumberToObject(response, "task_id", 15);
 

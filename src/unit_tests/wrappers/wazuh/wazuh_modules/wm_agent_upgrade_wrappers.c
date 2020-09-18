@@ -68,9 +68,16 @@ char* __wrap_wm_agent_upgrade_process_agent_result_command(const int* agent_ids,
     return mock_type(char *);
 }
 
-cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status, const char* error) {
+cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJSON *agents_array, const char* status, const char* error) {
     check_expected(command);
-    check_expected(agent_id);
+
+    int agent_index = 0;
+    while (agent_index < cJSON_GetArraySize(agents_array)) {
+        int agent_id = cJSON_GetArrayItem(agents_array, agent_index)->valueint;
+        check_expected(agent_id);
+        agent_index++;
+    }
+
     if (status) check_expected(status);
     if (error) check_expected(error);
 
@@ -78,14 +85,9 @@ cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command comm
 }
 
 int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request) {
-    cJSON* json = cJSON_GetArrayItem(task_module_request, 0);
-    cJSON* json_next = cJSON_GetArrayItem(task_module_request, 1);
+    check_expected(task_module_request);
 
-    if (json) check_expected(json);
-    if (json_next) check_expected(json_next);
-
-    if (json) cJSON_AddItemToArray(json_response, mock_type(cJSON *));
-    if (json_next) cJSON_AddItemToArray(json_response, mock_type(cJSON *));
+    cJSON_AddItemToArray(json_response, mock_type(cJSON *));
 
     return mock();
 }
@@ -181,9 +183,8 @@ int __wrap_wm_agent_upgrade_remove_entry(int agent_id, int free) {
     return mock();
 }
 
-cJSON* __wrap_wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
+cJSON* __wrap_wm_agent_upgrade_parse_data_response(int error_id, const char* message, const int* agent_id) {
     int agent_int;
-    int task_int;
 
     check_expected(error_id);
     check_expected(message);
@@ -191,15 +192,15 @@ cJSON* __wrap_wm_agent_upgrade_parse_response_message(int error_id, const char* 
         agent_int = *agent_id;
         check_expected(agent_int);
     }
-    if (task_id) {
-        task_int = *task_id;
-        check_expected(task_int);
-    }
-    if (status) {
-        check_expected(status);
-    }
 
     return mock_type(cJSON *);
+}
+
+cJSON* __wrap_wm_agent_upgrade_parse_response(int error_id, cJSON *data) {
+    check_expected(error_id);
+    check_expected(data);
+
+    return mock_type(cJSON*);
 }
 
 cJSON* __wrap_w_create_sendsync_payload(const char *daemon_name, __attribute__ ((__unused__)) cJSON *message) {

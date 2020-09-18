@@ -2696,16 +2696,22 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
     agent_task->task_info->task = upgrade_task;
 
     cJSON *task_request_status = cJSON_CreateObject();
+    cJSON *origin = cJSON_CreateObject();
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON *agents = cJSON_CreateArray();
 
-    cJSON_AddStringToObject(task_request_status, "module", "upgrade_module");
+    cJSON_AddStringToObject(origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(task_request_status, "origin", origin);
     cJSON_AddStringToObject(task_request_status, "command", "upgrade_update_status");
-    cJSON_AddNumberToObject(task_request_status, "agent", agent_id);
-    cJSON_AddStringToObject(task_request_status, "status", status);
+    cJSON_AddItemToArray(agents, cJSON_CreateNumber(agent_id));
+    cJSON_AddItemToObject(parameters, "agents", agents);
+    cJSON_AddStringToObject(parameters, "status", status);
+    cJSON_AddItemToObject(task_request_status, "parameters", parameters);
 
     cJSON *task_response_status = cJSON_CreateObject();
 
     cJSON_AddStringToObject(task_response_status, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response_status, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(task_response_status, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(task_response_status, "agent", agent_id);
     cJSON_AddStringToObject(task_response_status, "status", status);
 
@@ -2845,7 +2851,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, task_request_status, sizeof(task_request_status));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request_status, sizeof(task_request_status));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response_status);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
@@ -3035,7 +3041,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
     int socket = 555;
     int agent_id = 25;
     char *status = "Failed";
-    char *error = "Send lock restart error.";
+    char *error = "Send lock restart error";
 
     char *lock_restart = "025 com lock_restart -1";
     char *open_file = "025 com open wb test.wpk";
@@ -3062,17 +3068,23 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
     agent_task->task_info->task = upgrade_task;
 
     cJSON *task_request_status = cJSON_CreateObject();
+    cJSON *origin = cJSON_CreateObject();
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON *agents = cJSON_CreateArray();
 
-    cJSON_AddStringToObject(task_request_status, "module", "upgrade_module");
+    cJSON_AddStringToObject(origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(task_request_status, "origin", origin);
     cJSON_AddStringToObject(task_request_status, "command", "upgrade_update_status");
-    cJSON_AddNumberToObject(task_request_status, "agent", agent_id);
-    cJSON_AddStringToObject(task_request_status, "status", status);
-    cJSON_AddStringToObject(task_request_status, "error_msg", error);
+    cJSON_AddItemToArray(agents, cJSON_CreateNumber(agent_id));
+    cJSON_AddItemToObject(parameters, "agents", agents);
+    cJSON_AddStringToObject(parameters, "status", status);
+    cJSON_AddStringToObject(parameters, "error_msg", error);
+    cJSON_AddItemToObject(task_request_status, "parameters", parameters);
 
     cJSON *task_response_status = cJSON_CreateObject();
 
     cJSON_AddStringToObject(task_response_status, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response_status, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(task_response_status, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(task_response_status, "agent", agent_id);
     cJSON_AddStringToObject(task_response_status, "status", status);
 
@@ -3119,7 +3131,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, task_request_status, sizeof(task_request_status));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request_status, sizeof(task_request_status));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response_status);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 

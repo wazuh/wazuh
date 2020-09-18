@@ -134,7 +134,7 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_ok(void **state)
     cJSON *task_response = cJSON_CreateObject();
 
     cJSON_AddStringToObject(task_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(task_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(task_response, "agent", agent);
     cJSON_AddStringToObject(task_response, "status", "Done");
 
@@ -163,7 +163,7 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_ok(void **state)
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, task_request, sizeof(task_request));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request, sizeof(task_request));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
@@ -210,7 +210,7 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok(void **state)
     cJSON *task_response = cJSON_CreateObject();
 
     cJSON_AddStringToObject(task_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(task_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(task_response, "agent", agent);
     cJSON_AddStringToObject(task_response, "status", "Done");
 
@@ -237,7 +237,7 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok(void **state)
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, task_request, sizeof(task_request));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request, sizeof(task_request));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
@@ -284,7 +284,7 @@ void test_wm_agent_upgrade_validate_agent_task_in_progress_err(void **state)
     cJSON *task_response = cJSON_CreateObject();
 
     cJSON_AddStringToObject(task_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(task_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(task_response, "agent", agent);
     cJSON_AddStringToObject(task_response, "status", "Done");
 
@@ -313,7 +313,7 @@ void test_wm_agent_upgrade_validate_agent_task_in_progress_err(void **state)
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, task_request, sizeof(task_request));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request, sizeof(task_request));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
@@ -360,7 +360,7 @@ void test_wm_agent_upgrade_validate_agent_task_task_manager_err(void **state)
     cJSON *task_response = cJSON_CreateObject();
 
     cJSON_AddStringToObject(task_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(task_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(task_response, "agent", agent);
     cJSON_AddStringToObject(task_response, "status", "Done");
 
@@ -389,7 +389,7 @@ void test_wm_agent_upgrade_validate_agent_task_task_manager_err(void **state)
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, task_request, sizeof(task_request));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request, sizeof(task_request));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
@@ -544,7 +544,7 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
     cJSON *status_response = cJSON_CreateObject();
 
     cJSON_AddStringToObject(status_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(status_response, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(status_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(status_response, "agent", agent);
 
     cJSON *task_request = cJSON_CreateObject();
@@ -589,7 +589,7 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, status_request, sizeof(status_request));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request, sizeof(status_request));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, status_response);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
@@ -660,7 +660,7 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
     cJSON *status_response = cJSON_CreateObject();
 
     cJSON_AddStringToObject(status_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(status_response, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(status_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(status_response, "agent", agent);
 
     // wdb_agent_info
@@ -699,7 +699,7 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, status_request, sizeof(status_request));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request, sizeof(status_request));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, status_response);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
@@ -762,7 +762,7 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
     cJSON *status_response = cJSON_CreateObject();
 
     cJSON_AddStringToObject(status_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(status_response, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(status_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(status_response, "agent", agent);
 
     // wdb_agent_info
@@ -801,7 +801,7 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, status_request, sizeof(status_request));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request, sizeof(status_request));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, status_response);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
@@ -955,7 +955,7 @@ void test_wm_agent_upgrade_process_agent_result_command_done(void **state)
     cJSON *task_response = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(task_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(task_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(task_response, "agent", agents[0]);
     cJSON_AddStringToObject(task_response, "status", agent_status);
 
@@ -971,7 +971,7 @@ void test_wm_agent_upgrade_process_agent_result_command_done(void **state)
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, task_request, sizeof(task_request));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request, sizeof(task_request));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
@@ -980,7 +980,7 @@ void test_wm_agent_upgrade_process_agent_result_command_done(void **state)
     state[1] = (void *)result;
 
     assert_non_null(result);
-    assert_string_equal(result, "[{\"error\":0,\"data\":\"Success.\",\"agent\":25,\"status\":\"Done\"}]");
+    assert_string_equal(result, "[{\"error\":0,\"message\":\"Success.\",\"agent\":25,\"status\":\"Done\"}]");
 }
 
 void test_wm_agent_upgrade_process_agent_result_command_failed(void **state)
@@ -1013,7 +1013,7 @@ void test_wm_agent_upgrade_process_agent_result_command_failed(void **state)
     cJSON *task_response = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(task_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(task_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(task_response, "agent", agents[0]);
     cJSON_AddStringToObject(task_response, "status", agent_status);
 
@@ -1030,7 +1030,7 @@ void test_wm_agent_upgrade_process_agent_result_command_failed(void **state)
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, task_request, sizeof(task_request));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request, sizeof(task_request));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
@@ -1039,7 +1039,7 @@ void test_wm_agent_upgrade_process_agent_result_command_failed(void **state)
     state[1] = (void *)result;
 
     assert_non_null(result);
-    assert_string_equal(result, "[{\"error\":0,\"data\":\"Success.\",\"agent\":25,\"status\":\"Failed\"}]");
+    assert_string_equal(result, "[{\"error\":0,\"message\":\"Success.\",\"agent\":25,\"status\":\"Failed\"}]");
 }
 
 void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
@@ -1085,21 +1085,21 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     cJSON *status_response1 = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(status_response1, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(status_response1, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(status_response1, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(status_response1, "agent", agents[0]);
     cJSON_AddStringToObject(status_response1, "status", "Done");
 
     cJSON *task_response1 = cJSON_CreateObject();
 
     cJSON_AddStringToObject(task_response1, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response1, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(task_response1, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(task_response1, "agent", agents[0]);
     cJSON_AddNumberToObject(task_response1, "task_id", 100);
 
     cJSON *task_response2 = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(task_response2, "error", WM_UPGRADE_GLOBAL_DB_FAILURE);
-    cJSON_AddStringToObject(task_response2, "data", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
+    cJSON_AddStringToObject(task_response2, "message", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
     cJSON_AddNumberToObject(task_response2, "agent", agents[1]);
 
     // Analize agent[0]
@@ -1138,7 +1138,7 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, status_request1, sizeof(status_request1));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request1, sizeof(status_request1));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, status_response1);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
@@ -1170,14 +1170,14 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     will_return(__wrap_wdb_agent_info, 234567890);
     will_return(__wrap_wdb_agent_info, OS_INVALID);
 
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
-    expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, agent_int, agents[1]);
-    will_return(__wrap_wm_agent_upgrade_parse_response_message, task_response2);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
+    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agents[1]);
+    will_return(__wrap_wm_agent_upgrade_parse_data_response, task_response2);
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, task_request1, sizeof(task_request1));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request1, sizeof(task_request1));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response1);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
@@ -1190,7 +1190,7 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     state[1] = (void *)result;
 
     assert_non_null(result);
-    assert_string_equal(result, "[{\"error\":6,\"data\":\"Agent information not found in database.\",\"agent\":2},{\"data\":\"Success.\",\"agent\":1,\"task_id\":100}]");
+    assert_string_equal(result, "[{\"error\":6,\"message\":\"Agent information not found in database.\",\"agent\":2},{\"message\":\"Success.\",\"agent\":1,\"task_id\":100}]");
 
     os_free(config);
 }
@@ -1222,13 +1222,13 @@ void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state
     cJSON *task_response1 = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(task_response1, "error", WM_UPGRADE_GLOBAL_DB_FAILURE);
-    cJSON_AddStringToObject(task_response1, "data", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
+    cJSON_AddStringToObject(task_response1, "message", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
     cJSON_AddNumberToObject(task_response1, "agent", agents[0]);
 
     cJSON *task_response2 = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(task_response2, "error", WM_UPGRADE_GLOBAL_DB_FAILURE);
-    cJSON_AddStringToObject(task_response2, "data", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
+    cJSON_AddStringToObject(task_response2, "message", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
     cJSON_AddNumberToObject(task_response2, "agent", agents[1]);
 
     // Analize agent[0]
@@ -1244,10 +1244,10 @@ void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state
     will_return(__wrap_wdb_agent_info, 123456789);
     will_return(__wrap_wdb_agent_info, OS_INVALID);
 
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
-    expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, agent_int, agents[0]);
-    will_return(__wrap_wm_agent_upgrade_parse_response_message, task_response1);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
+    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agents[0]);
+    will_return(__wrap_wm_agent_upgrade_parse_data_response, task_response1);
 
     // Analize agent[1]
 
@@ -1262,10 +1262,10 @@ void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state
     will_return(__wrap_wdb_agent_info, 234567890);
     will_return(__wrap_wdb_agent_info, OS_INVALID);
 
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
-    expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, agent_int, agents[1]);
-    will_return(__wrap_wm_agent_upgrade_parse_response_message, task_response2);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
+    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agents[1]);
+    will_return(__wrap_wm_agent_upgrade_parse_data_response, task_response2);
 
     // wm_agent_upgrade_task_module_callback
 
@@ -1279,7 +1279,7 @@ void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state
     state[1] = (void *)result;
 
     assert_non_null(result);
-    assert_string_equal(result, "[{\"error\":6,\"data\":\"Agent information not found in database.\",\"agent\":1},{\"error\":6,\"data\":\"Agent information not found in database.\",\"agent\":2}]");
+    assert_string_equal(result, "[{\"error\":6,\"message\":\"Agent information not found in database.\",\"agent\":1},{\"error\":6,\"message\":\"Agent information not found in database.\",\"agent\":2}]");
 
     os_free(config);
 }
@@ -1322,21 +1322,21 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     cJSON *status_response1 = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(status_response1, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(status_response1, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(status_response1, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(status_response1, "agent", agents[0]);
     cJSON_AddStringToObject(status_response1, "status", "Done");
 
     cJSON *task_response1 = cJSON_CreateObject();
 
     cJSON_AddStringToObject(task_response1, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response1, "data", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddStringToObject(task_response1, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
     cJSON_AddNumberToObject(task_response1, "agent", agents[0]);
     cJSON_AddNumberToObject(task_response1, "task_id", 110);
 
     cJSON *task_response2 = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(task_response2, "error", WM_UPGRADE_GLOBAL_DB_FAILURE);
-    cJSON_AddStringToObject(task_response2, "data", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
+    cJSON_AddStringToObject(task_response2, "message", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
     cJSON_AddNumberToObject(task_response2, "agent", agents[1]);
 
     // Analize agent[0]
@@ -1377,7 +1377,7 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, status_request1, sizeof(status_request1));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request1, sizeof(status_request1));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, status_response1);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
@@ -1409,14 +1409,14 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     will_return(__wrap_wdb_agent_info, 234567890);
     will_return(__wrap_wdb_agent_info, OS_INVALID);
 
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
-    expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, agent_int, agents[1]);
-    will_return(__wrap_wm_agent_upgrade_parse_response_message, task_response2);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
+    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agents[1]);
+    will_return(__wrap_wm_agent_upgrade_parse_data_response, task_response2);
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, json, task_request1, sizeof(task_request1));
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request1, sizeof(task_request1));
     will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response1);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
@@ -1429,7 +1429,7 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     state[1] = (void *)result;
 
     assert_non_null(result);
-    assert_string_equal(result, "[{\"error\":6,\"data\":\"Agent information not found in database.\",\"agent\":2},{\"data\":\"Success.\",\"agent\":1,\"task_id\":110}]");
+    assert_string_equal(result, "[{\"error\":6,\"message\":\"Agent information not found in database.\",\"agent\":2},{\"message\":\"Success.\",\"agent\":1,\"task_id\":110}]");
 
     os_free(config);
 }
@@ -1456,13 +1456,13 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
     cJSON *task_response1 = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(task_response1, "error", WM_UPGRADE_GLOBAL_DB_FAILURE);
-    cJSON_AddStringToObject(task_response1, "data", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
+    cJSON_AddStringToObject(task_response1, "message", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
     cJSON_AddNumberToObject(task_response1, "agent", agents[0]);
 
     cJSON *task_response2 = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(task_response2, "error", WM_UPGRADE_GLOBAL_DB_FAILURE);
-    cJSON_AddStringToObject(task_response2, "data", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
+    cJSON_AddStringToObject(task_response2, "message", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
     cJSON_AddNumberToObject(task_response2, "agent", agents[1]);
 
     // Analize agent[0]
@@ -1478,10 +1478,10 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
     will_return(__wrap_wdb_agent_info, 123456789);
     will_return(__wrap_wdb_agent_info, OS_INVALID);
 
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
-    expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, agent_int, agents[0]);
-    will_return(__wrap_wm_agent_upgrade_parse_response_message, task_response1);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
+    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agents[0]);
+    will_return(__wrap_wm_agent_upgrade_parse_data_response, task_response1);
 
     // Analize agent[1]
 
@@ -1496,10 +1496,10 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
     will_return(__wrap_wdb_agent_info, 234567890);
     will_return(__wrap_wdb_agent_info, OS_INVALID);
 
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
-    expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, agent_int, agents[1]);
-    will_return(__wrap_wm_agent_upgrade_parse_response_message, task_response2);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
+    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agents[1]);
+    will_return(__wrap_wm_agent_upgrade_parse_data_response, task_response2);
 
     // wm_agent_upgrade_task_module_callback
 
@@ -1513,7 +1513,7 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
     state[1] = (void *)result;
 
     assert_non_null(result);
-    assert_string_equal(result, "[{\"error\":6,\"data\":\"Agent information not found in database.\",\"agent\":1},{\"error\":6,\"data\":\"Agent information not found in database.\",\"agent\":2}]");
+    assert_string_equal(result, "[{\"error\":6,\"message\":\"Agent information not found in database.\",\"agent\":1},{\"error\":6,\"message\":\"Agent information not found in database.\",\"agent\":2}]");
 
     os_free(config);
 }
