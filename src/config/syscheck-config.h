@@ -392,12 +392,12 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node);
  *
  * @param syscheck Syscheck configuration structure
  * @param entry Entry to be dumped
- * @param vals Indicates the system arch for registries and the attributes for folders to be set
+ * @param vals Indicates the attributes for folders or registries to be set
  * @param reg 1 if it's a registry, 0 if not
  * @param restrictfile The restrict regex to be set
  * @param recursion_level The recursion level to be set
  * @param tag The tag to be set
- * @param link If the added entry is pointed by a symbolic link
+ * @param link If the added entry is pointed by a symbolic link for folders and arch for registries
  * @param diff_size Maximum size to calculate diff for files in the directory
  */
 void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile,

@@ -285,12 +285,13 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             syscheck->registry[pl + 1].entry = NULL;
             syscheck->registry[pl].tag = NULL;
             syscheck->registry[pl + 1].tag = NULL;
-            syscheck->registry[pl].arch = vals;
+            syscheck->registry[pl].arch = (int)*link;
+            syscheck->registry[pl].opts = vals;
             os_strdup(entry, syscheck->registry[pl].entry);
         } else {
             while (syscheck->registry[pl].entry != NULL) {
                 /* Duplicated entry */
-                if (strcmp(syscheck->registry[pl].entry, entry) == 0 && vals == syscheck->registry[pl].arch) {
+                if (strcmp(syscheck->registry[pl].entry, entry) == 0 && (int)*link == syscheck->registry[pl].arch) {
                     overwrite = pl;
                     mdebug2("Duplicated registration entry: %s", syscheck->registry[pl].entry);
                     break;
@@ -303,7 +304,8 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
                 syscheck->registry[pl + 1].entry = NULL;
                 syscheck->registry[pl].tag = NULL;
                 syscheck->registry[pl + 1].tag = NULL;
-                syscheck->registry[pl].arch = vals;
+                syscheck->registry[pl].arch = (int)*link;
+                syscheck->registry[pl].opts = vals;
                 os_strdup(entry, syscheck->registry[pl].entry);
             } else {
                 os_free(syscheck->registry[pl].tag);
@@ -430,7 +432,7 @@ int dump_registry_nodiff_regex(syscheck_config *syscheck, const char *regex, int
 }
 
 /* Read Windows registry configuration */
-int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
+int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag, int vals)
 {
     int j;
     char **entry;
@@ -483,7 +485,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
         }
 
         /* Add new entry */
-        dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag, NULL, -1);
+        dump_syscheck_entry(syscheck, tmp_entry, vals, 1, NULL, 0, clean_tag, &arch, -1);
 
         if (clean_tag)
             free(clean_tag);
@@ -1497,6 +1499,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_64bit = "64bit";
     const char *xml_both = "both";
     const char *xml_tag = "tags";
+    const char *xml_report_changes = "report_changes";
 #endif
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
@@ -1562,6 +1565,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 #ifdef WIN32
             char * tag = NULL;
             char arch[6] = "32bit";
+            int opts = 0;
 
             if (node[i]->attributes) {
                 int j = 0;
@@ -1581,6 +1585,15 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             os_free(tag);
                             return OS_INVALID;
                         }
+                    } else if (strcmp(node[i]->attributes[j], xml_report_changes) == 0) {
+                        if (strcmp(node[i]->values[j], "yes") == 0) {
+                            opts |= CHECK_SEECHANGES;
+                        } else if (strcmp(node[i]->values[j], "no") == 0) {
+                            opts &= ~ CHECK_SEECHANGES;
+                        } else {
+                            mwarn(FIM_INVALID_REG_OPTION_SKIP, node[i]->values[j], node[i]->attributes[j], node[i]->content);
+                            return OS_INVALID;
+                        }
                     } else {
                         merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
                         os_free(tag);
@@ -1591,20 +1604,20 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
 
             if (strcmp(arch, "both") == 0) {
-                if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT, tag) &&
-                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag))) {
+                if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT, tag, opts) &&
+                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag, opts))) {
                     free(tag);
                     return (OS_INVALID);
                 }
 
             } else if (strcmp(arch, "64bit") == 0) {
-                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag)) {
+                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag, opts)) {
                     free(tag);
                     return (OS_INVALID);
                 }
 
             } else {
-                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag)) {
+                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag, opts)) {
                     free(tag);
                     return (OS_INVALID);
                 }

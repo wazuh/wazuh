@@ -48,6 +48,7 @@
 #define FIM_WHODATA_RENDER_EVENT                "(6933): Error rendering the event. Error %lu."
 #define FIM_WHODATA_RENDER_PARAM                "(6934): Invalid number of rendered parameters."
 #define FIM_REG_VAL_WRONG_TYPE                  "(6935): Wrong registry value type processed for report_changes."
+#define FIM_INVALID_REG_OPTION_SKIP             "(6925): Invalid option '%s' for attribute '%s'. The registry '%s' not be monitored."
 
 
 /* Monitord warning messages */
