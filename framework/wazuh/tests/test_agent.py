@@ -33,7 +33,7 @@ with patch('wazuh.common.ossec_uid'):
             get_agents_keys, get_agents_summary_os, get_agents_summary_status, get_agents_sync_group, \
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             get_upgrade_result, remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
-            restart_agents, upgrade_agents, upgrade_agents_custom, upload_group_file, restart_agents_by_node
+            restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node
         from wazuh.core.agent import Agent
         from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
@@ -952,13 +952,8 @@ def test_agent_get_outdated_agents(sqlite_mock, agent_list, outdated_agents):
         f'"failed_items" should be "0" but is "{result.total_failed_items}"'
 
 
-@pytest.mark.parametrize('agent_list', [['001'], ['002']])
-@patch('wazuh.core.agent.OssecSocket')
-@patch('wazuh.core.agent.Agent._send_wpk_file')
-@patch('socket.socket.sendto', return_value=1)
-@patch('wazuh.common.database_path_global', new=test_global_bd_path)
-@patch('sqlite3.connect', return_value=test_data.global_db)
-def test_agent_upgrade_agents(sqlite_mock, socket_sendto, _send_wpk_file, ossec_socket_mock, agent_list):
+@pytest.mark.parametrize('agent_list', [['001', '002', '003', '004']])
+def test_agent_upgrade_agents(agent_list):
     """Test `upgrade_agents` function from agent module.
 
     Parameters
@@ -966,18 +961,21 @@ def test_agent_upgrade_agents(sqlite_mock, socket_sendto, _send_wpk_file, ossec_
     agent_list : List of str
         List of agent ID's to be updated.
     """
-    result = upgrade_agents(agent_list=agent_list)
-    assert isinstance(result, str)
-    assert result == "Upgrade procedure started"
+    with patch('wazuh.agent.core_upgrade_agents') as core_upgrade_agents_mock:
+        core_upgrade_agents_mock.return_value = [{'error': 0, 'data': 'Success', 'agent': 1, 'task_id': 1},
+                                                 {'error': 0, 'data': 'Success', 'agent': 2, 'task_id': 2},
+                                                 {'error': 8, 'data': 'Agent is not active.', 'agent': 3},
+                                                 {'error': 8, 'data': 'Agent is not active.', 'agent': 4}]
+        result = upgrade_agents(agent_list=agent_list)
+
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items[0]['agent_id'] == agent_list[0]
+    assert result.affected_items[1]['agent_id'] == agent_list[1]
+    assert list(result.failed_items.values())[0] == set(agent_list[2:])
 
 
-@pytest.mark.parametrize('agent_list', [['001'], ['002']])
-@patch('wazuh.core.agent.OssecSocket')
-@patch('wazuh.core.agent.Agent._send_wpk_file')
-@patch('socket.socket.sendto', return_value=1)
-@patch('wazuh.common.database_path_global', new=test_global_bd_path)
-@patch('sqlite3.connect', return_value=test_data.global_db)
-def test_agent_get_upgrade_result(sqlite_mock, socket_sendto, _send_wpk_file, ossec_socket_mock, agent_list):
+@pytest.mark.parametrize('agent_list', [['001', '002']])
+def test_agent_get_upgrade_result(agent_list):
     """Test `get_upgrade_result` function from agent module.
 
     Parameters
@@ -985,9 +983,15 @@ def test_agent_get_upgrade_result(sqlite_mock, socket_sendto, _send_wpk_file, os
     agent_list : List of str
         List of agent ID's to be upgraded.
     """
-    result = get_upgrade_result(agent_list=agent_list, timeout=0)
-    assert isinstance(result, str)
-    assert result == "Agent was successfully upgraded"
+    with patch('wazuh.agent.core_upgrade_agents') as core_upgrade_agents_mock:
+        core_upgrade_agents_mock.return_value = [{'error': 0, 'data': 'Success', 'agent': 1, 'task_id': 1,
+                                                  'module': 'upgrade_module', 'command': 'upgrade',
+                                                  'status': 'Updating', 'create_time': '', 'update_time': '0'},
+                                                 {'error': 7, 'data': 'No task in DB', 'agent': 2}]
+        result = get_upgrade_result(agent_list=agent_list)
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items[0]['agent_id'] == agent_list[0]
+    assert list(result.failed_items.values())[0] == set(agent_list[1:])
 
 
 @pytest.mark.parametrize('agent_list', [['001'], ['002']])
