@@ -48,7 +48,7 @@ int __wrap_fim_db_delete_range(fdb_t * fim_sql,
     return mock();
 }
 
-int __wrap_fim_db_get_count_entry_path(__attribute__((unused)) fdb_t * fim_sql){
+int __wrap_fim_db_get_count_file_entry(__attribute__((unused)) fdb_t * fim_sql){
     return mock();
 }
 

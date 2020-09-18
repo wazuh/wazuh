@@ -298,7 +298,7 @@ cJSON *fim_json_event(char *file_name, fim_file_data *old_data, fim_file_data *n
  *
  * @param [out] data The FIM entry data to be freed
  */
-void free_entry_data(fim_file_data *data);
+void free_file_data(fim_file_data *data);
 
 /**
  * @brief Deallocates fim_entry struct.

@@ -13,7 +13,7 @@
 #include "syscheck_op.h"
 #include "integrity_op.h"
 #include "time_op.h"
-#include "db/fim_db.h"
+#include "db/fim_db_files.h"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when unit testing */
@@ -95,7 +95,7 @@ void fim_scan() {
 
     if (syscheck.file_limit_enabled) {
         w_mutex_lock(&syscheck.fim_entry_mutex);
-        nodes_count = fim_db_get_count_entry_path(syscheck.database);
+        nodes_count = fim_db_get_count_file_entry(syscheck.database);
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (nodes_count < syscheck.file_limit) {
@@ -113,7 +113,7 @@ void fim_scan() {
                 os_free(item);
 
                 w_mutex_lock(&syscheck.fim_entry_mutex);
-                nodes_count = fim_db_get_count_entry_path(syscheck.database);
+                nodes_count = fim_db_get_count_file_entry(syscheck.database);
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
             }
 
@@ -124,7 +124,7 @@ void fim_scan() {
                 os_winreg_check();
 
                 w_mutex_lock(&syscheck.fim_entry_mutex);
-                fim_db_get_count_entry_path(syscheck.database);
+                fim_db_get_count_file_entry(syscheck.database);
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
             }
 #endif
@@ -361,7 +361,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
 
     if (json_event) {
         if (result = fim_db_insert(syscheck.database, file, new, saved ? saved->file_entry.data : NULL), result < 0) {
-            free_entry_data(new);
+            free_file_data(new);
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             cJSON_Delete(json_event);
@@ -381,7 +381,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     }
 
     cJSON_Delete(json_event);
-    free_entry_data(new);
+    free_file_data(new);
     free_entry(saved);
 
     return 0;
@@ -541,7 +541,7 @@ void fim_check_db_state() {
     char alert_msg[OS_SIZE_256] = {'\0'};
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    nodes_count = fim_db_get_count_entry_path(syscheck.database);
+    nodes_count = fim_db_get_count_file_entry(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     switch (_db_state) {
@@ -733,7 +733,7 @@ fim_file_data * fim_get_data(const char *file, fim_element *item) {
 
         if (error = w_get_file_permissions(file, perm, OS_SIZE_6144), error) {
             mdebug1(FIM_EXTRACT_PERM_FAIL, file, error);
-            free_entry_data(data);
+            free_file_data(data);
             return NULL;
         } else {
             data->perm = decode_win_permissions(perm);
@@ -798,7 +798,7 @@ fim_file_data * fim_get_data(const char *file, fim_element *item) {
                                         OS_BINARY,
                                         syscheck.file_max_size) < 0) {
                 mdebug1(FIM_HASHES_FAIL, file);
-                free_entry_data(data);
+                free_file_data(data);
                 return NULL;
         }
     }
@@ -1214,7 +1214,7 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
 }
 
 
-void free_entry_data(fim_file_data * data) {
+void free_file_data(fim_file_data * data) {
     if (!data) {
         return;
     }
@@ -1245,7 +1245,7 @@ void free_entry(fim_entry * entry) {
     if (entry) {
         if (entry->type == FIM_TYPE_FILE) {
             os_free(entry->file_entry.path);
-            free_entry_data(entry->file_entry.data);
+            free_file_data(entry->file_entry.data);
             free(entry);
         }
     }
@@ -1287,13 +1287,13 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
             (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
 
 #ifdef WIN32
-    mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_entry_path(syscheck.database));
+    mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_file_entry(syscheck.database));
 #else
     unsigned inode_items = 0;
     unsigned inode_paths = 0;
 
-    inode_items = fim_db_get_count_entry_data(syscheck.database);
-    inode_paths = fim_db_get_count_entry_path(syscheck.database);
+    inode_items = fim_db_get_count_file_data(syscheck.database);
+    inode_paths = fim_db_get_count_file_entry(syscheck.database);
 
     mdebug1(FIM_INODES_INFO, inode_items, inode_paths);
 #endif
