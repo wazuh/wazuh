@@ -378,7 +378,7 @@ int fim_diff_registry_tmp(const char *value_data,
                 break;
 
             case REG_QWORD:
-                fprintf(fp, "%05x", *((unsigned int*)value_data));
+                fprintf(fp, "%llx", *((unsigned long long*)value_data));
                 break;
 
             default:

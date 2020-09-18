@@ -1592,6 +1592,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             opts &= ~ CHECK_SEECHANGES;
                         } else {
                             mwarn(FIM_INVALID_REG_OPTION_SKIP, node[i]->values[j], node[i]->attributes[j], node[i]->content);
+                            os_free(tag);
                             return OS_INVALID;
                         }
                     } else {
