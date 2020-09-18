@@ -14,6 +14,8 @@
 #include "integrity_op.h"
 #include "time_op.h"
 #include "db/fim_db_files.h"
+#include "db/fim_db_registries.h"
+#include "registry/registry.h"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when unit testing */
@@ -88,7 +90,7 @@ void fim_scan() {
 
 
 #ifdef WIN32
-        os_winreg_check();
+    fim_registry_scan();
 #endif
 
     check_deleted_files();
@@ -97,6 +99,11 @@ void fim_scan() {
         w_mutex_lock(&syscheck.fim_entry_mutex);
         nodes_count = fim_db_get_count_file_entry(syscheck.database);
         w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+#ifdef WIN32
+        nodes_count += fim_db_get_count_registry_key(syscheck.database) +
+                       fim_db_get_count_registry_data(syscheck.database);
+#endif
 
         if (nodes_count < syscheck.file_limit) {
             it = 0;
@@ -121,7 +128,7 @@ void fim_scan() {
 
 #ifdef WIN32
             if (nodes_count < syscheck.file_limit) {
-                os_winreg_check();
+                fim_registry_scan();
 
                 w_mutex_lock(&syscheck.fim_entry_mutex);
                 fim_db_get_count_file_entry(syscheck.database);
@@ -486,53 +493,6 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
     }
 }
 
-#ifdef WIN32
-int fim_registry_event(char *key, fim_file_data *data, int pos) {
-    cJSON *json_event = NULL;
-    fim_entry *saved = NULL;
-    char *json_formated;
-    int result = 1;
-    int alert_type;
-
-    assert(data != NULL);
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-
-    if (saved = fim_db_get_path(syscheck.database, key), !saved) {
-        alert_type = FIM_ADD;
-    } else {
-        alert_type = FIM_MODIFICATION;
-    }
-
-    if ((saved && data && saved->file_entry.data && strcmp(saved->file_entry.data->hash_sha1, data->hash_sha1) != 0)
-        || alert_type == FIM_ADD) {
-        if (result = fim_db_insert(syscheck.database, key, data, saved ? saved->file_entry.data : NULL), result < 0) {
-            free_entry(saved);
-            w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-            return (result == FIMDB_FULL) ? 0 : OS_INVALID;
-        }
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
-        json_event = fim_json_event(key, saved ? saved->file_entry.data : NULL, data, pos,
-                                    alert_type, 0, NULL, NULL);
-    } else {
-        fim_db_set_scanned(syscheck.database, key);
-        result = 0;
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
-    }
-
-    if (json_event && _base_line) {
-        json_formated = cJSON_PrintUnformatted(json_event);
-        send_syscheck_msg(json_formated);
-        os_free(json_formated);
-    }
-    cJSON_Delete(json_event);
-    free_entry(saved);
-
-    return result;
-}
-#endif
-
 // Checks the DB state, sends a message alert if necessary
 void fim_check_db_state() {
     unsigned int nodes_count = 0;
@@ -543,6 +503,10 @@ void fim_check_db_state() {
     w_mutex_lock(&syscheck.fim_entry_mutex);
     nodes_count = fim_db_get_count_file_entry(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+#ifdef WIN32
+    nodes_count += fim_db_get_count_registry_key(syscheck.database) + fim_db_get_count_registry_data(syscheck.database);
+#endif
 
     switch (_db_state) {
     case FIM_STATE_DB_FULL:
@@ -649,23 +613,6 @@ int fim_configuration_directory(const char *path, const char *entry) {
             it++;
         }
     }
-#ifdef WIN32
-    else if (strcmp("registry", entry) == 0) {
-        while(syscheck.registry[it].entry) {
-            snprintf(full_entry, OS_SIZE_4096 + 1, "%s %s%c",
-                    syscheck.registry[it].arch == ARCH_64BIT ? "[x64]" : "[x32]",
-                    syscheck.registry[it].entry,
-                    PATH_SEP);
-            match = w_compare_str(full_entry, full_path);
-
-            if (top < match && full_path[match - 1] == PATH_SEP) {
-                position = it;
-                top = match;
-            }
-            it++;
-        }
-    }
-#endif
 
     if (position == -1) {
         mdebug2(FIM_CONFIGURATION_NOTFOUND, entry, path);
@@ -957,22 +904,15 @@ cJSON * fim_json_event(char * file_name, fim_file_data * old_data, fim_file_data
     }
 
     char * tags = NULL;
-    // if (new_data->entry_type == FIM_TYPE_FILE) {
-        if (w_evt) {
-            cJSON_AddItemToObject(data, "audit", fim_audit_json(w_evt));
-        }
+    if (w_evt) {
+        cJSON_AddItemToObject(data, "audit", fim_audit_json(w_evt));
+    }
 
-        tags = syscheck.tag[pos];
+    tags = syscheck.tag[pos];
 
-        if (diff != NULL) {
-            cJSON_AddStringToObject(data, "content_changes", diff);
-        }
-    // }
-// #ifdef WIN32
-    // else {
-    //     tags = syscheck.registry[pos].tag;
-    // }
-// #endif
+    if (diff != NULL) {
+        cJSON_AddStringToObject(data, "content_changes", diff);
+    }
 
     if (tags != NULL) {
         cJSON_AddStringToObject(data, "tags", tags);

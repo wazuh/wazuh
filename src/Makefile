@@ -1436,9 +1436,7 @@ syscheck_sql := syscheckd/db/schema_fim_db.sql
 syscheck_c := $(wildcard syscheckd/*.c)
 syscheck_c += $(wildcard syscheckd/db/*.c)
 syscheck_c += $(wildcard syscheckd/whodata/*.c)
-ifeq (${TARGET},winagent)
 syscheck_c += $(wildcard syscheckd/registry/*.c)
-endif
 
 syschecklib_o := $(syschecklib_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_o := $(syschecklib_o:.c=.o) $(syscheck_c:.c=.o) $(syscheck_sql:.sql=.o)

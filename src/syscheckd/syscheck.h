@@ -191,16 +191,6 @@ void fim_whodata_event(whodata_evt *w_evt);
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt);
 
 /**
- * @brief Check file integrity monitoring on a specific registry
- *
- * @param key Path of the registry to check
- * @param data Data to insert in the FIM databse
- * @param pos Position of the specific registry in the registry configuration array
- * @return -1 on error, 0 if the registry hasn't changed, 1 if the registry is new, 2 if the registry has changed
- */
-int fim_registry_event(char *key, fim_file_data *data, int pos);
-
-/**
  * @brief Search the position of the path in directories array
  *
  * @param path Path to seek in the directories array
@@ -313,12 +303,6 @@ void free_entry(fim_entry * entry);
  * @param [out] data The FIM inode data to be freed
  */
 void free_inode_data(fim_inode_data **data);
-
-/**
- * @brief Check the registries in the configuration for changes
- *
- */
-void os_winreg_check(void);
 
 /**
  * @brief Start real time monitoring
