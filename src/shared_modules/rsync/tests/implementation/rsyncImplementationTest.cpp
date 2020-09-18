@@ -136,13 +136,13 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFail)
 
     EXPECT_CALL(*mockDbSync, select(_,_)).WillOnce(testing::Invoke([](const cJSON*, callback_data_t callback_data)
     {
-        std::function<void(const nlohmann::json&)>* callback = static_cast<std::function<void(const nlohmann::json&)>*>(callback_data.user_data);
+        std::function<void(const nlohmann::json&)>* callback { static_cast<std::function<void(const nlohmann::json&)>*>(callback_data.user_data) };
         nlohmann::json json { nlohmann::json::object() };
         json[0]["count_field"] = 1;
         (*callback)(json);
     })).WillOnce(testing::Invoke([](const cJSON*, callback_data_t callback_data)
     {
-        std::function<void(const nlohmann::json&)>* callback = static_cast<std::function<void(const nlohmann::json&)>*>(callback_data.user_data);
+        std::function<void(const nlohmann::json&)>* callback { static_cast<std::function<void(const nlohmann::json&)>*>(callback_data.user_data) };
         nlohmann::json json { nlohmann::json::object() };
         json[0]["test_index_field"] = "11";
         json[0]["test_last_event_field"] = "22";
@@ -229,13 +229,13 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
 
     EXPECT_CALL(*mockDbSync, select(_,_)).WillOnce(testing::Invoke([](const cJSON*, callback_data_t callback_data)
     {
-        std::function<void(const nlohmann::json&)>* callback = static_cast<std::function<void(const nlohmann::json&)>*>(callback_data.user_data);
+        std::function<void(const nlohmann::json&)>* callback { static_cast<std::function<void(const nlohmann::json&)>*>(callback_data.user_data) };
         nlohmann::json json { nlohmann::json::object() };
         json[0]["count_field"] = 2;
         (*callback)(json);
     })).WillOnce(testing::DoAll(testing::Invoke([](const cJSON*, callback_data_t callback_data)
     {
-        std::function<void(const nlohmann::json&)>* callback = static_cast<std::function<void(const nlohmann::json&)>*>(callback_data.user_data);
+        std::function<void(const nlohmann::json&)>* callback { static_cast<std::function<void(const nlohmann::json&)>*>(callback_data.user_data) };
         nlohmann::json json { nlohmann::json::object() };
         json[0]["test_index_field"] = "1";
         json[0]["test_last_event_field"] = "22";
@@ -243,7 +243,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
         (*callback)(json);
     }),testing::Invoke([](const cJSON*, callback_data_t callback_data)
     {
-        std::function<void(const nlohmann::json&)>* callback = static_cast<std::function<void(const nlohmann::json&)>*>(callback_data.user_data);
+        std::function<void(const nlohmann::json&)>* callback { static_cast<std::function<void(const nlohmann::json&)>*>(callback_data.user_data) };
         nlohmann::json json { nlohmann::json::object() };
         json[0]["test_index_field"] = "2";
         json[0]["test_last_event_field"] = "23";
@@ -382,7 +382,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumNoData)
 
     EXPECT_CALL(*mockDbSync, select(_,_)).WillOnce(testing::Invoke([](const cJSON*, callback_data_t callback_data)
     {
-        std::function<void(const nlohmann::json&)>* callback = static_cast<std::function<void(const nlohmann::json&)>*>(callback_data.user_data);
+        std::function<void(const nlohmann::json&)>* callback { static_cast<std::function<void(const nlohmann::json&)>*>(callback_data.user_data) };
         nlohmann::json json { nlohmann::json::object() };
         json[0]["count_field"] = 0;
         (*callback)(json);

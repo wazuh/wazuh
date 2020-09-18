@@ -100,7 +100,7 @@ namespace RSync
         RSYNC_HANDLE create();
 
         void registerSyncId(const RSYNC_HANDLE handle, 
-                            const std::string& message_header_id, 
+                            const std::string& messageHeaderId, 
                             const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper, 
                             const char* syncConfigurationRaw, 
                             const ResultCallback callbackWrapper);

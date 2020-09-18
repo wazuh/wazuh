@@ -8,8 +8,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef _MAPWRAPPERSAFE_H_
-#define _MAPWRAPPERSAFE_H_
+#ifndef _MAP_WRAPPER_SAFE_H_
+#define _MAP_WRAPPER_SAFE_H_
 
 #include <map>
 #include <mutex>
@@ -45,4 +45,4 @@ namespace Utils
 };
 
 
-#endif //_MAPWRAPPERSAFE_H_
+#endif //_MAP_WRAPPER_SAFE_H_

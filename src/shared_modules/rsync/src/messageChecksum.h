@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _MESSAGECHECKSUM_H
-#define _MESSAGECHECKSUM_H
+#ifndef _MESSAGE_CHECKSUM_H
+#define _MESSAGE_CHECKSUM_H
 
 #include "imessageCreator.h"
 
@@ -67,4 +67,4 @@ namespace RSync
     };
 };// namespace RSync
 
-#endif //_MESSAGECHECKSUM_H
+#endif //_MESSAGE_CHECKSUM_H

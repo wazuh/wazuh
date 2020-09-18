@@ -26,10 +26,10 @@ namespace RSync
     class FactoryDecoder final
     {
     public:
-        static std::shared_ptr<IMessageDecoder> create(const SyncMsgBodyType sync_message_type)
+        static std::shared_ptr<IMessageDecoder> create(const SyncMsgBodyType syncMessageType)
         {
             std::shared_ptr<IMessageDecoder> retVal;
-            if (SyncMsgBodyType::SYNC_RANGE_JSON == sync_message_type)
+            if (SyncMsgBodyType::SYNC_RANGE_JSON == syncMessageType)
             {
                 retVal = std::make_shared<JSONMessageDecoder>();
             }

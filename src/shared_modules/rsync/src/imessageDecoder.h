@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _IMESSAGEDECODER_H
-#define _IMESSAGEDECODER_H
+#ifndef _IMESSAGE_DECODER_H
+#define _IMESSAGE_DECODER_H
 namespace RSync
 {
     struct SyncInputData final
@@ -31,4 +31,4 @@ namespace RSync
     };
 };// namespace RSync
 
-#endif //_IMESSAGEDECODER_H
+#endif //_IMESSAGE_DECODER_H

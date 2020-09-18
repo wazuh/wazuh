@@ -29,7 +29,7 @@ namespace RSync
         {
             try
             {
-                const std::string rawDataString(reinterpret_cast<const char *>(rawData.data()), rawData.size());
+                const std::string rawDataString { reinterpret_cast<const char *>(rawData.data()), rawData.size() };
                 const auto firstToken { rawDataString.find(' ') };
 
                 if (std::string::npos != firstToken)

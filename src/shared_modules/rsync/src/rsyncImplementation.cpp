@@ -61,7 +61,7 @@ void callbackDBSync(ReturnTypeCallback /*resultType*/, const cJSON* resultJson, 
 {
     if (userData && resultJson)
     {
-        std::function<void(const nlohmann::json&)>* callback = static_cast<std::function<void(const nlohmann::json&)>*>(userData);
+        std::function<void(const nlohmann::json&)>* callback { static_cast<std::function<void(const nlohmann::json&)>*>(userData) };
         const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(resultJson) };
         const auto json { nlohmann::json::parse(spJsonBytes.get()) };
         (*callback)(json);

@@ -26,7 +26,7 @@ namespace RSync
         SyncInputData decode(const std::vector<unsigned char>& rawData) override 
         {
             SyncInputData retVal{};
-            const std::string rawDataString(reinterpret_cast<const char*>(rawData.data()), rawData.size());
+            const std::string rawDataString { reinterpret_cast<const char*>(rawData.data()), rawData.size() };
             const auto firstToken { rawDataString.find(' ') };
 
             if (std::string::npos != firstToken)

@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _DBSYNCWRAPPER_H
-#define _DBSYNCWRAPPER_H
+#ifndef _DBSYNC_WRAPPER_H
+#define _DBSYNC_WRAPPER_H
 
 #include "dbsync.h"
 
@@ -35,4 +35,4 @@ namespace RSync
 };// namespace RSync
 
 
-#endif //_DBSYNCWRAPPER_H
+#endif //_DBSYNC_WRAPPER_H

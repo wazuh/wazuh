@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _IMESSAGECREATOR_H
-#define _IMESSAGECREATOR_H
+#ifndef _IMESSAGE_CREATOR_H
+#define _IMESSAGE_CREATOR_H
 
 
 namespace RSync
@@ -26,4 +26,4 @@ namespace RSync
     };
 };// namespace RSync
 
-#endif //_IMESSAGECREATOR_H
+#endif //_IMESSAGE_CREATOR_H
