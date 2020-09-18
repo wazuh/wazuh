@@ -130,7 +130,7 @@ UpdateStopOSSEC()
     rm $DIRECTORY/wodles/aws/aws > /dev/null 2>&1 # this script has been renamed
     rm $DIRECTORY/wodles/aws/aws.py > /dev/null 2>&1 # this script has been renamed
 
-    # The agent info was stored in plain-text files before migrating it to Wazuh DB. Deleting
+    # Deleting plain-text agent information if exists (it was migrated to Wazuh DB in v4.1)
     if [ -d "$DIRECTORY/queue/agent-info" ]; then
         rm -rf $DIRECTORY/queue/agent-info > /dev/null 2>&1
     fi

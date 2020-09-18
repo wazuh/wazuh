@@ -1237,14 +1237,14 @@ int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check);
 wdb_t * wdb_upgrade(wdb_t *wdb);
 
 /**
- * @brief Function to upgrade Global DB to the last version.
+ * @brief Function to upgrade Global DB to the latest version.
  * 
- * @param wdb The global.db struct database.
- * @return wdb: The global.db struct database.
+ * @param [in] wdb The global.db database to upgrade.
+ * @return wdb The global.db database updated on success.
  */
 wdb_t * wdb_upgrade_global(wdb_t *wdb);
 
-// Create backup and generate an emtpy DB
+// Create backup and generate an empty DB
 wdb_t * wdb_backup(wdb_t *wdb, int version);
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */

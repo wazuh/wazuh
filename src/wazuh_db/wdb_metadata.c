@@ -192,6 +192,7 @@ int wdb_metadata_table_check(wdb_t * wdb, const char * key) {
 
     if (sqlite3_bind_text(stmt, 1, key, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        sqlite3_finalize(stmt);
         return OS_INVALID;
     }
 

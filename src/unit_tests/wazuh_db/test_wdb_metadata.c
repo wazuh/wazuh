@@ -70,6 +70,7 @@ void test_wdb_metadata_table_check_bind_fail(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, "metadata");
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
     

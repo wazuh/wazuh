@@ -105,7 +105,7 @@ WazuhUpgrade()
         if [ -f "$DIRECTORY/queue/db/global.db" ]; then
             rm -f $DIRECTORY/var/db/global.db*
         else
-            echo "Failed to move global.db during the upgrade"
+            echo "Unable to move global.db during the upgrade"
         fi
     fi
     rm -f $DIRECTORY/var/db/.profile.db*

@@ -58,7 +58,7 @@ void test_wdb_upgrade_global_table_fail(void **state)
     
     expect_string(__wrap_wdb_metadata_table_check, key, "metadata");
     will_return(__wrap_wdb_metadata_table_check, OS_INVALID);
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Failed trying to find metadata table");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Error trying to find metadata table");
 
     ret = wdb_upgrade_global(data->socket);
 
@@ -109,7 +109,7 @@ void test_wdb_upgrade_global_get_version_fail(void **state)
     expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
     will_return(__wrap_wdb_metadata_get_entry, "1");
     will_return(__wrap_wdb_metadata_get_entry, -1);
-    expect_string(__wrap__merror, formatted_msg, "DB(000): Failed trying to get DB version");
+    expect_string(__wrap__merror, formatted_msg, "DB(000): Error trying to get DB version");
 
     ret = wdb_upgrade_global(data->socket);
 

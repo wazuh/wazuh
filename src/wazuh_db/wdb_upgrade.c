@@ -70,7 +70,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     switch (wdb_metadata_table_check(wdb,"metadata")) {
     case OS_INVALID:
-        mdebug1("DB(%s) Failed trying to find metadata table", wdb->id);
+        mdebug1("DB(%s) Error trying to find metadata table", wdb->id);
         return wdb;
     case 0:
         // The table doesn't exist, this is the global.db version 0
@@ -80,7 +80,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
             version = atoi(db_version);
         }
         else{
-            merror("DB(%s): Failed trying to get DB version", wdb->id);
+            merror("DB(%s): Error trying to get DB version", wdb->id);
             return wdb;
         }
     }
@@ -97,7 +97,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
     return wdb;
 }
 
-// Create backup and generate an emtpy DB
+// Create backup and generate an empty DB
 wdb_t * wdb_backup(wdb_t *wdb, int version) {
     char path[PATH_MAX];
     char * sagent_id;
