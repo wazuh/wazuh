@@ -219,6 +219,16 @@ int Start_win32_Syscheck()
             for (r = 0; syscheck.registry_ignore_regex[r].regex != NULL; r++)
                 minfo(FIM_PRINT_IGNORE_SREGEX, "registry", syscheck.registry_ignore_regex[r].regex->raw);
 
+        /* Print registry values with nodiff. */
+        if(syscheck.registry_nodiff)
+            for (r = 0; syscheck.registry_nodiff[r].entry != NULL; r++)
+                minfo(FIM_NO_DIFF_REGISTRY, "registry value", syscheck.registry_nodiff[r].entry);
+
+        /* Print sregex registry values with nodiff. */
+        if(syscheck.registry_nodiff_regex)
+            for (r = 0; syscheck.registry_nodiff_regex[r].regex != NULL; r++)
+                minfo(FIM_NO_DIFF_REGISTRY, "registry sregex", syscheck.registry_nodiff_regex[r].regex->raw);
+
         /* Print files with no diff. */
         if (syscheck.nodiff){
             r = 0;

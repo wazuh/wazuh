@@ -57,5 +57,6 @@
 #define FIM_DISK_QUOTA_LIMIT                "(6041): Maximum disk quota size limit configured to '%d KB'."
 #define FIM_FILE_SIZE_LIMIT_DISABLED        "(6042): File size limit disabled."
 #define FIM_DISK_QUOTA_LIMIT_DISABLED       "(6043): Disk quota limit disabled."
+#define FIM_NO_DIFF_REGISTRY                "(6044): Option nodiff enabled for %s '%s'."
 
 #endif /* INFO_MESSAGES_H */

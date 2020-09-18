@@ -285,12 +285,13 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             syscheck->registry[pl + 1].entry = NULL;
             syscheck->registry[pl].tag = NULL;
             syscheck->registry[pl + 1].tag = NULL;
-            syscheck->registry[pl].arch = vals;
+            syscheck->registry[pl].arch = (int)*link;
+            syscheck->registry[pl].opts = vals;
             os_strdup(entry, syscheck->registry[pl].entry);
         } else {
             while (syscheck->registry[pl].entry != NULL) {
                 /* Duplicated entry */
-                if (strcmp(syscheck->registry[pl].entry, entry) == 0 && vals == syscheck->registry[pl].arch) {
+                if (strcmp(syscheck->registry[pl].entry, entry) == 0 && (int)*link == syscheck->registry[pl].arch) {
                     overwrite = pl;
                     mdebug2("Duplicated registration entry: %s", syscheck->registry[pl].entry);
                     break;
@@ -303,7 +304,8 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
                 syscheck->registry[pl + 1].entry = NULL;
                 syscheck->registry[pl].tag = NULL;
                 syscheck->registry[pl + 1].tag = NULL;
-                syscheck->registry[pl].arch = vals;
+                syscheck->registry[pl].arch = (int)*link;
+                syscheck->registry[pl].opts = vals;
                 os_strdup(entry, syscheck->registry[pl].entry);
             } else {
                 os_free(syscheck->registry[pl].tag);
@@ -375,8 +377,62 @@ int dump_registry_ignore_regex(syscheck_config *syscheck, char *regex, int arch)
     return 1;
 }
 
+void dump_registry_nodiff(syscheck_config *syscheck, const char *entry, int arch) {
+    int ign_size = 0;
+
+    if (syscheck->registry_nodiff) {
+        /* We do not add duplicated entries */
+        for (ign_size = 0; syscheck->registry_nodiff[ign_size].entry; ign_size++)
+            if (syscheck->registry_nodiff[ign_size].arch == arch &&
+                    strcmp(syscheck->registry_nodiff[ign_size].entry, entry) == 0)
+                return;
+
+        os_realloc(syscheck->registry_nodiff, sizeof(registry) * (ign_size + 2),
+                   syscheck->registry_nodiff);
+
+        syscheck->registry_nodiff[ign_size + 1].entry = NULL;
+    } else {
+        os_calloc(2, sizeof(registry), syscheck->registry_nodiff);
+        syscheck->registry_nodiff[0].entry = NULL;
+        syscheck->registry_nodiff[1].entry = NULL;
+    }
+
+    os_strdup(entry, syscheck->registry_nodiff[ign_size].entry);
+    syscheck->registry_nodiff[ign_size].arch = arch;
+}
+
+int dump_registry_nodiff_regex(syscheck_config *syscheck, const char *regex, int arch) {
+    OSMatch *mt_pt;
+    int ign_size = 0;
+
+    if (!syscheck->registry_nodiff_regex) {
+        os_calloc(2, sizeof(registry_regex), syscheck->registry_nodiff_regex);
+        syscheck->registry_nodiff_regex[0].regex = NULL;
+        syscheck->registry_nodiff_regex[1].regex = NULL;
+    } else {
+        while (syscheck->registry_nodiff_regex[ign_size].regex != NULL) {
+            ign_size++;
+        }
+
+        os_realloc(syscheck->registry_nodiff_regex, sizeof(registry_regex) * (ign_size + 2),
+                   syscheck->registry_nodiff_regex);
+        syscheck->registry_nodiff_regex[ign_size + 1].regex = NULL;
+    }
+
+    os_calloc(1, sizeof(OSMatch), syscheck->registry_nodiff_regex[ign_size].regex);
+
+    if (!OSMatch_Compile(regex, syscheck->registry_nodiff_regex[ign_size].regex, 0)) {
+        mt_pt = syscheck->registry_nodiff_regex[ign_size].regex;
+        merror(REGEX_COMPILE, regex, mt_pt->error);
+        return (0);
+    }
+
+    syscheck->registry_nodiff_regex[ign_size].arch = arch;
+    return 1;
+}
+
 /* Read Windows registry configuration */
-int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
+int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag, int vals)
 {
     int j;
     char **entry;
@@ -429,7 +485,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
         }
 
         /* Add new entry */
-        dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag, NULL, -1);
+        dump_syscheck_entry(syscheck, tmp_entry, vals, 1, NULL, 0, clean_tag, &arch, -1);
 
         if (clean_tag)
             free(clean_tag);
@@ -1098,7 +1154,7 @@ int read_data_unit(const char *content) {
 
             if (OS_StrIsNum(value_str)) {
                 read_value = atoi(value_str);
-                
+
                 switch (content[len_value_str - 2]) {
                     case 'M':
                         // Fallthrough
@@ -1129,9 +1185,9 @@ int read_data_unit(const char *content) {
                 }
             }
             else {
+                os_free(value_str);
                 return -1;
             }
-
             os_free(value_str);
         }
         else if (isdigit(content[len_value_str - 2])) {
@@ -1160,6 +1216,13 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
     const char *xml_file_size_enabled = "enabled";
     const char *xml_file_size_limit = "limit";
     const char *xml_nodiff = "nodiff";
+#ifdef WIN32
+    const char *xml_registry_nodiff = "registry_nodiff";
+    const char *xml_arch = "arch";
+    const char *xml_32bit = "32bit";
+    const char *xml_64bit = "64bit";
+    const char *xml_both = "both";
+#endif
 
     int i = 0;
     int j = 0;
@@ -1241,6 +1304,68 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                 os_strdup(node[i]->content, syscheck->nodiff[nodiff_size]);
             }
         }
+
+#ifdef WIN32
+        if (strcmp(node[i]->element,xml_registry_nodiff) == 0) {
+            char *new_nodiff = NULL;
+            os_calloc(2048, sizeof(char), new_nodiff);
+
+            if (!ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047)){
+                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                free(new_nodiff);
+                continue;
+            }
+
+            free(node[i]->content);
+            node[i]->content = new_nodiff;
+
+            int sregex = 0;
+            int arch = ARCH_32BIT;
+
+            /* Add if regex */
+            if (node[i]->attributes && node[i]->values) {
+                int j;
+
+                for (j = 0; node[i]->attributes[j] && node[i]->values[j]; j++) {
+                    if (strcmp(node[i]->attributes[j], "type") == 0 &&
+                    strcmp(node[i]->values[j], "sregex") == 0) {
+                        sregex = 1;
+                    } else if (strcmp(node[i]->attributes[j], xml_arch) == 0) {
+                        if (strcmp(node[i]->values[j], xml_32bit) == 0)
+                            arch = ARCH_32BIT;
+                        else if  (strcmp(node[i]->values[j], xml_64bit) == 0)
+                            arch = ARCH_64BIT;
+                        else if (strcmp(node[i]->values[j], xml_both) == 0)
+                            arch = ARCH_BOTH;
+                        else {
+                            merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
+                            return;
+                        }
+                    } else {
+                        merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
+                        return;
+                    }
+                }
+            }
+
+            if (sregex) {
+                if (arch != ARCH_BOTH)
+                    dump_registry_nodiff_regex(syscheck, node[i]->content, arch);
+                else {
+                    dump_registry_nodiff_regex(syscheck, node[i]->content, ARCH_32BIT);
+                    dump_registry_nodiff_regex(syscheck, node[i]->content, ARCH_64BIT);
+                }
+            } else {
+                if (arch != ARCH_BOTH)
+                    dump_registry_nodiff(syscheck, node[i]->content, arch);
+                else {
+                    dump_registry_nodiff(syscheck, node[i]->content, ARCH_32BIT);
+                    dump_registry_nodiff(syscheck, node[i]->content, ARCH_64BIT);
+                }
+            }
+        }
+#endif
+
         else if (strcmp(node[i]->element, xml_disk_quota) == 0) {
             if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
                 continue;
@@ -1374,6 +1499,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_64bit = "64bit";
     const char *xml_both = "both";
     const char *xml_tag = "tags";
+    const char *xml_report_changes = "report_changes";
 #endif
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
@@ -1439,6 +1565,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 #ifdef WIN32
             char * tag = NULL;
             char arch[6] = "32bit";
+            int opts = 0;
 
             if (node[i]->attributes) {
                 int j = 0;
@@ -1458,6 +1585,16 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             os_free(tag);
                             return OS_INVALID;
                         }
+                    } else if (strcmp(node[i]->attributes[j], xml_report_changes) == 0) {
+                        if (strcmp(node[i]->values[j], "yes") == 0) {
+                            opts |= CHECK_SEECHANGES;
+                        } else if (strcmp(node[i]->values[j], "no") == 0) {
+                            opts &= ~ CHECK_SEECHANGES;
+                        } else {
+                            mwarn(FIM_INVALID_REG_OPTION_SKIP, node[i]->values[j], node[i]->attributes[j], node[i]->content);
+                            os_free(tag);
+                            return OS_INVALID;
+                        }
                     } else {
                         merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
                         os_free(tag);
@@ -1468,20 +1605,20 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
 
             if (strcmp(arch, "both") == 0) {
-                if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT, tag) &&
-                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag))) {
+                if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT, tag, opts) &&
+                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag, opts))) {
                     free(tag);
                     return (OS_INVALID);
                 }
 
             } else if (strcmp(arch, "64bit") == 0) {
-                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag)) {
+                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag, opts)) {
                     free(tag);
                     return (OS_INVALID);
                 }
 
             } else {
-                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag)) {
+                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag, opts)) {
                     free(tag);
                     return (OS_INVALID);
                 }
@@ -2084,6 +2221,18 @@ void Free_Syscheck(syscheck_config * config) {
                 OSMatch_FreePattern(config->registry_ignore_regex[i].regex);
             }
             free(config->registry_ignore_regex);
+        }
+        if (config->registry_nodiff) {
+            for (i=0; config->registry_nodiff[i].entry != NULL; i++) {
+                free(config->registry_nodiff[i].entry);
+            }
+            free(config->registry_nodiff);
+        }
+        if (config->registry_nodiff_regex) {
+            for (i=0; config->registry_nodiff_regex[i].regex != NULL; i++) {
+                OSMatch_FreePattern(config->registry_nodiff_regex[i].regex);
+            }
+            free(config->registry_nodiff_regex);
         }
         if (config->registry) {
             for (i=0; config->registry[i].entry != NULL; i++) {

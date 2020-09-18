@@ -209,22 +209,7 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         }
 
         if (item->configuration & CHECK_SEECHANGES) {
-            if (syscheck.disk_quota_enabled) {
-                char *full_path;
-                full_path = seechanges_get_diff_path(path);
-
-                if (full_path != NULL && IsDir(full_path) == 0) {
-                    syscheck.diff_folder_size -= (DirSize(full_path) / 1024);   // Update diff_folder_size
-
-                    if (!syscheck.disk_quota_full_msg) {
-                        syscheck.disk_quota_full_msg = true;
-                    }
-                }
-
-                os_free(full_path);
-            }
-
-            delete_target_file(path);
+            fim_diff_process_delete_file(path);
         }
 
         w_mutex_lock(&syscheck.fim_entry_mutex);
@@ -367,7 +352,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     }
 
     if (item->configuration & CHECK_SEECHANGES) {
-        diff = seechanges_addfile(file);
+        diff = fim_file_diff(file);
     }
 
     json_event = fim_json_event(file, saved ? saved->file_entry.data : NULL, new, item->index, alert_type, item->mode, w_evt, diff);
