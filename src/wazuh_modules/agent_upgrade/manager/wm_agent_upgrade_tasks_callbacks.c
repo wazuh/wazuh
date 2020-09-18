@@ -22,7 +22,7 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
     int error = OS_SUCCESS;
     cJSON *task_module_response = NULL;
 
-    if (agents = cJSON_GetArraySize(cJSON_GetObjectItem(task_module_request, task_manager_json_keys[WM_TASK_AGENTS])), !agents) {
+    if (agents = cJSON_GetArraySize(cJSON_GetObjectItem(cJSON_GetObjectItem(task_module_request, task_manager_json_keys[WM_TASK_PARAMETERS]), task_manager_json_keys[WM_TASK_AGENTS])), !agents) {
         return OS_INVALID;
     }
 
@@ -54,7 +54,7 @@ int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* tas
 
     if (error) {
         for(int i = 0; i < agents; i++) {
-            cJSON *agent_json = cJSON_GetArrayItem(cJSON_GetObjectItem(task_module_request, task_manager_json_keys[WM_TASK_AGENTS]), i);
+            cJSON *agent_json = cJSON_GetArrayItem(cJSON_GetObjectItem(cJSON_GetObjectItem(task_module_request, task_manager_json_keys[WM_TASK_PARAMETERS]), task_manager_json_keys[WM_TASK_AGENTS]), i);
 
             if (agent_json && (agent_json->type == cJSON_Number)) {
                 int agent_id = agent_json->valueint;
