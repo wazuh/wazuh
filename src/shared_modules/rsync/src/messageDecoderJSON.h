@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _MSGDECODERSYNCJSON_H
-#define _MSGDECODERSYNCJSON_H
+#ifndef _JSON_MESSAGE_DECODER_H
+#define _JSON_MESSAGE_DECODER_H
 
 #include "imessageDecoder.h"
 #include "json.hpp"
@@ -20,6 +20,9 @@ namespace RSync
     class JSONMessageDecoder final : public IMessageDecoder
     {
     public:
+        // LCOV_EXCL_START
+        ~JSONMessageDecoder() = default;
+        // LCOV_EXCL_STOP
         SyncInputData decode(const std::vector<unsigned char>& rawData) override 
         {
             SyncInputData retVal{};
@@ -47,4 +50,4 @@ namespace RSync
     };
 }// namespace RSync
 
-#endif // _MSGDECODERSYNCJSON_H
+#endif // _JSON_MESSAGE_DECODER_H

@@ -15,7 +15,7 @@
 #include <memory>
 #include <mutex>
 #include <functional>
-#include "typedef.h"
+#include "commonDefs.h"
 #include "json.hpp"
 #include "msgDispatcher.h"
 #include "syncDecoder.h"

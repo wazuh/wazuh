@@ -29,14 +29,18 @@ namespace RSync
     class MessageChecksum<SplitContext> final : public IMessageCreator<SplitContext>
     {
     public:
+        // LCOV_EXCL_START
+        ~MessageChecksum() = default;
+        // LCOV_EXCL_STOP
         void send(const ResultCallback callback, const nlohmann::json& config, const SplitContext& data) override
         {
-            nlohmann::json outputMessage;
             
-            if (IntegrityCommands.end() != IntegrityCommands.find(data.type))
+            const auto& it { IntegrityCommands.find(data.type)};
+            if (IntegrityCommands.end() != it)
             {
+                nlohmann::json outputMessage;
                 outputMessage["component"] = config.at("component");
-                outputMessage["type"] = IntegrityCommands.at(data.type);
+                outputMessage["type"] = it->second;
 
                 nlohmann::json outputData;
                 outputData["id"] = data.id;

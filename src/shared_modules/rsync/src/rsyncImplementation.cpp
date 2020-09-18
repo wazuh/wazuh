@@ -57,12 +57,15 @@ std::shared_ptr<RSyncImplementation::RSyncContext> RSyncImplementation::remoteSy
     return it->second;
 }
 
-void callbackDBSync(ReturnTypeCallback /*result_type*/, const cJSON* result_json, void* user_data)
+void callbackDBSync(ReturnTypeCallback /*resultType*/, const cJSON* resultJson, void* userData)
 {
-    std::function<void(const nlohmann::json&)>* callback = static_cast<std::function<void(const nlohmann::json&)>*>(user_data);
-    const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(result_json) };
-    const auto json { nlohmann::json::parse(spJsonBytes.get()) };
-    (*callback)(json);
+    if (userData && resultJson)
+    {
+        std::function<void(const nlohmann::json&)>* callback = static_cast<std::function<void(const nlohmann::json&)>*>(userData);
+        const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(resultJson) };
+        const auto json { nlohmann::json::parse(spJsonBytes.get()) };
+        (*callback)(json);
+    }
 }
 
 void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle, 
@@ -74,13 +77,13 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
     const auto ctx { remoteSyncContext(handle) };
     const auto& jsonSyncConfiguration { nlohmann::json::parse(syncConfigurationRaw) };
     
-    const SyncMsgBodyType sync_message_type { SyncMsgBodyTypeMap.at(jsonSyncConfiguration.at("decoder_type")) };
+    const SyncMsgBodyType syncMessageType { SyncMsgBodyTypeMap.at(jsonSyncConfiguration.at("decoder_type")) };
     
-    ctx->m_msgDispatcher.setMessageDecoderType(messageHeaderID, sync_message_type);
+    ctx->m_msgDispatcher.setMessageDecoderType(messageHeaderID, syncMessageType);
     
     const auto registerCallback
     {
-        [spDBSyncWrapper, jsonSyncConfiguration, callbackWrapper] (const SyncInputData syncData)
+        [spDBSyncWrapper, jsonSyncConfiguration, callbackWrapper] (const SyncInputData& syncData)
         {
             try
             {
@@ -192,10 +195,10 @@ size_t RSyncImplementation::getRangeCount(const std::shared_ptr<DBSyncWrapper>& 
 
 
 void RSyncImplementation::fillChecksum(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper, 
-                                             const nlohmann::json& jsonSyncConfiguration,
-                                             const std::string& begin,
-                                             const std::string& end,
-                                             ChecksumContext& ctx) 
+                                       const nlohmann::json& jsonSyncConfiguration,
+                                       const std::string& begin,
+                                       const std::string& end,
+                                       ChecksumContext& ctx) 
 {
     nlohmann::json selectData;
     const auto& indexFieldName { jsonSyncConfiguration.at("index").get_ref<const std::string&>() };

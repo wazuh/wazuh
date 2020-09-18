@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _MESSAGEROWDATA_H
-#define _MESSAGEROWDATA_H
+#ifndef _MESSAGE_ROW_DATA_H
+#define _MESSAGE_ROW_DATA_H
 
 #include "imessageCreator.h"
 
@@ -20,6 +20,7 @@ namespace RSync
     class MessageRowData final : public IMessageCreator<Type>
     {
     public:
+        ~MessageRowData() = default;
         void send(const ResultCallback /*callback*/, const nlohmann::json& /*config*/, const Type& /*data*/) override
         {
             throw rsync_error { NOT_SPECIALIZED_FUNCTION };   
@@ -29,6 +30,9 @@ namespace RSync
     class MessageRowData<nlohmann::json> final : public IMessageCreator<nlohmann::json>
     {
     public:
+        // LCOV_EXCL_START
+        ~MessageRowData() = default;
+        // LCOV_EXCL_STOP
         void send(const ResultCallback callback, const nlohmann::json& config, const nlohmann::json& data) override
         {
             nlohmann::json outputMessage;
@@ -47,4 +51,4 @@ namespace RSync
     };
 };// namespace RSync
 
-#endif //_MESSAGEROWDATA_H
+#endif //_MESSAGE_ROW_DATA_H

@@ -24,6 +24,9 @@ namespace RSync
     class IMessageDecoder 
     {
     public:
+        // LCOV_EXCL_START
+        virtual ~IMessageDecoder() = default;
+        // LCOV_EXCL_STOP
         virtual SyncInputData decode(const std::vector<unsigned char>& rawData) = 0;
     };
 };// namespace RSync
