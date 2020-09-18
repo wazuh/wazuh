@@ -109,19 +109,19 @@ def checkCoverage(output):
     reFunctions = re.search("functions.*%", str(output))
     if reLines:
         end = reLines.group().index('%')
-        start = end-4
+        start = reLines.group()[0:end].rindex(' ')+1
         linesCoverage = reLines.group()[start:end]
     if reFunctions:
         end = reFunctions.group().index('%')
-        start = end-4
+        start = reFunctions.group().rindex(' ')+1
         functionsCoverage = reFunctions.group()[start:end]
-    if linesCoverage >= '90.0':
+    if float(linesCoverage) >= 90.0:
         printGreen('[Lines Coverage ' + linesCoverage + '%: PASSED]')
     else:
         printFail('[Lines Coverage ' + linesCoverage + '%: LOW]')
         errorString = 'Low lines coverage: ' + linesCoverage
         raise ValueError(errorString)
-    if functionsCoverage >= '90.0':
+    if float(functionsCoverage) >= 90.0:
         printGreen('[Functions Coverage ' + functionsCoverage + '%: PASSED]')
     else:
         printFail('[Functions Coverage ' + functionsCoverage + '%: LOW]')

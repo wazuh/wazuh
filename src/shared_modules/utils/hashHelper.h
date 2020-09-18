@@ -23,7 +23,7 @@ namespace Utils
         Sha1,
         Sha256,
     };
-    class HashData
+    class HashData final
     {
     public:
         HashData(const HashType hashType = HashType::Sha1)

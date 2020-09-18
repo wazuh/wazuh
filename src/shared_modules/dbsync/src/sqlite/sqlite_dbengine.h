@@ -14,9 +14,11 @@
 
 #include <tuple>
 #include <iostream>
+#include <mutex>
 #include "dbengine.h"
 #include "sqlite_wrapper_factory.h"
 #include "isqlite_wrapper.h"
+#include "mapWrapperSafe.h"
 
 constexpr auto TEMP_TABLE_SUBFIX {"_TEMP"};
 
@@ -98,6 +100,7 @@ public:
     }
     {}
 };
+
 
 class SQLiteDBEngine final : public DbSync::IDbEngine 
 {
@@ -280,9 +283,9 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                                                const std::string&               baseTable,
                                                const std::vector<std::string>&  primaryKeys);
 
-        std::map<std::string, TableColumns> m_tableFields;
+        Utils::MapWrapperSafe<std::string, TableColumns> m_tableFields;
         std::map<std::string, std::unique_ptr<SQLite::IStatement>> m_statementsCache;
-        std::shared_ptr<ISQLiteFactory> m_sqliteFactory;
+        const std::shared_ptr<ISQLiteFactory> m_sqliteFactory;
         std::shared_ptr<SQLite::IConnection> m_sqliteConnection;
 
 };
