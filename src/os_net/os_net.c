@@ -659,14 +659,8 @@ int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
     /* Get header */
     recvval = os_recv_waitall(sock, &msgsize, sizeof(msgsize));
 
-    switch(recvval) {
-        case -1:
-            return recvval;
-            break;
-
-        case 0:
-            return recvval;
-            break;
+    if (recvval != sizeof(msgsize)) {
+        return (recvval == -1) ? -1 : 0;
     }
 
     msgsize = wnet_order(msgsize);
@@ -815,7 +809,7 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
                 return -1;
             }
     }
-   
+
     if (strncmp(buffer+8, "err --------", CMD_SIZE) == 0) {
         return -2;
     }
