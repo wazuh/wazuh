@@ -1597,7 +1597,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             os_free(tag);
                             return OS_INVALID;
                         }
-                        reg_recursion_level = (unsigned int) atoi(node[i]->values[j]);
+                        reg_recursion_level = atoi(node[i]->values[j]);
                         if (reg_recursion_level < 0 || reg_recursion_level > MAX_REGISTRY_DEPTH) {
                             mwarn("Invalid recursion level value: %d. Setting default (%d).", reg_recursion_level, MAX_REGISTRY_DEPTH);
                             reg_recursion_level = MAX_REGISTRY_DEPTH;
