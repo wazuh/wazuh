@@ -140,7 +140,7 @@ namespace RSync
                                          const std::string& index = "");
 
         static nlohmann::json executeSelectQuery(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
-                                                 const std::string table,
+                                                 const std::string& table,
                                                  const nlohmann::json& jsFirstQuery,
                                                  const nlohmann::json& jsLastQuery);
 

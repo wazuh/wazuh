@@ -51,7 +51,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
                                      const char* startConfiguration,
                                      const ResultCallback callbackWrapper)
 {
-    const auto ctx { remoteSyncContext(handle) };
+    const auto ctx                  { remoteSyncContext(handle) };
     const auto jsStartConfiguration { nlohmann::json::parse(startConfiguration) };
     const auto& jsStartParams       { jsStartConfiguration.at(0)             };
     const auto& jsStartParamsTable  { jsStartParams.at("table")              };
@@ -349,7 +349,7 @@ nlohmann::json RSyncImplementation::getRowData(const std::shared_ptr<DBSyncWrapp
 }
 
 nlohmann::json RSyncImplementation::executeSelectQuery(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
-                                                       const std::string table,
+                                                       const std::string& table,
                                                        const nlohmann::json& jsFirstQuery,
                                                        const nlohmann::json& jsLastQuery)
 {
