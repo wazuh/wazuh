@@ -23,18 +23,15 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/winreg_wrappers.h"
-
-// Remove static qualifier when unit testing
-#define static
+extern int _base_line;
+#else
+static int _base_line = 0;
 #endif
 
 /* Default values */
 #define MAX_KEY_LENGTH 260
 #define MAX_KEY 2048
 #define MAX_VALUE_NAME 16383
-
-/* Global variables */
-static int _base_line = 0;
 
 /**
  * @brief Set the root key and subkey associated with a given key.
