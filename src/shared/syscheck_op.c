@@ -691,14 +691,15 @@ char *get_user(const char *path, char **sid, HANDLE hdnl, fim_type entry_type) {
         CloseHandle(hFile);
     }
 
-    char *aux;
-    if (!ConvertSidToStringSid(pSidOwner, &aux)) {
+    char *aux_sid;
+
+    if (!ConvertSidToStringSid(pSidOwner, &aux_sid)) {
         *sid = NULL;
         mdebug1("The user's SID could not be extracted.");
     }
     else {
-        os_strdup(aux, *sid);
-        LocalFree(aux);
+        os_strdup(aux_sid, *sid);
+        LocalFree(aux_sid);
     }
 
     // Check GetLastError for GetSecurityInfo error condition.
@@ -916,6 +917,92 @@ unsigned int w_get_file_attrs(const char *file_path) {
 
 const char *get_group(__attribute__((unused)) int gid) {
     return "";
+}
+
+char *get_registry_group(const char *path, char **sid, HANDLE hdnl) {
+    DWORD dwRtnCode = 0;
+    DWORD dwSecurityInfoErrorCode = 0;
+    PSID pSidGroup = NULL;
+    BOOL bRtnBool = TRUE;
+    char GrpName[BUFFER_LEN];
+    char DomainName[BUFFER_LEN];
+    DWORD dwGrpName = BUFFER_LEN;
+    DWORD dwDomainName = BUFFER_LEN;
+    SID_NAME_USE eUse = SidTypeUnknown;
+    PSECURITY_DESCRIPTOR pSD = NULL;
+    char *result;
+
+    // Get the owner SID of the file or registry
+    dwRtnCode = GetSecurityInfo(
+                                hdnl,                       // Object handle
+                                SE_REGISTRY_KEY,            // Object type (file or registry)
+                                GROUP_SECURITY_INFORMATION, // Security information bit flags
+                                NULL,                       // Owner SID
+                                &pSidGroup,                 // Group SID
+                                NULL,                       // DACL
+                                NULL,                       // SACL
+                                &pSD);                      // Security descriptor
+
+    if (dwRtnCode != ERROR_SUCCESS) {
+        dwSecurityInfoErrorCode = GetLastError();
+    }
+
+    char *aux_sid;
+
+    if (!ConvertSidToStringSid(pSidGroup, &aux_sid)) {
+        *sid = NULL;
+        mdebug1("The user's SID could not be extracted.");
+    }
+    else {
+        os_strdup(aux_sid, *sid);
+        LocalFree(aux_sid);
+    }
+
+    // Check GetLastError for GetSecurityInfo error condition.
+    if (dwRtnCode != ERROR_SUCCESS) {
+        merror("GetSecurityInfo error = %lu", dwSecurityInfoErrorCode);
+        *GrpName = '\0';
+        goto end;
+    }
+
+    // Second call to LookupAccountSid to get the account name.
+    bRtnBool = LookupAccountSid(
+                                NULL,                   // Name of local or remote computer
+                                pSidGroup,              // Security identifier
+                                GrpName,                // Group name buffer
+                                (LPDWORD)&dwGrpName,    // Size of group name buffer
+                                DomainName,             // Domain name
+                                (LPDWORD)&dwDomainName, // Size of domain name buffer
+                                &eUse);                 // SID type
+
+    if (strncmp(GrpName, "None", 4) == 0) {
+        os_strdup("", GrpName);
+    }
+
+    // Check GetLastError for LookupAccountSid error condition.
+    if (bRtnBool == FALSE) {
+        DWORD dwErrorCode = 0;
+
+        dwErrorCode = GetLastError();
+
+        if (dwErrorCode == ERROR_NONE_MAPPED) {
+            mdebug1("Group not found for registry '%s'", path);
+        }
+        else {
+            merror("Error in LookupAccountSid.");
+        }
+
+        *GrpName = '\0';
+    }
+
+end:
+    if (pSD) {
+        LocalFree(pSD);
+    }
+
+    result = wstr_replace((const char*)&GrpName, " ", "\\ ");
+
+    return result;
 }
 
 /* Send a one-way message to Syscheck */

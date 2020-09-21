@@ -193,6 +193,10 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
         key->user_name = get_user(path, &key->uid, key_handle, FIM_TYPE_REGISTRY);
     }
 
+    if (configuration->opts & CHECK_GROUP) {
+        key->group_name = get_registry_group(path, &key->gid, key_handle);
+    }
+
     return key;
 }
 

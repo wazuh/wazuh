@@ -280,7 +280,7 @@ const char *get_group(int gid);
 #else
 
 /**
- * @brief Retrieves the user name of the owner of a file in Windows.
+ * @brief Retrieves the user name of the owner of a file or registry in Windows.
  * Also sets the user ID associated to that user.
  *
  * @param path File or registry path to check the owner of.
@@ -324,6 +324,18 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
  * @return The group name on success, an empty string on failure
  */
 const char *get_group(__attribute__((unused)) int gid);
+
+/**
+ * @brief Retrieves the group name and gid of a registry key.
+ * Also sets the group ID associated to that group.
+ *
+ * @param path Path of the registry key.
+ * @param sid The user ID associated to the user.
+ * @param hdnl Handle for the registry to check the owner of (NULL for files).
+ *
+ * @return The user name on success, NULL on failure.
+*/
+char *get_registry_group(const char *path, char **sid, HANDLE hdnl);
 
 /**
  * @brief Copy ACE information into buffer
