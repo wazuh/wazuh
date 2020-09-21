@@ -15,6 +15,10 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <iomanip>
+	
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 
 namespace Utils
 {
@@ -32,6 +36,20 @@ namespace Utils
         return ret;
     }
 
+    static bool replaceFirst(std::string& data,
+                           const std::string& toSearch,
+                           const std::string& toReplace)
+    {
+        auto pos { data.find(toSearch) };
+        auto ret { false };
+        if (std::string::npos != pos)
+        {
+            data.replace(pos, toSearch.size(), toReplace);
+            ret = true;
+        }
+        return ret;
+    }
+
     static std::vector<std::string> split(const std::string& str,
                                           const char delimiter)
     {
@@ -44,6 +62,18 @@ namespace Utils
         }
         return tokens;
     }
+
+    static std::string asciiToHex(const std::vector<unsigned char>& asciiData)
+    {
+        std::stringstream ss;
+        for (const auto& val : asciiData)
+        {
+            ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(val);
+        }
+        return ss.str();
+    }
 }
+
+#pragma GCC diagnostic pop
 
 #endif // _STRING_HELPER_H

@@ -63,6 +63,7 @@ AgentEmulator::AgentEmulator(const std::chrono::milliseconds updatePeriod,
 , m_rsyncHandle{ rsync_create() }
 , m_dbSyncHandle{ createDbsyncHandle(dbFolder + m_agentId + ".db") }
 , m_config{ nullptr }//TODO: define config based on dbsync handle create statement
+, m_startConfig{ nullptr }//TODO: define config based on first/last sync information statement
 , m_updatePeriod {updatePeriod}
 , m_maxDbItems{ maxDbItems }
 , m_threadsRunning{ true }
@@ -83,7 +84,7 @@ AgentEmulator::AgentEmulator(const std::chrono::milliseconds updatePeriod,
             "Error registering rsync id."
         };
     }
-    if (rsync_start_sync(m_rsyncHandle))
+    if (rsync_start_sync(m_rsyncHandle, m_dbSyncHandle, m_startConfig, callback))
     {
         throw std::runtime_error
         {

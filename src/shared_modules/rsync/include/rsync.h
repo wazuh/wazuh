@@ -52,11 +52,18 @@ EXPORTED RSYNC_HANDLE rsync_create();
 
 /**
  * @brief Initializes the \p handle instance.
- *
+ * @param handle              Current rsync handle being used.
+ * @param dbsync_handle       DBSync handle to synchronize databases.
+ * @param start_configuration Statement used as a synchronization start.
+ * @param callback_data       This callback will be called for each result
+ *                            and user data space returned in each callback call.
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
-EXPORTED int rsync_start_sync(const RSYNC_HANDLE handle);
+EXPORTED int rsync_start_sync(const RSYNC_HANDLE handle,
+                              const DBSYNC_HANDLE dbsync_handle,
+                              const cJSON* start_configuration,
+                              sync_callback_data_t callback_data);
 
 /**
  * @brief Stablishes a message-id to be processed in the agent-manager sync.

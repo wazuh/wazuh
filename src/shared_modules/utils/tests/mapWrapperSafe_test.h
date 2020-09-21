@@ -1,7 +1,7 @@
 /*
- * Wazuh RSYNC
+ * Wazuh shared modules utils
  * Copyright (C) 2015-2020, Wazuh Inc.
- * August 26, 2020.
+ * Sep 15, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,23 +9,19 @@
  * Foundation.
  */
 
-#ifndef _RYSNC_TEST_H
-#define _RYSNC_TEST_H
-
+#ifndef MAP_WRAPPER_SAFE_TESTS_H
+#define MAP_WRAPPER_SAFE_TESTS_H
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
-#include "commonDefs.h"
 
-class RSyncTest : public ::testing::Test 
+class MapWrapperSafeTest : public ::testing::Test
 {
 protected:
 
-    RSyncTest() = default;
-    virtual ~RSyncTest() = default;
+    MapWrapperSafeTest() = default;
+    virtual ~MapWrapperSafeTest() = default;
 
     void SetUp() override;
     void TearDown() override;
 };
-
-
-#endif // _RYSNC_TEST_H
+#endif //MAP_WRAPPER_SAFE_TESTS_H

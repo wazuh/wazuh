@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 2.6.4)
 
 project(dbsync_test_tool)
 
@@ -14,7 +14,7 @@ else()
 endif(COVERITY)
 
 add_executable(dbsync_test_tool
-               "${CMAKE_SOURCE_DIR}/testtool/main.cpp" )
+               ${CMAKE_SOURCE_DIR}/testtool/main.cpp )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 	target_link_libraries(dbsync_test_tool
