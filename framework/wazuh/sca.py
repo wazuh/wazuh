@@ -12,7 +12,8 @@ from wazuh.core.agent import get_agents_info
 from wazuh.core.exception import WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.sca import WazuhDBQuerySCA, fields_translation_sca, fields_translation_sca_check, \
-    fields_translation_sca_check_compliance, fields_translation_sca_check_rule, default_query_sca_check
+    fields_translation_sca_check_compliance, fields_translation_sca_check_rule, default_query_sca_check, \
+    WazuhDBQuerySCACheck
 from wazuh.rbac.decorators import expose_resources
 
 
@@ -82,11 +83,11 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
                            list(fields_translation_sca_check_rule.keys())
                            )
 
-            db_query = WazuhDBQuerySCA(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
-                                       select=full_select, count=True, get_data=True,
-                                       query=f"policy_id={policy_id}" if q == "" else f"policy_id={policy_id};{q}",
-                                       filters=filters, default_query=default_query_sca_check,
-                                       default_sort_field='policy_id', fields=fields_translation, count_field='id')
+            db_query = WazuhDBQuerySCACheck(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort,
+                                            search=search, select=full_select, count=True, get_data=True,
+                                            query=f"policy_id={policy_id}" if q == "" else f"policy_id={policy_id};{q}",
+                                            filters=filters, default_query=default_query_sca_check,
+                                            default_sort_field='policy_id', fields=fields_translation, count_field='id')
 
             result_dict = db_query.run()
 
