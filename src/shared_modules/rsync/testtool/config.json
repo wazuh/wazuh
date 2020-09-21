@@ -1,0 +1,38 @@
+{
+    "dbsync": {
+        "db_name": "temp.db",
+        "db_type": "1",
+        "host_type": "1",    
+        "persistance": "",
+        "sql_statement":"CREATE TABLE entry_path (path TEXT NOT NULL, inode_id INTEGER, mode INTEGER, last_event INTEGER, entry_type INTEGER, scanned INTEGER, options INTEGER, checksum TEXT NOT NULL, PRIMARY KEY(path));"
+    },
+    "rsync": {
+        "table":"entry_path",
+        "extra_parameters":[{
+            "first": {
+                "row_data_query_json": {
+                        "column_list":["path"],
+                        "distinct_opt":false,
+                        "order_by_opt":"path ASC LIMIT 1",
+                        "count_opt":1
+                }
+            },
+            "last": {
+                "row_data_query_json": {
+                        "column_list":["path"],
+                        "row_filter":"",
+                        "distinct_opt":false,
+                        "order_by_opt":"path DESC LIMIT 1",
+                        "count_opt":1
+                }
+            }
+        }],
+        "checksum_field":"checksum",
+        "range_checksum_query_json": {
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+}

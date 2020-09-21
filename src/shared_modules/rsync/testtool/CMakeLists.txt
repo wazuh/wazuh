@@ -5,6 +5,7 @@ project(rsync_test_tool)
 include_directories(${CMAKE_SOURCE_DIR}/include/)
 include_directories(${CMAKE_SOURCE_DIR}/utils/)
 include_directories(${CMAKE_SOURCE_DIR}/testtool/)
+include_directories(${SRC_FOLDER}/external/nlohmann/)
 link_directories(${CMAKE_BINARY_DIR}/lib)
 
 if(COVERITY)
@@ -16,6 +17,7 @@ endif(COVERITY)
 add_executable(rsync_test_tool
                "${CMAKE_SOURCE_DIR}/testtool/main.cpp"
                "${CMAKE_SOURCE_DIR}/testtool/agentEmulator.cpp"
+               "${CMAKE_SOURCE_DIR}/testtool/oneTimeSync.cpp"
                "${CMAKE_SOURCE_DIR}/testtool/managerEmulator.cpp" )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
