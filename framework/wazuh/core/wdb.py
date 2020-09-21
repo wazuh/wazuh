@@ -1,5 +1,3 @@
-
-
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -56,10 +54,12 @@ class WazuhDBConnection:
         else:
             input_val_errors = [
                 (query_elements[sql_first_index] == 'sql', "Incorrect WDB request type."),
-                (query_elements[0] == 'agent' or query_elements[0] == 'global', "The {} database is not valid".format(query_elements[0])),
-                (query_elements[1].isdigit() if query_elements[0] == 'agent' else True, "Incorrect agent ID {}".format(query_elements[1])),
-                (query_elements[sql_first_index+1] == 'select' or query_elements[sql_first_index+1] == 'delete' or
-                 query_elements[sql_first_index+1] == 'update', "The API can only send select requests to WDB"),
+                (query_elements[0] == 'agent' or query_elements[0] == 'global',
+                 "The {} database is not valid".format(query_elements[0])),
+                (query_elements[1].isdigit() if query_elements[0] == 'agent' else True,
+                 "Incorrect agent ID {}".format(query_elements[1])),
+                (query_elements[sql_first_index + 1] == 'select' or query_elements[sql_first_index + 1] == 'delete' or
+                 query_elements[sql_first_index + 1] == 'update', "The API can only send select requests to WDB"),
                 (not ';' in query, "Found a not valid symbol in database query: ;")
             ]
 
@@ -140,7 +140,7 @@ class WazuhDBConnection:
         """
         def send_request_to_wdb(query_lower, step, off, response):
             try:
-                request = "{} limit {} offset {}".format(query_lower, step, off)
+                request = query_lower.replace(':limit', 'limit ' + str(step)).replace(':offset', 'offset ' + str(off))
                 response.extend(self._send(request))
             except ValueError:
                 # if the step is already 1, it can't be divided
@@ -170,23 +170,25 @@ class WazuhDBConnection:
             return self._send(query_lower)
 
         # Remove text inside 'where' clause to prevent finding reserved words (offset/count)
-        query_without_where = re.sub(r'where \(.*\)', 'where ()', query_lower)
+        query_without_where = re.sub(r'where \([^()]*\)', 'where ()', query_lower)
 
         # if the query has already a parameter limit / offset, divide using it
         offset = 0
         if 'offset' in query_without_where:
             offset = int(re.compile(r".* offset (\d+)").match(query_lower).group(1))
-            query_lower = query_lower.replace(" offset {}".format(offset), "")
+            # Replace offset with a wildcard
+            query_lower = query_lower.replace(" offset {}".format(offset), " :offset")
 
         if not re.search(r'.?count\(.*\).?', query_without_where):
             lim = 0
             if 'limit' in query_lower:
                 lim = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))
-                query_lower = query_lower.replace(" limit {}".format(lim), "")
+                # Replace limit with a wildcard
+                query_lower = query_lower.replace(" limit {}".format(lim), " :limit")
 
             regex = re.compile(r"\w+(?: \d*|)? sql select ([A-Z a-z0-9,*_` \.\-%\(\):\']+) from")
             select = regex.match(query_lower).group(1)
-            countq = query_lower.replace(select, "count(*)", 1)
+            countq = query_lower.replace(select, "count(*)", 1).replace(":limit", "").replace(":offset", "")
             try:
                 total = list(self._send(countq)[0].values())[0]
             except IndexError:
@@ -197,7 +199,7 @@ class WazuhDBConnection:
             response = []
             step = limit if limit < self.request_slice and limit > 0 else self.request_slice
             try:
-                for off in range(offset, limit+offset, step):
+                for off in range(offset, limit + offset, step):
                     send_request_to_wdb(query_lower, step, off, response)
             except ValueError as e:
                 raise WazuhError(2006, str(e))
