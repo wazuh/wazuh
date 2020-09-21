@@ -71,23 +71,22 @@ char* __wrap_wm_agent_upgrade_process_agent_result_command(const int* agent_ids,
 cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJSON *agents_array, const char* status, const char* error) {
     check_expected(command);
 
-    int agent_index = 0;
-    while (agent_index < cJSON_GetArraySize(agents_array)) {
-        int agent_id = cJSON_GetArrayItem(agents_array, agent_index)->valueint;
-        check_expected(agent_id);
-        agent_index++;
-    }
+    cJSON *ret = mock_type(cJSON *);
+    cJSON_AddItemToObject(cJSON_GetObjectItem(ret, task_manager_json_keys[WM_TASK_PARAMETERS]), task_manager_json_keys[WM_TASK_AGENTS], agents_array);
 
     if (status) check_expected(status);
     if (error) check_expected(error);
 
-    return mock_type(cJSON *);
+    return ret;
 }
 
 int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request) {
     check_expected(task_module_request);
 
-    cJSON_AddItemToArray(json_response, mock_type(cJSON *));
+    cJSON *data = mock_type(cJSON *);
+    if (data) {
+        cJSON_AddItemToArray(json_response, data);
+    }
 
     return mock();
 }
@@ -198,9 +197,17 @@ cJSON* __wrap_wm_agent_upgrade_parse_data_response(int error_id, const char* mes
 
 cJSON* __wrap_wm_agent_upgrade_parse_response(int error_id, cJSON *data) {
     check_expected(error_id);
-    check_expected(data);
 
-    return mock_type(cJSON*);
+    cJSON *ret = mock_type(cJSON*);
+    if (data && (data->type == cJSON_Array)) {
+        cJSON_AddItemToObject(ret, task_manager_json_keys[WM_TASK_DATA], data);
+    } else {
+        cJSON *data_array = cJSON_CreateArray();
+        cJSON_AddItemToArray(data_array, data);
+        cJSON_AddItemToObject(ret, task_manager_json_keys[WM_TASK_DATA], data_array);
+    }
+
+    return ret;
 }
 
 cJSON* __wrap_w_create_sendsync_payload(const char *daemon_name, __attribute__ ((__unused__)) cJSON *message) {

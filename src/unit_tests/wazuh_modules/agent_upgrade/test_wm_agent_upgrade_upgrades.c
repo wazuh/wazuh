@@ -2845,9 +2845,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
     // wm_agent_upgrade_parse_task_module_request
 
     expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_UPDATE_STATUS);
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, agent_id, agent_id);
-    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, status);
     will_return(__wrap_wm_agent_upgrade_parse_task_module_request, task_request_status);
+    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, status);
 
     // wm_agent_upgrade_task_module_callback
 
@@ -3124,10 +3123,9 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
     // wm_agent_upgrade_parse_task_module_request
 
     expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_UPDATE_STATUS);
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, agent_id, agent_id);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, task_request_status);
     expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, status);
     expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, error, error);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, task_request_status);
 
     // wm_agent_upgrade_task_module_callback
 

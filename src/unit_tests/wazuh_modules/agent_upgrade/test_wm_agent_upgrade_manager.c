@@ -338,7 +338,12 @@ void test_wm_agent_upgrade_listen_messages_parse_error(void **state)
     char *input = "Bad JSON";
     size_t input_size = strlen(input) + 1;
 
-    char *response = "{\"error\":25,\"data\":[{\"error\":25,\"message\":\"Upgrade procedure could not start\"}],\"message\":\"Upgrade procedure could not start\"}";
+    cJSON *response_json = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(response_json, "error", WM_UPGRADE_UNKNOWN_ERROR);
+    cJSON_AddStringToObject(response_json, "message", upgrade_error_codes[WM_UPGRADE_UNKNOWN_ERROR]);
+
+    char *response = "{\"error\":25,\"message\":\"Upgrade procedure could not start\",\"data\":[{\"error\":25,\"message\":\"Upgrade procedure could not start\"}]}";
 
     expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
@@ -363,8 +368,11 @@ void test_wm_agent_upgrade_listen_messages_parse_error(void **state)
     will_return(__wrap_wm_agent_upgrade_parse_message, NULL);
     will_return(__wrap_wm_agent_upgrade_parse_message, OS_INVALID);
 
+    expect_value(__wrap_wm_agent_upgrade_parse_response, error_id, WM_UPGRADE_UNKNOWN_ERROR);
+    will_return(__wrap_wm_agent_upgrade_parse_response, response_json);
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8156): Response message: '{\"error\":25,\"data\":[{\"error\":25,\"message\":\"Upgrade procedure could not start\"}],\"message\":\"Upgrade procedure could not start\"}'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8156): Response message: '{\"error\":25,\"message\":\"Upgrade procedure could not start\",\"data\":[{\"error\":25,\"message\":\"Upgrade procedure could not start\"}]}'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, peer);
     expect_value(__wrap_OS_SendSecureTCP, size, strlen(response));
