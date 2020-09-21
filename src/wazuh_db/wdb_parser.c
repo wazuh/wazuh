@@ -4271,8 +4271,7 @@ int wdb_parse_global_update_agent_version(wdb_t * wdb, char * input, char * outp
             char *manager_host = cJSON_IsString(j_manager_host) ? j_manager_host->valuestring : NULL;
             char *node_name = cJSON_IsString(j_node_name) ? j_node_name->valuestring : NULL;
             char *agent_ip = cJSON_IsString(j_agent_ip) ? j_agent_ip->valuestring : NULL;
-            wdb_sync_status_t sync_status = (cJSON_IsNumber(j_sync_status) && j_sync_status->valueint == 1) ? 
-                                            WDB_SYNC_REQ : WDB_SYNCED;
+            char *sync_status = cJSON_IsString(j_sync_status) ? j_sync_status->valuestring : "synced";
 
             if (OS_SUCCESS != wdb_global_update_agent_version(wdb, id, os_name, os_version, os_major, os_minor, os_codename,
                                                               os_platform, os_build, os_uname, os_arch, version, config_sum,
@@ -4392,10 +4391,10 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
         j_id = cJSON_GetObjectItem(agent_data, "id");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
 
-        if (cJSON_IsNumber(j_id) && cJSON_IsNumber(j_sync_status)) {
+        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_sync_status)) {
             // Getting each field
             int id = j_id->valueint;
-            wdb_sync_status_t sync_status = (j_sync_status->valueint == 1) ? WDB_SYNC_REQ : WDB_SYNCED;
+            char *sync_status = j_sync_status->valuestring;
 
             if (OS_SUCCESS != wdb_global_update_agent_keepalive(wdb, id, sync_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
