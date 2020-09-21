@@ -136,6 +136,9 @@ typedef enum fdb_stmt {
 
 //Max allowed value for recursion
 #define MAX_DEPTH_ALLOWED 320
+#ifdef WIN32
+#define MAX_REGISTRY_DEPTH 512
+#endif
 
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "headers/integrity_op.h"

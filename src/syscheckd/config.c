@@ -15,7 +15,7 @@
 
 #ifdef WIN32
 static char *SYSCHECK_EMPTY[] = { NULL };
-static registry REGISTRY_EMPTY[] = { { NULL, 0, NULL } };
+static registry REGISTRY_EMPTY[] = { { NULL, 0, 0, 512, 0, NULL, NULL } };
 #endif
 
 
