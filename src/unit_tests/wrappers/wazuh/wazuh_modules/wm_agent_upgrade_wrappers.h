@@ -31,7 +31,7 @@ char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_id
 
 char* __wrap_wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upgrade_agent_status_task* task);
 
-cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status, const char* error);
+cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJSON *agents_array, const char* status, const char* error);
 
 int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request);
 
@@ -59,7 +59,9 @@ int __wrap_wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* ag_ta
 
 int __wrap_wm_agent_upgrade_remove_entry(int agent_id, int free);
 
-cJSON* __wrap_wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status);
+cJSON* __wrap_wm_agent_upgrade_parse_data_response(int error_id, const char* message, const int* agent_id);
+
+cJSON* __wrap_wm_agent_upgrade_parse_response(int error_id, cJSON *data);
 
 cJSON* __wrap_w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 

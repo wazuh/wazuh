@@ -208,12 +208,15 @@ void test_wm_task_manager_init_disabled(void **state)
 void test_wm_task_manager_dispatch_ok(void **state)
 {
     char *response = NULL;
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade\","
-                      "\"agent\":1},{"
-                      "\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_custom\","
-                      "\"agent\":2}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
 
     cJSON *tasks = cJSON_CreateArray();
 
@@ -224,7 +227,7 @@ void test_wm_task_manager_dispatch_ok(void **state)
 
     cJSON *task2 = cJSON_CreateObject();
     cJSON_AddStringToObject(task2, "module", "upgrade_module");
-    cJSON_AddStringToObject(task2, "command", "upgrade_custom");
+    cJSON_AddStringToObject(task2, "command", "upgrade");
     cJSON_AddNumberToObject(task2, "agent", 2);
 
     cJSON_AddItemToArray(tasks, task1);
@@ -232,23 +235,26 @@ void test_wm_task_manager_dispatch_ok(void **state)
 
     cJSON *response1 = cJSON_CreateObject();
     cJSON_AddNumberToObject(response1, "error", WM_TASK_SUCCESS);
-    cJSON_AddStringToObject(response1, "data", "Success");
+    cJSON_AddStringToObject(response1, "message", "Success");
     cJSON_AddNumberToObject(response1, "agent", 1);
 
     cJSON *response2 = cJSON_CreateObject();
     cJSON_AddNumberToObject(response2, "error", WM_TASK_SUCCESS);
-    cJSON_AddStringToObject(response2, "data", "Success");
+    cJSON_AddStringToObject(response2, "message", "Success");
     cJSON_AddNumberToObject(response2, "agent", 2);
 
-    char *result = "[{\"error\":0,\"data\":\"Success\",\"agent\":1},{\"error\":0,\"data\":\"Success\",\"agent\":2}]";
+    char *result = "{\"error\":0,\"data\":[{\"error\":0,\"message\":\"Success\",\"agent\":1},{\"error\":0,\"message\":\"Success\",\"agent\":2}],\"message\":\"Success\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '[{\"module\":\"upgrade_module\","
-                                                                                 "\"command\":\"upgrade\","
-                                                                                 "\"agent\":1},{"
-                                                                                 "\"module\":\"upgrade_module\","
-                                                                                 "\"command\":\"upgrade_custom\","
-                                                                                 "\"agent\":2}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
+                                                                               "  \"origin\": {"
+                                                                               "      \"module\": \"upgrade_module\""
+                                                                               "   },"
+                                                                               "  \"command\": \"upgrade\","
+                                                                               "  \"parameters\": {"
+                                                                               "      \"agents\": [1, 2]"
+                                                                               "   }"
+                                                                               "}'");
 
     expect_string(__wrap_wm_task_manager_parse_message, msg, message);
     will_return(__wrap_wm_task_manager_parse_message, tasks);
@@ -262,7 +268,7 @@ void test_wm_task_manager_dispatch_ok(void **state)
     will_return(__wrap_wm_task_manager_analyze_task, response2);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '[{\"error\":0,\"data\":\"Success\",\"agent\":1},{\"error\":0,\"data\":\"Success\",\"agent\":2}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":0,\"message\":\"Success\",\"agent\":1},{\"error\":0,\"message\":\"Success\",\"agent\":2}],\"message\":\"Success\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -275,54 +281,63 @@ void test_wm_task_manager_dispatch_ok(void **state)
 void test_wm_task_manager_dispatch_module_err(void **state)
 {
     char *response = NULL;
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade\","
-                      "\"agent\":1},{"
-                      "\"module\":\"unknown\","
-                      "\"command\":\"upgrade_custom\","
-                      "\"agent\":2}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"unknown\""
+                    "   },"
+                    "  \"command\": \"upgrade_custom\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
 
     cJSON *tasks = cJSON_CreateArray();
 
     cJSON *task1 = cJSON_CreateObject();
-    cJSON_AddStringToObject(task1, "module", "upgrade_module");
-    cJSON_AddStringToObject(task1, "command", "upgrade");
+    cJSON_AddStringToObject(task1, "module", "unknown");
+    cJSON_AddStringToObject(task1, "command", "upgrade_custom");
     cJSON_AddNumberToObject(task1, "agent", 1);
 
     cJSON *task2 = cJSON_CreateObject();
-    cJSON_AddStringToObject(task2, "module", "upgrade_module");
-    cJSON_AddStringToObject(task2, "command", "unknown");
+    cJSON_AddStringToObject(task2, "module", "unknown");
+    cJSON_AddStringToObject(task2, "command", "upgrade_custom");
     cJSON_AddNumberToObject(task2, "agent", 2);
 
     cJSON_AddItemToArray(tasks, task1);
     cJSON_AddItemToArray(tasks, task2);
 
     cJSON *response1 = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response1, "error", WM_TASK_SUCCESS);
-    cJSON_AddStringToObject(response1, "data", "Success");
+    cJSON_AddNumberToObject(response1, "error", WM_TASK_INVALID_MODULE);
+    cJSON_AddStringToObject(response1, "message", "Invalid module");
     cJSON_AddNumberToObject(response1, "agent", 1);
 
     cJSON *response2 = cJSON_CreateObject();
     cJSON_AddNumberToObject(response2, "error", WM_TASK_INVALID_MODULE);
-    cJSON_AddStringToObject(response2, "data", "Invalid module");
+    cJSON_AddStringToObject(response2, "message", "Invalid module");
     cJSON_AddNumberToObject(response2, "agent", 2);
 
-    char *result = "[{\"error\":0,\"data\":\"Success\",\"agent\":1},{\"error\":2,\"data\":\"Invalid module\",\"agent\":2}]";
+    char *result = "{\"error\":0,\"data\":[{\"error\":2,\"message\":\"Invalid module\",\"agent\":1},{\"error\":2,\"message\":\"Invalid module\",\"agent\":2}],\"message\":\"Success\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '[{\"module\":\"upgrade_module\","
-                                                                                 "\"command\":\"upgrade\","
-                                                                                 "\"agent\":1},{"
-                                                                                 "\"module\":\"unknown\","
-                                                                                 "\"command\":\"upgrade_custom\","
-                                                                                 "\"agent\":2}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
+                                                                               "  \"origin\": {"
+                                                                               "      \"module\": \"unknown\""
+                                                                               "   },"
+                                                                               "  \"command\": \"upgrade_custom\","
+                                                                               "  \"parameters\": {"
+                                                                               "      \"agents\": [1, 2]"
+                                                                               "   }"
+                                                                               "}'");
 
     expect_string(__wrap_wm_task_manager_parse_message, msg, message);
     will_return(__wrap_wm_task_manager_parse_message, tasks);
 
     expect_memory(__wrap_wm_task_manager_analyze_task, task_object, task1, sizeof(task1));
-    will_return(__wrap_wm_task_manager_analyze_task, WM_TASK_SUCCESS);
+    will_return(__wrap_wm_task_manager_analyze_task, WM_TASK_INVALID_MODULE);
     will_return(__wrap_wm_task_manager_analyze_task, response1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8261): Invalid 'module' at index '0'");
 
     expect_memory(__wrap_wm_task_manager_analyze_task, task_object, task2, sizeof(task2));
     will_return(__wrap_wm_task_manager_analyze_task, WM_TASK_INVALID_MODULE);
@@ -332,7 +347,7 @@ void test_wm_task_manager_dispatch_module_err(void **state)
     expect_string(__wrap__mterror, formatted_msg, "(8261): Invalid 'module' at index '1'");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '[{\"error\":0,\"data\":\"Success\",\"agent\":1},{\"error\":2,\"data\":\"Invalid module\",\"agent\":2}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":2,\"message\":\"Invalid module\",\"agent\":1},{\"error\":2,\"message\":\"Invalid module\",\"agent\":2}],\"message\":\"Success\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -345,12 +360,15 @@ void test_wm_task_manager_dispatch_module_err(void **state)
 void test_wm_task_manager_dispatch_command_err(void **state)
 {
     char *response = NULL;
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"unknown\","
-                      "\"agent\":1},{"
-                      "\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_custom\","
-                      "\"agent\":2}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"unknown\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
 
     cJSON *tasks = cJSON_CreateArray();
 
@@ -361,7 +379,7 @@ void test_wm_task_manager_dispatch_command_err(void **state)
 
     cJSON *task2 = cJSON_CreateObject();
     cJSON_AddStringToObject(task2, "module", "upgrade_module");
-    cJSON_AddStringToObject(task2, "command", "upgrade_custom");
+    cJSON_AddStringToObject(task2, "command", "unknown");
     cJSON_AddNumberToObject(task2, "agent", 2);
 
     cJSON_AddItemToArray(tasks, task1);
@@ -369,23 +387,26 @@ void test_wm_task_manager_dispatch_command_err(void **state)
 
     cJSON *response1 = cJSON_CreateObject();
     cJSON_AddNumberToObject(response1, "error", WM_TASK_INVALID_COMMAND);
-    cJSON_AddStringToObject(response1, "data", "Invalid command");
+    cJSON_AddStringToObject(response1, "message", "Invalid command");
     cJSON_AddNumberToObject(response1, "agent", 1);
 
     cJSON *response2 = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response2, "error", WM_TASK_SUCCESS);
-    cJSON_AddStringToObject(response2, "data", "Success");
+    cJSON_AddNumberToObject(response2, "error", WM_TASK_INVALID_COMMAND);
+    cJSON_AddStringToObject(response2, "message", "Invalid command");
     cJSON_AddNumberToObject(response2, "agent", 2);
 
-    char *result = "[{\"error\":3,\"data\":\"Invalid command\",\"agent\":1},{\"error\":0,\"data\":\"Success\",\"agent\":2}]";
+    char *result = "{\"error\":0,\"data\":[{\"error\":3,\"message\":\"Invalid command\",\"agent\":1},{\"error\":3,\"message\":\"Invalid command\",\"agent\":2}],\"message\":\"Success\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '[{\"module\":\"upgrade_module\","
-                                                                                 "\"command\":\"unknown\","
-                                                                                 "\"agent\":1},{"
-                                                                                 "\"module\":\"upgrade_module\","
-                                                                                 "\"command\":\"upgrade_custom\","
-                                                                                 "\"agent\":2}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
+                                                                               "  \"origin\": {"
+                                                                               "      \"module\": \"upgrade_module\""
+                                                                               "   },"
+                                                                               "  \"command\": \"unknown\","
+                                                                               "  \"parameters\": {"
+                                                                               "      \"agents\": [1, 2]"
+                                                                               "   }"
+                                                                               "}'");
 
     expect_string(__wrap_wm_task_manager_parse_message, msg, message);
     will_return(__wrap_wm_task_manager_parse_message, tasks);
@@ -398,11 +419,14 @@ void test_wm_task_manager_dispatch_command_err(void **state)
     expect_string(__wrap__mterror, formatted_msg, "(8261): Invalid 'command' at index '0'");
 
     expect_memory(__wrap_wm_task_manager_analyze_task, task_object, task2, sizeof(task2));
-    will_return(__wrap_wm_task_manager_analyze_task, WM_TASK_SUCCESS);
+    will_return(__wrap_wm_task_manager_analyze_task, WM_TASK_INVALID_COMMAND);
     will_return(__wrap_wm_task_manager_analyze_task, response2);
 
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8261): Invalid 'command' at index '1'");
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '[{\"error\":3,\"data\":\"Invalid command\",\"agent\":1},{\"error\":0,\"data\":\"Success\",\"agent\":2}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":3,\"message\":\"Invalid command\",\"agent\":1},{\"error\":3,\"message\":\"Invalid command\",\"agent\":2}],\"message\":\"Success\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -415,12 +439,15 @@ void test_wm_task_manager_dispatch_command_err(void **state)
 void test_wm_task_manager_dispatch_agent_id_err(void **state)
 {
     char *response = NULL;
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade\","
-                      "\"agent\":\"1\"},{"
-                      "\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_custom\","
-                      "\"agent\":2}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [\"1\", 2]"
+                    "   }"
+                    "}";
 
     cJSON *tasks = cJSON_CreateArray();
 
@@ -439,22 +466,25 @@ void test_wm_task_manager_dispatch_agent_id_err(void **state)
 
     cJSON *response1 = cJSON_CreateObject();
     cJSON_AddNumberToObject(response1, "error", WM_TASK_INVALID_AGENT_ID);
-    cJSON_AddStringToObject(response1, "data", "Invalid agent");
+    cJSON_AddStringToObject(response1, "message", "Invalid agent");
 
     cJSON *response2 = cJSON_CreateObject();
     cJSON_AddNumberToObject(response2, "error", WM_TASK_SUCCESS);
-    cJSON_AddStringToObject(response2, "data", "Success");
+    cJSON_AddStringToObject(response2, "message", "Success");
     cJSON_AddNumberToObject(response2, "agent", 2);
 
-    char *result = "[{\"error\":4,\"data\":\"Invalid agent\"},{\"error\":0,\"data\":\"Success\",\"agent\":2}]";
+    char *result = "{\"error\":0,\"data\":[{\"error\":4,\"message\":\"Invalid agent\"},{\"error\":0,\"message\":\"Success\",\"agent\":2}],\"message\":\"Success\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '[{\"module\":\"upgrade_module\","
-                                                                                 "\"command\":\"upgrade\","
-                                                                                 "\"agent\":\"1\"},{"
-                                                                                 "\"module\":\"upgrade_module\","
-                                                                                 "\"command\":\"upgrade_custom\","
-                                                                                 "\"agent\":2}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
+                                                                               "  \"origin\": {"
+                                                                               "      \"module\": \"upgrade_module\""
+                                                                               "   },"
+                                                                               "  \"command\": \"upgrade\","
+                                                                               "  \"parameters\": {"
+                                                                               "      \"agents\": [\"1\", 2]"
+                                                                               "   }"
+                                                                               "}'");
 
     expect_string(__wrap_wm_task_manager_parse_message, msg, message);
     will_return(__wrap_wm_task_manager_parse_message, tasks);
@@ -471,7 +501,7 @@ void test_wm_task_manager_dispatch_agent_id_err(void **state)
     will_return(__wrap_wm_task_manager_analyze_task, response2);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '[{\"error\":4,\"data\":\"Invalid agent\"},{\"error\":0,\"data\":\"Success\",\"agent\":2}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":4,\"message\":\"Invalid agent\"},{\"error\":0,\"message\":\"Success\",\"agent\":2}],\"message\":\"Success\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -484,60 +514,53 @@ void test_wm_task_manager_dispatch_agent_id_err(void **state)
 void test_wm_task_manager_dispatch_task_id_err(void **state)
 {
     char *response = NULL;
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade\","
-                      "\"agent\":1},{"
-                      "\"module\":\"api\","
-                      "\"command\":\"task_result\"}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"api\""
+                    "   },"
+                    "  \"command\": \"task_result\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1]"
+                    "   }"
+                    "}";
 
     cJSON *tasks = cJSON_CreateArray();
 
     cJSON *task1 = cJSON_CreateObject();
-    cJSON_AddStringToObject(task1, "module", "upgrade_module");
-    cJSON_AddStringToObject(task1, "command", "upgrade");
-    cJSON_AddNumberToObject(task1, "agent", 1);
-
-    cJSON *task2 = cJSON_CreateObject();
-    cJSON_AddStringToObject(task2, "module", "api");
-    cJSON_AddStringToObject(task2, "command", "task_result");
+    cJSON_AddStringToObject(task1, "module", "api");
+    cJSON_AddStringToObject(task1, "command", "task_result");
 
     cJSON_AddItemToArray(tasks, task1);
-    cJSON_AddItemToArray(tasks, task2);
 
     cJSON *response1 = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response1, "error", WM_TASK_SUCCESS);
-    cJSON_AddStringToObject(response1, "data", "Success");
-    cJSON_AddNumberToObject(response1, "agent", 1);
+    cJSON_AddNumberToObject(response1, "error", WM_TASK_INVALID_TASK_ID);
+    cJSON_AddStringToObject(response1, "message", "Invalid task");
 
-    cJSON *response2 = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response2, "error", WM_TASK_INVALID_TASK_ID);
-    cJSON_AddStringToObject(response2, "data", "Invalid task");
-
-    char *result = "[{\"error\":0,\"data\":\"Success\",\"agent\":1},{\"error\":5,\"data\":\"Invalid task\"}]";
+    char *result = "{\"error\":0,\"data\":[{\"error\":5,\"message\":\"Invalid task\"}],\"message\":\"Success\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '[{\"module\":\"upgrade_module\","
-                                                                                 "\"command\":\"upgrade\","
-                                                                                 "\"agent\":1},{"
-                                                                                 "\"module\":\"api\","
-                                                                                 "\"command\":\"task_result\"}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
+                                                                               "  \"origin\": {"
+                                                                               "      \"module\": \"api\""
+                                                                               "   },"
+                                                                               "  \"command\": \"task_result\","
+                                                                               "  \"parameters\": {"
+                                                                               "      \"agents\": [1]"
+                                                                               "   }"
+                                                                               "}'");
 
     expect_string(__wrap_wm_task_manager_parse_message, msg, message);
     will_return(__wrap_wm_task_manager_parse_message, tasks);
 
     expect_memory(__wrap_wm_task_manager_analyze_task, task_object, task1, sizeof(task1));
-    will_return(__wrap_wm_task_manager_analyze_task, WM_TASK_SUCCESS);
+    will_return(__wrap_wm_task_manager_analyze_task, WM_TASK_INVALID_TASK_ID);
     will_return(__wrap_wm_task_manager_analyze_task, response1);
 
-    expect_memory(__wrap_wm_task_manager_analyze_task, task_object, task2, sizeof(task2));
-    will_return(__wrap_wm_task_manager_analyze_task, WM_TASK_INVALID_TASK_ID);
-    will_return(__wrap_wm_task_manager_analyze_task, response2);
-
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'task_id' not found at index '1'");
+    expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'task_id' not found at index '0'");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '[{\"error\":0,\"data\":\"Success\",\"agent\":1},{\"error\":5,\"data\":\"Invalid task\"}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":5,\"message\":\"Invalid task\"}],\"message\":\"Success\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -550,64 +573,55 @@ void test_wm_task_manager_dispatch_task_id_err(void **state)
 void test_wm_task_manager_dispatch_status_err(void **state)
 {
     char *response = NULL;
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade\","
-                      "\"agent\":1},{"
-                      "\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_update_status\","
-                      "\"agent\":2}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade_update_status\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [2]"
+                    "   }"
+                    "}";
 
     cJSON *tasks = cJSON_CreateArray();
 
     cJSON *task1 = cJSON_CreateObject();
     cJSON_AddStringToObject(task1, "module", "upgrade_module");
-    cJSON_AddStringToObject(task1, "command", "upgrade");
-    cJSON_AddNumberToObject(task1, "agent", 1);
-
-    cJSON *task2 = cJSON_CreateObject();
-    cJSON_AddStringToObject(task2, "module", "upgrade_module");
-    cJSON_AddStringToObject(task2, "command", "upgrade_update_status");
-    cJSON_AddNumberToObject(task2, "agent", 2);
+    cJSON_AddStringToObject(task1, "command", "upgrade_update_status");
+    cJSON_AddNumberToObject(task1, "agent", 2);
 
     cJSON_AddItemToArray(tasks, task1);
-    cJSON_AddItemToArray(tasks, task2);
 
     cJSON *response1 = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response1, "error", WM_TASK_SUCCESS);
-    cJSON_AddStringToObject(response1, "data", "Success");
-    cJSON_AddNumberToObject(response1, "agent", 1);
+    cJSON_AddNumberToObject(response1, "error", WM_TASK_INVALID_STATUS);
+    cJSON_AddStringToObject(response1, "message", "Invalid status");
+    cJSON_AddNumberToObject(response1, "agent", 2);
 
-    cJSON *response2 = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response2, "error", WM_TASK_INVALID_STATUS);
-    cJSON_AddStringToObject(response2, "data", "Invalid status");
-    cJSON_AddNumberToObject(response2, "agent", 2);
-
-    char *result = "[{\"error\":0,\"data\":\"Success\",\"agent\":1},{\"error\":6,\"data\":\"Invalid status\",\"agent\":2}]";
+    char *result = "{\"error\":0,\"data\":[{\"error\":6,\"message\":\"Invalid status\",\"agent\":2}],\"message\":\"Success\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '[{\"module\":\"upgrade_module\","
-                                                                                 "\"command\":\"upgrade\","
-                                                                                 "\"agent\":1},{"
-                                                                                 "\"module\":\"upgrade_module\","
-                                                                                 "\"command\":\"upgrade_update_status\","
-                                                                                 "\"agent\":2}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
+                                                                               "  \"origin\": {"
+                                                                               "      \"module\": \"upgrade_module\""
+                                                                               "   },"
+                                                                               "  \"command\": \"upgrade_update_status\","
+                                                                               "  \"parameters\": {"
+                                                                               "      \"agents\": [2]"
+                                                                               "   }"
+                                                                               "}'");
 
     expect_string(__wrap_wm_task_manager_parse_message, msg, message);
     will_return(__wrap_wm_task_manager_parse_message, tasks);
 
     expect_memory(__wrap_wm_task_manager_analyze_task, task_object, task1, sizeof(task1));
-    will_return(__wrap_wm_task_manager_analyze_task, WM_TASK_SUCCESS);
+    will_return(__wrap_wm_task_manager_analyze_task, WM_TASK_INVALID_STATUS);
     will_return(__wrap_wm_task_manager_analyze_task, response1);
 
-    expect_memory(__wrap_wm_task_manager_analyze_task, task_object, task2, sizeof(task2));
-    will_return(__wrap_wm_task_manager_analyze_task, WM_TASK_INVALID_STATUS);
-    will_return(__wrap_wm_task_manager_analyze_task, response2);
-
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'status' not found at index '1'");
+    expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'status' not found at index '0'");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '[{\"error\":0,\"data\":\"Success\",\"agent\":1},{\"error\":6,\"data\":\"Invalid status\",\"agent\":2}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":6,\"message\":\"Invalid status\",\"agent\":2}],\"message\":\"Success\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -620,9 +634,15 @@ void test_wm_task_manager_dispatch_status_err(void **state)
 void test_wm_task_manager_dispatch_no_task_err(void **state)
 {
     char *response = NULL;
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_update_status\","
-                      "\"agent\":1}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade_update_status\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1]"
+                    "   }"
+                    "}";
 
     cJSON *tasks = cJSON_CreateArray();
 
@@ -635,15 +655,21 @@ void test_wm_task_manager_dispatch_no_task_err(void **state)
 
     cJSON *response1 = cJSON_CreateObject();
     cJSON_AddNumberToObject(response1, "error", WM_TASK_DATABASE_NO_TASK);
-    cJSON_AddStringToObject(response1, "data", "No task in DB");
+    cJSON_AddStringToObject(response1, "message", "No task in DB");
     cJSON_AddNumberToObject(response1, "agent", 1);
 
-    char *result = "[{\"error\":7,\"data\":\"No task in DB\",\"agent\":1}]";
+    char *result = "{\"error\":0,\"data\":[{\"error\":7,\"message\":\"No task in DB\",\"agent\":1}],\"message\":\"Success\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '[{\"module\":\"upgrade_module\","
-                                                                                 "\"command\":\"upgrade_update_status\","
-                                                                                 "\"agent\":1}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
+                                                                               "  \"origin\": {"
+                                                                               "      \"module\": \"upgrade_module\""
+                                                                               "   },"
+                                                                               "  \"command\": \"upgrade_update_status\","
+                                                                               "  \"parameters\": {"
+                                                                               "      \"agents\": [1]"
+                                                                               "   }"
+                                                                               "}'");
 
     expect_string(__wrap_wm_task_manager_parse_message, msg, message);
     will_return(__wrap_wm_task_manager_parse_message, tasks);
@@ -656,7 +682,7 @@ void test_wm_task_manager_dispatch_no_task_err(void **state)
     expect_string(__wrap__mterror, formatted_msg, "(8262): Couldn't find task in DB at index '0'");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '[{\"error\":7,\"data\":\"No task in DB\",\"agent\":1}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":7,\"message\":\"No task in DB\",\"agent\":1}],\"message\":\"Success\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -669,9 +695,15 @@ void test_wm_task_manager_dispatch_no_task_err(void **state)
 void test_wm_task_manager_dispatch_db_err(void **state)
 {
     char *response = NULL;
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_update_status\","
-                      "\"agent\":1}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade_update_status\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1]"
+                    "   }"
+                    "}";
 
     cJSON *tasks = cJSON_CreateArray();
 
@@ -684,14 +716,20 @@ void test_wm_task_manager_dispatch_db_err(void **state)
 
     cJSON *response1 = cJSON_CreateObject();
     cJSON_AddNumberToObject(response1, "error", WM_TASK_DATABASE_ERROR);
-    cJSON_AddStringToObject(response1, "data", "DB error");
+    cJSON_AddStringToObject(response1, "message", "Database error");
 
-    char *result = "{\"error\":8,\"data\":\"DB error\"}";
+    char *result = "{\"error\":8,\"data\":[{\"error\":8,\"message\":\"Database error\"}],\"message\":\"Database error\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '[{\"module\":\"upgrade_module\","
-                                                                                 "\"command\":\"upgrade_update_status\","
-                                                                                 "\"agent\":1}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
+                                                                               "  \"origin\": {"
+                                                                               "      \"module\": \"upgrade_module\""
+                                                                               "   },"
+                                                                               "  \"command\": \"upgrade_update_status\","
+                                                                               "  \"parameters\": {"
+                                                                               "      \"agents\": [1]"
+                                                                               "   }"
+                                                                               "}'");
 
     expect_string(__wrap_wm_task_manager_parse_message, msg, message);
     will_return(__wrap_wm_task_manager_parse_message, tasks);
@@ -703,10 +741,10 @@ void test_wm_task_manager_dispatch_db_err(void **state)
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8260): Database error at index '0'");
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_DATABASE_ERROR);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, OS_INVALID);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, OS_INVALID);
-    will_return(__wrap_wm_task_manager_parse_response, response1);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_DATABASE_ERROR);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, OS_INVALID);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    will_return(__wrap_wm_task_manager_parse_data_response, response1);
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -723,9 +761,9 @@ void test_wm_task_manager_dispatch_parse_err(void **state)
 
     cJSON *response_json = cJSON_CreateObject();
     cJSON_AddNumberToObject(response_json, "error", WM_TASK_INVALID_MESSAGE);
-    cJSON_AddStringToObject(response_json, "data", "Invalid message");
+    cJSON_AddStringToObject(response_json, "message", "Invalid message");
 
-    char *result = "{\"error\":1,\"data\":\"Invalid message\"}";
+    char *result = "{\"error\":1,\"data\":[{\"error\":1,\"message\":\"Invalid message\"}],\"message\":\"Invalid message\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: 'unknown json'");
@@ -733,10 +771,10 @@ void test_wm_task_manager_dispatch_parse_err(void **state)
     expect_string(__wrap_wm_task_manager_parse_message, msg, message);
     will_return(__wrap_wm_task_manager_parse_message, NULL);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_INVALID_MESSAGE);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, OS_INVALID);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, OS_INVALID);
-    will_return(__wrap_wm_task_manager_parse_response, response_json);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_INVALID_MESSAGE);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, OS_INVALID);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    will_return(__wrap_wm_task_manager_parse_data_response, response_json);
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -754,12 +792,15 @@ void test_wm_task_manager_main_ok(void **state)
 
     config->enabled = 1;
 
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade\","
-                      "\"agent\":1},{"
-                      "\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_custom\","
-                      "\"agent\":2}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
 
     cJSON *tasks = cJSON_CreateArray();
 
@@ -770,7 +811,7 @@ void test_wm_task_manager_main_ok(void **state)
 
     cJSON *task2 = cJSON_CreateObject();
     cJSON_AddStringToObject(task2, "module", "upgrade_module");
-    cJSON_AddStringToObject(task2, "command", "upgrade_custom");
+    cJSON_AddStringToObject(task2, "command", "upgrade");
     cJSON_AddNumberToObject(task2, "agent", 2);
 
     cJSON_AddItemToArray(tasks, task1);
@@ -778,15 +819,15 @@ void test_wm_task_manager_main_ok(void **state)
 
     cJSON *response1 = cJSON_CreateObject();
     cJSON_AddNumberToObject(response1, "error", WM_TASK_SUCCESS);
-    cJSON_AddStringToObject(response1, "data", "Success");
+    cJSON_AddStringToObject(response1, "message", "Success");
     cJSON_AddNumberToObject(response1, "agent", 1);
 
     cJSON *response2 = cJSON_CreateObject();
     cJSON_AddNumberToObject(response2, "error", WM_TASK_SUCCESS);
-    cJSON_AddStringToObject(response2, "data", "Success");
+    cJSON_AddStringToObject(response2, "message", "Success");
     cJSON_AddNumberToObject(response2, "agent", 2);
 
-    char *response = "[{\"error\":0,\"data\":\"Success\",\"agent\":1},{\"error\":0,\"data\":\"Success\",\"agent\":2}]";
+    char *response = "{\"error\":0,\"data\":[{\"error\":0,\"message\":\"Success\",\"agent\":1},{\"error\":0,\"message\":\"Success\",\"agent\":2}],\"message\":\"Success\"}";
 
     will_return(__wrap_w_is_worker, 0);
 
@@ -814,12 +855,15 @@ void test_wm_task_manager_main_ok(void **state)
     // wm_task_manager_dispatch
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '[{\"module\":\"upgrade_module\","
-                                                                                 "\"command\":\"upgrade\","
-                                                                                 "\"agent\":1},{"
-                                                                                 "\"module\":\"upgrade_module\","
-                                                                                 "\"command\":\"upgrade_custom\","
-                                                                                 "\"agent\":2}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
+                                                                               "  \"origin\": {"
+                                                                               "      \"module\": \"upgrade_module\""
+                                                                               "   },"
+                                                                               "  \"command\": \"upgrade\","
+                                                                               "  \"parameters\": {"
+                                                                               "      \"agents\": [1, 2]"
+                                                                               "   }"
+                                                                               "}'");
 
     expect_string(__wrap_wm_task_manager_parse_message, msg, message);
     will_return(__wrap_wm_task_manager_parse_message, tasks);
@@ -833,7 +877,7 @@ void test_wm_task_manager_main_ok(void **state)
     will_return(__wrap_wm_task_manager_analyze_task, response2);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '[{\"error\":0,\"data\":\"Success\",\"agent\":1},{\"error\":0,\"data\":\"Success\",\"agent\":2}]'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":0,\"message\":\"Success\",\"agent\":1},{\"error\":0,\"message\":\"Success\",\"agent\":2}],\"message\":\"Success\"}'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, peer);
     expect_value(__wrap_OS_SendSecureTCP, size, strlen(response));
@@ -851,12 +895,15 @@ void test_wm_task_manager_main_recv_max_err(void **state)
 
     config->enabled = 1;
 
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade\","
-                      "\"agent\":1},{"
-                      "\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_custom\","
-                      "\"agent\":2}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
 
     will_return(__wrap_w_is_worker, 0);
 
@@ -895,12 +942,15 @@ void test_wm_task_manager_main_recv_empty_err(void **state)
 
     config->enabled = 1;
 
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade\","
-                      "\"agent\":1},{"
-                      "\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_custom\","
-                      "\"agent\":2}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
 
     will_return(__wrap_w_is_worker, 0);
 
@@ -939,12 +989,15 @@ void test_wm_task_manager_main_recv_err(void **state)
 
     config->enabled = 1;
 
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade\","
-                      "\"agent\":1},{"
-                      "\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_custom\","
-                      "\"agent\":2}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
 
     will_return(__wrap_w_is_worker, 0);
 
@@ -983,12 +1036,15 @@ void test_wm_task_manager_main_sockterr_err(void **state)
 
     config->enabled = 1;
 
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade\","
-                      "\"agent\":1},{"
-                      "\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_custom\","
-                      "\"agent\":2}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
 
     will_return(__wrap_w_is_worker, 0);
 
@@ -1027,12 +1083,15 @@ void test_wm_task_manager_main_accept_err(void **state)
 
     config->enabled = 1;
 
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade\","
-                      "\"agent\":1},{"
-                      "\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_custom\","
-                      "\"agent\":2}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
 
     will_return(__wrap_w_is_worker, 0);
 
@@ -1078,12 +1137,15 @@ void test_wm_task_manager_main_select_empty_err(void **state)
 
     config->enabled = 1;
 
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade\","
-                      "\"agent\":1},{"
-                      "\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_custom\","
-                      "\"agent\":2}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
 
     will_return(__wrap_w_is_worker, 0);
 
@@ -1124,12 +1186,15 @@ void test_wm_task_manager_main_select_err(void **state)
 
     config->enabled = 1;
 
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade\","
-                      "\"agent\":1},{"
-                      "\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_custom\","
-                      "\"agent\":2}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
 
     will_return(__wrap_w_is_worker, 0);
 
@@ -1173,12 +1238,15 @@ void test_wm_task_manager_main_worker_err(void **state)
 
     config->enabled = 1;
 
-    char *message = "[{\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade\","
-                      "\"agent\":1},{"
-                      "\"module\":\"upgrade_module\","
-                      "\"command\":\"upgrade_custom\","
-                      "\"agent\":2}]";
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
 
     will_return(__wrap_w_is_worker, 1);
 

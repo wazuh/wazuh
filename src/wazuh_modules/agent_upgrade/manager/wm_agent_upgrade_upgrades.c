@@ -195,10 +195,12 @@ STATIC void* wm_agent_upgrade_start_upgrade(void *arg) {
             if (upgrade_task->custom_version && (wm_agent_upgrade_compare_versions(upgrade_task->custom_version, WM_UPGRADE_NEW_UPGRADE_MECHANISM) < 0)) {
 
                 // Update task to "Legacy". The agent won't report the result of the upgrade task
-                cJSON *status_request = cJSON_CreateArray();
                 cJSON *status_response = cJSON_CreateArray();
+                cJSON *status_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS,
+                                                                                   cJSON_CreateIntArray(&agent_task->agent_info->agent_id, 1),
+                                                                                   task_statuses[WM_TASK_LEGACY],
+                                                                                   NULL);
 
-                cJSON_AddItemToArray(status_request, wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_LEGACY], NULL));
                 wm_agent_upgrade_task_module_callback(status_response, status_request, NULL, NULL);
                 wm_agent_upgrade_validate_task_status_message(cJSON_GetArrayItem(status_response, 0), NULL, NULL);
 
@@ -209,10 +211,12 @@ STATIC void* wm_agent_upgrade_start_upgrade(void *arg) {
     } else {
 
         // Update task to "Failed"
-        cJSON *status_request = cJSON_CreateArray();
         cJSON *status_response = cJSON_CreateArray();
+        cJSON *status_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS,
+                                                                           cJSON_CreateIntArray(&agent_task->agent_info->agent_id, 1),
+                                                                           task_statuses[WM_TASK_FAILED],
+                                                                           upgrade_error_codes[error_code]);
 
-        cJSON_AddItemToArray(status_request, wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agent_task->agent_info->agent_id, task_statuses[WM_TASK_FAILED], upgrade_error_codes[error_code]));
         wm_agent_upgrade_task_module_callback(status_response, status_request, NULL, NULL);
         wm_agent_upgrade_validate_task_status_message(cJSON_GetArrayItem(status_response, 0), NULL, NULL);
 

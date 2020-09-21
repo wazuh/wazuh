@@ -159,7 +159,7 @@ cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) __at
 
 /**
  * Send a request to the task module and executes a callback for all the given responses
- * @param json_response cJSON array where the task responses will be stored
+ * @param data_array cJSON array where the task responses will be stored
  * @param task_module_request cJSON to be sent to the task module
  * @param success_callback function receives pointer to the error flag and a json and return the response json
  * @param error_callback function that can generate an action when the communication with task module fails
@@ -168,7 +168,7 @@ cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) __at
  * @retval OS_INVALID on errors
  * 
  * */
-int wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request, cJSON* (*success_callback)(int *error, cJSON* input_json), void (*error_callback)(int agent_id, int free)) __attribute__((nonnull(1,2)));
+int wm_agent_upgrade_task_module_callback(cJSON *data_array, const cJSON* task_module_request, cJSON* (*success_callback)(int *error, cJSON* input_json), void (*error_callback)(int agent_id, int free)) __attribute__((nonnull(1,2)));
 
 /**
  * Callback defined for upgrade command to process task manager information reponse

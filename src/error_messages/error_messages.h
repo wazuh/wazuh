@@ -525,7 +525,6 @@
 #define MOD_TASK_SOCKTERR_ERROR                     "(8255): Response size is bigger than expected."
 #define MOD_TASK_LENGTH_ERROR                       "(8256): Received message > '%i'"
 #define MOD_TASK_PARSE_JSON_ERROR                   "(8257): Error parsing JSON event: '%s'"
-#define MOD_TASK_PARSE_EMPTY_ERROR                  "(8258): Invalid message. Array of tasks is empty."
 #define MOD_TASK_PARSE_KEY_ERROR                    "(8259): Invalid message. '%s' not found at index '%d'"
 #define MOD_TASK_DB_ERROR                           "(8260): Database error at index '%d'"
 #define MOD_TASK_UNKNOWN_VALUE_ERROR                "(8261): Invalid '%s' at index '%d'"
