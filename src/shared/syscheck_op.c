@@ -30,35 +30,6 @@ extern void mock_assert(const int result, const char* const expression,
 #endif
 #endif
 
-int delete_target_file(const char *path) {
-    char full_path[PATH_MAX] = "\0";
-    snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
-
-#ifdef WIN32
-    char drive[3];
-    drive[0] = PATH_SEP;
-    drive[1] = path[0];
-
-    char *windows_path = strchr(path, ':');
-
-    if (windows_path == NULL) {
-        mdebug1("Incorrect path. This does not contain ':' ");
-        return 0;
-    }
-
-    strncat(full_path, drive, 2);
-    strncat(full_path, (windows_path + 1), PATH_MAX - strlen(full_path) - 1);
-#else
-    strncat(full_path, path, PATH_MAX - strlen(full_path) - 1);
-#endif
-
-    if(rmdir_ex(full_path) == 0){
-        return(remove_empty_folders(full_path));
-    }
-
-    return 1;
-}
-
 char *escape_syscheck_field(char *field) {
     char *esc_it;
 
@@ -91,9 +62,7 @@ void normalize_path(char * path) {
 int remove_empty_folders(const char *path) {
     assert(path != NULL);
 
-    const char LOCALDIR[] = { PATH_SEP, 'l', 'o', 'c', 'a', 'l', '\0' };
     char DIFF_PATH[MAXPATHLEN] = DIFF_DIR_PATH;
-    strcat(DIFF_PATH, LOCALDIR);
     const char *c;
     char parent[PATH_MAX] = "\0";
     char ** subdir;
@@ -104,16 +73,15 @@ int remove_empty_folders(const char *path) {
     if (c) {
         memcpy(parent, path, c - path);
         parent[c - path] = '\0';
-        // Don't delete above /local
+        // Don't delete above /diff
         if (strcmp(DIFF_PATH, parent) != 0) {
             subdir = wreaddir(parent);
             if (!(subdir && *subdir)) {
                 // Remove empty folder
                 mdebug1("Removing empty directory '%s'.", parent);
                 if (rmdir_ex(parent) != 0) {
-                    mwarn("Empty directory '%s' couldn't be deleted. ('%s')",
-                        parent, strerror(errno));
-                    retval = 1;
+                    mwarn("Empty directory '%s' couldn't be deleted. ('%s')", parent, strerror(errno));
+                    retval = -1;
                 } else {
                     // Get parent and remove it if it's empty
                     retval = remove_empty_folders(parent);

@@ -60,6 +60,8 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.registry_ignore = NULL;
     syscheck.registry_ignore_regex = NULL;
     syscheck.max_fd_win_rt  = 0;
+    syscheck.registry_nodiff = NULL;
+    syscheck.registry_nodiff_regex = NULL;
 #endif
     syscheck.prefilter_cmd  = NULL;
     syscheck.sync_interval  = 300;

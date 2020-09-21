@@ -30,7 +30,7 @@ int __wrap_fim_db_delete_range(fdb_t * fim_sql,
                                pthread_mutex_t *mutex,
                                int storage);
 
-int __wrap_fim_db_get_count_entry_path(fdb_t * fim_sql);
+int __wrap_fim_db_get_count_file_entry(fdb_t * fim_sql);
 
 int __wrap_fim_db_get_count_range(fdb_t *fim_sql,
                                   char *start,

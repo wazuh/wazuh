@@ -18,6 +18,7 @@ typedef enum fim_event_mode {
 } fim_event_mode;
 
 typedef enum fdb_stmt {
+    // Files
     FIMDB_STMT_INSERT_DATA,
     FIMDB_STMT_REPLACE_PATH,
     FIMDB_STMT_GET_PATH,
@@ -41,6 +42,35 @@ typedef enum fdb_stmt {
     FIMDB_STMT_GET_COUNT_PATH,
     FIMDB_STMT_GET_COUNT_DATA,
     FIMDB_STMT_GET_INODE,
+    // Registries
+    FIMDB_STMT_REPLACE_REG_DATA,
+    FIMDB_STMT_REPLACE_REG_KEY,
+    FIMDB_STMT_GET_REG_KEY,
+    FIMDB_STMT_GET_REG_DATA,
+    FIMDB_STMT_UPDATE_REG_DATA,
+    FIMDB_STMT_UPDATE_REG_KEY,
+    FIMDB_STMT_GET_ALL_REG_ENTRIES,
+    FIMDB_STMT_GET_REG_KEY_NOT_SCANNED,
+    FIMDB_STMT_GET_REG_DATA_NOT_SCANNED,
+    FIMDB_STMT_SET_ALL_REG_KEY_UNSCANNED,
+    FIMDB_STMT_SET_REG_KEY_UNSCANNED,
+    FIMDB_STMT_SET_ALL_REG_DATA_UNSCANNED,
+    FIMDB_STMT_SET_REG_DATA_UNSCANNED,
+    FIMDB_STMT_GET_REG_ROWID,
+    FIMDB_STMT_DELETE_REG_KEY_PATH,
+    FIMDB_STMT_DELETE_REG_DATA,
+    FIMDB_STMT_DELETE_REG_DATA_PATH,
+    FIMDB_STMT_GET_COUNT_REG_KEY,
+    FIMDB_STMT_GET_COUNT_REG_DATA,
+    FIMDB_STMT_GET_COUNT_REG_KEY_AND_DATA,
+    FIMDB_STMT_GET_LAST_REG_KEY,
+    FIMDB_STMT_GET_FIRST_REG_KEY,
+    FIMDB_STMT_GET_REG_COUNT_RANGE,
+    FIMDB_STMT_GET_REG_PATH_RANGE,
+    FIMDB_STMT_SET_REG_DATA_SCANNED,
+    FIMDB_STMT_SET_REG_KEY_SCANNED,
+    FIMDB_STMT_GET_REG_KEY_ROWID,
+    FIMDB_STMT_GET_REG_DATA_ROWID,
     FIMDB_STMT_SIZE
 } fdb_stmt;
 
@@ -345,6 +375,8 @@ typedef struct _config {
     registry *registry;                         /* array of registry entries to be scanned */
     int max_fd_win_rt;
     whodata wdata;
+    registry *registry_nodiff;                     /* list of values/registries to never output diff */
+    registry_regex *registry_nodiff_regex;            /* regex of values/registries to never output diff */
 #endif
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
     char **audit_key;               // Listen audit keys
@@ -397,12 +429,12 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node);
  *
  * @param syscheck Syscheck configuration structure
  * @param entry Entry to be dumped
- * @param vals Indicates the system arch for registries and the attributes for folders to be set
+ * @param vals Indicates the attributes for folders or registries to be set
  * @param reg 1 if it's a registry, 0 if not
  * @param restrictfile The restrict regex to be set
  * @param recursion_level The recursion level to be set
  * @param tag The tag to be set
- * @param link If the added entry is pointed by a symbolic link
+ * @param link If the added entry is pointed by a symbolic link for folders and arch for registries
  * @param diff_size Maximum size to calculate diff for files in the directory
  */
 void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile,

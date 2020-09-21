@@ -15,7 +15,7 @@
 #include "shared.h"
 #include "syscheck.h"
 #include "rootcheck/rootcheck.h"
-#include "db/fim_db.h"
+#include "db/fim_db_files.h"
 
 // Global variables
 syscheck_config syscheck;
@@ -219,6 +219,16 @@ int Start_win32_Syscheck()
         if(syscheck.registry_ignore_regex)
             for (r = 0; syscheck.registry_ignore_regex[r].regex != NULL; r++)
                 minfo(FIM_PRINT_IGNORE_SREGEX, "registry", syscheck.registry_ignore_regex[r].regex->raw);
+
+        /* Print registry values with nodiff. */
+        if(syscheck.registry_nodiff)
+            for (r = 0; syscheck.registry_nodiff[r].entry != NULL; r++)
+                minfo(FIM_NO_DIFF_REGISTRY, "registry value", syscheck.registry_nodiff[r].entry);
+
+        /* Print sregex registry values with nodiff. */
+        if(syscheck.registry_nodiff_regex)
+            for (r = 0; syscheck.registry_nodiff_regex[r].regex != NULL; r++)
+                minfo(FIM_NO_DIFF_REGISTRY, "registry sregex", syscheck.registry_nodiff_regex[r].regex->raw);
 
         /* Print files with no diff. */
         if (syscheck.nodiff){
