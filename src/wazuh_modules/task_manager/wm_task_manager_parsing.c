@@ -99,7 +99,7 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
         cJSON *agent_json = NULL;
         int agent_index = 0;
 
-        while(agent_json = cJSON_GetArrayItem(agents_json, agent_index++), agent_json) {
+        while(agent_json = cJSON_GetArrayItem(agents_json, agent_index), agent_json) {
 
             if (agent_json->type == cJSON_Number) {
                 cJSON *task = cJSON_CreateObject();
@@ -119,13 +119,15 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
             } else {
                 mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, task_manager_json_keys[WM_TASK_AGENTS], agent_index);
             }
+
+            agent_index++;
         }
 
     } else if (tasks_json && (tasks_json->type == cJSON_Array)) {
         cJSON *task_json = NULL;
         int task_index = 0;
 
-        while(task_json = cJSON_GetArrayItem(agents_json, task_index++), task_json) {
+        while(task_json = cJSON_GetArrayItem(tasks_json, task_index), task_json) {
 
             if (task_json->type == cJSON_Number) {
                 cJSON *task = cJSON_CreateObject();
@@ -145,6 +147,8 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
             } else {
                 mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, task_manager_json_keys[WM_TASK_TASKS], task_index);
             }
+
+            task_index++;
         }
     }
 

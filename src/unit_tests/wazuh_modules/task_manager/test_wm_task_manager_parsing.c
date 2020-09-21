@@ -483,7 +483,39 @@ void test_wm_task_manager_parse_data_result_no_module(void **state)
     assert_string_equal(cJSON_GetObjectItem(response, "update_time")->valuestring, "5/5/20 12:55:18.789");
 }
 
-void test_wm_task_manager_parse_message(void **state)
+void test_wm_task_manager_parse_response_data_array(void **state) {
+    int error_code = 0;
+    cJSON *data = cJSON_CreateArray();
+
+    cJSON *response = wm_task_manager_parse_response(error_code, data);
+
+    *state = response;
+
+    assert_non_null(cJSON_GetObjectItem(response, "error"));
+    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, error_code);
+    assert_non_null(cJSON_GetObjectItem(response, "message"));
+    assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Success");
+    assert_non_null(cJSON_GetObjectItem(response, "data"));
+    assert_memory_equal(cJSON_GetObjectItem(response, "data"), data, sizeof(data));
+}
+
+void test_wm_task_manager_parse_response_data_object(void **state) {
+    int error_code = 0;
+    cJSON *data = cJSON_CreateObject();
+
+    cJSON *response = wm_task_manager_parse_response(error_code, data);
+
+    *state = response;
+
+    assert_non_null(cJSON_GetObjectItem(response, "error"));
+    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, error_code);
+    assert_non_null(cJSON_GetObjectItem(response, "message"));
+    assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Success");
+    assert_non_null(cJSON_GetObjectItem(response, "data"));
+    assert_memory_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(response, "data"), 0), data, sizeof(data));
+}
+
+void test_wm_task_manager_parse_message_agents(void **state)
 {
     char *message = "{"
                     "  \"origin\": {"
@@ -508,6 +540,9 @@ void test_wm_task_manager_parse_message(void **state)
     assert_string_equal(cJSON_GetObjectItem(agent1, "command")->valuestring, "upgrade");
     assert_non_null(cJSON_GetObjectItem(agent1, "agent"));
     assert_int_equal(cJSON_GetObjectItem(agent1, "agent")->valueint, 1);
+    assert_null(cJSON_GetObjectItem(agent1, "task_id"));
+    assert_null(cJSON_GetObjectItem(agent1, "status"));
+    assert_null(cJSON_GetObjectItem(agent1, "error_msg"));
     cJSON *agent2 = cJSON_GetArrayItem(response, 1);
     assert_non_null(cJSON_GetObjectItem(agent2, "module"));
     assert_string_equal(cJSON_GetObjectItem(agent2, "module")->valuestring, "upgrade_module");
@@ -515,6 +550,184 @@ void test_wm_task_manager_parse_message(void **state)
     assert_string_equal(cJSON_GetObjectItem(agent2, "command")->valuestring, "upgrade");
     assert_non_null(cJSON_GetObjectItem(agent2, "agent"));
     assert_int_equal(cJSON_GetObjectItem(agent2, "agent")->valueint, 2);
+    assert_null(cJSON_GetObjectItem(agent2, "task_id"));
+    assert_null(cJSON_GetObjectItem(agent2, "status"));
+    assert_null(cJSON_GetObjectItem(agent2, "error_msg"));
+}
+
+void test_wm_task_manager_parse_message_agents_status(void **state)
+{
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade_update_status\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1],"
+                    "      \"status\": \"Failed\","
+                    "      \"error_msg\": \"SHA1 error\""
+                    "   }"
+                    "}";
+
+    cJSON *response = wm_task_manager_parse_message(message);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_int_equal(cJSON_GetArraySize(response), 1);
+    cJSON *agent1 = cJSON_GetArrayItem(response, 0);
+    assert_non_null(cJSON_GetObjectItem(agent1, "module"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "module")->valuestring, "upgrade_module");
+    assert_non_null(cJSON_GetObjectItem(agent1, "command"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "command")->valuestring, "upgrade_update_status");
+    assert_non_null(cJSON_GetObjectItem(agent1, "agent"));
+    assert_int_equal(cJSON_GetObjectItem(agent1, "agent")->valueint, 1);
+    assert_null(cJSON_GetObjectItem(agent1, "task_id"));
+    assert_non_null(cJSON_GetObjectItem(agent1, "status"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "status")->valuestring, "Failed");
+    assert_non_null(cJSON_GetObjectItem(agent1, "error_msg"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "error_msg")->valuestring, "SHA1 error");
+    assert_null(cJSON_GetArrayItem(response, 1));
+}
+
+void test_wm_task_manager_parse_message_agents_error(void **state)
+{
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade_custom\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1,\"2\"]"
+                    "   }"
+                    "}";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8261): Invalid 'agents' at index '1'");
+
+    cJSON *response = wm_task_manager_parse_message(message);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_int_equal(cJSON_GetArraySize(response), 1);
+    cJSON *agent1 = cJSON_GetArrayItem(response, 0);
+    assert_non_null(cJSON_GetObjectItem(agent1, "module"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "module")->valuestring, "upgrade_module");
+    assert_non_null(cJSON_GetObjectItem(agent1, "command"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "command")->valuestring, "upgrade_custom");
+    assert_non_null(cJSON_GetObjectItem(agent1, "agent"));
+    assert_int_equal(cJSON_GetObjectItem(agent1, "agent")->valueint, 1);
+    assert_null(cJSON_GetObjectItem(agent1, "task_id"));
+    assert_null(cJSON_GetObjectItem(agent1, "status"));
+    assert_null(cJSON_GetObjectItem(agent1, "error_msg"));
+    assert_null(cJSON_GetArrayItem(response, 1));
+}
+
+void test_wm_task_manager_parse_message_tasks(void **state)
+{
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"tasks\": [1, 2]"
+                    "   }"
+                    "}";
+
+    cJSON *response = wm_task_manager_parse_message(message);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_int_equal(cJSON_GetArraySize(response), 2);
+    cJSON *agent1 = cJSON_GetArrayItem(response, 0);
+    assert_non_null(cJSON_GetObjectItem(agent1, "module"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "module")->valuestring, "upgrade_module");
+    assert_non_null(cJSON_GetObjectItem(agent1, "command"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "command")->valuestring, "upgrade");
+    assert_null(cJSON_GetObjectItem(agent1, "agent"));
+    assert_non_null(cJSON_GetObjectItem(agent1, "task_id"));
+    assert_int_equal(cJSON_GetObjectItem(agent1, "task_id")->valueint, 1);
+    assert_null(cJSON_GetObjectItem(agent1, "status"));
+    assert_null(cJSON_GetObjectItem(agent1, "error_msg"));
+    cJSON *agent2 = cJSON_GetArrayItem(response, 1);
+    assert_non_null(cJSON_GetObjectItem(agent2, "module"));
+    assert_string_equal(cJSON_GetObjectItem(agent2, "module")->valuestring, "upgrade_module");
+    assert_non_null(cJSON_GetObjectItem(agent2, "command"));
+    assert_string_equal(cJSON_GetObjectItem(agent2, "command")->valuestring, "upgrade");
+    assert_non_null(cJSON_GetObjectItem(agent2, "task_id"));
+    assert_int_equal(cJSON_GetObjectItem(agent2, "task_id")->valueint, 2);
+    assert_null(cJSON_GetObjectItem(agent2, "status"));
+    assert_null(cJSON_GetObjectItem(agent2, "error_msg"));
+}
+
+void test_wm_task_manager_parse_message_tasks_status(void **state)
+{
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade_update_status\","
+                    "  \"parameters\": {"
+                    "      \"tasks\": [1],"
+                    "      \"status\": \"Failed\","
+                    "      \"error_msg\": \"SHA1 error\""
+                    "   }"
+                    "}";
+
+    cJSON *response = wm_task_manager_parse_message(message);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_int_equal(cJSON_GetArraySize(response), 1);
+    cJSON *agent1 = cJSON_GetArrayItem(response, 0);
+    assert_non_null(cJSON_GetObjectItem(agent1, "module"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "module")->valuestring, "upgrade_module");
+    assert_non_null(cJSON_GetObjectItem(agent1, "command"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "command")->valuestring, "upgrade_update_status");
+    assert_non_null(cJSON_GetObjectItem(agent1, "task_id"));
+    assert_int_equal(cJSON_GetObjectItem(agent1, "task_id")->valueint, 1);
+    assert_non_null(cJSON_GetObjectItem(agent1, "status"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "status")->valuestring, "Failed");
+    assert_non_null(cJSON_GetObjectItem(agent1, "error_msg"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "error_msg")->valuestring, "SHA1 error");
+    assert_null(cJSON_GetArrayItem(response, 1));
+}
+
+void test_wm_task_manager_parse_message_tasks_error(void **state)
+{
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade_custom\","
+                    "  \"parameters\": {"
+                    "      \"tasks\": [1,\"2\"]"
+                    "   }"
+                    "}";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8261): Invalid 'tasks' at index '1'");
+
+    cJSON *response = wm_task_manager_parse_message(message);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_int_equal(cJSON_GetArraySize(response), 1);
+    cJSON *agent1 = cJSON_GetArrayItem(response, 0);
+    assert_non_null(cJSON_GetObjectItem(agent1, "module"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "module")->valuestring, "upgrade_module");
+    assert_non_null(cJSON_GetObjectItem(agent1, "command"));
+    assert_string_equal(cJSON_GetObjectItem(agent1, "command")->valuestring, "upgrade_custom");
+    assert_non_null(cJSON_GetObjectItem(agent1, "task_id"));
+    assert_int_equal(cJSON_GetObjectItem(agent1, "task_id")->valueint, 1);
+    assert_null(cJSON_GetObjectItem(agent1, "status"));
+    assert_null(cJSON_GetObjectItem(agent1, "error_msg"));
+    assert_null(cJSON_GetArrayItem(response, 1));
 }
 
 void test_wm_task_manager_parse_message_command_err(void **state)
@@ -536,6 +749,23 @@ void test_wm_task_manager_parse_message_command_err(void **state)
     assert_null(response);
 }
 
+void test_wm_task_manager_parse_message_origin_err(void **state)
+{
+    char *message = "{"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'origin' not found at index '0'");
+
+    cJSON *response = wm_task_manager_parse_message(message);
+
+    assert_null(response);
+}
+
 void test_wm_task_manager_parse_message_module_err(void **state)
 {
     char *message = "{"
@@ -549,6 +779,23 @@ void test_wm_task_manager_parse_message_module_err(void **state)
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'module' not found at index '0'");
+
+    cJSON *response = wm_task_manager_parse_message(message);
+
+    assert_null(response);
+}
+
+void test_wm_task_manager_parse_message_parameters_err(void **state)
+{
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\""
+                    "}";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'parameters' not found at index '0'");
 
     cJSON *response = wm_task_manager_parse_message(message);
 
@@ -590,10 +837,20 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_task_manager_parse_data_result_no_status, teardown_json),
         cmocka_unit_test_teardown(test_wm_task_manager_parse_data_result_no_command, teardown_json),
         cmocka_unit_test_teardown(test_wm_task_manager_parse_data_result_no_module, teardown_json),
+        // wm_task_manager_parse_response
+        cmocka_unit_test_teardown(test_wm_task_manager_parse_response_data_array, teardown_json),
+        cmocka_unit_test_teardown(test_wm_task_manager_parse_response_data_object, teardown_json),
         // wm_task_manager_parse_message
-        cmocka_unit_test_teardown(test_wm_task_manager_parse_message, teardown_json),
+        cmocka_unit_test_teardown(test_wm_task_manager_parse_message_agents, teardown_json),
+        cmocka_unit_test_teardown(test_wm_task_manager_parse_message_agents_status, teardown_json),
+        cmocka_unit_test_teardown(test_wm_task_manager_parse_message_agents_error, teardown_json),
+        cmocka_unit_test_teardown(test_wm_task_manager_parse_message_tasks, teardown_json),
+        cmocka_unit_test_teardown(test_wm_task_manager_parse_message_tasks_status, teardown_json),
+        cmocka_unit_test_teardown(test_wm_task_manager_parse_message_tasks_error, teardown_json),
         cmocka_unit_test(test_wm_task_manager_parse_message_command_err),
+        cmocka_unit_test(test_wm_task_manager_parse_message_origin_err),
         cmocka_unit_test(test_wm_task_manager_parse_message_module_err),
+        cmocka_unit_test(test_wm_task_manager_parse_message_parameters_err),
         cmocka_unit_test(test_wm_task_manager_parse_message_invalid_json_err)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
