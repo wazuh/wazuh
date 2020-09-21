@@ -13,8 +13,8 @@
 #include <cmocka.h>
 
 LONG wrap_RegQueryInfoKey(__UNUSED_PARAM(HKEY hKey),
-                          LPSTR lpClass,
-                          LPDWORD lpcchClass,
+                          __UNUSED_PARAM(LPSTR lpClass),
+                          __UNUSED_PARAM(LPDWORD lpcchClass),
                           __UNUSED_PARAM(LPDWORD lpReserved),
                           LPDWORD lpcSubKeys,
                           __UNUSED_PARAM(LPDWORD lpcbMaxSubKeyLen),
@@ -24,11 +24,9 @@ LONG wrap_RegQueryInfoKey(__UNUSED_PARAM(HKEY hKey),
                           __UNUSED_PARAM(LPDWORD lpcbMaxValueLen),
                           __UNUSED_PARAM(LPDWORD lpcbSecurityDescriptor),
                           PFILETIME lpftLastWriteTime) {
+    *lpcSubKeys = mock_type(CHAR);
+    *lpcValues = mock_type(DWORD);
     PFILETIME mock_file_time;
-    *lpClass = mock_type(CHAR);
-    *lpcchClass = mock_type(DWORD);
-    *lpcSubKeys = mock_type(long);
-    *lpcValues = mock_type(long);
     mock_file_time = mock_type(PFILETIME);
     lpftLastWriteTime->dwLowDateTime = mock_file_time->dwLowDateTime;
     lpftLastWriteTime->dwHighDateTime = mock_file_time->dwHighDateTime;
