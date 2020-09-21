@@ -87,7 +87,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFail)
     const auto handle { RSync::RSyncImplementation::instance().create() };
     const auto expectedResult
     {
-        R"({"component":"test_component","data":{"attributes":{"campo prueba":"prueba","test_index_field":"11","test_last_event_field":"22"},"index":"11","timestamp":"22"},"type":"state"})"
+        R"({"component":"test_component","data":{"attributes":{"test field":"test","test_index_field":"11","test_last_event_field":"22"},"index":"11","timestamp":"22"},"type":"state"})"
     };
 
      const auto config { R"({
@@ -146,7 +146,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFail)
         nlohmann::json json { nlohmann::json::object() };
         json[0]["test_index_field"] = "11";
         json[0]["test_last_event_field"] = "22";
-        json[0]["campo prueba"] = "prueba";
+        json[0]["test field"] = "test";
         (*callback)(json);
     }));
 
@@ -174,6 +174,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFail)
 TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
 {
     const auto handle { RSync::RSyncImplementation::instance().create() };
+
     const auto expectedResult1
     {
         R"({"component":"test_component","data":{"begin":"1","checksum":"c5dcae9d302e6c131194d392700dd52d42e5003677ce5df44cf1473ec5d5f950","end":"1","id":1,"tail":"2"},"type":"integrity_check_left"})"

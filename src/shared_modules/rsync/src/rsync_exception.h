@@ -21,6 +21,7 @@ constexpr auto INVALID_OPERATION        { std::make_pair(4, "Invalid message ope
 constexpr auto UNEXPECTED_SIZE          { std::make_pair(5, "Unexpected size value during sync process.") };
 constexpr auto ERROR_IN_SELECT_DATA     { std::make_pair(6, "Error during the select of data." ) };
 constexpr auto NOT_SPECIALIZED_FUNCTION { std::make_pair(7, "Function not specialized." ) };
+constexpr auto INPUT_JSON_INCOMPLETE    { std::make_pair(8, "Incomplete json provided." ) };
 
 namespace RSync
 {

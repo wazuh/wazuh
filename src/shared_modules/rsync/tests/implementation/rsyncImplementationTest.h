@@ -14,7 +14,7 @@
 
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
-#include "typedef.h"
+#include "commonDefs.h"
 
 class RSyncImplementationTest : public ::testing::Test 
 {
