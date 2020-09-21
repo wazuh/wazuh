@@ -47,6 +47,17 @@ static void callback(const void* data,
     wrapper->callbackMock(reinterpret_cast<const char *>(data));
 }
 
+static void callbackRSyncWrapper(const void* payload, size_t size, void* userData)
+{
+    if (userData && payload)
+    {
+        std::function<void(const std::string&)>* callback { static_cast<std::function<void(const std::string&)>*>(userData) };
+        std::string payloadStr;
+        payloadStr.assign(reinterpret_cast<const char*>(payload), size);
+        (*callback)(payloadStr);
+    }
+}
+
 struct CJsonDeleter
 {
     void operator()(char* json)
@@ -83,10 +94,254 @@ TEST_F(RSyncTest, Initialization)
     ASSERT_NE(nullptr, handle);
 }
 
-TEST_F(RSyncTest, startSync)
+TEST_F(RSyncTest, startSyncWithInvalidParams)
 {
-    const auto handle { rsync_create() };
-    ASSERT_EQ(0, rsync_start_sync(handle));
+    const auto dbsyncHandle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO) };
+    ASSERT_NE(nullptr, dbsyncHandle);
+
+    const auto rsyncHandle { rsync_create() };
+    ASSERT_NE(nullptr, rsyncHandle);
+
+    const auto startConfigStmt
+    {
+        R"({"table":"entry_path"})"
+    };
+    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    sync_callback_data_t callbackData { callback, nullptr };
+
+    ASSERT_NE(0, rsync_start_sync(nullptr, dbsyncHandle, jsSelect.get(), {}));
+    ASSERT_NE(0, rsync_start_sync(rsyncHandle, nullptr, jsSelect.get(), {}));
+    ASSERT_NE(0, rsync_start_sync(rsyncHandle, dbsyncHandle, nullptr, {}));
+    ASSERT_NE(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), callbackData));
+}
+
+TEST_F(RSyncTest, startSyncWithoutExtraParams)
+{
+    const auto dbsyncHandle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO) };
+    ASSERT_NE(nullptr, dbsyncHandle);
+
+    const auto rsyncHandle { rsync_create() };
+    ASSERT_NE(nullptr, rsyncHandle);
+
+    const auto startConfigStmt
+    {
+        R"({"table":"entry_path"})"
+    };
+    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+
+    ASSERT_NE(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), {}));
+}
+
+TEST_F(RSyncTest, startSyncWithBadSelectQuery)
+{
+    const auto dbsyncHandle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO) };
+    ASSERT_NE(nullptr, dbsyncHandle);
+
+    const auto rsyncHandle { rsync_create() };
+    ASSERT_NE(nullptr, rsyncHandle);
+
+    const auto startConfigStmt
+    {
+        R"({"table":"entry_path",
+             "extra_parameters":
+                [{
+                    "first":{
+                        "row_data_query_json":
+                            {
+                                "row_filter":"",
+                                "distinct_opt":false,
+                                "order_by_opt":"path ASC LIMIT 1",
+                                "count_opt":1
+                            },
+                    }
+                    "last":{
+                        "row_data_query_json":
+                            {
+                                "column_list":["path"],
+                                "row_filter":"",
+                                "distinct_opt":false,
+                                "order_by_opt":"path DESC LIMIT 1",
+                                "count_opt":1
+                            }
+                    }
+               }],
+            })"
+    };
+    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+
+    ASSERT_NE(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), {}));
+}
+
+TEST_F(RSyncTest, startSyncWithIntegrityClear)
+{
+    const auto sql
+    {
+        R"(
+        PRAGMA foreign_keys=OFF;
+        BEGIN TRANSACTION;
+        CREATE TABLE entry_path (path TEXT NOT NULL, inode_id INTEGER, mode INTEGER, last_event INTEGER, entry_type INTEGER, scanned INTEGER, options INTEGER, checksum TEXT NOT NULL, PRIMARY KEY(path));
+        COMMIT;)"
+    };
+    const auto dbsyncHandle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, dbsyncHandle);
+
+    const auto rsyncHandle { rsync_create() };
+    ASSERT_NE(nullptr, rsyncHandle);
+
+    const auto expectedResult1
+    {
+        R"({"component":"test_component","data":{")"
+    };
+
+    const auto expectedResult2
+    {
+        R"("type":"integrity_clear"})"
+    };
+
+    const auto startConfigStmt
+    {
+        R"({"table":"entry_path",
+            "first_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"WHERE path is null",
+                    "distinct_opt":false,
+                    "order_by_opt":"path ASC",
+                    "count_opt":1
+                },
+            "last_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"WHERE path is null",
+                    "distinct_opt":false,
+                    "order_by_opt":"path DESC",
+                    "count_opt":1
+                },
+            "component":"test_component",
+            "index":"path",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "column_list":["path, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+            })"
+    };
+    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+
+    const auto checkExpected
+    {
+        [&](const std::string& payload) -> ::testing::AssertionResult
+        {
+            auto retVal { ::testing::AssertionFailure() };
+            // Necessary to avoid checking against "ID" which is defined as: time(nullptr)
+            auto firstSegment  { payload.find(expectedResult1) };
+            auto secondSegment { payload.find(expectedResult2) };
+            if(std::string::npos != firstSegment && std::string::npos != secondSegment)
+            {
+                retVal = ::testing::AssertionSuccess();
+            }
+            return retVal;
+        }
+    };
+
+    std::function<void(const std::string&)> callbackWrapper
+    {
+        [&](const std::string& payload)
+        {
+            EXPECT_PRED1(checkExpected, payload);
+        }
+    };
+    sync_callback_data_t callbackData { callbackRSyncWrapper, &callbackWrapper };
+
+    ASSERT_EQ(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), callbackData));
+}
+
+TEST_F(RSyncTest, startSyncIntegrityGlobal)
+{
+    const auto dbsyncHandle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO) };
+    ASSERT_NE(nullptr, dbsyncHandle);
+
+    const auto rsyncHandle { rsync_create() };
+    ASSERT_NE(nullptr, rsyncHandle);
+
+    const auto expectedResult1
+    {
+        R"({"component":"test_component","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","end":"/boot/grub2/fonts/unicode.pf2")"
+    };
+
+    const auto expectedResult2
+    {
+        R"("type":"integrity_check_global"})"
+    };
+
+    const auto startConfigStmt
+    {
+        R"({"table":"entry_path",
+            "first_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"",
+                    "distinct_opt":false,
+                    "order_by_opt":"path ASC",
+                    "count_opt":1
+                },
+            "last_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"",
+                    "distinct_opt":false,
+                    "order_by_opt":"path DESC",
+                    "count_opt":1
+                },
+            "component":"test_component",
+            "index":"path",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "column_list":["path, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+            })"
+    };
+    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+
+    const auto checkExpected
+    {
+        [&](const std::string& payload) -> ::testing::AssertionResult
+        {
+            auto retVal { ::testing::AssertionFailure() };
+            // Necessary to avoid checking against "ID" which is defined as: time(nullptr)
+            auto firstSegment  { payload.find(expectedResult1) };
+            auto secondSegment { payload.find(expectedResult2) };
+            if(std::string::npos != firstSegment && std::string::npos != secondSegment)
+            {
+                retVal = ::testing::AssertionSuccess();
+            }
+            return retVal;
+        }
+    };
+
+    std::function<void(const std::string&)> callbackWrapper
+    {
+        [&](const std::string& payload)
+        {
+            EXPECT_PRED1(checkExpected, payload);
+        }
+    };
+    sync_callback_data_t callbackData { callbackRSyncWrapper, &callbackWrapper };
+
+    ASSERT_EQ(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), callbackData));
+
+    dbsync_teardown();
 }
 
 TEST_F(RSyncTest, registerSyncId)
@@ -172,7 +427,8 @@ TEST_F(RSyncTest, RegisterAndPush)
                     "row_filter":" ",
                     "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
                     "distinct_opt":false,
-                    "order_by_opt":""
+                    "order_by_opt":"",
+                    "count_opt":100
                 },
             "count_range_query_json":
                 {
@@ -180,21 +436,24 @@ TEST_F(RSyncTest, RegisterAndPush)
                     "count_field_name":"count",
                     "column_list":["count(*) AS count "],
                     "distinct_opt":false,
-                    "order_by_opt":""
+                    "order_by_opt":"",
+                    "count_opt":100
                 },
             "row_data_query_json":
                 {
                     "row_filter":"WHERE path ='?'",
                     "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
                     "distinct_opt":false,
-                    "order_by_opt":""
+                    "order_by_opt":"",
+                    "count_opt":100
                 },
             "range_checksum_query_json":
                 {
                     "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
                     "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
                     "distinct_opt":false,
-                    "order_by_opt":""
+                    "order_by_opt":"",
+                    "count_opt":100
                 }
         })"
     };
@@ -249,7 +508,8 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
                     "row_filter":" ",
                     "column_list":["pathx, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
                     "distinct_opt":false,
-                    "order_by_opt":""
+                    "order_by_opt":"",
+                    "count_opt":100                    
                 },
             "count_range_query_json":
                 {
@@ -257,21 +517,24 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
                     "count_field_name":"count",
                     "column_list":["count(*) AS count "],
                     "distinct_opt":false,
-                    "order_by_opt":""
+                    "order_by_opt":"",
+                    "count_opt":100                    
                 },
             "row_data_query_json":
                 {
                     "row_filter":"WHEREx path ='?'",
                     "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
                     "distinct_opt":false,
-                    "order_by_opt":""
+                    "order_by_opt":"",
+                    "count_opt":100                    
                 },
             "range_checksum_query_json":
                 {
                     "row_filter":"WHEREx path BETWEEN '?' and '?' ORDER BY path",
                     "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
                     "distinct_opt":false,
-                    "order_by_opt":""
+                    "order_by_opt":"",
+                    "count_opt":100                    
                 }
         })"
     };

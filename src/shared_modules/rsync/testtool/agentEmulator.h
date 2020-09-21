@@ -44,6 +44,7 @@ private:
     const RSYNC_HANDLE m_rsyncHandle;
     const DBSYNC_HANDLE m_dbSyncHandle;
     const cJSON* m_config;
+    const cJSON* m_startConfig;
     const std::chrono::milliseconds m_updatePeriod;
     const unsigned int m_maxDbItems;
     std::atomic_bool m_threadsRunning;

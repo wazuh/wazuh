@@ -67,9 +67,41 @@ EXPORTED RSYNC_HANDLE rsync_create()
     return retVal;
 }
 
-EXPORTED int rsync_start_sync(const RSYNC_HANDLE /*handle*/)
+EXPORTED int rsync_start_sync(const RSYNC_HANDLE handle,
+                              const DBSYNC_HANDLE dbsync_handle,
+                              const cJSON* start_configuration,
+                              sync_callback_data_t callback_data)
 {
-    return 0;    
+    auto retVal { -1 };
+    std::string errorMessage;
+    if (!handle || !dbsync_handle || !start_configuration || !callback_data.callback)
+    {
+        errorMessage += "Invalid parameters.";
+    }
+    else
+    {
+        try
+        {
+            const auto callbackWrapper
+            {
+                [callback_data](const std::string& payload)
+                {
+                    callback_data.callback(payload.c_str(), payload.size(), callback_data.user_data);
+                }
+            };
+            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(start_configuration)};
+            RSyncImplementation::instance().startRSync(handle, std::make_shared<DBSyncWrapper>(dbsync_handle), spJsonBytes.get(), callbackWrapper);
+            retVal = 0;
+        }
+        // LCOV_EXCL_START
+        catch(...)
+        {
+            errorMessage += "Unrecognized error.";
+        }
+        // LCOV_EXCL_STOP
+    }
+    log_message(errorMessage);
+    return retVal;
 }
 
 EXPORTED int rsync_register_sync_id(const RSYNC_HANDLE handle, 

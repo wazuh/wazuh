@@ -43,6 +43,7 @@ namespace RSync
         INTEGRITY_CHECK_GLOBAL,     ///< Global chunk (all files).
         INTEGRITY_CLEAR             ///< Clear data (no files at all).
     };
+
     static std::map<IntegrityMsgType, std::string> IntegrityCommands 
     {
         { INTEGRITY_CHECK_LEFT, "integrity_check_left" },
@@ -74,7 +75,6 @@ namespace RSync
         CalcChecksumType type;
         size_t size;
     };
-
     
     static std::map<std::string, SyncMsgBodyType> SyncMsgBodyTypeMap
     {
@@ -98,6 +98,11 @@ namespace RSync
         void releaseContext(const RSYNC_HANDLE handle);
 
         RSYNC_HANDLE create();
+
+        void startRSync(const RSYNC_HANDLE handle,
+                        const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
+                        const char* startConfiguration,
+                        const ResultCallback callbackWrapper);
 
         void registerSyncId(const RSYNC_HANDLE handle, 
                             const std::string& messageHeaderId, 
@@ -132,7 +137,12 @@ namespace RSync
 
         static nlohmann::json getRowData(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
                                          const nlohmann::json& jsonSyncConfiguration,
-                                         const std::string& index);
+                                         const std::string& index = "");
+
+        static nlohmann::json executeSelectQuery(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
+                                                 const std::string table,
+                                                 const nlohmann::json& jsFirstQuery,
+                                                 const nlohmann::json& jsLastQuery);
 
         static void sendAllData(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
                                 const nlohmann::json& jsonSyncConfiguration,
