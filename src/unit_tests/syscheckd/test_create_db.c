@@ -32,7 +32,7 @@
 
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
-#include "../syscheckd/fim_db.h"
+#include "../syscheckd/db/fim_db.h"
 
 extern fim_state_db _db_state;
 
@@ -2534,8 +2534,8 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
 
     str_lowercase(expanded_path);
 
-    fim_data->fentry->path = strdup("file");
-    fim_data->fentry->data = fim_data->local_data;
+    //fim_data->fentry->path = strdup("file");
+    //fim_data->fentry->data = fim_data->local_data;
 
     fim_data->local_data->size = 1500;
     fim_data->local_data->perm = strdup("0664");

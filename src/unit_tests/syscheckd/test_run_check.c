@@ -26,7 +26,7 @@
 #include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
 
 #include "../syscheckd/syscheck.h"
-#include "../syscheckd/fim_db.h"
+#include "../syscheckd/db/fim_db.h"
 
 #ifdef TEST_WINAGENT
 

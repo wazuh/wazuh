@@ -30,7 +30,7 @@
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/seechanges_wrappers.h"
 
-#include "../syscheckd/fim_db.h"
+#include "../syscheckd/db/fim_db.h"
 #include "../config/syscheck-config.h"
 
 #ifdef TEST_WINAGENT
@@ -39,9 +39,10 @@
 
 extern const char *SQL_STMT[];
 
-int fim_db_process_get_query(fdb_t *fim_sql, int index,
-                                    void (*callback)(fdb_t *, fim_entry *, void *),
-                                    void * arg);
+
+int fim_db_process_get_query(fdb_t *fim_sql, int type, int index,
+                             void (*callback)(fdb_t *, fim_entry *, int, void *),
+                             int storage, void * arg);
 int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
 fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
 fim_tmp_file *fim_db_create_temp_file(int storage);
@@ -2144,7 +2145,7 @@ void test_fim_db_process_get_query_success(void **state) {
 
     wraps_fim_db_check_transaction();
 
-    ret = fim_db_process_get_query(test_data->fim_sql, 0, auxiliar_callback, NULL);
+    ret = fim_db_process_get_query(test_data->fim_sql, 0, 0, auxiliar_callback, NULL, NULL);
 
     assert_int_equal(ret, FIMDB_OK);
 }
@@ -2157,7 +2158,7 @@ void test_fim_db_process_get_query_error(void **state) {
 
     wraps_fim_db_check_transaction();
 
-    ret = fim_db_process_get_query(test_data->fim_sql, 0, auxiliar_callback, NULL);
+    ret = fim_db_process_get_query(test_data->fim_sql, 0, 0, auxiliar_callback, NULL, NULL);
 
     assert_int_equal(ret, FIMDB_ERR);
 }
