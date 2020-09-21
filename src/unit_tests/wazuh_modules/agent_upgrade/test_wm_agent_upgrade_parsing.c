@@ -120,6 +120,38 @@ void test_wm_agent_upgrade_parse_data_response_without_agent_id(void **state)
     assert_null(cJSON_GetObjectItem(response, "agent"));
 }
 
+void test_wm_agent_upgrade_parse_response_data_array(void **state) {
+    int error_code = 0;
+    cJSON *data = cJSON_CreateArray();
+
+    cJSON *response = wm_agent_upgrade_parse_response(error_code, data);
+
+    *state = response;
+
+    assert_non_null(cJSON_GetObjectItem(response, "error"));
+    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, error_code);
+    assert_non_null(cJSON_GetObjectItem(response, "message"));
+    assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Success");
+    assert_non_null(cJSON_GetObjectItem(response, "data"));
+    assert_memory_equal(cJSON_GetObjectItem(response, "data"), data, sizeof(data));
+}
+
+void test_wm_agent_upgrade_parse_response_data_object(void **state) {
+    int error_code = 0;
+    cJSON *data = cJSON_CreateObject();
+
+    cJSON *response = wm_agent_upgrade_parse_response(error_code, data);
+
+    *state = response;
+
+    assert_non_null(cJSON_GetObjectItem(response, "error"));
+    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, error_code);
+    assert_non_null(cJSON_GetObjectItem(response, "message"));
+    assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Success");
+    assert_non_null(cJSON_GetObjectItem(response, "data"));
+    assert_memory_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(response, "data"), 0), data, sizeof(data));
+}
+
 void test_wm_agent_upgrade_parse_task_module_request_complete(void **state)
 {
     int command = 1;
@@ -1198,11 +1230,37 @@ void test_wm_agent_upgrade_parse_message_invalid_json(void **state)
     assert_string_equal(error, "{\"error\":1,\"data\":[{\"error\":1,\"message\":\"Could not parse message JSON\"}],\"message\":\"Could not parse message JSON\"}");
 }
 
+void test_wm_agent_upgrade_parse_message_missing_required(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    void* task = NULL;
+    char *buffer = "{}";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8107): Required parameters in message are missing.");
+
+    int command = wm_agent_upgrade_parse_message(buffer, &task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, OS_INVALID);
+    assert_null(agent_ids);
+    assert_null(task);
+    assert_non_null(error);
+    assert_string_equal(error, "{\"error\":2,\"data\":[{\"error\":2,\"message\":\"Required parameters in json message where not found\"}],\"message\":\"Required parameters in json message where not found\"}");
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_agent_upgrade_parse_data_response
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_data_response_complete, teardown_json),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_data_response_without_agent_id, teardown_json),
+        // wm_agent_upgrade_parse_response
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_response_data_array, teardown_json),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_response_data_object, teardown_json),
         // wm_agent_upgrade_parse_task_module_request
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_complete, teardown_json),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_without_status_and_error, teardown_json),
@@ -1253,7 +1311,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_agent_status_task_error, teardown_parse_agents),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_invalid_command, teardown_parse_agents),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_invalid_agents, teardown_parse_agents),
-        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_invalid_json, teardown_parse_agents)
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_invalid_json, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_missing_required, teardown_parse_agents)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
