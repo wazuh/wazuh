@@ -34,24 +34,19 @@ def get_task_status(task_list=None):
                                       some_msg='Some status were not returned',
                                       none_msg='No status was returned')
 
-    command_list = list()
     if task_list:
-        for task in task_list:
-            command_list.append({'command': 'task_result', 'module': 'api', 'task_id': int(task)})
+        msg = {'origin': {'module': 'api'}, 'command': 'task_result',
+               'parameters': {'tasks': list(map(int, task_list))}}
 
-    task_results = send_to_tasks_socket(command_list)
-    if not isinstance(task_results, list):
-        task_results['data'] = 'Invalid task ID'
-        task_results = [task_results]
-    for task_result in task_results:
-        task_error = task_result.pop('error')
-        if task_error == 0:
-            result.affected_items.append(task_result)
-            result.total_affected_items += 1
-        else:
-            error = WazuhError(code=1850 + task_error, cmd_error=True, extra_message=task_result['data'])
-            result.add_failed_item(id_=str(task_result.pop('task_id', None)), error=error)
-
-    result.affected_items = sorted(result.affected_items, key=lambda k: k['task_id'])
+        task_results = send_to_tasks_socket(msg)
+        for task_result in task_results['data']:
+            task_error = task_result.pop('error')
+            if task_error == 0:
+                result.affected_items.append(task_result)
+                result.total_affected_items += 1
+            else:
+                error = WazuhError(code=1850 + task_error, cmd_error=True, extra_message=task_result['message'])
+                result.add_failed_item(id_=str(task_result.pop('task_id', None)), error=error)
+        result.affected_items = sorted(result.affected_items, key=lambda k: k['task_id'])
 
     return result
