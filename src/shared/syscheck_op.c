@@ -976,7 +976,7 @@ char *get_registry_group(const char *path, char **sid, HANDLE hdnl) {
                                 &eUse);                 // SID type
 
     if (strncmp(GrpName, "None", 4) == 0) {
-        os_strdup("", GrpName);
+        snprintf(GrpName, 1, "%s", "");
     }
 
     // Check GetLastError for LookupAccountSid error condition.
@@ -1003,6 +1003,93 @@ end:
     result = wstr_replace((const char*)&GrpName, " ", "\\ ");
 
     return result;
+}
+
+int get_registry_permissions(const char *path, HKEY hdnl, char *perm_key) {
+    PSECURITY_DESCRIPTOR pSecurityDescriptor = LocalAlloc(LMEM_FIXED, 1024);
+    ACL_SIZE_INFORMATION aclsizeinfo;
+    ACCESS_ALLOWED_ACE *pAce = NULL;
+    PACL pDacl = NULL;
+    DWORD cAce;
+    DWORD dwRtnCode = 0;
+    DWORD dwErrorCode = 0;
+    DWORD lpcbSecurityDescriptor = 1024;
+    BOOL bRtnBool = TRUE;
+    BOOL fDaclPresent = FALSE;
+    BOOL fDaclDefaulted = TRUE;
+    int written;
+    int perm_size = OS_SIZE_6144;
+    char *permissions = perm_key;
+
+    // Get the security information.
+    dwRtnCode = RegGetKeySecurity(
+                                  hdnl,                         // Handle to an open key
+                                  DACL_SECURITY_INFORMATION,    // Requeste DACL security information
+                                  pSecurityDescriptor,          // Pointer that receives the DACL information
+                                  &lpcbSecurityDescriptor);     // Pointer that specifies the size, in bytes
+
+    if (dwRtnCode != ERROR_SUCCESS) {
+        mwarn("Could not get registry key %s security information. Error: %ld", path, dwRtnCode);
+        os_free(pSecurityDescriptor);
+        return -1;
+    }
+
+    // Retrieve a pointer to the DACL in the security descriptor.
+    bRtnBool = GetSecurityDescriptorDacl(
+                                         pSecurityDescriptor,   // Structure that contains the DACL
+                                         &fDaclPresent,         // Indicates the presence of a DACL
+                                         &pDacl,                // Pointer to ACL
+                                         &fDaclDefaulted);      // Flag set to the value of the SE_DACL_DEFAULTED flag
+
+    if (bRtnBool == FALSE) {
+        dwErrorCode = GetLastError();
+        mwarn("GetSecurityDescriptorDacl failed. GetLastError returned: %ld", dwErrorCode);
+        os_free(pSecurityDescriptor);
+        return -1;
+    }
+
+    // Check whether no DACL or a NULL DACL was retrieved from the security descriptor buffer.
+    if (fDaclPresent == FALSE || pDacl == NULL) {
+        mwarn("No DACL was found (all access is denied), or a NULL DACL (unrestricted access) was found.");
+        os_free(pSecurityDescriptor);
+        return -1;
+    }
+
+    // Retrieve the ACL_SIZE_INFORMATION structure to find the number of ACEs in the DACL.
+    bRtnBool = GetAclInformation(
+                                 pDacl,                 // Pointer to an ACL
+                                 &aclsizeinfo,          // Pointer to a buffer to receive the requested information
+                                 sizeof(aclsizeinfo),   // The size, in bytes, of the buffer
+                                 AclSizeInformation);   // Fill the buffer with an ACL_SIZE_INFORMATION structure
+
+    if (bRtnBool == FALSE) {
+        dwErrorCode = GetLastError();
+        mwarn("GetAclInformation failed. GetLastError returned: %ld", dwErrorCode);
+        os_free(pSecurityDescriptor);
+        return -1;
+    }
+
+    // Loop through the ACEs to get the information.
+    for (cAce = 0; cAce < aclsizeinfo.AceCount; cAce++) {
+        // Get ACE info
+        if (GetAce(pDacl, cAce, (LPVOID*)&pAce) == FALSE) {
+            mwarn("GetAce failed. GetLastError returned: %ld", GetLastError());
+            continue;
+        }
+
+        written = copy_ace_info(pAce, permissions, perm_size);
+
+        if (written > 0) {
+            permissions += written;
+            perm_size -= written;
+
+            if (perm_size > 0) {
+                continue;
+            }
+        }
+    }
+
+    return 0;
 }
 
 /* Send a one-way message to Syscheck */

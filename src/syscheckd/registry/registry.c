@@ -197,6 +197,17 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
         key->group_name = get_registry_group(path, &key->gid, key_handle);
     }
 
+    if (configuration->opts & CHECK_PERM) {
+        char permissions[OS_SIZE_6144 + 1];
+
+        if (get_registry_permissions(path, key_handle, permissions) == -1) {
+            mwarn(FIM_EXTRACT_PERM_FAIL, path, -1);
+        }
+        else {
+            key->perm = decode_win_permissions(permissions);
+        }
+    }
+
     return key;
 }
 

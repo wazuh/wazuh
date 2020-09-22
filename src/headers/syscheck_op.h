@@ -330,12 +330,23 @@ const char *get_group(__attribute__((unused)) int gid);
  * Also sets the group ID associated to that group.
  *
  * @param path Path of the registry key.
- * @param sid The user ID associated to the user.
- * @param hdnl Handle for the registry to check the owner of (NULL for files).
+ * @param sid The user ID associated to the group.
+ * @param hdnl Handle for the registry to check the group of.
  *
  * @return The user name on success, NULL on failure.
 */
 char *get_registry_group(const char *path, char **sid, HANDLE hdnl);
+
+/**
+ * @brief Retrieves the permissions of a registry key.
+ *
+ * @param path Path to the registry key.
+ * @param hdnl Handle for the registry key to check the permissions of.
+ * @param perm_key Permissions associated to the registry key.
+ *
+ * @return Permissions in perm_key. -1 on failure, 0 on sucess.
+*/
+int get_registry_permissions(const char *path, HKEY hdnl, char *perm_key);
 
 /**
  * @brief Copy ACE information into buffer
