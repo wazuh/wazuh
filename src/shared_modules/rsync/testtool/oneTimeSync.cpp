@@ -84,7 +84,6 @@ void OneTimeSync::syncData()
     const auto it{ m_inputData[0].find("dbsync") };
     if (it != m_inputData[0].end())
     {
-        // const auto dbsyncInput{ m_inputData[0].at("dbsync") };
         const std::unique_ptr<cJSON, SmartDeleterJson> jsSync{ cJSON_Parse(it->dump().c_str()) };
         callback_data_t callback { syncCallback, nullptr };
 

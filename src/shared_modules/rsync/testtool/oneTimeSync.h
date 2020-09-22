@@ -11,9 +11,6 @@
 #ifndef _ONE_TIME_SYNC_H_
 #define _ONE_TIME_SYNC_H_
 
-#include <thread>
-#include <chrono>
-#include <atomic>
 #include "json.hpp"
 #include "rsync.h"
 #include "dbsync.h"
