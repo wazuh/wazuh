@@ -52,6 +52,8 @@ int main(int argc, const char* argv[])
                                jsonInputFile[0],
                                args.outputFolder());
             otSync.syncData();
+            otSync.pushData();
+            otSync.startSync();
         }
     }
     catch(const std::exception& ex)

@@ -61,24 +61,18 @@ OneTimeSync::OneTimeSync(const nlohmann::json& config,
             "Error creating rsync handle."
         };
     }
-    const auto rsyncConfig{ config.at("rsync") };
-    const std::unique_ptr<cJSON, SmartDeleterJson> jsRsyncConfig{ cJSON_Parse(rsyncConfig.dump().c_str()) };
+    const auto rsyncRegConfig{ config.at("rsync_register_config") };
+    const std::unique_ptr<cJSON, SmartDeleterJson> jsRsyncRegConfig{ cJSON_Parse(rsyncRegConfig[0].dump().c_str()) };
 
     sync_callback_data_t callback{ rsyncCallback, this };
-    if (rsync_register_sync_id(m_rsyncHandle, "OneTimeSync", m_dbSyncHandle, jsRsyncConfig.get(), callback))
+    if (rsync_register_sync_id(m_rsyncHandle, "OneTimeSync", m_dbSyncHandle, jsRsyncRegConfig.get(), callback))
     {
         throw std::runtime_error
         {
             "Error registering rsync id."
         };
     }
-    if (rsync_start_sync(m_rsyncHandle))
-    {
-        throw std::runtime_error
-        {
-            "Error starting rsync handle."
-        };
-    }
+
 }
 OneTimeSync::~OneTimeSync()
 {
@@ -87,11 +81,64 @@ OneTimeSync::~OneTimeSync()
 
 void OneTimeSync::syncData()
 {
-    const std::unique_ptr<cJSON, SmartDeleterJson> jsSync{ cJSON_Parse(m_inputData[0].dump().c_str()) };
-    callback_data_t callback { syncCallback, nullptr };
+    const auto it{ m_inputData[0].find("dbsync") };
+    if (it != m_inputData[0].end())
+    {
+        // const auto dbsyncInput{ m_inputData[0].at("dbsync") };
+        const std::unique_ptr<cJSON, SmartDeleterJson> jsSync{ cJSON_Parse(it->dump().c_str()) };
+        callback_data_t callback { syncCallback, nullptr };
 
-    dbsync_sync_row(m_dbSyncHandle, jsSync.get(), callback);
+        if(dbsync_sync_row(m_dbSyncHandle, jsSync.get(), callback))
+        {
+            throw std::runtime_error
+            {
+                "Error in dbsync_sync_row."
+            };
+        }
+    }
 }
+
+void OneTimeSync::pushData()
+{
+    const auto it{ m_inputData[0].find("rsync_push") };
+    if (it != m_inputData[0].end())
+    {
+        for (const auto& push : *it)
+        {
+            const auto buffer{push.get<std::string>()};
+            if(rsync_push_message(m_rsyncHandle,
+                                   buffer.c_str(),
+                                   buffer.size()))
+            {
+                throw std::runtime_error
+                {
+                    "Error in rsync_push_message."
+                };
+            }
+        }
+    }
+}
+
+void OneTimeSync::startSync()
+{
+    const auto it{ m_inputData[0].find("rsync_start_sync") };
+    if (it != m_inputData[0].end())
+    {
+        sync_callback_data_t callback{ rsyncCallback, this };
+        const std::unique_ptr<cJSON, SmartDeleterJson> jsSync{ cJSON_Parse(it->dump().c_str()) };
+        if(rsync_start_sync(m_rsyncHandle,
+                             m_dbSyncHandle,
+                             jsSync.get(),
+                             callback))
+        {
+            throw std::runtime_error
+            {
+                "Error in rsync_start_sync."
+            };
+        }
+    }
+}
+
 void OneTimeSync::rsyncCallback(const void* buffer, size_t bufferSize, void* userData)
 {
     static unsigned int index{ 0 };
@@ -100,6 +147,7 @@ void OneTimeSync::rsyncCallback(const void* buffer, size_t bufferSize, void* use
     {
         std::stringstream oFileName;
         oFileName << "action_" << index << ".json";
+        ++index;
         const auto outputFileName{ object->m_outputFolder + "/" + oFileName.str() };
         std::ofstream outputFile{ outputFileName };
         const auto jsonResult
@@ -107,7 +155,6 @@ void OneTimeSync::rsyncCallback(const void* buffer, size_t bufferSize, void* use
             nlohmann::json::parse(std::string{reinterpret_cast<const char*>(buffer), bufferSize})
         };
         outputFile << jsonResult.dump() << std::endl;
-        ++index;
     }
 }
 

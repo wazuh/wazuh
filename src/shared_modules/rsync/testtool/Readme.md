@@ -25,4 +25,7 @@ In order to run the `rsync_test_tool` utility the following steps need to be acc
 ./rsync_test_tool -u 100 -o ./output
 ```
 Considering the example above all databases will be located in ./output folder and will be updated with random values every 100 milliseconds.
-
+```
+./rsync_test_tool -c config.json -i input.json -o ./output
+```
+Considering the example above all databases will be located in ./output folder and will configure dbsync/rsync according to config.json file and will exercise the libraries according to the inputs defined in input.json file.

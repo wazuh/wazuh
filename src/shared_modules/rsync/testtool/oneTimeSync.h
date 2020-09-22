@@ -27,6 +27,8 @@ public:
                 const std::string& outputFolder);
     ~OneTimeSync();
     void syncData();
+    void pushData();
+    void startSync();
 private:
     static void rsyncCallback(const void* buffer, size_t bufferSize, void* userData);
     static void syncCallback(ReturnTypeCallback result_type, const cJSON* result_json, void* user_data);
