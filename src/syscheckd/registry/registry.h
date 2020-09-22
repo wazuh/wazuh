@@ -10,6 +10,8 @@
 #ifndef REGISTRY_H
 #define REGISTRY_H
 
+#ifdef WIN32
+
 #include "../syscheck.h"
 
 
@@ -37,5 +39,7 @@ cJSON *fim_registry_event(const fim_entry *new,
                           unsigned int event_type,
                           whodata_evt *w_evt,
                           const char *diff);
+
+#endif
 
 #endif
