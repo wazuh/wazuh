@@ -719,8 +719,8 @@ int w_logtest_check_input_remove_session(cJSON * root, char ** msg) {
     if (!cJSON_IsString(token) || (cJSON_IsString(token) && token->valuestring == NULL)) {
 
         mdebug1(LOGTEST_ERROR_TOKEN_INVALID_TYPE);
-        int size_msg = strlen(LOGTEST_ERROR_TOKEN_INVALID_TYPE);
-        os_calloc(size_msg + 1, sizeof(char), *msg);
+        int size_msg = strlen(LOGTEST_ERROR_TOKEN_INVALID_TYPE) + 1;
+        os_calloc(size_msg, sizeof(char), *msg);
         snprintf(*msg, size_msg, LOGTEST_ERROR_TOKEN_INVALID_TYPE);
 
         return W_LOGTEST_CODE_INVALID_TOKEN;
@@ -731,8 +731,8 @@ int w_logtest_check_input_remove_session(cJSON * root, char ** msg) {
                && strlen(token->valuestring) != W_LOGTEST_TOKEN_LENGH) {
 
         mdebug1(LOGTEST_ERROR_TOKEN_INVALID, token->valuestring);
-        int size_msg = strlen(LOGTEST_ERROR_TOKEN_INVALID) + strlen(token->valuestring);
-        os_calloc(size_msg + 1, sizeof(char), *msg);
+        int size_msg = strlen(LOGTEST_ERROR_TOKEN_INVALID) + strlen(token->valuestring) + 1;
+        os_calloc(size_msg, sizeof(char), *msg);
         snprintf(*msg, size_msg, LOGTEST_ERROR_TOKEN_INVALID, token->valuestring);
 
         return W_LOGTEST_CODE_INVALID_TOKEN;
