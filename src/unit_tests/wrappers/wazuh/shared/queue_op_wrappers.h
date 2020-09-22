@@ -15,4 +15,10 @@
 
 int __wrap_queue_push_ex(w_queue_t * queue, void * data);
 
+int __wrap_queue_full(const w_queue_t * queue);
+
+void * __wrap_queue_pop_ex(w_queue_t * queue);
+
+void * __wrap_queue_pop_ex_timedwait(w_queue_t * queue, const struct timespec * abstime);
+
 #endif

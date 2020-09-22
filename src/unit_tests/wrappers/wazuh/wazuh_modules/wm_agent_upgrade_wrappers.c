@@ -47,20 +47,16 @@ int __wrap_wm_agent_upgrade_parse_message(const char* buffer, void** task, int**
     return mock();
 }
 
-char* __wrap_wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, __attribute__((unused)) const wm_manager_configs* manager_configs, int *upgrade_agents) {
+char* __wrap_wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, __attribute__((unused)) const wm_manager_configs* manager_configs) {
     check_expected_ptr(agent_ids);
     check_expected_ptr(task);
-
-    *upgrade_agents = mock();
 
     return mock_type(char *);
 }
 
-char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, __attribute__((unused)) const wm_manager_configs* manager_configs, int *upgrade_agents) {
+char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, __attribute__((unused)) const wm_manager_configs* manager_configs) {
     check_expected_ptr(agent_ids);
     check_expected_ptr(task);
-
-    *upgrade_agents = mock();
 
     return mock_type(char *);
 }
@@ -72,24 +68,25 @@ char* __wrap_wm_agent_upgrade_process_agent_result_command(const int* agent_ids,
     return mock_type(char *);
 }
 
-cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status, const char* error) {
+cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJSON *agents_array, const char* status, const char* error) {
     check_expected(command);
-    check_expected(agent_id);
+
+    cJSON *ret = mock_type(cJSON *);
+    cJSON_AddItemToObject(cJSON_GetObjectItem(ret, task_manager_json_keys[WM_TASK_PARAMETERS]), task_manager_json_keys[WM_TASK_AGENTS], agents_array);
+
     if (status) check_expected(status);
     if (error) check_expected(error);
 
-    return mock_type(cJSON *);
+    return ret;
 }
 
 int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request) {
-    cJSON* json = cJSON_GetArrayItem(task_module_request, 0);
-    cJSON* json_next = cJSON_GetArrayItem(task_module_request, 1);
+    check_expected(task_module_request);
 
-    if (json) check_expected(json);
-    if (json_next) check_expected(json_next);
-
-    if (json) cJSON_AddItemToArray(json_response, mock_type(cJSON *));
-    if (json_next) cJSON_AddItemToArray(json_response, mock_type(cJSON *));
+    cJSON *data = mock_type(cJSON *);
+    if (data) {
+        cJSON_AddItemToArray(json_response, data);
+    }
 
     return mock();
 }
@@ -178,15 +175,15 @@ int __wrap_wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* ag_ta
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_remove_entry(int agent_id) {
+int __wrap_wm_agent_upgrade_remove_entry(int agent_id, int free) {
     check_expected(agent_id);
+    check_expected(free);
 
     return mock();
 }
 
-cJSON* __wrap_wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status) {
+cJSON* __wrap_wm_agent_upgrade_parse_data_response(int error_id, const char* message, const int* agent_id) {
     int agent_int;
-    int task_int;
 
     check_expected(error_id);
     check_expected(message);
@@ -194,15 +191,23 @@ cJSON* __wrap_wm_agent_upgrade_parse_response_message(int error_id, const char* 
         agent_int = *agent_id;
         check_expected(agent_int);
     }
-    if (task_id) {
-        task_int = *task_id;
-        check_expected(task_int);
-    }
-    if (status) {
-        check_expected(status);
-    }
 
     return mock_type(cJSON *);
+}
+
+cJSON* __wrap_wm_agent_upgrade_parse_response(int error_id, cJSON *data) {
+    check_expected(error_id);
+
+    cJSON *ret = mock_type(cJSON*);
+    if (data && (data->type == cJSON_Array)) {
+        cJSON_AddItemToObject(ret, task_manager_json_keys[WM_TASK_DATA], data);
+    } else {
+        cJSON *data_array = cJSON_CreateArray();
+        cJSON_AddItemToArray(data_array, data);
+        cJSON_AddItemToObject(ret, task_manager_json_keys[WM_TASK_DATA], data_array);
+    }
+
+    return ret;
 }
 
 cJSON* __wrap_w_create_sendsync_payload(const char *daemon_name, __attribute__ ((__unused__)) cJSON *message) {
@@ -246,8 +251,6 @@ cJSON* __wrap_wm_agent_upgrade_send_tasks_information(const cJSON *message_objec
     return mock_type(cJSON *);
 }
 
-int __wrap_wm_agent_upgrade_start_upgrades(const wm_manager_configs* manager_configs) {
-    check_expected(manager_configs);
-
+int __wrap_wm_agent_upgrade_prepare_upgrades() {
     return mock();
 }

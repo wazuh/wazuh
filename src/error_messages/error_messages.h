@@ -515,6 +515,7 @@
 #define WM_UPGRADE_TASK_UPDATE_ERROR                "(8119): There has been an error updating task state. Error code: '%d', message: '%s'"
 #define WM_UPGRADE_RESULT_FILE_ERROR                "(8120): Agent was unable to erase upgrade_result file. Reason: '%s'"
 #define WM_UPGRADE_AGENT_RESPONSE_SCRIPT_ERROR      "(8121): Script execution failed in the agent."
+#define WM_UPGRADE_UPGRADE_QUEUE_FULL               "(8122): Upgrade queue is full. Agent '%d' won't be upgraded."
 
 #define MOD_TASK_CHECK_DB_ERROR                     "(8250): DB integrity is invalid. Exiting..."
 #define MOD_TASK_CREATE_SOCK_ERROR                  "(8251): Queue '%s' not accessible: '%s'. Exiting..."
@@ -524,7 +525,6 @@
 #define MOD_TASK_SOCKTERR_ERROR                     "(8255): Response size is bigger than expected."
 #define MOD_TASK_LENGTH_ERROR                       "(8256): Received message > '%i'"
 #define MOD_TASK_PARSE_JSON_ERROR                   "(8257): Error parsing JSON event: '%s'"
-#define MOD_TASK_PARSE_EMPTY_ERROR                  "(8258): Invalid message. Array of tasks is empty."
 #define MOD_TASK_PARSE_KEY_ERROR                    "(8259): Invalid message. '%s' not found at index '%d'"
 #define MOD_TASK_DB_ERROR                           "(8260): Database error at index '%d'"
 #define MOD_TASK_UNKNOWN_VALUE_ERROR                "(8261): Invalid '%s' at index '%d'"

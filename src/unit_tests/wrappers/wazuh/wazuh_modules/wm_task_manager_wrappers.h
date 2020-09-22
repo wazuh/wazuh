@@ -20,13 +20,13 @@ cJSON* __wrap_wm_task_manager_parse_message(const char *msg);
 
 cJSON* __wrap_wm_task_manager_analyze_task(const cJSON *task_object, int *error_code);
 
-cJSON* __wrap_wm_task_manager_parse_response(int error_code, int agent_id, int task_id, char *status);
+cJSON* __wrap_wm_task_manager_parse_data_response(int error_code, int agent_id, int task_id, char *status);
 
 int __wrap_wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *module, char **command, char **status, char **error, int *create_time, int *last_update_time);
 
 int __wrap_wm_task_manager_get_task_by_task_id(int task_id, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time);
 
-void __wrap_wm_task_manager_parse_response_result(cJSON *response, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command);
+void __wrap_wm_task_manager_parse_data_result(cJSON *response, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command);
 
 int __wrap_wm_task_manager_insert_task(int agent_id, const char *module, const char *command);
 
