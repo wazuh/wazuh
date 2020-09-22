@@ -514,7 +514,7 @@
 #define LOGTEST_ERROR_FIELD_NOT_FOUND               "(7313): '%s' JSON field not found"
 #define LOGTEST_ERROR_RECV_MSG_EMPTY_TO             "(7314): Failure to receive message: empty or reception timeout"
 #define LOGTEST_ERROR_RECV_MSG_OVERSIZE             "(7315): Failure to receive message: size is bigger than expected"
-#define LOGTEST_ERROR_TOKEN_INVALID_TYPE            "(7316): Failure to remove session. remove_session JSON field must be a string"
+#define LOGTEST_ERROR_TOKEN_INVALID_TYPE            "(7316): Failure to remove session. token JSON field must be a string"
 #define LOGTEST_ERROR_FIELD_NOT_VALID               "(7317): '%s' JSON field value is not valid"
 
 /* Verbose messages */
