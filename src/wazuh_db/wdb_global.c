@@ -244,7 +244,6 @@ int wdb_global_update_agent_version(wdb_t *wdb,
 cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int id) {
     sqlite3_stmt *stmt = NULL;
     cJSON * result = NULL;
-    int index = 0;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
@@ -258,12 +257,9 @@ cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int id) {
 
     stmt = wdb->stmt[WDB_STMT_GLOBAL_LABELS_GET];
 
-    // In this statement, we must bind the agent ID four times
-    for (index = 1; index < 5; ++index) {
-        if (sqlite3_bind_int(stmt, index, id) != SQLITE_OK) {
-            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-            return NULL;
-        }
+    if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return NULL;
     }
 
     result = wdb_exec_stmt(stmt);

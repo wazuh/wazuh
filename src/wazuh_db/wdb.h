@@ -168,7 +168,7 @@ typedef enum global_db_access {
     WDB_INSERT_AGENT_GROUP,
     WDB_INSERT_AGENT_BELONG,
     WDB_UPDATE_AGENT_NAME,
-    WDB_UPDATE_AGENT_VERSION,
+    WDB_UPDATE_AGENT_DATA,
     WDB_UPDATE_AGENT_KEEPALIVE,
     WDB_UPDATE_AGENT_STATUS,
     WDB_UPDATE_AGENT_GROUP,
@@ -403,7 +403,7 @@ int wdb_update_agent_belongs(int id_group, int id_agent);
 int wdb_update_agent_name(int id, const char *name);
 
 /**
- * @brief Update agent version in global.db.
+ * @brief Update agent data in global.db.
  * 
  * @param[in] id The agent ID.
  * @param[in] os_name The agent's operating system name.
@@ -421,26 +421,28 @@ int wdb_update_agent_name(int id, const char *name);
  * @param[in] manager_host The agent's manager host name.
  * @param[in] node_name The agent's manager node name.
  * @param[in] agent_ip The agent's IP address.
+ * @param[in] labels The agent labels.
  * @param[in] sync_status The agent's synchronization status in cluster.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_update_agent_version(int id, 
-                             const char *os_name,
-                             const char *os_version,
-                             const char *os_major,
-                             const char *os_minor,
-                             const char *os_codename,
-                             const char *os_platform,
-                             const char *os_build,
-                             const char *os_uname,
-                             const char *os_arch,
-                             const char *version,
-                             const char *config_sum,
-                             const char *merged_sum,
-                             const char *manager_host,
-                             const char *node_name,
-                             const char *agent_ip,
-                             wdb_sync_status_t sync_status);
+int wdb_update_agent_data(int id, 
+                          const char *os_name,
+                          const char *os_version,
+                          const char *os_major,
+                          const char *os_minor,
+                          const char *os_codename,
+                          const char *os_platform,
+                          const char *os_build,
+                          const char *os_uname,
+                          const char *os_arch,
+                          const char *version,
+                          const char *config_sum,
+                          const char *merged_sum,
+                          const char *manager_host,
+                          const char *node_name,
+                          const char *agent_ip,
+                          const char *labels,
+                          wdb_sync_status_t sync_status);
 
 /**
  * @brief Update agent's last keepalive ond modifies the cluster synchronization status.
@@ -931,14 +933,14 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the update agent version request.
+ * @brief Function to parse the update agent data request.
  * 
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent data in JSON format.
  * @param [out] output Response of the query.
  * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
  */
-int wdb_parse_global_update_agent_version(wdb_t * wdb, char * input, char * output);
+int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse the labels request for a particular agent.
