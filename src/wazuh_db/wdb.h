@@ -1402,7 +1402,7 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
  * @param [in] status The value of sync_status
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, char *sync_status);
+int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *sync_status);
 
 /**
  * @brief Function to delete an agent from the agent table.
@@ -1589,7 +1589,7 @@ cJSON* wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip);
  * @param [in] status The value of sync_status
  * @return 0 On success. -1 On error.
  */
-int wdb_global_set_sync_status(wdb_t *wdb, int id, char *sync_status);
+int wdb_global_set_sync_status(wdb_t *wdb, int id, const char *sync_status);
 
 /**
  * @brief Gets and parses agents with 'syncreq' sync_status and sets them to 'synced'.

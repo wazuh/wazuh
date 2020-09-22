@@ -345,7 +345,7 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value) {
     }
 }
 
-int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, char* sync_status) {
+int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char* sync_status) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -991,7 +991,7 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id) {
     }
 }
 
-int wdb_global_set_sync_status(wdb_t *wdb, int id, char* sync_status) {
+int wdb_global_set_sync_status(wdb_t *wdb, int id, const char* sync_status) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
