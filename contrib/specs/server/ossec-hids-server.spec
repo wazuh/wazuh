@@ -320,8 +320,6 @@ fi
 %attr(770, ossec, ossec) /var/ossec/queue/alerts
 %dir /var/ossec/queue/rootcheck
 %attr(750, ossec, ossec) /var/ossec/queue/rootcheck
-%dir /var/ossec/queue/agent-info
-%attr(755, ossecr, ossec) /var/ossec/queue/agent-info
 %dir /var/ossec/queue/syscheck
 %attr(750, ossec, ossec) /var/ossec/queue/syscheck
 %dir /var/ossec/queue/ossec

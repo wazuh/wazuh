@@ -72,10 +72,6 @@ def main():
     agent = Agent(id=args.agent)
     agent.load_info_from_db()
 
-    agent_info = "{0}/queue/agent-info/{1}-{2}".format(common.ossec_path, agent.name, agent.registerIP)
-    if not os.path.isfile(agent_info):
-        raise WazuhError(1720)
-
     # Evaluate if the version is correct
     if args.version is not None:
         pattern = re.compile("v[0-9]+\.[0-9]+\.[0-9]+")
